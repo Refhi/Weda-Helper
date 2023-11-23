@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper",
-  "version": "0.6",
+  "version": "0.6.1",
   "options_page": "options.html",
   "permissions": ["storage"],
   "description": "Simplifie et fluidifie l'usage de Weda",

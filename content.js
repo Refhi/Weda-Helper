@@ -226,7 +226,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
             break;
         case "shortcut_carte_vitale":
             console.log('shortcut_carte_vitale activé');
-            chrome.runtime.sendMessage({action: "executeScript", code: lecture_carte});
+            clickElementByClass("cv")
             
             break;
         default:
@@ -236,5 +236,5 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
 
 //TODO :
-// add a shortcut to W, consult, certif, demande, prescription, formulaire, courrier, FSE, carte vitale
+// add a shortcut to search box for patient
 // modifier le tabindex dans les imports
