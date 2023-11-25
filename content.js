@@ -99,9 +99,25 @@ function clickElementByClass(className) {
     }
 }
 
+function GenericClicker(valueName, value) {
+    var elements = document.querySelectorAll(`[${valueName}="${value}"]`);
+    if (elements.length > 0) {
+        var element = elements[0]
+        console.log('Clicking element', valueName, value);
+        element.click();
+        return true;
+    } else {
+        console.log('Element not found', valueName, value);
+        return false;
+    }
+}
+
+
 function submenuW(description) {
     if (!clickElementByDescription('level2 dynamic', description)) {
-        clickElementByDescription('level3 dynamic', description);
+        if (!clickElementByDescription('level3 dynamic', description)) {
+            clickElementByDescription('level3 dynamic', description + " n°1")
+        };
     }
 }
 
@@ -123,6 +139,16 @@ function clickElementByDescription(lvl_dynamic, description) {
     } else {
         console.log('No elements found', description);
         return false;
+    }
+}
+function clickElementByChildtextContent(childtextContent) {
+    var elements = document.querySelectorAll('span.mat-button-wrapper');
+    console.log('elements', elements);
+    for (var i = 0; i < elements.length; i++) {
+        if (elements[i].textContent === childtextContent) {
+            elements[i].parentNode.click();
+            break;
+        }
     }
 }
 
@@ -158,79 +184,151 @@ function waitForElementToExist(elementId, callback) {
     }
 }
 
-
-
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    switch (request.action) {
-        case "push_valider":
+const keyCommands = {
+    'push_valider': {
+        description: 'Appuie le bouton Valider ou équivalent',
+        key: 'alt+v',
+        action: function() {
             console.log('push_valider activé');
-            // clickElementById('ButtonPosoValid');
-            clickElementByClass('button valid');
-            break;
-        case "push_annuler":
+            if (!clickElementById('ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonValidDocument')) {
+                if(!clickElementByClass('button valid')) {
+                    GenericClicker("title","Enregistrer et quitter")
+                    GenericClicker("title","Valider")
+                    clickElementByChildtextContent("VALIDER")
+                };
+            }
+        }
+    },
+    'push_annuler': {
+        description: 'Appuie le bouton Annuler ou équivalent',
+        key: 'alt+a',
+        action: function() {
             console.log('push_annuler activé');
-            // clickElementById('ContentPlaceHolder1_BaseVidalUcForm1_ButtonPosoCancel');
-            clickElementByClass('button cancel');
-            break;
-        case "push_enregistrer":
-            console.log('push_enregistrer activé');
-            clickElementById('ButtonSave');
-            break;
-        case "print_meds":
+            if (!clickElementByClass('button cancel')) {
+                GenericClicker("title","Annuler")
+                GenericClicker("title","Quitter")
+                clickElementByChildtextContent("ANNULER")
+            };
+        }
+    },
+    'print_meds': {
+        description: 'Imprime les médicaments',
+        key: 'ctrl+p',
+        action: function() {
             console.log('print_meds activé');
             clickElementByOnclick("Dhf163775");
             clickElementByOnclick("Dhf146050");
             waitForElementToExist('ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay', function(element) {
-                // The element is detected, you can continue with your code here
-                console.log('Element detected:', element);
+                console.log('Element détecté:', element);
                 setTimeout(function() {
                     focusElementByName('ctl00$ContentPlaceHolder1$ViewPdfDocumentUCForm1$ButtonCloseStay');
-                }, 400); 
+                }, 400);
             });
-            break;
-        case "push_delete":
+        }
+    },
+    'push_enregistrer': {
+        description: 'Appuie le bouton Enregistrer ou équivalent',
+        key: 'ctrl+s',
+        action: function() {
+            console.log('push_enregistrer activé');
+            clickElementById('ButtonSave');
+        }
+    },
+    'push_delete': {
+        description: 'Appuie le bouton Supprimer ou équivalent',
+        key: 'alt+s',
+        action: function() {
             console.log('push_delete activé');
             clickElementByClass('button delete');
-            break;
-        case "shortcut_w":
+        }
+    },
+    'shortcut_w': {
+        description: 'Raccourci W',
+        key: 'alt+w',
+        action: function() {
             console.log('shortcut_w activé');
             clickElementByOnclick("ctl00$ContentPlaceHolder1$EvenementUcForm1$MenuNavigate")
-            break;
-        case "shortcut_consult":
+        }
+    },
+    'shortcut_consult': {
+        description: 'Raccourci Consultation (crée une nouvelle consultation ou ouvre celle existante)',
+        key: 'alt+&',
+        action: function() {
             console.log('shortcut_consult activé');
             submenuW(' Consultation');
-            break;
-        case "shortcut_certif":
+        }
+    },
+    'shortcut_certif': {
+        description: 'Raccourci Certificat (crée un nouveau certificat ou ouvre celui existant)',
+        key: 'alt+é',
+        action: function() {
             console.log('shortcut_certif activé');
             submenuW(' Certificat');
-            break;
-        case "shortcut_demande":
+        }
+    },
+    'shortcut_demande': {
+        description: 'Raccourci Demande (crée une nouvelle demande ou ouvre celle existante)',
+        key: 'alt+\"',
+        action: function() {
             console.log('shortcut_demande activé');
             submenuW(' Demande');
-            break;
-        case "shortcut_prescription":
+        }
+    },
+    'shortcut_prescription': {
+        description: 'Raccourci Prescription (crée une nouvelle prescription ou ouvre celle existante)',
+        key: 'alt+\'',
+        action: function() {
             console.log('shortcut_prescription activé');
             submenuW(' Prescription');
-            break;
-        case "shortcut_formulaire":
+        }
+    },
+    'shortcut_formulaire': {
+        description: 'Raccourci Formulaire (crée un nouveau formulaire ou ouvre celui existant)',
+        key: 'alt+f',
+        action: function() {
             console.log('shortcut_formulaire activé');
             submenuW(' Formulaire');
-            break;
-        case "shortcut_courrier":
+        }
+    },
+    'shortcut_courrier': {
+        description: 'Raccourci Courrier (crée un nouveau courrier ou ouvre celui existant)',
+        key: 'alt+(',
+        action: function() {
             console.log('shortcut_courrier activé');
             submenuW(' Courrier');
-            break;
-        case "shortcut_fse":
+        }
+    },
+    'shortcut_fse': {
+        description: 'Raccourci FSE',
+        key: 'alt+-',
+        action: function() {
             console.log('shortcut_fse activé');
             submenuW(' FSE');
-            break;
-        case "shortcut_carte_vitale":
+        }
+    },
+    'shortcut_carte_vitale': {
+        description: 'Raccourci Carte Vitale',
+        key: 'alt+c',
+        action: function() {
             console.log('shortcut_carte_vitale activé');
-            clickElementByClass("cv")
-            
+            clickElementByClass("cv");
+            if (!GenericClicker("title","Relance une lecture de la carte vitale")) { //TODO à tester : pour l'instant sous linux j'ai un message d'erreur
+                GenericClicker("mattooltip","Lire la Carte Vitale");
+            }
+        }
+    },
+};
+
+
+// Listen for messages from the background script
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+    console.log('request', request);
+    const entries = Object.entries(keyCommands);
+    for (const [key, value] of entries) {
+        if (request.action === key) {
+            value.action();
             break;
-        default:
-            break;
+        }
     }
 });
 
