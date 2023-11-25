@@ -1,9 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper",
-  "version": "0.7.3",
+  "version": "0.8",
   "options_page": "options.html",
   "permissions": ["storage"],
+  "action": {
+    "default_popup": "popup.html"
+  },
   "description": "Simplifie et fluidifie l'usage de Weda",
   "background": {
     "service_worker": "background.js"

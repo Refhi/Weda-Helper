@@ -110,26 +110,34 @@ function uploaderformSetup() {
     uploaderformResizeElements();
     uploaderformSetTabOrder();
     SearchBoxEntryListener();
-}
+};
 
 // Check the current URL and add the event listener if it matches
-if (window.location.href === 'https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx') {
-    // Create a MutationObserver instance to watch for changes in the DOM
-    var observer = new MutationObserver(function (mutations) {
-        uploaderformSetup();
-    });
+chrome.storage.sync.get('TweakImports', function(result) {
+    if (result.TweakImports) {
+        if (window.location.href === 'https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx') {
+            // Create a MutationObserver instance to watch for changes in the DOM
+            var observer = new MutationObserver(function (mutations) {
+                uploaderformSetup();
+            });
 
-    // Start observing the document with the configured parameters
-    observer.observe(document, { childList: true, subtree: true });
+            // Start observing the document with the configured parameters
+            observer.observe(document, { childList: true, subtree: true });
 
-    uploaderformSetup();
-}
+            uploaderformSetup();
+        }
+    }
+});
 
 // check if the current page is https://secure.weda.fr/FolderMedical/ConsultationForm.aspx and start ConsultationFormTabOrderer
-if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx')) {
-    ConsultationFormTabOrderer();
-    console.log('ConsultationFormTabOrderer started');
-}
+chrome.storage.sync.get('TweakTabConsultation', function(result) {
+    if (result.TweakTabConsultation) {
+        if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx')) {
+            ConsultationFormTabOrderer();
+            console.log('ConsultationFormTabOrderer started');
+        }
+    }
+});
 
 function ConsultationFormTabOrderer() {
     // make a var with all the elements with id starting with ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_
@@ -265,6 +273,18 @@ function waitForElementToExist(elementId, callback) {
         }, 100); // Check every 100 milliseconds
     }
 }
+
+// set all ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementEvenementType_ to option value 1
+function allConsultation() {
+    console.log('setAllImportToConsultation');
+    var elements = document.querySelectorAll('[id^="ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementEvenementType_"]');
+    for (var i = 0; i < elements.length; i++) {
+        // set the dropdown to "Consultation"
+        elements[i].selectedIndex = 0;
+        console.log('Element set to Consultation:', elements[i]);
+    }
+}
+
 
 const keyCommands = {
     'push_valider': {
@@ -402,6 +422,15 @@ const keyCommands = {
 };
 
 
+// Listen for messages from the background script about options
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "allConsultation") {
+        console.log('allConsultation demandé');
+        allConsultation();
+
+    }
+});
+
 // Listen for messages from the background script about keycommands
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     console.log('request', request);
@@ -414,9 +443,3 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     }
 });
 
-// Listen for messages from the background script about options
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.command === "runFunction") {
-        console.log('runFunction');
-    }
-});
