@@ -41,12 +41,66 @@ function uploaderformSetTabOrder() {
     }
 }
 
-function addEntryListnerInSearchBox() {
+function PatientListTabOrderer() {
+    // get how many ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 there are
+    var elements = document.querySelectorAll('[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"]');
+    // change the taborder starting with 100 for ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 and incrementing by 1 for each element
+    for (var i = 0; i < elements.length; i++) {
+        elements[i].tabIndex = i+100;
+    }
+}
+
+function FocusToDocDateAfterPatientSelect() {
+    // find all elements with id starting with ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_
+    var elements = document.querySelectorAll('[id^="ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_"]');
+    // starting from the last element, find the first element with title= starting with "Vous avez attribué ce document au patient" and gets its id
+    for (var i = elements.length - 1; i >= 0; i--) {
+        var element = elements[i];
+        console.log('element', element);
+        if (element.title.startsWith("Vous avez attribué ce document au patient")) {
+            var id = element.id;
+            // get the 1 or 2 digits at the end of the id
+            var patient_number = id.match(/\d+$/)[0];
+            console.log('Le patient en cours est en position', patient_number);
+            // focus on the element with ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_ + patient_number
+            var elementToFocus = document.getElementById('ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_' + patient_number);
+            if (elementToFocus) {
+                elementToFocus.focus();
+            break;}
+        }
+    }
+}
+
+// place a listner on all patients names (ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 etc.)
+function PatientSelectEntryListener() {
+    // place a listener on all elements starting with ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_
+    var elements = document.querySelectorAll('[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"]');
+    for (var i = 0; i < elements.length; i++) {
+        elements[i].addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                console.log('Enter pressed on patient name');
+                setTimeout(function() {
+                    FocusToDocDateAfterPatientSelect();
+                }, 500);
+            }
+        });
+    }
+}
+
+function SearchBoxEntryListener() {
     var element = document.getElementById('ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche');
     if (element) {
         element.addEventListener('keydown', function(event) {
             if (event.key === 'Enter') {
-                console.log('Enter pressed');
+                console.log('Enter pressed in search box');
+                setTimeout(function() {
+                    var elementToFocus = document.getElementById('ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0');
+                    if (elementToFocus) {
+                        elementToFocus.focus();
+                    }
+                    PatientListTabOrderer();
+                    PatientSelectEntryListener();
+                }, 400);
             }
         });
     }
@@ -55,7 +109,7 @@ function addEntryListnerInSearchBox() {
 function uploaderformSetup() {
     uploaderformResizeElements();
     uploaderformSetTabOrder();
-    addEntryListnerInSearchBox();
+    SearchBoxEntryListener();
 }
 
 // Check the current URL and add the event listener if it matches
@@ -348,7 +402,7 @@ const keyCommands = {
 };
 
 
-// Listen for messages from the background script
+// Listen for messages from the background script about keycommands
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     console.log('request', request);
     const entries = Object.entries(keyCommands);
@@ -357,5 +411,12 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
             value.action();
             break;
         }
+    }
+});
+
+// Listen for messages from the background script about options
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.command === "runFunction") {
+        console.log('runFunction');
     }
 });
