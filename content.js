@@ -41,9 +41,21 @@ function uploaderformSetTabOrder() {
     }
 }
 
+function addEntryListnerInSearchBox() {
+    var element = document.getElementById('ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche');
+    if (element) {
+        element.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                console.log('Enter pressed');
+            }
+        });
+    }
+}
+
 function uploaderformSetup() {
     uploaderformResizeElements();
     uploaderformSetTabOrder();
+    addEntryListnerInSearchBox();
 }
 
 // Check the current URL and add the event listener if it matches
@@ -58,6 +70,22 @@ if (window.location.href === 'https://secure.weda.fr/FolderMedical/UpLoaderForm.
 
     uploaderformSetup();
 }
+
+// check if the current page is https://secure.weda.fr/FolderMedical/ConsultationForm.aspx and start ConsultationFormTabOrderer
+if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx')) {
+    ConsultationFormTabOrderer();
+    console.log('ConsultationFormTabOrderer started');
+}
+
+function ConsultationFormTabOrderer() {
+    // make a var with all the elements with id starting with ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_
+    var elements = document.querySelectorAll('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]');
+    // change the taborder starting with 0 for elements[0] and incrementing by 1 for each element
+    for (var i = 0; i < elements.length; i++) {
+        elements[i].tabIndex = i+1;
+    }
+}
+
 
 // Shortcuts
 function clickElementById(elementId) {
@@ -331,8 +359,3 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         }
     }
 });
-
-
-//TODO :
-// add a shortcut to search box for patient
-// modifier le tabindex dans les imports
