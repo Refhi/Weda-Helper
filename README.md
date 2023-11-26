@@ -1,12 +1,13 @@
 # Weda Helper
 
 Extension pour Chrome permettant de faciliter les tâches quotidiennes sur Weda.
+La plupart des raccourcis et des fonctionalités peuvent être activées ou non dans les options du module ou dans les raccourcis.
 
 ## Raccourcis claviers
 
 - "Appuie sur Valider" : Alt+V
 - "Appuie sur Annuler" : Alt+A
-- "Imprime le document en cours" : Ctrl+P (nécessite un module complémentaire
+- "Imprime le document en cours" : Ctrl+P (nécessite un module complémentaire installé en local
   pour être totalement fonctionnel)
 - "Appuie sur Supprimer" : Alt+S
 
@@ -24,18 +25,42 @@ définis manuellement dans chrome://extensions/shortcuts :
 - "Clique sur FSE" : Alt+6
 - "Lit la carte vitale" : Alt+C
 
-## Facilitation des imports
+## Affichage des raccourcis claviers du menu W
+Un appuis sur la touche Alt prolongé (> 1 seconde) affiche un rappel des raccourcis claviers
 
+## Facilitation des imports
 Dans la fenêtre d'importation des documents
 (https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx), les modifications
-suivantes sont effectuées :
-
+suivantes sont effectuées
 - Modification de l'ordre de parcours des tabulations pour permettre des
   intégrations uniquement au clavier (appuyer sur Tab pour passer d'un champ à
   l'autre)
-
 - Agrandissement de la fenêtre de prévisualisation pour faciliter la lecture du
   PDF à importer
+
+En cliquant sur l'icone de l'extension, le bouton "Tout mettre en consultation" permet de selectionner d'un coup "Consultation" pour l'ensemble des documents en attente d'importation.
+
+## Facilitation du remplissage des valeurs tensionnelles
+Dans la fenêtre de consultation, lorsque l'on remplie une valeur de suivi, la touche tabulation envoie directement vers la case suivante (plus besoin d'appuyer 4 fois)
+
+## Retrait des suggestions des titres de consultation
+Dans les fenêtres contenant un Titre, désactive le panneau de suggestion (fenêtres d'ordonnance, consultation, certificat, prescription, formulaire, résultats d'examen).
+
+## Modification du comportement de la tabulation après recherche patient
+Permet, après la saisie du nom d'un patient, d'être directement positionné sur son nom, puis de pouvoir naviguer de patient en patient avec la touche Tab (ou maj+Tab pour aller vers le haut)
+
+## Ecoute des entrées claviers lors de l'usage de la calculette de prescription
+Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du claviers à la place de clics :
+- touches numériques (0-10)
+- touche "." pour mettre la virgule
+- touche "/" pour préparer une fraction de dose
+- touche "retour arrière" pour effacer les valeurs numériques
+
+
+## Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):
+La touche Alt n'affiche pas l'aide quand le curseur est dans un champ de texte
+Les raccourcis claviers se substituent au comportement normal de Chrome, y compris hors de Weda
+
 
 ## Contributions
 

@@ -89,6 +89,11 @@ function PatientSelectEntryListener() {
 
 function SearchBoxEntryListener() {
     var element = document.getElementById('ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche');
+    if (element === null) {
+        console.log('SearchBoxEntryListener: element null');
+        var element = document.getElementById('ContentPlaceHolder1_FindPatientUcForm1_PanelNom');
+    }
+
     if (element) {
         element.addEventListener('keydown', function(event) {
             if (event.key === 'Enter') {
@@ -100,6 +105,7 @@ function SearchBoxEntryListener() {
                     }
                     PatientListTabOrderer();
                     PatientSelectEntryListener();
+                    SearchBoxEntryListener();
                 }, 400);
             }
         });
@@ -112,9 +118,20 @@ function uploaderformSetup() {
     SearchBoxEntryListener();
 };
 
+function ConsultationFormTabOrderer() {
+    // make a var with all the elements with id starting with ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_
+    var elements = document.querySelectorAll('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]');
+    // change the taborder starting with 0 for elements[0] and incrementing by 1 for each element
+    for (var i = 0; i < elements.length; i++) {
+        elements[i].tabIndex = i+1;
+    }
+}
+
+// // Change some elements based on the URL and function parameters
+
 // Check the current URL and add the event listener if it matches
 chrome.storage.sync.get('TweakImports', function(result) {
-    if (result.TweakImports) {
+    if (result.TweakImports !== false) {
         if (window.location.href === 'https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx') {
             // Create a MutationObserver instance to watch for changes in the DOM
             var observer = new MutationObserver(function (mutations) {
@@ -131,7 +148,7 @@ chrome.storage.sync.get('TweakImports', function(result) {
 
 // check if the current page is https://secure.weda.fr/FolderMedical/ConsultationForm.aspx and start ConsultationFormTabOrderer
 chrome.storage.sync.get('TweakTabConsultation', function(result) {
-    if (result.TweakTabConsultation) {
+    if (result.TweakTabConsultation !== false) {
         if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx')) {
             ConsultationFormTabOrderer();
             console.log('ConsultationFormTabOrderer started');
@@ -139,13 +156,72 @@ chrome.storage.sync.get('TweakTabConsultation', function(result) {
     }
 });
 
-function ConsultationFormTabOrderer() {
-    // make a var with all the elements with id starting with ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_
-    var elements = document.querySelectorAll('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]');
-    // change the taborder starting with 0 for elements[0] and incrementing by 1 for each element
-    for (var i = 0; i < elements.length; i++) {
-        elements[i].tabIndex = i+1;
+
+// Remove the title suggestions if the page starts with https://secure.weda.fr/FolderMedical/ and contain Form.aspx
+chrome.storage.sync.get('RemoveTitleSuggestions', function(result) {
+    if (result.RemoveTitleSuggestions !== false) {
+        if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/') && window.location.href.includes('Form.aspx')) {
+            console.log('RemoveTitleSuggestions started');
+            var elements = document.getElementById('DivGlossaireReponse');
+            if (elements) {
+                elements.remove();
+            }
+        
+        }    
     }
+});
+
+
+// Change the tab order if the page is https://secure.weda.fr/FolderMedical/FindPatientForm.aspx if the option is enabled (TweakTabSearchPatient)
+chrome.storage.sync.get('TweakTabSearchPatient', function(result) {
+    console.log('TweakTabSearchPatient from storage:', result.TweakTabSearchPatient);
+    if (result.TweakTabSearchPatient !== false) {
+        if (window.location.href === 'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx') {
+            console.log('TweakTabSearchPatient started');
+            PatientListTabOrderer();
+            var elementToFocus = document.getElementById('ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0');
+                if (elementToFocus) {
+                    elementToFocus.focus();
+                }
+            SearchBoxEntryListener();
+        }
+    }
+});
+
+// start the function dummyfunction if the page is https://secure.weda.fr/FolderMedical/FindPatientForm.aspx
+if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx')) {
+    console.log('numpader started');
+    // set index with some keyboard touches corresponding to some ids (set randmon ids for now)
+    var index = {
+        '0': 'SetQuantite(0);',
+        '1': 'SetQuantite(1);',
+        '2': 'SetQuantite(2);',
+        '3': 'SetQuantite(3);',
+        '4': 'SetQuantite(4);',
+        '5': 'SetQuantite(5);',
+        '6': 'SetQuantite(6);',
+        '7': 'SetQuantite(7);',
+        '8': 'SetQuantite(8);',
+        '9': 'SetQuantite(9);',
+        '/': 'SetQuantite(\'/\');',
+        '.': 'SetQuantite(\',\');',
+        // add a key for backspace which click on AnnulerQuantite();
+        'Backspace': 'AnnulerQuantite();',
+
+    };
+    
+    // detect the press of keys in index, and click the corresponding element with clickElementByonclick
+    
+    document.addEventListener('keydown', function(event) {        
+        console.log('event.key', event.key);
+        if (event.key in index) {
+            console.log('key pressed:', event.key);
+            clickElementByOnclick(index[event.key]);
+        }
+    });
+
+    
+    // observer.observe(document, { childList: true, subtree: true });
 }
 
 
@@ -174,6 +250,18 @@ function clickElementByOnclick(onclickValue) {
         return false;
     }
 }
+
+function clickFirstPrinter() {
+    // print the element with onclick containing ctl00$ContentPlaceHolder1$MenuPrint and class popout-dynamic level2 dynamic
+    var element = document.querySelector('[onclick*="ctl00$ContentPlaceHolder1$MenuPrint"][class="popout-dynamic level2 dynamic"]');
+    if (element) {
+        element.click();
+        return true;
+    } else {
+        return false;
+    }
+}
+
 function clickElementByClass(className) {
     var elements = document.getElementsByClassName(className);
     if (elements.length > 0) {
@@ -204,10 +292,8 @@ function GenericClicker(valueName, value) {
 
 
 function submenuW(description) {
-    if (!clickElementByDescription('level2 dynamic', description)) {
-        if (!clickElementByDescription('level3 dynamic', description)) {
-            clickElementByDescription('level3 dynamic', description + " n°1")
-        };
+    if (!clickElementByDescription('level3 dynamic', description)) {
+        clickElementByDescription('level2 dynamic', description);
     }
 }
 
@@ -216,11 +302,11 @@ function clickElementByDescription(lvl_dynamic, description) {
     var elements = document.getElementsByClassName(lvl_dynamic);
     if (elements.length > 0) {
         var element = Array.from(elements).find(function (element) {
-            return element.innerText === description;
+            return element.innerText.includes(description) && element.hasAttribute('onclick');
         });
         if (element) {
             element.click();
-            console.log('Element clicked:', description);
+            console.log('Element clicked:', element);
             return true;
         } else {
             console.log('Element not found:', description);
@@ -318,8 +404,7 @@ const keyCommands = {
         key: 'ctrl+p',
         action: function() {
             console.log('print_meds activé');
-            clickElementByOnclick("Dhf163775");
-            clickElementByOnclick("Dhf146050");
+            clickFirstPrinter();
             waitForElementToExist('ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay', function(element) {
                 console.log('Element détecté:', element);
                 setTimeout(function() {
@@ -443,3 +528,75 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     }
 });
 
+
+// TODO break into functions
+function tooltipshower(shortcuts){
+    // first force the mouseover status to the element with class="level1 static" and aria-haspopup="ContentPlaceHolder1_MenuNavigate:submenu:2"
+    var element = document.querySelector('[class="has-popup static"]');
+    if (element) {
+        element.dispatchEvent(new MouseEvent('mouseover', {
+            view: window,
+            bubbles: true,
+            cancelable: true
+        }));
+    }
+    // from keyCommands, extract for each key the action
+    const entries = Object.entries(keyCommands);
+    let submenuDict = {};
+
+    for (const [key, value] of entries) {
+        let action = value.action;
+        // in the action extract the variable send to submenuW
+        if (action.toString().includes('submenuW')) {
+            var match = action.toString().match(/submenuW\('(.*)'\)/);
+            if (match) {
+                var submenu = match[1];
+                submenuDict[submenu] = value.key;
+            }
+        }
+    }
+
+    console.log(submenuDict);
+
+    // change the description of each class="level2 dynamic" whom description contain the key of submenuDict to add the corresponding value
+    var elements = document.getElementsByClassName('level2 dynamic');
+    for (var i = 0; i < elements.length; i++) {
+        var element = elements[i];
+        var description = element.innerText;
+        description = description.replace(/ \(\d+\)$/, '');
+        console.log('description', description);
+        if (description in submenuDict) {
+            console.log('description in submenuDict', description);
+            // add a tooltip with the key of submenuDict next to the element
+            var tooltip = document.createElement('div');
+            tooltip.style.position = 'absolute';
+            tooltip.style.top = '0px';
+            tooltip.style.left = '100%';
+            tooltip.style.padding = '10px';
+            tooltip.style.backgroundColor = '#284E98';
+            tooltip.style.border = '1px solid black';
+            tooltip.style.zIndex = '1000';
+            // tooltip.style.color = 'black';
+            tooltip.textContent = submenuDict[description];
+            element.appendChild(tooltip);
+        }
+    }
+}
+
+var tooltipTimeout;
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Alt') {
+        var shortcuts = '';
+        for (var command in keyCommands) {
+            shortcuts += command + ': ' + keyCommands[command].description + ' (' + keyCommands[command].key + ')\n';
+        }
+        tooltipTimeout = setTimeout(function() {
+            tooltipshower(shortcuts);
+        }, 500);
+    }
+});
+document.addEventListener('keyup', function(event) {
+    if (event.key === 'Alt') {
+        clearTimeout(tooltipTimeout);
+    }
+});
