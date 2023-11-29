@@ -14,7 +14,7 @@
   "content_scripts": [
     {
       "matches": ["*://secure.weda.fr/*"],
-      "js": ["content.js"]
+      "js": ["content.js", "clickHelpers.js"]
     }
   ],
   "commands": {
