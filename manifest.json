@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper",
-  "version": "0.9",
+  "version": "0.9.1",
   "options_page": "options.html",
   "permissions": ["storage"],
   "action": {

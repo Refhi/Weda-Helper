@@ -291,11 +291,42 @@ function GenericClicker(valueName, value) {
 }
 
 
+// function submenuW(description) {
+//     if (!clickElementByDescription('level3 dynamic', description)) {
+//         clickElementByDescription('level2 dynamic', description);
+//     }
+// }
+
+// Click element based on this sequence : must be in the subtree of the first element with 'class=level1 dynamic'. Then look for the first element with 'class=level3 dynamic' and 'description=description'. If there's none, click the first element with 'class=level2 dynamic' and 'description=description'
 function submenuW(description) {
-    if (!clickElementByDescription('level3 dynamic', description)) {
-        clickElementByDescription('level2 dynamic', description);
+    var level1Element = document.getElementsByClassName('level1 static')[0];
+    console.log('level1Element', level1Element);
+    if (level1Element) {
+        var level3Element = Array.from(level1Element.getElementsByClassName('level3 dynamic')).find(function (element) {
+            return element.innerText.includes(description) && element.hasAttribute('tabindex');            
+        });
+        console.log('level3Element', level3Element);
+        if (level3Element) {
+            level3Element.click();
+            console.log('Element clicked:', level3Element);
+            return true;
+        } else {
+            var level2Element = Array.from(level1Element.getElementsByClassName('level2 dynamic')).find(function (element) {
+                return element.innerText.includes(description) && element.hasAttribute('tabindex');
+            });
+            console.log('level2Element', level2Element);
+            if (level2Element) {
+                level2Element.click();
+                console.log('Element clicked:', level2Element);
+                return true;
+            }
+        }
     }
-}
+    console.log('No elements found', description);
+    return false;
+}    
+
+
 
 // Click an element by its description
 function clickElementByDescription(lvl_dynamic, description) {
@@ -371,20 +402,36 @@ function allConsultation() {
     }
 }
 
+function push_valider() {
+    console.log('push_valider activé');
+    function clickClassExceptIf(class_name, exception) {
+        var elements = document.getElementsByClassName(class_name);
+        console.log('elements', elements);
+        for (var i = 0; i < elements.length; i++) {
+            if (elements[i].value !== exception) {
+                elements[i].click();
+                return true
+            }
+        }
+        return false
+    }
+    const actions = [
+        () => clickElementById('ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonValidDocument'),
+        () => clickClassExceptIf('button valid', 'Chercher'),
+        () => GenericClicker("title","Enregistrer et quitter"),
+        () => GenericClicker("title","Valider"),
+        () => clickElementByChildtextContent("VALIDER")
+    ];
+
+    actions.some(action => action() !== false);
+}
 
 const keyCommands = {
     'push_valider': {
         description: 'Appuie le bouton Valider ou équivalent',
         key: 'alt+v',
         action: function() {
-            console.log('push_valider activé');
-            if (!clickElementById('ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonValidDocument')) {
-                if(!clickElementByClass('button valid')) {
-                    GenericClicker("title","Enregistrer et quitter")
-                    GenericClicker("title","Valider")
-                    clickElementByChildtextContent("VALIDER")
-                };
-            }
+            push_valider();
         }
     },
     'push_annuler': {
@@ -564,11 +611,12 @@ function tooltipshower(shortcuts){
         var element = elements[i];
         var description = element.innerText;
         description = description.replace(/ \(\d+\)$/, '');
-        console.log('description', description);
+        // console.log('description', description);
         if (description in submenuDict) {
-            console.log('description in submenuDict', description);
+            // console.log('description in submenuDict', description);
             // add a tooltip with the key of submenuDict next to the element
             var tooltip = document.createElement('div');
+            tooltip.className = 'tooltip';
             tooltip.style.position = 'absolute';
             tooltip.style.top = '0px';
             tooltip.style.left = '100%';
@@ -598,5 +646,20 @@ document.addEventListener('keydown', function(event) {
 document.addEventListener('keyup', function(event) {
     if (event.key === 'Alt') {
         clearTimeout(tooltipTimeout);
+        // Supprimer les tooltips
+        var tooltips = document.querySelectorAll('div.tooltip');
+        tooltips.forEach(function(tooltip) {
+            tooltip.remove();
+        });
+        // relacher W
+        var element = document.querySelector('[class="has-popup static"]');
+        if (element) {
+            element.dispatchEvent(new MouseEvent('mouseout', {
+                view: window,
+                bubbles: true,
+                cancelable: true
+            }));
+        }
+
     }
 });

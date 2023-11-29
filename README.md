@@ -1,7 +1,7 @@
 # Weda Helper
 
 Extension pour Chrome permettant de faciliter les tâches quotidiennes sur Weda.
-La plupart des raccourcis et des fonctionalités peuvent être activées ou non dans les options du module ou dans les raccourcis.
+La plupart des raccourcis et des fonctionnalités peuvent être activées ou non dans les options du module ou dans les raccourcis.
 
 ## Raccourcis claviers
 
@@ -38,7 +38,7 @@ suivantes sont effectuées
 - Agrandissement de la fenêtre de prévisualisation pour faciliter la lecture du
   PDF à importer
 
-En cliquant sur l'icone de l'extension, le bouton "Tout mettre en consultation" permet de selectionner d'un coup "Consultation" pour l'ensemble des documents en attente d'importation.
+En cliquant sur l'icône de l'extension, le bouton "Tout mettre en consultation" permet de sélectionner d'un coup "Consultation" pour l'ensemble des documents en attente d'importation.
 
 ## Facilitation du remplissage des valeurs tensionnelles
 Dans la fenêtre de consultation, lorsque l'on remplie une valeur de suivi, la touche tabulation envoie directement vers la case suivante (plus besoin d'appuyer 4 fois)
