@@ -41,12 +41,12 @@ function uploaderformSetTabOrder() {
     }
 }
 
-function PatientListTabOrderer() {
+function ListTabOrderer(truncated_id) {
     // get how many ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 there are
-    var elements = document.querySelectorAll('[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"]');
+    var elements = document.querySelectorAll(truncated_id);
     // change the taborder starting with 100 for ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 and incrementing by 1 for each element
     for (var i = 0; i < elements.length; i++) {
-        elements[i].tabIndex = i+100;
+        elements[i].tabIndex = i + 100;
     }
 }
 
@@ -66,7 +66,8 @@ function FocusToDocDateAfterPatientSelect() {
             var elementToFocus = document.getElementById('ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_' + patient_number);
             if (elementToFocus) {
                 elementToFocus.focus();
-            break;}
+                break;
+            }
         }
     }
 }
@@ -76,10 +77,10 @@ function PatientSelectEntryListener() {
     // place a listener on all elements starting with ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_
     var elements = document.querySelectorAll('[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"]');
     for (var i = 0; i < elements.length; i++) {
-        elements[i].addEventListener('keydown', function(event) {
+        elements[i].addEventListener('keydown', function (event) {
             if (event.key === 'Enter') {
                 console.log('Enter pressed on patient name');
-                setTimeout(function() {
+                setTimeout(function () {
                     FocusToDocDateAfterPatientSelect();
                 }, 500);
             }
@@ -88,22 +89,36 @@ function PatientSelectEntryListener() {
 }
 
 function SearchBoxEntryListener() {
-    var element = document.getElementById('ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche');
-    if (element === null) {
-        console.log('SearchBoxEntryListener: element null');
-        var element = document.getElementById('ContentPlaceHolder1_FindPatientUcForm1_PanelNom');
+    var ids_search_box = [
+        'ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche',
+        'ContentPlaceHolder1_FindPatientUcForm1_PanelNom',
+        'ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack'
+    ];
+    var element = null;
+
+    for (var i = 0; i < ids_search_box.length; i++) {
+        element = document.getElementById(ids_search_box[i]);
+        if (element !== null) {
+            break;
+        }
     }
 
+    if (element === null) {
+        console.log('SearchBoxEntryListener: element null');
+    }
     if (element) {
-        element.addEventListener('keydown', function(event) {
+        element.addEventListener('keydown', function (event) {
             if (event.key === 'Enter') {
                 console.log('Enter pressed in search box');
-                setTimeout(function() {
+                setTimeout(function () {
                     var elementToFocus = document.getElementById('ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0');
+                    if (elementToFocus === null) {
+                        elementToFocus = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_VidalPacksGrid_LinkButtonVidalPacksGridName_0');
+                    }
                     if (elementToFocus) {
                         elementToFocus.focus();
                     }
-                    PatientListTabOrderer();
+                    ListTabOrderer('[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"]');
                     PatientSelectEntryListener();
                     SearchBoxEntryListener();
                 }, 400);
@@ -112,25 +127,25 @@ function SearchBoxEntryListener() {
     }
 }
 
-function uploaderformSetup() {
-    uploaderformResizeElements();
-    uploaderformSetTabOrder();
-    SearchBoxEntryListener();
-};
 
 function ConsultationFormTabOrderer() {
     // make a var with all the elements with id starting with ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_
     var elements = document.querySelectorAll('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]');
     // change the taborder starting with 0 for elements[0] and incrementing by 1 for each element
     for (var i = 0; i < elements.length; i++) {
-        elements[i].tabIndex = i+1;
+        elements[i].tabIndex = i + 1;
     }
 }
 
 // // Change some elements based on the URL and function parameters
 
-// Check the current URL and add the event listener if it matches
-chrome.storage.sync.get('TweakImports', function(result) {
+// check if the current page is https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx and start uploaderformSetup
+chrome.storage.sync.get('TweakImports', function (result) {
+    function uploaderformSetup() {
+        uploaderformResizeElements();
+        uploaderformSetTabOrder();
+        SearchBoxEntryListener();
+    };
     if (result.TweakImports !== false) {
         if (window.location.href === 'https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx') {
             // Create a MutationObserver instance to watch for changes in the DOM
@@ -147,7 +162,7 @@ chrome.storage.sync.get('TweakImports', function(result) {
 });
 
 // check if the current page is https://secure.weda.fr/FolderMedical/ConsultationForm.aspx and start ConsultationFormTabOrderer
-chrome.storage.sync.get('TweakTabConsultation', function(result) {
+chrome.storage.sync.get('TweakTabConsultation', function (result) {
     if (result.TweakTabConsultation !== false) {
         if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx')) {
             ConsultationFormTabOrderer();
@@ -156,33 +171,64 @@ chrome.storage.sync.get('TweakTabConsultation', function(result) {
     }
 });
 
-
-// Remove the title suggestions if the page starts with https://secure.weda.fr/FolderMedical/ and contain Form.aspx
-chrome.storage.sync.get('RemoveTitleSuggestions', function(result) {
-    if (result.RemoveTitleSuggestions !== false) {
-        if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/') && window.location.href.includes('Form.aspx')) {
-            console.log('RemoveTitleSuggestions started');
-            var elements = document.getElementById('DivGlossaireReponse');
-            if (elements) {
-                elements.remove();
-            }
-        
-        }    
+// check if the current page starts with https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx and start SearchBoxEntryListener
+chrome.storage.sync.get('TweakTabPrescription', function (result) {
+    if (result.TweakTabPrescription !== false) {
+        if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx')) {
+            console.log('SearchBoxEntryListener started');
+            SearchBoxEntryListener();
+        }
     }
 });
 
 
+// Remove the title suggestions if the page starts with https://secure.weda.fr/FolderMedical/ and contain Form.aspx
+chrome.storage.sync.get('RemoveTitleSuggestions', function (result) {
+    function RemoveTitleSuggestions() {
+        console.log('RemoveTitleSuggestions started');
+        var elements = document.getElementById('DivGlossaireReponse');
+        if (elements) {
+            elements.remove();
+        }
+    }
+    if (result.RemoveTitleSuggestions !== false) {
+        if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/')
+            && window.location.href.includes('Form.aspx')
+            && !window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx')) {
+
+            // Créer un observateur de mutations pour surveiller les modifications du DOM
+            var titleremoverTimeout;
+            var observer = new MutationObserver(function (mutations) {
+                mutations.forEach(function (mutation) {
+                    if (titleremoverTimeout) {
+                        clearTimeout(titleremoverTimeout);
+                    }
+                    titleremoverTimeout = setTimeout(RemoveTitleSuggestions, 200);
+                });
+            });
+
+            // Configurer l'observateur pour surveiller tout le document
+            var config = { childList: true, subtree: true };
+            observer.observe(document, config);
+
+            RemoveTitleSuggestions();
+        }
+    }
+});
+
+
+
 // Change the tab order if the page is https://secure.weda.fr/FolderMedical/FindPatientForm.aspx if the option is enabled (TweakTabSearchPatient)
-chrome.storage.sync.get('TweakTabSearchPatient', function(result) {
+chrome.storage.sync.get('TweakTabSearchPatient', function (result) {
     console.log('TweakTabSearchPatient from storage:', result.TweakTabSearchPatient);
     if (result.TweakTabSearchPatient !== false) {
         if (window.location.href === 'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx') {
             console.log('TweakTabSearchPatient started');
-            PatientListTabOrderer();
+            ListTabOrderer('[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"]');
             var elementToFocus = document.getElementById('ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0');
-                if (elementToFocus) {
-                    elementToFocus.focus();
-                }
+            if (elementToFocus) {
+                elementToFocus.focus();
+            }
             SearchBoxEntryListener();
         }
     }
@@ -209,10 +255,10 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
         'Backspace': 'AnnulerQuantite();',
 
     };
-    
+
     // detect the press of keys in index, and click the corresponding element with clickElementByonclick
-    
-    document.addEventListener('keydown', function(event) {        
+
+    document.addEventListener('keydown', function (event) {
         console.log('event.key', event.key);
         if (event.key in index) {
             console.log('key pressed:', event.key);
@@ -220,7 +266,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
         }
     });
 
-    
+
     // observer.observe(document, { childList: true, subtree: true });
 }
 
@@ -291,19 +337,16 @@ function GenericClicker(valueName, value) {
 }
 
 
-// function submenuW(description) {
-//     if (!clickElementByDescription('level3 dynamic', description)) {
-//         clickElementByDescription('level2 dynamic', description);
-//     }
-// }
 
-// Click element based on this sequence : must be in the subtree of the first element with 'class=level1 dynamic'. Then look for the first element with 'class=level3 dynamic' and 'description=description'. If there's none, click the first element with 'class=level2 dynamic' and 'description=description'
+// Click element based on this sequence : must be in the subtree of the first element with 'class=level1 dynamic'.
+// Then look for the first element with 'class=level3 dynamic' and 'description=description'.
+// If there's none, click the first element with 'class=level2 dynamic' and 'description=description'
 function submenuW(description) {
     var level1Element = document.getElementsByClassName('level1 static')[0];
     console.log('level1Element', level1Element);
     if (level1Element) {
         var level3Element = Array.from(level1Element.getElementsByClassName('level3 dynamic')).find(function (element) {
-            return element.innerText.includes(description) && element.hasAttribute('tabindex');            
+            return element.innerText.includes(description) && element.hasAttribute('tabindex');
         });
         console.log('level3Element', level3Element);
         if (level3Element) {
@@ -324,7 +367,7 @@ function submenuW(description) {
     }
     console.log('No elements found', description);
     return false;
-}    
+}
 
 
 
@@ -350,13 +393,15 @@ function clickElementByDescription(lvl_dynamic, description) {
 }
 function clickElementByChildtextContent(childtextContent) {
     var elements = document.querySelectorAll('span.mat-button-wrapper');
-    console.log('elements', elements);
+    console.log('click element by child context clicking first one in list', elements);
     for (var i = 0; i < elements.length; i++) {
         if (elements[i].textContent === childtextContent) {
             elements[i].parentNode.click();
-            break;
+            return true
         }
     }
+    console.log('No elements found', childtextContent);
+    return false
 }
 
 // focus the tab selection on an element named 'ctl00$ContentPlaceHolder1$ViewPdfDocumentUCForm1$ButtonCloseStay'
@@ -375,7 +420,7 @@ function waitForElementToExist(elementId, callback) {
         callback(element);
     } else {
         var startTime = Date.now();
-        var checkInterval = setInterval(function() {
+        var checkInterval = setInterval(function () {
             var elapsedTime = Date.now() - startTime;
             if (elapsedTime >= 5000) {
                 clearInterval(checkInterval);
@@ -404,6 +449,7 @@ function allConsultation() {
 
 function push_valider() {
     console.log('push_valider activé');
+    // click the first element with class="button valid" except if its value is "Chercher"
     function clickClassExceptIf(class_name, exception) {
         var elements = document.getElementsByClassName(class_name);
         console.log('elements', elements);
@@ -415,12 +461,15 @@ function push_valider() {
         }
         return false
     }
+
+    // click other elements, one after the other, until one of them works
     const actions = [
         () => clickElementById('ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonValidDocument'),
         () => clickClassExceptIf('button valid', 'Chercher'),
-        () => GenericClicker("title","Enregistrer et quitter"),
-        () => GenericClicker("title","Valider"),
-        () => clickElementByChildtextContent("VALIDER")
+        () => GenericClicker("title", "Enregistrer et quitter"),
+        () => GenericClicker("title", "Valider"),
+        () => clickElementByChildtextContent("VALIDER"),
+        () => clickElementById('ContentPlaceHolder1_ButtonQuitter2')
     ];
 
     actions.some(action => action() !== false);
@@ -430,18 +479,18 @@ const keyCommands = {
     'push_valider': {
         description: 'Appuie le bouton Valider ou équivalent',
         key: 'alt+v',
-        action: function() {
+        action: function () {
             push_valider();
         }
     },
     'push_annuler': {
         description: 'Appuie le bouton Annuler ou équivalent',
         key: 'alt+a',
-        action: function() {
+        action: function () {
             console.log('push_annuler activé');
             if (!clickElementByClass('button cancel')) {
-                GenericClicker("title","Annuler")
-                GenericClicker("title","Quitter")
+                GenericClicker("title", "Annuler")
+                GenericClicker("title", "Quitter")
                 clickElementByChildtextContent("ANNULER")
             };
         }
@@ -449,12 +498,12 @@ const keyCommands = {
     'print_meds': {
         description: 'Imprime les médicaments',
         key: 'ctrl+p',
-        action: function() {
+        action: function () {
             console.log('print_meds activé');
             clickFirstPrinter();
-            waitForElementToExist('ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay', function(element) {
+            waitForElementToExist('ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay', function (element) {
                 console.log('Element détecté:', element);
-                setTimeout(function() {
+                setTimeout(function () {
                     focusElementByName('ctl00$ContentPlaceHolder1$ViewPdfDocumentUCForm1$ButtonCloseStay');
                 }, 400);
             });
@@ -463,7 +512,7 @@ const keyCommands = {
     'push_enregistrer': {
         description: 'Appuie le bouton Enregistrer ou équivalent',
         key: 'ctrl+s',
-        action: function() {
+        action: function () {
             console.log('push_enregistrer activé');
             clickElementById('ButtonSave');
         }
@@ -471,7 +520,7 @@ const keyCommands = {
     'push_delete': {
         description: 'Appuie le bouton Supprimer ou équivalent',
         key: 'alt+s',
-        action: function() {
+        action: function () {
             console.log('push_delete activé');
             clickElementByClass('button delete');
         }
@@ -479,7 +528,7 @@ const keyCommands = {
     'shortcut_w': {
         description: 'Raccourci W',
         key: 'alt+w',
-        action: function() {
+        action: function () {
             console.log('shortcut_w activé');
             clickElementByOnclick("ctl00$ContentPlaceHolder1$EvenementUcForm1$MenuNavigate")
         }
@@ -487,7 +536,7 @@ const keyCommands = {
     'shortcut_consult': {
         description: 'Raccourci Consultation (crée une nouvelle consultation ou ouvre celle existante)',
         key: 'alt+&',
-        action: function() {
+        action: function () {
             console.log('shortcut_consult activé');
             submenuW(' Consultation');
         }
@@ -495,7 +544,7 @@ const keyCommands = {
     'shortcut_certif': {
         description: 'Raccourci Certificat (crée un nouveau certificat ou ouvre celui existant)',
         key: 'alt+é',
-        action: function() {
+        action: function () {
             console.log('shortcut_certif activé');
             submenuW(' Certificat');
         }
@@ -503,7 +552,7 @@ const keyCommands = {
     'shortcut_demande': {
         description: 'Raccourci Demande (crée une nouvelle demande ou ouvre celle existante)',
         key: 'alt+\"',
-        action: function() {
+        action: function () {
             console.log('shortcut_demande activé');
             submenuW(' Demande');
         }
@@ -511,7 +560,7 @@ const keyCommands = {
     'shortcut_prescription': {
         description: 'Raccourci Prescription (crée une nouvelle prescription ou ouvre celle existante)',
         key: 'alt+\'',
-        action: function() {
+        action: function () {
             console.log('shortcut_prescription activé');
             submenuW(' Prescription');
         }
@@ -519,7 +568,7 @@ const keyCommands = {
     'shortcut_formulaire': {
         description: 'Raccourci Formulaire (crée un nouveau formulaire ou ouvre celui existant)',
         key: 'alt+f',
-        action: function() {
+        action: function () {
             console.log('shortcut_formulaire activé');
             submenuW(' Formulaire');
         }
@@ -527,7 +576,7 @@ const keyCommands = {
     'shortcut_courrier': {
         description: 'Raccourci Courrier (crée un nouveau courrier ou ouvre celui existant)',
         key: 'alt+(',
-        action: function() {
+        action: function () {
             console.log('shortcut_courrier activé');
             submenuW(' Courrier');
         }
@@ -535,7 +584,7 @@ const keyCommands = {
     'shortcut_fse': {
         description: 'Raccourci FSE',
         key: 'alt+-',
-        action: function() {
+        action: function () {
             console.log('shortcut_fse activé');
             submenuW(' FSE');
         }
@@ -543,11 +592,11 @@ const keyCommands = {
     'shortcut_carte_vitale': {
         description: 'Raccourci Carte Vitale',
         key: 'alt+c',
-        action: function() {
+        action: function () {
             console.log('shortcut_carte_vitale activé');
             clickElementByClass("cv");
-            if (!GenericClicker("title","Relance une lecture de la carte vitale")) { //TODO à tester : pour l'instant sous linux j'ai un message d'erreur
-                GenericClicker("mattooltip","Lire la Carte Vitale");
+            if (!GenericClicker("title", "Relance une lecture de la carte vitale")) { //TODO à tester : pour l'instant sous linux j'ai un message d'erreur
+                GenericClicker("mattooltip", "Lire la Carte Vitale");
             }
         }
     },
@@ -577,7 +626,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
 
 // TODO break into functions
-function tooltipshower(shortcuts){
+function tooltipshower(shortcuts) {
     // first force the mouseover status to the element with class="level1 static" and aria-haspopup="ContentPlaceHolder1_MenuNavigate:submenu:2"
     var element = document.querySelector('[class="has-popup static"]');
     if (element) {
@@ -632,23 +681,23 @@ function tooltipshower(shortcuts){
 }
 
 var tooltipTimeout;
-document.addEventListener('keydown', function(event) {
+document.addEventListener('keydown', function (event) {
     if (event.key === 'Alt') {
         var shortcuts = '';
         for (var command in keyCommands) {
             shortcuts += command + ': ' + keyCommands[command].description + ' (' + keyCommands[command].key + ')\n';
         }
-        tooltipTimeout = setTimeout(function() {
+        tooltipTimeout = setTimeout(function () {
             tooltipshower(shortcuts);
         }, 500);
     }
 });
-document.addEventListener('keyup', function(event) {
+document.addEventListener('keyup', function (event) {
     if (event.key === 'Alt') {
         clearTimeout(tooltipTimeout);
         // Supprimer les tooltips
         var tooltips = document.querySelectorAll('div.tooltip');
-        tooltips.forEach(function(tooltip) {
+        tooltips.forEach(function (tooltip) {
             tooltip.remove();
         });
         // relacher W

@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
-  var options = ['TweakImports', 'TweakTabConsultation', 'RemoveTitleSuggestions', 'EnableHelp', 'TweakTabSearchPatient'];
+  var options = ['TweakImports', 'TweakTabConsultation', 'RemoveTitleSuggestions', 'EnableHelp', 'TweakTabSearchPatient', 'TweakTabPrescription'];
 
   options.forEach(function(option) {
     // Récupérer les valeurs sauvegardées du stockage de Chrome
