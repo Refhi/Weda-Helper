@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper",
-  "version": "0.9.2",
+  "version": "0.10",
   "options_page": "options.html",
   "permissions": ["storage"],
+  "host_permissions": ["http://localhost:3000/"],
   "action": {
     "default_popup": "popup.html"
   },

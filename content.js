@@ -89,39 +89,44 @@ function PatientSelectEntryListener() {
 }
 
 function SearchBoxEntryListener() {
+    // set valid ids for search box
     var ids_search_box = [
         'ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche',
         'ContentPlaceHolder1_FindPatientUcForm1_PanelNom',
         'ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack'
     ];
+    // find the first element with one of the ids and store it in var element
     var element = null;
-
     for (var i = 0; i < ids_search_box.length; i++) {
         element = document.getElementById(ids_search_box[i]);
         if (element !== null) {
             break;
         }
     }
-
+    // fail if element is still null
     if (element === null) {
         console.log('SearchBoxEntryListener: element null');
     }
+
     if (element) {
         element.addEventListener('keydown', function (event) {
+            console.log('added event listener to search box');
             if (event.key === 'Enter') {
                 console.log('Enter pressed in search box');
                 setTimeout(function () {
                     var elementToFocus = document.getElementById('ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0');
-                    if (elementToFocus === null) {
+                    if (elementToFocus !== null) {
+                        ListTabOrderer('[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"]');
+                        PatientSelectEntryListener();
+                    } else {
                         elementToFocus = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_VidalPacksGrid_LinkButtonVidalPacksGridName_0');
+                        console.log('elementToFocusPrescription', elementToFocus);
                     }
                     if (elementToFocus) {
                         elementToFocus.focus();
                     }
-                    ListTabOrderer('[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"]');
-                    PatientSelectEntryListener();
                     SearchBoxEntryListener();
-                }, 400);
+                }, 600);
             }
         });
     }
@@ -186,11 +191,11 @@ function allConsultation() {
 function push_valider() {
     console.log('push_valider activé');
     // click the first element with class="button valid" except if its value is "Chercher"
-    function clickClassExceptIf(class_name, exception) {
+    function clickClassExceptIf(class_name, class_exception, id_exception) {
         var elements = document.getElementsByClassName(class_name);
         console.log('elements', elements);
         for (var i = 0; i < elements.length; i++) {
-            if (elements[i].value !== exception) {
+            if (elements[i].value !== class_exception && elements[i].id !== id_exception) {
                 elements[i].click();
                 return true
             }
@@ -201,7 +206,7 @@ function push_valider() {
     // click other elements, one after the other, until one of them works
     const actions = [
         () => clickElementById('ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonValidDocument'),
-        () => clickClassExceptIf('button valid', 'Chercher'),
+        () => clickClassExceptIf('button valid', 'Chercher', 'ContentPlaceHolder1_btnScanDatamatrix'),
         () => GenericClicker("title", "Enregistrer et quitter"),
         () => GenericClicker("title", "Valider"),
         () => clickElementByChildtextContent("VALIDER"),
@@ -212,7 +217,7 @@ function push_valider() {
 }
 
 
-// TODO break into functions
+// show a tooltip next to W entries with the key of submenuDict
 function tooltipshower(shortcuts) {
     // first force the mouseover status to the element with class="level1 static" and aria-haspopup="ContentPlaceHolder1_MenuNavigate:submenu:2"
     var element = document.querySelector('[class="has-popup static"]');
@@ -265,6 +270,27 @@ function tooltipshower(shortcuts) {
             element.appendChild(tooltip);
         }
     }
+}
+
+// External communication functions
+function sendtpeinstruction(amount) {
+    chrome.storage.sync.get(['ipTPE', 'portTPE', 'RemoveLocalCompanionTPE'], function (result) {
+        const ipTPE = result.ipTPE;
+        const portTPE = result.portTPE;
+        const removeLocalCompanionTPE = result.RemoveLocalCompanionTPE;
+
+        if (!ipTPE || !portTPE || removeLocalCompanionTPE !== false) {
+            console.log('ipTPE, portTPE ou RemoveLocalCompanionTPE ne sont pas définis ou RemoveLocalCompanionTPE est !false (valeur actuelle :', removeLocalCompanionTPE, ')');
+            return;
+        } else {
+            console.log('sendinstruction', amount + 'c€' + ' to ' + ipTPE + ':' + portTPE);
+            fetch(`http://localhost:3000/tpe/${ipTPE}/${portTPE}/${amount}`, { mode: 'no-cors' })
+                // les deux ci-dessous sont désactivés car ils ne fonctionnent pas avec no-cors
+                // .then(response => response.json())
+                // .then(data => console.log(data))
+                .catch(error => console.error('Error:', error));
+        }
+    });
 }
 
 const keyCommands = {
@@ -426,7 +452,6 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
 
 // // "Main"
-
 // Tooltip shower
 var tooltipTimeout;
 document.addEventListener('keydown', function (event) {
@@ -464,6 +489,7 @@ document.addEventListener('keyup', function (event) {
 
 // // Change some elements based on the URL and function parameters
 
+// // Tab and search tweaks
 // Tweak the uploader page
 chrome.storage.sync.get('TweakImports', function (result) {
     function uploaderformSetup() {
@@ -500,7 +526,7 @@ chrome.storage.sync.get('TweakTabConsultation', function (result) {
 chrome.storage.sync.get('TweakTabPrescription', function (result) {
     if (result.TweakTabPrescription !== false) {
         if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx')) {
-            console.log('SearchBoxEntryListener started');
+            console.log('SearchBoxEntryListener started (prescription)');
             SearchBoxEntryListener();
         }
     }
@@ -522,6 +548,7 @@ chrome.storage.sync.get('TweakTabSearchPatient', function (result) {
     }
 });
 
+// // Remove stuff
 
 // Remove the title suggestions
 chrome.storage.sync.get('RemoveTitleSuggestions', function (result) {
@@ -535,7 +562,8 @@ chrome.storage.sync.get('RemoveTitleSuggestions', function (result) {
     if (result.RemoveTitleSuggestions !== false) {
         if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/')
             && window.location.href.includes('Form.aspx')
-            && !window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx')) {
+            && !window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx')
+            && !window.location.href.startsWith('https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx')) {
 
             // Créer un observateur de mutations pour surveiller les modifications du DOM
             var titleremoverTimeout;
@@ -544,7 +572,7 @@ chrome.storage.sync.get('RemoveTitleSuggestions', function (result) {
                     if (titleremoverTimeout) {
                         clearTimeout(titleremoverTimeout);
                     }
-                    titleremoverTimeout = setTimeout(RemoveTitleSuggestions, 200);
+                    titleremoverTimeout = setTimeout(RemoveTitleSuggestions, 400);
                 });
             });
 
@@ -559,6 +587,7 @@ chrome.storage.sync.get('RemoveTitleSuggestions', function (result) {
 
 
 
+// // New functions in weda
 
 // Enable the numpad in the prescription form
 if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx')) {
@@ -577,9 +606,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
         '9': 'SetQuantite(9);',
         '/': 'SetQuantite(\'/\');',
         '.': 'SetQuantite(\',\');',
-        // add a key for backspace which click on AnnulerQuantite();
         'Backspace': 'AnnulerQuantite();',
-
     };
 
     // detect the press of keys in index, and click the corresponding element with clickElementByonclick
@@ -592,3 +619,113 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
         }
     });
 }
+
+// Tweak the FSE page (Add a button in the FSE page to send the amount to the TPE, implement shortcuts)
+if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx')) {
+    console.log('fse started');
+
+    // Make a dictionnary with keystrokes and their corresponding actions
+    var index = {
+        'n': ['mat-radio-9-input', 'mat-radio-3-input'],
+        'o': ['mat-radio-8-input', 'mat-radio-2-input'],
+        // add an entry for the enter key
+        'Enter': 'secure_FSE',
+    }
+    var clue_index = {
+        'n': ['mat-radio-9', 'mat-radio-3'],
+        'o': ['mat-radio-8', 'mat-radio-2'],
+    }
+
+    // check if either of the two radio buttons is checked in id mat-radio-9 and mat-radio-8
+    function YesNoButtonChecked(question_number) {
+        var element1 = document.getElementById(index['n'][question_number]);
+        var element2 = document.getElementById(index['o'][question_number]);
+        if (element1.checked || element2.checked) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    // add a visual clue to the element with id element_id
+    function addVisualClue(element_id) {
+        var radioButton = document.getElementById(element_id);
+        if (radioButton) {
+            var labelContents = radioButton.getElementsByClassName('mat-radio-label-content');
+            console.log('labelContents', labelContents);
+            if (labelContents.length > 0) {
+                var labelContent = labelContents[0];
+                var text = labelContent.innerHTML;
+                console.log('Texte à souligner', text);
+                text = text.replace('N', '<span style="text-decoration: underline;">N</span>');
+                text = text.replace('O', '<span style="text-decoration: underline;">O</span>');
+                labelContent.innerHTML = text;
+            }
+        }
+    }
+    function removeVisualClue(element_id) {
+        console.log('removeVisualClue', element_id);
+        var radioButton = document.getElementById(element_id);
+        if (radioButton) {
+            var labelContents = radioButton.getElementsByClassName('mat-radio-label-content');
+            console.log('labelContents', labelContents);
+            if (labelContents.length > 0) {
+                var labelContent = labelContents[0];
+                var text = labelContent.innerHTML;
+                console.log('Texte à de-souligner', text);
+                text = text.replace('<span style="text-decoration: underline;">N</span>', 'N');
+                text = text.replace('<span style="text-decoration: underline;">O</span>', 'O');
+                labelContent.innerHTML = text;
+            }
+        }
+    }
+        setTimeout(function () {
+            addVisualClue(clue_index['n'][0]);
+            addVisualClue(clue_index['o'][0]);
+        }, 100);
+
+        // detect the press of keys in index, and check the corresponding element with clickElementById
+        document.addEventListener('keydown', function (event) {
+            if (event.key in index) {
+                console.log('key pressed:', event.key);
+                let element;
+                if (!YesNoButtonChecked(0)) {
+                    console.log('No button checked on first yes/no question');
+                    element = document.getElementById(index[event.key][0]);
+                    setTimeout(function () {
+                        addVisualClue(clue_index['n'][1]);
+                        addVisualClue(clue_index['o'][1]);
+                    }, 100);
+                    setTimeout(function () {
+                        removeVisualClue(clue_index['n'][0]);
+                        removeVisualClue(clue_index['o'][0]);
+                    }, 100);
+
+                } else if (YesNoButtonChecked(0) && !YesNoButtonChecked(1)) {
+                    element = document.getElementById(index[event.key][1]);
+                    console.log('A button is checked on first yes/no question but not the second one');
+                    setTimeout(function () {
+                        removeVisualClue(clue_index['n'][1]);
+                        removeVisualClue(clue_index['o'][1]);
+                    }, 100);
+                } else {
+                    console.log('Both yes/no questions have an answer');
+                }
+                console.log('element to act on is', element);
+                if (element && element.type === 'radio') {
+                    console.log('trying to check element', element);
+                    element.checked = true;
+                    element.dispatchEvent(new Event('change'));
+                }
+                if (YesNoButtonChecked(0) && YesNoButtonChecked(1)) {
+                    console.log('Both yes/no questions have an answer');
+                    var inputField = document.querySelector('.acteCell .mat-input-element');
+                    console.log('trying to focus on', inputField);
+                    if (inputField) {
+                        setTimeout(function () {
+                            inputField.focus();
+                        }, 100);
+                    }
+                }
+            }
+        });
+    }

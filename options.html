@@ -9,7 +9,16 @@
     <input type="checkbox" id="EnableHelp"> Affiche l'aide en appuyant sur Alt<br>
     <input type="checkbox" id="TweakTabSearchPatient"> Activer les modifications de la fenêtre recherche patient (permet d'utiliser tab plus facilement)<br>
     <input type="checkbox" id="TweakTabPrescription"> Activer les modifications de la fenêtre recherche médicaments (permet d'utiliser tab plus facilement)<br>
-    <button id="save">Enregistrer</button>
-    <script src="options.js"></script>
-  </body>
-</html>
+    <input type="checkbox" id="RemoveLocalCompanionPrint"> Désactiver l'impression automatique complète via le companion<br>
+    <input type="checkbox" id="RemoveLocalCompanionTPE"> Désactiver la communication avec le TPE et l'option TPE dans les fse<br>
+    <div>
+      <label for="ipTPE">IP TPE:</label>
+      <input type="text" id="ipTPE" name="ipTPE">
+      <label for="portTPE">Port TPE:</label>
+      <input type="text" id="portTPE" name="portTPE">
+    </div>
+    
+        <button id="save">Enregistrer</button>
+        <script src="options.js"></script>
+      </body>
+    </html>

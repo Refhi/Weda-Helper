@@ -26,7 +26,8 @@ function clickElementByOnclick(onclickValue) {
 
 function clickFirstPrinter() {
     // print the element with onclick containing ctl00$ContentPlaceHolder1$MenuPrint and class popout-dynamic level2 dynamic
-    var element = document.querySelector('[onclick*="ctl00$ContentPlaceHolder1$MenuPrint"][class="popout-dynamic level2 dynamic"]');
+    var element = document.querySelector('[onclick*="ctl00$ContentPlaceHolder1$MenuPrint"][class*="popout-dynamic level2"]');
+    console.log('first printer Element is', element);
     if (element) {
         element.click();
         return true;
