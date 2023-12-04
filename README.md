@@ -63,6 +63,13 @@ les touches "n" et "o" permettent de selectionner "non"/"oui" pour accidents de 
 La touche Alt n'affiche pas l'aide quand le curseur est dans un champ de texte
 Les raccourcis claviers se substituent au comportement normal de Chrome, y compris hors de Weda
 
+## Weda-Helper-Companion
+Est un script python, à récupérer sur https://github.com/Refhi/Weda-Helper-Companion qui reçoit des instructions de l'extension Weda-Helper.
+Une fois installée, et que les options de l'excention Weda-Helper dans Chrome on été paramétrées, il doit être lancé et laissé en fond de tâche.
+Il executera les tâches suivantes :
+- si une impression dans Weda est déclenchée via ctrl-P, il simule des entrées clavier (9 tabulations + 2 entrées) pour lancer complètement l'impression
+- si une FSE est validée et que le paiement carte bancaire est sélectionné, il envoie une demande de règlement au TPE (qui doit également être correctement paramétré)
+
 
 ## Contributions
 

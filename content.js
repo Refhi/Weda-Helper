@@ -203,6 +203,28 @@ function push_valider() {
         return false
     }
 
+    function clicSecure() {
+        function tpesender() {
+            console.log('tpe_sender activé');
+            var montantElement = document.querySelector('input[placeholder="Montant"]');
+            // extraire le montant de l'élément
+            var amount = montantElement.value;
+            // retirer la virgule de amount
+            amount = amount.replace(/\./g, '');            
+            console.log('amount', amount);
+            sendtpeinstruction(amount);
+        }
+
+        var targetElement = document.querySelector('.mat-focus-indicator.bold.mat-raised-button.mat-button-base.mat-accent');
+        console.log('Clicking on target element', targetElement);
+        if (targetElement) {
+            targetElement.click();
+            tpesender();
+            return true;
+        } else {
+            return false;
+        }
+    }
     // click other elements, one after the other, until one of them works
     const actions = [
         () => clickElementById('ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonValidDocument'),
@@ -210,7 +232,8 @@ function push_valider() {
         () => GenericClicker("title", "Enregistrer et quitter"),
         () => GenericClicker("title", "Valider"),
         () => clickElementByChildtextContent("VALIDER"),
-        () => clickElementById('ContentPlaceHolder1_ButtonQuitter2')
+        () => clickElementById('ContentPlaceHolder1_ButtonQuitter2'),
+        () => clicSecure()
     ];
 
     actions.some(action => action() !== false);
@@ -272,8 +295,13 @@ function tooltipshower(shortcuts) {
     }
 }
 
-// External communication functions
+// // External communication functions
+// envoi d'instruction au TPE dans Weda-Helper-Companion
 function sendtpeinstruction(amount) {
+    // store the amount in chrome.storage.sync
+    chrome.storage.sync.set({ 'lastTPEamount': amount }, function () {
+        console.log('lastTPEamount', amount, 'sauvegardé avec succès');
+    });
     chrome.storage.sync.get(['ipTPE', 'portTPE', 'RemoveLocalCompanionTPE'], function (result) {
         const ipTPE = result.ipTPE;
         const portTPE = result.portTPE;
@@ -282,7 +310,11 @@ function sendtpeinstruction(amount) {
         if (!ipTPE || !portTPE || removeLocalCompanionTPE !== false) {
             console.log('ipTPE, portTPE ou RemoveLocalCompanionTPE ne sont pas définis ou RemoveLocalCompanionTPE est !false (valeur actuelle :', removeLocalCompanionTPE, ')');
             return;
-        } else {
+        } else if (!(/^\d+$/.test(amount))) {
+            console.log('amount', amount, 'n\'est pas un nombre entier');
+            return;
+        }
+        else {
             console.log('sendinstruction', amount + 'c€' + ' to ' + ipTPE + ':' + portTPE);
             fetch(`http://localhost:3000/tpe/${ipTPE}/${portTPE}/${amount}`, { mode: 'no-cors' })
                 // les deux ci-dessous sont désactivés car ils ne fonctionnent pas avec no-cors
@@ -292,6 +324,44 @@ function sendtpeinstruction(amount) {
         }
     });
 }
+
+// envoi du dernier montant au TPE dans Weda-Helper-Companion
+function sendLastTPEamount() {
+    chrome.storage.sync.get('lastTPEamount', function (result) {
+        const lastTPEamount = result.lastTPEamount;
+        console.log('Envoi du dernier montant demandé au TPE : ' + lastTPEamount + 'c€');
+        if (lastTPEamount) {
+            console.log('lastTPEamount', lastTPEamount);
+            sendtpeinstruction(lastTPEamount);
+        }
+    });
+}
+
+// déclenchement de l'impression dans Weda-Helper-Companion
+function sendPrint() {
+    chrome.storage.sync.get('RemoveLocalCompanionPrint', function (result) {
+        const RemoveLocalCompanionPrint = result.RemoveLocalCompanionPrint;
+        if (RemoveLocalCompanionPrint !== false) {
+            console.log('RemoveLocalCompanionPrint est !false (valeur actuelle :', RemoveLocalCompanionPrint, ')');
+            return;
+        } else {
+            console.log('send Print');
+            // recover values of     'delay_btw_tabs',     'delay_btw_tab_and_enter',     'delay_btw_enters',
+            chrome.storage.sync.get(['delay_btw_tabs', 'delay_btw_tab_and_enter', 'delay_btw_enters'], function (result) {
+                const delay_btw_tabs = result.delay_btw_tabs;
+                const delay_btw_tab_and_enter = result.delay_btw_tab_and_enter;
+                const delay_btw_enters = result.delay_btw_enters;
+                console.log('delay_btw_tabs', delay_btw_tabs);
+                console.log('delay_btw_tab_and_enter', delay_btw_tab_and_enter);
+                console.log('delay_btw_enters', delay_btw_enters);
+                // TODO ajouter les délais après print ()
+                fetch(`http://localhost:3000/print/${delay_btw_tabs}/${delay_btw_tab_and_enter}/${delay_btw_enters}`, { mode: 'no-cors' })
+                    .catch(error => console.error('Error:', error));
+            });
+        }
+    });
+}
+
 
 const keyCommands = {
     'push_valider': {
@@ -323,6 +393,7 @@ const keyCommands = {
                 console.log('Element détecté:', element);
                 setTimeout(function () {
                     focusElementByName('ctl00$ContentPlaceHolder1$ViewPdfDocumentUCForm1$ButtonCloseStay');
+                    sendPrint();
                 }, 400);
             });
         }
@@ -425,8 +496,7 @@ const keyCommands = {
 // Listen for messages from the background script about options
 const actions = {
     'allConsultation': allConsultation,
-    'tpetest': () => sendtpeinstruction(1)
-    // Ajoutez d'autres actions ici
+    'tpebis': () => sendLastTPEamount()
 };
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -448,6 +518,35 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     }
 });
 
+// Listen for focus leaving the window
+window.addEventListener('blur', function () {
+    console.log('Window lost focus');
+    mouseoutW();
+});
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        console.log('Window lost focus');
+        mouseoutW();
+    };
+});
+
+function mouseoutW() {
+    // Supprimer les tooltips
+    var tooltips = document.querySelectorAll('div.tooltip');
+    tooltips.forEach(function (tooltip) {
+        tooltip.remove();
+    });
+    // relacher W
+    var element = document.querySelector('[class="has-popup static"]');
+    if (element) {
+        element.dispatchEvent(new MouseEvent('mouseout', {
+            view: window,
+            bubbles: true,
+            cancelable: true
+        }));
+    }
+
+}
 
 
 
@@ -468,21 +567,7 @@ document.addEventListener('keydown', function (event) {
 document.addEventListener('keyup', function (event) {
     if (event.key === 'Alt') {
         clearTimeout(tooltipTimeout);
-        // Supprimer les tooltips
-        var tooltips = document.querySelectorAll('div.tooltip');
-        tooltips.forEach(function (tooltip) {
-            tooltip.remove();
-        });
-        // relacher W
-        var element = document.querySelector('[class="has-popup static"]');
-        if (element) {
-            element.dispatchEvent(new MouseEvent('mouseout', {
-                view: window,
-                bubbles: true,
-                cancelable: true
-            }));
-        }
-
+        mouseoutW();
     }
 });
 
@@ -678,54 +763,55 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
             }
         }
     }
-        setTimeout(function () {
-            addVisualClue(clue_index['n'][0]);
-            addVisualClue(clue_index['o'][0]);
-        }, 100);
 
-        // detect the press of keys in index, and check the corresponding element with clickElementById
-        document.addEventListener('keydown', function (event) {
-            if (event.key in index) {
-                console.log('key pressed:', event.key);
-                let element;
-                if (!YesNoButtonChecked(0)) {
-                    console.log('No button checked on first yes/no question');
-                    element = document.getElementById(index[event.key][0]);
-                    setTimeout(function () {
-                        addVisualClue(clue_index['n'][1]);
-                        addVisualClue(clue_index['o'][1]);
-                    }, 100);
-                    setTimeout(function () {
-                        removeVisualClue(clue_index['n'][0]);
-                        removeVisualClue(clue_index['o'][0]);
-                    }, 100);
+    setTimeout(function () {
+        addVisualClue(clue_index['n'][0]);
+        addVisualClue(clue_index['o'][0]);
+    }, 100);
 
-                } else if (YesNoButtonChecked(0) && !YesNoButtonChecked(1)) {
-                    element = document.getElementById(index[event.key][1]);
-                    console.log('A button is checked on first yes/no question but not the second one');
+    // detect the press of keys in index, and check the corresponding element with clickElementById
+    document.addEventListener('keydown', function (event) {
+        if (event.key in index) {
+            console.log('key pressed:', event.key);
+            let element;
+            if (!YesNoButtonChecked(0)) {
+                console.log('No button checked on first yes/no question');
+                element = document.getElementById(index[event.key][0]);
+                setTimeout(function () {
+                    addVisualClue(clue_index['n'][1]);
+                    addVisualClue(clue_index['o'][1]);
+                }, 100);
+                setTimeout(function () {
+                    removeVisualClue(clue_index['n'][0]);
+                    removeVisualClue(clue_index['o'][0]);
+                }, 100);
+
+            } else if (YesNoButtonChecked(0) && !YesNoButtonChecked(1)) {
+                element = document.getElementById(index[event.key][1]);
+                console.log('A button is checked on first yes/no question but not the second one');
+                setTimeout(function () {
+                    removeVisualClue(clue_index['n'][1]);
+                    removeVisualClue(clue_index['o'][1]);
+                }, 100);
+            } else {
+                console.log('Both yes/no questions have an answer');
+            }
+            console.log('element to act on is', element);
+            if (element && element.type === 'radio') {
+                console.log('trying to check element', element);
+                element.checked = true;
+                element.dispatchEvent(new Event('change'));
+            }
+            if (YesNoButtonChecked(0) && YesNoButtonChecked(1)) {
+                console.log('Both yes/no questions have an answer');
+                var inputField = document.querySelector('.acteCell .mat-input-element');
+                console.log('trying to focus on', inputField);
+                if (inputField) {
                     setTimeout(function () {
-                        removeVisualClue(clue_index['n'][1]);
-                        removeVisualClue(clue_index['o'][1]);
+                        inputField.focus();
                     }, 100);
-                } else {
-                    console.log('Both yes/no questions have an answer');
-                }
-                console.log('element to act on is', element);
-                if (element && element.type === 'radio') {
-                    console.log('trying to check element', element);
-                    element.checked = true;
-                    element.dispatchEvent(new Event('change'));
-                }
-                if (YesNoButtonChecked(0) && YesNoButtonChecked(1)) {
-                    console.log('Both yes/no questions have an answer');
-                    var inputField = document.querySelector('.acteCell .mat-input-element');
-                    console.log('trying to focus on', inputField);
-                    if (inputField) {
-                        setTimeout(function () {
-                            inputField.focus();
-                        }, 100);
-                    }
                 }
             }
-        });
-    }
+        }
+    });
+}

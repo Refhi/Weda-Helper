@@ -1,6 +1,6 @@
 const buttons = {
     'allConsultation': 'allConsultation',
-    'tpetest': 'tpetest',
+    'tpebis': 'tpebis',
     // Ajoutez d'autres boutons ici
   };
   
