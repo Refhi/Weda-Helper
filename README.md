@@ -56,6 +56,8 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - touche "/" pour préparer une fraction de dose
 - touche "retour arrière" pour effacer les valeurs numériques
 
+## Ecoute des entrées claviers dans la réalisation des FSE
+les touches "n" et "o" permettent de selectionner "non"/"oui" pour accidents de droit commun, puis ALD
 
 ## Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):
 La touche Alt n'affiche pas l'aide quand le curseur est dans un champ de texte
