@@ -2,6 +2,8 @@
 
 Extension pour Chrome permettant de faciliter les tâches quotidiennes sur Weda.
 La plupart des raccourcis et des fonctionnalités peuvent être activées ou non dans les options du module ou dans les raccourcis.
+Entièrement codé par un médecin Euroi, pour lui-même et ses pairs, j'espère qu'elle vous plaira autant qu'à moi au quotidien !
+Cf. ci-dessous pour les retours et les contributions.
 
 ## Raccourcis claviers
 
@@ -59,17 +61,16 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 ## Ecoute des entrées claviers dans la réalisation des FSE
 les touches "n" et "o" permettent de selectionner "non"/"oui" pour accidents de droit commun, puis ALD
 
-## Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):
-La touche Alt n'affiche pas l'aide quand le curseur est dans un champ de texte
-Les raccourcis claviers se substituent au comportement normal de Chrome, y compris hors de Weda
-
 ## Weda-Helper-Companion
 Est un script python, à récupérer sur https://github.com/Refhi/Weda-Helper-Companion qui reçoit des instructions de l'extension Weda-Helper.
 Une fois installée, et que les options de l'excention Weda-Helper dans Chrome on été paramétrées, il doit être lancé et laissé en fond de tâche.
 Il executera les tâches suivantes :
 - si une impression dans Weda est déclenchée via ctrl-P, il simule des entrées clavier (9 tabulations + 2 entrées) pour lancer complètement l'impression
-- si une FSE est validée et que le paiement carte bancaire est sélectionné, il envoie une demande de règlement au TPE (qui doit également être correctement paramétré)
+- si une FSE est validée via Alt+v et que le paiement carte bancaire est sélectionné, il envoie une demande de règlement au TPE (qui doit également être correctement paramétré)
 
+## Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):
+La touche Alt n'affiche pas l'aide quand le curseur est dans un champ de texte
+Les raccourcis claviers se substituent au comportement normal de Chrome, y compris hors de Weda
 
 ## Contributions
 
