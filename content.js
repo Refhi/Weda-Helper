@@ -1,131 +1,99 @@
-// Function to resize elements
-function uploaderformResizeElements() {
-    // Change the size of specific elements here
-    // For example, to change the height of the PDF viewer:
-    var pdfViewer = document.querySelector('#ContentPlaceHolder1_ViewPdfDocumentUCForm1_PanelViewDocument');
-    if (pdfViewer) {
-        pdfViewer.style.height = '600px'; // replace '500px' with the desired height
-    }
-
-    // Change the height of the iframe
-    var iframe = document.querySelector('#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile');
-    if (iframe) {
-        iframe.style.height = '600px'; // replace '450px' with the desired height
-    }
-
-    // Set the top of the PanelFindPatient element
-    var panelFindPatient = document.querySelector('#ContentPlaceHolder1_FindPatientUcForm1_PanelFindPatient');
-    if (panelFindPatient) {
-        panelFindPatient.style.top = '600px'; // replace '600px' with the desired top position
-    }
-}
-
-
-function uploaderformSetTabOrder() {
-    var elementIds = [
-        'ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_',
-        'ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_',
-        'ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_',
-        'ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_'
-    ];
-
-    var tabIndex = 1;
-    for (var i = 0; i <= 7; i++) {
-        elementIds.forEach(function (elementId) {
-            var element = document.getElementById(elementId + i);
-            if (element) {
-                element.tabIndex = tabIndex;
-                tabIndex++;
-            }
-        });
-    }
-}
-
-function ListTabOrderer(truncated_id) {
-    // get how many ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 there are
-    var elements = document.querySelectorAll(truncated_id);
-    // change the taborder starting with 100 for ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 and incrementing by 1 for each element
+// Order the tab order of the elements shown after a search
+function ListTabOrderer(validTarget) {
+    console.log('ListTabOrderer started');
+    var truncated_id = validTarget.slice(0, -1);
+    var elements = document.querySelectorAll('[id^="' + truncated_id + '"]');
     for (var i = 0; i < elements.length; i++) {
         elements[i].tabIndex = i + 100;
     }
 }
 
-function FocusToDocDateAfterPatientSelect() {
-    // find all elements with id starting with ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_
-    var elements = document.querySelectorAll('[id^="ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_"]');
-    // starting from the last element, find the first element with title= starting with "Vous avez attribué ce document au patient" and gets its id
-    for (var i = elements.length - 1; i >= 0; i--) {
-        var element = elements[i];
-        console.log('element', element);
-        if (element.title.startsWith("Vous avez attribué ce document au patient")) {
-            var id = element.id;
-            // get the 1 or 2 digits at the end of the id
-            var patient_number = id.match(/\d+$/)[0];
-            console.log('Le patient en cours est en position', patient_number);
-            // focus on the element with ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_ + patient_number
-            var elementToFocus = document.getElementById('ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_' + patient_number);
-            if (elementToFocus) {
-                elementToFocus.focus();
-                break;
+
+
+
+// place a listener on the search box and focus on the first element of the list after a search
+function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = false) {
+    var searchBox = document.getElementById(idsSearchBox);
+    function focusOnFirstListElement(validTarget) {    
+        const elementToFocus = document.getElementById(validTarget);
+        if (elementToFocus) {
+            elementToFocus.focus();
+        }
+    }
+
+    function FocusToDocDateAfterPatientSelect() {
+        // find all elements with id starting with ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_
+        const elements = document.querySelectorAll('[id^="ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_"]');
+        // starting from the last element, find the first element with title= starting with "Vous avez attribué ce document au patient" and gets its id
+        for (let i = elements.length - 1; i >= 0; i--) {
+            const element = elements[i];
+            console.log('element', element);
+            if (element.title.startsWith("Vous avez attribué ce document au patient")) {
+                const id = element.id;
+                // get the 1 or 2 digits at the end of the id
+                const patient_number = id.match(/\d+$/)[0];
+                console.log('Le patient en cours est en position', patient_number);
+                // focus on the element with ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_ + patient_number
+                const elementToFocus = document.getElementById('ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_' + patient_number);
+                if (elementToFocus) {
+                    elementToFocus.focus();
+                    break;
+                }
             }
         }
     }
-}
+    
 
-// place a listner on all patients names (ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 etc.)
-function PatientSelectEntryListener() {
-    // place a listener on all elements starting with ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_
-    var elements = document.querySelectorAll('[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"]');
-    for (var i = 0; i < elements.length; i++) {
-        elements[i].addEventListener('keydown', function (event) {
-            if (event.key === 'Enter') {
-                console.log('Enter pressed on patient name');
-                setTimeout(function () {
-                    FocusToDocDateAfterPatientSelect();
-                }, 500);
+    // place a listner on all patients names (ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 etc.)
+    function PatientSelectEntryListener() {
+        // place a listener on all elements starting with ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_
+        var elements = document.querySelectorAll('[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"]');
+        for (var i = 0; i < elements.length; i++) {
+            elements[i].addEventListener('keydown', function (event) {
+                if (event.key === 'Enter') {
+                    console.log('Enter pressed on patient name');
+                    setTimeout(function () {
+                        FocusToDocDateAfterPatientSelect();
+                    }, 500);
+                }
+            });
+        }
+    }
+
+    function watchForEarlyDOMChanges() {
+        var startTime = Date.now();
+        var observer = new MutationObserver(function (mutations) {
+            console.log('DOM changed, resetting setupUIInteractions');
+            // check if the timer has been running for more than 500ms, then remove the listener and the timer
+            var elapsedTime = Date.now() - startTime;
+            if (elapsedTime >= 500) {
+                observer.disconnect();
+                startTime = null;                
             }
+            setupUIInteractions();
+
         });
+        observer.observe(document, { childList: true, subtree: true });
     }
-}
 
-function SearchBoxEntryListener() {
-    // set valid ids for search box
-    var ids_search_box = [
-        'ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche',
-        'ContentPlaceHolder1_FindPatientUcForm1_PanelNom',
-        'ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack'
-    ];
-    // find the first element with one of the ids and store it in var element
-    var element = null;
-    for (var i = 0; i < ids_search_box.length; i++) {
-        element = document.getElementById(ids_search_box[i]);
-        if (element !== null) {
-            break;
+    function setupUIInteractions() {
+        if (listTabOrderer) {
+            ListTabOrderer(validTarget);
+            PatientSelectEntryListener();
         }
-    }
-    // fail if element is still null
-    if (element === null) {
-        console.log('SearchBoxEntryListener: element null');
-    }
+        focusOnFirstListElement(validTarget);
+        SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer);
+    } 
 
-    if (element) {
-        element.addEventListener('keydown', function (event) {
+
+    if (searchBox) {
+        searchBox.addEventListener('keydown', function (event) {
             console.log('added event listener to search box');
             if (event.key === 'Enter') {
                 console.log('Enter pressed in search box');
                 setTimeout(function () {
-                    var elementToFocus = document.getElementById('ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0');
-                    if (elementToFocus !== null) {
-                        ListTabOrderer('[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"]');
-                        PatientSelectEntryListener();
-                    } else {
-                        elementToFocus = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_VidalPacksGrid_LinkButtonVidalPacksGridName_0');
-                        console.log('elementToFocusPrescription', elementToFocus);
-                    }
-                    if (elementToFocus) {
-                        elementToFocus.focus();
-                    }
-                    SearchBoxEntryListener();
+                    setupUIInteractions();
+                    watchForEarlyDOMChanges();
                 }, 600);
             }
         });
@@ -133,19 +101,8 @@ function SearchBoxEntryListener() {
 }
 
 
-function ConsultationFormTabOrderer() {
-    // make a var with all the elements with id starting with ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_
-    var elements = document.querySelectorAll('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]');
-    // change the taborder starting with 0 for elements[0] and incrementing by 1 for each element
-    for (var i = 0; i < elements.length; i++) {
-        elements[i].tabIndex = i + 1;
-    }
-}
 
-
-
-
-// focus the tab selection on an element named 'ctl00$ContentPlaceHolder1$ViewPdfDocumentUCForm1$ButtonCloseStay'
+// focus on the first element with asked Name
 function focusElementByName(elementName) {
     console.log('Focusing element:', elementName);
     var element = document.getElementsByName(elementName)[0];
@@ -177,7 +134,7 @@ function waitForElementToExist(elementId, callback) {
     }
 }
 
-// set all ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementEvenementType_ to option value 1
+// Permet de mettre tout les éléments de la page en attente d'import sur "Consultation"
 function allConsultation() {
     console.log('setAllImportToConsultation');
     var elements = document.querySelectorAll('[id^="ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementEvenementType_"]');
@@ -188,9 +145,9 @@ function allConsultation() {
     }
 }
 
+// Permet d'appuyer sur le bouton "Valider" ou équivalent
 function push_valider() {
     console.log('push_valider activé');
-    // click the first element with class="button valid" except if its value is "Chercher"
     function clickClassExceptIf(class_name, class_exception, id_exception) {
         var elements = document.getElementsByClassName(class_name);
         console.log('elements', elements);
@@ -241,7 +198,12 @@ function push_valider() {
 
 
 // show a tooltip next to W entries with the key of submenuDict
-function tooltipshower(shortcuts) {
+function tooltipshower() {
+    // abort if the focus is out of the window/tab TODO
+    if (!document.hasFocus() || document.hidden) {
+        return;
+    }
+
     // first force the mouseover status to the element with class="level1 static" and aria-haspopup="ContentPlaceHolder1_MenuNavigate:submenu:2"
     var element = document.querySelector('[class="has-popup static"]');
     if (element) {
@@ -295,8 +257,28 @@ function tooltipshower(shortcuts) {
     }
 }
 
-// // External communication functions
-// envoi d'instruction au TPE dans Weda-Helper-Companion
+// remove the tooltip next to W and relacher W
+function mouseoutW() {
+    // Supprimer les tooltips
+    var tooltips = document.querySelectorAll('div.tooltip');
+    tooltips.forEach(function (tooltip) {
+        tooltip.remove();
+    });
+    // relacher W
+    var element = document.querySelector('[class="has-popup static"]');
+    if (element) {
+        element.dispatchEvent(new MouseEvent('mouseout', {
+            view: window,
+            bubbles: true,
+            cancelable: true
+        }));
+    }
+
+}
+
+
+// // External functions : lien avec Weda-Helper-Companion
+// envoi d'instruction au TPE via Weda-Helper-Companion
 function sendtpeinstruction(amount) {
     // store the amount in chrome.storage.sync
     chrome.storage.sync.set({ 'lastTPEamount': amount }, function () {
@@ -354,13 +336,13 @@ function sendPrint() {
                 console.log('delay_btw_tabs', delay_btw_tabs);
                 console.log('delay_btw_tab_and_enter', delay_btw_tab_and_enter);
                 console.log('delay_btw_enters', delay_btw_enters);
-                // TODO ajouter les délais après print ()
                 fetch(`http://localhost:3000/print/${delay_btw_tabs}/${delay_btw_tab_and_enter}/${delay_btw_enters}`, { mode: 'no-cors' })
                     .catch(error => console.error('Error:', error));
             });
         }
     });
 }
+
 
 
 const keyCommands = {
@@ -492,7 +474,6 @@ const keyCommands = {
 };
 
 // // Listeners
-
 // Listen for messages from the background script about options
 const actions = {
     'allConsultation': allConsultation,
@@ -520,47 +501,25 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
 // Listen for focus leaving the window
 window.addEventListener('blur', function () {
-    console.log('Window lost focus');
+    console.log('Window lost focus (blur)');
     mouseoutW();
 });
 document.addEventListener('visibilitychange', function() {
     if (document.hidden) {
-        console.log('Window lost focus');
+        console.log('Window lost focus (hidden)');
         mouseoutW();
     };
 });
 
-function mouseoutW() {
-    // Supprimer les tooltips
-    var tooltips = document.querySelectorAll('div.tooltip');
-    tooltips.forEach(function (tooltip) {
-        tooltip.remove();
-    });
-    // relacher W
-    var element = document.querySelector('[class="has-popup static"]');
-    if (element) {
-        element.dispatchEvent(new MouseEvent('mouseout', {
-            view: window,
-            bubbles: true,
-            cancelable: true
-        }));
-    }
-
-}
-
 
 
 // // "Main"
-// Tooltip shower
+// Affiche une fenêtre d'aide pour mettre en avant les raccourcis clavier
 var tooltipTimeout;
 document.addEventListener('keydown', function (event) {
     if (event.key === 'Alt') {
-        var shortcuts = '';
-        for (var command in keyCommands) {
-            shortcuts += command + ': ' + keyCommands[command].description + ' (' + keyCommands[command].key + ')\n';
-        }
         tooltipTimeout = setTimeout(function () {
-            tooltipshower(shortcuts);
+            tooltipshower();
         }, 500);
     }
 });
@@ -575,15 +534,59 @@ document.addEventListener('keyup', function (event) {
 // // Change some elements based on the URL and function parameters
 
 // // Tab and search tweaks
-// Tweak the uploader page
+// [Page d'upload] Tweak the uploader page
 chrome.storage.sync.get('TweakImports', function (result) {
+    // Modifie la taille de la fenêtre de prévisualisation du PDF
+    function uploaderformResizeElements() {
+        const newsize = '600px'; // TODO mettre ça dans les options
+        const pdfViewer = document.querySelector('#ContentPlaceHolder1_ViewPdfDocumentUCForm1_PanelViewDocument');
+        if (pdfViewer) {
+            pdfViewer.style.height = newsize;
+        }
+
+        const iframe = document.querySelector('#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile');
+        if (iframe) {
+            iframe.style.height = newsize;
+        }
+
+        const panelFindPatient = document.querySelector('#ContentPlaceHolder1_FindPatientUcForm1_PanelFindPatient');
+        if (panelFindPatient) {
+            panelFindPatient.style.top = newsize;
+        }
+    }
+
+    // Modifie l'ordre de tabulation des éléments
+    function uploaderformSetTabOrder() {
+        const elementIds = [
+            'ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_',
+            'ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_',
+            'ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_',
+            'ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_'
+        ];
+    
+        let tabIndex = 1;
+        for (let i = 0; i <= 7; i++) {
+            elementIds.forEach(function (elementId) {
+                var element = document.getElementById(elementId + i);
+                if (element) {
+                    element.tabIndex = tabIndex;
+                    tabIndex++;
+                }
+            });
+        }
+    }
+    
+    // modifie la page d'upload : modifie la taille de prévisu, modifie l'ordre de tabulation et place un listener sur la searchbox.
     function uploaderformSetup() {
         uploaderformResizeElements();
         uploaderformSetTabOrder();
-        SearchBoxEntryListener();
+        SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = true);
     };
+    
     if (result.TweakImports !== false) {
         if (window.location.href === 'https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx') {
+            var idsSearchBox = 'ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche';
+            var validTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0';
             // Create a MutationObserver instance to watch for changes in the DOM
             var observer = new MutationObserver(function (mutations) {
                 uploaderformSetup();
@@ -597,38 +600,52 @@ chrome.storage.sync.get('TweakImports', function (result) {
     }
 });
 
-// Tweaks the consultation page to re-order the tab order of the values
+// [Page de Consultation] Modifie l'ordre de tabulation des valeurs de suivi
 chrome.storage.sync.get('TweakTabConsultation', function (result) {
+    function changeTabOrder() {
+        var elements = document.querySelectorAll('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]');
+        // change the taborder starting with 0 for elements[0] and incrementing by 1 for each element
+        for (var i = 0; i < elements.length; i++) {
+            elements[i].tabIndex = i + 1;
+        }
+    }
     if (result.TweakTabConsultation !== false) {
         if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx')) {
-            ConsultationFormTabOrderer();
+            changeTabOrder();
             console.log('ConsultationFormTabOrderer started');
         }
     }
 });
 
-// Tweaks the prescription page to select the first medicine after a search
+// [Page de prescriptions] Tweaks the prescription page to select the first medicine after a search
 chrome.storage.sync.get('TweakTabPrescription', function (result) {
     if (result.TweakTabPrescription !== false) {
         if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx')) {
+            var idsSearchBox = 'ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack';
+            var validTarget = 'ContentPlaceHolder1_BaseVidalUcForm1_VidalPacksGrid_LinkButtonVidalPacksGridName_0';
             console.log('SearchBoxEntryListener started (prescription)');
-            SearchBoxEntryListener();
+            SearchBoxEntryListener(idsSearchBox, validTarget);
         }
     }
 });
 
-// Tweaks the search patient page to select the first patient after a search
+// [Page de recherche patient] Tweaks the search patient page to select the first patient after a search
 chrome.storage.sync.get('TweakTabSearchPatient', function (result) {
     console.log('TweakTabSearchPatient from storage:', result.TweakTabSearchPatient);
     if (result.TweakTabSearchPatient !== false) {
         if (window.location.href === 'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx') {
+            const idsSearchBox = 'ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche';
+            const validTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0';
             console.log('TweakTabSearchPatient started');
-            ListTabOrderer('[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"]');
-            var elementToFocus = document.getElementById('ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0');
+            // Réorganise l'ordre de tabulation des éléments de la liste de patients
+            ListTabOrderer(validTarget);
+            // Place le focus sur le premier élément de la liste de patients
+            const elementToFocus = document.getElementById(validTarget);
             if (elementToFocus) {
                 elementToFocus.focus();
             }
-            SearchBoxEntryListener();
+            // Place un listener sur la searchbox (qui s'auto-entretiens à chaque recherche)
+            SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = true);
         }
     }
 });
@@ -645,6 +662,7 @@ chrome.storage.sync.get('RemoveTitleSuggestions', function (result) {
         }
     }
     if (result.RemoveTitleSuggestions !== false) {
+        // vérifie que l'on est sur une page soufrant du problème
         if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/')
             && window.location.href.includes('Form.aspx')
             && !window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx')
@@ -677,7 +695,7 @@ chrome.storage.sync.get('RemoveTitleSuggestions', function (result) {
 // Enable the numpad in the prescription form
 if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx')) {
     console.log('numpader started');
-    // set index with some keyboard touches corresponding to some ids (set randmon ids for now)
+    // Make a dictionnary with keystrokes and their corresponding actions
     var index = {
         '0': 'SetQuantite(0);',
         '1': 'SetQuantite(1);',
@@ -695,7 +713,6 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
     };
 
     // detect the press of keys in index, and click the corresponding element with clickElementByonclick
-
     document.addEventListener('keydown', function (event) {
         console.log('event.key', event.key);
         if (event.key in index) {
@@ -763,7 +780,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
             }
         }
     }
-
+    // Small delay to add visual clues
     setTimeout(function () {
         addVisualClue(clue_index['n'][0]);
         addVisualClue(clue_index['o'][0]);
@@ -815,3 +832,8 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
         }
     });
 }
+
+
+// TODO : ajouter d'autres fenêtres d'information
+// TODO : basculer l'écoute du clavier sur keydown et keyup
+// TODO : basculer keyCommands dans un fichier à part

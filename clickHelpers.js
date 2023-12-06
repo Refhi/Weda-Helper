@@ -66,9 +66,7 @@ function GenericClicker(valueName, value) {
 
 
 
-// Click element based on this sequence : must be in the subtree of the first element with 'class=level1 dynamic'.
-// Then look for the first element with 'class=level3 dynamic' and 'description=description'.
-// If there's none, click the first element with 'class=level2 dynamic' and 'description=description'
+// click on an element of submenu of W, based on its description
 function submenuW(description) {
     var level1Element = document.getElementsByClassName('level1 static')[0];
     console.log('level1Element', level1Element);
