@@ -2,7 +2,7 @@
 
 Extension pour Chrome permettant de faciliter les tâches quotidiennes sur Weda.
 La plupart des raccourcis et des fonctionnalités peuvent être activées ou non dans les options du module ou dans les raccourcis.
-Entièrement codé par un médecin Euroi, pour lui-même et ses pairs, j'espère qu'elle vous plaira autant qu'à moi au quotidien !
+Entièrement codé par un médecin Eurois, pour lui-même et ses pairs, j'espère qu'elle vous plaira autant qu'à moi au quotidien !
 Cf. ci-dessous pour les retours et les contributions.
 
 ## Raccourcis claviers
@@ -51,20 +51,20 @@ Dans les fenêtres contenant un Titre, désactive le panneau de suggestion (fen�
 ## Modification du comportement de la tabulation après recherche patient
 Permet, après la saisie du nom d'un patient, d'être directement positionné sur son nom, puis de pouvoir naviguer de patient en patient avec la touche Tab (ou maj+Tab pour aller vers le haut)
 
-## Ecoute des entrées claviers lors de l'usage de la calculette de prescription
+## Écoute des entrées claviers lors de l'usage de la calculette de prescription
 Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du claviers à la place de clics :
 - touches numériques (0-10)
 - touche "." pour mettre la virgule
 - touche "/" pour préparer une fraction de dose
 - touche "retour arrière" pour effacer les valeurs numériques
 
-## Ecoute des entrées claviers dans la réalisation des FSE
-les touches "n" et "o" permettent de selectionner "non"/"oui" pour accidents de droit commun, puis ALD
+## Écoute des entrées claviers dans la réalisation des FSE
+les touches "n" et "o" permettent de sélectionner "non"/"oui" pour accidents de droit commun, puis ALD
 
 ## Weda-Helper-Companion
 Est un script python, à récupérer sur https://github.com/Refhi/Weda-Helper-Companion qui reçoit des instructions de l'extension Weda-Helper.
-Une fois installée, et que les options de l'excention Weda-Helper dans Chrome on été paramétrées, il doit être lancé et laissé en fond de tâche.
-Il executera les tâches suivantes :
+Une fois installée, et que les options de l’extension Weda-Helper dans Chrome on été paramétrées, il doit être lancé et laissé en fond de tâche.
+Il exécutera les tâches suivantes :
 - si une impression dans Weda est déclenchée via ctrl-P, il simule des entrées clavier (9 tabulations + 2 entrées) pour lancer complètement l'impression
 - si une FSE est validée via Alt+v et que le paiement carte bancaire est sélectionné, il envoie une demande de règlement au TPE (qui doit également être correctement paramétré)
 

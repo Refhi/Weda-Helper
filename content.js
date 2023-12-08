@@ -575,12 +575,59 @@ chrome.storage.sync.get('TweakImports', function (result) {
             });
         }
     }
+
+    // Convert a truncated date to a full date
+    function convertDate(truncatedDate) {
+        let parts = truncatedDate.split('/');
+        let day = parts[0];
+        let month = parts[1] || new Date().getMonth() + 1;
+        let year = new Date().getFullYear();
+    
+        // Add leading zeros to day and month if needed
+        if (day < 10 && day.length < 2) {
+            day = '0' + day;
+        }
+        if (month < 10 && month.length < 2) {
+            month = '0' + month;
+        }
+    
+        return day + '/' + month + '/' + year;
+    }
+
+    // Function to handle the 'keydown' event
+    function handleKeyDown(event) {
+        if (event.key === 'Tab') {
+            // The 'Tab' key was pressed, check and modify the text content as needed
+            let textField = event.target;
+            let datePattern = /^\d{2}\/\d{2}\/\d{4}$/; // Regular expression for dd/mm/yyyy
+            if (!datePattern.test(textField.value)) {
+                // The text is not in the correct date format. Check if it contains only / and numbers
+                let validPattern = /^[\d\/]+$/;
+                if (validPattern.test(textField.value)) {
+                    // The text is valid, convert it to a full date
+                    textField.value = convertDate(textField.value);
+                }
+                // ...
+            }
+        }
+    }
+
+    // Add the event listener to each date document field
+    function addEventListeners() {
+        for (let i = 0; i <= 7; i++) {
+            let textField = document.getElementById(`ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_${i}`);
+            if (textField) {
+                textField.addEventListener('keydown', handleKeyDown);
+            }
+        }
+    }
     
     // modifie la page d'upload : modifie la taille de prévisu, modifie l'ordre de tabulation et place un listener sur la searchbox.
     function uploaderformSetup() {
         uploaderformResizeElements();
         uploaderformSetTabOrder();
         SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = true);
+        addEventListeners();
     };
     
     if (result.TweakImports !== false) {
