@@ -39,6 +39,7 @@ suivantes sont effectuées
   l'autre)
 - Agrandissement de la fenêtre de prévisualisation pour faciliter la lecture du
   PDF à importer
+- Complétion automatique des dates partielles
 
 En cliquant sur l'icône de l'extension, le bouton "Tout mettre en consultation" permet de sélectionner d'un coup "Consultation" pour l'ensemble des documents en attente d'importation.
 
