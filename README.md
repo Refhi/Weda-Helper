@@ -33,15 +33,14 @@ Un appuis sur la touche Alt prolongé (> 1 seconde) affiche un rappel des raccou
 ## Facilitation des imports
 Dans la fenêtre d'importation des documents
 (https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx), les modifications
-suivantes sont effectuées
+suivantes sont effectuées :
 - Modification de l'ordre de parcours des tabulations pour permettre des
   intégrations uniquement au clavier (appuyer sur Tab pour passer d'un champ à
   l'autre)
 - Agrandissement de la fenêtre de prévisualisation pour faciliter la lecture du
   PDF à importer
 - Complétion automatique des dates partielles
-
-En cliquant sur l'icône de l'extension, le bouton "Tout mettre en consultation" permet de sélectionner d'un coup "Consultation" pour l'ensemble des documents en attente d'importation.
+- En cliquant sur l'icône de l'extension, le bouton "Tout mettre en consultation" permet de sélectionner d'un coup "Consultation" pour l'ensemble des documents en attente d'importation.
 
 ## Facilitation du remplissage des valeurs tensionnelles
 Dans la fenêtre de consultation, lorsque l'on remplie une valeur de suivi, la touche tabulation envoie directement vers la case suivante (plus besoin d'appuyer 4 fois)
