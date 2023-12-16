@@ -59,7 +59,8 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - touche "retour arrière" pour effacer les valeurs numériques
 
 ## Écoute des entrées claviers dans la réalisation des FSE
-les touches "n" et "o" permettent de sélectionner "non"/"oui" pour accidents de droit commun, puis ALD
+- les touches "n" et "o" permettent de sélectionner "non"/"oui" pour accidents de droit commun, puis ALD
+- si elles sont utilisées, entre automatiquement la cotation par défaut (à définir dans les options)
 
 ## Weda-Helper-Companion
 Est un script python, à récupérer sur https://github.com/Refhi/Weda-Helper-Companion qui reçoit des instructions de l'extension Weda-Helper.

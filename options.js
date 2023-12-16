@@ -7,20 +7,25 @@ document.addEventListener('DOMContentLoaded', function () {
     'TweakTabSearchPatient',
     'TweakTabPrescription',
     'RemoveLocalCompanionPrint',
+    'delay_primary',
     'delay_btw_tabs',
     'delay_btw_tab_and_enter',
     'delay_btw_enters',
     'RemoveLocalCompanionTPE',
     'ipTPE',
-    'portTPE'
+    'portTPE',
+    'portCompanion',
+    'defaultCotation'
   ];
 
   var defautsTextValues = {
+    'delay_primary': '0.02',
     'delay_btw_tabs': '0.01',
     'delay_btw_tab_and_enter': '0.01',
     'delay_btw_enters': '0.5',
     'ipTPE': 'localhost',
-    'portTPE': '5000'
+    'portTPE': '5000',
+    'portCompanion': '3000'
   };
 
   options.forEach(function (option) {
@@ -68,8 +73,15 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
-      if (option === 'portTPE' && (!portRegex.test(value) || value < 1 || value > 65535)) {
+      if ((option === 'portTPE' || option === 'portCompanion') && (!portRegex.test(value) || value < 1 || value > 65535)) {
         alert('Veuillez entrer un numéro de port valide');
+        isValid = false;
+        return;
+      }
+
+      var letterRegex = /^([A-Z0-9]{1,7})?$/;
+      if (option === 'defaultCotation' && !letterRegex.test(value)) {
+        alert('defaultCotation doit être composé uniquement de lettres majuscules et ne doit pas contenir plus de 7 lettres, ou être une chaîne vide');
         isValid = false;
         return;
       }

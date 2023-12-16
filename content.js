@@ -9,8 +9,6 @@ function ListTabOrderer(validTarget) {
 }
 
 
-
-
 // place a listener on the search box and focus on the first element of the list after a search
 function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = false) {
     var searchBox = document.getElementById(idsSearchBox);
@@ -284,13 +282,14 @@ function sendtpeinstruction(amount) {
     chrome.storage.sync.set({ 'lastTPEamount': amount }, function () {
         console.log('lastTPEamount', amount, 'sauvegardé avec succès');
     });
-    chrome.storage.sync.get(['ipTPE', 'portTPE', 'RemoveLocalCompanionTPE'], function (result) {
+    chrome.storage.sync.get(['portCompanion','ipTPE', 'portTPE', 'RemoveLocalCompanionTPE'], function (result) {
+        const portCompanion = result.portCompanion;
         const ipTPE = result.ipTPE;
         const portTPE = result.portTPE;
         const removeLocalCompanionTPE = result.RemoveLocalCompanionTPE;
 
-        if (!ipTPE || !portTPE || removeLocalCompanionTPE !== false) {
-            console.log('ipTPE, portTPE ou RemoveLocalCompanionTPE ne sont pas définis ou RemoveLocalCompanionTPE est !false (valeur actuelle :', removeLocalCompanionTPE, ')');
+        if (!portCompanion || !ipTPE || !portTPE || removeLocalCompanionTPE !== false) {
+            console.warn('ipTPE, portTPE ou RemoveLocalCompanionTPE ne sont pas définis ou RemoveLocalCompanionTPE est !false (valeur actuelle :', removeLocalCompanionTPE, ')');
             return;
         } else if (!(/^\d+$/.test(amount))) {
             console.log('amount', amount, 'n\'est pas un nombre entier');
@@ -298,10 +297,10 @@ function sendtpeinstruction(amount) {
         }
         else {
             console.log('sendinstruction', amount + 'c€' + ' to ' + ipTPE + ':' + portTPE);
-            fetch(`http://localhost:3000/tpe/${ipTPE}/${portTPE}/${amount}`, { mode: 'no-cors' })
+            fetch(`http://localhost:${portCompanion}/tpe/${ipTPE}/${portTPE}/${amount}`)
                 // les deux ci-dessous sont désactivés car ils ne fonctionnent pas avec no-cors
-                // .then(response => response.json())
-                // .then(data => console.log(data))
+                .then(response => response.json())
+                .then(data => console.log(data))
                 .catch(error => console.error('Error:', error));
         }
     });
@@ -328,15 +327,20 @@ function sendPrint() {
             return;
         } else {
             console.log('send Print');
-            // recover values of     'delay_btw_tabs',     'delay_btw_tab_and_enter',     'delay_btw_enters',
-            chrome.storage.sync.get(['delay_btw_tabs', 'delay_btw_tab_and_enter', 'delay_btw_enters'], function (result) {
+            chrome.storage.sync.get(['portCompanion', 'delay_primary', 'delay_btw_tabs', 'delay_btw_tab_and_enter', 'delay_btw_enters'], function (result) {
+                const portCompanion = result.portCompanion;
+                const delay_primary = result.delay_primary;
                 const delay_btw_tabs = result.delay_btw_tabs;
                 const delay_btw_tab_and_enter = result.delay_btw_tab_and_enter;
                 const delay_btw_enters = result.delay_btw_enters;
+                if (!portCompanion || !delay_primary || !delay_btw_tabs || !delay_btw_tab_and_enter || !delay_btw_enters) {
+                    console.warn('ipTPE, portTPE ou RemoveLocalCompanionTPE ne sont pas définis. Aller à chrome-extension://fnfdbangkcmjacbeaaiongkbacaamnfd/options.html pour les définir');
+                    return;
+                }
                 console.log('delay_btw_tabs', delay_btw_tabs);
                 console.log('delay_btw_tab_and_enter', delay_btw_tab_and_enter);
                 console.log('delay_btw_enters', delay_btw_enters);
-                fetch(`http://localhost:3000/print/${delay_btw_tabs}/${delay_btw_tab_and_enter}/${delay_btw_enters}`, { mode: 'no-cors' })
+                fetch(`http://localhost:${portCompanion}/print/${delay_primary}/${delay_btw_tabs}/${delay_btw_tab_and_enter}/${delay_btw_enters}`)
                     .catch(error => console.error('Error:', error));
             });
         }
@@ -344,134 +348,6 @@ function sendPrint() {
 }
 
 
-
-const keyCommands = {
-    'push_valider': {
-        description: 'Appuie le bouton Valider ou équivalent',
-        key: 'alt+v',
-        action: function () {
-            push_valider();
-        }
-    },
-    'push_annuler': {
-        description: 'Appuie le bouton Annuler ou équivalent',
-        key: 'alt+a',
-        action: function () {
-            console.log('push_annuler activé');
-            if (!clickElementByClass('button cancel')) {
-                GenericClicker("title", "Annuler")
-                GenericClicker("title", "Quitter")
-                clickElementByChildtextContent("ANNULER")
-            };
-        }
-    },
-    'print_meds': {
-        description: 'Imprime les médicaments',
-        key: 'ctrl+p',
-        action: function () {
-            console.log('print_meds activé');
-            clickFirstPrinter();
-            waitForElementToExist('ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay', function (element) {
-                console.log('Element détecté:', element);
-                setTimeout(function () {
-                    focusElementByName('ctl00$ContentPlaceHolder1$ViewPdfDocumentUCForm1$ButtonCloseStay');
-                    sendPrint();
-                }, 400);
-            });
-        }
-    },
-    'push_enregistrer': {
-        description: 'Appuie le bouton Enregistrer ou équivalent',
-        key: 'ctrl+s',
-        action: function () {
-            console.log('push_enregistrer activé');
-            clickElementById('ButtonSave');
-        }
-    },
-    'push_delete': {
-        description: 'Appuie le bouton Supprimer ou équivalent',
-        key: 'alt+s',
-        action: function () {
-            console.log('push_delete activé');
-            clickElementByClass('button delete');
-        }
-    },
-    'shortcut_w': {
-        description: 'Raccourci W',
-        key: 'alt+w',
-        action: function () {
-            console.log('shortcut_w activé');
-            clickElementByOnclick("ctl00$ContentPlaceHolder1$EvenementUcForm1$MenuNavigate")
-        }
-    },
-    'shortcut_consult': {
-        description: 'Raccourci Consultation (crée une nouvelle consultation ou ouvre celle existante)',
-        key: 'alt+&',
-        action: function () {
-            console.log('shortcut_consult activé');
-            submenuW(' Consultation');
-        }
-    },
-    'shortcut_certif': {
-        description: 'Raccourci Certificat (crée un nouveau certificat ou ouvre celui existant)',
-        key: 'alt+é',
-        action: function () {
-            console.log('shortcut_certif activé');
-            submenuW(' Certificat');
-        }
-    },
-    'shortcut_demande': {
-        description: 'Raccourci Demande (crée une nouvelle demande ou ouvre celle existante)',
-        key: 'alt+\"',
-        action: function () {
-            console.log('shortcut_demande activé');
-            submenuW(' Demande');
-        }
-    },
-    'shortcut_prescription': {
-        description: 'Raccourci Prescription (crée une nouvelle prescription ou ouvre celle existante)',
-        key: 'alt+\'',
-        action: function () {
-            console.log('shortcut_prescription activé');
-            submenuW(' Prescription');
-        }
-    },
-    'shortcut_formulaire': {
-        description: 'Raccourci Formulaire (crée un nouveau formulaire ou ouvre celui existant)',
-        key: 'alt+f',
-        action: function () {
-            console.log('shortcut_formulaire activé');
-            submenuW(' Formulaire');
-        }
-    },
-    'shortcut_courrier': {
-        description: 'Raccourci Courrier (crée un nouveau courrier ou ouvre celui existant)',
-        key: 'alt+(',
-        action: function () {
-            console.log('shortcut_courrier activé');
-            submenuW(' Courrier');
-        }
-    },
-    'shortcut_fse': {
-        description: 'Raccourci FSE',
-        key: 'alt+-',
-        action: function () {
-            console.log('shortcut_fse activé');
-            submenuW(' FSE');
-        }
-    },
-    'shortcut_carte_vitale': {
-        description: 'Raccourci Carte Vitale',
-        key: 'alt+c',
-        action: function () {
-            console.log('shortcut_carte_vitale activé');
-            clickElementByClass("cv");
-            if (!GenericClicker("title", "Relance une lecture de la carte vitale")) { //TODO à tester : pour l'instant sous linux j'ai un message d'erreur
-                GenericClicker("mattooltip", "Lire la Carte Vitale");
-            }
-        }
-    },
-};
 
 // // Listeners
 // Listen for messages from the background script about options
@@ -576,13 +452,81 @@ chrome.storage.sync.get('TweakImports', function (result) {
         }
     }
 
+    // Convert a truncated date to a full date
+    function convertDate(truncatedDate) {
+        let parts = truncatedDate.split('/');
+        let day = parts[0];
+        let month = parts[1] || new Date().getMonth() + 1;
+        let year = new Date().getFullYear();
+        let length = day.length;
+        let validDayLengths = [1, 2, 4, 6, 8];
+        
+        if (length === 4) {
+            // If truncatedDate is 4 digits, assume the first 2 digits are the day and the last 2 digits are the month
+            day = truncatedDate.substring(0, 2);
+            month = truncatedDate.substring(2, 4);
+        } else if (length === 6) {
+            // If truncatedDate is 6 digits, assume the first 2 digits are the day, the next 2 digits are the month, and the last 2 digits are the year
+            day = truncatedDate.substring(0, 2);
+            month = truncatedDate.substring(2, 4);
+            year = '20' + truncatedDate.substring(4, 6); // Add '20' to the beginning of the year to make it 4 digits
+        } else if (length === 8) {
+            // If truncatedDate is 8 digits, assume the first 2 digits are the day, the next 2 digits are the month, and the last 4 digits are the year
+            day = truncatedDate.substring(0, 2);
+            month = truncatedDate.substring(2, 4);
+            year = truncatedDate.substring(4, 8);
+        } else if (!validDayLengths.includes(length)){
+            // If truncatedDate is not 4, 6, or 8 digits, return it without modification
+            console.log('Invalid date format:', truncatedDate);
+            return truncatedDate;
+        }
+
+        // Add leading zeros to day and month if needed
+        if (day < 10 && day.length < 2) {
+            day = '0' + day;
+        }
+        
+        if (month < 10 && month.length < 2) {
+            month = '0' + month;
+        }
+    
+        return day + '/' + month + '/' + year;
+    }
+
+    // Function to handle the 'keydown' event
+    function handleKeyDown(event) {
+        if (event.key === 'Tab') {
+            // The 'Tab' key was pressed, check and modify the text content as needed
+            let textField = event.target;
+            let datePattern = /^\d{2}\/\d{2}\/\d{4}$/; // Regular expression for dd/mm/yyyy
+            if (!datePattern.test(textField.value)) {
+                // The text is not in the correct date format. Check if it contains only / and numbers
+                let validPattern = /^[\d\/]+$/;
+                if (validPattern.test(textField.value)) {
+                    // The text is valid, convert it to a full date
+                    textField.value = convertDate(textField.value);
+                }
+                // ...
+            }
+        }
+    }
+
+    // Add the event listener to each date document field
+    function addEventListeners() {
+        for (let i = 0; i <= 7; i++) {
+            let textField = document.getElementById(`ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_${i}`);
+            if (textField) {
+                textField.addEventListener('keydown', handleKeyDown);
+            }
+        }
+    }
     
     // modifie la page d'upload : modifie la taille de prévisu, modifie l'ordre de tabulation et place un listener sur la searchbox.
     function uploaderformSetup() {
         uploaderformResizeElements();
         uploaderformSetTabOrder();
         SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = true);
-        // addEventListeners(); // retiré car implémenté par Weda quasiment le jour-même...
+        addEventListeners();
     };
     
     if (result.TweakImports !== false) {
@@ -727,7 +671,6 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
 // Tweak the FSE page (Add a button in the FSE page to send the amount to the TPE, implement shortcuts)
 if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx')) {
     console.log('fse started');
-
     // Make a dictionnary with keystrokes and their corresponding actions
     var index = {
         'n': ['mat-radio-9-input', 'mat-radio-3-input'],
@@ -752,19 +695,22 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
     }
     // add a visual clue to the element with id element_id
     function addVisualClue(element_id) {
-        var radioButton = document.getElementById(element_id);
-        if (radioButton) {
-            var labelContents = radioButton.getElementsByClassName('mat-radio-label-content');
-            console.log('labelContents', labelContents);
-            if (labelContents.length > 0) {
-                var labelContent = labelContents[0];
-                var text = labelContent.innerHTML;
-                console.log('Texte à souligner', text);
-                text = text.replace('N', '<span style="text-decoration: underline;">N</span>');
-                text = text.replace('O', '<span style="text-decoration: underline;">O</span>');
-                labelContent.innerHTML = text;
+        var checkExist = setInterval(function() {
+            var radioButton = document.getElementById(element_id);
+            if (radioButton) {
+                clearInterval(checkExist); // Arrête de vérifier une fois que l'élément est trouvé
+                var labelContents = radioButton.getElementsByClassName('mat-radio-label-content');
+                console.log('labelContents', labelContents);
+                if (labelContents.length > 0) {
+                    var labelContent = labelContents[0];
+                    var text = labelContent.innerHTML;
+                    console.log('Texte à souligner', text);
+                    text = text.replace('N', '<span style="text-decoration: underline;">N</span>');
+                    text = text.replace('O', '<span style="text-decoration: underline;">O</span>');
+                    labelContent.innerHTML = text;
+                }
             }
-        }
+        }, 100); // Vérifie l'existence de l'élément toutes les 100ms
     }
     function removeVisualClue(element_id) {
         console.log('removeVisualClue', element_id);
@@ -782,11 +728,63 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
             }
         }
     }
-    // Small delay to add visual clues
-    setTimeout(function () {
-        addVisualClue(clue_index['n'][0]);
-        addVisualClue(clue_index['o'][0]);
-    }, 100);
+
+    // function setDefaultValue() {
+    //     // set defaut value
+    //     chrome.storage.sync.get('defaultCotation', function (result) {
+    //         var defaultCotation = result.defaultCotation;
+    //         // si defaultCotation n'est pas défini, le définir à ''
+    //         if (!defaultCotation) {
+    //             defaultCotation = '';
+    //         }
+    //         console.log('Je met la cotation par défaut : ', defaultCotation);
+
+    //         var checkExist = setInterval(function() {
+    //             var inputField = document.querySelector('.acteCell .mat-input-element');
+    //             if (inputField) {
+    //                 clearInterval(checkExist); // Arrête de vérifier une fois que l'élément est trouvé
+    //                 inputField.value = defaultCotation;
+    //             }
+    //         }, 100); // Vérifie l'existence de l'élément toutes les 100ms
+    //     });
+    // }
+
+    function setDefaultValue() {
+        // set defaut value
+        chrome.storage.sync.get('defaultCotation', function (result) {
+            var defaultCotation = result.defaultCotation;
+            // si defaultCotation n'est pas défini, le définir à ''
+            if (!defaultCotation) {
+                defaultCotation = '';
+            }
+            console.log('Je met la cotation par défaut : ', defaultCotation);
+
+            var checkExist = setInterval(function() {
+                var inputField = document.querySelector('.acteCell .mat-input-element');
+                if (inputField) {
+                    clearInterval(checkExist); // Arrête de vérifier une fois que l'élément est trouvé
+                    for (let i = 0; i < defaultCotation.length; i++) {
+                        var event = new KeyboardEvent('keydown', {
+                            key: defaultCotation[i],
+                            bubbles: true,
+                            cancelable: true,
+                        });
+                        inputField.dispatchEvent(event);
+                        inputField.value += defaultCotation[i];
+                        var event = new Event('input', {
+                            bubbles: true,
+                            cancelable: true,
+                        });
+                        inputField.dispatchEvent(event);
+                    }
+                }
+            }, 100); // Vérifie l'existence de l'élément toutes les 100ms
+        });
+    }
+    // Add visual clues
+    addVisualClue(clue_index['n'][0]);
+    addVisualClue(clue_index['o'][0]); 
+
 
     // detect the press of keys in index, and check the corresponding element with clickElementById
     document.addEventListener('keydown', function (event) {
@@ -828,6 +826,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
                 if (inputField) {
                     setTimeout(function () {
                         inputField.focus();
+                        setDefaultValue();
                     }, 100);
                 }
             }
@@ -838,4 +837,3 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
 
 // TODO : ajouter d'autres fenêtres d'information
 // TODO : basculer l'écoute du clavier sur keydown et keyup
-// TODO : basculer keyCommands dans un fichier à part
