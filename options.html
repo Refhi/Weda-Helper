@@ -1,43 +1,85 @@
 <!DOCTYPE html>
-<meta charset="UTF-8">
+<head>
+  <meta charset="UTF-8">
+  <style>
+      body {
+          font-family: Arial, sans-serif;
+      }
+      .form-group {
+          margin-bottom: 1em;
+      }
+      label {
+          display: block;
+          margin-bottom: 0.5em;
+      }
+      input[type="text"], input[type="checkbox"] {
+          margin-bottom: 0.5em;
+      }
+      input[type="text"] {
+          width: 100%;
+          padding: 0.5em;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+      }
+      button {
+          background-color: #4CAF50;
+          color: white;
+          padding: 0.5em 1em;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+      }
+      button:hover {
+          background-color: #45a049;
+      }
+  </style>
+</head>
 <html>
   <body>
-    <label for="option1">Options :</label><br>
+    <h1>Options générales :</h1>
     <input type="checkbox" id="TweakImports"> Activer les modifications pour la fenêtre d'importations<br>
     <input type="checkbox" id="TweakTabConsultation"> Activer le tab index pour les consultations<br>
     <input type="checkbox" id="RemoveTitleSuggestions"> Retire le panneau de suggestion<br>
     <input type="checkbox" id="EnableHelp"> Affiche l'aide en appuyant sur Alt<br>
     <input type="checkbox" id="TweakTabSearchPatient"> Activer les modifications de la fenêtre recherche patient (permet d'utiliser tab plus facilement)<br>
     <input type="checkbox" id="TweakTabPrescription"> Activer les modifications de la fenêtre recherche médicaments (permet d'utiliser tab plus facilement)<br>
-    <input type="checkbox" id="RemoveLocalCompanionPrint"> Désactiver l'impression automatique complète via le companion<br>
-    <div>
+    <div style="display: flex; align-items: center;">
+      <input type="text" id="defaultCotation" name="defaultCotation" style="width: 10ch; margin-right: 1em;">
       <label for="defaultCotation">Cotation par défaut dans la FDS (laisser vide pour désactiver) :</label>
-      <input type="text" id="defaultCotation" name="defaultCotation">
     </div>
-    <div>
-      <label for="delay_primary">Delai entre la detection de l'affichage pdf et le début des entrées clavier (rec 0.02s) :</label>
-      <input type="text" id="delay_primary" name="delay_primary">
+    <h1>Lien avec Weda-Helper-Companion:</h1>
+    <h2>Options de connexion :</h2>
+    <div style="display: flex; align-items: center;">
+      <input type="text" id="portCompanion" name="portCompanion" style="width: 15ch; margin-right: 1em;">
+      <label for="portCompanion">Port Weda-Helper-Companion (default 3000) cf. https://github.com/Refhi/Weda-Helper-Companion:</label>
     </div>
-    <div>
-      <label for="delay_btw_tabs">Delai entre les simulations de Tabulations (rec 0.01s) :</label>
-      <input type="text" id="delay_btw_tabs" name="delay_btw_tabs">
+    <h2>Options d'impression automatique :</h2>
+    <input type="checkbox" id="RemoveLocalCompanionPrint" style="margin-right: 1em;"> Désactiver l'impression automatique complète via le companion<br>
+    <div style="display: flex; align-items: center;">
+      <input type="text" id="delay_primary" name="delay_primary" style="width: 15ch; margin-right: 1em;">
+      <label for="delay_primary">Delai entre la detection de l'affichage pdf et le début des entrées clavier (rec 0.02s)</label>
     </div>
-    <div>
-      <label for="delay_btw_tab_and_enter">Delai entre les simulations de Tabulations et Enters (rec 0.01s) :</label>
-      <input type="text" id="delay_btw_tab_and_enter" name="delay_btw_tab_and_enter">
+    <div style="display: flex; align-items: center;">
+      <input type="text" id="delay_btw_tabs" name="delay_btw_tabs" style="width: 15ch; margin-right: 1em;">
+      <label for="delay_btw_tabs">Delai entre les simulations de Tabulations (rec 0.01s)</label>
     </div>
-    <div>
-      <label for="delay_btw_enters">Delai entre les simulations de Enter (rec 0.5 sec) :</label>
-      <input type="text" id="delay_btw_enters" name="delay_btw_enters">
+    <div style="display: flex; align-items: center;">
+      <input type="text" id="delay_btw_tab_and_enter" name="delay_btw_tab_and_enter" style="width: 15ch; margin-right: 1em;">
+      <label for="delay_btw_tab_and_enter">Delai entre les simulations de Tabulations et Enters (rec 0.01s)</label>
     </div>
-    <input type="checkbox" id="RemoveLocalCompanionTPE"> Désactiver la communication avec le TPE et l'option TPE dans les fse<br>
-    <div>
-      <label for="ipTPE">IP TPE:</label>
-      <input type="text" id="ipTPE" name="ipTPE">
-      <label for="portTPE">Port TPE:</label>
-      <input type="text" id="portTPE" name="portTPE">
-      <label for="portCompanion">Port Weda-Helper-Companion (cf. https://github.com/Refhi/Weda-Helper-Companion):</label>
-      <input type="text" id="portCompanion" name="portCompanion">
+    <div style="display: flex; align-items: center;">
+      <input type="text" id="delay_btw_enters" name="delay_btw_enters" style="width: 15ch; margin-right: 1em;">
+      <label for="delay_btw_enters">Delai entre les simulations de Enter (rec 0.5 sec)</label>
+    </div>
+    <h2>Lien avec le TPE :</h2>
+    <input type="checkbox" id="RemoveLocalCompanionTPE" style="margin-right: 1em;"> Désactiver la communication avec le TPE et l'option TPE dans les fse<br>
+    <div style="display: flex; align-items: center;">
+      <input type="text" id="ipTPE" name="ipTPE" style="width: 15ch; margin-right: 1em;">
+      <label for="ipTPE">IP TPE</label>
+    </div>
+    <div style="display: flex; align-items: center;">
+      <input type="text" id="portTPE" name="portTPE" style="width: 15ch; margin-right: 1em;">
+      <label for="portTPE">Port TPE</label>
     </div>
     
         <button id="save">Enregistrer</button>

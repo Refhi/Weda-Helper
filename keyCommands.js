@@ -7,6 +7,209 @@
  * @property {Function} action - La fonction exécutée lorsque la commande clé est activée.
  */
 
+// Ecoute les messages envoyés par le background script
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+    console.log('request', request);
+    const entries = Object.entries(keyCommands);
+    for (const [key, value] of entries) {
+        if (request.action === key) {
+            value.action();
+            break;
+        }
+    }
+});
+
+// Permet d'appuyer sur le bouton "Valider" ou équivalent
+function push_valider() {
+    console.log('push_valider activé');
+    function clickClassExceptIf(class_name, class_exception, id_exception) {
+        var elements = document.getElementsByClassName(class_name);
+        console.log('elements', elements);
+        for (var i = 0; i < elements.length; i++) {
+            if (elements[i].value !== class_exception && elements[i].id !== id_exception) {
+                elements[i].click();
+                return true
+            }
+        }
+        return false
+    }
+
+    function clicSecure() {
+        function tpesender() {
+            console.log('tpe_sender activé');
+            var montantElement = document.querySelector('input[placeholder="Montant"]');
+            // extraire le montant de l'élément
+            var amount = montantElement.value;
+            // retirer la virgule de amount
+            amount = amount.replace(/\./g, '');            
+            console.log('amount', amount);
+            sendtpeinstruction(amount);
+        }
+
+        var targetElement = document.querySelector('.mat-focus-indicator.bold.mat-raised-button.mat-button-base.mat-accent');
+        console.log('Clicking on target element', targetElement);
+        if (targetElement) {
+            targetElement.click();
+            tpesender();
+            return true;
+        } else {
+            return false;
+        }
+    }
+    // click other elements, one after the other, until one of them works
+    const actions = [
+        () => clickElementById('ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonValidDocument'),
+        () => clickClassExceptIf('button valid', 'Chercher', 'ContentPlaceHolder1_btnScanDatamatrix'),
+        () => GenericClicker("title", "Enregistrer et quitter"),
+        () => GenericClicker("title", "Valider"),
+        () => clickElementByChildtextContent("VALIDER"),
+        () => clickElementById('ContentPlaceHolder1_ButtonQuitter2'),
+        () => clicSecure()
+    ];
+
+    actions.some(action => action() !== false);
+}
+
+// // Diverses aides au clic
+// Clique sur la première imprimante
+function clickFirstPrinter() {
+    var element = document.querySelector('[onclick*="ctl00$ContentPlaceHolder1$MenuPrint"][class*="popout-dynamic level2"]');
+    console.log('first printer Element is', element);
+    if (element) {
+        element.click();
+        return true;
+    } else {
+        return false;
+    }
+}
+
+// Clique sur un bouton selon sa classe
+function clickElementByClass(className) {
+    var elements = document.getElementsByClassName(className);
+    if (elements.length > 0) {
+        var lastElement = elements[elements.length - 1]; // Get the last element
+        lastElement.click(); // Click the last element with the class
+        console.log('[clickElementByClass] : Element clicked class', className);
+        console.dir(lastElement); // Log all properties of the clicked element
+        return true;
+    }
+    else {
+        console.log('[clickElementByClass] : no Element clicked class', className);
+        return false;
+    }
+}
+
+// Clique sur un bouton selon un de ses attributs et sa valeur
+function GenericClicker(valueName, value) {
+    var elements = document.querySelectorAll(`[${valueName}="${value}"]`);
+    if (elements.length > 0) {
+        var element = elements[0]
+        // console.log('Clicking element', valueName, value);
+        element.click();
+        return true;
+    } else {
+        // console.log('Element not found', valueName, value);
+        return false;
+    }
+}
+
+// Clique sur un bouton selon son Id
+function clickElementById(elementId) {
+    var element = document.getElementById(elementId);
+    if (element) {
+        element.click();
+        console.log('Element clicked:', elementId);
+        return true;
+    } else {
+        console.log('Element not found:', elementId);
+        return false;
+    }
+}
+
+// Clique sur le bouton carte vitale
+function clickCarteVitale() {
+    clickElementByClass("cv");
+    if (!GenericClicker("title", "Relance une lecture de la carte vitale")) { //TODO à tester : pour l'instant sous linux j'ai un message d'erreur
+        GenericClicker("mattooltip", "Lire la Carte Vitale");
+    }
+}
+
+
+// Clique sur un élément du menu W selon sa description
+function submenuW(description) {
+    var level1Element = document.getElementsByClassName('level1 static')[0];
+    console.log('level1Element', level1Element);
+    if (level1Element) {
+        var level3Element = Array.from(level1Element.getElementsByClassName('level3 dynamic')).find(function (element) {
+            return element.innerText.includes(description) && element.hasAttribute('tabindex');
+        });
+        console.log('level3Element', level3Element);
+        if (level3Element) {
+            level3Element.click();
+            console.log('Element clicked:', level3Element);
+            return true;
+        } else {
+            var level2Element = Array.from(level1Element.getElementsByClassName('level2 dynamic')).find(function (element) {
+                return element.innerText.includes(description) && element.hasAttribute('tabindex');
+            });
+            console.log('level2Element', level2Element);
+            if (level2Element) {
+                level2Element.click();
+                console.log('Element clicked:', level2Element);
+                return true;
+            }
+        }
+    }
+    console.log('No elements found', description);
+    return false;
+}
+
+// Clique sur un élément selon le text de son enfant
+function clickElementByChildtextContent(childtextContent) {
+    var elements = document.querySelectorAll('span.mat-button-wrapper');
+    console.log('click element by child context clicking first one in list', elements);
+    for (var i = 0; i < elements.length; i++) {
+        if (elements[i].textContent === childtextContent) {
+            elements[i].parentNode.click();
+            return true
+        }
+    }
+    console.log('No elements found', childtextContent);
+    return false
+}
+
+// focus on the first element with asked Name
+function focusElementByName(elementName) {
+    console.log('Focusing element:', elementName);
+    var element = document.getElementsByName(elementName)[0];
+    if (element) {
+        element.focus();
+        console.log('Focusing element success:', elementName);
+    }
+}
+
+function waitForElementToExist(elementId, callback) {
+    var element = document.getElementById(elementId);
+    if (element) {
+        callback(element);
+    } else {
+        var startTime = Date.now();
+        var checkInterval = setInterval(function () {
+            var elapsedTime = Date.now() - startTime;
+            if (elapsedTime >= 5000) {
+                clearInterval(checkInterval);
+                console.log('Timeout: Element not found after 5 seconds');
+            } else {
+                var element = document.getElementById(elementId);
+                if (element) {
+                    clearInterval(checkInterval);
+                    callback(element);
+                }
+            }
+        }, 100); // Check every 100 milliseconds
+    }
+}
+
 const keyCommands = {
     'push_valider': {
         description: 'Appuie le bouton Valider ou équivalent',
@@ -127,10 +330,7 @@ const keyCommands = {
         key: 'alt+c',
         action: function () {
             console.log('shortcut_carte_vitale activé');
-            clickElementByClass("cv");
-            if (!GenericClicker("title", "Relance une lecture de la carte vitale")) { //TODO à tester : pour l'instant sous linux j'ai un message d'erreur
-                GenericClicker("mattooltip", "Lire la Carte Vitale");
-            }
+            clickCarteVitale();
         }
     },
 };

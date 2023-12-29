@@ -1,137 +1,8 @@
-// Order the tab order of the elements shown after a search
-function ListTabOrderer(validTarget) {
-    console.log('ListTabOrderer started');
-    var truncated_id = validTarget.slice(0, -1);
-    var elements = document.querySelectorAll('[id^="' + truncated_id + '"]');
-    for (var i = 0; i < elements.length; i++) {
-        elements[i].tabIndex = i + 100;
-    }
-}
+// // Différentes petites fonctions ajoutées ou supprimées de Weda
+// // Ne justifiant pas la création d'un fichier séparé
 
 
-// place a listener on the search box and focus on the first element of the list after a search
-function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = false) {
-    var searchBox = document.getElementById(idsSearchBox);
-    function focusOnFirstListElement(validTarget) {    
-        const elementToFocus = document.getElementById(validTarget);
-        if (elementToFocus) {
-            elementToFocus.focus();
-        }
-    }
-
-    function FocusToDocDateAfterPatientSelect() {
-        // find all elements with id starting with ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_
-        const elements = document.querySelectorAll('[id^="ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_"]');
-        // starting from the last element, find the first element with title= starting with "Vous avez attribué ce document au patient" and gets its id
-        for (let i = elements.length - 1; i >= 0; i--) {
-            const element = elements[i];
-            console.log('element', element);
-            if (element.title.startsWith("Vous avez attribué ce document au patient")) {
-                const id = element.id;
-                // get the 1 or 2 digits at the end of the id
-                const patient_number = id.match(/\d+$/)[0];
-                console.log('Le patient en cours est en position', patient_number);
-                // focus on the element with ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_ + patient_number
-                const elementToFocus = document.getElementById('ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_' + patient_number);
-                if (elementToFocus) {
-                    elementToFocus.focus();
-                    break;
-                }
-            }
-        }
-    }
-    
-
-    // place a listner on all patients names (ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 etc.)
-    function PatientSelectEntryListener() {
-        // place a listener on all elements starting with ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_
-        var elements = document.querySelectorAll('[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"]');
-        for (var i = 0; i < elements.length; i++) {
-            elements[i].addEventListener('keydown', function (event) {
-                if (event.key === 'Enter') {
-                    console.log('Enter pressed on patient name');
-                    setTimeout(function () {
-                        FocusToDocDateAfterPatientSelect();
-                    }, 500);
-                }
-            });
-        }
-    }
-
-    function watchForEarlyDOMChanges() {
-        var startTime = Date.now();
-        var observer = new MutationObserver(function (mutations) {
-            console.log('DOM changed, resetting setupUIInteractions');
-            // check if the timer has been running for more than 500ms, then remove the listener and the timer
-            var elapsedTime = Date.now() - startTime;
-            if (elapsedTime >= 500) {
-                observer.disconnect();
-                startTime = null;                
-            }
-            setupUIInteractions();
-
-        });
-        observer.observe(document, { childList: true, subtree: true });
-    }
-
-    function setupUIInteractions() {
-        if (listTabOrderer) {
-            ListTabOrderer(validTarget);
-            PatientSelectEntryListener();
-        }
-        focusOnFirstListElement(validTarget);
-        SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer);
-    } 
-
-
-    if (searchBox) {
-        searchBox.addEventListener('keydown', function (event) {
-            console.log('added event listener to search box');
-            if (event.key === 'Enter') {
-                console.log('Enter pressed in search box');
-                setTimeout(function () {
-                    setupUIInteractions();
-                    watchForEarlyDOMChanges();
-                }, 600);
-            }
-        });
-    }
-}
-
-
-
-// focus on the first element with asked Name
-function focusElementByName(elementName) {
-    console.log('Focusing element:', elementName);
-    var element = document.getElementsByName(elementName)[0];
-    if (element) {
-        element.focus();
-        console.log('Focusing element success:', elementName);
-    }
-}
-
-function waitForElementToExist(elementId, callback) {
-    var element = document.getElementById(elementId);
-    if (element) {
-        callback(element);
-    } else {
-        var startTime = Date.now();
-        var checkInterval = setInterval(function () {
-            var elapsedTime = Date.now() - startTime;
-            if (elapsedTime >= 5000) {
-                clearInterval(checkInterval);
-                console.log('Timeout: Element not found after 5 seconds');
-            } else {
-                var element = document.getElementById(elementId);
-                if (element) {
-                    clearInterval(checkInterval);
-                    callback(element);
-                }
-            }
-        }, 100); // Check every 100 milliseconds
-    }
-}
-
+// // Boutons du popup
 // Permet de mettre tout les éléments de la page en attente d'import sur "Consultation"
 function allConsultation() {
     console.log('setAllImportToConsultation');
@@ -143,59 +14,8 @@ function allConsultation() {
     }
 }
 
-// Permet d'appuyer sur le bouton "Valider" ou équivalent
-function push_valider() {
-    console.log('push_valider activé');
-    function clickClassExceptIf(class_name, class_exception, id_exception) {
-        var elements = document.getElementsByClassName(class_name);
-        console.log('elements', elements);
-        for (var i = 0; i < elements.length; i++) {
-            if (elements[i].value !== class_exception && elements[i].id !== id_exception) {
-                elements[i].click();
-                return true
-            }
-        }
-        return false
-    }
-
-    function clicSecure() {
-        function tpesender() {
-            console.log('tpe_sender activé');
-            var montantElement = document.querySelector('input[placeholder="Montant"]');
-            // extraire le montant de l'élément
-            var amount = montantElement.value;
-            // retirer la virgule de amount
-            amount = amount.replace(/\./g, '');            
-            console.log('amount', amount);
-            sendtpeinstruction(amount);
-        }
-
-        var targetElement = document.querySelector('.mat-focus-indicator.bold.mat-raised-button.mat-button-base.mat-accent');
-        console.log('Clicking on target element', targetElement);
-        if (targetElement) {
-            targetElement.click();
-            tpesender();
-            return true;
-        } else {
-            return false;
-        }
-    }
-    // click other elements, one after the other, until one of them works
-    const actions = [
-        () => clickElementById('ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonValidDocument'),
-        () => clickClassExceptIf('button valid', 'Chercher', 'ContentPlaceHolder1_btnScanDatamatrix'),
-        () => GenericClicker("title", "Enregistrer et quitter"),
-        () => GenericClicker("title", "Valider"),
-        () => clickElementByChildtextContent("VALIDER"),
-        () => clickElementById('ContentPlaceHolder1_ButtonQuitter2'),
-        () => clicSecure()
-    ];
-
-    actions.some(action => action() !== false);
-}
-
-
-// show a tooltip next to W entries with the key of submenuDict
+// // Gestion de l'affichage de l'aide
+// afficher une infobulle à côté des entrées W avec la clé de submenuDict
 function tooltipshower() {
     // abort if the focus is out of the window/tab TODO
     if (!document.hasFocus() || document.hidden) {
@@ -255,7 +75,7 @@ function tooltipshower() {
     }
 }
 
-// remove the tooltip next to W and relacher W
+// retirer l'infobulle d'aide et relacher W
 function mouseoutW() {
     // Supprimer les tooltips
     var tooltips = document.querySelectorAll('div.tooltip');
@@ -275,7 +95,7 @@ function mouseoutW() {
 }
 
 
-// // External functions : lien avec Weda-Helper-Companion
+// // lien avec Weda-Helper-Companion
 // envoi d'instruction au TPE via Weda-Helper-Companion
 function sendtpeinstruction(amount) {
     // store the amount in chrome.storage.sync
@@ -348,34 +168,63 @@ function sendPrint() {
 }
 
 
-
-// // Listeners
-// Listen for messages from the background script about options
-const actions = {
-    'allConsultation': allConsultation,
-    'tpebis': () => sendLastTPEamount()
-};
-
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action in actions) {
-        console.log(request.action + ' demandé');
-        actions[request.action]();
+// // Aide au clic
+// permet de cliquer sur un élément selon l'attribut onclick
+function clickElementByOnclick(onclickValue) {
+    var element = document.querySelector(`[onclick*="${onclickValue}"]`);
+    console.log('Element:', element);
+    if (element) {
+        console.log('Clicking element onclickvalue', onclickValue);
+        element.click();
+        return true;
+    } else {
+        console.log('Element not found onclickvalue', onclickValue);
+        return false;
     }
-});
+}
 
-// Listen for messages from the background script about keycommands
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    console.log('request', request);
-    const entries = Object.entries(keyCommands);
-    for (const [key, value] of entries) {
-        if (request.action === key) {
-            value.action();
-            break;
-        }
-    }
-});
+// // // Fonction pour attendre la présence d'un élément avant de lancer une fonction
+// function waitForElement(selector, text = null, timeout = 5000, callback) {
+//     var checkInterval = setInterval(function() {
+//         var elements = document.querySelectorAll(selector);
+//         for (var i = 0; i < elements.length; i++) {
+//             if (!text || elements[i].textContent.includes(text)) {
+//                 callback(elements[i]);
+//                 clearInterval(checkInterval);
+//                 return;
+//             }
+//         }
+//     }, 100);
 
-// Listen for focus leaving the window
+//     setTimeout(function() {
+//         clearInterval(checkInterval);
+//         console.log(`Element ${selector} ${text ? 'with text "' + text + '"' : ''} not found after ${timeout} ms`);
+//     }, timeout);
+// }
+
+// Vérifie la présence de l'élément avec title="Prénom du patient"
+function checkPatientName() {
+    waitForElement('[title="Prénom du patient"]', function(patientNameElement) {
+        var patientName = patientNameElement.value;
+        waitForElement('vz-lecture-cv-widget', function(widgetElement) {
+            var spans = widgetElement.getElementsByTagName('span');
+            for (var i = 0; i < spans.length; i++) {
+                if (spans[i].textContent.includes(patientName)) {
+                    console.log('Patient name found');
+                    spans[i].click();
+                    return true;
+                }
+            }
+            console.log('Patient name not found');
+            return false;
+        });
+    });
+}
+
+
+
+// // Ecoutes d'évènements
+// Vérifie que la fenêtre est active et que le focus est sur la page
 window.addEventListener('blur', function () {
     console.log('Window lost focus (blur)');
     mouseoutW();
@@ -388,9 +237,20 @@ document.addEventListener('visibilitychange', function() {
 });
 
 
+// Ecoute les instructions du script de fond au sujet de la popup
+const actions = {
+    'allConsultation': allConsultation,
+    'tpebis': () => sendLastTPEamount()
+};
 
-// // "Main"
-// Affiche une fenêtre d'aide pour mettre en avant les raccourcis clavier
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action in actions) {
+        console.log(request.action + ' demandé');
+        actions[request.action]();
+    }
+});
+
+// Ecoute l'appuis de la touches Alt pour afficher l'aide
 var tooltipTimeout;
 document.addEventListener('keydown', function (event) {
     if (event.key === 'Alt') {
@@ -407,145 +267,7 @@ document.addEventListener('keyup', function (event) {
 });
 
 
-// // Change some elements based on the URL and function parameters
-
-// // Tab and search tweaks
-// [Page d'upload] Tweak the uploader page
-chrome.storage.sync.get('TweakImports', function (result) {
-    // Modifie la taille de la fenêtre de prévisualisation du PDF
-    function uploaderformResizeElements() {
-        const newsize = '600px'; // TODO mettre ça dans les options
-        const pdfViewer = document.querySelector('#ContentPlaceHolder1_ViewPdfDocumentUCForm1_PanelViewDocument');
-        if (pdfViewer) {
-            pdfViewer.style.height = newsize;
-        }
-
-        const iframe = document.querySelector('#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile');
-        if (iframe) {
-            iframe.style.height = newsize;
-        }
-
-        const panelFindPatient = document.querySelector('#ContentPlaceHolder1_FindPatientUcForm1_PanelFindPatient');
-        if (panelFindPatient) {
-            panelFindPatient.style.top = newsize;
-        }
-    }
-
-    // Modifie l'ordre de tabulation des éléments
-    function uploaderformSetTabOrder() {
-        const elementIds = [
-            'ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_',
-            'ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_',
-            'ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_',
-            'ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_'
-        ];
-    
-        let tabIndex = 1;
-        for (let i = 0; i <= 7; i++) {
-            elementIds.forEach(function (elementId) {
-                var element = document.getElementById(elementId + i);
-                if (element) {
-                    element.tabIndex = tabIndex;
-                    tabIndex++;
-                }
-            });
-        }
-    }
-
-    // Convert a truncated date to a full date
-    function convertDate(truncatedDate) {
-        let parts = truncatedDate.split('/');
-        let day = parts[0];
-        let month = parts[1] || new Date().getMonth() + 1;
-        let year = new Date().getFullYear();
-        let length = day.length;
-        let validDayLengths = [1, 2, 4, 6, 8];
-        
-        if (length === 4) {
-            // If truncatedDate is 4 digits, assume the first 2 digits are the day and the last 2 digits are the month
-            day = truncatedDate.substring(0, 2);
-            month = truncatedDate.substring(2, 4);
-        } else if (length === 6) {
-            // If truncatedDate is 6 digits, assume the first 2 digits are the day, the next 2 digits are the month, and the last 2 digits are the year
-            day = truncatedDate.substring(0, 2);
-            month = truncatedDate.substring(2, 4);
-            year = '20' + truncatedDate.substring(4, 6); // Add '20' to the beginning of the year to make it 4 digits
-        } else if (length === 8) {
-            // If truncatedDate is 8 digits, assume the first 2 digits are the day, the next 2 digits are the month, and the last 4 digits are the year
-            day = truncatedDate.substring(0, 2);
-            month = truncatedDate.substring(2, 4);
-            year = truncatedDate.substring(4, 8);
-        } else if (!validDayLengths.includes(length)){
-            // If truncatedDate is not 4, 6, or 8 digits, return it without modification
-            console.log('Invalid date format:', truncatedDate);
-            return truncatedDate;
-        }
-
-        // Add leading zeros to day and month if needed
-        if (day < 10 && day.length < 2) {
-            day = '0' + day;
-        }
-        
-        if (month < 10 && month.length < 2) {
-            month = '0' + month;
-        }
-    
-        return day + '/' + month + '/' + year;
-    }
-
-    // Function to handle the 'keydown' event
-    function handleKeyDown(event) {
-        if (event.key === 'Tab') {
-            // The 'Tab' key was pressed, check and modify the text content as needed
-            let textField = event.target;
-            let datePattern = /^\d{2}\/\d{2}\/\d{4}$/; // Regular expression for dd/mm/yyyy
-            if (!datePattern.test(textField.value)) {
-                // The text is not in the correct date format. Check if it contains only / and numbers
-                let validPattern = /^[\d\/]+$/;
-                if (validPattern.test(textField.value)) {
-                    // The text is valid, convert it to a full date
-                    textField.value = convertDate(textField.value);
-                }
-                // ...
-            }
-        }
-    }
-
-    // Add the event listener to each date document field
-    function addEventListeners() {
-        for (let i = 0; i <= 7; i++) {
-            let textField = document.getElementById(`ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_${i}`);
-            if (textField) {
-                textField.addEventListener('keydown', handleKeyDown);
-            }
-        }
-    }
-    
-    // modifie la page d'upload : modifie la taille de prévisu, modifie l'ordre de tabulation et place un listener sur la searchbox.
-    function uploaderformSetup() {
-        uploaderformResizeElements();
-        uploaderformSetTabOrder();
-        SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = true);
-        addEventListeners();
-    };
-    
-    if (result.TweakImports !== false) {
-        if (window.location.href === 'https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx') {
-            var idsSearchBox = 'ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche';
-            var validTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0';
-            // Create a MutationObserver instance to watch for changes in the DOM
-            var observer = new MutationObserver(function (mutations) {
-                uploaderformSetup();
-            });
-
-            // Start observing the document with the configured parameters
-            observer.observe(document, { childList: true, subtree: true });
-
-            uploaderformSetup();
-        }
-    }
-});
-
+// // Change certains éléments selon l'URL les options
 // [Page de Consultation] Modifie l'ordre de tabulation des valeurs de suivi
 chrome.storage.sync.get('TweakTabConsultation', function (result) {
     function changeTabOrder() {
@@ -563,42 +285,9 @@ chrome.storage.sync.get('TweakTabConsultation', function (result) {
     }
 });
 
-// [Page de prescriptions] Tweaks the prescription page to select the first medicine after a search
-chrome.storage.sync.get('TweakTabPrescription', function (result) {
-    if (result.TweakTabPrescription !== false) {
-        if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx')) {
-            var idsSearchBox = 'ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack';
-            var validTarget = 'ContentPlaceHolder1_BaseVidalUcForm1_VidalPacksGrid_LinkButtonVidalPacksGridName_0';
-            console.log('SearchBoxEntryListener started (prescription)');
-            SearchBoxEntryListener(idsSearchBox, validTarget);
-        }
-    }
-});
 
-// [Page de recherche patient] Tweaks the search patient page to select the first patient after a search
-chrome.storage.sync.get('TweakTabSearchPatient', function (result) {
-    console.log('TweakTabSearchPatient from storage:', result.TweakTabSearchPatient);
-    if (result.TweakTabSearchPatient !== false) {
-        if (window.location.href === 'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx') {
-            const idsSearchBox = 'ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche';
-            const validTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0';
-            console.log('TweakTabSearchPatient started');
-            // Réorganise l'ordre de tabulation des éléments de la liste de patients
-            ListTabOrderer(validTarget);
-            // Place le focus sur le premier élément de la liste de patients
-            const elementToFocus = document.getElementById(validTarget);
-            if (elementToFocus) {
-                elementToFocus.focus();
-            }
-            // Place un listener sur la searchbox (qui s'auto-entretiens à chaque recherche)
-            SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = true);
-        }
-    }
-});
 
-// // Remove stuff
-
-// Remove the title suggestions
+// // Retrait des suggestions de titre
 chrome.storage.sync.get('RemoveTitleSuggestions', function (result) {
     function RemoveTitleSuggestions() {
         console.log('RemoveTitleSuggestions started');
@@ -636,9 +325,7 @@ chrome.storage.sync.get('RemoveTitleSuggestions', function (result) {
 
 
 
-// // New functions in weda
-
-// Enable the numpad in the prescription form
+// // Ajoute l'écoute du clavier pour faciliter les prescription
 if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx')) {
     console.log('numpader started');
     // Make a dictionnary with keystrokes and their corresponding actions
@@ -668,171 +355,6 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
     });
 }
 
-// Tweak the FSE page (Add a button in the FSE page to send the amount to the TPE, implement shortcuts)
-if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx')) {
-    console.log('fse started');
-    // Make a dictionnary with keystrokes and their corresponding actions
-    var index = {
-        'n': ['mat-radio-9-input', 'mat-radio-3-input'],
-        'o': ['mat-radio-8-input', 'mat-radio-2-input'],
-        // add an entry for the enter key
-        'Enter': 'secure_FSE',
-    }
-    var clue_index = {
-        'n': ['mat-radio-9', 'mat-radio-3'],
-        'o': ['mat-radio-8', 'mat-radio-2'],
-    }
-
-    // check if either of the two radio buttons is checked in id mat-radio-9 and mat-radio-8
-    function YesNoButtonChecked(question_number) {
-        var element1 = document.getElementById(index['n'][question_number]);
-        var element2 = document.getElementById(index['o'][question_number]);
-        if (element1.checked || element2.checked) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-    // add a visual clue to the element with id element_id
-    function addVisualClue(element_id) {
-        var checkExist = setInterval(function() {
-            var radioButton = document.getElementById(element_id);
-            if (radioButton) {
-                clearInterval(checkExist); // Arrête de vérifier une fois que l'élément est trouvé
-                var labelContents = radioButton.getElementsByClassName('mat-radio-label-content');
-                console.log('labelContents', labelContents);
-                if (labelContents.length > 0) {
-                    var labelContent = labelContents[0];
-                    var text = labelContent.innerHTML;
-                    console.log('Texte à souligner', text);
-                    text = text.replace('N', '<span style="text-decoration: underline;">N</span>');
-                    text = text.replace('O', '<span style="text-decoration: underline;">O</span>');
-                    labelContent.innerHTML = text;
-                }
-            }
-        }, 100); // Vérifie l'existence de l'élément toutes les 100ms
-    }
-    function removeVisualClue(element_id) {
-        console.log('removeVisualClue', element_id);
-        var radioButton = document.getElementById(element_id);
-        if (radioButton) {
-            var labelContents = radioButton.getElementsByClassName('mat-radio-label-content');
-            console.log('labelContents', labelContents);
-            if (labelContents.length > 0) {
-                var labelContent = labelContents[0];
-                var text = labelContent.innerHTML;
-                console.log('Texte à de-souligner', text);
-                text = text.replace('<span style="text-decoration: underline;">N</span>', 'N');
-                text = text.replace('<span style="text-decoration: underline;">O</span>', 'O');
-                labelContent.innerHTML = text;
-            }
-        }
-    }
-
-    // function setDefaultValue() {
-    //     // set defaut value
-    //     chrome.storage.sync.get('defaultCotation', function (result) {
-    //         var defaultCotation = result.defaultCotation;
-    //         // si defaultCotation n'est pas défini, le définir à ''
-    //         if (!defaultCotation) {
-    //             defaultCotation = '';
-    //         }
-    //         console.log('Je met la cotation par défaut : ', defaultCotation);
-
-    //         var checkExist = setInterval(function() {
-    //             var inputField = document.querySelector('.acteCell .mat-input-element');
-    //             if (inputField) {
-    //                 clearInterval(checkExist); // Arrête de vérifier une fois que l'élément est trouvé
-    //                 inputField.value = defaultCotation;
-    //             }
-    //         }, 100); // Vérifie l'existence de l'élément toutes les 100ms
-    //     });
-    // }
-
-    function setDefaultValue() {
-        // set defaut value
-        chrome.storage.sync.get('defaultCotation', function (result) {
-            var defaultCotation = result.defaultCotation;
-            // si defaultCotation n'est pas défini, le définir à ''
-            if (!defaultCotation) {
-                defaultCotation = '';
-            }
-            console.log('Je met la cotation par défaut : ', defaultCotation);
-
-            var checkExist = setInterval(function() {
-                var inputField = document.querySelector('.acteCell .mat-input-element');
-                if (inputField) {
-                    clearInterval(checkExist); // Arrête de vérifier une fois que l'élément est trouvé
-                    for (let i = 0; i < defaultCotation.length; i++) {
-                        var event = new KeyboardEvent('keydown', {
-                            key: defaultCotation[i],
-                            bubbles: true,
-                            cancelable: true,
-                        });
-                        inputField.dispatchEvent(event);
-                        inputField.value += defaultCotation[i];
-                        var event = new Event('input', {
-                            bubbles: true,
-                            cancelable: true,
-                        });
-                        inputField.dispatchEvent(event);
-                    }
-                }
-            }, 100); // Vérifie l'existence de l'élément toutes les 100ms
-        });
-    }
-    // Add visual clues
-    addVisualClue(clue_index['n'][0]);
-    addVisualClue(clue_index['o'][0]); 
-
-
-    // detect the press of keys in index, and check the corresponding element with clickElementById
-    document.addEventListener('keydown', function (event) {
-        if (event.key in index) {
-            console.log('key pressed:', event.key);
-            let element;
-            if (!YesNoButtonChecked(0)) {
-                console.log('No button checked on first yes/no question');
-                element = document.getElementById(index[event.key][0]);
-                setTimeout(function () {
-                    addVisualClue(clue_index['n'][1]);
-                    addVisualClue(clue_index['o'][1]);
-                }, 100);
-                setTimeout(function () {
-                    removeVisualClue(clue_index['n'][0]);
-                    removeVisualClue(clue_index['o'][0]);
-                }, 100);
-
-            } else if (YesNoButtonChecked(0) && !YesNoButtonChecked(1)) {
-                element = document.getElementById(index[event.key][1]);
-                console.log('A button is checked on first yes/no question but not the second one');
-                setTimeout(function () {
-                    removeVisualClue(clue_index['n'][1]);
-                    removeVisualClue(clue_index['o'][1]);
-                }, 100);
-            } else {
-                console.log('Both yes/no questions have an answer');
-            }
-            console.log('element to act on is', element);
-            if (element && element.type === 'radio') {
-                console.log('trying to check element', element);
-                element.checked = true;
-                element.dispatchEvent(new Event('change'));
-            }
-            if (YesNoButtonChecked(0) && YesNoButtonChecked(1)) {
-                console.log('Both yes/no questions have an answer');
-                var inputField = document.querySelector('.acteCell .mat-input-element');
-                console.log('trying to focus on', inputField);
-                if (inputField) {
-                    setTimeout(function () {
-                        inputField.focus();
-                        setDefaultValue();
-                    }, 100);
-                }
-            }
-        }
-    });
-}
 
 
 // TODO : ajouter d'autres fenêtres d'information
