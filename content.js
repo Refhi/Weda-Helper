@@ -1,6 +1,25 @@
 // // Différentes petites fonctions ajoutées ou supprimées de Weda
 // // Ne justifiant pas la création d'un fichier séparé
 
+// // Fonction pour attendre la présence d'un élément avant de lancer une fonction
+function waitForElement(selector, text = null, timeout, callback) {
+    var checkInterval = setInterval(function() {
+        var elements = document.querySelectorAll(selector);
+        for (var i = 0; i < elements.length; i++) {
+            if (!text || elements[i].textContent.includes(text)) {
+                callback(elements[i]);
+                clearInterval(checkInterval);
+                clearTimeout(timeoutId);
+                return;
+            }
+        }
+    }, 100);
+
+    var timeoutId = setTimeout(function() {
+        clearInterval(checkInterval);
+        console.log(`Element ${selector} ${text ? 'with text "' + text + '"' : ''} not found after ${timeout} ms`);
+    }, timeout);
+}
 
 // // Boutons du popup
 // Permet de mettre tout les éléments de la page en attente d'import sur "Consultation"
@@ -98,18 +117,19 @@ function mouseoutW() {
 // // lien avec Weda-Helper-Companion
 // envoi d'instruction au TPE via Weda-Helper-Companion
 function sendtpeinstruction(amount) {
+
     // store the amount in chrome.storage.sync
     chrome.storage.sync.set({ 'lastTPEamount': amount }, function () {
         console.log('lastTPEamount', amount, 'sauvegardé avec succès');
     });
-    chrome.storage.sync.get(['portCompanion','ipTPE', 'portTPE', 'RemoveLocalCompanionTPE'], function (result) {
+        
+    chrome.storage.sync.get(['portCompanion', 'delay_primary', 'RemoveLocalCompanionTPE'], function (result) {
         const portCompanion = result.portCompanion;
-        const ipTPE = result.ipTPE;
-        const portTPE = result.portTPE;
         const removeLocalCompanionTPE = result.RemoveLocalCompanionTPE;
+        const delay_primary = result.delay_primary;
 
-        if (!portCompanion || !ipTPE || !portTPE || removeLocalCompanionTPE !== false) {
-            console.warn('ipTPE, portTPE ou RemoveLocalCompanionTPE ne sont pas définis ou RemoveLocalCompanionTPE est !false (valeur actuelle :', removeLocalCompanionTPE, ')');
+        if (!delay_primary || !portCompanion || removeLocalCompanionTPE !== false) {
+            console.warn('RemoveLocalCompanionTPE ou portCompanion ne sont pas définis ou RemoveLocalCompanionTPE est !false (valeur actuelle :', removeLocalCompanionTPE, ')');
             return;
         } else if (!(/^\d+$/.test(amount))) {
             console.log('amount', amount, 'n\'est pas un nombre entier');
@@ -117,11 +137,12 @@ function sendtpeinstruction(amount) {
         }
         else {
             console.log('sendinstruction', amount + 'c€' + ' to ' + ipTPE + ':' + portTPE);
-            fetch(`http://localhost:${portCompanion}/tpe/${ipTPE}/${portTPE}/${amount}`)
-                // les deux ci-dessous sont désactivés car ils ne fonctionnent pas avec no-cors
-                .then(response => response.json())
-                .then(data => console.log(data))
-                .catch(error => console.error('Error:', error));
+            setTimeout(() => {
+                fetch(`http://localhost:${portCompanion}/tpe/${amount}`)
+                    .then(response => response.json())
+                    .then(data => console.log(data))
+                    .catch(error => console.error('Error:', error));
+            }, delay_primary);
         }
     });
 }
@@ -150,17 +171,12 @@ function sendPrint() {
             chrome.storage.sync.get(['portCompanion', 'delay_primary', 'delay_btw_tabs', 'delay_btw_tab_and_enter', 'delay_btw_enters'], function (result) {
                 const portCompanion = result.portCompanion;
                 const delay_primary = result.delay_primary;
-                const delay_btw_tabs = result.delay_btw_tabs;
-                const delay_btw_tab_and_enter = result.delay_btw_tab_and_enter;
-                const delay_btw_enters = result.delay_btw_enters;
-                if (!portCompanion || !delay_primary || !delay_btw_tabs || !delay_btw_tab_and_enter || !delay_btw_enters) {
-                    console.warn('ipTPE, portTPE ou RemoveLocalCompanionTPE ne sont pas définis. Aller à chrome-extension://fnfdbangkcmjacbeaaiongkbacaamnfd/options.html pour les définir');
+                if (!portCompanion || !delay_primary) {
+                    console.warn('RemoveLocalCompanionTPE ou delay_primary ne sont pas définis. Aller à chrome-extension://fnfdbangkcmjacbeaaiongkbacaamnfd/options.html pour les définir');
                     return;
                 }
-                console.log('delay_btw_tabs', delay_btw_tabs);
-                console.log('delay_btw_tab_and_enter', delay_btw_tab_and_enter);
-                console.log('delay_btw_enters', delay_btw_enters);
-                fetch(`http://localhost:${portCompanion}/print/${delay_primary}/${delay_btw_tabs}/${delay_btw_tab_and_enter}/${delay_btw_enters}`)
+                console.log('délais avant déclenchement de la touche impression', delay_primary, 'ms');
+                fetch(`http://localhost:${portCompanion}/print`)
                     .catch(error => console.error('Error:', error));
             });
         }
@@ -183,30 +199,12 @@ function clickElementByOnclick(onclickValue) {
     }
 }
 
-// // // Fonction pour attendre la présence d'un élément avant de lancer une fonction
-// function waitForElement(selector, text = null, timeout = 5000, callback) {
-//     var checkInterval = setInterval(function() {
-//         var elements = document.querySelectorAll(selector);
-//         for (var i = 0; i < elements.length; i++) {
-//             if (!text || elements[i].textContent.includes(text)) {
-//                 callback(elements[i]);
-//                 clearInterval(checkInterval);
-//                 return;
-//             }
-//         }
-//     }, 100);
-
-//     setTimeout(function() {
-//         clearInterval(checkInterval);
-//         console.log(`Element ${selector} ${text ? 'with text "' + text + '"' : ''} not found after ${timeout} ms`);
-//     }, timeout);
-// }
 
 // Vérifie la présence de l'élément avec title="Prénom du patient"
 function checkPatientName() {
-    waitForElement('[title="Prénom du patient"]', function(patientNameElement) {
+    waitForElement('[title="Prénom du patient"]', null, 5000, function(patientNameElement) {
         var patientName = patientNameElement.value;
-        waitForElement('vz-lecture-cv-widget', function(widgetElement) {
+        waitForElement('vz-lecture-cv-widget', null, 5000, function(widgetElement) {
             var spans = widgetElement.getElementsByTagName('span');
             for (var i = 0; i < spans.length; i++) {
                 if (spans[i].textContent.includes(patientName)) {

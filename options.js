@@ -8,23 +8,13 @@ document.addEventListener('DOMContentLoaded', function () {
     'TweakTabPrescription',
     'RemoveLocalCompanionPrint',
     'delay_primary',
-    'delay_btw_tabs',
-    'delay_btw_tab_and_enter',
-    'delay_btw_enters',
     'RemoveLocalCompanionTPE',
-    'ipTPE',
-    'portTPE',
     'portCompanion',
     'defaultCotation'
   ];
 
   var defautsTextValues = {
     'delay_primary': '0.02',
-    'delay_btw_tabs': '0.01',
-    'delay_btw_tab_and_enter': '0.01',
-    'delay_btw_enters': '0.5',
-    'ipTPE': 'localhost',
-    'portTPE': '5000',
     'portCompanion': '3000'
   };
 
@@ -66,18 +56,6 @@ document.addEventListener('DOMContentLoaded', function () {
     options.forEach(function (option) {
       var element = document.getElementById(option);
       var value = element.type === 'checkbox' ? element.checked : element.value;
-
-      if (option === 'ipTPE' && !ipRegex.test(value) && value !== 'localhost') {
-        alert('Veuillez entrer une adresse IP valide');
-        isValid = false;
-        return;
-      }
-
-      if ((option === 'portTPE' || option === 'portCompanion') && (!portRegex.test(value) || value < 1 || value > 65535)) {
-        alert('Veuillez entrer un numéro de port valide');
-        isValid = false;
-        return;
-      }
 
       var letterRegex = /^([A-Z0-9]{1,7})?$/;
       if (option === 'defaultCotation' && !letterRegex.test(value)) {

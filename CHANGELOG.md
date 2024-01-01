@@ -2,6 +2,12 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+## [1.2] - 2024-01-01
+### Modifié :
+- iframe.contentWindow.print() est désormais utilisé pour avancer dans l'impression automatique
+- retrait et modification des options correspondantes
+
+
 ## [1.1] - 2023-12-16
 ### Ajouté :
 - ajout d'un délai optionnel avant le lancement des entrées claviers pour plus de granularité

@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<html>
 <head>
   <meta charset="UTF-8">
   <style>
@@ -34,55 +35,34 @@
       }
   </style>
 </head>
-<html>
-  <body>
-    <h1>Options générales :</h1>
-    <input type="checkbox" id="TweakImports"> Activer les modifications pour la fenêtre d'importations<br>
-    <input type="checkbox" id="TweakTabConsultation"> Activer le tab index pour les consultations<br>
-    <input type="checkbox" id="RemoveTitleSuggestions"> Retire le panneau de suggestion<br>
-    <input type="checkbox" id="EnableHelp"> Affiche l'aide en appuyant sur Alt<br>
-    <input type="checkbox" id="TweakTabSearchPatient"> Activer les modifications de la fenêtre recherche patient (permet d'utiliser tab plus facilement)<br>
-    <input type="checkbox" id="TweakTabPrescription"> Activer les modifications de la fenêtre recherche médicaments (permet d'utiliser tab plus facilement)<br>
-    <div style="display: flex; align-items: center;">
-      <input type="text" id="defaultCotation" name="defaultCotation" style="width: 10ch; margin-right: 1em;">
-      <label for="defaultCotation">Cotation par défaut dans la FDS (laisser vide pour désactiver) :</label>
-    </div>
-    <h1>Lien avec Weda-Helper-Companion:</h1>
-    <h2>Options de connexion :</h2>
-    <div style="display: flex; align-items: center;">
-      <input type="text" id="portCompanion" name="portCompanion" style="width: 15ch; margin-right: 1em;">
-      <label for="portCompanion">Port Weda-Helper-Companion (default 3000) cf. https://github.com/Refhi/Weda-Helper-Companion:</label>
-    </div>
-    <h2>Options d'impression automatique :</h2>
-    <input type="checkbox" id="RemoveLocalCompanionPrint" style="margin-right: 1em;"> Désactiver l'impression automatique complète via le companion<br>
-    <div style="display: flex; align-items: center;">
-      <input type="text" id="delay_primary" name="delay_primary" style="width: 15ch; margin-right: 1em;">
-      <label for="delay_primary">Delai entre la detection de l'affichage pdf et le début des entrées clavier (rec 0.02s)</label>
-    </div>
-    <div style="display: flex; align-items: center;">
-      <input type="text" id="delay_btw_tabs" name="delay_btw_tabs" style="width: 15ch; margin-right: 1em;">
-      <label for="delay_btw_tabs">Delai entre les simulations de Tabulations (rec 0.01s)</label>
-    </div>
-    <div style="display: flex; align-items: center;">
-      <input type="text" id="delay_btw_tab_and_enter" name="delay_btw_tab_and_enter" style="width: 15ch; margin-right: 1em;">
-      <label for="delay_btw_tab_and_enter">Delai entre les simulations de Tabulations et Enters (rec 0.01s)</label>
-    </div>
-    <div style="display: flex; align-items: center;">
-      <input type="text" id="delay_btw_enters" name="delay_btw_enters" style="width: 15ch; margin-right: 1em;">
-      <label for="delay_btw_enters">Delai entre les simulations de Enter (rec 0.5 sec)</label>
-    </div>
-    <h2>Lien avec le TPE :</h2>
-    <input type="checkbox" id="RemoveLocalCompanionTPE" style="margin-right: 1em;"> Désactiver la communication avec le TPE et l'option TPE dans les fse<br>
-    <div style="display: flex; align-items: center;">
-      <input type="text" id="ipTPE" name="ipTPE" style="width: 15ch; margin-right: 1em;">
-      <label for="ipTPE">IP TPE</label>
-    </div>
-    <div style="display: flex; align-items: center;">
-      <input type="text" id="portTPE" name="portTPE" style="width: 15ch; margin-right: 1em;">
-      <label for="portTPE">Port TPE</label>
-    </div>
-    
-        <button id="save">Enregistrer</button>
-        <script src="options.js"></script>
-      </body>
-    </html>
+<body>
+  <h1>Options générales :</h1>
+  <input type="checkbox" id="TweakImports"> Activer les modifications pour la fenêtre d'importations<br>
+  <input type="checkbox" id="TweakTabConsultation"> Activer le tab index pour les consultations<br>
+  <input type="checkbox" id="RemoveTitleSuggestions"> Retire le panneau de suggestion<br>
+  <input type="checkbox" id="EnableHelp"> Affiche l'aide en appuyant sur Alt<br>
+  <input type="checkbox" id="TweakTabSearchPatient"> Activer les modifications de la fenêtre recherche patient (permet d'utiliser tab plus facilement)<br>
+  <input type="checkbox" id="TweakTabPrescription"> Activer les modifications de la fenêtre recherche médicaments (permet d'utiliser tab plus facilement)<br>
+  <div style="display: flex; align-items: center;">
+    <input type="text" id="defaultCotation" name="defaultCotation" style="width: 10ch; margin-right: 1em;">
+    <label for="defaultCotation">Cotation par défaut dans la FDS (laisser vide pour désactiver) :</label>
+  </div>
+  <h1>Lien avec Weda-Helper-Companion:</h1>
+  <h2>Options de connexion :</h2>
+  <div style="display: flex; align-items: center;">
+    <input type="text" id="portCompanion" name="portCompanion" style="width: 15ch; margin-right: 1em;">
+    <label for="portCompanion">Port Weda-Helper-Companion (default 3000) cf. https://github.com/Refhi/Weda-Helper-Companion:</label>
+  </div>
+  <h2>Options d'impression automatique :</h2>
+  <input type="checkbox" id="RemoveLocalCompanionPrint" style="margin-right: 1em;"> Désactiver l'impression automatique complète via le companion<br>
+  <div style="display: flex; align-items: center;">
+    <input type="text" id="delay_primary" name="delay_primary" style="width: 15ch; margin-right: 1em;">
+    <label for="delay_primary">Delai entre la detection de l'affichage pdf et le début des entrées clavier (rec 0.02s)</label>
+  </div>
+  <h2>Lien avec le TPE :</h2>
+  <input type="checkbox" id="RemoveLocalCompanionTPE" style="margin-right: 1em;"> Désactiver la communication avec le TPE et l'option TPE dans les fse<br>
+  
+  <button id="save">Enregistrer</button>
+  <script src="options.js"></script>
+</body>
+</html>

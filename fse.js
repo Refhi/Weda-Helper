@@ -61,24 +61,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
 
     // // Travail sur l'automatisation de la lecture de la carte vitale
     // Vérifie la présence du texte "Carte Vitale non lue" dans le texte de l'élément avec class = lectureCvContainer
-    function waitForElement(selector, text = null, timeout, callback) {
-        var checkInterval = setInterval(function() {
-            var elements = document.querySelectorAll(selector);
-            for (var i = 0; i < elements.length; i++) {
-                if (!text || elements[i].textContent.includes(text)) {
-                    callback(elements[i]);
-                    clearInterval(checkInterval);
-                    clearTimeout(timeoutId);
-                    return;
-                }
-            }
-        }, 100);
 
-        var timeoutId = setTimeout(function() {
-            clearInterval(checkInterval);
-            console.log(`Element ${selector} ${text ? 'with text "' + text + '"' : ''} not found after ${timeout} ms`);
-        }, timeout);
-    }
 
     function CarteVitaleNonLue() {
         // Vérifie l'existence de conditions nécessitant la lecture de la cv :

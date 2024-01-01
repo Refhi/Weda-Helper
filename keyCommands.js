@@ -188,27 +188,7 @@ function focusElementByName(elementName) {
     }
 }
 
-function waitForElementToExist(elementId, callback) {
-    var element = document.getElementById(elementId);
-    if (element) {
-        callback(element);
-    } else {
-        var startTime = Date.now();
-        var checkInterval = setInterval(function () {
-            var elapsedTime = Date.now() - startTime;
-            if (elapsedTime >= 5000) {
-                clearInterval(checkInterval);
-                console.log('Timeout: Element not found after 5 seconds');
-            } else {
-                var element = document.getElementById(elementId);
-                if (element) {
-                    clearInterval(checkInterval);
-                    callback(element);
-                }
-            }
-        }, 100); // Check every 100 milliseconds
-    }
-}
+
 
 const keyCommands = {
     'push_valider': {
@@ -236,12 +216,10 @@ const keyCommands = {
         action: function () {
             console.log('print_meds activé');
             clickFirstPrinter();
-            waitForElementToExist('ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay', function (element) {
-                console.log('Element détecté:', element);
-                setTimeout(function () {
-                    focusElementByName('ctl00$ContentPlaceHolder1$ViewPdfDocumentUCForm1$ButtonCloseStay');
-                    sendPrint();
-                }, 400);
+            waitForElement('iframe', null, 5000, function (iframe) {
+                console.log('iframe détecté:', iframe);
+                iframe.contentWindow.print();
+                sendPrint();
             });
         }
     },
