@@ -10,39 +10,49 @@ document.addEventListener('DOMContentLoaded', function () {
     'delay_primary',
     'RemoveLocalCompanionTPE',
     'portCompanion',
-    'defaultCotation'
+    'defaultCotation',
+    'apiKey'
   ];
 
   var defautsTextValues = {
-    'delay_primary': '0.02',
+    'delay_primary': '750',
     'portCompanion': '3000'
   };
 
   options.forEach(function (option) {
     // Récupérer les valeurs sauvegardées du stockage de Chrome
-    chrome.storage.sync.get(option, function (result) {
+    chrome.storage.local.get(option, function (result) {
       console.log(option, result);
       var element = document.getElementById(option);
       if (element.type === 'checkbox') {
         if (result[option] !== undefined) element.checked = result[option];
         else {
           element.checked = true;
-          chrome.storage.sync.set({ [option]: true }, function () {
+          chrome.storage.local.set({ [option]: true }, function () {
             console.log(option, 'sauvegardé avec succès avec la valeur par défaut', true);
           });
         }
       } else if (element.type === 'text') {
-        if (result[option] !== undefined) element.value = result[option];
-        else {
-          for (var key in defautsTextValues) {
-            if (key === option) {
-              element.value = defautsTextValues[key];
-              chrome.storage.sync.set({ [option]: defautsTextValues[key] }, function () {
-                console.log(option, 'sauvegardé avec succès avec la valeur par défaut', defautsTextValues[key]);
+        if (result[option] !== undefined) element.value = result[option];        
+          else {
+            if (option === 'apiKey') {
+              // Générer une clé API aléatoire
+              var apiKey = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+              element.value = apiKey;
+              chrome.storage.local.set({ [option]: apiKey }, function () {
+                console.log(option, 'sauvegardé avec succès une valeur aléatoire', apiKey);
               });
+            } else {
+              for (var key in defautsTextValues) {
+                if (key === option) {
+                  element.value = defautsTextValues[key];
+                  chrome.storage.local.set({ [option]: defautsTextValues[key] }, function () {
+                    console.log(option, 'sauvegardé avec succès avec la valeur par défaut', defautsTextValues[key]);
+                  });
+                }
+              }
             }
           }
-        }
       }
     });
   });
@@ -81,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     if (isValid) {
-      chrome.storage.sync.set(valuesToSave, function () {
+      chrome.storage.local.set(valuesToSave, function () {
         console.log('Sauvegardé avec succès');
         alert('Les options ont été sauvegardées avec succès');
       });

@@ -118,18 +118,19 @@ function mouseoutW() {
 // envoi d'instruction au TPE via Weda-Helper-Companion
 function sendtpeinstruction(amount) {
 
-    // store the amount in chrome.storage.sync
-    chrome.storage.sync.set({ 'lastTPEamount': amount }, function () {
+    // store the amount in chrome.storage.local
+    chrome.storage.local.set({ 'lastTPEamount': amount }, function () {
         console.log('lastTPEamount', amount, 'sauvegardé avec succès');
     });
         
-    chrome.storage.sync.get(['portCompanion', 'delay_primary', 'RemoveLocalCompanionTPE'], function (result) {
+    chrome.storage.local.get(['portCompanion', 'delay_primary', 'RemoveLocalCompanionTPE', 'apiKey'], function (result) {
         const portCompanion = result.portCompanion;
         const removeLocalCompanionTPE = result.RemoveLocalCompanionTPE;
         const delay_primary = result.delay_primary;
+        const apiKey = result.apiKey;
 
-        if (!delay_primary || !portCompanion || removeLocalCompanionTPE !== false) {
-            console.warn('RemoveLocalCompanionTPE ou portCompanion ne sont pas définis ou RemoveLocalCompanionTPE est !false (valeur actuelle :', removeLocalCompanionTPE, ')');
+        if (!delay_primary || !portCompanion || removeLocalCompanionTPE !== false || !apiKey) {
+            console.warn('RemoveLocalCompanionTPE ou portCompanion ou la clé API ne sont pas définis ou RemoveLocalCompanionTPE est !false (valeur actuelle :', removeLocalCompanionTPE, ')');
             return;
         } else if (!(/^\d+$/.test(amount))) {
             console.log('amount', amount, 'n\'est pas un nombre entier');
@@ -137,11 +138,14 @@ function sendtpeinstruction(amount) {
         }
         else {
             console.log('sendinstruction', amount + 'c€' + ' to ' + ipTPE + ':' + portTPE);
+            console.log('délais avant envoi de l\'instruction au TPE', delay_primary, 'ms');
             setTimeout(() => {
-                fetch(`http://localhost:${portCompanion}/tpe/${amount}`)
+                // La clé API se met en fin d'URL : exemple http://localhost:3000/tpe/1?apiKey=1234567890
+                fetch(`http://localhost:${portCompanion}/tpe/${amount}?apiKey=${apiKey}`)
                     .then(response => response.json())
                     .then(data => console.log(data))
                     .catch(error => console.error('Error:', error));
+                console.log('Instruction envoyée au TPE');
             }, delay_primary);
         }
     });
@@ -149,7 +153,7 @@ function sendtpeinstruction(amount) {
 
 // envoi du dernier montant au TPE dans Weda-Helper-Companion
 function sendLastTPEamount() {
-    chrome.storage.sync.get('lastTPEamount', function (result) {
+    chrome.storage.local.get('lastTPEamount', function (result) {
         const lastTPEamount = result.lastTPEamount;
         console.log('Envoi du dernier montant demandé au TPE : ' + lastTPEamount + 'c€');
         if (lastTPEamount) {
@@ -161,23 +165,27 @@ function sendLastTPEamount() {
 
 // déclenchement de l'impression dans Weda-Helper-Companion
 function sendPrint() {
-    chrome.storage.sync.get('RemoveLocalCompanionPrint', function (result) {
+    chrome.storage.local.get('RemoveLocalCompanionPrint', function (result) {
         const RemoveLocalCompanionPrint = result.RemoveLocalCompanionPrint;
         if (RemoveLocalCompanionPrint !== false) {
             console.log('RemoveLocalCompanionPrint est !false (valeur actuelle :', RemoveLocalCompanionPrint, ')');
             return;
         } else {
             console.log('send Print');
-            chrome.storage.sync.get(['portCompanion', 'delay_primary', 'delay_btw_tabs', 'delay_btw_tab_and_enter', 'delay_btw_enters'], function (result) {
+            chrome.storage.local.get(['portCompanion', 'delay_primary', 'apiKey'], function (result) {
                 const portCompanion = result.portCompanion;
                 const delay_primary = result.delay_primary;
+                const apiKey = result.apiKey;
                 if (!portCompanion || !delay_primary) {
                     console.warn('RemoveLocalCompanionTPE ou delay_primary ne sont pas définis. Aller à chrome-extension://fnfdbangkcmjacbeaaiongkbacaamnfd/options.html pour les définir');
                     return;
                 }
                 console.log('délais avant déclenchement de la touche impression', delay_primary, 'ms');
-                fetch(`http://localhost:${portCompanion}/print`)
-                    .catch(error => console.error('Error:', error));
+                setTimeout(() => {
+                    fetch(`http://localhost:${portCompanion}/print?apiKey=${apiKey}`)
+                        .catch(error => console.error('Error:', error));
+                    console.log('Print envoyé');
+                }, delay_primary);
             });
         }
     });
@@ -267,7 +275,7 @@ document.addEventListener('keyup', function (event) {
 
 // // Change certains éléments selon l'URL les options
 // [Page de Consultation] Modifie l'ordre de tabulation des valeurs de suivi
-chrome.storage.sync.get('TweakTabConsultation', function (result) {
+chrome.storage.local.get('TweakTabConsultation', function (result) {
     function changeTabOrder() {
         var elements = document.querySelectorAll('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]');
         // change the taborder starting with 0 for elements[0] and incrementing by 1 for each element
@@ -286,7 +294,7 @@ chrome.storage.sync.get('TweakTabConsultation', function (result) {
 
 
 // // Retrait des suggestions de titre
-chrome.storage.sync.get('RemoveTitleSuggestions', function (result) {
+chrome.storage.local.get('RemoveTitleSuggestions', function (result) {
     function RemoveTitleSuggestions() {
         console.log('RemoveTitleSuggestions started');
         var elements = document.getElementById('DivGlossaireReponse');

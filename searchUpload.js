@@ -102,7 +102,7 @@ function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = fals
 
 // // Tab and search tweaks
 // [Page d'upload] Tweak the uploader page
-chrome.storage.sync.get('TweakImports', function (result) {
+chrome.storage.local.get('TweakImports', function (result) {
     // Modifie la taille de la fenêtre de prévisualisation du PDF
     function uploaderformResizeElements() {
         const newsize = '600px'; // TODO mettre ça dans les options
@@ -239,7 +239,7 @@ chrome.storage.sync.get('TweakImports', function (result) {
 
 
 // [Page de prescriptions] Tweaks the prescription page to select the first medicine after a search
-chrome.storage.sync.get('TweakTabPrescription', function (result) {
+chrome.storage.local.get('TweakTabPrescription', function (result) {
     if (result.TweakTabPrescription !== false) {
         if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx')) {
             var idsSearchBox = 'ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack';
@@ -251,7 +251,7 @@ chrome.storage.sync.get('TweakTabPrescription', function (result) {
 });
 
 // [Page de recherche patient] Tweaks the search patient page to select the first patient after a search
-chrome.storage.sync.get('TweakTabSearchPatient', function (result) {
+chrome.storage.local.get('TweakTabSearchPatient', function (result) {
     console.log('TweakTabSearchPatient from storage:', result.TweakTabSearchPatient);
     if (result.TweakTabSearchPatient !== false) {
         if (window.location.href === 'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx') {

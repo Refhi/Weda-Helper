@@ -191,7 +191,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
 
     function setDefaultValue() {
         // set defaut value
-        chrome.storage.sync.get('defaultCotation', function (result) {
+        chrome.storage.local.get('defaultCotation', function (result) {
             var defaultCotation = result.defaultCotation;
             // si defaultCotation n'est pas défini, le définir à ''
             if (!defaultCotation) {

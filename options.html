@@ -51,13 +51,17 @@
   <h2>Options de connexion :</h2>
   <div style="display: flex; align-items: center;">
     <input type="text" id="portCompanion" name="portCompanion" style="width: 15ch; margin-right: 1em;">
-    <label for="portCompanion">Port Weda-Helper-Companion (default 3000) cf. https://github.com/Refhi/Weda-Helper-Companion:</label>
+    <label for="portCompanion">Port Weda-Helper-Companion (default 3000) cf. https://github.com/Refhi/Weda-Helper-Companion doit être mentionné dans conf.ini du companion</label>
+  </div>
+  <div style="display: flex; align-items: center;">
+    <input type="text" id="apiKey" name="apiKey" style="width: 30ch; margin-right: 1em;">
+    <label for="apiKey">Clé API. Doit être mentionné dans conf.ini du companion.</label>
   </div>
   <h2>Options d'impression automatique :</h2>
   <input type="checkbox" id="RemoveLocalCompanionPrint" style="margin-right: 1em;"> Désactiver l'impression automatique complète via le companion<br>
   <div style="display: flex; align-items: center;">
     <input type="text" id="delay_primary" name="delay_primary" style="width: 15ch; margin-right: 1em;">
-    <label for="delay_primary">Delai entre la detection de l'affichage pdf et le début des entrées clavier (rec 0.02s)</label>
+    <label for="delay_primary">Delai entre la detection de l'affichage pdf et le début des entrées clavier (rec 750ms). A augmenter si l'impression automatique ne se lance pas.</label>
   </div>
   <h2>Lien avec le TPE :</h2>
   <input type="checkbox" id="RemoveLocalCompanionTPE" style="margin-right: 1em;"> Désactiver la communication avec le TPE et l'option TPE dans les fse<br>
