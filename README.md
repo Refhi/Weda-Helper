@@ -63,11 +63,11 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - si elles sont utilisées, entre automatiquement la cotation par défaut (à définir dans les options)
 
 ## Weda-Helper-Companion
-Est un script python, à récupérer sur https://github.com/Refhi/Weda-Helper-Companion qui reçoit des instructions de l'extension Weda-Helper.
+Est récupérer [sous forme d'un script python](https://github.com/Refhi/Weda-Helper-Companion) [ou sous forme d'executable](https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/companion.exe) qui reçoit des instructions de l'extension Weda-Helper.
 Une fois installée, et que les options de l’extension Weda-Helper dans Chrome on été paramétrées, il doit être lancé et laissé en fond de tâche.
 Il exécutera les tâches suivantes :
-- si une impression dans Weda est déclenchée via ctrl-P, il simule des entrées clavier (9 tabulations + 2 entrées) pour lancer complètement l'impression
-- si une FSE est validée via Alt+v et que le paiement carte bancaire est sélectionné, il envoie une demande de règlement au TPE (qui doit également être correctement paramétré)
+- si une impression dans Weda est déclenchée via ctrl-P, il lance complètement l'impression
+- si une FSE est validée via Alt+v et que le paiement carte bancaire est sélectionné, il envoie une demande de règlement au TPE (qui doit également être correctement paramétré à l'aide de votre installateur de TPE)
 
 ## Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):
 La touche Alt n'affiche pas l'aide quand le curseur est dans un champ de texte
