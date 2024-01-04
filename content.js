@@ -115,6 +115,26 @@ function mouseoutW() {
 
 
 // // lien avec Weda-Helper-Companion
+
+function sendToCompanion(url) {
+    let versionCompanion = "1.0.1";
+    let urlWithParam = url + "&versioncheck=" + versionCompanion;
+    fetch(urlWithParam)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.warn('Error:', data.error);
+                alert('Erreur : ' + data.error);
+            } else {
+                console.log(data);
+            }
+        })
+        .catch(error => {
+            console.warn('Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
+            alert('Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
+        });
+}
+
 // envoi d'instruction au TPE via Weda-Helper-Companion
 function sendtpeinstruction(amount) {
 
@@ -141,10 +161,7 @@ function sendtpeinstruction(amount) {
             console.log('délais avant envoi de l\'instruction au TPE', delay_primary, 'ms');
             setTimeout(() => {
                 // La clé API se met en fin d'URL : exemple http://localhost:3000/tpe/1?apiKey=1234567890
-                fetch(`http://localhost:${portCompanion}/tpe/${amount}?apiKey=${apiKey}`)
-                    .then(response => response.json())
-                    .then(data => console.log(data))
-                    .catch(error => console.error('Error:', error));
+                sendToCompanion(`http://localhost:${portCompanion}/tpe/${amount}?apiKey=${apiKey}`);
                 console.log('Instruction envoyée au TPE');
             }, delay_primary);
         }
@@ -182,8 +199,7 @@ function sendPrint() {
                 }
                 console.log('délais avant déclenchement de la touche impression', delay_primary, 'ms');
                 setTimeout(() => {
-                    fetch(`http://localhost:${portCompanion}/print?apiKey=${apiKey}`)
-                        .catch(error => console.error('Error:', error));
+                    sendToCompanion(`http://localhost:${portCompanion}/print?apiKey=${apiKey}`);
                     console.log('Print envoyé');
                 }, delay_primary);
             });
