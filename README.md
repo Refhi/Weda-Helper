@@ -5,19 +5,19 @@ La plupart des raccourcis et des fonctionnalités peuvent être activées ou non
 Entièrement codé par un médecin Eurois, pour lui-même et ses pairs, j'espère qu'elle vous plaira autant qu'à moi au quotidien !
 Cf. ci-dessous pour les retours et les contributions.
 
-# Table of Contents
+# Table des Matières
 
 1. [Weda Helper](#weda-helper)
-2. [Keyboard Shortcuts](#raccourcis-claviers)
-3. [Display of W Menu Keyboard Shortcuts](#affichage-des-raccourcis-claviers-du-menu-w)
-4. [Facilitation of Imports](#facilitation-des-imports)
-5. [Facilitation of Filling in Tension Values](#facilitation-du-remplissage-des-valeurs-tensionnelles)
-6. [Removal of Consultation Title Suggestions](#retrait-des-suggestions-des-titres-de-consultation)
-7. [Modification of Tab Behavior After Patient Search](#modification-du-comportement-de-la-tabulation-après-recherche-patient)
-8. [Listening to Keyboard Entries When Using the Prescription Calculator](#écoute-des-entrées-claviers-lors-de-lusage-de-la-calculette-de-prescription)
-9. [Listening to Keyboard Entries in FSE Creation](#écoute-des-entrées-claviers-dans-la-réalisation-des-fse)
+2. [Raccourcis Claviers](#raccourcis-claviers)
+3. [Affichage des Raccourcis Claviers du Menu W](#affichage-des-raccourcis-claviers-du-menu-w)
+4. [Facilitation des Imports](#facilitation-des-imports)
+5. [Facilitation du Remplissage des Valeurs Tensionnelles](#facilitation-du-remplissage-des-valeurs-tensionnelles)
+6. [Retrait des Suggestions des Titres de Consultation](#retrait-des-suggestions-des-titres-de-consultation)
+7. [Modification du Comportement de la Tabulation Après Recherche Patient](#modification-du-comportement-de-la-tabulation-après-recherche-patient)
+8. [Écoute des Entrées Claviers Lors de l'Usage de la Calculette de Prescription](#écoute-des-entrées-claviers-lors-de-lusage-de-la-calculette-de-prescription)
+9. [Écoute des Entrées Claviers dans la Réalisation des FSE](#écoute-des-entrées-claviers-dans-la-réalisation-des-fse)
 10. [Weda-Helper-Companion](#weda-helper-companion)
-11. [Known Issues and Limitations](#problèmes-et-limitations-connues-qui-seront-peut-être-résolues-dans-de-futures-mises-à-jour)
+11. [Problèmes et Limitations Connues](#problèmes-et-limitations-connues-qui-seront-peut-être-résolues-dans-de-futures-mises-à-jour)
 12. [Contributions](#contributions)
 
 
@@ -43,7 +43,7 @@ définis manuellement dans chrome://extensions/shortcuts :
 - "Clique sur FSE" : Alt+6
 - "Lit la carte vitale" : Alt+C
 
-## Affichage des raccourcis claviers du menu W
+## Affichage des raccourcis claviers du menu W
 Un appuis sur la touche Alt prolongé (> 1 seconde) affiche un rappel des raccourcis claviers
 
 ## Facilitation des imports
@@ -58,23 +58,23 @@ suivantes sont effectuées :
 - Complétion automatique des dates partielles
 - En cliquant sur l'icône de l'extension, le bouton "Tout mettre en consultation" permet de sélectionner d'un coup "Consultation" pour l'ensemble des documents en attente d'importation.
 
-## Facilitation du remplissage des valeurs tensionnelles
+## Facilitation du remplissage des valeurs tensionnelles
 Dans la fenêtre de consultation, lorsque l'on remplie une valeur de suivi, la touche tabulation envoie directement vers la case suivante (plus besoin d'appuyer 4 fois)
 
 ## Retrait des suggestions des titres de consultation
 Dans les fenêtres contenant un Titre, désactive le panneau de suggestion (fenêtres d'ordonnance, consultation, certificat, prescription, formulaire, résultats d'examen).
 
-## Modification du comportement de la tabulation après recherche patient
+## Modification du comportement de la tabulation après recherche patient
 Permet, après la saisie du nom d'un patient, d'être directement positionné sur son nom, puis de pouvoir naviguer de patient en patient avec la touche Tab (ou maj+Tab pour aller vers le haut)
 
-## Écoute des entrées claviers lors de l'usage de la calculette de prescription
+## Écoute des entrées claviers lors de l'usage de la calculette de prescription
 Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du claviers à la place de clics :
 - touches numériques (0-10)
 - touche "." pour mettre la virgule
 - touche "/" pour préparer une fraction de dose
 - touche "retour arrière" pour effacer les valeurs numériques
 
-## Écoute des entrées claviers dans la réalisation des FSE
+## Écoute des entrées claviers dans la réalisation des FSE
 - les touches "n" et "o" permettent de sélectionner "non"/"oui" pour accidents de droit commun, puis ALD
 - si elles sont utilisées, entre automatiquement la cotation par défaut (à définir dans les options)
 
@@ -85,7 +85,7 @@ Il exécutera les tâches suivantes :
 - si une impression dans Weda est déclenchée via ctrl-P, il lance complètement l'impression
 - si une FSE est validée via Alt+v et que le paiement carte bancaire est sélectionné, il envoie une demande de règlement au TPE (qui doit également être correctement paramétré à l'aide de votre installateur de TPE)
 
-## Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):
+## Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):
 La touche Alt n'affiche pas l'aide quand le curseur est dans un champ de texte
 Les raccourcis claviers se substituent au comportement normal de Chrome, y compris hors de Weda
 
