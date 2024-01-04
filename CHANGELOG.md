@@ -2,8 +2,9 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
-## [1.2.2] - 2024-01-04
+## [1.3] - 2024-01-04
 - ajout d'un système de contrôle de version du companion, et d'affichage d'un message d'erreur en cas de nécessité de mise à jour
+- ajout d'une impression en direct via le companion, sans validation par pynput de la touche entrée
 
 
 ## [1.2] - 2024-01-01

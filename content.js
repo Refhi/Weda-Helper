@@ -116,40 +116,40 @@ function mouseoutW() {
 
 // // lien avec Weda-Helper-Companion
 
-function sendToCompanion(url) {
-    let versionCompanion = "1.0.1";
-    let urlWithParam = url + "&versioncheck=" + versionCompanion;
-    fetch(urlWithParam)
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                console.warn('Error:', data.error);
-                alert('Erreur : ' + data.error);
-            } else {
-                console.log(data);
-            }
-        })
-        .catch(error => {
-            console.warn('Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
-            alert('Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
-        });
-}
+
 
 // envoi d'instruction au TPE via Weda-Helper-Companion
 function sendtpeinstruction(amount) {
+    function sendToCompanion(url) {
+        let versionCompanion = "1.0.1"; // attention à le modifier aussi dans sendPrint
+        let urlWithParam = url + "&versioncheck=" + versionCompanion;
+        fetch(urlWithParam)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.warn('[TPE] Error:', data.error);
+                    alert('[TPE] Erreur : ' + data.error);
+                } else {
+                    console.log(data);
+                }
+            })
+            .catch(error => {
+                console.warn('[TPE] Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
+                alert('[TPE] Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
+            });
+    }
 
     // store the amount in chrome.storage.local
     chrome.storage.local.set({ 'lastTPEamount': amount }, function () {
         console.log('lastTPEamount', amount, 'sauvegardé avec succès');
     });
         
-    chrome.storage.local.get(['portCompanion', 'delay_primary', 'RemoveLocalCompanionTPE', 'apiKey'], function (result) {
+    chrome.storage.local.get(['portCompanion', 'RemoveLocalCompanionTPE', 'apiKey'], function (result) {
         const portCompanion = result.portCompanion;
         const removeLocalCompanionTPE = result.RemoveLocalCompanionTPE;
-        const delay_primary = result.delay_primary;
         const apiKey = result.apiKey;
 
-        if (!delay_primary || !portCompanion || removeLocalCompanionTPE !== false || !apiKey) {
+        if (!portCompanion || removeLocalCompanionTPE !== false || !apiKey) {
             console.warn('RemoveLocalCompanionTPE ou portCompanion ou la clé API ne sont pas définis ou RemoveLocalCompanionTPE est !false (valeur actuelle :', removeLocalCompanionTPE, ')');
             return;
         } else if (!(/^\d+$/.test(amount))) {
@@ -158,7 +158,6 @@ function sendtpeinstruction(amount) {
         }
         else {
             console.log('sendinstruction', amount + 'c€' + ' to ' + ipTPE + ':' + portTPE);
-            console.log('délais avant envoi de l\'instruction au TPE', delay_primary, 'ms');
             setTimeout(() => {
                 // La clé API se met en fin d'URL : exemple http://localhost:3000/tpe/1?apiKey=1234567890
                 sendToCompanion(`http://localhost:${portCompanion}/tpe/${amount}?apiKey=${apiKey}`);
@@ -197,11 +196,48 @@ function sendPrint() {
                     console.warn('RemoveLocalCompanionTPE ou delay_primary ne sont pas définis. Aller à chrome-extension://fnfdbangkcmjacbeaaiongkbacaamnfd/options.html pour les définir');
                     return;
                 }
-                console.log('délais avant déclenchement de la touche impression', delay_primary, 'ms');
-                setTimeout(() => {
-                    sendToCompanion(`http://localhost:${portCompanion}/print?apiKey=${apiKey}`);
-                    console.log('Print envoyé');
-                }, delay_primary);
+
+
+                function sendToCompanion(url, blob) {
+                    let versionCompanion = "1.0.1"; // attention à le modifier aussi dans sendtpeinstruction
+                    let urlWithParam = url + "&versioncheck=" + versionCompanion;
+                    fetch(urlWithParam, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/pdf',
+                        },
+                        body: blob,
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            console.warn('[Print] Error:', data.error);
+                            alert('[Print] Erreur : ' + data.error);
+                        } else {
+                            console.log(data);
+                        }
+                    })
+                    .catch(error => {
+                        console.warn('[Print] Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
+                        alert('[Print] Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
+                    });
+                }
+
+                // Obtenez l'élément iframe par son ID
+                let iframe = document.getElementById('ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile');
+                console.log('iframe', iframe);
+
+                // Obtenez l'URL du document dans l'iframe
+                let url = iframe.contentWindow.location.href;
+                console.log('url', url);
+
+                // Utilisez l'URL dans une requête fetch
+                fetch(iframe.contentWindow.location.href)
+                    .then(response => response.blob())
+                    .then(blob => {
+                        sendToCompanion(`http://localhost:${portCompanion}/print?apiKey=${apiKey}`, blob);
+                    })
+                    .catch(error => console.error('Error:', error));
             });
         }
     });

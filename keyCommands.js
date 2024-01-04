@@ -218,8 +218,12 @@ const keyCommands = {
             clickFirstPrinter();
             waitForElement('iframe', null, 5000, function (iframe) {
                 console.log('iframe détecté:', iframe);
-                iframe.contentWindow.print();
+                if (RemoveLocalCompanionPrint) {
+                    iframe.contentWindow.print();
+                }
+                else {
                 sendPrint();
+                }
             });
         }
     },
