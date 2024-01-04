@@ -218,12 +218,14 @@ const keyCommands = {
             clickFirstPrinter();
             waitForElement('iframe', null, 5000, function (iframe) {
                 console.log('iframe détecté:', iframe);
-                if (RemoveLocalCompanionPrint) {
-                    iframe.contentWindow.print();
-                }
-                else {
-                sendPrint();
-                }
+                chrome.storage.local.get(['RemoveLocalCompanionPrint'], function (result) {
+                    if (result.RemoveLocalCompanionPrint) {
+                        iframe.contentWindow.print();
+                    }
+                    else {
+                        sendPrint();
+                    }
+                });
             });
         }
     },

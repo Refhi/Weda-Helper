@@ -224,16 +224,26 @@ function sendPrint() {
                 console.log('iframe', iframe);
 
                 // Obtenez l'URL du document dans l'iframe
-                let url = iframe.contentWindow.location.href;
-                console.log('url', url);
+                let intervalId = setInterval(() => {
+                    url = iframe.contentWindow.location.href;
+                    console.log('url', url);
+                
+                    if (url !== 'about:blank') {
+                        clearInterval(intervalId);
+                        fetch(iframe.contentWindow.location.href)
+                            .then(response => response.blob())
+                            .then(blob => {
+                                sendToCompanion(`http://localhost:${portCompanion}/print?apiKey=${apiKey}`, blob);
+                            })
+                            .catch(error => console.error('Error:', error));
 
-                // Utilisez l'URL dans une requête fetch
-                fetch(iframe.contentWindow.location.href)
-                    .then(response => response.blob())
-                    .then(blob => {
-                        sendToCompanion(`http://localhost:${portCompanion}/print?apiKey=${apiKey}`, blob);
-                    })
-                    .catch(error => console.error('Error:', error));
+                    }
+                }, 100);
+                
+                setTimeout(() => {
+                    clearInterval(intervalId);
+                }, 5000);
+
             });
         }
     });
