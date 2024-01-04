@@ -5,6 +5,22 @@ La plupart des raccourcis et des fonctionnalités peuvent être activées ou non
 Entièrement codé par un médecin Eurois, pour lui-même et ses pairs, j'espère qu'elle vous plaira autant qu'à moi au quotidien !
 Cf. ci-dessous pour les retours et les contributions.
 
+# Table of Contents
+
+1. [Weda Helper](#weda-helper)
+2. [Keyboard Shortcuts](#raccourcis-claviers)
+3. [Display of W Menu Keyboard Shortcuts](#affichage-des-raccourcis-claviers-du-menu-w)
+4. [Facilitation of Imports](#facilitation-des-imports)
+5. [Facilitation of Filling in Tension Values](#facilitation-du-remplissage-des-valeurs-tensionnelles)
+6. [Removal of Consultation Title Suggestions](#retrait-des-suggestions-des-titres-de-consultation)
+7. [Modification of Tab Behavior After Patient Search](#modification-du-comportement-de-la-tabulation-après-recherche-patient)
+8. [Listening to Keyboard Entries When Using the Prescription Calculator](#écoute-des-entrées-claviers-lors-de-lusage-de-la-calculette-de-prescription)
+9. [Listening to Keyboard Entries in FSE Creation](#écoute-des-entrées-claviers-dans-la-réalisation-des-fse)
+10. [Weda-Helper-Companion](#weda-helper-companion)
+11. [Known Issues and Limitations](#problèmes-et-limitations-connues-qui-seront-peut-être-résolues-dans-de-futures-mises-à-jour)
+12. [Contributions](#contributions)
+
+
 ## Raccourcis claviers
 
 - "Appuie sur Valider" : Alt+V
@@ -63,7 +79,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - si elles sont utilisées, entre automatiquement la cotation par défaut (à définir dans les options)
 
 ## Weda-Helper-Companion
-Est récupérer [sous forme d'un script python](https://github.com/Refhi/Weda-Helper-Companion) [ou sous forme d'executable](https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/companion.exe) qui reçoit des instructions de l'extension Weda-Helper.
+Est à récupérer [sous forme d'un script python](https://github.com/Refhi/Weda-Helper-Companion) [ou sous forme d'executable](https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/companion.exe) qui reçoit des instructions de l'extension Weda-Helper.
 Une fois installée, et que les options de l’extension Weda-Helper dans Chrome on été paramétrées, il doit être lancé et laissé en fond de tâche.
 Il exécutera les tâches suivantes :
 - si une impression dans Weda est déclenchée via ctrl-P, il lance complètement l'impression
