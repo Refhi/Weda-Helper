@@ -141,7 +141,7 @@ function submenuW(description) {
     console.log('level1Element', level1Element);
     if (level1Element) {
         var level3Element = Array.from(level1Element.getElementsByClassName('level3 dynamic')).find(function (element) {
-            return element.innerText.includes(description) && element.hasAttribute('tabindex');
+            return element.innerText.includes(description) && element.hasAttribute('tabindex') && element.innerText !== " Courrier à établir"; // la fin est un fix sale pour éviter de cliquer sur l'alerte de courrier à établir
         });
         console.log('level3Element', level3Element);
         if (level3Element) {
