@@ -115,14 +115,11 @@ function mouseoutW() {
 
 
 // // lien avec Weda-Helper-Companion
-
-
-
+var versionToCheck = "1.1";
 // envoi d'instruction au TPE via Weda-Helper-Companion
 function sendtpeinstruction(amount) {
     function sendToCompanion(url) {
-        let versionCompanion = "1.0.1"; // attention à le modifier aussi dans sendPrint
-        let urlWithParam = url + "&versioncheck=" + versionCompanion;
+        let urlWithParam = url + "&versioncheck=" + versionToCheck;
         fetch(urlWithParam)
             .then(response => response.json())
             .then(data => {
@@ -199,8 +196,7 @@ function sendPrint() {
 
 
                 function sendToCompanion(url, blob) {
-                    let versionCompanion = "1.0.1"; // attention à le modifier aussi dans sendtpeinstruction
-                    let urlWithParam = url + "&versioncheck=" + versionCompanion;
+                    let urlWithParam = url + "&versioncheck=" + versionToCheck;
                     fetch(urlWithParam, {
                         method: 'POST',
                         headers: {
