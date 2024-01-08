@@ -154,12 +154,9 @@ function sendtpeinstruction(amount) {
             return;
         }
         else {
-            console.log('sendinstruction', amount + 'c€' + ' to ' + ipTPE + ':' + portTPE);
-            setTimeout(() => {
-                // La clé API se met en fin d'URL : exemple http://localhost:3000/tpe/1?apiKey=1234567890
-                sendToCompanion(`http://localhost:${portCompanion}/tpe/${amount}?apiKey=${apiKey}`);
-                console.log('Instruction envoyée au TPE');
-            }, delay_primary);
+            console.log('sendinstruction', amount + 'c€' + ' to TPE');
+            sendToCompanion(`http://localhost:${portCompanion}/tpe/${amount}?apiKey=${apiKey}`);
+            console.log('Instruction envoyée au TPE');
         }
     });
 }

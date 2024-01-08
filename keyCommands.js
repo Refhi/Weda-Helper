@@ -216,7 +216,7 @@ const keyCommands = {
         action: function () {
             console.log('print_meds activé');
             clickFirstPrinter();
-            waitForElement('iframe', null, 5000, function (iframe) {
+            waitForElement('[id^="ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile"]', null, 5000, function (iframe) {
                 console.log('iframe détecté:', iframe);
                 chrome.storage.local.get(['RemoveLocalCompanionPrint'], function (result) {
                     if (result.RemoveLocalCompanionPrint) {
