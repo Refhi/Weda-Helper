@@ -62,7 +62,7 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 - En cliquant sur l'icône de l'extension, le bouton "Tout mettre en consultation" permet de sélectionner d'un coup "Consultation" pour l'ensemble des documents en attente d'importation.
 
 ## Facilitation du remplissage des valeurs tensionnelles
-*'Poids' 75 <tab> 'TAS' 150 <tab> 'TAD' 80*
+*'Poids' 75 '[tab] 'TAS' 150 <tab> 'TAD' 80*
 
 Dans la fenêtre de consultation, lorsque l'on remplie une valeur de suivi, la touche tabulation envoie directement vers la case suivante (plus besoin d'appuyer 4 fois)
 
@@ -86,7 +86,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - touche "retour arrière" pour effacer les valeurs numériques
 
 ## FSE : Entrées clavier, cotation par défaut +/- envoi automatique au TPE
-*Toute la FSE : <alt+6>, <n><n><tab><alt+v>*
+*Toute la FSE : <alt+6>, 'n', 'n', <tab><alt+v>*
 
 - les touches "n" et "o" permettent de sélectionner "non"/"oui" pour accidents de droit commun, puis ALD
 - si elles sont utilisées, entre automatiquement la cotation par défaut (à définir dans les options)
