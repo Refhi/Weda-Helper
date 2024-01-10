@@ -50,7 +50,7 @@ définis manuellement dans chrome://extensions/shortcuts :
 ## Affichage des raccourcis claviers du menu W
 *Comment je fais ça déjà ?*
 
-Un appuis sur la touche Alt prolongé (> 1 seconde) affiche un rappel des principaux raccourcis claviers
+Un appuis sur la touche Alt prolongé (] 1 seconde) affiche un rappel des principaux raccourcis claviers
 
 ## Facilitation des imports
 *Tout les imports au clavier en 4 appuis sur tabulations et un appuis sur Entrée*
@@ -62,7 +62,7 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 - En cliquant sur l'icône de l'extension, le bouton "Tout mettre en consultation" permet de sélectionner d'un coup "Consultation" pour l'ensemble des documents en attente d'importation.
 
 ## Facilitation du remplissage des valeurs tensionnelles
-*'Poids' 75 '[tab] 'TAS' 150 <tab> 'TAD' 80*
+*'Poids' 75 [tab] 'TAS' 150 [tab] 'TAD' 80*
 
 Dans la fenêtre de consultation, lorsque l'on remplie une valeur de suivi, la touche tabulation envoie directement vers la case suivante (plus besoin d'appuyer 4 fois)
 
@@ -72,12 +72,12 @@ Dans la fenêtre de consultation, lorsque l'on remplie une valeur de suivi, la t
 Dans les fenêtres contenant un Titre, désactive le panneau de suggestion (fenêtres d'ordonnance, consultation, certificat, prescription, formulaire, résultats d'examen).
 
 ## Modification du comportement de la tabulation après recherche patient
-*DESMAUX Nathalie <Entrée> <Entrée>*
+*DESMAUX Nathalie [Entrée] [Entrée]*
 
 Permet, après la saisie du nom d'un patient, d'être directement positionné sur son nom, puis de pouvoir naviguer de patient en patient avec la touche Tab (ou maj+Tab pour aller vers le haut)
 
 ## Écoute des entrées claviers lors de l'usage de la calculette de prescription
-*<1> matin <2> midi <3> soir <4.5> jours*
+*[1] matin [2] midi [3] soir [4.5] jours*
 
 Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du claviers à la place de clics :
 - touches numériques (0-10)
@@ -86,7 +86,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - touche "retour arrière" pour effacer les valeurs numériques
 
 ## FSE : Entrées clavier, cotation par défaut +/- envoi automatique au TPE
-*Toute la FSE : <alt+6>, 'n', 'n', <tab><alt+v>*
+*Toute la FSE : [alt+6], [n], [n], [tab][alt+v]*
 
 - les touches "n" et "o" permettent de sélectionner "non"/"oui" pour accidents de droit commun, puis ALD
 - si elles sont utilisées, entre automatiquement la cotation par défaut (à définir dans les options)
