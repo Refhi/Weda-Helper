@@ -50,7 +50,7 @@ définis manuellement dans chrome://extensions/shortcuts :
 ## Affichage des raccourcis claviers du menu W
 *Comment je fais ça déjà ?*
 
-Un appuis sur la touche Alt prolongé (] 1 seconde) affiche un rappel des principaux raccourcis claviers
+Un appuis sur la touche Alt prolongé (> 1 seconde) affiche un rappel des principaux raccourcis claviers
 
 ## Facilitation des imports
 *Tout les imports au clavier en 4 appuis sur tabulations et un appuis sur Entrée*
