@@ -90,6 +90,8 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 - les touches "n" et "o" permettent de sélectionner "non"/"oui" pour accidents de droit commun, puis ALD
 - si elles sont utilisées, entre automatiquement la cotation par défaut (à définir dans les options)
+- Lecture automatique de la carte vitale si elle est non lue
+- Affichage de boutons directs pour la réalisation de FDS dégradées et téléconsultation (fonctionnalité en alpha)
 
 ## Weda-Helper-Companion
 *Autant pousser l'économie de mouvements jusqu'au bout*
