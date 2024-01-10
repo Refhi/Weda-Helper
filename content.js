@@ -182,12 +182,11 @@ function sendPrint() {
             return;
         } else {
             console.log('send Print');
-            chrome.storage.local.get(['portCompanion', 'delay_primary', 'apiKey'], function (result) {
+            chrome.storage.local.get(['portCompanion', 'apiKey'], function (result) {
                 const portCompanion = result.portCompanion;
-                const delay_primary = result.delay_primary;
                 const apiKey = result.apiKey;
-                if (!portCompanion || !delay_primary) {
-                    console.warn('RemoveLocalCompanionTPE ou delay_primary ne sont pas définis. Aller à chrome-extension://fnfdbangkcmjacbeaaiongkbacaamnfd/options.html pour les définir');
+                if (!portCompanion) {
+                    console.warn('RemoveLocalCompanionTPE pas définis. Aller à chrome-extension://fnfdbangkcmjacbeaaiongkbacaamnfd/options.html pour les définir');
                     return;
                 }
 

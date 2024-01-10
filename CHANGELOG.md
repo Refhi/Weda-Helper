@@ -15,6 +15,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 ### Modifié :
 - iframe.contentWindow.print() est désormais utilisé pour avancer dans l'impression automatique
 - retrait et modification des options correspondantes
+- fenêtre des options plus propre
 
 
 ## [1.1] - 2023-12-16

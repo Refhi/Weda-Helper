@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', function () {
     'TweakTabSearchPatient',
     'TweakTabPrescription',
     'RemoveLocalCompanionPrint',
-    'delay_primary',
     'RemoveLocalCompanionTPE',
     'portCompanion',
     'defaultCotation',
@@ -15,8 +14,7 @@ document.addEventListener('DOMContentLoaded', function () {
   ];
 
   var defautsTextValues = {
-    'delay_primary': '750',
-    'portCompanion': '3000'
+    'portCompanion': '4821'
   };
 
   options.forEach(function (option) {
@@ -73,20 +71,6 @@ document.addEventListener('DOMContentLoaded', function () {
         isValid = false;
         return;
       }
-
-      // check that values in defautsTextValues entered are valid : they must be not be more than 10 times the default value nor less than 0.1 times the default value
-      for (var key in defautsTextValues) {
-        if (key === option && option.includes('delay')) {
-          console.log("working on option " +option + " key " + key + " with value " + value);
-          if (isNaN(value) || value > 100 * defautsTextValues[key] || value < 0.01 * defautsTextValues[key]) {
-            alert('Veuillez entrer une valeur entre 0.01 et 100 fois la valeur par défaut');
-            isValid = false;
-            return;
-          }
-        }
-      }
-
-
       valuesToSave[option] = value;
     });
 
