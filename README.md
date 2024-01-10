@@ -20,7 +20,7 @@ Cf. ci-dessous pour les retours et les contributions.
 6. [Retrait des Suggestions des Titres de Consultation](#retrait-des-suggestions-des-titres-de-consultation)
 7. [Modification du Comportement de la Tabulation Après Recherche Patient](#modification-du-comportement-de-la-tabulation-après-recherche-patient)
 8. [Écoute des Entrées Claviers Lors de l'Usage de la Calculette de Prescription](#écoute-des-entrées-claviers-lors-de-lusage-de-la-calculette-de-prescription)
-9. [FSE : Entrées clavier, contation par défaut +/- envoi automatique au TPE](#fse-entrées-clavier-contation-par-défaut--envoi-automatique-au-tpe)
+9. [FSE : Entrées clavier, cotation par défaut et envoi automatique au TPE](#fse-entrées-clavier-cotation-par-défaut-et-envoi-automatique-au-tpe)
 10. [Weda-Helper-Companion](#weda-helper-companion)
 11. [Problèmes et Limitations Connues](#problèmes-et-limitations-connues-qui-seront-peut-être-résolues-dans-de-futures-mises-à-jour)
 12. [Contributions](#contributions)
@@ -85,7 +85,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - touche "/" pour préparer une fraction de dose
 - touche "retour arrière" pour effacer les valeurs numériques
 
-## FSE : Entrées clavier, contation par défaut +/- envoi automatique au TPE
+## FSE : Entrées clavier, cotation par défaut +/- envoi automatique au TPE
 *Toute la FSE : <alt+6>, <n><n><tab><alt+v>*
 
 - les touches "n" et "o" permettent de sélectionner "non"/"oui" pour accidents de droit commun, puis ALD
