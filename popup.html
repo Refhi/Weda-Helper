@@ -7,21 +7,28 @@
         body {
             display: flex;
             flex-direction: column;
-            align-items: center;
+            align-items: flex-start; /* Aligner les éléments au début */
             justify-content: center;
-            height: 100vh;
+            height: auto;
+            width: 300px;
             margin: 0;
             background-color: #f4f4f4;
             font-family: Arial, sans-serif;
+            padding: 10px; /* Ajouter un peu d'espace autour du contenu */
+        }
+        .button-container {
+            display: flex; /* Utiliser flexbox pour aligner les boutons et le texte */
+            align-items: center; /* Centrer verticalement les éléments */
+            margin-bottom: 10px; /* Ajouter un peu d'espace entre les lignes */
         }
         button {
-            margin: 10px;
+            margin-right: 10px; /* Ajouter un peu d'espace entre le bouton et le texte */
             padding: 10px 20px;
             font-size: 1em;
             border: none;
             border-radius: 5px;
             color: #fff;
-            background-color: #007BFF;
+            background-color: #007BFF; /* Rendre le fond transparent */
             cursor: pointer;
         }
         button:hover {
@@ -30,8 +37,14 @@
     </style>
 </head>
 <body>
-    <button id="allConsultation">Tout mettre en consultation</button>
-    <button id="tpebis">Relance le dernier règlement sur le TPE</button>
+    <div class="button-container">
+        <button id="allConsultation">Tout CS</button>
+        <span>Tout mettre en consultation</span>
+    </div>
+    <div class="button-container">
+        <button id="tpebis">TPE Bis</button>
+        <span>Relance le dernier règlement sur le TPE</span>
+    </div>
     <script src="popup.js"></script>
 </body>
 </html>
