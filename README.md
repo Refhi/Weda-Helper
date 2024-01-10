@@ -25,8 +25,7 @@ Cf. ci-dessous pour les retours et les contributions.
 
 - "Appuie sur Valider" : Alt+V
 - "Appuie sur Annuler" : Alt+A
-- "Imprime le document en cours" : Ctrl+P (nécessite un module complémentaire installé en local
-  pour être totalement fonctionnel)
+- "Imprime le document en cours" : Ctrl+P (nécessite le [Weda-Helper-Companion](#weda-helper-companion) pour être totalement fonctionnel)
 - "Appuie sur Supprimer" : Alt+S
 
 Chrome limite les raccourcis par défaut. Les suivants doivent donc être
@@ -82,12 +81,13 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 Est à récupérer [sous forme d'un script python](https://github.com/Refhi/Weda-Helper-Companion) [ou sous forme d'executable](https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/companion.exe) qui reçoit des instructions de l'extension Weda-Helper.
 Une fois installée, et que les options de l’extension Weda-Helper dans Chrome on été paramétrées, il doit être lancé et laissé en fond de tâche.
 Il exécutera les tâches suivantes :
-- si une impression dans Weda est déclenchée via ctrl-P, il lance complètement l'impression
+- si une impression dans Weda est déclenchée via ctrl-P, il lance complètement l'impression. (si cette option est désactivée, ctrl+P amène jusqu'à la dernière validation)
 - si une FSE est validée via Alt+v et que le paiement carte bancaire est sélectionné, il envoie une demande de règlement au TPE (qui doit également être correctement paramétré à l'aide de votre installateur de TPE)
 
 ## Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):
 La touche Alt n'affiche pas l'aide quand le curseur est dans un champ de texte
 Les raccourcis claviers se substituent au comportement normal de Chrome, y compris hors de Weda
+Adobe reader, lors d'une impression déclenchée par Ctrl+P vole parfois le focus de Chrome.
 
 ## Contributions
 
