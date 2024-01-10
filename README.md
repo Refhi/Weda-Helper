@@ -27,7 +27,7 @@ Cf. ci-dessous pour les retours et les contributions.
 
 
 ## Raccourcis claviers
-*toutes vos tâches quotidiennes à portée de clavier*
+*Toutes vos tâches quotidiennes à portée de clavier*
 - "Appuie sur Valider" : Alt+V
 - "Appuie sur Annuler" : Alt+A
 - "Imprime le document en cours" : Ctrl+P (nécessite le [Weda-Helper-Companion](#weda-helper-companion) pour être totalement fonctionnel)
@@ -48,11 +48,13 @@ définis manuellement dans chrome://extensions/shortcuts :
 - "Lit la carte vitale" : Alt+C
 
 ## Affichage des raccourcis claviers du menu W
-*comment je fais ça déjà ?*
+*Comment je fais ça déjà ?*
+
 Un appuis sur la touche Alt prolongé (> 1 seconde) affiche un rappel des principaux raccourcis claviers
 
 ## Facilitation des imports
-*tout les imports au clavier en 4 appuis sur tabulations et un appuis sur Entrée*
+*Tout les imports au clavier en 4 appuis sur tabulations et un appuis sur Entrée*
+
 Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx), les modifications suivantes sont effectuées :
 - Modification de l'ordre de parcours des tabulations pour permettre des intégrations uniquement au clavier (appuyer sur Tab pour passer d'un champ à l'autre)
 - Agrandissement de la fenêtre de prévisualisation pour faciliter la lecture du PDF à importer
@@ -61,18 +63,22 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 
 ## Facilitation du remplissage des valeurs tensionnelles
 *'Poids' 75 <tab> 'TAS' 150 <tab> 'TAD' 80*
+
 Dans la fenêtre de consultation, lorsque l'on remplie une valeur de suivi, la touche tabulation envoie directement vers la case suivante (plus besoin d'appuyer 4 fois)
 
 ## Retrait des suggestions des titres de consultation
 *Parceque le vert flashy c'est sooo 2015*
+
 Dans les fenêtres contenant un Titre, désactive le panneau de suggestion (fenêtres d'ordonnance, consultation, certificat, prescription, formulaire, résultats d'examen).
 
 ## Modification du comportement de la tabulation après recherche patient
 *DESMAUX Nathalie <Entrée> <Entrée>*
+
 Permet, après la saisie du nom d'un patient, d'être directement positionné sur son nom, puis de pouvoir naviguer de patient en patient avec la touche Tab (ou maj+Tab pour aller vers le haut)
 
 ## Écoute des entrées claviers lors de l'usage de la calculette de prescription
 *<1> matin <2> midi <3> soir <4.5> jours*
+
 Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du claviers à la place de clics :
 - touches numériques (0-10)
 - touche "." pour mettre la virgule
@@ -80,12 +86,14 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - touche "retour arrière" pour effacer les valeurs numériques
 
 ## FSE : Entrées clavier, contation par défaut +/- envoi automatique au TPE
-*toute la FSE : <alt+6>, <n><n><tab><alt+v>*
+*Toute la FSE : <alt+6>, <n><n><tab><alt+v>*
+
 - les touches "n" et "o" permettent de sélectionner "non"/"oui" pour accidents de droit commun, puis ALD
 - si elles sont utilisées, entre automatiquement la cotation par défaut (à définir dans les options)
 
 ## Weda-Helper-Companion
-*autant pousser l'économie de mouvements jusqu'au bout*
+*Autant pousser l'économie de mouvements jusqu'au bout*
+
 Est à récupérer [sous forme d'un script python](https://github.com/Refhi/Weda-Helper-Companion) [ou sous forme d'executable](https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/companion.exe) qui reçoit des instructions de l'extension Weda-Helper.
 Une fois installée, et que les options de l’extension Weda-Helper dans Chrome on été paramétrées, il doit être lancé et laissé en fond de tâche.
 Il exécutera les tâches suivantes :
@@ -93,7 +101,8 @@ Il exécutera les tâches suivantes :
 - si une FSE est validée via Alt+v et que le paiement carte bancaire est sélectionné, il envoie une demande de règlement au TPE (qui doit également être correctement paramétré à l'aide de votre installateur de TPE)
 
 ## Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):
-*c'est là où vos pull requests sont les bienvenus*
+*C'est là où vos pull requests sont les bienvenus*
+
 La touche Alt n'affiche pas l'aide quand le curseur est dans un champ de texte
 Les raccourcis claviers se substituent au comportement normal de Chrome, y compris hors de Weda
 Adobe reader, lors d'une impression déclenchée par Ctrl+P vole parfois le focus de Chrome.
