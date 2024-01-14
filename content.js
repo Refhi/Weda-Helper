@@ -219,54 +219,21 @@ function sendPrint() {
             return;
         } else {
             console.log('send Print');
-                // TODO : tester sendToCompanion global puis supprimer celle-ci
-                // function sendToCompanion(url, blob) {
-                //     let urlWithParam = url + "&versioncheck=" + versionToCheck;
-                //     fetch(urlWithParam, {
-                //         method: 'POST',
-                //         headers: {
-                //             'Content-Type': 'application/pdf',
-                //         },
-                //         body: blob,
-                //     })
-                //     .then(response => response.json())
-                //     .then(data => {
-                //         if (data.error) {
-                //             console.warn('[Print] Error:', data.error);
-                //             alert('[Print] Erreur : ' + data.error);
-                //         } else {
-                //             console.log(data);
-                //         }
-                //     })
-                //     .catch(error => {
-                //         console.warn('[Print] Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
-                //         alert('[Print] Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
-                //     });
-                // }
-
-                // surveiller pendant 5 secondes le vol de focus de l'application.
-                // Si c'est le cas, envoyer une demande de récupération du focus
-                // via un get sur /focus
-            function getFocus() {
-                chrome.storage.local.get('focus', function (result) {
-                    const focus = result.focus;
-                    if (focus) {
-                        console.log('focus', focus);
-                        sendToCompanion(`focus`);
-                    }
-                });
-            }
-
             function watchForFocusLoss() {
+                function getFocus() {
+                    console.log('[getFocus] je tente de récupérer le focus');
+                    sendToCompanion(`focus`);
+                }
                 chrome.storage.local.get(['KeepFocus'], function(result) {
-                    if (result.KeepFocus) {
+                    if (result.KeepFocus !== false) {
+                        console.log('KeepFocus activé');
                         window.addEventListener('blur', getFocus);
                         document.addEventListener('visibilitychange', getFocus);
 
                         setTimeout(() => {
                             window.removeEventListener('blur', getFocus);
                             document.removeEventListener('visibilitychange', getFocus);
-                        }, 5000);
+                        }, 2000); // 2 sec paraît le bon compromis
                     }
                 });
             }
