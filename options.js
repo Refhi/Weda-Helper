@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function () {
     'TweakTabPrescription',
     'RemoveLocalCompanionPrint',
     'RemoveLocalCompanionTPE',
+    'KeepFocus',
     'portCompanion',
     'defaultCotation',
     'apiKey'

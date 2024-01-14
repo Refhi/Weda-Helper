@@ -2,6 +2,10 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+## [1.4] - 2024-01-14
+- ajout d'une fonction pour récupérer le focus s'il est volé par le logiciel d'impression
+- unification de l'appel à l'API du Companion
+
 ## [1.3.1] - 2024-01-04
 - correction de la visée de l'iframe pour l'impression des pdf => on vise l'id à la place
 - correction d'un bug dans les paramètres d'envoi au TPE

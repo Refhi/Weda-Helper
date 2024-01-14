@@ -115,38 +115,75 @@ function mouseoutW() {
 
 
 // // lien avec Weda-Helper-Companion
-var versionToCheck = "1.1";
-// envoi d'instruction au TPE via Weda-Helper-Companion
-function sendtpeinstruction(amount) {
-    function sendToCompanion(url) {
-        let urlWithParam = url + "&versioncheck=" + versionToCheck;
-        fetch(urlWithParam)
+function sendToCompanion(urlCommand, blob = null) {
+    chrome.storage.local.get(['portCompanion', 'apiKey'], function (result) {
+        const portCompanion = result.portCompanion;
+        const apiKey = result.apiKey;
+        if (!portCompanion || !apiKey) {
+            console.warn('portCompanion ou la clé API ne sont pas définis');
+            return;
+        }
+        let versionToCheck = "1.2";
+        let urlWithParam = `http://localhost:${portCompanion}/${urlCommand}` +
+                  `?apiKey=${apiKey}` +
+                  `&versioncheck=${versionToCheck}`;
+        let fetchOptions = blob ? {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/pdf',
+            },
+            body: blob,
+        } : {};
+
+        let errortype = "[" + urlCommand + "]";
+
+        fetch(urlWithParam, fetchOptions)
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
-                    console.warn('[TPE] Error:', data.error);
-                    alert('[TPE] Erreur : ' + data.error);
+                    console.warn(errortype + ' Error:', data.error);
+                    alert(errortype + ' Erreur : ' + data.error);
                 } else {
                     console.log(data);
                 }
             })
             .catch(error => {
-                console.warn('[TPE] Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
-                alert('[TPE] Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
+                console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
+                alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
             });
-    }
+    });
+}
+
+// envoi d'instruction au TPE via Weda-Helper-Companion
+function sendtpeinstruction(amount) {
+    // TODO : tester sendToCompanion global puis supprimer celle-ci
+    // function sendToCompanion(url) {
+    //     let urlWithParam = url + "&versioncheck=" + versionToCheck;
+    //     fetch(urlWithParam)
+    //         .then(response => response.json())
+    //         .then(data => {
+    //             if (data.error) {
+    //                 console.warn('[TPE] Error:', data.error);
+    //                 alert('[TPE] Erreur : ' + data.error);
+    //             } else {
+    //                 console.log(data);
+    //             }
+    //         })
+    //         .catch(error => {
+    //             console.warn('[TPE] Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
+    //             alert('[TPE] Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
+    //         });
+    // }
 
     // store the amount in chrome.storage.local
     chrome.storage.local.set({ 'lastTPEamount': amount }, function () {
         console.log('lastTPEamount', amount, 'sauvegardé avec succès');
     });
         
-    chrome.storage.local.get(['portCompanion', 'RemoveLocalCompanionTPE', 'apiKey'], function (result) {
-        const portCompanion = result.portCompanion;
+    chrome.storage.local.get(['RemoveLocalCompanionTPE'], function (result) {
         const removeLocalCompanionTPE = result.RemoveLocalCompanionTPE;
-        const apiKey = result.apiKey;
 
-        if (!portCompanion || removeLocalCompanionTPE !== false || !apiKey) {
+        if (removeLocalCompanionTPE !== false) {
             console.warn('RemoveLocalCompanionTPE ou portCompanion ou la clé API ne sont pas définis ou RemoveLocalCompanionTPE est !false (valeur actuelle :', removeLocalCompanionTPE, ')');
             return;
         } else if (!(/^\d+$/.test(amount))) {
@@ -155,7 +192,7 @@ function sendtpeinstruction(amount) {
         }
         else {
             console.log('sendinstruction', amount + 'c€' + ' to TPE');
-            sendToCompanion(`http://localhost:${portCompanion}/tpe/${amount}?apiKey=${apiKey}`);
+            sendToCompanion(`tpe/${amount}`);
             console.log('Instruction envoyée au TPE');
         }
     });
@@ -182,65 +219,85 @@ function sendPrint() {
             return;
         } else {
             console.log('send Print');
-            chrome.storage.local.get(['portCompanion', 'apiKey'], function (result) {
-                const portCompanion = result.portCompanion;
-                const apiKey = result.apiKey;
-                if (!portCompanion) {
-                    console.warn('RemoveLocalCompanionTPE pas définis. Aller à chrome-extension://fnfdbangkcmjacbeaaiongkbacaamnfd/options.html pour les définir');
-                    return;
-                }
+                // TODO : tester sendToCompanion global puis supprimer celle-ci
+                // function sendToCompanion(url, blob) {
+                //     let urlWithParam = url + "&versioncheck=" + versionToCheck;
+                //     fetch(urlWithParam, {
+                //         method: 'POST',
+                //         headers: {
+                //             'Content-Type': 'application/pdf',
+                //         },
+                //         body: blob,
+                //     })
+                //     .then(response => response.json())
+                //     .then(data => {
+                //         if (data.error) {
+                //             console.warn('[Print] Error:', data.error);
+                //             alert('[Print] Erreur : ' + data.error);
+                //         } else {
+                //             console.log(data);
+                //         }
+                //     })
+                //     .catch(error => {
+                //         console.warn('[Print] Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
+                //         alert('[Print] Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
+                //     });
+                // }
 
-
-                function sendToCompanion(url, blob) {
-                    let urlWithParam = url + "&versioncheck=" + versionToCheck;
-                    fetch(urlWithParam, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/pdf',
-                        },
-                        body: blob,
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.error) {
-                            console.warn('[Print] Error:', data.error);
-                            alert('[Print] Erreur : ' + data.error);
-                        } else {
-                            console.log(data);
-                        }
-                    })
-                    .catch(error => {
-                        console.warn('[Print] Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
-                        alert('[Print] Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
-                    });
-                }
-
-                // Obtenez l'élément iframe par son ID
-                let iframe = document.getElementById('ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile');
-                console.log('iframe', iframe);
-
-                // Obtenez l'URL du document dans l'iframe
-                let intervalId = setInterval(() => {
-                    url = iframe.contentWindow.location.href;
-                    console.log('url', url);
-                
-                    if (url !== 'about:blank') {
-                        clearInterval(intervalId);
-                        fetch(iframe.contentWindow.location.href)
-                            .then(response => response.blob())
-                            .then(blob => {
-                                sendToCompanion(`http://localhost:${portCompanion}/print?apiKey=${apiKey}`, blob);
-                            })
-                            .catch(error => console.error('Error:', error));
-
+                // surveiller pendant 5 secondes le vol de focus de l'application.
+                // Si c'est le cas, envoyer une demande de récupération du focus
+                // via un get sur /focus
+            function getFocus() {
+                chrome.storage.local.get('focus', function (result) {
+                    const focus = result.focus;
+                    if (focus) {
+                        console.log('focus', focus);
+                        sendToCompanion(`focus`);
                     }
-                }, 100);
-                
-                setTimeout(() => {
-                    clearInterval(intervalId);
-                }, 5000);
+                });
+            }
 
-            });
+            function watchForFocusLoss() {
+                chrome.storage.local.get(['KeepFocus'], function(result) {
+                    if (result.KeepFocus) {
+                        window.addEventListener('blur', getFocus);
+                        document.addEventListener('visibilitychange', getFocus);
+
+                        setTimeout(() => {
+                            window.removeEventListener('blur', getFocus);
+                            document.removeEventListener('visibilitychange', getFocus);
+                        }, 5000);
+                    }
+                });
+            }
+
+            
+
+            // Obtenez l'élément iframe par son ID
+            let iframe = document.getElementById('ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile');
+            console.log('iframe', iframe);
+
+            // Obtenez l'URL du document dans l'iframe
+            let intervalId = setInterval(() => {
+                url = iframe.contentWindow.location.href;
+                console.log('url', url);
+            
+                if (url !== 'about:blank') {
+                    clearInterval(intervalId);
+                    fetch(iframe.contentWindow.location.href)
+                        .then(response => response.blob())
+                        .then(blob => {
+                            sendToCompanion(`print`, blob);
+                            watchForFocusLoss();
+                        })
+                        .catch(error => console.error('Error:', error));
+
+                }
+            }, 100);
+            
+            setTimeout(() => {
+                clearInterval(intervalId);
+            }, 5000);
         }
     });
 }
