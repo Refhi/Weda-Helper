@@ -93,6 +93,10 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - Lecture automatique de la carte vitale si elle est non lue
 - Affichage de boutons directs pour la réalisation de FDS dégradées et téléconsultation (fonctionnalité en alpha)
 
+## Divers :
+Recettes : Affiche automatiquement la recette du jour lors de l'ouverture de la page
+Page d'accueil du dossier patient : ajout d'icones pour copier automatiquement le NIR dans le presse-papier
+
 ## Weda-Helper-Companion
 *Autant pousser l'économie de mouvements jusqu'au bout*
 

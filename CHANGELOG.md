@@ -2,6 +2,11 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+## [1.4.3] - 2024-01-15
+- Recettes : Affiche automatiquement la recette du jour lors de l'ouverture de la page
+- Page d'accueil du dossier patient : ajout d'icones pour copier automatiquement le NIR dans le presse-papier
+
+
 ## [1.4] - 2024-01-14
 - ajout d'une fonction pour récupérer le focus s'il est volé par le logiciel d'impression
 - unification de l'appel à l'API du Companion

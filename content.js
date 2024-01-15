@@ -36,7 +36,7 @@ function allConsultation() {
 // // Gestion de l'affichage de l'aide
 // afficher une infobulle à côté des entrées W avec la clé de submenuDict
 function tooltipshower() {
-    // abort if the focus is out of the window/tab TODO
+    // vérifier que la fenêtre est active et que le focus est sur la page
     if (!document.hasFocus() || document.hidden) {
         return;
     }
@@ -113,161 +113,6 @@ function mouseoutW() {
 
 }
 
-
-// // lien avec Weda-Helper-Companion
-function sendToCompanion(urlCommand, blob = null) {
-    chrome.storage.local.get(['portCompanion', 'apiKey'], function (result) {
-        const portCompanion = result.portCompanion;
-        const apiKey = result.apiKey;
-        if (!portCompanion || !apiKey) {
-            console.warn('portCompanion ou la clé API ne sont pas définis');
-            return;
-        }
-        let versionToCheck = "1.2";
-        let urlWithParam = `http://localhost:${portCompanion}/${urlCommand}` +
-                  `?apiKey=${apiKey}` +
-                  `&versioncheck=${versionToCheck}`;
-        let fetchOptions = blob ? {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/pdf',
-            },
-            body: blob,
-        } : {};
-
-        let errortype = "[" + urlCommand + "]";
-
-        fetch(urlWithParam, fetchOptions)
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    console.warn(errortype + ' Error:', data.error);
-                    alert(errortype + ' Erreur : ' + data.error);
-                } else {
-                    console.log(data);
-                }
-            })
-            .catch(error => {
-                console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
-                alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
-            });
-    });
-}
-
-// envoi d'instruction au TPE via Weda-Helper-Companion
-function sendtpeinstruction(amount) {
-    // TODO : tester sendToCompanion global puis supprimer celle-ci
-    // function sendToCompanion(url) {
-    //     let urlWithParam = url + "&versioncheck=" + versionToCheck;
-    //     fetch(urlWithParam)
-    //         .then(response => response.json())
-    //         .then(data => {
-    //             if (data.error) {
-    //                 console.warn('[TPE] Error:', data.error);
-    //                 alert('[TPE] Erreur : ' + data.error);
-    //             } else {
-    //                 console.log(data);
-    //             }
-    //         })
-    //         .catch(error => {
-    //             console.warn('[TPE] Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
-    //             alert('[TPE] Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
-    //         });
-    // }
-
-    // store the amount in chrome.storage.local
-    chrome.storage.local.set({ 'lastTPEamount': amount }, function () {
-        console.log('lastTPEamount', amount, 'sauvegardé avec succès');
-    });
-        
-    chrome.storage.local.get(['RemoveLocalCompanionTPE'], function (result) {
-        const removeLocalCompanionTPE = result.RemoveLocalCompanionTPE;
-
-        if (removeLocalCompanionTPE !== false) {
-            console.warn('RemoveLocalCompanionTPE ou portCompanion ou la clé API ne sont pas définis ou RemoveLocalCompanionTPE est !false (valeur actuelle :', removeLocalCompanionTPE, ')');
-            return;
-        } else if (!(/^\d+$/.test(amount))) {
-            console.log('amount', amount, 'n\'est pas un nombre entier');
-            return;
-        }
-        else {
-            console.log('sendinstruction', amount + 'c€' + ' to TPE');
-            sendToCompanion(`tpe/${amount}`);
-            console.log('Instruction envoyée au TPE');
-        }
-    });
-}
-
-// envoi du dernier montant au TPE dans Weda-Helper-Companion
-function sendLastTPEamount() {
-    chrome.storage.local.get('lastTPEamount', function (result) {
-        const lastTPEamount = result.lastTPEamount;
-        console.log('Envoi du dernier montant demandé au TPE : ' + lastTPEamount + 'c€');
-        if (lastTPEamount) {
-            console.log('lastTPEamount', lastTPEamount);
-            sendtpeinstruction(lastTPEamount);
-        }
-    });
-}
-
-// déclenchement de l'impression dans Weda-Helper-Companion
-function sendPrint() {
-    chrome.storage.local.get('RemoveLocalCompanionPrint', function (result) {
-        const RemoveLocalCompanionPrint = result.RemoveLocalCompanionPrint;
-        if (RemoveLocalCompanionPrint !== false) {
-            console.log('RemoveLocalCompanionPrint est !false (valeur actuelle :', RemoveLocalCompanionPrint, ')');
-            return;
-        } else {
-            console.log('send Print');
-            function watchForFocusLoss() {
-                function getFocus() {
-                    console.log('[getFocus] je tente de récupérer le focus');
-                    sendToCompanion(`focus`);
-                }
-                chrome.storage.local.get(['KeepFocus'], function(result) {
-                    if (result.KeepFocus !== false) {
-                        console.log('KeepFocus activé');
-                        window.addEventListener('blur', getFocus);
-                        document.addEventListener('visibilitychange', getFocus);
-
-                        setTimeout(() => {
-                            window.removeEventListener('blur', getFocus);
-                            document.removeEventListener('visibilitychange', getFocus);
-                        }, 2000); // 2 sec paraît le bon compromis
-                    }
-                });
-            }
-
-            
-
-            // Obtenez l'élément iframe par son ID
-            let iframe = document.getElementById('ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile');
-            console.log('iframe', iframe);
-
-            // Obtenez l'URL du document dans l'iframe
-            let intervalId = setInterval(() => {
-                url = iframe.contentWindow.location.href;
-                console.log('url', url);
-            
-                if (url !== 'about:blank') {
-                    clearInterval(intervalId);
-                    fetch(iframe.contentWindow.location.href)
-                        .then(response => response.blob())
-                        .then(blob => {
-                            sendToCompanion(`print`, blob);
-                            watchForFocusLoss();
-                        })
-                        .catch(error => console.error('Error:', error));
-
-                }
-            }, 100);
-            
-            setTimeout(() => {
-                clearInterval(intervalId);
-            }, 5000);
-        }
-    });
-}
 
 
 // // Aide au clic
@@ -369,6 +214,62 @@ chrome.storage.local.get('TweakTabConsultation', function (result) {
     }
 });
 
+// [page de recettes] Appuie automatiquement sur le bouton "rechercher" après avoir sélectionné la page des recettes
+// seulement si la page est https://secure.weda.fr/FolderGestion/RecetteForm.aspx, appuis sur id="ContentPlaceHolder1_ButtonFind"
+chrome.storage.local.get('TweakRecetteForm', function (result) {
+    let TweakRecetteForm = result.TweakRecetteForm; //TODO : le mettre en option
+    if (window.location.href === 'https://secure.weda.fr/FolderGestion/RecetteForm.aspx' && TweakRecetteForm !== false) {
+        var button = document.getElementById('ContentPlaceHolder1_ButtonFind');
+        if (button) {
+            button.click();
+            console.log('Button clicked on RecetteForm page');
+        }
+    }
+});
+
+// [page d'accueil] copie automatiquement dans le presse papier le NIR du patient quand on clique dessus:
+chrome.storage.local.get('TweakNIR', function (result) {
+    let TweakNIR = result.TweakNIR; //TODO : le mettre en option
+    function addCopySymbol(element, copyText) {
+        // Crée un nouvel élément pour le symbole de copie
+        var copySymbol = document.createElement('span');
+        copySymbol.textContent = '📋'; // Utilise l'émoji de presse-papiers comme symbole de copie
+        copySymbol.style.cursor = 'pointer'; // Change le curseur en pointeur lorsqu'il survole le symbole de copie
+        copySymbol.title = 'Cliquez ici pour copier le NIR dans le presse-papiers'; // Ajoute un texte d'infobulle
+
+        // Ajoute un gestionnaire d'événements click au symbole de copie
+        copySymbol.addEventListener('click', function () {
+            console.log(copyText);
+            navigator.clipboard.writeText(copyText);
+        });
+
+        // Ajoute le symbole de copie à côté de l'élément
+        element.parentNode.insertBefore(copySymbol, element.nextSibling);
+    }
+
+    if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx') && TweakNIR !== false) {
+        waitForElement('span.label', 'NIR', 5000, function (element) {
+            var nir = element.textContent.match(/(\d{13} \d{2})/)[1];
+            nir = nir.replace(/\s/g, ''); // Supprime tous les espaces de la chaîne
+            addCopySymbol(element, nir);
+            element.addEventListener('click', function () {
+                console.log('nir', nir);
+                navigator.clipboard.writeText(nir);
+            });
+        });
+        waitForElement('#ContentPlaceHolder1_EtatCivilUCForm1_LabelPatientSecuriteSocial', '', 5000, function (element) {
+            var secu = element.textContent.match(/(\d{1} \d{2} \d{2} \d{2} \d{3} \d{3} \d{2})/)[1];
+            secu = secu.replace(/\s/g, ''); // Supprime tous les espaces de la chaîne
+            addCopySymbol(element, secu);
+            element.addEventListener('click', function () {
+                console.log('secu', secu);
+                navigator.clipboard.writeText(secu);
+            });
+        });
+    }
+});
+
+
 
 
 // // Retrait des suggestions de titre
@@ -438,8 +339,3 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
         }
     });
 }
-
-
-
-// TODO : ajouter d'autres fenêtres d'information
-// TODO : basculer l'écoute du clavier sur keydown et keyup
