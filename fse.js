@@ -64,24 +64,52 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
 
 
     function CarteVitaleNonLue() {
+
+        function checkSVDG() {
+            console.log('checkSVDG démarré');
+            // Sélectionner les éléments par leur classe
+            let elements = document.querySelectorAll('.mat-menu-trigger.mat-tooltip-trigger.fseMode.mr5.pointer');
+
+            // Parcourir les éléments
+            for (let element of elements) {
+                // Obtenir le texte de l'élément
+                let text = element.textContent.trim();
+
+                // S'arrêter si le texte est "SV" ou "DG"
+                if (text === 'SV' || text === 'DG') {
+                    return true
+                } else {
+                    return false
+                }
+            }
+        }        
+            
+
         // Vérifie l'existence de conditions nécessitant la lecture de la cv :
         // - soit la présence du texte d'erreur de cohérence
         // - soit la présence du texte d'erreur de cv non lue
         console.log('CarteVitaleNonLue demarré : je vérifie la présence du texte d erreur ou de l absence de cv');
-        waitForElement('span', 'Le nom, le prénom et/ou la date de naissance sont différents entre les données du bénéficiaire et celles contenues dans le dossier patient Weda.', 5000, function(spanElement) {
-            console.log('Détecté : nom/prenom != dossier patient Weda. Je clique sur le bouton de lecture de la carte vitale');
-            clickCarteVitale(); // cf. keyCommands.js
-            checkPatientName();
-            addFSEVariantButtons();
-        });
         setTimeout(function() {
-            waitForElement('span', 'Carte Vitale non lue', 5000, function(spanElement) {
-                console.log('Détecté : Carte Vitale non lue. Je clique sur le bouton de lecture de la carte vitale');
-                clickCarteVitale(); // cf. keyCommands.js
-                checkPatientName();
-                addFSEVariantButtons();
-            });
-        }, 200); // Attendre 200 ms avant d'exécuter le code à l'intérieur de setTimeout (utile pour éviter une lecture cv trop rapide)
+            if (checkSVDG()) {
+                console.log('Détecté : SV ou DG. On arrête là');
+            } else {
+                console.log('Pas de SV ou DG. On continue');
+                waitForElement('span', 'Le nom, le prénom et/ou la date de naissance sont différents entre les données du bénéficiaire et celles contenues dans le dossier patient Weda.', 5000, function(spanElement) {
+                    console.log('Détecté : nom/prenom != dossier patient Weda. Je clique sur le bouton de lecture de la carte vitale');
+                    clickCarteVitale(); // cf. keyCommands.js
+                    checkPatientName();
+                    addFSEVariantButtons();
+                });
+                setTimeout(function() {
+                    waitForElement('span', 'Carte Vitale non lue', 5000, function(spanElement) {
+                        console.log('Détecté : Carte Vitale non lue. Je clique sur le bouton de lecture de la carte vitale');
+                        clickCarteVitale(); // cf. keyCommands.js
+                        checkPatientName();
+                        addFSEVariantButtons();
+                    });
+                }, 200); // Attendre 200 ms avant d'exécuter le code à l'intérieur de setTimeout (utile pour éviter une lecture cv trop rapide)
+            }
+        },200);
     }
 
     // Ajoute deux boutons : un pour les FSE dégradées, un pour les FSE Teleconsultation à côté de lecture carte vitale
