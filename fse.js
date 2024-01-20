@@ -64,6 +64,27 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
 
 
     function CarteVitaleNonLue() {
+
+        function checkSVDG() {
+            console.log('checkSVDG démarré');
+            // Sélectionner les éléments par leur classe
+            let elements = document.querySelectorAll('.mat-menu-trigger.mat-tooltip-trigger.fseMode.mr5.pointer');
+
+            // Parcourir les éléments
+            for (let element of elements) {
+                // Obtenir le texte de l'élément
+                let text = element.textContent.trim();
+
+                // S'arrêter si le texte est "SV" ou "DG"
+                if (text === 'SV' || text === 'DG') {
+                    return true
+                } else {
+                    return false
+                }
+            }
+        }        
+            
+
         // Vérifie l'existence de conditions nécessitant la lecture de la cv :
         // - soit la présence du texte d'erreur de cohérence
         // - soit la présence du texte d'erreur de cv non lue
