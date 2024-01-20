@@ -65,7 +65,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
 
     function CarteVitaleNonLue() {
 
-        function checkSVDG() {
+        function checkSVDG() { // TODO à supprimer si le reste fonctionne
             console.log('checkSVDG démarré');
             // Sélectionner les éléments par leur classe
             let elements = document.querySelectorAll('.mat-menu-trigger.mat-tooltip-trigger.fseMode.mr5.pointer');
@@ -107,7 +107,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
                 addFSEVariantButtons();
                 carteVitaleLue = true; // Indique que la carte vitale a été lue
             });
-        }, 200); // Attendre 200 ms avant d'exécuter le code à l'intérieur de setTimeout (utile pour éviter une lecture cv trop rapide)
+        }, 300); // Attendre 300 ms avant d'exécuter le code à l'intérieur de setTimeout (utile pour éviter une lecture cv trop rapide)
     }
     // Ajoute deux boutons : un pour les FSE dégradées, un pour les FSE Teleconsultation à côté de lecture carte vitale
     function addFSEVariantButtons() {
