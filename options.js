@@ -11,7 +11,25 @@ document.addEventListener('DOMContentLoaded', function () {
     'KeepFocus',
     'portCompanion',
     'defaultCotation',
-    'apiKey'
+    'apiKey',
+    "keepMedSearch",
+    "addMedSearchButtons",
+    "boutonRecherche-1",
+    "boutonRecherche-2",
+    "boutonRecherche-3",
+    "boutonRecherche-4",
+    "boutonRecherche-5",
+    "boutonRecherche-6",
+    "boutonRecherche-7",
+    "boutonRecherche-8",
+    "boutonRecherche-9",
+    "boutonRecherche-10",
+    // "boutonRecherche-11", // n'existe pas !
+    // "boutonRecherche-12", // n'existe pas !
+    "boutonRecherche-13",
+    "boutonRecherche-14",
+    "TweakRecetteForm",
+    "TweakNIR"
   ];
 
   var defautsTextValues = {
@@ -64,7 +82,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     options.forEach(function (option) {
       var element = document.getElementById(option);
-      var value = element.type === 'checkbox' ? element.checked : element.value;
+      if (element) { // Vérifiez si l'élément existe
+        var value = element.type === 'checkbox' ? element.checked : element.value;
+      } else {
+        console.log('Aucun élément trouvé avec l\'ID', option);
+      }
 
       var letterRegex = /^([A-Z0-9]{1,7})?$/;
       if (option === 'defaultCotation' && !letterRegex.test(value)) {

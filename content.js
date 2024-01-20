@@ -222,7 +222,7 @@ chrome.storage.local.get('TweakTabConsultation', function (result) {
 // [page de recettes] Appuie automatiquement sur le bouton "rechercher" après avoir sélectionné la page des recettes
 // seulement si la page est https://secure.weda.fr/FolderGestion/RecetteForm.aspx, appuis sur id="ContentPlaceHolder1_ButtonFind"
 chrome.storage.local.get('TweakRecetteForm', function (result) {
-    let TweakRecetteForm = result.TweakRecetteForm; //TODO : le mettre en option
+    let TweakRecetteForm = result.TweakRecetteForm;
     if (window.location.href === 'https://secure.weda.fr/FolderGestion/RecetteForm.aspx' && TweakRecetteForm !== false) {
         var button = document.getElementById('ContentPlaceHolder1_ButtonFind');
         if (button) {
@@ -234,7 +234,7 @@ chrome.storage.local.get('TweakRecetteForm', function (result) {
 
 // [page d'accueil] copie automatiquement dans le presse papier le NIR du patient quand on clique dessus:
 chrome.storage.local.get('TweakNIR', function (result) {
-    let TweakNIR = result.TweakNIR; //TODO : le mettre en option
+    let TweakNIR = result.TweakNIR;
     function addCopySymbol(element, copyText) {
         // Crée un nouvel élément pour le symbole de copie
         var copySymbol = document.createElement('span');
@@ -277,16 +277,19 @@ chrome.storage.local.get('TweakNIR', function (result) {
 // Page de prescription : maintient le texte d'un type de recherche à l'autre
 if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx')) {
     chrome.storage.local.get(['keepMedSearch', 'addMedSearchButtons'], function (result) {
-        let keepMedSearch = result.keepMedSearch; //TODO : le mettre en option
-        let addMedSearchButtons = result.addMedSearchButtons; //TODO : le mettre en option
+        let keepMedSearch = result.keepMedSearch;
+        let addMedSearchButtons = result.addMedSearchButtons;
         console.log('keepMedSearch', keepMedSearch, 'addMedSearchButtons', addMedSearchButtons);
 
         function storeSearchSelection() {
             var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
-            console.log('Le texte de recherche actuel est ', inputField.value, 'je le stocke localement suite au clic sur le menu déroulant ou sur un bouton');
-            chrome.storage.local.set({medSearchText: inputField.value});
+            if (inputField) {
+                console.log('Le texte de recherche actuel est ', inputField.value, 'je le stocke localement suite au clic sur le menu déroulant ou sur un bouton');
+                chrome.storage.local.set({medSearchText: inputField.value});
+            } else {
+                console.log('Le champ d\'entrée n\'a pas été trouvé');
+            }
         }
-
 
         function clicDropDownWatcher() {
             var selectMenu = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_DropDownListRecherche');
@@ -365,27 +368,39 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
                     selectMenu.value = value;
                 };
             }
-            
 
-            for (var key in dropDownList) {
-                // Ajoutez un identifiant unique à chaque bouton
-                var buttonId = 'button-search-' + key;
-        
-                // Vérifiez si un bouton avec cet identifiant existe déjà
-                if (document.getElementById(buttonId)) {
-                    continue; // Si c'est le cas, passez à la prochaine itération de la boucle
+            var optionsBoutonRecherche = Object.keys(dropDownList).map(function(key) {
+                return 'boutonRecherche-' + key;
+            });
+
+            chrome.storage.local.get(optionsBoutonRecherche, function(result) {
+                for (var key in dropDownList) {
+                    // Ajoutez le préfixe à la clé avant de vérifier l'option
+                    var storageKey = 'boutonRecherche-' + key;
+
+                    // Vérifiez si l'option pour cette clé est activée
+                    if (result[storageKey] !== false) {
+                        console.log('boutonRecherche-' + key, 'est'+ result[storageKey]);
+                        // Ajoutez un identifiant unique à chaque bouton
+                        var buttonId = 'button-search-' + key;
+                
+                        // Vérifiez si un bouton avec cet identifiant existe déjà
+                        if (document.getElementById(buttonId)) {
+                            continue; // Si c'est le cas, passez à la prochaine itération de la boucle
+                        }
+                
+                        var button = document.createElement('button');
+                        button.id = buttonId; // Attribuez l'identifiant au bouton
+                        button.textContent = dropDownList[key].shortText;
+                        button.title = dropDownList[key].fullText;
+                        button.style.marginRight = '5px';
+                        button.style.display = 'inline-block';
+                        button.className = 'buttonheader find';
+                        button.onclick = makeOnClickFunction(key);
+                        parentElement.insertBefore(button, selectMenu);
+                    }
                 }
-        
-                var button = document.createElement('button');
-                button.id = buttonId; // Attribuez l'identifiant au bouton
-                button.textContent = dropDownList[key].shortText;
-                button.title = dropDownList[key].fullText;
-                button.style.marginRight = '5px';
-                button.style.display = 'inline-block';
-                button.className = 'buttonheader find';
-                button.onclick = makeOnClickFunction(key);
-                parentElement.insertBefore(button, selectMenu);
-            }
+            });
         }
 
         
