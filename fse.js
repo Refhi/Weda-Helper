@@ -67,23 +67,27 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
         // Vérifie l'existence de conditions nécessitant la lecture de la cv :
         // - soit la présence du texte d'erreur de cohérence
         // - soit la présence du texte d'erreur de cv non lue
+        var carteVitaleLue = false; // Indicateur pour suivre si la carte vitale a été lue
         console.log('CarteVitaleNonLue demarré : je vérifie la présence du texte d erreur ou de l absence de cv');
         waitForElement('span', 'Le nom, le prénom et/ou la date de naissance sont différents entre les données du bénéficiaire et celles contenues dans le dossier patient Weda.', 5000, function(spanElement) {
+            if (carteVitaleLue) return; // Si la carte vitale a déjà été lue, arrête la surveillance
             console.log('Détecté : nom/prenom != dossier patient Weda. Je clique sur le bouton de lecture de la carte vitale');
             clickCarteVitale(); // cf. keyCommands.js
             checkPatientName();
             addFSEVariantButtons();
+            carteVitaleLue = true; // Indique que la carte vitale a été lue
         });
         setTimeout(function() {
             waitForElement('span', 'Carte Vitale non lue', 5000, function(spanElement) {
+                if (carteVitaleLue) return; // Si la carte vitale a déjà été lue, arrête la surveillance
                 console.log('Détecté : Carte Vitale non lue. Je clique sur le bouton de lecture de la carte vitale');
                 clickCarteVitale(); // cf. keyCommands.js
                 checkPatientName();
                 addFSEVariantButtons();
+                carteVitaleLue = true; // Indique que la carte vitale a été lue
             });
         }, 200); // Attendre 200 ms avant d'exécuter le code à l'intérieur de setTimeout (utile pour éviter une lecture cv trop rapide)
     }
-
     // Ajoute deux boutons : un pour les FSE dégradées, un pour les FSE Teleconsultation à côté de lecture carte vitale
     function addFSEVariantButtons() {
         // Attendre que l'élément "Lire la carte vitale" existe

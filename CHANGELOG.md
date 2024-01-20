@@ -2,6 +2,12 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+## [1.4.4] - 2024-01-15
+- fix : le tab order des consultations avait tendance à sauter aux refreshs du DOM
+- fix : le raccourcis pour bouton valider et annuler ne fonctionnaient pas pour la validation/annulation des liens familiaux
+- fix : la lecture de la cv se relançait parfois plusieurs fois de suite. Essai de fix à vérifier.
+- ajout d'une mémoire du champ de recherche des médicaments
+
 ## [1.4.3] - 2024-01-15
 - Recettes : Affiche automatiquement la recette du jour lors de l'ouverture de la page
 - Page d'accueil du dossier patient : ajout d'icones pour copier automatiquement le NIR dans le presse-papier

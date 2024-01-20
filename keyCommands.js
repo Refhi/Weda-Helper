@@ -59,12 +59,26 @@ function push_valider() {
     // click other elements, one after the other, until one of them works
     const actions = [
         () => clickElementById('ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonValidDocument'),
+        () => clickElementById('ContentPlaceHolder1_FindPatientUcForm1_ButtonValidFamille'),
         () => clickClassExceptIf('button valid', 'Chercher', 'ContentPlaceHolder1_btnScanDatamatrix'),
         () => GenericClicker("title", "Enregistrer et quitter"),
         () => GenericClicker("title", "Valider"),
         () => clickElementByChildtextContent("VALIDER"),
         () => clickElementById('ContentPlaceHolder1_ButtonQuitter2'),
         () => clicSecure()
+    ];
+
+    actions.some(action => action() !== false);
+}
+
+function push_annuler() {
+    console.log('push_annuler activé');
+    const actions = [
+        () => clickElementById('ContentPlaceHolder1_FindPatientUcForm1_ButtonCancelFamille'),
+        () => clickElementByClass('button cancel'),
+        () => GenericClicker("title", "Annuler"),
+        () => GenericClicker("title", "Quitter"),
+        () => clickElementByChildtextContent("ANNULER")
     ];
 
     actions.some(action => action() !== false);
@@ -202,12 +216,8 @@ const keyCommands = {
         description: 'Appuie le bouton Annuler ou équivalent',
         key: 'alt+a',
         action: function () {
-            console.log('push_annuler activé');
-            if (!clickElementByClass('button cancel')) {
-                GenericClicker("title", "Annuler")
-                GenericClicker("title", "Quitter")
-                clickElementByChildtextContent("ANNULER")
-            };
+            push_annuler();
+
         }
     },
     'print_meds': {
