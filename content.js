@@ -405,25 +405,26 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
 
         
         // Obtenez une référence au champ d'entrée et au menu déroulant
-        var observer = new MutationObserver(function(mutationsList, observer) {
-            if (keepMedSearch !== false) {
-                console.log('keepMedSearch started');
-                // Appeler la première fonction de rappel
-                clicDropDownWatcher();
-                // Appeler la deuxième fonction de rappel
-                textSorter();
-            }
-            if (addMedSearchButtons !== false) {
-                console.log('addMedSearchButtons started');
-                observer.disconnect();
-                addMedSearchButtonsFunction();
-                observer.observe(document, { childList: true, subtree: true });
-            }
-        });
-        // Commence à observer le document avec les configurations spécifiées
+        // var observer = new MutationObserver(function(mutationsList, observer) {
+        //     if (keepMedSearch !== false) {
+        //         console.log('keepMedSearch started');
+        //         // Appeler la première fonction de rappel
+        //         clicDropDownWatcher();
+        //         // Appeler la deuxième fonction de rappel
+        //         textSorter();
+        //     }
+        //     if (addMedSearchButtons !== false) {
+        //         console.log('addMedSearchButtons started');
+        //         observer.disconnect();
+        //         addMedSearchButtonsFunction();
+        //         observer.observe(document, { childList: true, subtree: true });
+        //     }
+        // });
+        // // Commence à observer le document avec les configurations spécifiées
         // setTimeout(function() {
-            observer.observe(document, { childList: true, subtree: true });
-        // }, 100);
+        //     observer.observe(document, { childList: true, subtree: true });
+        // }, 100); // nécessaire sinon part en loop
+        // TODO : fix le probème des prescriptions et les options qui ne semblent pas avoir l'effet escompté
     });
 }
 
