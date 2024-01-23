@@ -101,6 +101,7 @@ document.addEventListener('DOMContentLoaded', function () {
       chrome.storage.local.set(valuesToSave, function () {
         console.log('Sauvegardé avec succès');
         alert('Les options ont été sauvegardées avec succès');
+        console.log(valuesToSave);
       });
     }
   });

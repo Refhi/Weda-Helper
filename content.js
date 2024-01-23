@@ -330,17 +330,18 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
         }
 
         function typeText(savedValue) {
-            console.log('typeText started with savedValue', savedValue);
-            var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
-            // Ajoutez un délai de 200 ms avant de simuler une pression de touche
-            setTimeout(function() {
-                inputField.value = savedValue;
-                // Simulez un clic sur id='ContentPlaceHolder1_BaseVidalUcForm1_ButtonFind'
-                var button = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_ButtonFind');
-                button.click();
+            if (savedValue !== 'undefined') {
+                console.log('typeText started with savedValue', savedValue);
+                var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
+                // Ajoutez un délai de 200 ms avant de simuler une pression de touche
+                setTimeout(function() {
+                    inputField.value = savedValue;
+                    // Simulez un clic sur id='ContentPlaceHolder1_BaseVidalUcForm1_ButtonFind'
+                    var button = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_ButtonFind');
+                    button.click();
 
-            }, 10);
-            
+                }, 10);
+            }
         }
 
         function addMedSearchButtonsFunction() {
@@ -403,28 +404,38 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
             });
         }
 
-        
-        // Obtenez une référence au champ d'entrée et au menu déroulant
-        // var observer = new MutationObserver(function(mutationsList, observer) {
-        //     if (keepMedSearch !== false) {
-        //         console.log('keepMedSearch started');
-        //         // Appeler la première fonction de rappel
-        //         clicDropDownWatcher();
-        //         // Appeler la deuxième fonction de rappel
-        //         textSorter();
-        //     }
-        //     if (addMedSearchButtons !== false) {
-        //         console.log('addMedSearchButtons started');
-        //         observer.disconnect();
-        //         addMedSearchButtonsFunction();
-        //         observer.observe(document, { childList: true, subtree: true });
-        //     }
-        // });
-        // // Commence à observer le document avec les configurations spécifiées
+        function ifDOMChanged(mutationsList) {
+            console.log('DOM Mutation detected, restarting', mutationsList);
+            observer.disconnect();
+            if (keepMedSearch !== false) {
+                console.log('keepMedSearch started');
+                // Appeler la première fonction de rappel
+                clicDropDownWatcher();
+                // Appeler la deuxième fonction de rappel
+                textSorter();
+            }
+            if (addMedSearchButtons !== false) {
+                console.log('addMedSearchButtons started');
+                addMedSearchButtonsFunction();
+            }
+            setTimeout(function() {
+                observer.observe(document, { childList: true, subtree: true });
+            }, 2000); // sinon part en loop
+        }
+            // Obtenez une référence au champ d'entrée et au menu déroulant
+        var observer = new MutationObserver(function(mutationsList, observer) {
+            ifDOMChanged(mutationsList);
+        });
+            
+        // Commence à observer le document avec les configurations spécifiées
         // setTimeout(function() {
-        //     observer.observe(document, { childList: true, subtree: true });
-        // }, 100); // nécessaire sinon part en loop
+        // }, 500); // nécessaire sinon part en loop
         // TODO : fix le probème des prescriptions et les options qui ne semblent pas avoir l'effet escompté
+        waitForElement('#ContentPlaceHolder1_BaseVidalUcForm1_DropDownListRecherche', null, 5000, function() {
+            ifDOMChanged([]);
+            console.log('observer started');
+            observer.observe(document, { childList: true, subtree: true });
+        });
     });
 }
 
