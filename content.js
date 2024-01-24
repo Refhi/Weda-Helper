@@ -284,19 +284,21 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
         function storeSearchSelection() {
             var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
             if (inputField) {
-                console.log('Le texte de recherche actuel est ', inputField.value, 'je le stocke localement suite au clic sur le menu déroulant ou sur un bouton');
+                console.log('Le texte de recherche actuel est ', inputField.value, 'je le stocke localement suite à sa modification');
                 chrome.storage.local.set({medSearchText: inputField.value});
             } else {
                 console.log('Le champ d\'entrée n\'a pas été trouvé');
             }
         }
 
-        function clicDropDownWatcher() {
-            var selectMenu = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_DropDownListRecherche');
-            selectMenu.addEventListener('mousedown', function() {
-                // Stocker la valeur de inputField dans medSearchText lorsque le menu déroulant est cliqué
-                storeSearchSelection();
-            });
+        function searchTextKeeper() {
+            var searchTextField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
+            if (searchTextField) {
+                searchTextField.addEventListener('input', function() {
+                    // Stocker la valeur de inputField dans medSearchText lorsque le texte est modifié
+                    storeSearchSelection();
+                });
+            }
         }
 
         function textSorter() {
@@ -307,22 +309,15 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
 
             // Obtenez la valeur actuelle du menu déroulant
             var medSearchSelectionCurrent = selectMenu.value;
-
-            // Obtenez la valeur stockée localement
-
             chrome.storage.local.get(['medSearchSelection', 'medSearchText'], function(result) {
                 var medSearchSelection = result.medSearchSelection;
                 var medSearchText = result.medSearchText;
-
-                // Utilisez medSearchSelection et medSearchText ici
                 // Si la valeur stockée localement est différente de la valeur actuelle
                 console.log('medSearchSelection est ', medSearchSelection, 'et medSearchSelectionCurrent est ', medSearchSelectionCurrent);
                 console.log('medSearchText est ', medSearchText, 'et inputField.value est ', inputField.value);
                 if (medSearchText !== inputField.value && medSearchSelection !== medSearchSelectionCurrent) {
-                    // Utilisez typeText
                     typeText(medSearchText);
-                }
-                if (medSearchText && inputField.value === '') {
+                } else if (medSearchText && inputField.value === '') {
                     typeText(medSearchText);
                 }
 
@@ -330,13 +325,11 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
         }
 
         function typeText(savedValue) {
-            if (savedValue !== 'undefined') {
+            if (savedValue !== undefined) {
                 console.log('typeText started with savedValue', savedValue);
                 var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
-                // Ajoutez un délai de 200 ms avant de simuler une pression de touche
                 setTimeout(function() {
                     inputField.value = savedValue;
-                    // Simulez un clic sur id='ContentPlaceHolder1_BaseVidalUcForm1_ButtonFind'
                     var button = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_ButtonFind');
                     button.click();
 
@@ -345,7 +338,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
         }
 
         function addMedSearchButtonsFunction() {
-            console.log('addMedSearchButtonsFunction started');
+            console.log('addMedSearchButtons started');
             var dropDownList = {
                 "1": { fullText: "Médicaments", shortText: "Med" },
                 "14": { fullText: "Recherche par produits", shortText: "Prod" },
@@ -365,6 +358,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
 
             function makeOnClickFunction(value) {
                 return function() {
+                    console.log('boutonRecherche-' + value, 'cliqué');
                     storeSearchSelection();
                     selectMenu.value = value;
                 };
@@ -381,11 +375,11 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
 
                     // Vérifiez si l'option pour cette clé est activée
                     if (result[storageKey] !== false) {
-                        console.log('boutonRecherche-' + key, 'est'+ result[storageKey]);
                         // Ajoutez un identifiant unique à chaque bouton
                         var buttonId = 'button-search-' + key;
                 
                         // Vérifiez si un bouton avec cet identifiant existe déjà
+                        var tmpelement = document.getElementById(buttonId);
                         if (document.getElementById(buttonId)) {
                             continue; // Si c'est le cas, passez à la prochaine itération de la boucle
                         }
@@ -397,42 +391,37 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
                         button.style.marginRight = '5px';
                         button.style.display = 'inline-block';
                         button.className = 'buttonheader find';
-                        button.onclick = makeOnClickFunction(key);
+                        button.onmousedown = makeOnClickFunction(key);
                         parentElement.insertBefore(button, selectMenu);
                     }
                 }
             });
         }
 
-        function ifDOMChanged(mutationsList) {
-            console.log('DOM Mutation detected, restarting', mutationsList);
-            observer.disconnect();
+        function ifDOMChanged() {
+            console.log('DOM Mutation detected, restarting');
             if (keepMedSearch !== false) {
                 console.log('keepMedSearch started');
-                // Appeler la première fonction de rappel
-                clicDropDownWatcher();
-                // Appeler la deuxième fonction de rappel
+                searchTextKeeper();
                 textSorter();
             }
             if (addMedSearchButtons !== false) {
-                console.log('addMedSearchButtons started');
                 addMedSearchButtonsFunction();
             }
+        }
+
+        // Obtenez une référence au champ d'entrée et au menu déroulant
+        var observer = new MutationObserver(function(mutationsList, observer) {
+            observer.disconnect();
+            ifDOMChanged();
             setTimeout(function() {
                 observer.observe(document, { childList: true, subtree: true });
-            }, 2000); // sinon part en loop
-        }
-            // Obtenez une référence au champ d'entrée et au menu déroulant
-        var observer = new MutationObserver(function(mutationsList, observer) {
-            ifDOMChanged(mutationsList);
+            }, 100);
         });
             
         // Commence à observer le document avec les configurations spécifiées
-        // setTimeout(function() {
-        // }, 500); // nécessaire sinon part en loop
-        // TODO : fix le probème des prescriptions et les options qui ne semblent pas avoir l'effet escompté
         waitForElement('#ContentPlaceHolder1_BaseVidalUcForm1_DropDownListRecherche', null, 5000, function() {
-            ifDOMChanged([]);
+            ifDOMChanged();
             console.log('observer started');
             observer.observe(document, { childList: true, subtree: true });
         });

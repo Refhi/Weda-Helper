@@ -2,6 +2,10 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+## [1.5.0] - 2024-01-24
+- modification des options : une valeur par défaut est désormais facilement paramétrable
+- fix des modification autour des champs de recherche des médicaments
+
 ## [1.4.4] - 2024-01-15
 - fix : le tab order des consultations avait tendance à sauter aux refreshs du DOM
 - fix : le raccourcis pour bouton valider et annuler ne fonctionnaient pas pour la validation/annulation des liens familiaux

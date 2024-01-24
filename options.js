@@ -1,78 +1,67 @@
 document.addEventListener('DOMContentLoaded', function () {
-  var options = [
-    'TweakImports',
-    'TweakTabConsultation',
-    'RemoveTitleSuggestions',
-    'EnableHelp',
-    'TweakTabSearchPatient',
-    'TweakTabPrescription',
-    'RemoveLocalCompanionPrint',
-    'RemoveLocalCompanionTPE',
-    'KeepFocus',
-    'portCompanion',
-    'defaultCotation',
-    'apiKey',
-    "keepMedSearch",
-    "addMedSearchButtons",
-    "boutonRecherche-1",
-    "boutonRecherche-2",
-    "boutonRecherche-3",
-    "boutonRecherche-4",
-    "boutonRecherche-5",
-    "boutonRecherche-6",
-    "boutonRecherche-7",
-    "boutonRecherche-8",
-    "boutonRecherche-9",
-    "boutonRecherche-10",
+  var defaultValues = {
+    'TweakImports': true,
+    'TweakTabConsultation': true,
+    'RemoveTitleSuggestions': true,
+    'EnableHelp': true,
+    'TweakTabSearchPatient': true,
+    'TweakTabPrescription': true,
+    'RemoveLocalCompanionPrint': true,
+    'RemoveLocalCompanionTPE': true,
+    'KeepFocus': true,
+    'portCompanion': '4821',
+    'defaultCotation': 'GS',
+    'apiKey': 'votre clé API par défaut',
+    'keepMedSearch': true,
+    'addMedSearchButtons': true,
+    'boutonRecherche-1': true,
+    'boutonRecherche-2': true,
+    'boutonRecherche-3': false,
+    'boutonRecherche-4': false,
+    'boutonRecherche-5': false,
+    'boutonRecherche-6': false,
+    'boutonRecherche-7': false,
+    'boutonRecherche-8': true,
+    'boutonRecherche-9': false,
+    'boutonRecherche-10': false,
     // "boutonRecherche-11", // n'existe pas !
     // "boutonRecherche-12", // n'existe pas !
-    "boutonRecherche-13",
-    "boutonRecherche-14",
-    "TweakRecetteForm",
-    "TweakNIR"
-  ];
-
-  var defautsTextValues = {
-    'portCompanion': '4821'
+    'boutonRecherche-13': false,
+    'boutonRecherche-14': false,
+    'TweakRecetteForm': true,
+    'TweakNIR': true
   };
+
+  var options = Object.keys(defaultValues);
+
 
   options.forEach(function (option) {
     // Récupérer les valeurs sauvegardées du stockage de Chrome
     chrome.storage.local.get(option, function (result) {
-      console.log(option, result);
       var element = document.getElementById(option);
-      if (element.type === 'checkbox') {
-        if (result[option] !== undefined) element.checked = result[option];
-        else {
-          element.checked = true;
-          chrome.storage.local.set({ [option]: true }, function () {
-            console.log(option, 'sauvegardé avec succès avec la valeur par défaut', true);
-          });
-        }
-      } else if (element.type === 'text') {
-        if (result[option] !== undefined) element.value = result[option];        
-          else {
-            if (option === 'apiKey') {
-              // Générer une clé API aléatoire
-              var apiKey = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-              element.value = apiKey;
-              chrome.storage.local.set({ [option]: apiKey }, function () {
-                console.log(option, 'sauvegardé avec succès une valeur aléatoire', apiKey);
-              });
-            } else {
-              for (var key in defautsTextValues) {
-                if (key === option) {
-                  element.value = defautsTextValues[key];
-                  chrome.storage.local.set({ [option]: defautsTextValues[key] }, function () {
-                    console.log(option, 'sauvegardé avec succès avec la valeur par défaut', defautsTextValues[key]);
-                  });
-                }
-              }
-            }
+      if (element) {
+        if (element.type === 'checkbox') {
+          // Utiliser la valeur sauvegardée si elle existe, sinon utiliser la valeur par défaut
+          element.checked = result[option] !== undefined ? result[option] : defaultValues[option];
+        } else if (element.type === 'text') {
+          if (option === 'apiKey') {
+            // Générer une clé API aléatoire
+            var apiKey = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            element.value = apiKey;
+            chrome.storage.local.set({ [option]: apiKey }, function () {
+              console.log(option, 'sauvegardé avec succès une valeur aléatoire', apiKey);
+            });
+          } else {
+          // Utiliser la valeur sauvegardée si elle existe, sinon utiliser la valeur par défaut
+          element.value = result[option] !== undefined ? result[option] : defaultValues[option];
           }
+        }
       }
     });
   });
+
+
+
 
   document.getElementById('save').addEventListener('click', function () {
     var valuesToSave = {};
