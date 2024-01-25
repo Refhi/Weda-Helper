@@ -45,11 +45,22 @@ document.addEventListener('DOMContentLoaded', function () {
           element.checked = result[option] !== undefined ? result[option] : defaultValues[option];
         } else if (element.type === 'text') {
           if (option === 'apiKey') {
-            // Générer une clé API aléatoire
-            var apiKey = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-            element.value = apiKey;
-            chrome.storage.local.set({ [option]: apiKey }, function () {
-              console.log(option, 'sauvegardé avec succès une valeur aléatoire', apiKey);
+            // Get the current value of the API key
+            chrome.storage.local.get([option], function(result) {
+              // If the API key is not already defined
+              if (!result[option]) {
+                // Generate a random API key
+                var apiKey = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                element.value = apiKey;
+
+                // Save the new API key
+                chrome.storage.local.set({ [option]: apiKey }, function () {
+                  console.log(option, 'successfully saved with a random value', apiKey);
+                });
+              } else {
+                // Use the saved value if it exists, otherwise use the default value
+                element.value = result[option]
+              }
             });
           } else {
           // Utiliser la valeur sauvegardée si elle existe, sinon utiliser la valeur par défaut

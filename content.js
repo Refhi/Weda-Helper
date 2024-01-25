@@ -276,6 +276,10 @@ chrome.storage.local.get('TweakNIR', function (result) {
 
 // Page de prescription : maintient le texte d'un type de recherche à l'autre
 if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx')) {
+    // Efface le texte de recherche stocké localement. Cela évite des délais inutiles lors du chargement initial de la page.
+    // Sans cela le script va lancer une recherche sur la valeur de medSearchText stockée localement, ce qui va ralentir le chargement de la page.
+    chrome.storage.local.set({medSearchText: ''});
+
     chrome.storage.local.get(['keepMedSearch', 'addMedSearchButtons'], function (result) {
         let keepMedSearch = result.keepMedSearch;
         let addMedSearchButtons = result.addMedSearchButtons;
@@ -325,7 +329,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
         }
 
         function typeText(savedValue) {
-            if (savedValue !== undefined) {
+            if (savedValue !== undefined && savedValue !== '') {
                 console.log('typeText started with savedValue', savedValue);
                 var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
                 setTimeout(function() {
@@ -399,15 +403,19 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
         }
 
         function ifDOMChanged() {
+            favWindow = document.getElementById('PanelBasesPosologies');
             console.log('DOM Mutation detected, restarting');
-            if (keepMedSearch !== false) {
-                console.log('keepMedSearch started');
-                searchTextKeeper();
-                textSorter();
+            if (!favWindow) { // Si la fenêtre de favoris n'est pas ouverte uniquement. Ne pas inhiber ce comportement crée une disparition des boutons lors des multiples DOM refresh.
+                if (keepMedSearch !== false) {
+                    console.log('keepMedSearch started');
+                    searchTextKeeper();
+                    textSorter();
+                }
+                if (addMedSearchButtons !== false) {
+                    addMedSearchButtonsFunction();
+                }
             }
-            if (addMedSearchButtons !== false) {
-                addMedSearchButtonsFunction();
-            }
+
         }
 
         // Obtenez une référence au champ d'entrée et au menu déroulant
@@ -416,7 +424,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
             ifDOMChanged();
             setTimeout(function() {
                 observer.observe(document, { childList: true, subtree: true });
-            }, 100);
+            }, 100); // TODO : problème de fenêtre d'affichage des favoris qui se fait écraser. Voir comment éviter les DOM refresh inutiles.
         });
             
         // Commence à observer le document avec les configurations spécifiées

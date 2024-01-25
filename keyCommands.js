@@ -234,6 +234,12 @@ const keyCommands = {
                     }
                     else {
                         sendPrint();
+                        setTimeout(function () {
+                            closebutton = document.getElementById('ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay');
+                            if (closebutton) {
+                                closebutton.click();
+                            }
+                        }, 100); // peut-être nécessaire TODO : à confirmer ou alors à conditionnet à sendPrint ?
                     }
                 });
             });
