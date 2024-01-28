@@ -204,6 +204,21 @@ function focusElementByName(elementName) {
 
 
 
+function openSearch() {
+    // crée un timestamp et le stocke dans la variable searchTime
+    var searchTime = Date.now();
+    // stocke la variable searchTime dans le stockage local de Chrome
+    chrome.storage.local.set({ searchTime: searchTime }, function () {
+        console.log('searchTime sauvegardé avec succès', searchTime);
+    });
+
+    // permet d'ouvrir la recherche de patient sans avoir à demander les droits 'tabs' à l'extension
+    console.log('openSearch activé');
+    var link = document.createElement('a');
+    link.href = 'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx';
+    link.click();
+}
+
 const keyCommands = {
     'push_valider': {
         description: 'Appuie le bouton Valider ou équivalent',
@@ -325,6 +340,16 @@ const keyCommands = {
         action: function () {
             console.log('shortcut_carte_vitale activé');
             clickCarteVitale();
+        }
+    },
+    'shortcut_search': {
+        description: 'Raccourci Recherche',
+        key: 'alt+r',
+        action: function () {
+            console.log('shortcut_search activé');
+            openSearch();
+            // chrome.runtime.sendMessage({message: "openSearch"});
+            
         }
     },
 };

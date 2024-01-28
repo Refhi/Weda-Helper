@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper",
-  "version": "1.5",
+  "version": "1.5.1",
   "options_page": "options.html",
-  "permissions": ["storage"],
+  "permissions": ["storage", "tabs"],
   "host_permissions": ["http://localhost/"],
   "action": {
     "default_popup": "popup.html"
@@ -15,7 +15,7 @@
   "content_scripts": [
     {
       "matches": ["*://secure.weda.fr/*"],
-      "js": ["content.js", "fse.js", "keyCommands.js", "searchUpload.js", "companionlink.js"]
+      "js": ["content.js", "fse.js", "keyCommands.js", "searchUpload.js", "companionlink.js", "prescription.js"]
     }
   ],
   "commands": {
@@ -72,6 +72,9 @@
     },
     "shortcut_carte_vitale": {
       "description": "Lit la carte vitale (Suggestion : Alt+C)"
+    },
+    "shortcut_search" : {
+      "description": "Ouvre la recherche (Suggestion : Alt+R)"
     }
   }
 }

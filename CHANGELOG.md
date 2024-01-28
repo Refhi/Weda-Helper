@@ -2,6 +2,15 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+
+## [1.6.0] - 2024-01-28
+- modification de la façon dont est géré la facturation par défaut. Il sélectionne désormais la facturation nommée "Défaut" dans les favoris. Il n'est plus nécessaire d'utiliser la touche de tabulation pour valider la cotation par défaut.
+- ajout du raccourcis ouvrant la page de recherche patient (amélioration au passage de la façon dont l'extension attend l'apparition du premier patient séléctionable)
+- tentative de fix sur les boutons rajoutés de téléconsultation et dégradé dans la FSE
+- ajout du "à" et du "," dans l'écoute clavier du pavé de prescription numérique
+- fix d'un bug dans le chargement du maintient de la recherche dans les prescriptions
+- fix d'un problème dans la page des FSE où il n'était plus possible de taper une cotation avec N ou O sous peine de reselectionner la valeur par defaut
+
 ## [1.5.0] - 2024-01-24
 - modification des options : une valeur par défaut est désormais facilement paramétrable
 - fix des modification autour des champs de recherche des médicaments
