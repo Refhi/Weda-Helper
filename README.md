@@ -20,10 +20,11 @@ Cf. ci-dessous pour les retours et les contributions.
 6. [Retrait des Suggestions des Titres de Consultation](#retrait-des-suggestions-des-titres-de-consultation)
 7. [Modification du Comportement de la Tabulation Après Recherche Patient](#modification-du-comportement-de-la-tabulation-après-recherche-patient)
 8. [Écoute des Entrées Claviers Lors de l'Usage de la Calculette de Prescription](#écoute-des-entrées-claviers-lors-de-lusage-de-la-calculette-de-prescription)
-9. [FSE : Entrées clavier, cotation par défaut et envoi automatique au TPE](#fse-entrées-clavier-cotation-par-défaut-et-envoi-automatique-au-tpe)
-10. [Weda-Helper-Companion](#weda-helper-companion)
-11. [Problèmes et Limitations Connues](#problèmes-et-limitations-connues-qui-seront-peut-être-résolues-dans-de-futures-mises-à-jour)
-12. [Contributions](#contributions)
+9. [Recherche de médicaments](#Recherche-de-médicaments)
+10. [FSE : Entrées clavier, cotation par défaut et envoi automatique au TPE](#fse-entrées-clavier-cotation-par-défaut-et-envoi-automatique-au-tpe)
+11. [Weda-Helper-Companion](#weda-helper-companion)
+12. [Problèmes et Limitations Connues](#problèmes-et-limitations-connues-qui-seront-peut-être-résolues-dans-de-futures-mises-à-jour)
+13. [Contributions](#contributions)
 
 
 ## Raccourcis claviers
@@ -85,6 +86,12 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - touche "/" pour préparer une fraction de dose
 - touche "retour arrière" pour effacer les valeurs numériques
 
+## Recherche de médicaments
+- Lors de la recherche d'un médicament le texte est normalement effacé à chaque changement de type de recherche. L'extension maintient le dernier texte recherché.
+- Des boutons de type de recherche favori (paramétrable dans les raccourcis) sont affichés. Par défaut "médicament", "DCI" et "recherche par molécule. (A noter qu'il faut enregistrer le panneau d'option pour que seuls les boutons choisis apparaissent. Sinon tous sont affichés.)
+
+
+
 ## FSE : Entrées clavier, cotation par défaut +/- envoi automatique au TPE
 *Toute la FSE : [alt+6], [n], [n], [tab][alt+v]*
 
@@ -103,7 +110,7 @@ Page d'accueil du dossier patient : ajout d'icones pour copier automatiquement l
 Est à récupérer [sous forme d'un script python](https://github.com/Refhi/Weda-Helper-Companion) [ou sous forme d'executable](https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/companion.exe) qui reçoit des instructions de l'extension Weda-Helper.
 Une fois installée, et que les options de l’extension Weda-Helper dans Chrome on été paramétrées, il doit être lancé et laissé en fond de tâche.
 Il exécutera les tâches suivantes :
-- si une impression dans Weda est déclenchée via ctrl-P, il lance complètement l'impression. (si cette option est désactivée, ctrl+P amène jusqu'à la dernière validation de l'impression)
+- si une impression dans Weda est déclenchée via ctrl-P, il lance complètement l'impression. (si cette option est désactivée, ctrl+P amène jusqu'à la dernière validation de l'impression) et ferme la fenêtre de prévisualisation.
 - si une FSE est validée via Alt+v et que le paiement carte bancaire est sélectionné, il envoie une demande de règlement au TPE (qui doit également être correctement paramétré à l'aide de votre installateur de TPE)
 
 ## Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):
