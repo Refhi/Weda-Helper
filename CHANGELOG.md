@@ -6,6 +6,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - modification des options : une valeur par défaut est désormais facilement paramétrable
 - fix des modification autour des champs de recherche des médicaments
 - fermeture automatique de la fenêtre de prévisualisation du PDF après demande d'impression, si le lien avec le companion est actif
+- ajout de boutons pour les types de recherches favorites pour la recherche de médicaments.
 
 ## [1.4.4] - 2024-01-15
 - fix : le tab order des consultations avait tendance à sauter aux refreshs du DOM
