@@ -29,7 +29,10 @@ document.addEventListener('DOMContentLoaded', function () {
     'boutonRecherche-13': false,
     'boutonRecherche-14': false,
     'TweakRecetteForm': true,
-    'TweakNIR': true
+    'TweakNIR': true,
+    'KeyPadPrescription': true,
+    'TweakFSEGestion': true,
+    'TweakFSECreation': true,
   };
 
   var options = Object.keys(defaultValues);

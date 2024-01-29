@@ -89,10 +89,12 @@ function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = fals
             console.log('added event listener to search box');
             if (event.key === 'Enter') {
                 console.log('Enter pressed in search box');
-                setTimeout(function () {
+                elementToLookFor = '[id^="' + validTarget + '"]';
+                waitForElement(elementToLookFor, null, 1000, function () {
+                    console.log('element found');
                     setupUIInteractions();
                     watchForEarlyDOMChanges();
-                }, 600);
+                });
             }
         });
     }
@@ -251,22 +253,31 @@ chrome.storage.local.get('TweakTabPrescription', function (result) {
 });
 
 // [Page de recherche patient] Tweaks the search patient page to select the first patient after a search
-chrome.storage.local.get('TweakTabSearchPatient', function (result) {
-    console.log('TweakTabSearchPatient from storage:', result.TweakTabSearchPatient);
-    if (result.TweakTabSearchPatient !== false) {
-        if (window.location.href === 'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx') {
+if (window.location.href === 'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx') {
+    chrome.storage.local.get(['TweakTabSearchPatient', 'searchTime'], function (result) {
+        console.log('TweakTabSearchPatient from storage:', result.TweakTabSearchPatient);
+        if (result.TweakTabSearchPatient !== false) {
+            var currentTime = Date.now();
+            var timeDifference = currentTime - result.searchTime;
+            var timeDifferenceInSeconds = timeDifference / 1000;
             const idsSearchBox = 'ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche';
             const validTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0';
-            console.log('TweakTabSearchPatient started');
-            // Réorganise l'ordre de tabulation des éléments de la liste de patients
-            ListTabOrderer(validTarget);
-            // Place le focus sur le premier élément de la liste de patients
-            const elementToFocus = document.getElementById(validTarget);
-            if (elementToFocus) {
-                elementToFocus.focus();
+            if (timeDifferenceInSeconds >= 5 || isNaN(timeDifferenceInSeconds)) {
+                console.log('délais depuis le dernier alt+r :', timeDifferenceInSeconds, 'secondes donc on lance le tweak');
+                    console.log('TweakTabSearchPatient started');
+                    // Réorganise l'ordre de tabulation des éléments de la liste de patients
+                    ListTabOrderer(validTarget);
+                    // Place le focus sur le premier élément de la liste de patients
+                    const elementToFocus = document.getElementById(validTarget);
+                    if (elementToFocus) {
+                        elementToFocus.focus();
+                    }
+                    // Place un listener sur la searchbox (qui s'auto-entretiens à chaque recherche)
+                    SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = true);
+            } else {
+                console.log('délais depuis le dernier alt+r :', timeDifferenceInSeconds, 'secondes donc la page est appellée depuis alt+r donc on ne lance pas le tweak. Le focus est naturellement dans la case de recherche.');
+                SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = true);
             }
-            // Place un listener sur la searchbox (qui s'auto-entretiens à chaque recherche)
-            SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = true);
         }
-    }
-});
+    });
+}
