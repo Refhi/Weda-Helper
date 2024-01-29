@@ -87,7 +87,7 @@ function sendPrint() {
             function watchForFocusLoss() {
                 function getFocus() {
                     console.log('[getFocus] je tente de récupérer le focus');
-                    sendToCompanion(`focus`);
+                    sendToCompanion(`focus`); // TODO à réévaluer : crée des messages d'erreur si on quitte la fenêtre d'ordo imprimée trop tôt
                 }
                 chrome.storage.local.get(['KeepFocus'], function(result) {
                     if (result.KeepFocus !== false) {

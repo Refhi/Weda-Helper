@@ -234,8 +234,10 @@ const keyCommands = {
                     }
                     else {
                         sendPrint();
+                        console.log('sendPrint envoyé'); // mis en place pour faciliter un débugage
                         setTimeout(function () {
                             closebutton = document.getElementById('ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay');
+                            console.log('closebutton', closebutton);
                             if (closebutton) {
                                 closebutton.click();
                             }
