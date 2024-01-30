@@ -143,7 +143,7 @@ function clickElementById(elementId) {
 // Clique sur le bouton carte vitale
 function clickCarteVitale() {
     clickElementByClass("cv");
-    if (!GenericClicker("title", "Relance une lecture de la carte vitale")) { //TODO à tester : pour l'instant sous linux j'ai un message d'erreur
+    if (!GenericClicker("title", "Relance une lecture de la carte vitale")) {
         GenericClicker("mattooltip", "Lire la Carte Vitale");
     }
 }

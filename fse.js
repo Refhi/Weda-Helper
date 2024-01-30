@@ -92,38 +92,42 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
             }
             // Ajoute deux boutons : un pour les FSE dégradées, un pour les FSE Teleconsultation à côté de lecture carte vitale
             function addFSEVariantButtons() {
+                function degradeTeleconsult(type) {
+                    // fermer la fenêtre de lecture de carte vitale
+                    var closeButton = document.querySelector('a[title="Fermer cette fenêtre"]');
+                    if (closeButton) {closeButton.click();}
+                    // Trouver l'icône "fingerprint" et cliquer dessus
+                    var fingerprintIcon = document.querySelector('.mat-icon.notranslate.material-icons.mat-icon-no-color');
+                    console.log('Détecté : pression sur bouton dégradée. Je clique sur le bouton emprunte digitale');
+                    fingerprintIcon.click();
+                    // Attendre que le bouton contenant le texte "Degradée" existe et cliquer dessus
+                    waitForElement('[class="mat-button-wrapper"]', type, 5000, function(degradeeButton) {
+                        setTimeout(function() {
+                            console.log('Détecté : pression sur bouton ', type, '. Je clique sur le bouton degradé');
+                            degradeeButton.click();
+                        }, 100); // un clic trop précoce semble avoir des effets de bord
+                        // Puis clique sur le bouton "Adri"
+                        setTimeout(function() {
+                            console.log('Détecté : pression sur bouton ', type, '. Je clique sur le bouton de lecture adri');
+                            var adriElement = document.querySelector('img[src="/Images/adri.png"]');
+                            if (adriElement) {adriElement.click();}
+                        }, 500);
+                    });
+                }
                 // Attendre que l'élément "Lire la carte vitale" existe
                 waitForElement('a[title="Relance une lecture de la carte vitale"]', null, 5000, function(lireCarteVitaleElement) {
                     // Créer le premier bouton
                     var button1 = document.createElement('button');
                     button1.textContent = 'FSE dégradée';
                     button1.onclick = function() {
-                        // Trouver l'icône "fingerprint" et cliquer dessus
-                        var fingerprintIcon = document.querySelector('.mat-icon.notranslate.material-icons.mat-icon-no-color');
-                        fingerprintIcon.click();
-                        // Attendre que le bouton contenant le texte "Degradée" existe et cliquer dessus
-                        waitForElement('button', 'Dégradé', 5000, function(degradeeButton) {
-                            setTimeout(function() {degradeeButton.click();}, 200); // un clic trop précoce semble avoir des effets de bord
-                        });
+                        degradeTeleconsult('Dégradé');
                     };
 
                     // Créer le deuxième bouton
                     var button2 = document.createElement('button');
                     button2.textContent = 'FSE Teleconsultation'; // Mettez le texte que vous voulez ici
                     button2.onclick = function() {
-                        // Trouver l'icône "fingerprint" et cliquer dessus
-                        var fingerprintIcon = document.querySelector('.mat-icon.notranslate.material-icons.mat-icon-no-color');
-                        fingerprintIcon.click();
-                        // Attendre que le bouton contenant le texte "Teleconsultation" existe et cliquer dessus
-                        waitForElement('button', 'Téléconsultation', 5000, function(teleconsultationButton) {
-                            // Clique sur le bouton téléconsultation
-                            setTimeout(function() {teleconsultationButton.click();}, 300);
-                            // Puis clique sur le bouton "Adri"
-                            setTimeout(function() {
-                                adriElement = document.getElementsByClassName('mat-tooltip-trigger mr5 pointer');
-                                adriElement[0].click();
-                            }, 500);
-                        });
+                        degradeTeleconsult('Téléconsultation');
                     };
 
                     // Insérer les boutons après l'élément "Lire la carte vitale"
@@ -152,8 +156,8 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
                     'ç': 'c',
                     'œ': 'oe',
                     'æ': 'ae',
-                    'ÿ': 'y',
-                    '-': ' '
+                    'ÿ': 'y'
+                    // '-': ' ' // ne semble pas nécessaire
                 };
 
                 function replaceSpecialChars(str) {

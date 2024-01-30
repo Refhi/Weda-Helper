@@ -104,7 +104,6 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
                         var buttonId = 'button-search-' + key;
                 
                         // Vérifiez si un bouton avec cet identifiant existe déjà
-                        var tmpelement = document.getElementById(buttonId);
                         if (document.getElementById(buttonId)) {
                             continue; // Si c'est le cas, passez à la prochaine itération de la boucle
                         }
@@ -124,14 +123,23 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
         }
 
         function onDOMChange(setup = false) {
-            console.log('onDOMChange started');
-            if (keepMedSearch !== false) {
-                console.log('keepMedSearch started');
-                searchTextKeeper();
-                if (!setup) {textSorter();}
-            }
-            if (addMedSearchButtons !== false) {
-                addMedSearchButtonsFunction();
+            var panneauFav = document.getElementById('PanelBasesPosologies');
+            if (!panneauFav) { // sinon le panneau se ferme au DOM refresh
+                console.log('onDOMChange started et panneau fav non présent');
+                if (keepMedSearch !== false) {
+                    console.log('keepMedSearch started');
+                    searchTextKeeper();
+                    if (!setup) {textSorter();}
+                }
+                if (addMedSearchButtons !== false) {
+                    addMedSearchButtonsFunction();
+                }
+            } else {
+                console.log('onDOMChange non démarré car panneau fav présent');
+                if (keepMedSearch !== false) {
+                    console.log('keepMedSearch started');
+                    searchTextKeeper();
+                }
             }
         }
 

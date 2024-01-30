@@ -234,53 +234,128 @@ chrome.storage.local.get('TweakRecetteForm', function (result) {
     }
 });
 
-// [page d'accueil] copie automatiquement dans le presse papier le NIR du patient quand on clique dessus:
-chrome.storage.local.get('TweakNIR', function (result) {
-    let TweakNIR = result.TweakNIR;
-    function addCopySymbol(element, copyText) {
-        // Crée un nouvel élément pour le symbole de copie
-        var copySymbol = document.createElement('span');
-        copySymbol.textContent = '📋'; // Utilise l'émoji de presse-papiers comme symbole de copie
-        copySymbol.style.cursor = 'pointer'; // Change le curseur en pointeur lorsqu'il survole le symbole de copie
-        copySymbol.title = 'Cliquez ici pour copier le NIR dans le presse-papiers'; // Ajoute un texte d'infobulle
+// // [page d'accueil]
+if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx')) {
+    // clique le premier patient disponible après un DOM change
+    chrome.storage.local.get('autoSelectPatientCV', function (result) {
+        let autoSelectPatientCV = result.autoSelectPatientCV;
+        if (autoSelectPatientCV !== false) {
+            // Cherche un patient seul dans le DOM
+            let debounceTimer;
 
-        // Ajoute un gestionnaire d'événements click au symbole de copie
-        copySymbol.addEventListener('click', function () {
-            console.log(copyText);
-            navigator.clipboard.writeText(copyText);
-        });
+            function findPatient() {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(function() {
+                    waitForElement('[mattooltip="Dossier patient lié"]', null, 5000, function (element) {
+                        var elements = document.querySelectorAll('[mattooltip="Dossier patient lié"]');
+                        if (elements.length === 4) {
+                            console.log('Patient seul trouvé, je clique dessus', elements[0]);
+                            elements[0].click();
+                            // remove element
+                            elements[0].remove(); // évite un double clic sur l'élément
+                        } else if (elements.length > 1) {
+                            console.log(elements.length, 'trop de patients trouvé, je ne clique pas', elements);
+                        } else {
+                            console.log('Aucun patient trouvé', elements);
+                        }
+                    });
+                }, 1000);
+            }
 
-        // Ajoute le symbole de copie à côté de l'élément
-        element.parentNode.insertBefore(copySymbol, element.nextSibling);
-    }
-
-    if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx') && TweakNIR !== false) {
-        waitForElement('span.label', 'NIR', 5000, function (element) {
-            var nir = element.textContent.match(/(\d{13} \d{2})/)[1];
-            nir = nir.replace(/\s/g, ''); // Supprime tous les espaces de la chaîne
-            addCopySymbol(element, nir);
-            element.addEventListener('click', function () {
-                console.log('nir', nir);
-                navigator.clipboard.writeText(nir);
+            // Créer un observateur de mutations pour surveiller les modifications du DOM, puis déclenche findPatient
+            var observer = new MutationObserver(function (mutations) {
+                mutations.forEach(function (mutation) {
+                    console.log('mutation DOM détectée');
+                    observer.disconnect();
+                    findPatient();
+                    setTimeout(function () {
+                        observer.observe(document, { childList: true, subtree: true });
+                    }, 1000);
+                });
             });
-        });
-        waitForElement('#ContentPlaceHolder1_EtatCivilUCForm1_LabelPatientSecuriteSocial', '', 5000, function (element) {
-            var secu = element.textContent.match(/(\d{1} \d{2} \d{2} \d{2} \d{3} \d{3} \d{2})/)[1];
-            secu = secu.replace(/\s/g, ''); // Supprime tous les espaces de la chaîne
-            addCopySymbol(element, secu);
-            element.addEventListener('click', function () {
-                console.log('secu', secu);
-                navigator.clipboard.writeText(secu);
+
+            // Configurer l'observateur pour surveiller tout le document
+            var config = { childList: true, subtree: true };
+            observer.observe(document, config);
+        }
+    });
+
+
+    // copie automatiquement dans le presse papier le NIR du patient quand on clique dessus:
+    chrome.storage.local.get('TweakNIR', function (result) {
+        let TweakNIR = result.TweakNIR;
+        if (TweakNIR !== false) {
+            function addCopySymbol(element, copyText) {
+                // Define the id for the copySymbol
+                var copySymbolId = 'copySymbol-' + element.id;
+
+                // Check if an element with the same id already exists
+                if (!document.getElementById(copySymbolId)) {
+                    // Create a new element for the copy symbol
+                    var copySymbol = document.createElement('span');
+                    copySymbol.textContent = '📋'; // Use clipboard emoji as copy symbol
+                    copySymbol.style.cursor = 'pointer'; // Change cursor to pointer when hovering over the copy symbol
+                    copySymbol.title = 'Cliquez ici pour copier le NIR dans le presse-papiers'; // Add tooltip text
+                    copySymbol.id = copySymbolId;
+
+                    // Add a click event handler to the copy symbol
+                    copySymbol.addEventListener('click', function () {
+                        console.log(copyText);
+                        navigator.clipboard.writeText(copyText);
+                    });
+
+                    // Add the copy symbol next to the element
+                    element.parentNode.insertBefore(copySymbol, element.nextSibling);
+                }
+            }
+
+            function watchForElements() {
+                waitForElement('span.label', 'NIR', 5000, function (element) {
+                    var nir = element.textContent.match(/(\d{13} \d{2})/)[1];
+                    nir = nir.replace(/\s/g, ''); // Supprime tous les espaces de la chaîne
+                    addCopySymbol(element, nir);
+                    element.addEventListener('click', function () {
+                        console.log('nir', nir);
+                        navigator.clipboard.writeText(nir);
+                    });
+                });
+                waitForElement('#ContentPlaceHolder1_EtatCivilUCForm1_LabelPatientSecuriteSocial', '', 5000, function (element) {
+                    var secu = element.textContent.match(/(\d{1} \d{2} \d{2} \d{2} \d{3} \d{3} \d{2})/)[1];
+                    secu = secu.replace(/\s/g, ''); // Supprime tous les espaces de la chaîne
+                    addCopySymbol(element, secu);
+                    element.addEventListener('click', function () {
+                        console.log('secu', secu);
+                        navigator.clipboard.writeText(secu);
+                    });
+                });
+            }
+            
+            watchForElements();
+
+            // Créer un observateur de mutations pour surveiller les modifications du DOM
+            var observer = new MutationObserver(function (mutations) {
+                mutations.forEach(function (mutation) {
+                    console.log('mutation DOM détectée');
+                    observer.disconnect();
+                    watchForElements();
+                    setTimeout(function () {
+                        observer.observe(document, { childList: true, subtree: true });
+                    }, 1000);
+                });
             });
-        });
-    }
-});
+
+            // Configurer l'observateur pour surveiller tout le document
+            var config = { childList: true, subtree: true };
+            observer.observe(document, config);
+        }
+    });
+}
 
 // [page de gestion des feuilles de soins]
 if (window.location.href === 'https://secure.weda.fr/vitalzen/gestion.aspx') {
     chrome.storage.local.get('TweakFSEGestion', function (result) {
-        let TweakFSE = result.TweakFSE;
-        if (TweakFSE !== false) { // TODO : viser le bouton pour rafraichir la liste des FSE
+        let TweakFSEGestion = result.TweakFSEGestion;
+        if (TweakFSEGestion !== false) {
             waitForElement('.mat-icon.notranslate.material-icons.mat-icon-no-color', 'search', 5000, function (element) {
                 console.log('element', element, 'trouvé, je clique dessus');
                 element.click();

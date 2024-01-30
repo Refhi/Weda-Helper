@@ -33,7 +33,9 @@ function sendToCompanion(urlCommand, blob = null) {
             })
             .catch(error => {
                 console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
-                alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
+                if (!error.message.startsWith('[focus]')) {
+                    alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
+                }
             });
     });
 }
@@ -73,6 +75,18 @@ function sendLastTPEamount() {
             sendtpeinstruction(lastTPEamount);
         }
     });
+}
+
+function startDMPSender() {
+    console.log('startDMPSender started')
+    var dmpCheckBox = document.getElementById('mat-checkbox-1-input');
+    if (dmpCheckBox && dmpCheckBox.checked) {
+        console.log('DMP fixer started car checkbox est cochée');
+        // trouve l'élement avec les classes : mat-focus-indicator mat-flat-button mat-button-base mat-primary
+        var dmpButton = document.getElementsByClassName('mat-focus-indicator mat-flat-button mat-button-base mat-primary')[0];
+        console.log('dmpButton trouvé, je clique dessus');
+        dmpButton.click();
+    }
 }
 
 // déclenchement de l'impression dans Weda-Helper-Companion
@@ -121,9 +135,11 @@ function sendPrint() {
                         .then(blob => {
                             sendToCompanion(`print`, blob);
                             watchForFocusLoss();
+                            startDMPSender(); // nécessaire car la fermeture automatique de la fenêtre d'impression empêche l'envoi classique au DMP
                         })
-                        .catch(error => console.error('Error:', error));
-
+                        .catch(error => {
+                            console.error('Error:', error);
+                        });
                 }
             }, 100);
             

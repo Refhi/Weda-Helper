@@ -91,12 +91,12 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log('Aucun élément trouvé avec l\'ID', option);
       }
 
-      var letterRegex = /^([A-Z0-9]{1,7})?$/;
-      if (option === 'defaultCotation' && !letterRegex.test(value)) {
-        alert('defaultCotation doit être composé uniquement de lettres majuscules et ne doit pas contenir plus de 7 lettres, ou être une chaîne vide');
-        isValid = false;
-        return;
-      }
+      // var letterRegex = /^([A-Z0-9]{1,7})?$/;
+      // if (option === 'defaultCotation' && !letterRegex.test(value)) {
+      //   alert('defaultCotation doit être composé uniquement de lettres majuscules et ne doit pas contenir plus de 7 lettres, ou être une chaîne vide');
+      //   isValid = false;
+      //   return;
+      // }
       valuesToSave[option] = value;
     });
 
