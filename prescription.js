@@ -50,7 +50,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
         }
 
         function typeText(savedValue) {
-            if (savedValue !== undefined) {
+            if (savedValue !== undefined) { // TODO : se relance juste après avoir validé la prescription d'un médicament : fait perdre un peu de temps, à corriger.
                 console.log('typeText started with savedValue', savedValue);
                 var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
                 setTimeout(function() {
@@ -106,6 +106,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
                         // Vérifiez si un bouton avec cet identifiant existe déjà
                         if (document.getElementById(buttonId)) {
                             continue; // Si c'est le cas, passez à la prochaine itération de la boucle
+                            // TODO : aussi continue si d'autres fenêtres sont ouvertes comme les conseils ou la calculette de prescription
                         }
                 
                         var button = document.createElement('button');

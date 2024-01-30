@@ -135,7 +135,9 @@ function sendPrint() {
                         .then(blob => {
                             sendToCompanion(`print`, blob);
                             watchForFocusLoss();
+                            setTimeout(() => {
                             startDMPSender(); // nécessaire car la fermeture automatique de la fenêtre d'impression empêche l'envoi classique au DMP
+                            }, 100); // petit délais car semble sinon empêcher la fermeture de la fenêtre de prévisualisation
                         })
                         .catch(error => {
                             console.error('Error:', error);

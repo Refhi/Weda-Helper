@@ -246,14 +246,14 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
             function findPatient() {
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(function() {
-                    waitForElement('[mattooltip="Dossier patient lié"]', null, 5000, function (element) {
+                    waitForElement('[mattooltip="Dossier patient lié"]', null, 5000, function (element) { // TODO à modifier car [mattooltip="Dossier patient lié"] doit être remplacé pour trouver la colonne bénéficiaire à la place. Sinon il ne comptera que les dossiers où les liens existent déjà.
                         var elements = document.querySelectorAll('[mattooltip="Dossier patient lié"]');
-                        if (elements.length === 4) {
+                        if (elements.length === 1) {
                             console.log('Patient seul trouvé, je clique dessus', elements[0]);
                             elements[0].click();
                             // remove element
                             elements[0].remove(); // évite un double clic sur l'élément
-                        } else if (elements.length > 1) {
+                        } else if (elements.length >= 2) {
                             console.log(elements.length, 'trop de patients trouvé, je ne clique pas', elements);
                         } else {
                             console.log('Aucun patient trouvé', elements);
