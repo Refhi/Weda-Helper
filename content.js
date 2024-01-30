@@ -22,6 +22,47 @@ function waitForElement(selector, text = null, timeout, callback) {
     }, timeout);
 }
 
+// // Observer universel (à vocation à être utilisé dans toute l'extension)
+function observeDOM(callback, selector, disconnectAfterFirstExecution, debounceDelay) {
+    var timeout;
+    var executed = false;
+
+    var observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList') {
+                var element = document.querySelector(selector);
+                if (element && (!disconnectAfterFirstExecution || !executed)) {
+                    if (debounceDelay) {
+                        console.log('debounceDelay', debounceDelay);
+                        if (!executed) {
+                            callback();
+                            executed = true;
+                            clearTimeout(timeout);
+                            timeout = setTimeout(function() {
+                                executed = false;
+                                if (disconnectAfterFirstExecution) {
+                                    observer.disconnect();
+                                }
+                            }, debounceDelay);
+                        }
+                    } else {
+                        console.log('callback', callback, 'selector', element);
+                        callback();
+                        executed = true;
+                        if (disconnectAfterFirstExecution) {
+                            console.log('disconnecting observer');
+                            observer.disconnect();
+                        }
+                    }
+                }
+            }
+        });
+    });
+
+    observer.observe(document, { childList: true, subtree: true });
+}
+
+
 // // Boutons du popup
 // Celui pour renvoyer le dernier paiement TPE est dans fse.js
 // Permet de mettre tout les éléments de la page en attente d'import sur "Consultation"
@@ -404,36 +445,57 @@ chrome.storage.local.get('RemoveTitleSuggestions', function (result) {
 
 
 
-// // Ajoute l'écoute du clavier pour faciliter les prescription
-chrome.storage.local.get(['KeyPadPrescription'], function(result) {
-    if (result.KeyPadPrescription !== false) {
-        if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx')) {
-            console.log('numpader started');
-            var index = {
-                '0': 'SetQuantite(0);',
-                '1': 'SetQuantite(1);',
-                '2': 'SetQuantite(2);',
-                '3': 'SetQuantite(3);',
-                '4': 'SetQuantite(4);',
-                '5': 'SetQuantite(5);',
-                '6': 'SetQuantite(6);',
-                '7': 'SetQuantite(7);',
-                '8': 'SetQuantite(8);',
-                '9': 'SetQuantite(9);',
-                '/': 'SetQuantite(\'/\');',
-                '.': 'SetQuantite(\',\');',
-                ',' : 'SetQuantite(\',\');',
-                'Backspace': 'AnnulerQuantite();',
-                'à': 'SetQuantite(\' à \');',
-            };
-
-            document.addEventListener('keydown', function (event) {
-                console.log('event.key', event.key);
-                if (event.key in index) {
-                    console.log('key pressed:', event.key);
-                    clickElementByOnclick(index[event.key]);
-                }
-            });
+// // Travail sur les boutons des interfaces secu (IMTI, DMP etc.) TODO
+function warpButtons() {
+    function addIdToButton(button) {
+        // make a dictionnary with text as key and id as value
+        var actions = {
+            'Annuler': ['Non', 'Annuler'],
+            'Valider': ['Oui', 'Valider', 'Réessayer']
+        };
+        if (button) {
+            console.log('ajout de id au button', button);
+            var action = Object.keys(actions).find(key => actions[key].includes(button.textContent));
+            console.log('action', action);
+            if (action) {
+                button.id = 'target' + action;
+            }
         }
     }
-});
+
+    function addShortcutsToButton(button) {
+        // make a dictionnary with text as key and id as value
+        var raccourcis = {
+            'targetAnnuler': ' (alt+A)',
+            'targetValider': ' (alt+V)'
+        };
+        if (button) {
+            console.log('ajout de raccourcis au button', button);
+            var raccourci = raccourcis[button.id];
+            if (raccourci) {
+                button.textContent += raccourci;
+            }
+        }
+    }
+
+    var container = document.querySelector('.cdk-overlay-container');
+    console.log('container', container);
+    if (container) {
+        // L'élément avec la classe 'cdk-overlay-container' existe, vous pouvez travailler sur ses descendants
+        setTimeout(function () {
+            var buttons = Array.from(container.querySelectorAll('button'))
+            console.log('buttons', buttons);
+            buttons.forEach(function (button) {
+                console.log('Bouton trouvé ! Je le redimentionne, lui ajoute un id et note le raccourcis clavier par défaut', button);
+                button.style.width = 'auto';
+                addIdToButton(button);
+                addShortcutsToButton(button);
+            });
+        }, 100);
+
+    }
+}
+
+
+// observeDOM(warpButtons(), '.cdk-overlay-container', true);
+observeDOM(warpButtons, '.cdk-overlay-container', false, 1000);

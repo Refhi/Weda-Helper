@@ -58,6 +58,7 @@ function push_valider() {
     }
     // click other elements, one after the other, until one of them works
     const actions = [
+        () => clickElementById('targetValider'), // utilisé quand j'ajoute une cible à un bouton
         () => clickElementById('ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonValidDocument'),
         () => clickElementById('ContentPlaceHolder1_FindPatientUcForm1_ButtonValidFamille'),
         () => clickClassExceptIf('button valid', 'Chercher', 'ContentPlaceHolder1_btnScanDatamatrix'),
@@ -74,6 +75,7 @@ function push_valider() {
 function push_annuler() {
     console.log('push_annuler activé');
     const actions = [
+        () => clickElementById('targetAnnuler'), // utilisé quand j'ajoute une cible à un bouton
         () => clickElementById('ContentPlaceHolder1_FindPatientUcForm1_ButtonCancelFamille'),
         () => clickElementByClass('button cancel'),
         () => GenericClicker("title", "Annuler"),

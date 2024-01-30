@@ -164,3 +164,38 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
         });
     });
 }
+
+
+// // Ajoute l'écoute du clavier pour faciliter les prescription
+chrome.storage.local.get(['KeyPadPrescription'], function(result) {
+    if (result.KeyPadPrescription !== false) {
+        if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx')) {
+            console.log('numpader started');
+            var index = {
+                '0': 'SetQuantite(0);',
+                '1': 'SetQuantite(1);',
+                '2': 'SetQuantite(2);',
+                '3': 'SetQuantite(3);',
+                '4': 'SetQuantite(4);',
+                '5': 'SetQuantite(5);',
+                '6': 'SetQuantite(6);',
+                '7': 'SetQuantite(7);',
+                '8': 'SetQuantite(8);',
+                '9': 'SetQuantite(9);',
+                '/': 'SetQuantite(\'/\');',
+                '.': 'SetQuantite(\',\');',
+                ',' : 'SetQuantite(\',\');',
+                'Backspace': 'AnnulerQuantite();',
+                'à': 'SetQuantite(\' à \');',
+            };
+
+            document.addEventListener('keydown', function (event) {
+                console.log('event.key', event.key);
+                if (event.key in index) {
+                    console.log('key pressed:', event.key);
+                    clickElementByOnclick(index[event.key]);
+                }
+            });
+        }
+    }
+});
