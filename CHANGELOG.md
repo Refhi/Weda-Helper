@@ -21,6 +21,9 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - l'icone de copie du NIR/secu disparaissait lorsqu'on cliquait sur certains éléments
 - fix : l'envoi vers le DMP était inhibé lors d'une impression automatisée complète via le Companion
 
+# refactory :
+- passage d'une bonne partie des fonctions d'attente vers lightObserver
+
 ## [1.5.0] - 2024-01-24
 - modification des options : une valeur par défaut est désormais facilement paramétrable
 - fix des modification autour des champs de recherche des médicaments

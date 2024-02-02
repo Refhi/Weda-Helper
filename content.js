@@ -2,7 +2,7 @@
 // // Ne justifiant pas la création d'un fichier séparé
 
 // // Fonction pour attendre la présence d'un élément avant de lancer une fonction
-// // ! Très utilisé dans toute l'exension, a vocation a disparaitre au profit de lightObserver
+// // ! Très utilisé dans toute l'exension, a vocation a laisser sa place à lightObserver
 function waitForElement(selector, text = null, timeout, callback) {
     var checkInterval = setInterval(function() {
         var elements = document.querySelectorAll(selector);
@@ -37,7 +37,7 @@ function lightObserver(selector, callback, parentElement = document, justOnce = 
                 for (let j = 0; j < elements.length; j++) {
                     let element = elements[j];
                     if (!observedElements.has(element)) {
-                        console.log('Element has appeared');
+                        console.log('[lightObserver Element', element, ' has appeared');
                         observedElements.set(element, true); // Add the element to the WeakMap
                         newElements.push(element);
                     }
@@ -234,27 +234,27 @@ document.addEventListener('keyup', function (event) {
 
 // // Change certains éléments selon l'URL les options
 // [Page de Consultation] Modifie l'ordre de tabulation des valeurs de suivi
-chrome.storage.local.get('TweakTabConsultation', function (result) {
-    function changeTabOrder() {
-        console.log('changeTabOrder started');
-        var elements = document.querySelectorAll('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]');
-        // change the taborder starting with 0 for elements[0] and incrementing by 1 for each element
-        for (var i = 0; i < elements.length; i++) {
-            elements[i].tabIndex = i + 1;
-        }
-    }
-    if (result.TweakTabConsultation !== false) {
-        if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx')) {
-            // Crée un nouvel observateur de mutations
-            var observer = new MutationObserver(changeTabOrder);
+if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx')) {
+    chrome.storage.local.get('TweakTabConsultation', function (result) {    
+        if (result.TweakTabConsultation !== false) {        
+            function changeTabOrder(elements) {
+                console.log('changeTabOrder started');
+                for (var i = 0; i < elements.length; i++) {
+                    elements[i].tabIndex = i + 1;
+                }
+            }
 
-            // Commence à observer le document avec les configurations spécifiées
-            observer.observe(document, { childList: true, subtree: true });
+            lightObserver('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]',changeTabOrder)
 
+            // // Crée un nouvel observateur de mutations
+            // var observer = new MutationObserver(changeTabOrder);
+
+            // // Commence à observer le document avec les configurations spécifiées
+            // observer.observe(document, { childList: true, subtree: true });
             console.log('ConsultationFormTabOrderer started');
         }
-    }
-});
+    });
+}
 
 // [page de recettes] Appuie automatiquement sur le bouton "rechercher" après avoir sélectionné la page des recettes
 // seulement si la page est https://secure.weda.fr/FolderGestion/RecetteForm.aspx, appuis sur id="ContentPlaceHolder1_ButtonFind"
@@ -367,10 +367,10 @@ if (window.location.href === 'https://secure.weda.fr/vitalzen/gestion.aspx') {
 
 // // Retrait des suggestions de titre
 chrome.storage.local.get('RemoveTitleSuggestions', function (result) {
-    function RemoveTitleSuggestions() {
+    function RemoveTitleSuggestions(elements) {
         console.log('RemoveTitleSuggestions started');
         if (elements) {
-            elements.remove();
+            elements[0].remove();
         }
     }
     if (result.RemoveTitleSuggestions !== false) {
@@ -382,22 +382,6 @@ chrome.storage.local.get('RemoveTitleSuggestions', function (result) {
 
 
             lightObserver('.consultation-form #DivGlossaireReponse', RemoveTitleSuggestions)
-            // // Créer un observateur de mutations pour surveiller les modifications du DOM
-            // var titleremoverTimeout;
-            // var observer = new MutationObserver(function (mutations) {
-            //     mutations.forEach(function (mutation) {
-            //         if (titleremoverTimeout) {
-            //             clearTimeout(titleremoverTimeout);
-            //         }
-            //         titleremoverTimeout = setTimeout(RemoveTitleSuggestions, 400);
-            //     });
-            // });
-
-            // // Configurer l'observateur pour surveiller tout le document
-            // var config = { childList: true, subtree: true };
-            // observer.observe(document, config);
-
-            // RemoveTitleSuggestions();
         }
     }
 });
@@ -405,53 +389,60 @@ chrome.storage.local.get('RemoveTitleSuggestions', function (result) {
 
 
 // // Travail sur les boutons des interfaces secu (IMTI, DMP etc.) TODO
-function warpButtons() {
-    function addIdToButton(button) {
-        // make a dictionnary with text as key and id as value
-        var actions = {
-            'Annuler': ['Non', 'NON', 'Annuler'],
-            'Valider': ['Oui', 'OUI', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui']
-        };
-        if (button) {
-            // Si le bouton a déjà un ID, retourner false
-            if (button.id === 'targetAnnuler' || button.id === 'targetValider') {
-                console.log('button already has id', button);
-                return false;
+
+chrome.storage.local.get('WarpButtons', function (result) { //TODO à mettre dans les options
+    let WarpButtons = result.WarpButtons;
+    if (WarpButtons !== false) {
+        function warpButtons(buttons) {
+            function addIdToButton(button) {
+                // make a dictionnary with text as key and id as value
+                var actions = {
+                    'Annuler': ['Continuez sans l\'ordonnance numérique', 'Non', 'NON', 'Annuler'],
+                    'Valider': ['Oui', 'OUI', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre']
+                };
+                if (button) {
+                    var action = Object.keys(actions).find(key => actions[key].includes(button.textContent));
+                    // vérifie que l'id n'est pas déjà présent. Utile quand plusieurs boutons sont éligible.
+                    if (document.getElementById('target' + action)) {
+                        console.log(action, 'id already exist !');
+                        return false;
+                    }
+                    // console.log('ajout de id au button', button);
+                    
+                    // console.log('action', action);
+                    if (action) {
+                        button.id = 'target' + action;
+                    }
+                }
+                return true;
             }
-            console.log('ajout de id au button', button);
-            var action = Object.keys(actions).find(key => actions[key].includes(button.textContent));
-            console.log('action', action);
-            if (action) {
-                button.id = 'target' + action;
+        
+            function addShortcutsToButton(button) {
+                // make a dictionnary with text as key and id as value
+                var raccourcis = {
+                    'targetAnnuler': ' (alt+A)',
+                    'targetValider': ' (alt+V)'
+                };
+                if (button) {
+                    console.log('ajout de raccourcis au button', button);
+                    var raccourci = raccourcis[button.id];
+                    if (raccourci) {
+                        button.textContent += raccourci;
+                    }
+                }
             }
-        }
-        return true;
-    }
-
-    function addShortcutsToButton(button) {
-        // make a dictionnary with text as key and id as value
-        var raccourcis = {
-            'targetAnnuler': ' (alt+A)',
-            'targetValider': ' (alt+V)'
-        };
-        if (button) {
-            console.log('ajout de raccourcis au button', button);
-            var raccourci = raccourcis[button.id];
-            if (raccourci) {
-                button.textContent += raccourci;
+        
+            function resizeTextBox () {
+                let textbox = document.querySelector('.mat-dialog-container');
+                if (textbox) {
+                    textbox.style.height = '440px';
+                } else {
+                    console.log('textBox not found :-/ can\'t resize it');
+                }
             }
-        }
-    }
-
-    var container = document.querySelector('.cdk-overlay-container');
-    console.log('container', container);
-    if (container) {
-        // L'élément avec la classe 'cdk-overlay-container' existe, vous pouvez travailler sur ses descendants
-        setTimeout(function () {
-
-
-            var buttons = Array.from(container.querySelectorAll('button'))
-            console.log('buttons', buttons);
+        
+            resizeTextBox();
+        
             buttons.forEach(function (button) {
                 console.log('Bouton trouvé ! Je le redimentionne, lui ajoute un id et note le raccourcis clavier par défaut', button);
                 button.style.width = 'auto';
@@ -459,55 +450,8 @@ function warpButtons() {
                     addShortcutsToButton(button);
                 }
             });
-
-            // make #cdk-overlay-1 from 398px high to auto
-            let textbox = document.querySelector('mat-dialog-container');
-            if (textbox) {
-                textbox.style.height = '440px';
-            } else {
-                console.log('Element with id "cdk-overlay-1" not found');
-            }
-            
-        }, 200);
-
-    }
-}
-
-chrome.storage.local.get('WarpButtons', function (result) {
-    let WarpButtons = result.WarpButtons;
-    if (WarpButtons !== false) {
-        function observerWarpButtons() {
-            let childCssSelector = '#cdk-describedby-message-container'; // cet élément semble être modifié à chaque fois qu'un overlay est ajouté
-            let parentElement = document.body
-            console.log('starting observerWarpButtons with', parentElement, childCssSelector)
-
-            if (document.getElementsByClassName(childCssSelector)){
-                console.log(childCssSelector, 'already exists');
-                warpButtons();
-            }
-            
-            let observer = new MutationObserver((mutations) => {
-                mutations.forEach((mutation) => {
-                    if (mutation.type === 'childList') {
-                        let elements = Array.from(mutation.addedNodes).filter(node => node.classList && node.matches(childCssSelector));
-                        if (elements.length > 0) {
-                            console.log(childCssSelector, ' a été ajouté');
-                            warpButtons();
-                        }
-                    }
-                });
-            });
-
-            // Configuration de l'observateur :
-            let config = { childList: true, subtree: false};
-
-            // Commencez à observer l'élément parent avec la configuration donnée
-            observer.observe(parentElement, config);
         }
-
-
-
-        console.log('observeDOM warpButtons');
-        observerWarpButtons();
+        
+        lightObserver('.cdk-overlay-container .mat-raised-button', warpButtons)
     }
 });
