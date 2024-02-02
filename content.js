@@ -2,7 +2,7 @@
 // // Ne justifiant pas la création d'un fichier séparé
 
 // // Fonction pour attendre la présence d'un élément avant de lancer une fonction
-// // ! Très utilisé dans toute l'exension
+// // ! Très utilisé dans toute l'exension, a vocation a disparaitre au profit de lightObserver
 function waitForElement(selector, text = null, timeout, callback) {
     var checkInterval = setInterval(function() {
         var elements = document.querySelectorAll(selector);
@@ -29,90 +29,31 @@ let observedElements = new WeakMap();
 
 function lightObserver(selector, callback, parentElement = document, justOnce = false) {
     let observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
+        for (let i = 0; i < mutations.length; i++) {
+            let mutation = mutations[i];
             if (mutation.type === 'childList') {
-                let element = parentElement.querySelector(selector);
-                if (element && !observedElements.has(element)) {
-                    console.log('Element has appeared');
-                    observedElements.set(element, true); // Ajouter l'élément à la WeakMap
-                    callback(true);
+                let elements = parentElement.querySelectorAll(selector);
+                let newElements = [];
+                for (let j = 0; j < elements.length; j++) {
+                    let element = elements[j];
+                    if (!observedElements.has(element)) {
+                        console.log('Element has appeared');
+                        observedElements.set(element, true); // Add the element to the WeakMap
+                        newElements.push(element);
+                    }
+                }
+                if (newElements.length > 0) {
                     if (justOnce) {
                         observer.disconnect();
                     }
+                    callback(newElements)
                 }
             }
-        });
+        }
     });
 
     let config = { childList: true, subtree: true };
     observer.observe(document, config);
-}
-
-// exemple d'utilisation :
-// lightObserver('#ContentPlaceHolder1_EtatCivilUCForm1_LabelPatientSecuriteSocial', (result) => {
-//     if (result) {
-//         console.log('LightObserver returned true');
-//     }
-// });
-
-
-// Déclenche un callback lorsque :
-// - un élément avec le sélecteur est ajouté au DOM (facultatif)
-// et - le délai debouceDelay est dépassé
-// et - le délai cooldownDelay est dépassé
-// inhibe le callback durant les délais cooldownDelay et debounceDelay
-// a vocation à être utilisé de façon large dans l'extension
-function observeDOM(callback, debounceDelay = 0, cooldownDelay = 0, selector = 'any', searchText = null, justOnce = false) {
-    if (typeof debounceDelay !== 'number' || typeof cooldownDelay !== 'number' || typeof callback !== 'function') {
-        throw new Error('Invalid parameters');
-    }
-    if (searchText === '') {
-        searchText = null;
-    }
-
-    let timeout;
-    let executed = false;
-    let anyMutation = false;
-    if (selector === 'any' || selector === 'null' || selector === 'all') {
-        anyMutation = true;
-    }
-
-    const observer = new MutationObserver(function(mutations) {
-        clearTimeout(timeout); // Annule le délai d'attente précédent
-        mutations.forEach(function(mutation) {
-            if (mutation.type === 'childList') {
-                console.log('mutation executed');
-                const element = document.querySelector(selector);
-                if ((element || anyMutation) && !executed) {
-                    if (searchText !== null) {
-                        console.log('searchText non null et de valeur ', searchText);
-                        if (element.textContent.indexOf(searchText) === -1) {
-                            console.log('searchText', searchText, 'non trouvé dans l\'élément', element);
-                            return; // Si le texte recherché n'est pas dans l'élément, ne faites rien
-                        }
-                    }
-                    executed = true;
-                    setTimeout(function() {
-                        try {
-                            console.log('callback', callback, 'executed');
-                            callback();
-                        } catch (error) {
-                            console.error('Error executing callback:', error);
-                        }
-                        clearTimeout(timeout);
-                        timeout = setTimeout(function() {
-                            executed = false;
-                            if (justOnce) {
-                                observer.disconnect();
-                            }
-                        }, cooldownDelay);
-                    }, debounceDelay);
-                }
-            }
-        });
-    });
-
-    observer.observe(document, { childList: true, subtree: true });
 }
 
 // // Boutons du popup
@@ -334,11 +275,10 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
     chrome.storage.local.get('autoSelectPatientCV', function (result) {
         let autoSelectPatientCV = result.autoSelectPatientCV;
         if (autoSelectPatientCV !== false) {
-            const lookForPatient = () => {
-                var elements = document.querySelectorAll('[mattooltip="Dossier patient lié"]'); // TODO changer le sélecteur par un tableau pour le nom du patient à la place, puis chercher s'il a un dossier lié, et cliquer dessus
+            const lookForPatient = (elements) => {
                 if (elements.length === 1) {
                     console.log('Patient seul trouvé, je clique dessus', elements[0]);
-                    elements[0].click();
+                    elements[0].click(); // TODO : trouver un moyen de trouver le lien correspondant
                     // remove element
                     elements[0].remove(); // évite un double clic sur l'élément
                 } else if (elements.length >= 2) {
@@ -347,8 +287,8 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
                     console.log('Aucun patient trouvé', elements);
                 }
             };
-
-            observeDOM(lookForPatient, 300, 300, '[mattooltip="Dossier patient lié"]');
+             // TODO changer le sélecteur par un tableau pour le nom du patient à la place, puis chercher s'il a un dossier lié, et cliquer dessus
+            lightObserver('[mattooltip="Dossier patient lié"]', lookForPatient);
 
         }
     });
@@ -381,64 +321,31 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
                     // Add the copy symbol next to the element
                     console.log('copySymbol', copySymbol, 'added next to element', element);
                     element.parentNode.insertBefore(copySymbol, element.nextSibling);
+                } else {
+                    console.log('copySymbolId', copySymbolId, 'already exists');
                 }
             }
 
-            // function watchForElements() {
-            lightObserver('span.label', (result) => {
-            // waitForElement('span.label', 'NIR', 5000, function (element) {
-                var element = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_insiContainer span.label');
-                console.log('element', element);
-                var nir = element.textContent.match(/(\d{13} \d{2})/)[1];
+            lightObserver('#ContentPlaceHolder1_EtatCivilUCForm1_insiContainer span.label', (elements) => {
+                console.log('element', elements[0]);
+                var nir = elements[0].textContent.match(/(\d{13} \d{2})/)[1];
                 nir = nir.replace(/\s/g, ''); // Supprime tous les espaces de la chaîne
-                addCopySymbol(element, nir);
-                element.addEventListener('click', function () {
+                addCopySymbol(elements[0], nir);
+                elements[0].addEventListener('click', function () {
                     console.log('nir', nir);
                     navigator.clipboard.writeText(nir);
                 });
             });
             
-            lightObserver('#ContentPlaceHolder1_EtatCivilUCForm1_LabelPatientSecuriteSocial', (result) => {
-            // waitForElement('#ContentPlaceHolder1_EtatCivilUCForm1_LabelPatientSecuriteSocial', '', 5000, function (element) {
-                var element = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_LabelPatientSecuriteSocial');
-                var secu = element.textContent.match(/(\d{1} \d{2} \d{2} \d{2} \d{3} \d{3} \d{2})/)[1];
+            lightObserver('#ContentPlaceHolder1_EtatCivilUCForm1_LabelPatientSecuriteSocial', (elements) => {
+                var secu = elements[0].textContent.match(/(\d{1} \d{2} \d{2} \d{2} \d{3} \d{3} \d{2})/)[1];
                 secu = secu.replace(/\s/g, ''); // Supprime tous les espaces de la chaîne
-                addCopySymbol(element, secu);
-                element.addEventListener('click', function () {
+                addCopySymbol(elements[0], secu);
+                elements[0].addEventListener('click', function () {
                     console.log('secu', secu);
                     navigator.clipboard.writeText(secu);
                 });
             });
-            
-            
-            // window.addEventListener('load', function () {
-            //     watchForElements();
-            // });
-
-            // function observerCopy(parent) {
-            //     // Créer un observateur de mutations pour surveiller les modifications du DOM
-            //     var observer = new MutationObserver(function (mutations) {
-            //         mutations.forEach(function (mutation) {
-            //             // only if mat-tooltip-trigger weda-row-no-wrap weda-main-align-start weda-cross-align-center pointer detecté
-            //             let elementsNIR = Array.from(mutation.addedNodes).filter(node => node.classList && node.matches('.mat-tooltip-trigger.weda-row-no-wrap.weda-main-align-start.weda-cross-align-center.pointer'));
-            //             let elementsSECU = Array.from(mutation.addedNodes).filter(node => node.classList && node.matches('#ContentPlaceHolder1_EtatCivilUCForm1_LabelPatientSecuriteSocial'));
-            //             if (elementsNIR.length + elementsSECU.length > 0) {
-            //                 console.log('nir ou secu ajouté => add copy buttons');
-            //                 watchForElements();
-            //             }
-            //         });
-            //     });
-
-            //     // Configurer l'observateur pour surveiller tout le document
-            //     var config = { childList: true, subtree: true };
-            //     observer.observe(parent, config);
-            // }
-            // let frametowatch = document.getElementById('ContentPlaceHolder1_EtatCivilUCForm1_FramePatient');
-            // if (frametowatch) {
-            //     observerCopy(frametowatch);
-            // } else {
-            //     console.log('Element with id "ContentPlaceHolder1_EtatCivilUCForm1_FramePatient" not found');
-            // }
         }
     });
 }
@@ -462,7 +369,6 @@ if (window.location.href === 'https://secure.weda.fr/vitalzen/gestion.aspx') {
 chrome.storage.local.get('RemoveTitleSuggestions', function (result) {
     function RemoveTitleSuggestions() {
         console.log('RemoveTitleSuggestions started');
-        var elements = document.getElementById('DivGlossaireReponse');
         if (elements) {
             elements.remove();
         }
@@ -474,22 +380,24 @@ chrome.storage.local.get('RemoveTitleSuggestions', function (result) {
             && !window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx')
             && !window.location.href.startsWith('https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx')) {
 
-            // Créer un observateur de mutations pour surveiller les modifications du DOM
-            var titleremoverTimeout;
-            var observer = new MutationObserver(function (mutations) {
-                mutations.forEach(function (mutation) {
-                    if (titleremoverTimeout) {
-                        clearTimeout(titleremoverTimeout);
-                    }
-                    titleremoverTimeout = setTimeout(RemoveTitleSuggestions, 400);
-                });
-            });
 
-            // Configurer l'observateur pour surveiller tout le document
-            var config = { childList: true, subtree: true };
-            observer.observe(document, config);
+            lightObserver('.consultation-form #DivGlossaireReponse', RemoveTitleSuggestions)
+            // // Créer un observateur de mutations pour surveiller les modifications du DOM
+            // var titleremoverTimeout;
+            // var observer = new MutationObserver(function (mutations) {
+            //     mutations.forEach(function (mutation) {
+            //         if (titleremoverTimeout) {
+            //             clearTimeout(titleremoverTimeout);
+            //         }
+            //         titleremoverTimeout = setTimeout(RemoveTitleSuggestions, 400);
+            //     });
+            // });
 
-            RemoveTitleSuggestions();
+            // // Configurer l'observateur pour surveiller tout le document
+            // var config = { childList: true, subtree: true };
+            // observer.observe(document, config);
+
+            // RemoveTitleSuggestions();
         }
     }
 });
