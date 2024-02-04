@@ -132,15 +132,16 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 
-// ajoute un bouton pour effacer les valeurs des textes de bienvenue
-var clearButton = document.createElement('button');
-clearButton.textContent = 'Raz textes de bienvenue';
-clearButton.addEventListener('click', function() {
-  // Effacez les valeurs lorsque le bouton est cliqué
-  chrome.storage.local.remove(['lastExtensionVersion', 'firstStart'], function() {
-    console.log('Les valeurs ont été effacées avec succès');
-  });
-});
 
-// Ajoutez le bouton à la page
-document.body.appendChild(clearButton);
+// // ajoute un bouton pour effacer les valeurs des textes de bienvenue
+// var clearButton = document.createElement('button');
+// clearButton.textContent = 'Raz textes de bienvenue';
+// clearButton.addEventListener('click', function() {
+//   // Effacez les valeurs lorsque le bouton est cliqué
+//   chrome.storage.local.remove(['lastExtensionVersion', 'firstStart'], function() {
+//     console.log('Les valeurs ont été effacées avec succès');
+//   });
+// });
+
+// // Ajoutez le bouton à la page
+// document.body.appendChild(clearButton);

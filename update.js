@@ -46,7 +46,7 @@ Pour qu'elle fonctionne au mieux :
 
 Vous pouvez aussi relire <a href="https://github.com/Refhi/Weda-Helper/" target="_blank">Weda-Helper sur gitHub</a> pour plus de précisions, et y faire des suggestions ou des signalements de bugs. 
 
-Et bien sûr m'encourager sur le <a href="https://https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/m-p/2998#M681" target="_blank">Site de la communauté de weda</a>
+Et bien sûr m'encourager sur le <a href="https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/m-p/2998" target="_blank">Site de la communauté de weda</a>
 
 Merci d'utiliser Weda-Helper !
 
@@ -71,7 +71,7 @@ ${nouveautes}
 
 Les suggestions et les rapports de bug c'est toujours par là : <a href="https://github.com/Refhi/Weda-Helper/" target="_blank">Weda-Helper sur gitHub</a>
 
-Et les encouragements toujours par ici :-)  <a href="https://https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/m-p/2998#M681" target="_blank">Site de la communauté de weda</a>
+Et les encouragements toujours par ici :-)  <a href="https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/m-p/2998" target="_blank">Site de la communauté de weda</a>
 
 Bon courage,
 

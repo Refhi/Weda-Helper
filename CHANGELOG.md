@@ -10,6 +10,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - click automatique sur le bouton refresh dans la page de gestion des FSEs
 - choix possible des pages où prescription numérique doit s'activer : Demande et/ou Prescription
 - choix possible pour le comportement post-impression via le Companion : rien, fermer la prévisu, retourner au dossier patient
+- message de bienvenue et d'explication lors de mise à jour avec liens vers communaute.weda.fr et le github
 
 # correctifs :
 - modification de la façon dont est géré la facturation par défaut. Il sélectionne désormais la facturation nommée "Défaut" dans les favoris. Il n'est plus nécessaire d'utiliser la touche de tabulation pour valider la cotation par défaut.
