@@ -86,6 +86,37 @@ function push_annuler() {
     actions.some(action => action() !== false);
 }
 
+function startPrinting() {
+    console.log('print_meds activé');
+    clickFirstPrinter();
+    waitForElement('[id^="ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile"]', null, 5000, function (iframe) {
+        console.log('iframe détecté:', iframe);
+        chrome.storage.local.get(['RemoveLocalCompanionPrint', 'postPrintBehavior'], function (result) {
+            if (result.RemoveLocalCompanionPrint) {
+                iframe.contentWindow.print();
+            }
+            else {
+                sendPrint();
+                console.log('sendPrint envoyé');
+                let closebutton = {
+                    'doNothing' : null,
+                    'closePreview' : 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay',
+                    'returnToPatient' : 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
+                }
+                setTimeout(function () {
+                    console.log('id to look for ', closebutton[result.postPrintBehavior], 'postPrintBehavior is ', result.postPrintBehavior)
+                    buttonToClick = document.getElementById(closebutton[result.postPrintBehavior]);
+                    console.log('button to click', buttonToClick)
+                    if (buttonToClick) {
+                        console.log('clicking on element ', buttonToClick)
+                        buttonToClick.click();
+                    }
+                }, 100);
+            }
+        });
+    });
+}
+
 // // Diverses aides au clic
 // Clique sur la première imprimante
 function clickFirstPrinter() {
@@ -225,44 +256,17 @@ const keyCommands = {
     'push_valider': {
         description: 'Appuie le bouton Valider ou équivalent',
         key: 'alt+v',
-        action: function () {
-            push_valider();
-        }
+        action: push_valider
     },
     'push_annuler': {
         description: 'Appuie le bouton Annuler ou équivalent',
         key: 'alt+a',
-        action: function () {
-            push_annuler();
-
-        }
+        action: push_annuler
     },
     'print_meds': {
         description: 'Imprime les médicaments',
         key: 'ctrl+p',
-        action: function () {
-            console.log('print_meds activé');
-            clickFirstPrinter();
-            waitForElement('[id^="ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile"]', null, 5000, function (iframe) {
-                console.log('iframe détecté:', iframe);
-                chrome.storage.local.get(['RemoveLocalCompanionPrint'], function (result) {
-                    if (result.RemoveLocalCompanionPrint) {
-                        iframe.contentWindow.print();
-                    }
-                    else {
-                        sendPrint();
-                        console.log('sendPrint envoyé'); // mis en place pour faciliter un débugage
-                        setTimeout(function () {
-                            closebutton = document.getElementById('ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay');
-                            console.log('closebutton', closebutton);
-                            if (closebutton) {
-                                closebutton.click();
-                            }
-                        }, 100); // peut-être nécessaire TODO : à confirmer ou alors à conditionnet à sendPrint ?
-                    }
-                });
-            });
-        }
+        action: startPrinting
     },
     'push_enregistrer': {
         description: 'Appuie le bouton Enregistrer ou équivalent',
@@ -357,9 +361,7 @@ const keyCommands = {
         key: 'alt+r',
         action: function () {
             console.log('shortcut_search activé');
-            openSearch();
-            // chrome.runtime.sendMessage({message: "openSearch"});
-            
+            openSearch();            
         }
     },
 };

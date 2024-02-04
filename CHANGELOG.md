@@ -8,6 +8,8 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - ajout du raccourcis ouvrant la page de recherche patient (amélioration au passage de la façon dont l'extension attend l'apparition du premier patient séléctionable)
 - ajout du "à" et du "," dans l'écoute clavier du pavé de prescription numérique
 - click automatique sur le bouton refresh dans la page de gestion des FSEs
+- choix possible des pages où prescription numérique doit s'activer : Demande et/ou Prescription
+- choix possible pour le comportement post-impression via le Companion : rien, fermer la prévisu, retourner au dossier patient
 
 # correctifs :
 - modification de la façon dont est géré la facturation par défaut. Il sélectionne désormais la facturation nommée "Défaut" dans les favoris. Il n'est plus nécessaire d'utiliser la touche de tabulation pour valider la cotation par défaut.

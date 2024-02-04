@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper",
-  "version": "1.5.1",
+  "version": "1.6",
   "options_page": "options.html",
   "permissions": ["storage", "tabs"],
   "host_permissions": ["http://localhost/"],
@@ -15,7 +15,7 @@
   "content_scripts": [
     {
       "matches": ["*://secure.weda.fr/*"],
-      "js": ["content.js", "fse.js", "keyCommands.js", "searchUpload.js", "companionlink.js", "prescription.js"]
+      "js": ["content.js", "fse.js", "keyCommands.js", "searchUpload.js", "companionlink.js", "prescription.js", "update.js"]
     }
   ],
   "commands": {

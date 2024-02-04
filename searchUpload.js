@@ -107,7 +107,7 @@ function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = fals
 chrome.storage.local.get('TweakImports', function (result) {
     // Modifie la taille de la fenêtre de prévisualisation du PDF
     function uploaderformResizeElements() {
-        const newsize = '600px'; // TODO mettre ça dans les options
+        const newsize = '600px';
         const pdfViewer = document.querySelector('#ContentPlaceHolder1_ViewPdfDocumentUCForm1_PanelViewDocument');
         if (pdfViewer) {
             pdfViewer.style.height = newsize;

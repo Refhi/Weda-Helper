@@ -33,25 +33,49 @@ document.addEventListener('DOMContentLoaded', function () {
     'KeyPadPrescription': true,
     'TweakFSEGestion': true,
     'TweakFSECreation': true,
+    'autoSelectPatientCV': false,
+    'WarpButtons': true,
+    'autoConsentNumPres': false,
+    'NumPresPrescription': false,
+    'NumPresDemande': false,
+    'postPrintBehavior': 'closePreview', // boutons radio
   };
 
   var options = Object.keys(defaultValues);
 
 
   options.forEach(function (option) {
-    // Récupérer les valeurs sauvegardées du stockage de Chrome
+    // // D'abord récupérer les valeurs stockées ou utiliser les valeurs par défaut
     chrome.storage.local.get(option, function (result) {
+      let savedOptionValue = result[option];
+      let defautOptionValue = defaultValues[option];
+
+
+      // ici on gère les boutons radio
+      var elements = document.querySelectorAll('input[name="' + option + '"]');
+      if (elements) {
+        elements.forEach(element => {
+          if (savedOptionValue === undefined && defautOptionValue === element.id) {
+            element.checked = true;
+          } else if (savedOptionValue === element.id) {
+            element.checked = savedOptionValue === element.id;
+          }
+        });
+      }
+
+
+
       var element = document.getElementById(option);
       if (element) {
         if (element.type === 'checkbox') {
           // Utiliser la valeur sauvegardée si elle existe, sinon utiliser la valeur par défaut
-          element.checked = result[option] !== undefined ? result[option] : defaultValues[option];
+          element.checked = savedOptionValue !== undefined ? savedOptionValue : defautOptionValue;
         } else if (element.type === 'text') {
           if (option === 'apiKey') {
             // Get the current value of the API key
             chrome.storage.local.get([option], function(result) {
               // If the API key is not already defined
-              if (!result[option]) {
+              if (!savedOptionValue) {
                 // Generate a random API key
                 var apiKey = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
                 element.value = apiKey;
@@ -62,12 +86,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
               } else {
                 // Use the saved value if it exists, otherwise use the default value
-                element.value = result[option]
+                element.value = savedOptionValue
               }
             });
           } else {
           // Utiliser la valeur sauvegardée si elle existe, sinon utiliser la valeur par défaut
-          element.value = result[option] !== undefined ? result[option] : defaultValues[option];
+          element.value = savedOptionValue !== undefined ? savedOptionValue : defautOptionValue;
           }
         }
       }
@@ -76,36 +100,47 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-
+  // Enregistrement des valeurs dans le stockage local lors du click sur id=save
   document.getElementById('save').addEventListener('click', function () {
     var valuesToSave = {};
-    var ipRegex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
-    var portRegex = /^[0-9]{1,5}$/;
-    var isValid = true;
-
     options.forEach(function (option) {
-      var element = document.getElementById(option);
+      // d'abord les boutons radio
+      let radioStatusElement = document.querySelector('input[name="' + option + '"]:checked');
+      if (radioStatusElement) {
+        valuesToSave[option] = radioStatusElement.id;
+      }
+
+
+
+      // puis le reste
+      let element = document.getElementById(option);
       if (element) { // Vérifiez si l'élément existe
         var value = element.type === 'checkbox' ? element.checked : element.value;
+        valuesToSave[option] = value;
       } else {
         console.log('Aucun élément trouvé avec l\'ID', option);
       }
-
-      // var letterRegex = /^([A-Z0-9]{1,7})?$/;
-      // if (option === 'defaultCotation' && !letterRegex.test(value)) {
-      //   alert('defaultCotation doit être composé uniquement de lettres majuscules et ne doit pas contenir plus de 7 lettres, ou être une chaîne vide');
-      //   isValid = false;
-      //   return;
-      // }
-      valuesToSave[option] = value;
+      
     });
 
-    if (isValid) {
-      chrome.storage.local.set(valuesToSave, function () {
-        console.log('Sauvegardé avec succès');
-        alert('Les options ont été sauvegardées avec succès');
-        console.log(valuesToSave);
-      });
-    }
+    chrome.storage.local.set(valuesToSave, function () {
+      console.log('Sauvegardé avec succès');
+      alert('Les options ont été sauvegardées avec succès');
+      console.log(valuesToSave);
+    });
+
   });
 });
+
+// ajoute un bouton pour effacer les valeurs des textes de bienvenue
+var clearButton = document.createElement('button');
+clearButton.textContent = 'Raz textes de bienvenue';
+clearButton.addEventListener('click', function() {
+  // Effacez les valeurs lorsque le bouton est cliqué
+  chrome.storage.local.remove(['lastExtensionVersion', 'firstStart'], function() {
+    console.log('Les valeurs ont été effacées avec succès');
+  });
+});
+
+// Ajoutez le bouton à la page
+document.body.appendChild(clearButton);

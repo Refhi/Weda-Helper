@@ -96,7 +96,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 *Toute la FSE : [alt+6], [n], [n], [tab][alt+v]*
 
 - les touches "n" et "o" permettent de sélectionner "non"/"oui" pour accidents de droit commun, puis ALD
-- si elles sont utilisées, entre automatiquement la cotation par défaut (à définir dans les options)
+- si elles sont utilisées, entre automatiquement la cotation par défaut (Une de vos cotations favorite doit être nommée 'Défaut')
 - Lecture automatique de la carte vitale si elle est non lue
 - Affichage de boutons directs pour la réalisation de FDS dégradées et téléconsultation (fonctionnalité en alpha)
 
@@ -110,7 +110,7 @@ Page d'accueil du dossier patient : ajout d'icones pour copier automatiquement l
 Est à récupérer [sous forme d'un script python](https://github.com/Refhi/Weda-Helper-Companion) [ou sous forme d'executable](https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/companion.exe) qui reçoit des instructions de l'extension Weda-Helper.
 Une fois installée, et que les options de l’extension Weda-Helper dans Chrome on été paramétrées, il doit être lancé et laissé en fond de tâche.
 Il exécutera les tâches suivantes :
-- si une impression dans Weda est déclenchée via ctrl-P, il lance complètement l'impression. (si cette option est désactivée, ctrl+P amène jusqu'à la dernière validation de l'impression) et ferme la fenêtre de prévisualisation.
+- si une impression dans Weda est déclenchée via ctrl-P, il lance complètement l'impression. (si cette option est désactivée, ctrl+P amène jusqu'à la dernière validation de l'impression) et ferme la fenêtre de prévisualisation (optionnel).
 - si une FSE est validée via Alt+v et que le paiement carte bancaire est sélectionné, il envoie une demande de règlement au TPE (qui doit également être correctement paramétré à l'aide de votre installateur de TPE)
 
 ## Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):

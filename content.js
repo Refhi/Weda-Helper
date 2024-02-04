@@ -245,12 +245,6 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Consul
             }
 
             lightObserver('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]',changeTabOrder)
-
-            // // Crée un nouvel observateur de mutations
-            // var observer = new MutationObserver(changeTabOrder);
-
-            // // Commence à observer le document avec les configurations spécifiées
-            // observer.observe(document, { childList: true, subtree: true });
             console.log('ConsultationFormTabOrderer started');
         }
     });
@@ -388,14 +382,12 @@ chrome.storage.local.get('RemoveTitleSuggestions', function (result) {
 
 
 
-// // Travail sur les boutons des interfaces secu (IMTI, DMP etc.) TODO
-
-chrome.storage.local.get('WarpButtons', function (result) { //TODO à mettre dans les options
+// // Travail sur les boutons des interfaces secu (IMTI, DMP etc.) 
+chrome.storage.local.get('WarpButtons', function (result) {
     let WarpButtons = result.WarpButtons;
     if (WarpButtons !== false) {
         function warpButtons(buttons) {
             function addIdToButton(button) {
-                // make a dictionnary with text as key and id as value
                 var actions = {
                     'Annuler': ['Continuez sans l\'ordonnance numérique', 'Non', 'NON', 'Annuler'],
                     'Valider': ['Oui', 'OUI', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre']
@@ -407,9 +399,6 @@ chrome.storage.local.get('WarpButtons', function (result) { //TODO à mettre dan
                         console.log(action, 'id already exist !');
                         return false;
                     }
-                    // console.log('ajout de id au button', button);
-                    
-                    // console.log('action', action);
                     if (action) {
                         button.id = 'target' + action;
                     }
@@ -418,7 +407,6 @@ chrome.storage.local.get('WarpButtons', function (result) { //TODO à mettre dan
             }
         
             function addShortcutsToButton(button) {
-                // make a dictionnary with text as key and id as value
                 var raccourcis = {
                     'targetAnnuler': ' (alt+A)',
                     'targetValider': ' (alt+V)'

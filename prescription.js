@@ -1,5 +1,8 @@
-// Page de prescription : maintient le texte d'un type de recherche à l'autre et ajoute des boutons de recherche
-if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx')) {
+// // Page de prescription
+let DemandeForm = window.location.href.startsWith('https://secure.weda.fr/FolderMedical/DemandeForm.aspx');
+let PrescriptionForm = window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx');
+if (PrescriptionForm) {
+    // maintient le texte d'un type de recherche à l'autre et ajoute des boutons de recherche
     chrome.storage.local.get(['keepMedSearch', 'addMedSearchButtons'], function (result) {
         let keepMedSearch = result.keepMedSearch;
         let addMedSearchButtons = result.addMedSearchButtons;
@@ -50,7 +53,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
         }
 
         function typeText(savedValue) {
-            if (savedValue !== undefined) { // TODO : se relance juste après avoir validé la prescription d'un médicament : fait perdre un peu de temps, à corriger.
+            if (savedValue !== undefined) {
                 console.log('typeText started with savedValue', savedValue);
                 var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
                 setTimeout(function() {
@@ -106,7 +109,6 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
                         // Vérifiez si un bouton avec cet identifiant existe déjà
                         if (document.getElementById(buttonId)) {
                             continue; // Si c'est le cas, passez à la prochaine itération de la boucle
-                            // TODO : aussi continue si d'autres fenêtres sont ouvertes comme les conseils ou la calculette de prescription
                         }
                 
                         var button = document.createElement('button');
@@ -163,39 +165,78 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Prescr
             }, 1000);
         });
     });
-}
 
 
-// // Ajoute l'écoute du clavier pour faciliter les prescription
-chrome.storage.local.get(['KeyPadPrescription'], function(result) {
-    if (result.KeyPadPrescription !== false) {
-        if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx')) {
-            console.log('numpader started');
-            var index = {
-                '0': 'SetQuantite(0);',
-                '1': 'SetQuantite(1);',
-                '2': 'SetQuantite(2);',
-                '3': 'SetQuantite(3);',
-                '4': 'SetQuantite(4);',
-                '5': 'SetQuantite(5);',
-                '6': 'SetQuantite(6);',
-                '7': 'SetQuantite(7);',
-                '8': 'SetQuantite(8);',
-                '9': 'SetQuantite(9);',
-                '/': 'SetQuantite(\'/\');',
-                '.': 'SetQuantite(\',\');',
-                ',' : 'SetQuantite(\',\');',
-                'Backspace': 'AnnulerQuantite();',
-                'à': 'SetQuantite(\' à \');',
-            };
+    // Ajoute l'écoute du clavier pour faciliter les prescription
+    chrome.storage.local.get(['KeyPadPrescription'], function(result) {
+        if (result.KeyPadPrescription !== false) {
+            if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx')) {
+                console.log('numpader started');
+                var index = {
+                    '0': 'SetQuantite(0);',
+                    '1': 'SetQuantite(1);',
+                    '2': 'SetQuantite(2);',
+                    '3': 'SetQuantite(3);',
+                    '4': 'SetQuantite(4);',
+                    '5': 'SetQuantite(5);',
+                    '6': 'SetQuantite(6);',
+                    '7': 'SetQuantite(7);',
+                    '8': 'SetQuantite(8);',
+                    '9': 'SetQuantite(9);',
+                    '/': 'SetQuantite(\'/\');',
+                    '.': 'SetQuantite(\',\');',
+                    ',' : 'SetQuantite(\',\');',
+                    'Backspace': 'AnnulerQuantite();',
+                    'à': 'SetQuantite(\' à \');',
+                };
 
-            document.addEventListener('keydown', function (event) {
-                console.log('event.key', event.key);
-                if (event.key in index) {
-                    console.log('key pressed:', event.key);
-                    clickElementByOnclick(index[event.key]);
-                }
+                document.addEventListener('keydown', function (event) {
+                    console.log('event.key', event.key);
+                    if (event.key in index) {
+                        console.log('key pressed:', event.key);
+                        clickElementByOnclick(index[event.key]);
+                    }
+                });
+            }
+        }
+    });
+
+    // Coche automatiquement le bouton de consentement de l'ordonnance numérique
+    chrome.storage.local.get(['autoConsentNumPres'], function(result) {
+        if (result.autoConsentNumPres !== false) {
+            // autoclique le bouton de consentement de l'ordonnance numérique
+            lightObserver('.cdk-overlay-container .mat-radio-label', function(elements) {
+                elements[0].click();
             });
         }
-    }
-});
+    });
+}
+
+// Selectionne automatiquement l'ordonnance numérique sur les pages souhaitées
+if (DemandeForm || PrescriptionForm) {
+    let logContext = '[WH, prescription.js] ';
+    console.log(logContext, 'selection ordoNum démarrée');
+    chrome.storage.local.get(['NumPresPrescription','NumPresDemande'], function(result) {
+        if (result.NumPresPrescription === true || result.NumPresDemande === true) {
+            console.log(logContext, 'NumPresPrescription ou NumPresDemande est true');
+            function changeCheckBoxViaClick(valueRequested) {
+                var checkbox = document.getElementById('ContentPlaceHolder1_EvenementUcForm1_CheckBoxEPrescription');
+                if (checkbox) {
+                    console.log(logContext, 'checkbox checked', checkbox.checked, 'valueRequested', valueRequested);
+                    if (checkbox.checked !== valueRequested) {
+                        checkbox.click();
+                    }
+                }
+            }
+            if (DemandeForm) {
+                console.log(logContext, 'DemandeForm', result.NumPresDemande);
+                changeCheckBoxViaClick(result.NumPresDemande === true);
+            }
+            if (PrescriptionForm) {
+                console.log(logContext, 'PrescriptionForm', result.NumPresPrescription);
+                changeCheckBoxViaClick(result.NumPresPrescription === true);
+            }
+        
+        }
+    });
+}

@@ -33,6 +33,15 @@
       button:hover {
           background-color: #45a049;
       }
+      input[type="radio"] {
+          display: inline-block;
+          margin-right: 10px;
+      }
+
+      div[style*="display: flex; align-items: center;"] label {
+          display: inline;
+          margin-bottom: -0.5em;
+      }
   </style>
 </head>
 <body>
@@ -44,6 +53,13 @@
   <input type="checkbox" id="TweakTabSearchPatient"> Activer les modifications de la fenêtre recherche patient (permet d'utiliser tab plus facilement)<br>
   <input type="checkbox" id="TweakTabPrescription"> Activer les modifications de la fenêtre recherche médicaments (permet d'utiliser tab plus facilement)<br>
   <input type="checkbox" id="KeyPadPrescription"> Activer l'écoute du clavier numérique lors de prescription d'un médicament.<br>
+  <input type="checkbox" id="autoSelectPatientCV"> Sélectionne automatiquement le patient après une lecture de carte vitale (en cours de developpement, ne pas utiliser)<br>
+  <input type="checkbox" id="WarpButtons"> Activer les raccourcis claviers sur les popups type DMP/IMTI/ordo numérique etc.<br>
+  <h2>Options d'ordonnance numérique :</h2>
+  <input type="checkbox" id="autoConsentNumPres"> Coche automatiquement la case de consentement de l'ordonnance numérique. Attention vous êtes toujours tenu de demander l'autorisation au patient systématiquement.<br>
+  <input type="checkbox" id="NumPresPrescription"> A cocher pour les prescriptions médicamenteuses numériques<br>
+  <input type="checkbox" id="NumPresDemande"> A cocher pour les ordonnances de Demande numériques (kine/bio/imagerie)<br>
+  <h2>Options de recherche médicale :</h2>
   <input type="checkbox" id="keepMedSearch"> Garder la recherche médicale<br>
   <input type="checkbox" id="addMedSearchButtons"> Ajouter des boutons de recherche médicaments<br>
     <input type="checkbox" id="boutonRecherche-1" style="margin-left: 40px;"> Médicaments<br>
@@ -60,6 +76,7 @@
     <input type="checkbox" id="boutonRecherche-9" style="margin-left: 40px;"> Le Top 50<br>
   <input type="checkbox" id="TweakRecetteForm"> Appuie automatiquement sur le bouton "rechercher" après avoir sélectionné la page des recettes<br>
   <input type="checkbox" id="TweakNIR"> Ajoute la possibilité de copier le NIR en cliquant dessus<br>
+  <h2>Options de fse :</h2>
   <input type="checkbox" id="defaultCotation"> Activer la cotation par défaut dans la FDS. Nécessite de mettre une cotation favorite nommée "Défaut"<br>
   <input type="checkbox" id="TweakFSEGestion"> Activer le rafraichissement automatique des FSE dans la page de gestion<br>
   <input type="checkbox" id="TweakFSECreation"> Active les raccourcis clavier de la création de FSE ainsi que la lecture automatique de la carte vitale.<br>
@@ -77,6 +94,21 @@
   <h2>Options d'impression automatique :</h2>
   <input type="checkbox" id="RemoveLocalCompanionPrint" style="margin-right: 1em;"> <em><strong>Désactiver</strong></em> l'impression automatique complète via le companion <strong>(décocher pour l'activer)</strong><br>
   <input type="checkbox" id="KeepFocus" style="margin-right: 1em;">Active la récupération du focus en cas de vol par l'application d'impression<br>
+  <h3>Après une impression automatique par le Companion :</h3>
+  <div style="display: flex; flex-direction: column;">
+    <div style="display: flex; align-items: center;">
+      <input type="radio" id="doNothing" name="postPrintBehavior">
+      <label for="doNothing">Ne rien faire</label>
+    </div>
+    <div style="display: flex; align-items: center;">
+      <input type="radio" id="closePreview" name="postPrintBehavior">
+      <label for="closePreview">Fermer la fenêtre de prévisualisation</label>
+    </div>
+    <div style="display: flex; align-items: center;">
+      <input type="radio" id="returnToPatient" name="postPrintBehavior">
+      <label for="returnToFolder">Retourner au dossier</label>
+    </div>
+  </div>
   <h2>Lien avec le TPE :</h2>
   <input type="checkbox" id="RemoveLocalCompanionTPE" style="margin-right: 1em;"> <em><strong>Désactiver</strong></em> la communication avec le TPE et l'option TPE dans les fse <strong>(décocher pour l'activer)</strong><br>
   
