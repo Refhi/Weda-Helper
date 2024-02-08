@@ -362,20 +362,22 @@ if (window.location.href === 'https://secure.weda.fr/vitalzen/gestion.aspx') {
 // // Retrait des suggestions de titre
 chrome.storage.local.get('RemoveTitleSuggestions', function (result) {
     function RemoveTitleSuggestions(elements) {
-        console.log('RemoveTitleSuggestions started');
-        if (elements) {
-            elements[0].remove();
-        }
+        setTimeout(() => {
+            console.log('Remove TitleSuggestions started');
+            if (elements[0]) {
+                elements[0].remove();
+            }
+        }, 400);
     }
     if (result.RemoveTitleSuggestions !== false) {
+        console.log('RemoveTitleSuggestions démarré');
         // vérifie que l'on est sur une page soufrant du problème
         if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/')
             && window.location.href.includes('Form.aspx')
             && !window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx')
             && !window.location.href.startsWith('https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx')) {
-
-
-            lightObserver('.consultation-form #DivGlossaireReponse', RemoveTitleSuggestions)
+            RemoveTitleSuggestions(document.querySelectorAll('#DivGlossaireReponse')); // nécessaire pour certaines pages se chargeant trop vite
+            lightObserver('#DivGlossaireReponse', RemoveTitleSuggestions)
         }
     }
 });
@@ -390,7 +392,7 @@ chrome.storage.local.get('WarpButtons', function (result) {
             function addIdToButton(button) {
                 var actions = {
                     'Annuler': ['Continuez sans l\'ordonnance numérique', 'Non', 'NON', 'Annuler'],
-                    'Valider': ['Oui', 'OUI', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre']
+                    'Valider': ['Oui', 'OUI', 'Confirmer', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre']
                 };
                 if (button) {
                     var action = Object.keys(actions).find(key => actions[key].includes(button.textContent));
@@ -418,18 +420,20 @@ chrome.storage.local.get('WarpButtons', function (result) {
                         button.textContent += raccourci;
                     }
                 }
+
+                resizeTextBox();
             }
         
-            function resizeTextBox () {
+            function resizeTextBox () { // TODO à ne faire que si des boutons ont été modifiés
                 let textbox = document.querySelector('.mat-dialog-container');
-                if (textbox) {
+                let currentHeight = parseInt(window.getComputedStyle(textbox).height, 10);
+                if (textbox && currentHeight < 440) {
                     textbox.style.height = '440px';
                 } else {
                     console.log('textBox not found :-/ can\'t resize it');
                 }
             }
         
-            resizeTextBox();
         
             buttons.forEach(function (button) {
                 console.log('Bouton trouvé ! Je le redimentionne, lui ajoute un id et note le raccourcis clavier par défaut', button);

@@ -2,6 +2,7 @@
 let DemandeForm = window.location.href.startsWith('https://secure.weda.fr/FolderMedical/DemandeForm.aspx');
 let PrescriptionForm = window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx');
 if (PrescriptionForm) {
+    var isFirstCall = true;
     // maintient le texte d'un type de recherche à l'autre et ajoute des boutons de recherche
     chrome.storage.local.get(['keepMedSearch', 'addMedSearchButtons'], function (result) {
         let keepMedSearch = result.keepMedSearch;
@@ -53,6 +54,7 @@ if (PrescriptionForm) {
         }
 
         function typeText(savedValue) {
+            console.log('typeText started');
             if (savedValue !== undefined) {
                 console.log('typeText started with savedValue', savedValue);
                 var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
@@ -125,14 +127,17 @@ if (PrescriptionForm) {
             });
         }
 
-        function onDOMChange(setup = false) {
+        function onDOMChange() {
             var panneauFav = document.getElementById('PanelBasesPosologies');
-            if (!panneauFav) { // sinon le panneau se ferme au DOM refresh
+            if (!panneauFav) {
                 console.log('onDOMChange started et panneau fav non présent');
                 if (keepMedSearch !== false) {
                     console.log('keepMedSearch started');
                     searchTextKeeper();
-                    if (!setup) {textSorter();}
+                    if (!isFirstCall) {
+                        textSorter();
+                    }
+                    isFirstCall = false;
                 }
                 if (addMedSearchButtons !== false) {
                     addMedSearchButtonsFunction();
@@ -146,24 +151,7 @@ if (PrescriptionForm) {
             }
         }
 
-        // Obtenez une référence au champ d'entrée et au menu déroulant
-        var observer = new MutationObserver(function(mutationsList, observer) {
-            observer.disconnect();
-            console.log('DOM Mutation detected, restarting');
-            onDOMChange();
-            setTimeout(function() {
-                observer.observe(document, { childList: true, subtree: true });
-            }, 100);
-        });
-            
-        // Commence à observer le document avec les configurations spécifiées
-        waitForElement('#ContentPlaceHolder1_BaseVidalUcForm1_DropDownListRecherche', null, 5000, function() {
-            onDOMChange(true);
-            setTimeout(function() {                
-                console.log('page normalement complètement chargée, observer started');
-                observer.observe(document, { childList: true, subtree: true });
-            }, 1000);
-        });
+        lightObserver('#ContentPlaceHolder1_BaseVidalUcForm1_DropDownListRecherche', onDOMChange);
     });
 
 

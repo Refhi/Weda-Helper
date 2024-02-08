@@ -1,5 +1,5 @@
 // // lien avec Weda-Helper-Companion
-function sendToCompanion(urlCommand, blob = null) {
+function sendToCompanion(urlCommand, blob = null, buttonToClick = null) {
     chrome.storage.local.get(['portCompanion', 'apiKey'], function (result) {
         const portCompanion = result.portCompanion;
         const apiKey = result.apiKey;
@@ -36,6 +36,12 @@ function sendToCompanion(urlCommand, blob = null) {
                 if (!error.message.startsWith('[focus]')) {
                     alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
                 }
+            })
+            .finally(() => {
+                if (buttonToClick) {
+                    buttonToClick.click();
+                }
+                console.log('finally');
             });
     });
 }
@@ -90,7 +96,7 @@ function startDMPSender() {
 }
 
 // déclenchement de l'impression dans Weda-Helper-Companion
-function sendPrint() {
+function sendPrint(buttonToClick) {
     chrome.storage.local.get('RemoveLocalCompanionPrint', function (result) {
         const RemoveLocalCompanionPrint = result.RemoveLocalCompanionPrint;
         if (RemoveLocalCompanionPrint !== false) {
@@ -133,11 +139,8 @@ function sendPrint() {
                     fetch(iframe.contentWindow.location.href)
                         .then(response => response.blob())
                         .then(blob => {
-                            sendToCompanion(`print`, blob);
+                            sendToCompanion(`print`, blob, buttonToClick);
                             watchForFocusLoss();
-                            setTimeout(() => {
-                            startDMPSender(); // nécessaire car la fermeture automatique de la fenêtre d'impression empêche l'envoi classique au DMP
-                            }, 100); // petit délais car semble sinon empêcher la fermeture de la fenêtre de prévisualisation
                         })
                         .catch(error => {
                             console.error('Error:', error);

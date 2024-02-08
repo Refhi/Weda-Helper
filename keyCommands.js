@@ -89,32 +89,30 @@ function push_annuler() {
 function startPrinting() {
     console.log('print_meds activé');
     clickFirstPrinter();
-    waitForElement('[id^="ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile"]', null, 5000, function (iframe) {
+    function whenFrameLoaded(elements) {
+        let iframe = elements[0];
         console.log('iframe détecté:', iframe);
         chrome.storage.local.get(['RemoveLocalCompanionPrint', 'postPrintBehavior'], function (result) {
             if (result.RemoveLocalCompanionPrint) {
                 iframe.contentWindow.print();
             }
             else {
-                sendPrint();
-                console.log('sendPrint envoyé');
                 let closebutton = {
                     'doNothing' : null,
                     'closePreview' : 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay',
                     'returnToPatient' : 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
                 }
-                setTimeout(function () {
-                    console.log('id to look for ', closebutton[result.postPrintBehavior], 'postPrintBehavior is ', result.postPrintBehavior)
-                    buttonToClick = document.getElementById(closebutton[result.postPrintBehavior]);
-                    console.log('button to click', buttonToClick)
-                    if (buttonToClick) {
-                        console.log('clicking on element ', buttonToClick)
-                        buttonToClick.click();
-                    }
-                }, 100);
+
+                console.log('id to look for ', closebutton[result.postPrintBehavior], 'postPrintBehavior is ', result.postPrintBehavior)
+                let buttonToClick = document.getElementById(closebutton[result.postPrintBehavior]);
+                console.log('button to click', buttonToClick)
+
+                sendPrint(buttonToClick);
+                console.log('sendPrint envoyé');
             }
         });
-    });
+    }
+    lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", whenFrameLoaded);
 }
 
 // // Diverses aides au clic
