@@ -2,6 +2,12 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+## [1.6.8] - 2024-02-09
+# ajouts :
+- la liste des patients suis le défilé de la fenêtre dans les résultats HPRIM
+- ouverture automatique du dossier patient si la carte vitale est lue alors qu'il n'existe qu'un seul patient dessus
+
+
 
 ## [1.6.0] - 2024-01-28
 # ajouts :

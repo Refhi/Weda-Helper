@@ -33,7 +33,7 @@ function sendToCompanion(urlCommand, blob = null, buttonToClick = null) {
             })
             .catch(error => {
                 console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
-                if (!error.message.startsWith('[focus]')) {
+                if (!errortype.includes('[focus]')) {
                     alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
                 }
             })

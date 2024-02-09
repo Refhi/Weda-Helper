@@ -269,23 +269,40 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
     chrome.storage.local.get('autoSelectPatientCV', function (result) {
         let autoSelectPatientCV = result.autoSelectPatientCV;
         if (autoSelectPatientCV !== false) {
-            const lookForPatient = (elements) => {
+            let patientSelector = '#mat-dialog-0 > vz-lecture-cv table .grid-item'
+            const lookForPatient = () => {
+                var elements = document.querySelectorAll(patientSelector);
+                // remove from the elements all without only capital letters or spaces in the text
+                elements = Array.from(elements).filter(element => element.textContent.match(/^[A-Z\s]+$/));
+                console.log('les patients trouvés sont', elements);
                 if (elements.length === 1) {
                     console.log('Patient seul trouvé, je clique dessus', elements[0]);
-                    elements[0].click(); // TODO : trouver un moyen de trouver le lien correspondant
-                    // remove element
-                    elements[0].remove(); // évite un double clic sur l'élément
+                    // target the next element in the DOM on the same level, with .grid-item as class
+                    var nextElement = elements[0].nextElementSibling;
+                    console.log('nextElement', nextElement);
+                    // if it have a direct child with .mat-tooltip-trigger.sign click it
+                    let linkedDossier = nextElement.querySelector('.mat-tooltip-trigger.sign');
+                    if (linkedDossier) {
+                        console.log('nextElement', linkedDossier, 'found and clickable');
+                        linkedDossier.click();
+                    } else {
+                        console.log('nextElement', nextElement, 'not found or not clickable');
+                    }
+
                 } else if (elements.length >= 2) {
                     console.log(elements.length, 'trop de patients trouvé, je ne clique pas', elements);
                 } else {
                     console.log('Aucun patient trouvé', elements);
                 }
             };
-             // TODO changer le sélecteur par un tableau pour le nom du patient à la place, puis chercher s'il a un dossier lié, et cliquer dessus
-            lightObserver('[mattooltip="Dossier patient lié"]', lookForPatient);
+            lightObserver(patientSelector, function () {
+                setTimeout(lookForPatient, 100);
+            }, document, true);
 
         }
     });
+
+    // TODO Lecture automatique de la carte vitale si body > weda-notification-container > ng-component:nth-child(2) > mat-card > div > p apparait
 
 
     // copie automatiquement dans le presse papier le NIR du patient quand on clique dessus:
@@ -448,3 +465,13 @@ chrome.storage.local.get('WarpButtons', function (result) {
         lightObserver('.cdk-overlay-container .mat-raised-button', warpButtons)
     }
 });
+
+// Page HRPIM TODO : doit être une option ?
+if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/HprimForm.aspx')) {
+    function makeHPRIMListSticky() {
+        let element = document.querySelector("#ContentPlaceHolder1_UpdatePanelHprimsGrid");
+        element.style.position = "sticky";
+        element.style.top = "0px";
+    }
+    makeHPRIMListSticky();
+}
