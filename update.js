@@ -13,6 +13,7 @@ var nouveautes = `# Important : si vous voulez que la cotation par défaut se fa
 - click automatique sur le bouton refresh dans la page de gestion des FSEs
 - choix possible des pages où prescription numérique doit s'activer : Demande et/ou Prescription
 - choix possible pour le comportement post-impression via le Companion : rien, fermer la prévisu, retourner au dossier patient
+- message de bienvenue et d'explication lors de mise à jour avec liens vers communaute.weda.fr et le github
 
 # correctifs :
 - modification de la façon dont est géré la facturation par défaut. Il sélectionne désormais la facturation nommée "Défaut" dans les favoris. Il n'est plus nécessaire d'utiliser la touche de tabulation pour valider la cotation par défaut.
@@ -25,6 +26,7 @@ var nouveautes = `# Important : si vous voulez que la cotation par défaut se fa
 - retrait du message d'erreur du Companion si c'est issu d'un problème de [focus]
 - l'icone de copie du NIR/secu disparaissait lorsqu'on cliquait sur certains éléments
 - fix : l'envoi vers le DMP était inhibé lors d'une impression automatisée complète via le Companion
+- l'impression pouvait parfois se lancer deux fois
 
 # refactory :
 - passage d'une bonne partie des fonctions d'attente vers lightObserver`

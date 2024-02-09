@@ -419,12 +419,13 @@ chrome.storage.local.get('WarpButtons', function (result) {
                     if (raccourci) {
                         button.textContent += raccourci;
                     }
+                    if (button.textContent.includes('Désactiver aujourd\'hui')) { // certains boutons nécessitent d'étendre la taille de la fenêtre
+                        resizeTextBox();
+                    }
                 }
-
-                resizeTextBox();
             }
         
-            function resizeTextBox () { // TODO à ne faire que si des boutons ont été modifiés
+            function resizeTextBox () {
                 let textbox = document.querySelector('.mat-dialog-container');
                 let currentHeight = parseInt(window.getComputedStyle(textbox).height, 10);
                 if (textbox && currentHeight < 440) {

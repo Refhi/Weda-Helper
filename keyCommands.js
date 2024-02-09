@@ -112,7 +112,7 @@ function startPrinting() {
             }
         });
     }
-    lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", whenFrameLoaded);
+    lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", whenFrameLoaded, parentElement = document, justOne = true);
 }
 
 // // Diverses aides au clic

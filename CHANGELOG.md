@@ -23,6 +23,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - retrait du message d'erreur du Companion si c'est issu d'un problème de [focus]
 - l'icone de copie du NIR/secu disparaissait lorsqu'on cliquait sur certains éléments
 - fix : l'envoi vers le DMP était inhibé lors d'une impression automatisée complète via le Companion
+- l'impression pouvait parfois se lancer deux fois
 
 # refactory :
 - passage d'une bonne partie des fonctions d'attente vers lightObserver
