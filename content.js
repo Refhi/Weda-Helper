@@ -479,18 +479,40 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/HprimF
 // // Déplacer #form1 > div:nth-child(15) à gauche de #form1 > div:nth-child(14) > div > table > tbody > tr > td:nth-child(1) > table
 // vérifier que l'on est sur une page soufrant du problème
 // TODO le mettre en option sur certaines pages ?
-if (querySelector('#ContentPlaceHolder1_EvenementUcForm1_LinkButtonShowHistoriqueFrame')) {
+
+if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx')) {
     function moveToLeft() {
-        // Sélectionner les éléments
+        // moveUtilitaryTop();
+        
+        // Select elements
         let elementToMove = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame');
         let targetElement = document.querySelector('#form1 > div:nth-child(14) > div > table > tbody > tr > td:nth-child(1) > table');
 
-        // Obtenir la position de l'élément cible
+        // Get the position of the target element
         let targetElementPosition = targetElement.getBoundingClientRect();
 
-        // Définir la position de l'élément à déplacer
+        // Set the position of the element to move
         elementToMove.style.position = 'absolute';
         elementToMove.style.left = targetElementPosition.left + 'px';
-        elementToMove.style.top = targetElementPosition.top + 'px';
+        elementToMove.style.marginTop = '0px'; // Remove top margin
+
+        // Move the target element to the right of the element to move
+        targetElement.style.position = 'absolute';
+        targetElement.style.left = (elementToMove.getBoundingClientRect().right + 10) + 'px'; // 10px gap
+        targetElement.style.marginTop = '0px'; // Remove top margin
+
     }
+
+    function moveUtilitaryTop() {
+        let elementToRotate = document.querySelector('#form1 > div:nth-child(15) > table > tbody > tr > td:nth-child(1) > div.cadreicon');
+        console.log('elementToMove', elementToRotate);
+        let targetElement = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame');
+        // rotate the element 90°
+        elementToRotate.style.transform = 'rotate(90deg)';
+        // move the element to the top of the target element
+        targetElement.insertBefore(elementToRotate, targetElement.firstChild);
+
+    }
+
+    // lightObserver('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame', moveToLeft);    
 }
