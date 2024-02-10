@@ -480,39 +480,42 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/HprimF
 // vérifier que l'on est sur une page soufrant du problème
 // TODO le mettre en option sur certaines pages ?
 
-if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx')) {
+if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx')
+    || window.location.href.startsWith('https://secure.weda.fr/FolderMedical/CertificatForm.aspx')) {
     function moveToLeft() {
-        // moveUtilitaryTop();
-        
         // Select elements
         let elementToMove = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame');
         let targetElement = document.querySelector('#form1 > div:nth-child(14) > div > table > tbody > tr > td:nth-child(1) > table');
+        let iframeToActOn = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame > iframe');
+        console.log('iframeToActOn', iframeToActOn);
+        iframeToActOn.addEventListener('load', function () {
+            console.log('iframe loaded');
+            let iframeDocument = iframeToActOn.contentDocument;
+            console.log('iframeDocument', iframeDocument);
+            let fistSibling = iframeDocument.querySelector('#HistoriqueUCForm1_UpdatePanelViewPdfDocument');
+            let elementToShrink = fistSibling.previousElementSibling;
 
-        // Get the position of the target element
-        let targetElementPosition = targetElement.getBoundingClientRect();
+            console.log('elementToShrink', elementToShrink);   
+
+            elementToShrink.style.width = '70%';
+        });
+
+
+
 
         // Set the position of the element to move
         elementToMove.style.position = 'absolute';
-        elementToMove.style.left = targetElementPosition.left + 'px';
+        elementToMove.style.left = '0px';
         elementToMove.style.marginTop = '0px'; // Remove top margin
+        elementToMove.style.width = '420px';
 
         // Move the target element to the right of the element to move
         targetElement.style.position = 'absolute';
-        targetElement.style.left = (elementToMove.getBoundingClientRect().right + 10) + 'px'; // 10px gap
+        targetElement.style.left = (elementToMove.getBoundingClientRect().right - 40) + 'px';
         targetElement.style.marginTop = '0px'; // Remove top margin
 
     }
 
-    function moveUtilitaryTop() {
-        let elementToRotate = document.querySelector('#form1 > div:nth-child(15) > table > tbody > tr > td:nth-child(1) > div.cadreicon');
-        console.log('elementToMove', elementToRotate);
-        let targetElement = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame');
-        // rotate the element 90°
-        elementToRotate.style.transform = 'rotate(90deg)';
-        // move the element to the top of the target element
-        targetElement.insertBefore(elementToRotate, targetElement.firstChild);
 
-    }
-
-    // lightObserver('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame', moveToLeft);    
+    lightObserver('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame', moveToLeft);    
 }
