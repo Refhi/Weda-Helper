@@ -475,3 +475,22 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/HprimF
     }
     makeHPRIMListSticky();
 }
+
+// // Déplacer #form1 > div:nth-child(15) à gauche de #form1 > div:nth-child(14) > div > table > tbody > tr > td:nth-child(1) > table
+// vérifier que l'on est sur une page soufrant du problème
+// TODO le mettre en option sur certaines pages ?
+if (querySelector('#ContentPlaceHolder1_EvenementUcForm1_LinkButtonShowHistoriqueFrame')) {
+    function moveToLeft() {
+        // Sélectionner les éléments
+        let elementToMove = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame');
+        let targetElement = document.querySelector('#form1 > div:nth-child(14) > div > table > tbody > tr > td:nth-child(1) > table');
+
+        // Obtenir la position de l'élément cible
+        let targetElementPosition = targetElement.getBoundingClientRect();
+
+        // Définir la position de l'élément à déplacer
+        elementToMove.style.position = 'absolute';
+        elementToMove.style.left = targetElementPosition.left + 'px';
+        elementToMove.style.top = targetElementPosition.top + 'px';
+    }
+}
