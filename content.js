@@ -284,6 +284,11 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
                 var elements = document.querySelectorAll(patientSelector);
                 // remove from the elements all without only capital letters or spaces in the text
                 elements = Array.from(elements).filter(element => element.textContent.match(/^[A-Z\s]+$/));
+                // remove any .patientLink.pointer.ng-star-inserted
+                elements = Array.from(elements).filter(element => !element.querySelector('.patientLink.pointer.ng-star-inserted'));
+                // remove any NOT containing a space in the text
+                elements = Array.from(elements).filter(element => element.textContent.match(/\s/));
+
                 console.log('les patients trouvés sont', elements);
                 if (elements.length === 1) {
                     console.log('Patient seul trouvé, je clique dessus', elements[0]);
@@ -492,12 +497,12 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/HprimF
 // list with all the pages where the problem is present
 let pagesToLeftPannel = [
     { url: 'https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', targetElementSelector: '#form1 > div:nth-child(14) > div > table > tbody > tr > td:nth-child(1) > table' },
-    { url: 'https://secure.weda.fr/FolderMedical/CertificatForm.aspx', targetElementSelector: '#CE_ContentPlaceHolder1_EditorCertificat_ID' },
-    { url: 'https://secure.weda.fr/FolderMedical/DemandeForm.aspx', targetElementSelector: '#ContentPlaceHolder1_UpdatePanelAll' },
-    { url: 'https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx', targetElementSelector: '#ContentPlaceHolder1_PanelBaseVidalBackGround > table' },
-    { url: 'https://secure.weda.fr/FolderMedical/FormulaireForm.aspx', targetElementSelector: '#form1 > div:nth-child(14) > table > tbody > tr > td > table' },
-    { url: 'https://secure.weda.fr/FolderMedical/ResultatExamenForm.aspx', targetElementSelector: '#form1 > div:nth-child(14) > table > tbody > tr > td > table' },
-    { url: 'https://secure.weda.fr/FolderMedical/CourrierForm.aspx', targetElementSelector: '#form1 > div:nth-child(15) > table > tbody > tr > td:nth-child(1) > table' }
+    // { url: 'https://secure.weda.fr/FolderMedical/CertificatForm.aspx', targetElementSelector: '#CE_ContentPlaceHolder1_EditorCertificat_ID' },
+    // { url: 'https://secure.weda.fr/FolderMedical/DemandeForm.aspx', targetElementSelector: '#ContentPlaceHolder1_UpdatePanelAll' },
+    // { url: 'https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx', targetElementSelector: '#ContentPlaceHolder1_PanelBaseVidalBackGround > table' },
+    // { url: 'https://secure.weda.fr/FolderMedical/FormulaireForm.aspx', targetElementSelector: '#form1 > div:nth-child(14) > table > tbody > tr > td > table' },
+    // { url: 'https://secure.weda.fr/FolderMedical/ResultatExamenForm.aspx', targetElementSelector: '#form1 > div:nth-child(14) > table > tbody > tr > td > table' },
+    // { url: 'https://secure.weda.fr/FolderMedical/CourrierForm.aspx', targetElementSelector: '#form1 > div:nth-child(15) > table > tbody > tr > td:nth-child(1) > table' }
 ];
 let currentPage = pagesToLeftPannel.find(page => page.url === window.location.origin + window.location.pathname);
 // check if the current page is in the list
