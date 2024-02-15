@@ -550,7 +550,7 @@ if (currentPage) {
                     targetElement.style.width = targetElementWidth + 'px';
 
                     // Redimensionner l'affichage de l'historique
-                    let margin = (elementToMove.getBoundingClientRect().width - 60);
+                    let margin = (elementToMove.getBoundingClientRect().width - 70);
                     elementToShrink.style.maxWidth = margin + 'px';
                 }
 
@@ -587,6 +587,12 @@ if (currentPage) {
                     lightObserver('.fondcoordination', (elements) => {
                         let boutonCovid = elements[0];
                         boutonCovid.remove();
+                    }, iframeDocument);
+                    lightObserver('[name="dh9"]', (elements) => {
+                        let recettes = elements;
+                        recettes.forEach((recette) => {
+                            recette.remove();
+                        });
                     }, iframeDocument);
 
                     setTimeout(() => {
