@@ -287,7 +287,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
             const lookForPatient = () => {
                 var elements = document.querySelectorAll(patientSelector);
                 // remove from the elements all without only capital letters or spaces in the text
-                elements = Array.from(elements).filter(element => element.textContent.match(/^[A-Z\s]+$/));
+                elements = Array.from(elements).filter(element => element.textContent.match(/^[A-Z\s-]+$/));
                 // remove any .patientLink.pointer.ng-star-inserted
                 elements = Array.from(elements).filter(element => !element.querySelector('.patientLink.pointer.ng-star-inserted'));
                 // remove any NOT containing a space in the text
@@ -512,7 +512,7 @@ if (currentPage) {
         if (result.MoveHistoriqueToLeft !== false) {
             console.log('MoveHistoriqueToLeft démarré');
             function moveToLeft(iframes) {
-                function warpElements(elementToMove, targetElement, elementToShrink, unitsElement) {
+                function warpElements(elementToShrink) {
                     let historyProportion = 0.3;
                     let availableWidth = window.innerWidth;
                     let elementToMoveWidth = availableWidth * historyProportion;
@@ -551,7 +551,7 @@ if (currentPage) {
 
                     // Redimensionner l'affichage de l'historique
                     let margin = (elementToMove.getBoundingClientRect().width - 60);
-                    elementToShrink.style.width = margin + 'px';
+                    elementToShrink.style.maxWidth = margin + 'px';
                 }
 
                 function resetTargetElement() {
@@ -577,8 +577,9 @@ if (currentPage) {
 
                 iframeToActOn.addEventListener('load', () => {
                     let iframeDocument = iframeToActOn.contentDocument;
-                    let _fistSibling = iframeDocument.querySelector('#HistoriqueUCForm1_UpdatePanelViewPdfDocument');
-                    let elementToShrink = _fistSibling.previousElementSibling;
+                    // let _fistSibling = iframeDocument.querySelector('#HistoriqueUCForm1_UpdatePanelViewPdfDocument');
+                    // let elementToShrink = _fistSibling.previousElementSibling;
+                    let elementToShrink = iframeDocument.querySelector('[style*="max-width:"]');
                     lightObserver('#PanelFiltre', (elements) => {
                         let listeFiltre = elements[0];
                         listeFiltre.remove();
@@ -593,11 +594,15 @@ if (currentPage) {
                         listeFiltre.remove();
                         let boutonCovid = iframeDocument.querySelector('.fondcoordination');
                         boutonCovid.remove();
+                        let recettes = iframeDocument.querySelectorAll('[name="dh9"]');
+                        recettes.forEach((recette) => {
+                            recette.remove();
+                        });
                     }, 20);
 
                     console.log('elementToShrink', elementToShrink);
 
-                    warpElements(elementToMove, targetElement, elementToShrink, unitsElement);
+                    warpElements(elementToShrink);
 
                     observeDiseapearance(iframeToActOn, resetTargetElement);
                 });
