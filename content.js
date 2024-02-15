@@ -26,42 +26,46 @@ function waitForElement(selector, text = null, timeout, callback) {
 
 // Fonction "light" pour observer l'apparition d'un élément dans le DOM
 let observedElements = new WeakMap();
-
-function lightObserver(selector, callback, parentElement = document, justOnce = false, disappearance = false) {
+function lightObserver(selector, callback, parentElement = document, justOnce = false, debug = false) {
     let observer = new MutationObserver((mutations) => {
         for (let i = 0; i < mutations.length; i++) {
             let mutation = mutations[i];
             if (mutation.type === 'childList') {
-                if (!disappearance) {
-                    let elements = parentElement.querySelectorAll(selector);
-                    let newElements = [];
-                    for (let j = 0; j < elements.length; j++) {
-                        let element = elements[j];
-                        if (!observedElements.has(element)) {
-                            console.log('[lightObserver] Element', element, ' has appeared');
-                            observedElements.set(element, true); // Add the element to the WeakMap
-                            newElements.push(element);
-                        }
+                if (debug) {
+                    console.log('[lightObserver]', selector, parentElement, ' Mutation:', mutation);
+                }
+                let elements = parentElement.querySelectorAll(selector);
+                let newElements = [];
+                for (let j = 0; j < elements.length; j++) {
+                    let element = elements[j];
+                    if (!observedElements.has(element)) {
+                        if (debug) {console.log('[lightObserver] Element', element, ' has appeared');}
+                        observedElements.set(element, true); // Add the element to the WeakMap
+                        newElements.push(element);
                     }
-                    if (newElements.length > 0) {
-                        if (justOnce) {
-                            observer.disconnect();
-                        }
-                        callback(newElements)
+                }
+                if (newElements.length > 0) {
+                    if (justOnce) {
+                        observer.disconnect();
                     }
-                } else { // check for disappearance
-                    mutation.removedNodes.forEach(node => {
-                        if (node.matches && node.matches(selector) && observedElements.has(node)) {
-                            console.log('[lightObserver] Element', node, ' has disappeared');
-                            observedElements.delete(node); // Remove the element from the WeakMap
-                            callback([node]);
-                        }
-                    });
+                    callback(newElements)
                 }
             }
         }
     });
 
+    let config = { childList: true, subtree: true };
+    observer.observe(parentElement, config);
+}
+
+function observeDiseapearance(element, callback) {
+    function callBackIfElementDisapear() {
+        if (!document.contains(element)) {
+            callback();
+        }
+    }
+
+    let observer = new MutationObserver(callBackIfElementDisapear);
     let config = { childList: true, subtree: true };
     observer.observe(document, config);
 }
@@ -491,10 +495,8 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/HprimF
     makeHPRIMListSticky();
 }
 
-// // Déplacer #form1 > div:nth-child(15) à gauche de #form1 > div:nth-child(14) > div > table > tbody > tr > td:nth-child(1) > table
-// vérifier que l'on est sur une page soufrant du problème
-// TODO le mettre en option sur certaines pages ?
-// list with all the pages where the problem is present
+// // Mettre l'historique dans une colonne à gauche de l'écran
+// TODO l'ajouter sur d'autres pages ?
 let pagesToLeftPannel = [
     { url: 'https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', targetElementSelector: '#form1 > div:nth-child(14) > div > table > tbody > tr > td:nth-child(1) > table' },
     // { url: 'https://secure.weda.fr/FolderMedical/CertificatForm.aspx', targetElementSelector: '#CE_ContentPlaceHolder1_EditorCertificat_ID' },
@@ -505,52 +507,113 @@ let pagesToLeftPannel = [
     // { url: 'https://secure.weda.fr/FolderMedical/CourrierForm.aspx', targetElementSelector: '#form1 > div:nth-child(15) > table > tbody > tr > td:nth-child(1) > table' }
 ];
 let currentPage = pagesToLeftPannel.find(page => page.url === window.location.origin + window.location.pathname);
-// check if the current page is in the list
 if (currentPage) {
-    function moveToLeft() {
-        function warpElements(elementToMove, targetElement, elementToShrink) {
-            // Bouger l'historique à gauche et le redimensionner
-            elementToMove.style.position = 'absolute';
-            elementToMove.style.left = '0px';
-            elementToMove.style.marginTop = '0px'; // Remove top margin
-            elementToMove.style.width = '420px';
+    chrome.storage.local.get('MoveHistoriqueToLeft', function (result) { // TODO : doit être une option
+        if (result.MoveHistoriqueToLeft !== false) {
+            console.log('MoveHistoriqueToLeft démarré');
+            function moveToLeft(iframes) {
+                function warpElements(elementToMove, targetElement, elementToShrink, unitsElement) {
+                    let historyProportion = 0.3;
+                    let availableWidth = window.innerWidth;
+                    let elementToMoveWidth = availableWidth * historyProportion;
+                    let targetElementWidth = (1 - historyProportion) * availableWidth;
+                    let unitsElementWidth = (1 - historyProportion) * availableWidth * 0.2;
+                    
+                    // Bouger l'historique à gauche et le redimensionner
+                    elementToMove.style.position = 'absolute';
+                    elementToMove.style.left = '0px';
+                    elementToMove.style.marginTop = '0px'; // Remove top margin
+                    elementToMove.style.width = elementToMoveWidth + 'px'; 
 
-            // Bouger la cible à droite et la redimensionner
-            targetElement.style.position = 'absolute';
-            targetElement.style.left = (elementToMove.getBoundingClientRect().right - 40) + 'px';
-            targetElement.style.marginTop = '0px'; // Remove top margin
-            targetElement.style.width = 'calc(100% - 420px + 40px)'; // 100% - width of the element to move + margin-right of the element to move
+                    // Stocker les valeurs initiales
+                    initialStylesTargetElement = {
+                        position: targetElement.style.position,
+                        left: targetElement.style.left,
+                        marginTop: targetElement.style.marginTop,
+                        width: targetElement.style.width
+                    };
+                    initialStylesUnitsElement = {
+                        position: unitsElement.style.position,
+                        left: unitsElement.style.left,
+                        marginTop: unitsElement.style.marginTop,
+                        width: unitsElement.style.width
+                    };
 
-            // Redimensionner l'affichage de l'historique
-            elementToShrink.style.width = '70%';
+                    // Modifier la largeur de l'élément de suivi
+                    unitsElement.style.width = unitsElementWidth + 'px';
+
+                    // Bouger la cible à droite et la redimensionner
+                    targetElement.style.position = 'absolute';
+                    targetElement.style.left = (elementToMove.getBoundingClientRect().right) + 'px';
+                    targetElement.style.marginTop = '0px'; // Remove top margin
+                    console.log('availableWidth', availableWidth);
+                    targetElement.style.width = targetElementWidth + 'px';
+
+                    // Redimensionner l'affichage de l'historique
+                    let margin = (elementToMove.getBoundingClientRect().width - 60);
+                    elementToShrink.style.width = margin + 'px';
+                }
+
+                function resetTargetElement() {
+                    console.log('resetTargetElement');
+                    // Rétablir les valeurs initiales
+                    targetElement.style.position = initialStylesTargetElement.position;
+                    targetElement.style.left = initialStylesTargetElement.left;
+                    targetElement.style.marginTop = initialStylesTargetElement.marginTop;
+                    targetElement.style.width = initialStylesTargetElement.width;
+
+                    unitsElement.style.position = initialStylesUnitsElement.position;
+                    unitsElement.style.left = initialStylesUnitsElement.left;
+                    unitsElement.style.marginTop = initialStylesUnitsElement.marginTop;
+                    unitsElement.style.width = initialStylesUnitsElement.width;
+                }
+
+
+                // Définition des éléments à déplacer et de la cible
+                let elementToMove = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame');
+                let targetElement = document.querySelector(currentPage['targetElementSelector']);
+                let unitsElement = document.querySelector('#ContentPlaceHolder1_SuivisGrid');
+                let iframeToActOn = iframes[0];
+
+                iframeToActOn.addEventListener('load', () => {
+                    let iframeDocument = iframeToActOn.contentDocument;
+                    let _fistSibling = iframeDocument.querySelector('#HistoriqueUCForm1_UpdatePanelViewPdfDocument');
+                    let elementToShrink = _fistSibling.previousElementSibling;
+                    lightObserver('#PanelFiltre', (elements) => {
+                        let listeFiltre = elements[0];
+                        listeFiltre.remove();
+                    }, iframeDocument);
+                    lightObserver('.fondcoordination', (elements) => {
+                        let boutonCovid = elements[0];
+                        boutonCovid.remove();
+                    }, iframeDocument);
+
+                    setTimeout(() => {
+                        let listeFiltre = iframeDocument.querySelector('#PanelFiltre');
+                        listeFiltre.remove();
+                        let boutonCovid = iframeDocument.querySelector('.fondcoordination');
+                        boutonCovid.remove();
+                    }, 20);
+
+                    console.log('elementToShrink', elementToShrink);
+
+                    warpElements(elementToMove, targetElement, elementToShrink, unitsElement);
+
+                    observeDiseapearance(iframeToActOn, resetTargetElement);
+                });
+            }
+
+
+            // Automatiquement afficher l'historique
+            lightObserver('#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowHistoriqueFrame', (elements) => {
+                if (elements.length > 0) {
+                    elements[0].click();
+                }
+            }, document, true);
+
+
+            // Attendre que l'iframe soit présente ET chargée pour déplacer l'historique
+            lightObserver('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame > iframe', moveToLeft);
         }
-
-
-        // Définition des éléments à déplacer et de la cible
-        let elementToMove = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame');
-        let targetElement = document.querySelector(currentPage['targetElementSelector']);
-        let iframeToActOn = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame > iframe');
-        let iframeDocument = iframeToActOn.contentDocument;
-        let _fistSibling = iframeDocument.querySelector('#HistoriqueUCForm1_UpdatePanelViewPdfDocument');
-        let elementToShrink = _fistSibling.previousElementSibling;
-        console.log('elementToShrink', elementToShrink);
-
-
-        warpElements(elementToMove, targetElement, elementToShrink);
-
-        // TODO : ajouter un observer de disparition pour remettre targetElement à ses paramètres initiaux
-    }
-
-
-    // Automatiquement afficher l'historique
-    lightObserver('#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowHistoriqueFrame', (elements) => {
-        if (elements.length > 0) {
-            elements[0].click();
-        }
-    }, document, true);
-
-
-    // Attendre que l'iframe soit présente ET chargée pour déplacer l'historique
-    lightObserver('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame > iframe', (iframes) => 
-        iframes[0].addEventListener('load', moveToLeft), document, false);
+    });
 }
