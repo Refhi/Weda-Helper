@@ -17,7 +17,7 @@ Cf. ci-dessous pour les retours et les contributions.
 3. [Affichage des Raccourcis Claviers du Menu W](#affichage-des-raccourcis-claviers-du-menu-w)
 4. [Facilitation des Imports](#facilitation-des-imports)
 5. [Facilitation du Remplissage des Valeurs Tensionnelles](#facilitation-du-remplissage-des-valeurs-tensionnelles)
-6. [Retrait des Suggestions des Titres de Consultation](#retrait-des-suggestions-des-titres-de-consultation)
+6. [Consultations](#Consultations)
 7. [Modification du Comportement de la Tabulation Après Recherche Patient](#modification-du-comportement-de-la-tabulation-après-recherche-patient)
 8. [Écoute des Entrées Claviers Lors de l'Usage de la Calculette de Prescription](#écoute-des-entrées-claviers-lors-de-lusage-de-la-calculette-de-prescription)
 9. [Recherche de médicaments](#Recherche-de-médicaments)
@@ -67,10 +67,13 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 
 Dans la fenêtre de consultation, lorsque l'on remplie une valeur de suivi, la touche tabulation envoie directement vers la case suivante (plus besoin d'appuyer 4 fois)
 
-## Retrait des suggestions des titres de consultation
+## Consultations
 *Parceque le vert flashy c'est sooo 2015*
-
+### Retrait des suggestions des titres de consultation
 Dans les fenêtres contenant un Titre, désactive le panneau de suggestion (fenêtres d'ordonnance, consultation, certificat, prescription, formulaire, résultats d'examen).
+
+### Affichage automatique de l'historique dans une colonne à gauche
+Ouvre automatiquement un historique simplifié (pas de recettes notamment) dans une colonne à gauche de l'écran, uniquement dans les pages de consultation.
 
 ## Modification du comportement de la tabulation après recherche patient
 *DESMAUX Nathalie [Entrée] [Entrée]*
