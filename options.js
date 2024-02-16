@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', function () {
     'NumPresPrescription': false,
     'NumPresDemande': false,
     'postPrintBehavior': 'closePreview', // boutons radio
+    'MoveHistoriqueToLeft': true,
   };
 
   var options = Object.keys(defaultValues);

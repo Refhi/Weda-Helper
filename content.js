@@ -575,41 +575,42 @@ if (currentPage) {
                 let unitsElement = document.querySelector('#ContentPlaceHolder1_SuivisGrid');
                 let iframeToActOn = iframes[0];
 
+                // liste des selecteurs à suppimer
+                let selectorsToRemove = [
+                    '#PanelFiltre',
+                    '.fondcoordination',
+                    '[name="dh9"]',
+                    '.frameupright',
+                    '.frameupleft',
+                    '.frameupcenter',
+                ];
+
                 iframeToActOn.addEventListener('load', () => {
                     let iframeDocument = iframeToActOn.contentDocument;
-                    // let _fistSibling = iframeDocument.querySelector('#HistoriqueUCForm1_UpdatePanelViewPdfDocument');
-                    // let elementToShrink = _fistSibling.previousElementSibling;
-                    let elementToShrink = iframeDocument.querySelector('[style*="max-width:"]');
-                    lightObserver('#PanelFiltre', (elements) => {
-                        let listeFiltre = elements[0];
-                        listeFiltre.remove();
-                    }, iframeDocument);
-                    lightObserver('.fondcoordination', (elements) => {
-                        let boutonCovid = elements[0];
-                        boutonCovid.remove();
-                    }, iframeDocument);
-                    lightObserver('[name="dh9"]', (elements) => {
-                        let recettes = elements;
-                        recettes.forEach((recette) => {
-                            recette.remove();
-                        });
-                    }, iframeDocument);
+
+                    // Supprimer les éléments inutiles
+                    selectorsToRemove.forEach((selector) => {
+                        lightObserver(selector, (elements) => {
+                            elements.forEach((element) => {
+                                element.remove();
+                            });
+                        }, iframeDocument);
+                    });
 
                     setTimeout(() => {
-                        let listeFiltre = iframeDocument.querySelector('#PanelFiltre');
-                        listeFiltre.remove();
-                        let boutonCovid = iframeDocument.querySelector('.fondcoordination');
-                        boutonCovid.remove();
-                        let recettes = iframeDocument.querySelectorAll('[name="dh9"]');
-                        recettes.forEach((recette) => {
-                            recette.remove();
+                        selectorsToRemove.forEach((selector) => {
+                            let element = iframeDocument.querySelector(selector);
+                            if (element) {
+                                element.remove();
+                            }
                         });
                     }, 20);
 
-                    console.log('elementToShrink', elementToShrink);
-
+                    // Redimensionner l'historique
+                    let elementToShrink = iframeDocument.querySelector('[style*="max-width:"]');
                     warpElements(elementToShrink);
 
+                    // réinitialiser les éléments à la disparition de l'iframe
                     observeDiseapearance(iframeToActOn, resetTargetElement);
                 });
             }

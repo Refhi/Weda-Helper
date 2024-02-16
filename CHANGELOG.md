@@ -6,6 +6,10 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 # ajouts :
 - la liste des patients suis le défilé de la fenêtre dans les résultats HPRIM
 - ouverture automatique du dossier patient si la carte vitale est lue alors qu'il n'existe qu'un seul patient dessus
+- affichage automatique de l'historique dans les pages de consultation sur le 1/3 gauche de l'écran
+
+# fix :
+- retrait pour de bon du message d'erreur apparaissant parfois après l'impression via le companion ("[focus]...")
 
 
 

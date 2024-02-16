@@ -8,28 +8,12 @@ function htmlMaker(text) {
 var nouveautes = `# Important : si vous voulez que la cotation par défaut se fasse toujours il vous faut créer un favori nommé "Défaut"
 
 # ajouts :
-- ajout du raccourcis ouvrant la page de recherche patient (amélioration au passage de la façon dont l'extension attend l'apparition du premier patient séléctionable)
-- ajout du "à" et du "," dans l'écoute clavier du pavé de prescription numérique
-- click automatique sur le bouton refresh dans la page de gestion des FSEs
-- choix possible des pages où prescription numérique doit s'activer : Demande et/ou Prescription
-- choix possible pour le comportement post-impression via le Companion : rien, fermer la prévisu, retourner au dossier patient
-- message de bienvenue et d'explication lors de mise à jour avec liens vers communaute.weda.fr et le github
+
 
 # correctifs :
-- modification de la façon dont est géré la facturation par défaut. Il sélectionne désormais la facturation nommée "Défaut" dans les favoris. Il n'est plus nécessaire d'utiliser la touche de tabulation pour valider la cotation par défaut.
-- tentative de fix sur les boutons rajoutés de téléconsultation et dégradé dans la FSE
-- fix d'un bug dans le chargement du maintient de la recherche dans les prescriptions
-- fix d'un problème dans la page des FSE où il n'était plus possible de taper une cotation avec N ou O sous peine de reselectionner la valeur par defaut
-- fix des boutons "téléconsultation" et "dégradé" apparaissant après un échec de lecture de carte vitale
-- fix du panneaux de favoris qui se fermait lors des prescriptions
-- retrait du "-"=> " " de l'analyse du prénom du patient
-- retrait du message d'erreur du Companion si c'est issu d'un problème de [focus]
-- l'icone de copie du NIR/secu disparaissait lorsqu'on cliquait sur certains éléments
-- fix : l'envoi vers le DMP était inhibé lors d'une impression automatisée complète via le Companion
-- l'impression pouvait parfois se lancer deux fois
 
-# refactory :
-- passage d'une bonne partie des fonctions d'attente vers lightObserver`
+
+`
 
 nouveautes = htmlMaker(nouveautes)
 
@@ -145,6 +129,7 @@ chrome.storage.local.get(['lastExtensionVersion', 'firstStart'], function(result
         // If the last version is different from the current version, there was an update
         showPopup(updateMessage);
         chrome.storage.local.set({lastExtensionVersion: currentVersion});
+        chrome.storage.local.set({autoSelectPatientCV: true}); // TODO à supprimer après la 1.7
     }
     
     if (!result.firstStart) {
