@@ -151,7 +151,13 @@ if (PrescriptionForm) {
             }
         }
 
-        lightObserver('#ContentPlaceHolder1_BaseVidalUcForm1_DropDownListRecherche', onDOMChange);
+        window.addEventListener('load', function() {
+            onDOMChange();
+        });
+
+        setTimeout(function() {
+            lightObserver('#ContentPlaceHolder1_BaseVidalUcForm1_DropDownListRecherche', onDOMChange);
+        }, 2000);
     });
 
 
@@ -228,3 +234,13 @@ if (DemandeForm || PrescriptionForm) {
         }
     });
 }
+// ouvre automatiquement le panneau d'ordos type
+// if (PrescriptionForm) {
+//     chrome.storage.local.get(['autoOpenOrdoType'], function(result) {
+//         if (result.autoOpenOrdoType !== false) {
+//             lightObserver('#ContentPlaceHolder1_ButtonPrescritionType', function(elements) {
+//                 elements[0].click();
+//             });
+//         }
+//     });
+// }

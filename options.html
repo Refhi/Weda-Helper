@@ -46,23 +46,24 @@
 </head>
 <body>
   <h1>Options générales :</h1>
-  <input type="checkbox" id="TweakImports"> Activer les modifications pour la fenêtre d'importations<br>
-  <input type="checkbox" id="TweakTabConsultation"> Activer le tab index pour les consultations<br>
-  <input type="checkbox" id="MoveHistoriqueToLeft"> Ouvrir automatiquement l'historique dans dans les consultation et l'afficher dans un colonne à gauche<br>
-  <input type="checkbox" id="RemoveTitleSuggestions"> Retire le panneau de suggestion<br>
-  <input type="checkbox" id="EnableHelp"> Affiche l'aide en appuyant sur Alt<br>
-  <input type="checkbox" id="TweakTabSearchPatient"> Activer les modifications de la fenêtre recherche patient (permet d'utiliser tab plus facilement)<br>
-  <input type="checkbox" id="TweakTabPrescription"> Activer les modifications de la fenêtre recherche médicaments (permet d'utiliser tab plus facilement)<br>
-  <input type="checkbox" id="KeyPadPrescription"> Activer l'écoute du clavier numérique lors de prescription d'un médicament.<br>
-  <input type="checkbox" id="autoSelectPatientCV"> Sélectionne automatiquement le patient après une lecture de carte vitale<br>
+  <input type="checkbox" id="TweakImports"> Activer les modifications pour la fenêtre d'importations (page télécharger des documents).<br>
+  <input type="checkbox" id="TweakTabConsultation"> Activer la navigation entre les valeurs de suivi avec la touche Tab dans les consultations.<br>
+  <input type="checkbox" id="MoveHistoriqueToLeft"> Ouvrir automatiquement l'historique dans dans les consultation et l'afficher dans un colonne à gauche.<br>
+  <input type="checkbox" id="RemoveTitleSuggestions"> Retire le panneau de suggestion dans les Titres (ex. de Consultation).<br>
+  <input type="checkbox" id="EnableHelp"> Affiche l'aide en appuyant sur Alt de manière prolongée.<br>
+  <input type="checkbox" id="TweakTabSearchPatient"> Activer les modifications de la fenêtre recherche patient (navigation facilitée avec la touche Tab).<br>
+  <input type="checkbox" id="TweakTabPrescription"> Activer les modifications de la fenêtre recherche médicaments (navigation facilitée avec la touche Tab).<br>
+  <input type="checkbox" id="KeyPadPrescription"> Activer l’utilisation du clavier numérique lors de prescription d'un médicament.<br>
+  <input type="checkbox" id="autoSelectPatientCV"> Lit automatiquement la carte vitale après insersion (nécessite Weda Connect 3) et sélectionne automatiquement le patient s'il est seul<br>
   <input type="checkbox" id="WarpButtons"> Activer les raccourcis claviers sur les popups type DMP/IMTI/ordo numérique etc.<br>
   <h2>Options d'ordonnance numérique :</h2>
   <input type="checkbox" id="autoConsentNumPres"> Coche automatiquement la case de consentement de l'ordonnance numérique. Attention vous êtes toujours tenu de demander l'autorisation au patient systématiquement.<br>
-  <input type="checkbox" id="NumPresPrescription"> A cocher pour les prescriptions médicamenteuses numériques<br>
-  <input type="checkbox" id="NumPresDemande"> A cocher pour les ordonnances de Demande numériques (kine/bio/imagerie)<br>
+  <h3>Options de cochache/décochage automatique (pour que le décochage fonctionne, au moins une des deux options doit être activée.):</h3>
+  <input type="checkbox" id="NumPresPrescription"> Cocher/Décocher automatiquement la case « ordonnance numérique » pour les prescriptions de médicaments.<br>
+  <input type="checkbox" id="NumPresDemande"> Cocher/Décocher automatiquement la case « ordonnance numérique » pour les ordonnances de demandes numériques (labo/imagerie/paramédical)<br>
   <h2>Options de recherche médicale :</h2>
   <input type="checkbox" id="keepMedSearch"> Garder la recherche médicale<br>
-  <input type="checkbox" id="addMedSearchButtons"> Ajouter des boutons de recherche médicaments<br>
+  <input type="checkbox" id="addMedSearchButtons"> Ajouter des boutons de raccourcis pour la recherche de médicaments.<br>
     <input type="checkbox" id="boutonRecherche-1" style="margin-left: 40px;"> Médicaments<br>
     <input type="checkbox" id="boutonRecherche-14" style="margin-left: 40px;"> Recherche par produits<br>
     <input type="checkbox" id="boutonRecherche-8" style="margin-left: 40px;"> Dénomination commune (DCI)<br>
@@ -75,26 +76,26 @@
     <input type="checkbox" id="boutonRecherche-6" style="margin-left: 40px;"> Laboratoires<br>
     <input type="checkbox" id="boutonRecherche-7" style="margin-left: 40px;"> Vos favoris et perso.<br>
     <input type="checkbox" id="boutonRecherche-9" style="margin-left: 40px;"> Le Top 50<br>
-  <input type="checkbox" id="TweakRecetteForm"> Appuie automatiquement sur le bouton "rechercher" après avoir sélectionné la page des recettes<br>
-  <input type="checkbox" id="TweakNIR"> Ajoute la possibilité de copier le NIR en cliquant dessus<br>
+  <input type="checkbox" id="TweakRecetteForm">  Appuie automatiquement sur le bouton "rechercher" après avoir sélectionné la page des recettes (permet d’afficher les recettes du jour directement en arrivant sur la page).<br>
+  <input type="checkbox" id="TweakNIR"> Ajoute la possibilité de copier le NIR en cliquant dessus sur la page d’accueil.<br>
   <h2>Options de fse :</h2>
-  <input type="checkbox" id="defaultCotation"> Activer la cotation par défaut dans la FDS. Nécessite de mettre une cotation favorite nommée "Défaut"<br>
-  <input type="checkbox" id="TweakFSEGestion"> Activer le rafraichissement automatique des FSE dans la page de gestion<br>
+  <input type="checkbox" id="defaultCotation">  Activer la cotation par défaut dans la FDS. (Nécessite de mettre une cotation favorite nommée "Défaut", et de valider la feuille de soin avec les touches o/n).<br>
+  <input type="checkbox" id="TweakFSEGestion"> Activer le rafraichissement automatique des FSE dans la page de télétransmission. (fonctionnalité en beta)<br>
   <input type="checkbox" id="TweakFSECreation"> Active les raccourcis clavier de la création de FSE ainsi que la lecture automatique de la carte vitale.<br>
   </div>
   <h1>Lien avec Weda-Helper-Companion:</h1>
   <h2>Options de connexion :</h2>
   <div style="display: flex; align-items: center;">
     <input type="text" id="portCompanion" name="portCompanion" style="width: 15ch; margin-right: 1em;">
-    <label for="portCompanion">Port Weda-Helper-Companion (default 4821) cf. https://github.com/Refhi/Weda-Helper-Companion doit être mentionné dans conf.ini du companion</label>
+    <label for="portCompanion">Port Weda-Helper-Companion (default 4821) cf. https://github.com/Refhi/Weda-Helper-Companion doit être mentionné dans conf.ini du companion. ATTENTION : Le numéro de port doit être le même dans les options de l’extension WEDA HELPER et dans le fichier conf.ini du COMPANION.</label>
   </div>
   <div style="display: flex; align-items: center;">
     <input type="text" id="apiKey" name="apiKey" style="width: 30ch; margin-right: 1em;">
-    <label for="apiKey">Clé API. Doit être mentionné dans conf.ini du companion.</label>
+    <label for="apiKey">Clé API. Doit être mentionné dans conf.ini du companion. ATTENTION : Le numéro d’API doit être le même dans les options de l’extension WEDA HELPER et dans le fichier conf.ini du COMPANION.</label>
   </div>
   <h2>Options d'impression automatique :</h2>
   <input type="checkbox" id="RemoveLocalCompanionPrint" style="margin-right: 1em;"> <em><strong>Désactiver</strong></em> l'impression automatique complète via le companion <strong>(décocher pour l'activer)</strong><br>
-  <input type="checkbox" id="KeepFocus" style="margin-right: 1em;">Active la récupération du focus en cas de vol par l'application d'impression<br>
+  <input type="checkbox" id="KeepFocus" style="margin-right: 1em;">Active la récupération du focus en cas de vol par l'application d'impression.<br>
   <h3>Après une impression automatique par le Companion :</h3>
   <div style="display: flex; flex-direction: column;">
     <div style="display: flex; align-items: center;">
