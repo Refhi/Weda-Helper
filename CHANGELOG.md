@@ -2,7 +2,7 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
-## [1.7] - 2024-02-17
+## [1.8] - 2024-02-17
 # ajout :
 - option pour ouvrir automatiquement le panneau d'ordos types à l'ouverture des prescriptions médicamenteuses
 
