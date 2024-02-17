@@ -129,12 +129,14 @@ if (PrescriptionForm) {
 
         function onDOMChange() {
             var panneauFav = document.getElementById('PanelBasesPosologies');
+            var panneauType = document.getElementById('ContentPlaceHolder1_PanelListePrescritionType');
+            var panneauRO = document.getElementById('ContentPlaceHolder1_RenouvellementUCForm1_PanelFindDocument');
             if (!panneauFav) {
                 console.log('onDOMChange started et panneau fav non présent');
                 if (keepMedSearch !== false) {
                     console.log('keepMedSearch started');
                     searchTextKeeper();
-                    if (!isFirstCall) {
+                    if (!isFirstCall && !panneauType && !panneauRO) {
                         textSorter();
                     }
                     isFirstCall = false;
@@ -151,9 +153,19 @@ if (PrescriptionForm) {
             }
         }
 
-        window.addEventListener('load', function() {
-            onDOMChange();
+
+        chrome.storage.local.get(['autoOpenOrdoType'], function(result) { // TODO en faire une option
+            if (result.autoOpenOrdoType === true) {
+                document.getElementById('ContentPlaceHolder1_ButtonPrescritionType').click();
+                lightObserver('#ContentPlaceHolder1_LabelBasePrescritionType', function() {
+                    onDOMChange();
+                });
+            }
+            else {
+                onDOMChange();
+            }
         });
+
 
         setTimeout(function() {
             lightObserver('#ContentPlaceHolder1_BaseVidalUcForm1_DropDownListRecherche', onDOMChange);
@@ -194,20 +206,23 @@ if (PrescriptionForm) {
             }
         }
     });
+}
 
+// Selectionne automatiquement l'ordonnance numérique sur les pages souhaitées
+if (DemandeForm || PrescriptionForm) {
     // Coche automatiquement le bouton de consentement de l'ordonnance numérique
     chrome.storage.local.get(['autoConsentNumPres'], function(result) {
         if (result.autoConsentNumPres !== false) {
             // autoclique le bouton de consentement de l'ordonnance numérique
             lightObserver('.cdk-overlay-container .mat-radio-label', function(elements) {
+                // console.log('[debug].cdk-overlay-container .mat-radio-label', elements);
                 elements[0].click();
             });
         }
     });
-}
 
-// Selectionne automatiquement l'ordonnance numérique sur les pages souhaitées
-if (DemandeForm || PrescriptionForm) {
+
+
     let logContext = '[WH, prescription.js] ';
     console.log(logContext, 'selection ordoNum démarrée');
     chrome.storage.local.get(['NumPresPrescription','NumPresDemande'], function(result) {
@@ -234,13 +249,3 @@ if (DemandeForm || PrescriptionForm) {
         }
     });
 }
-// ouvre automatiquement le panneau d'ordos type
-// if (PrescriptionForm) {
-//     chrome.storage.local.get(['autoOpenOrdoType'], function(result) {
-//         if (result.autoOpenOrdoType !== false) {
-//             lightObserver('#ContentPlaceHolder1_ButtonPrescritionType', function(elements) {
-//                 elements[0].click();
-//             });
-//         }
-//     });
-// }

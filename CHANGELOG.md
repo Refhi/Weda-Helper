@@ -2,6 +2,15 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+## [1.7] - 2024-02-17
+# ajout :
+- option pour ouvrir automatiquement le panneau d'ordos types à l'ouverture des prescriptions médicamenteuses
+
+# fix :
+- la recherche médicamenteuse se lançait automatiquement au chargement de la page de prescription, ce qui faisait perdre une ou deux secondes
+- le consentement automatique se coche également dans les pages de Demandes
+
+
 ## [1.7] - 2024-02-09
 # ajouts :
 - la liste des patients suis le défilé de la fenêtre dans les résultats HPRIM
