@@ -278,11 +278,25 @@ chrome.storage.local.get('TweakRecetteForm', function (result) {
 });
 
 // // [page d'accueil]
-if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx')) {
-    // sélectionne automatiquement le patient après une lecture de carte vitale
+if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx') || window.location.href.startsWith('https://secure.weda.fr/FolderMedical/FindPatientForm.aspx')) {
     chrome.storage.local.get('autoSelectPatientCV', function (result) {
+        console.log('autoSelectPatientCV démarré');
         let autoSelectPatientCV = result.autoSelectPatientCV;
         if (autoSelectPatientCV !== false) {
+            // lit automatiquement la carte vitale elle est insérée
+            let cvSelectors = 'weda-notification-container .mat-card.mat-focus-indicator.info.ng-star-inserted div .ng-star-inserted';
+            lightObserver(cvSelectors, function (elements) {
+                console.log('cvSelectors', elements, 'found');
+                elements.forEach(cvElement => {
+                    console.log('cvElement text', cvElement.textContent);
+                    if (cvElement.textContent.includes('Vitale insérée')) {
+                        console.log('cvElement', cvElement, 'found');
+                        clickCarteVitale();
+                    }
+                });
+            });
+
+            // sélectionne automatiquement le dossier patient lié s'il est seul sur la carte
             let patientSelector = '#mat-dialog-0 > vz-lecture-cv table .grid-item'
             const lookForPatient = () => {
                 var elements = document.querySelectorAll(patientSelector);
@@ -320,9 +334,6 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
 
         }
     });
-
-    // TODO Lecture automatique de la carte vitale si body > weda-notification-container > ng-component:nth-child(2) > mat-card > div > p apparait
-
 
     // copie automatiquement dans le presse papier le NIR du patient quand on clique dessus:
     chrome.storage.local.get('TweakNIR', function (result) {
@@ -485,7 +496,7 @@ chrome.storage.local.get('WarpButtons', function (result) {
     }
 });
 
-// Page HRPIM TODO : doit être une option ?
+// Page HRPIM
 if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/HprimForm.aspx')) {
     function makeHPRIMListSticky() {
         let element = document.querySelector("#ContentPlaceHolder1_UpdatePanelHprimsGrid");
@@ -508,11 +519,18 @@ let pagesToLeftPannel = [
 ];
 let currentPage = pagesToLeftPannel.find(page => page.url === window.location.origin + window.location.pathname);
 if (currentPage) {
-    chrome.storage.local.get('MoveHistoriqueToLeft', function (result) { // TODO : doit être une option
+    chrome.storage.local.get('MoveHistoriqueToLeft', function (result) {
         if (result.MoveHistoriqueToLeft !== false) {
             console.log('MoveHistoriqueToLeft démarré');
             function moveToLeft(iframes) {
-                function warpElements(elementToShrink) {
+                function warpHistory(elementToShrink) {
+                    // Redimensionner l'affichage de l'historique
+                    let margin = (elementToMove.getBoundingClientRect().width - 70);
+                    elementToShrink.style.maxWidth = margin + 'px';
+                }
+
+
+                function warpElements() {
                     let historyProportion = 0.3;
                     let availableWidth = window.innerWidth;
                     let elementToMoveWidth = availableWidth * historyProportion;
@@ -548,10 +566,6 @@ if (currentPage) {
                     targetElement.style.marginTop = '0px'; // Remove top margin
                     console.log('availableWidth', availableWidth);
                     targetElement.style.width = targetElementWidth + 'px';
-
-                    // Redimensionner l'affichage de l'historique
-                    let margin = (elementToMove.getBoundingClientRect().width - 70);
-                    elementToShrink.style.maxWidth = margin + 'px';
                 }
 
                 function resetTargetElement() {
@@ -585,6 +599,8 @@ if (currentPage) {
                     '.frameupcenter',
                 ];
 
+                warpElements(); // à appeler avant le load de l'iframe pour plus de réactivité
+
                 iframeToActOn.addEventListener('load', () => {
                     let iframeDocument = iframeToActOn.contentDocument;
 
@@ -608,7 +624,7 @@ if (currentPage) {
 
                     // Redimensionner l'historique
                     let elementToShrink = iframeDocument.querySelector('[style*="max-width:"]');
-                    warpElements(elementToShrink);
+                    warpHistory(elementToShrink);
 
                     // réinitialiser les éléments à la disparition de l'iframe
                     observeDiseapearance(iframeToActOn, resetTargetElement);

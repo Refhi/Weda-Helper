@@ -2,14 +2,17 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
-## [1.6.8] - 2024-02-09
+## [1.7] - 2024-02-09
 # ajouts :
 - la liste des patients suis le défilé de la fenêtre dans les résultats HPRIM
-- ouverture automatique du dossier patient si la carte vitale est lue alors qu'il n'existe qu'un seul patient dessus
+- lecture automatique de la carte vitale à l'insersion (nécessite Weda Connect v3) et ouverture automatique du dossier patient lié si la carte vitale est lue alors qu'il n'existe qu'un seul patient dessus
 - affichage automatique de l'historique dans les pages de consultation sur le 1/3 gauche de l'écran
 
 # fix :
 - retrait pour de bon du message d'erreur apparaissant parfois après l'impression via le companion ("[focus]...")
+
+# divers :
+- lors de la mise à jour vers 1.7, l'option de lecture auto de la carte vitale sera activée pour tout le monde. Elle peut toujours être désactivée dans un second temps.
 
 
 

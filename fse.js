@@ -157,7 +157,6 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
                     'œ': 'oe',
                     'æ': 'ae',
                     'ÿ': 'y'
-                    // '-': ' ' // ne semble pas nécessaire
                 };
 
                 function replaceSpecialChars(str) {
@@ -208,12 +207,9 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
                         console.log('elements', elements);
                         var defautElement = Array.from(elements).find(el => el.textContent.trim().includes('Défaut'));
                         if (defautElement) {
-                            // L'élément contenant "Défaut" a été trouvé, vous pouvez maintenant l'utiliser.
                             defautElement.click();
                         } else {
-                            // Aucun élément contenant "Défaut" n'a été trouvé.
                             console.log('Aucun élément contenant "Défaut" n\'a été trouvé.');
-                            // affiche un message d'erreur dans chrome
                             alert('Weda-Helper : "cotation par défaut" n\'est pas désactivé dans les options, mais aucune cotation favorite nommée "Défaut" n\'a été trouvé. Vous devez soit ajouter un favori nommé exactement "Défaut", soit désactiver l\'option "cotation par défaut" dans les options de Weda-Helper. Ce changement est rendu nécessaire par la dernière mise à jour.');
                         }
                     }
@@ -222,7 +218,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
 
 
             // vérifie la CPS
-            CPSNonLue(); // TODO : vérifier que ça ne s'emmèle pas avec la carte vitale
+            // CPSNonLue(); // TODO : vérifier que ça ne s'emmèle pas avec la carte vitale, a priori non nécessaire car la lecture de la CV déclenche la lecture de la CPS
 
             // vérifie la carte vitale
             CarteVitaleNonLue();

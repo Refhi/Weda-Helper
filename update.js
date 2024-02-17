@@ -5,14 +5,16 @@ function htmlMaker(text) {
     return text.replace(/\n/g, '<br>');
 }
 
-var nouveautes = `# Important : si vous voulez que la cotation par défaut se fasse toujours il vous faut créer un favori nommé "Défaut"
+var nouveautes = `# ajouts :
+- la liste des patients suis le défilé de la fenêtre dans les résultats HPRIM
+- lecture automatique de la carte vitale à l'insersion (nécessite Weda Connect v3) et ouverture automatique du dossier patient lié si la carte vitale est lue alors qu'il n'existe qu'un seul patient dessus
+- affichage automatique de l'historique dans les pages de consultation sur le 1/3 gauche de l'écran
 
-# ajouts :
+# fix :
+- retrait pour de bon du message d'erreur apparaissant parfois après l'impression via le companion ("[focus]...")
 
-
-# correctifs :
-
-
+# divers :
+- lors de la mise à jour vers 1.7, l'option de lecture auto de la carte vitale sera activée pour tout le monde. Elle peut toujours être désactivée dans un second temps.
 `
 
 nouveautes = htmlMaker(nouveautes)
