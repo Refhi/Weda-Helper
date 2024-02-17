@@ -5,6 +5,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 ## [1.8] - 2024-02-17
 # ajout :
 - option pour ouvrir automatiquement le panneau d'ordos types à l'ouverture des prescriptions médicamenteuses
+- ajout des courbes de pédiatrie (il suffit de passer la souris au-dessus de l'icone 📈 dans les consultations. Un clic permet de maintenir la courbe affichée. Un autre clic sur 📈 ou sur la courbe permet de la fermer).
 
 # fix :
 - la recherche médicamenteuse se lançait automatiquement au chargement de la page de prescription, ce qui faisait perdre une ou deux secondes

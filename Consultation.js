@@ -16,7 +16,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Consul
     });
 
 
-    // Afficher en overlay une image issue d'une URL en cas de survol de certains éléments
+    // Afficher en overlay une image issue d'une URL en cas de survol de certains éléments //TODO : le mettre en option ?
     // Récupérer la liste des éléments présents dans le suivi
     let courbesPossibles = {
         "Taille-Poids : 3 ans": {"TC": "10", "Question": "Taille", "Genre": "F", "AgeMin": 0, "AgeMax": 2 },
@@ -31,7 +31,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Consul
         "Fille 0 mois à 6 mois (OMS)": { "TC": "19", "Question": "Poids", "Genre": "F", "AgeMin": 0, "AgeMax": 1 }
     };
 
-    // Récupère les valeurs de genre et d'âge dans la page.
+    // // Récupère les valeurs de genre et d'âge dans la page.
     // l'age
     function ageCalculated() {
         let birthdateElement = document.querySelector('span[title^="Patient"]');
@@ -42,14 +42,117 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Consul
         let age = Math.abs(ageDate.getUTCFullYear() - 1970);
         return age;
     }
-
     let age = ageCalculated();
 
-    // Le genre est défini par la présence d'un élément avec title="Sexe féminin" ou "Sexe masculin"
+    // Le genre
     let gender = document.querySelector('[title="Sexe féminin"]') ? 'F' : 
-                 (document.querySelector('[title="Sexe masculin"]') ? 'M' : undefined);  
-    
+                 (document.querySelector('[title="Sexe masculin"]') ? 'M' : undefined);      
     console.log('age and gender', age, gender);
+
+    // épurer courbesPossibles pour ne garder que les lignes pertinentes selon l'age et le genre
+    let courbesPossiblesFiltered = {};
+    Object.keys(courbesPossibles).forEach((key) => {
+        let courbe = courbesPossibles[key];
+        if (courbe.AgeMin <= age && age <= courbe.AgeMax && courbe.Genre === gender) {
+            courbesPossiblesFiltered[key] = courbe;
+        }
+    });
+
+    // Ajouter les éléments de suivi au tableau courbesPossiblesFiltered
+    let elementsQuestions = document.querySelectorAll('[id^="ContentPlaceHolder1_SuivisGrid_LabelGridSuiviQuestion_"]');
+    elementsQuestions.forEach((element) => {
+        let text = element.textContent;
+        Object.keys(courbesPossiblesFiltered).forEach((key) => {
+            if (text.includes(courbesPossiblesFiltered[key].Question)) {
+                courbesPossiblesFiltered[key].id = element.id;
+            }
+        });
+    });
+
+    console.log('courbesPossiblesFiltered', courbesPossiblesFiltered);
+
+    function addOverIcon() {
+        function addHoverElement(element, key) {
+            // Créer une info-bulle personnalisée
+            let tooltip = document.createElement('div');
+            tooltip.style.display = 'none';
+            tooltip.style.position = 'fixed'; // Position fixe par rapport à l'écran
+            tooltip.style.border = '1px solid #000';
+            tooltip.style.background = '#fff';
+            tooltip.style.padding = '10px';
+            tooltip.style.top = '50%'; // Centrer verticalement
+            tooltip.style.left = '50%'; // Centrer horizontalement
+            tooltip.style.transform = 'translate(-50%, -50%)'; // Ajuster la position pour que le centre de l'info-bulle soit au centre de l'écran
+            let img = document.createElement('img');
+            img.style.display = 'none'; // Cacher l'image jusqu'à ce qu'elle soit chargée
+            img.style.maxHeight = '100vh'; // Limiter la hauteur de l'image à 75% de la hauteur de l'écran
+            img.alt = key;
+            let loadingText = document.createElement('span');
+            loadingText.textContent = 'Chargement en cours...';
+            tooltip.appendChild(loadingText);
+            tooltip.appendChild(img);
+            element.appendChild(tooltip);
+
+            // Afficher l'info-bulle et charger l'image lors du survol de l'élément
+            element.addEventListener('mouseover', function() {
+                let imageUrl = urlImage(key);
+                img.src = imageUrl;
+                img.onload = function() {
+                    loadingText.style.display = 'none'; // Cacher le texte de chargement une fois que l'image est chargée
+                    img.style.display = 'block';
+                };
+                tooltip.style.display = 'block';
+            });
+
+            // Ne pas cacher l'info-bulle lorsque la souris quitte l'élément si l'élément a été cliqué
+            element.addEventListener('mouseout', function() {
+                if (!element.clicked) {
+                    tooltip.style.display = 'none';
+                } else if (tooltip.style.display === 'none') {
+                    element.clicked = false;
+                }
+            });
+
+            // Ne pas cacher l'info-bulle lors du clic sur l'élément, ou la cacher si elle est déjà visible
+            element.addEventListener('click', function(event) {
+                if (element.clicked) {
+                    element.clicked = false;
+                    tooltip.style.display = 'none';
+                } else {
+                    element.clicked = true;
+                }
+                event.stopPropagation(); // Empêcher l'événement de se propager au document
+            });
+
+            // Cacher l'info-bulle lors du clic sur l'image
+            img.addEventListener('click', function(event) {
+                element.clicked = false;
+                tooltip.style.display = 'none';
+            });
+        }
+        function urlImage(key) {
+            let url = window.location.href;
+            let patDk = url.split('PatDk=')[1].split('&')[0];
+            let tc = courbesPossiblesFiltered[key].TC;
+            return `https://secure.weda.fr/CourbeWEDA.aspx?PatDk=${patDk}&TC=${tc}`;
+        }
+
+        console.log('addOverIcon started with', courbesPossiblesFiltered);
+        // Ajouter à gauche du texte de chaque élément présent dans courbesPossiblesFiltered une icone évoquant une courbe/graphique
+        let icon = '📈 ';
+        Object.keys(courbesPossiblesFiltered).forEach((key) => {
+            let elementId = courbesPossiblesFiltered[key].id;
+            let element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = icon + element.textContent;
+                addHoverElement(element, key);
+            }
+        });
+    }
+    
+    lightObserver('#ContentPlaceHolder1_SuivisGrid_LabelGridSuiviQuestion_0', addOverIcon);
+
+
 
 }
 
@@ -75,7 +178,9 @@ if (currentPage) {
                 function warpHistory(elementToShrink) {
                     // Redimensionner l'affichage de l'historique
                     let margin = (elementToMove.getBoundingClientRect().width - 70);
-                    elementToShrink.style.maxWidth = margin + 'px';
+                    if (elementToShrink) {
+                        elementToShrink.style.maxWidth = margin + 'px';
+                    }
                 }
 
 
