@@ -72,42 +72,75 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Consul
     console.log('courbesPossiblesFiltered', courbesPossiblesFiltered);
 
     function addOverIcon() {
-        function addHoverElement(element, key) {
-            // Créer une info-bulle personnalisée
+        function createTooltip() {
             let tooltip = document.createElement('div');
             tooltip.style.display = 'none';
-            tooltip.style.position = 'fixed'; // Position fixe par rapport à l'écran
+            tooltip.style.position = 'fixed';
             tooltip.style.border = '1px solid #000';
             tooltip.style.background = '#fff';
             tooltip.style.padding = '10px';
-            tooltip.style.top = '50%'; // Centrer verticalement
-            tooltip.style.left = '50%'; // Centrer horizontalement
-            tooltip.style.transform = 'translate(-50%, -50%)'; // Ajuster la position pour que le centre de l'info-bulle soit au centre de l'écran
+            tooltip.style.top = '50%';
+            tooltip.style.left = '50%';
+            tooltip.style.transform = 'translate(-50%, -50%)';
+            return tooltip;
+        }
+
+        function createImage(key) {
             let img = document.createElement('img');
-            img.style.display = 'none'; // Cacher l'image jusqu'à ce qu'elle soit chargée
-            img.style.maxHeight = '100vh'; // Limiter la hauteur de l'image à 75% de la hauteur de l'écran
+            img.style.display = 'none';
+            img.style.maxHeight = '100vh';
             img.alt = key;
+            img.id = 'WHcourbePedia-' + key.replace(/ /g, '_').replace(/:/g, '-');
+            return img;
+        }
+
+        function createLoadingText() {
             let loadingText = document.createElement('span');
             loadingText.textContent = 'Chargement en cours...';
+            return loadingText;
+        }
+
+        function createExplanatoryText() {
+            let explanationText = document.createElement('p');
+            explanationText.innerHTML = 'Courbes Pédiatrique affichée via Weda-Helper :<br>- Pour obtenir une courbe avec les valeurs du jour faites ctrl+S avant affichage ou cliquez sur le bouton Enregistrer en haut à gauche.<br>- Cliquez sur l\'icone courbe pour maintenir l\'affichage.<br>- Imprimez avec ctrl+P.<br>- Aller dans les Options pour désactiver ce message<br>';
+            explanationText.style.marginTop = '200px'; // éviter que le message soit tout en haut
+            explanationText.style.maxWidth = '15em';        
+            return explanationText;
+        }
+        
+        
+        function addHoverElement(element, key) {
+            let tooltip = createTooltip(key);
+            let img = createImage(key);
+            let loadingText = createLoadingText();
+            let explanationText = createExplanatoryText();
             tooltip.appendChild(loadingText);
             tooltip.appendChild(img);
             element.appendChild(tooltip);
 
-            // Afficher l'info-bulle et charger l'image lors du survol de l'élément
             element.addEventListener('mouseover', function() {
                 let imageUrl = urlImage(key);
+                let pdfUrl = urlImage(key) + '&Pdf=True'; // à vérifier TODO
+                // ajouter le pdfUrl comme information dans l'élément img
+                img.setAttribute('data-pdf-url', pdfUrl);
                 img.src = imageUrl;
                 img.onload = function() {
-                    loadingText.style.display = 'none'; // Cacher le texte de chargement une fois que l'image est chargée
+                    loadingText.style.display = 'none';
                     img.style.display = 'block';
+                    tooltip.appendChild(explanationText);
                 };
-                tooltip.style.display = 'block';
+                tooltip.style.display = 'flex';
             });
+
+            function toolTipOff() {
+                tooltip.style.display = 'none';
+                img.removeAttribute('data-pdf-url');
+            }
 
             // Ne pas cacher l'info-bulle lorsque la souris quitte l'élément si l'élément a été cliqué
             element.addEventListener('mouseout', function() {
                 if (!element.clicked) {
-                    tooltip.style.display = 'none';
+                    toolTipOff();
                 } else if (tooltip.style.display === 'none') {
                     element.clicked = false;
                 }
@@ -117,7 +150,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Consul
             element.addEventListener('click', function(event) {
                 if (element.clicked) {
                     element.clicked = false;
-                    tooltip.style.display = 'none';
+                    toolTipOff();
                 } else {
                     element.clicked = true;
                 }
@@ -127,7 +160,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Consul
             // Cacher l'info-bulle lors du clic sur l'image
             img.addEventListener('click', function(event) {
                 element.clicked = false;
-                tooltip.style.display = 'none';
+                toolTipOff();
             });
         }
         function urlImage(key) {

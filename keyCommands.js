@@ -98,31 +98,43 @@ function push_annuler() {
 
 function startPrinting() {
     console.log('print_meds activé');
-    clickFirstPrinter();
-    function whenFrameLoaded(elements) {
-        let iframe = elements[0];
-        console.log('iframe détecté:', iframe);
-        chrome.storage.local.get(['RemoveLocalCompanionPrint', 'postPrintBehavior'], function (result) {
-            if (result.RemoveLocalCompanionPrint) {
-                iframe.contentWindow.print();
-            }
-            else {
-                let closebutton = {
-                    'doNothing' : null,
-                    'closePreview' : 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay',
-                    'returnToPatient' : 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
+    if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx')) {
+        console.log('ConsultationForm détecté : je cherche une image avec le lien pdf');
+        // recherche l'élément avec data-pdf-url
+        var pdfUrl = document.querySelector('img[data-pdf-url]');
+        if (pdfUrl) {
+            console.log('pdfUrl détecté, je lance impression de la courbe', pdfUrl);
+            // TODO reprendre ici
+        }
+
+    } else {
+
+        clickFirstPrinter();
+        function whenFrameLoaded(elements) {
+            let iframe = elements[0];
+            console.log('iframe détecté:', iframe);
+            chrome.storage.local.get(['RemoveLocalCompanionPrint', 'postPrintBehavior'], function (result) {
+                if (result.RemoveLocalCompanionPrint) {
+                    iframe.contentWindow.print();
                 }
+                else {
+                    let closebutton = {
+                        'doNothing' : null,
+                        'closePreview' : 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay',
+                        'returnToPatient' : 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
+                    }
 
-                console.log('id to look for ', closebutton[result.postPrintBehavior], 'postPrintBehavior is ', result.postPrintBehavior)
-                let buttonToClick = document.getElementById(closebutton[result.postPrintBehavior]);
-                console.log('button to click', buttonToClick)
+                    console.log('id to look for ', closebutton[result.postPrintBehavior], 'postPrintBehavior is ', result.postPrintBehavior)
+                    let buttonToClick = document.getElementById(closebutton[result.postPrintBehavior]);
+                    console.log('button to click', buttonToClick)
 
-                sendPrint(buttonToClick);
-                console.log('sendPrint envoyé');
-            }
-        });
+                    sendPrint(buttonToClick);
+                    console.log('sendPrint envoyé');
+                }
+            });
+        }
+        lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", whenFrameLoaded, parentElement = document, justOne = true);
     }
-    lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", whenFrameLoaded, parentElement = document, justOne = true);
 }
 
 // // Diverses aides au clic
