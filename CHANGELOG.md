@@ -10,6 +10,8 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 # fix :
 - la recherche médicamenteuse se lançait automatiquement au chargement de la page de prescription, ce qui faisait perdre une ou deux secondes
 - le consentement automatique se coche également dans les pages de Demandes
+- le focus était perdu lors de l'apparition de l'historique dans le 1/3 gauche
+- l'historique dans le 1/3 gauche disparaissait en cas de ctrl+S ou d'enregistrement
 
 
 ## [1.7] - 2024-02-09
