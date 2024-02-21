@@ -374,13 +374,6 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
     });
 }
 
-// Travail sur les favoris de tableau de suivi
-if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx')) {
-    console.log('Travail sur les favoris de tableau de suivi');
-
-    // Créer une liste de favoris, dans lequel on peut ajouter ou supprimer des éléments et que l'on puisse nommer.
-}
-
 
 // [page de gestion des feuilles de soins]
 if (window.location.href === 'https://secure.weda.fr/vitalzen/gestion.aspx') {
