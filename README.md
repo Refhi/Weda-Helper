@@ -96,7 +96,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 
 ## FSE : Entrées clavier, cotation par défaut +/- envoi automatique au TPE
-*Toute la FSE : [alt+6], [n], [n], [tab][alt+v]*
+*Toute la FSE : [alt+6], [n], [n], [alt+v]*
 
 - les touches "n" et "o" permettent de sélectionner "non"/"oui" pour accidents de droit commun, puis ALD
 - si elles sont utilisées, entre automatiquement la cotation par défaut (Une de vos cotations favorite doit être nommée 'Défaut')
