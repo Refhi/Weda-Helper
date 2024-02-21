@@ -131,6 +131,18 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
   });
+
+
+  function changeTitle() {
+    let manifest = chrome.runtime.getManifest();
+    let version = manifest.version;
+    console.log(version);
+    let explanationText = document.getElementById('MainTitle');
+    explanationText.textContent = `Weda-Helper version ${version}`;
+  }
+
+  changeTitle();
+
 });
 
 
