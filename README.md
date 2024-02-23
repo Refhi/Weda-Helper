@@ -75,6 +75,9 @@ Dans les fenêtres contenant un Titre, désactive le panneau de suggestion (fen�
 ### Affichage automatique de l'historique dans une colonne à gauche
 Ouvre automatiquement un historique simplifié (pas de recettes notamment) dans une colonne à gauche de l'écran, uniquement dans les pages de consultation.
 
+### Ajout des courbes de pédiatrie
+il suffit de passer la souris au-dessus de l'icone 📈 dans les consultations. Un clic permet de maintenir la courbe affichée. Un autre clic sur 📈 ou sur la courbe permet de la fermer.
+
 ## Modification du comportement de la tabulation après recherche patient
 *DESMAUX Nathalie [Entrée] [Entrée]*
 
