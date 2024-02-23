@@ -11,7 +11,7 @@ if (PrescriptionForm) {
 
         function storeSearchSelection() {
             var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
-            if (inputField) {
+            if (inputField) { // TODO fiabiliser
                 console.log('Le texte de recherche actuel est ', inputField.value, 'je le stocke localement suite à sa modification');
                 chrome.storage.local.set({medSearchText: inputField.value});
             } else {
@@ -22,7 +22,7 @@ if (PrescriptionForm) {
         function searchTextKeeper() {
             var searchTextField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
             if (searchTextField) {
-                console.log('searchTextKeeper started');
+                console.log('searchTextKeeper started sur ', searchTextField);
                 searchTextField.addEventListener('input', function() {
                     // Stocker la valeur de inputField dans medSearchText lorsque le texte est modifié
                     storeSearchSelection();
