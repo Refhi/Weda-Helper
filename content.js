@@ -376,6 +376,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
     });
 }
 
+
 // [page de gestion des feuilles de soins]
 if (window.location.href === 'https://secure.weda.fr/vitalzen/gestion.aspx') {
     chrome.storage.local.get('TweakFSEGestion', function (result) {
