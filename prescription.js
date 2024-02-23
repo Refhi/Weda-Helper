@@ -22,10 +22,13 @@ if (PrescriptionForm) {
         function searchTextKeeper() {
             var searchTextField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
             if (searchTextField) {
+                console.log('searchTextKeeper started');
                 searchTextField.addEventListener('input', function() {
                     // Stocker la valeur de inputField dans medSearchText lorsque le texte est modifié
                     storeSearchSelection();
                 });
+            } else {
+                console.log('searchTextKeeper non démarré car searchTextField non trouvé');
             }
         }
 

@@ -12,6 +12,10 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - le consentement automatique se coche également dans les pages de Demandes
 - le focus était perdu lors de l'apparition de l'historique dans le 1/3 gauche
 - l'historique dans le 1/3 gauche disparaissait en cas de ctrl+S ou d'enregistrement
+- la détection de l'insersion de la carte vitale a été revue pour être plus universelle
+
+# divers :
+- ajout de logs pour préparer le debug de keepmedsearch qui saute parfois ponctuellement
 
 
 ## [1.7] - 2024-02-09
