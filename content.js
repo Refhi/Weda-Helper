@@ -267,7 +267,9 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
         let autoSelectPatientCV = result.autoSelectPatientCV;
         if (autoSelectPatientCV !== false) {
             // lit automatiquement la carte vitale elle est insérée
-            let cvSelectors = 'weda-notification-container .mat-card.mat-focus-indicator.info.ng-star-inserted div .ng-star-inserted';
+            // selecteur de ttt131 : body > weda-notification-container > ng-component > mat-card > div > p
+            // selecteur ce jour : body > weda-notification-container > ng-component:nth-child(2) > mat-card > div > p
+            let cvSelectors = 'weda-notification-container ng-component mat-card div p';
             lightObserver(cvSelectors, function (elements) {
                 console.log('cvSelectors', elements, 'found');
                 elements.forEach(cvElement => {
@@ -373,6 +375,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
         }
     });
 }
+
 
 // [page de gestion des feuilles de soins]
 if (window.location.href === 'https://secure.weda.fr/vitalzen/gestion.aspx') {

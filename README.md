@@ -77,6 +77,9 @@ Dans les pages de consultation, il suffit de survoler "📈" devant "Poids", "Ta
 ### Affichage automatique de l'historique dans une colonne à gauche
 Ouvre automatiquement un historique simplifié (pas de recettes notamment) dans une colonne à gauche de l'écran, uniquement dans les pages de consultation.
 
+### Ajout des courbes de pédiatrie
+il suffit de passer la souris au-dessus de l'icone 📈 dans les consultations. Un clic permet de maintenir la courbe affichée. Un autre clic sur 📈 ou sur la courbe permet de la fermer.
+
 ## Modification du comportement de la tabulation après recherche patient
 *DESMAUX Nathalie [Entrée] [Entrée]*
 
@@ -102,7 +105,7 @@ Option pour afficher automatiquement les ordonnances-type à l'ouverture des pag
 
 
 ## FSE : Entrées clavier, cotation par défaut +/- envoi automatique au TPE
-*Toute la FSE : [alt+6], [n], [n], [tab][alt+v]*
+*Toute la FSE : [alt+6], [n], [n], [alt+v]*
 
 - les touches "n" et "o" permettent de sélectionner "non"/"oui" pour accidents de droit commun, puis ALD
 - si elles sont utilisées, entre automatiquement la cotation par défaut (Une de vos cotations favorite doit être nommée 'Défaut')

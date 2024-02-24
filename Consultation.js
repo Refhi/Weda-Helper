@@ -313,18 +313,23 @@ if (currentPage) {
                     let elementToShrink = iframeDocument.querySelector('[style*="max-width:"]');
                     warpHistory(elementToShrink);
 
+                    // mettre le focus sur le body de l'iframe CE_ContentPlaceHolder1_EditorConsultation1_ID_Frame
+                    iframeToWriteIn = document.querySelector('#CE_ContentPlaceHolder1_EditorConsultation1_ID_Frame');
+                    iframeToWriteIn.contentDocument.querySelector('body').focus();
+
                     // réinitialiser les éléments à la disparition de l'iframe
                     observeDiseapearance(iframeToActOn, resetTargetElement);
                 });
             }
 
 
-            // Automatiquement afficher l'historique
+            // Automatiquement afficher l'historique //TODO à mettre en option
             lightObserver('#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowHistoriqueFrame', (elements) => {
-                if (elements.length > 0) {
+                let iframe = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame > iframe');
+                if (elements.length > 0 && !iframe) {
                     elements[0].click();
                 }
-            }, document, true);
+            }, document, false);
 
 
             // Attendre que l'iframe soit présente ET chargée pour déplacer l'historique

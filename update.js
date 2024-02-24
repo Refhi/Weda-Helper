@@ -5,14 +5,21 @@ function htmlMaker(text) {
     return text.replace(/\n/g, '<br>');
 }
 
-var nouveautes = `## [1.8] - 2024-02-17
+var nouveautes = `
 # ajout :
 - option pour ouvrir automatiquement le panneau d'ordos types à l'ouverture des prescriptions médicamenteuses
-- ajout des courbes de pédiatrie (il suffit de passer la souris au-dessus de l'icone 📈 dans les consultations. Un clic permet de maintenir la courbe affichée. Un autre clic sur 📈 ou sur la courbe permet de la fermer. Ctrl+P permet de les imprimer (éventuellement via le Companion).
+- ajout des courbes de pédiatrie (il suffit de passer la souris au-dessus de l'icone 📈 dans les consultations. Un clic permet de maintenir la courbe affichée. Un autre clic sur 📈 ou sur la courbe permet de la fermer).
 
 # fix :
 - la recherche médicamenteuse se lançait automatiquement au chargement de la page de prescription, ce qui faisait perdre une ou deux secondes
 - le consentement automatique se coche également dans les pages de Demandes
+- le focus était perdu lors de l'apparition de l'historique dans le 1/3 gauche
+- l'historique dans le 1/3 gauche disparaissait en cas de ctrl+S ou d'enregistrement
+- la détection de l'insersion de la carte vitale a été revue pour être plus universelle
+
+# divers :
+- ajout de logs pour préparer le debug de keepmedsearch qui saute parfois ponctuellement
+
 `
 
 nouveautes = htmlMaker(nouveautes)
