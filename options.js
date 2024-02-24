@@ -40,6 +40,8 @@ document.addEventListener('DOMContentLoaded', function () {
     'NumPresDemande': false,
     'postPrintBehavior': 'closePreview', // boutons radio
     'MoveHistoriqueToLeft': true,
+    'ShowExplanatoryText': true,
+    'autoOpenOrdoType': false,
   };
 
   var options = Object.keys(defaultValues);

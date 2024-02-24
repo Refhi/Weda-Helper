@@ -100,11 +100,41 @@ function startPrinting() {
     console.log('print_meds activé');
     if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx')) {
         console.log('ConsultationForm détecté : je cherche une image avec le lien pdf');
-        // recherche l'élément avec data-pdf-url
         var pdfUrl = document.querySelector('img[data-pdf-url]');
         if (pdfUrl) {
-            console.log('pdfUrl détecté, je lance impression de la courbe', pdfUrl);
-            // TODO reprendre ici
+            let url = pdfUrl.getAttribute('data-pdf-url');
+            chrome.storage.local.get(['RemoveLocalCompanionPrint'], function (result) {
+                if (result.RemoveLocalCompanionPrint === false) {
+                    console.log('pdfUrl détecté, je lance impression de la courbe', url);
+                    fetch(url)
+                        .then(response => response.blob())
+                        .then(blob => {
+                            console.log('blob', blob);
+                            sendToCompanion(`print`, blob);
+                            watchForFocusLoss();
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                        });
+                } else { 
+                    let printFrame = document.createElement('iframe');
+                    printFrame.name = 'print_frame';
+                    printFrame.width = '0';
+                    printFrame.height = '0';
+                    printFrame.style.display = 'none';
+                    document.body.appendChild(printFrame);
+
+                    printFrame.onload = function() {
+                        let win = window.frames['print_frame'];
+                        win.focus();
+                        win.print();
+                    };
+
+                    printFrame.src = url;
+                }
+            });
+        } else {
+            console.log('pdfUrl non détecté');
         }
 
     } else {

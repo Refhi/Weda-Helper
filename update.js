@@ -5,16 +5,14 @@ function htmlMaker(text) {
     return text.replace(/\n/g, '<br>');
 }
 
-var nouveautes = `# ajouts :
-- la liste des patients suis le défilé de la fenêtre dans les résultats HPRIM
-- lecture automatique de la carte vitale à l'insersion (nécessite Weda Connect v3) et ouverture automatique du dossier patient lié si la carte vitale est lue alors qu'il n'existe qu'un seul patient dessus
-- affichage automatique de l'historique dans les pages de consultation sur le 1/3 gauche de l'écran
+var nouveautes = `## [1.8] - 2024-02-17
+# ajout :
+- option pour ouvrir automatiquement le panneau d'ordos types à l'ouverture des prescriptions médicamenteuses
+- ajout des courbes de pédiatrie (il suffit de passer la souris au-dessus de l'icone 📈 dans les consultations. Un clic permet de maintenir la courbe affichée. Un autre clic sur 📈 ou sur la courbe permet de la fermer. Ctrl+P permet de les imprimer (éventuellement via le Companion).
 
 # fix :
-- retrait pour de bon du message d'erreur apparaissant parfois après l'impression via le companion ("[focus]...")
-
-# divers :
-- lors de la mise à jour vers 1.7, l'option de lecture auto de la carte vitale sera activée pour tout le monde. Elle peut toujours être désactivée dans un second temps.
+- la recherche médicamenteuse se lançait automatiquement au chargement de la page de prescription, ce qui faisait perdre une ou deux secondes
+- le consentement automatique se coche également dans les pages de Demandes
 `
 
 nouveautes = htmlMaker(nouveautes)
@@ -131,7 +129,6 @@ chrome.storage.local.get(['lastExtensionVersion', 'firstStart'], function(result
         // If the last version is different from the current version, there was an update
         showPopup(updateMessage);
         chrome.storage.local.set({lastExtensionVersion: currentVersion});
-        chrome.storage.local.set({autoSelectPatientCV: true}); // TODO à supprimer après la 1.7
     }
     
     if (!result.firstStart) {

@@ -154,7 +154,7 @@ if (PrescriptionForm) {
         }
 
 
-        chrome.storage.local.get(['autoOpenOrdoType'], function(result) { // TODO en faire une option
+        chrome.storage.local.get(['autoOpenOrdoType'], function(result) {
             if (result.autoOpenOrdoType === true) {
                 document.getElementById('ContentPlaceHolder1_ButtonPrescritionType').click();
                 lightObserver('#ContentPlaceHolder1_LabelBasePrescritionType', function() {

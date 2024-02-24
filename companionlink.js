@@ -41,7 +41,7 @@ function sendToCompanion(urlCommand, blob = null, buttonToClick = null) {
                 if (buttonToClick) {
                     buttonToClick.click();
                 }
-                console.log('finally');
+                console.log('Impression via companion terminée');
             });
     });
 }
@@ -131,12 +131,12 @@ function sendPrint(buttonToClick) {
 
             // Obtenez l'URL du document dans l'iframe
             let intervalId = setInterval(() => {
-                url = iframe.contentWindow.location.href;
+                let url = iframe.contentWindow.location.href;
                 console.log('url', url);
             
                 if (url !== 'about:blank') {
                     clearInterval(intervalId);
-                    fetch(iframe.contentWindow.location.href)
+                    fetch(url)
                         .then(response => response.blob())
                         .then(blob => {
                             sendToCompanion(`print`, blob, buttonToClick);

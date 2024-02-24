@@ -71,6 +71,8 @@ Dans la fenêtre de consultation, lorsque l'on remplie une valeur de suivi, la t
 *Parceque le vert flashy c'est sooo 2015*
 ### Retrait des suggestions des titres de consultation
 Dans les fenêtres contenant un Titre, désactive le panneau de suggestion (fenêtres d'ordonnance, consultation, certificat, prescription, formulaire, résultats d'examen).
+### Affichage simplifié des courbes de pédiatrie
+Dans les pages de consultation, il suffit de survoler "📈" devant "Poids", "Taille", "Pc" ou "IMC" pour afficher les courbes correspondantes (ne s'affiche que pour les ages et genres pertinents)
 
 ### Affichage automatique de l'historique dans une colonne à gauche
 Ouvre automatiquement un historique simplifié (pas de recettes notamment) dans une colonne à gauche de l'écran, uniquement dans les pages de consultation.
@@ -80,7 +82,8 @@ Ouvre automatiquement un historique simplifié (pas de recettes notamment) dans 
 
 Permet, après la saisie du nom d'un patient, d'être directement positionné sur son nom, puis de pouvoir naviguer de patient en patient avec la touche Tab (ou maj+Tab pour aller vers le haut)
 
-## Écoute des entrées claviers lors de l'usage de la calculette de prescription
+## Prescriptions
+### Écoute des entrées claviers lors de l'usage de la calculette de prescription
 *[1] matin [2] midi [3] soir [4.5] jours*
 
 Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du claviers à la place de clics :
@@ -88,6 +91,9 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - touche "." pour mettre la virgule
 - touche "/" pour préparer une fraction de dose
 - touche "retour arrière" pour effacer les valeurs numériques
+
+### Ordonnances-types
+Option pour afficher automatiquement les ordonnances-type à l'ouverture des pages de prescription.
 
 ## Recherche de médicaments
 - Lors de la recherche d'un médicament le texte est normalement effacé à chaque changement de type de recherche. L'extension maintient le dernier texte recherché.
