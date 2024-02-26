@@ -2,6 +2,15 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+## [1.8.2] - 2024-02-
+# fix :
+- fix du champ de recherche de médicament où la rétention du texte se désactivait parfois au DOM refresh
+
+
+## [1.8.1] - 2024-02-18
+# merge
+- plusieurs sources différentes n'étaient pas synchronisées correctement => merge fait...
+
 ## [1.8] - 2024-02-17
 # ajout :
 - option pour ouvrir automatiquement le panneau d'ordos types à l'ouverture des prescriptions médicamenteuses
