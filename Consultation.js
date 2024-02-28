@@ -61,9 +61,9 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Consul
     // Ajouter les éléments de suivi au tableau courbesPossiblesFiltered
     let elementsQuestions = document.querySelectorAll('[id^="ContentPlaceHolder1_SuivisGrid_LabelGridSuiviQuestion_"]');
     elementsQuestions.forEach((element) => {
-        let text = element.textContent;
+        let text = element.textContent.toLowerCase();
         Object.keys(courbesPossiblesFiltered).forEach((key) => {
-            if (text.includes(courbesPossiblesFiltered[key].Question)) {
+            if (text.includes(courbesPossiblesFiltered[key].Question.toLowerCase())) {
                 courbesPossiblesFiltered[key].id = element.id;
             }
         });

@@ -105,9 +105,10 @@ if (PrescriptionForm) {
                 for (var key in dropDownList) {
                     // Ajoutez le préfixe à la clé avant de vérifier l'option
                     var storageKey = 'boutonRecherche-' + key;
+                    let defautOptions = ['boutonRecherche-1', 'boutonRecherche-2', 'boutonRecherche-8'];
 
                     // Vérifiez si l'option pour cette clé est activée
-                    if (result[storageKey] !== false) {
+                    if (result[storageKey] === true || (result[storageKey] === undefined && defautOptions.includes(storageKey))) {
                         // Ajoutez un identifiant unique à chaque bouton
                         var buttonId = 'button-search-' + key;
                 
@@ -250,5 +251,17 @@ if (DemandeForm || PrescriptionForm) {
             }
         
         }
+    });
+}
+
+if (DemandeForm) { // TODO à mettre ça en option
+    lightObserver('#prescriptionType div', function(element) {
+        console.log('menu déroulant trouvé, je clique dessus', element);
+        element[0].click();
+    });
+
+    lightObserver('#prescriptionType-panel mat-option .mat-option-text', function(elements) {
+        console.log('options trouvées, je clique sur la première', elements);
+        elements[0].click();
     });
 }
