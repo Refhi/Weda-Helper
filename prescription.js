@@ -20,16 +20,22 @@ if (PrescriptionForm) {
         }
 
         function searchTextKeeper() {
-            var searchTextField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
-            if (searchTextField) {
-                console.log('searchTextKeeper started sur ', searchTextField);
-                searchTextField.addEventListener('input', function() {
-                    // Stocker la valeur de inputField dans medSearchText lorsque le texte est modifié
-                    storeSearchSelection();
-                });
-            } else {
-                console.log('searchTextKeeper non démarré car searchTextField non trouvé');
-            }
+            // il semble nécessaire de répéter la recherche de l'élément pour éviter les erreurs
+            lightObserver('#ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack', function() {
+                var searchTextField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
+                if (searchTextField) {
+                    console.log('searchTextKeeper started sur ', searchTextField);
+                    if (!searchTextField.getAttribute('data-hasListener')) { // éviter d'ajouter plusieurs écouteurs
+                        searchTextField.addEventListener('input', function() {
+                            // Stocker la valeur de inputField dans medSearchText lorsque le texte est modifié
+                            storeSearchSelection();
+                        });
+                        searchTextField.setAttribute('data-hasListener', 'true');
+                    }
+                } else {
+                    console.log('searchTextKeeper non démarré car searchTextField non trouvé');
+                }
+            });
         }
 
         // Fonction pour trier le texte de recherche
