@@ -58,10 +58,13 @@ function lightObserver(selector, callback, parentElement = document, justOnce = 
     observer.observe(parentElement, config);
 }
 
-function observeDiseapearance(element, callback) {
+function observeDiseapearance(element, callback, justOnce = false) {
     function callBackIfElementDisapear() {
         if (!document.contains(element)) {
             callback();
+            if (justOnce) {
+                observer.disconnect();
+            }
         }
     }
 

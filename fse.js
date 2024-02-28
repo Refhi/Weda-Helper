@@ -216,10 +216,6 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
                 });
             }
 
-
-            // vérifie la CPS
-            // CPSNonLue(); // TODO : vérifier que ça ne s'emmèle pas avec la carte vitale, a priori non nécessaire car la lecture de la CV déclenche la lecture de la CPS
-
             // vérifie la carte vitale
             setTimeout(function() {
                 CarteVitaleNonLue();

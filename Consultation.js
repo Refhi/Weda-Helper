@@ -16,7 +16,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Consul
     });
 
 
-    // Afficher en overlay une image issue d'une URL en cas de survol de certains éléments //TODO : le mettre en option ?
+    // Afficher en overlay une image issue d'une URL en cas de survol de certains éléments
     // Récupérer la liste des éléments présents dans le suivi
     let courbesPossibles = {
         "Taille-Poids : 3 ans": {"TC": "10", "Question": "Taille", "Genre": "F", "AgeMin": 0, "AgeMax": 2 },
@@ -120,7 +120,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Consul
 
             element.addEventListener('mouseover', function() {
                 let imageUrl = urlImage(key);
-                let pdfUrl = urlImage(key) + '&Pdf=True'; // à vérifier TODO
+                let pdfUrl = urlImage(key) + '&Pdf=True';
                 // ajouter le pdfUrl comme information dans l'élément img
                 img.setAttribute('data-pdf-url', pdfUrl);
                 img.src = imageUrl;
@@ -194,18 +194,26 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Consul
 // // Mettre l'historique dans une colonne à gauche de l'écran
 // TODO l'ajouter sur d'autres pages ?
 let pagesToLeftPannel = [
-    { url: 'https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', targetElementSelector: '#form1 > div:nth-child(14) > div > table > tbody > tr > td:nth-child(1) > table' },
-    // { url: 'https://secure.weda.fr/FolderMedical/CertificatForm.aspx', targetElementSelector: '#CE_ContentPlaceHolder1_EditorCertificat_ID' },
-    // { url: 'https://secure.weda.fr/FolderMedical/DemandeForm.aspx', targetElementSelector: '#ContentPlaceHolder1_UpdatePanelAll' },
+    { url: 'https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', targetElementSelector: '#form1 > div:nth-child(14) > div > table > tbody > tr > td:nth-child(1) > table', defaut: true },
+    { url: 'https://secure.weda.fr/FolderMedical/CertificatForm.aspx', targetElementSelector: '#CE_ContentPlaceHolder1_EditorCertificat_ID', defaut: true},
+    { url: 'https://secure.weda.fr/FolderMedical/DemandeForm.aspx', targetElementSelector: '#ContentPlaceHolder1_UpdatePanelAll', defaut: true },
     // { url: 'https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx', targetElementSelector: '#ContentPlaceHolder1_PanelBaseVidalBackGround > table' },
     // { url: 'https://secure.weda.fr/FolderMedical/FormulaireForm.aspx', targetElementSelector: '#form1 > div:nth-child(14) > table > tbody > tr > td > table' },
     // { url: 'https://secure.weda.fr/FolderMedical/ResultatExamenForm.aspx', targetElementSelector: '#form1 > div:nth-child(14) > table > tbody > tr > td > table' },
-    // { url: 'https://secure.weda.fr/FolderMedical/CourrierForm.aspx', targetElementSelector: '#form1 > div:nth-child(15) > table > tbody > tr > td:nth-child(1) > table' }
+    { url: 'https://secure.weda.fr/FolderMedical/CourrierForm.aspx', targetElementSelector: '#form1 > div:nth-child(15) > table > tbody > tr > td:nth-child(1) > table', defaut: false}
 ];
 let currentPage = pagesToLeftPannel.find(page => page.url === window.location.origin + window.location.pathname);
 if (currentPage) {
-    chrome.storage.local.get('MoveHistoriqueToLeft', function (result) {
-        if (result.MoveHistoriqueToLeft !== false) {
+    // Crée une valeur contenant le type de page où nous sommes (par exemple Consultation, Certificat, Demande, etc.)
+    let pageType = window.location.href.split('/')[4].split('Form')[0];
+    console.log('pageType', pageType);
+    let optionId = 'MoveHistoriqueToLeft_' + pageType;
+    console.log('optionId', optionId);
+    chrome.storage.local.get(['MoveHistoriqueToLeft', optionId], function (result) {
+        if (result[optionId] === undefined) {
+            result[optionId] = currentPage.defaut;
+        }
+        if (result.MoveHistoriqueToLeft !== false && result[optionId] === true) {
             console.log('MoveHistoriqueToLeft démarré');
             function moveToLeft(iframes) {
                 function warpHistory(elementToShrink) {
@@ -222,7 +230,6 @@ if (currentPage) {
                     let availableWidth = window.innerWidth;
                     let elementToMoveWidth = availableWidth * historyProportion;
                     let targetElementWidth = (1 - historyProportion) * availableWidth;
-                    let unitsElementWidth = (1 - historyProportion) * availableWidth * 0.2;
                     
                     // Bouger l'historique à gauche et le redimensionner
                     elementToMove.style.position = 'absolute';
@@ -237,22 +244,57 @@ if (currentPage) {
                         marginTop: targetElement.style.marginTop,
                         width: targetElement.style.width
                     };
-                    initialStylesUnitsElement = {
-                        position: unitsElement.style.position,
-                        left: unitsElement.style.left,
-                        marginTop: unitsElement.style.marginTop,
-                        width: unitsElement.style.width
-                    };
-
-                    // Modifier la largeur de l'élément de suivi
-                    unitsElement.style.width = unitsElementWidth + 'px';
 
                     // Bouger la cible à droite et la redimensionner
                     targetElement.style.position = 'absolute';
                     targetElement.style.left = (elementToMove.getBoundingClientRect().right) + 'px';
                     targetElement.style.marginTop = '0px'; // Remove top margin
                     console.log('availableWidth', availableWidth);
-                    targetElement.style.width = targetElementWidth + 'px';
+                    
+
+                    if (pageType === "Consultation") {
+                        targetElement.style.width = targetElementWidth + 'px';
+                        let unitsElementWidth = (1 - historyProportion) * availableWidth * 0.2;
+
+                        initialStylesUnitsElement = {
+                            position: unitsElement.style.position,
+                            left: unitsElement.style.left,
+                            marginTop: unitsElement.style.marginTop,
+                            width: unitsElement.style.width
+                        };
+
+                        // Modifier la largeur de l'élément de suivi
+                        unitsElement.style.width = unitsElementWidth + 'px';
+                    } else if (pageType === "Certificat" || pageType === "Demande" || pageType === "Courrier") {
+                        // modifier la taille du cadre contenant la selection de documents type
+                        let documentTypeWidth = (1 - historyProportion) * availableWidth * 0.2;
+                        toSetRight.setAttribute("align", "right");
+                        console.log('toSetFifty', toSetFifty);
+                        toSetFifty.setAttribute("width", documentTypeWidth + "px");
+
+                        // modifier la taille du cadre contenant la zone de texte (l'équivalent de targetElement sur la page de consultation)
+                        if (pageType === "Certificat") {
+                            var adjustementTable = {1500: 0.85, 1700: 0.9, 2000: 1};
+                        } else if (pageType === "Demande") {
+                            var adjustementTable = {1300: 0.7, 1700: 0.8, 2000: 0.9, 2500: 1};
+                        } else if (pageType === "Courrier") {
+                            var adjustementTable = {1500: 0.75, 1700: 0.85, 1900: 0.9, 2100: 0.95, 5000: 1};
+                        }
+                        let keys = Object.keys(adjustementTable).sort((a, b) => a - b);
+                        let adjustementKey = keys.find(key => availableWidth <= key);
+                        let adjustement = adjustementTable[adjustementKey] || adjustementTable[keys[keys.length - 1]];
+                        console.log('adjustement', adjustement);
+                        let textAreaWidth = (1 - historyProportion) * (availableWidth * adjustement) * 0.8;
+                        targetElement.style.width = textAreaWidth + 'px';
+
+                        // put #ContentPlaceHolder1_DocVersionUserControl_PanelPrescriptionDmp and its children to the background
+                        let prescriptionDmp = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelPrescriptionDmp');
+                        if (prescriptionDmp) {
+                            prescriptionDmp.style.position = 'relative'; // z-index only works on positioned elements
+                            prescriptionDmp.style.zIndex = '-1'; // set to a negative value to put it to the background
+                        }
+                    }
+
                 }
 
                 function resetTargetElement() {
@@ -263,17 +305,26 @@ if (currentPage) {
                     targetElement.style.marginTop = initialStylesTargetElement.marginTop;
                     targetElement.style.width = initialStylesTargetElement.width;
 
-                    unitsElement.style.position = initialStylesUnitsElement.position;
-                    unitsElement.style.left = initialStylesUnitsElement.left;
-                    unitsElement.style.marginTop = initialStylesUnitsElement.marginTop;
-                    unitsElement.style.width = initialStylesUnitsElement.width;
+                    if (pageType === "Consultation") {
+                        unitsElement.style.position = initialStylesUnitsElement.position;
+                        unitsElement.style.left = initialStylesUnitsElement.left;
+                        unitsElement.style.marginTop = initialStylesUnitsElement.marginTop;
+                        unitsElement.style.width = initialStylesUnitsElement.width;
+                    } else if (pageType === "Certificat" || pageType === "Demande" || pageType === "Courrier") {
+                        toSetFifty.setAttribute("width", '100%');
+                    }
                 }
 
 
                 // Définition des éléments à déplacer et de la cible
                 let elementToMove = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame');
                 let targetElement = document.querySelector(currentPage['targetElementSelector']);
-                let unitsElement = document.querySelector('#ContentPlaceHolder1_SuivisGrid');
+                if (pageType === "Consultation") {
+                    var unitsElement = document.querySelector('#ContentPlaceHolder1_SuivisGrid'); // spécifique à la page de consultation
+                } else if (pageType === "Certificat" || pageType === "Demande" || pageType === "Courrier") {
+                    var toSetRight = document.querySelector('#ContentPlaceHolder1_UpdatePanelBaseGlossaireUCForm1').parentNode;
+                    var toSetFifty = document.querySelector('#ContentPlaceHolder1_UpdatePanelBaseGlossaireUCForm1 table');
+                }
                 let iframeToActOn = iframes[0];
 
                 // liste des selecteurs à suppimer
@@ -313,12 +364,13 @@ if (currentPage) {
                     let elementToShrink = iframeDocument.querySelector('[style*="max-width:"]');
                     warpHistory(elementToShrink);
 
-                    // mettre le focus sur le body de l'iframe CE_ContentPlaceHolder1_EditorConsultation1_ID_Frame
-                    iframeToWriteIn = document.querySelector('#CE_ContentPlaceHolder1_EditorConsultation1_ID_Frame');
-                    iframeToWriteIn.contentDocument.querySelector('body').focus();
+                    if (pageType === "Consultation") {
+                        let iframeToWriteIn = document.querySelector('#CE_ContentPlaceHolder1_EditorConsultation1_ID_Frame');
+                        iframeToWriteIn.contentDocument.querySelector('body').focus();
+                    }
 
                     // réinitialiser les éléments à la disparition de l'iframe
-                    observeDiseapearance(iframeToActOn, resetTargetElement);
+                    observeDiseapearance(iframeToActOn, resetTargetElement, true);
                 });
             }
 
@@ -329,7 +381,7 @@ if (currentPage) {
                 if (elements.length > 0 && !iframe) {
                     elements[0].click();
                 }
-            }, document, false);
+            }, document, true);
 
 
             // Attendre que l'iframe soit présente ET chargée pour déplacer l'historique

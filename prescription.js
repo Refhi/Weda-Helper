@@ -11,7 +11,7 @@ if (PrescriptionForm) {
 
         function storeSearchSelection() {
             var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
-            if (inputField) { // TODO fiabiliser
+            if (inputField) {
                 console.log('Le texte de recherche actuel est ', inputField.value, 'je le stocke localement suite à sa modification');
                 chrome.storage.local.set({medSearchText: inputField.value});
             } else {
@@ -260,7 +260,9 @@ if (DemandeForm || PrescriptionForm) {
     });
 }
 
-if (DemandeForm) { // TODO à mettre ça en option
+
+// Selectionne automatiquement le type de prescription
+if (DemandeForm) {
     lightObserver('#prescriptionType div', function(element) {
         console.log('menu déroulant trouvé, je clique dessus', element);
         element[0].click();

@@ -40,6 +40,10 @@ document.addEventListener('DOMContentLoaded', function () {
     'NumPresDemande': false,
     'postPrintBehavior': 'closePreview', // boutons radio
     'MoveHistoriqueToLeft': true,
+    'MoveHistoriqueToLeft_Consultation': true,
+    'MoveHistoriqueToLeft_Certificat': true,
+    'MoveHistoriqueToLeft_Demande': true,
+    'MoveHistoriqueToLeft_Courrier': false,
     'ShowExplanatoryText': true,
     'autoOpenOrdoType': false,
   };

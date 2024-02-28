@@ -3,8 +3,13 @@
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
 ## [1.8.2] - 2024-02-
+# ajout :
+- "Biologie" se sélectionne automatiquement lors d'une prescription type "Demande"
+- l'historique peut désormais s'afficher à gauche également dans les pages Courrier (désactivé par défaut), Demande et Certificat
+
 # fix :
 - fix du champ de recherche de médicament où la rétention du texte se désactivait parfois au DOM refresh
+- les options par défaut de boutons de recherche sont désormais limitées à 3
 
 
 ## [1.8.1] - 2024-02-18
