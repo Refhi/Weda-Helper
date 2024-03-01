@@ -274,7 +274,7 @@ if (currentPage) {
 
                         // modifier la taille du cadre contenant la zone de texte (l'équivalent de targetElement sur la page de consultation)
                         if (pageType === "Certificat") {
-                            var adjustementTable = {1500: 0.85, 1700: 0.9, 2000: 1};
+                            var adjustementTable = {1500: 0.85, 1700: 0.9, 2000: 0.95, 5000:1};
                         } else if (pageType === "Demande") {
                             var adjustementTable = {1300: 0.7, 1700: 0.8, 2000: 0.9, 2500: 1};
                         } else if (pageType === "Courrier") {
