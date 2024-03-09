@@ -130,7 +130,13 @@ function startPrinting() {
                         win.print();
                     };
 
-                    printFrame.src = url;
+                    let urlObject = new URL(url);
+                    if (urlObject.origin === 'https://secure.weda.fr') {
+                        console.log('url origin ok', urlObject.origin);
+                        printFrame.src = url;
+                    } else {
+                        console.error('Untrusted URL:', url);
+                    }
                 }
             });
         } else {

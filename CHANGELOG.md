@@ -13,6 +13,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 # fix :
 - fix du champ de recherche de médicament où la rétention du texte se désactivait parfois au DOM refresh
 - les options par défaut de boutons de recherche sont désormais limitées à 3
+- correction d'une faille de sécurité théorique (très hautement improbable... mais corrigée de principe.)
 
 
 ## [1.8.1] - 2024-02-18
