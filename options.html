@@ -66,10 +66,18 @@
     <input type="checkbox" id="MoveHistoriqueToLeft_Certificat" style="margin-left: 40px;"> Certificat<br>
     <input type="checkbox" id="MoveHistoriqueToLeft_Demande" style="margin-left: 40px;"> Demande<br>
     <input type="checkbox" id="MoveHistoriqueToLeft_Courrier" style="margin-left: 40px;"> Courrier (beta)<br>
+  <input type="checkbox" id="autoATCD"> Ouvre automatiquement les ATCD<br>
+  <input type="checkbox" id="secureExchangeAutoRefresh"> Rafraichis automatiquement la messagerie sécurisée (vous devez laisser un onglet ouvert)<br>
+
   <h2>Options de consultation :</h2>
   <input type="checkbox" id="TweakTabConsultation"> Activer la navigation entre les valeurs de suivi avec la touche Tab dans les consultations.<br>
   <input type="checkbox" id="ShowExplanatoryText"> Affiche le texte d'explication à droite des courbes pédiatriques dans la page des consultations<br>
   <input type="checkbox" id="RemoveTitleSuggestions"> Retire le panneau de suggestion dans les Titres (ex. de Consultation).<br>
+  <div style="display: flex; align-items: center;">
+    <input type="text" id="defautDataType" name="defautDataType" style="width: 15ch; margin-right: 1em;">
+    <label for="defautDataType"> Types de données automatique (vider pour désactiver. Pas d'espaces. Sensible à la Case.) Défaut = Taille:cm,Poids:kg,Pc:cm,IMC:kg/t²,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%</label>
+  </div>
+
   <h2>Options de prescription :</h2>
   <input type="checkbox" id="TweakTabPrescription"> Activer les modifications de la fenêtre recherche médicaments (navigation facilitée avec la touche Tab).<br>
   <input type="checkbox" id="KeyPadPrescription"> Activer l’utilisation du clavier numérique lors de prescription d'un médicament.<br>

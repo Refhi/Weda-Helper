@@ -186,13 +186,40 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Consul
     lightObserver('#ContentPlaceHolder1_SuivisGrid_LabelGridSuiviQuestion_0', addOverIcon);
 
 
+    // Ajouter les unités pour les valeurs de suivi
+    chrome.storage.local.get('defautDataType', function (result) {
+        // defautDataType est une liste de valeurs de suivi pour lesquelles les unités doivent être ajoutées
+        // il est formaté comme ceci : 'Taille:cm,Poids:kg,Pc:cm,IMC:kg/t²,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%'
+        let defautDataType = result.defautDataType
+        if (defautDataType === undefined) {
+            defautDataType = 'Taille:cm,Poids:kg,Pc:cm,IMC:p/t²,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%';
+        }
+        let dataTypes = defautDataType.split(',');
+        dataTypes.forEach((dataType) => {
+            let [key, value] = dataType.split(':');
+            // On a donc une liste de valeurs de suivi et d'unités
+            let element = document.querySelector(`[title="${key}"]`);
+            if (element) {
+                let elementId = element.id.split('_')[element.id.split('_').length - 1];
+                let unitId = `ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviUnit_${elementId}`;
+                console.log('[defautDataType] element titre trouvé', element, 'avec id', elementId);
 
+                let unitElement = document.getElementById(unitId);
+                console.log('je recupere l\'element', unitElement);
+                let unitValue = unitElement.value;
+                console.log('for key', key, 'unitValue', unitValue);
+                if (unitValue === '') {
+                    unitElement.value = value;
+                }
+            }
+        });
+    });
+        
 }
 
 
 
 // // Mettre l'historique dans une colonne à gauche de l'écran
-// TODO l'ajouter sur d'autres pages ?
 let pagesToLeftPannel = [
     { url: 'https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', targetElementSelector: '#form1 > div:nth-child(14) > div > table > tbody > tr > td:nth-child(1) > table', defaut: true },
     { url: 'https://secure.weda.fr/FolderMedical/CertificatForm.aspx', targetElementSelector: '#CE_ContentPlaceHolder1_EditorCertificat_ID', defaut: true},
@@ -209,7 +236,7 @@ if (currentPage) {
     console.log('pageType', pageType);
     let optionId = 'MoveHistoriqueToLeft_' + pageType;
     console.log('optionId', optionId);
-    chrome.storage.local.get(['MoveHistoriqueToLeft', optionId], function (result) {
+    chrome.storage.local.get(['MoveHistoriqueToLeft', 'autoATCD', optionId], function (result) {
         if (result[optionId] === undefined) {
             result[optionId] = currentPage.defaut;
         }
@@ -375,7 +402,7 @@ if (currentPage) {
             }
 
 
-            // Automatiquement afficher l'historique //TODO à mettre en option
+            // Automatiquement afficher l'historique
             lightObserver('#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowHistoriqueFrame', (elements) => {
                 let iframe = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame > iframe');
                 if (elements.length > 0 && !iframe) {
@@ -387,6 +414,22 @@ if (currentPage) {
             // Attendre que l'iframe soit présente ET chargée pour déplacer l'historique
             lightObserver('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame > iframe', moveToLeft);
         }
+
+        if (result.autoATCD === true && result[optionId] === true) {
+            // Automatiquement afficher l'ATCD
+            lightObserver('#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent', () => {
+                console.log('[autoATCD] bouton atcd détecté');
+                lightObserver('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame', () => {
+                    console.log('[autoATCD] iframe chargé');
+                    let atcdElement = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelAntecedent');
+                    let buttonAtcd = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent');
+                    if (!atcdElement && buttonAtcd) {
+                        buttonAtcd.click();
+                    }
+                });                
+            }, document,true);
+        }
+            
     });
 }
 

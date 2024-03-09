@@ -46,6 +46,9 @@ document.addEventListener('DOMContentLoaded', function () {
     'MoveHistoriqueToLeft_Courrier': false,
     'ShowExplanatoryText': true,
     'autoOpenOrdoType': false,
+    'defautDataType': 'Taille:cm,Poids:kg,Pc:cm,IMC:p/t²,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%',
+    'autoATCD': false,
+    'secureExchangeAutoRefresh': true,
   };
 
   var options = Object.keys(defaultValues);

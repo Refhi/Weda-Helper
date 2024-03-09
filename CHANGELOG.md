@@ -2,10 +2,13 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
-## [1.8.2] - 2024-02-
+## [1.8.3] - 2024-02-
 # ajout :
 - "Biologie" se sélectionne automatiquement lors d'une prescription type "Demande"
 - l'historique peut désormais s'afficher à gauche également dans les pages Courrier (désactivé par défaut), Demande et Certificat
+- rafraichissement automatique des messages Mssanté. Il vérifiera 30 secondes après le chargement de la page, puis toutes les 15 minutes. Il faut donc mieux laisser un onglet ouvert sur cette page.
+- les atcds peuvent de façon optionnelle être affichés automatiquement (off par défaut)
+- les questions dans les Consultations se voient automatiquement attribuer une unité (à ajuster dans les options)
 
 # fix :
 - fix du champ de recherche de médicament où la rétention du texte se désactivait parfois au DOM refresh

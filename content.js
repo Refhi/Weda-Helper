@@ -495,3 +495,22 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/HprimF
     makeHPRIMListSticky();
 }
 
+
+// Page Messagerie sécurisée
+if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/WedaEchanges/')) {
+    chrome.storage.local.get('secureExchangeAutoRefresh', function (result) {
+        if (result.secureExchangeAutoRefresh !== false) {
+            // clique sur reçu pour rafraichir la liste des messages à intervalle régulier
+            function clickOnInbox() {
+                console.log('[clickOnInbox] je clique sur reçu pour rafraichir la liste des messages');
+                var element = document.querySelector('#inboxToolbar > li.inbox.selected > a');
+                if (element) {
+                    element.click();
+                }
+            }
+            setTimeout(function() {
+                setInterval(clickOnInbox, 900000);
+            }, 30000);
+        }
+    });
+}
