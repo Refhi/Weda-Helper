@@ -192,7 +192,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Consul
         // il est formaté comme ceci : 'Taille:cm,Poids:kg,Pc:cm,IMC:kg/t²,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%'
         let defautDataType = result.defautDataType
         if (defautDataType === undefined) {
-            defautDataType = 'Taille:cm,Poids:kg,Pc:cm,IMC:p/t²,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%';
+            defautDataType = 'TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%';
         }
         let dataTypes = defautDataType.split(',');
         dataTypes.forEach((dataType) => {

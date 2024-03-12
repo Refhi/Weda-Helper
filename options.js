@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function () {
     'MoveHistoriqueToLeft_Courrier': false,
     'ShowExplanatoryText': true,
     'autoOpenOrdoType': false,
-    'defautDataType': 'Taille:cm,Poids:kg,Pc:cm,IMC:p/t²,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%',
+    'defautDataType': 'TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%',
     'autoATCD': false,
     'secureExchangeAutoRefresh': true,
   };

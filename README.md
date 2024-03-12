@@ -21,7 +21,9 @@ Cf. ci-dessous pour les retours et les contributions.
     - [Recherche de médicaments](#recherche-de-médicaments)
     - [Options d'ordonnance numérique](#options-dordonnance-numérique)
   - [Feuilles de soin](#feuilles-de-soin)
-  - [Recettes](#recettes)
+  - [Divers](#divers)
+    - [Recettes](#recettes)
+    - [Messagerie](#messagerie)
   - [Facilitation des imports](#facilitation-des-imports)
   - [Weda-Helper-Companion](#weda-helper-companion)
     - [Impression directe automatique ](#impression-directe-automatique)
@@ -64,8 +66,10 @@ Cf. ci-dessous pour les retours et les contributions.
 
 ## Consultations
 - Affichage automatique de l'historique dans une colonne à gauche : ouvre automatiquement un historique simplifié (pas de recettes notamment) dans une colonne à gauche de l'écran, uniquement dans les pages de Consultation, de Courrier, de Certificat et Demandes.
+- Ouverture automatique des antécédents (désactivé par défaut)
 - Affichage simplifié des courbes de pédiatrie : dans les pages de consultation, il suffit de survoler "📈" devant "Poids", "Taille", "Pc" ou "IMC" pour afficher les courbes correspondantes (ne s'affiche que pour les âges et genres pertinents). Un clic permet de maintenir la courbe affichée. Un autre clic sur 📈 ou sur la courbe permet de la fermer.
 Modification du comportement de la tabulation après recherche patient. Ctrl+P permet de l'imprimer.
+- Les questions de suivi sont automatiquement affublées d'un type.
 - Permet, après la saisie du nom d'un patient, d'être directement positionné sur son nom, puis de pouvoir naviguer de patient en patient avec la touche Tab (ou maj+Tab pour aller vers le haut)
 - Facilitation du remplissage des valeurs tensionnelles (ex. *'Poids' 75 [tab] 'TAS' 150 [tab] 'TAD' 80*) : dans la fenêtre de consultation, lorsque l'on rempli une valeur de suivi, la touche tabulation envoie directement vers la case suivante (plus besoin d'appuyer 4 fois)
 - Retrait des suggestions des titres de consultation : dans les fenêtres contenant un Titre, désactive le panneau de suggestion (fenêtres d'ordonnance, consultation, certificat, prescription, formulaire, résultats d'examen).
@@ -91,6 +95,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 ### Options d'ordonnance numérique
 - Permet d’activer automatiquement par défaut les ordonnances numériques pour les médicaments mais aussi pour les autres prescriptions.
 - Permet aussi de cocher automatiquement le consentement des patients. Attention vous êtes toujours tenu de demander l'autorisation au patient systématiquement.
+- le type "Biologie" se sélectionne automatiquement lors d'une prescription numérique type "Demande"
 
 
 ## Feuilles de soin
@@ -101,8 +106,12 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - Affichage de boutons directs pour la réalisation de FDS dégradées et téléconsultation
 
 
-## Recettes
+## Divers
+### Recettes
 - Affiche automatiquement la recette du jour lors de l'ouverture de la page
+
+### Messagerie
+- rafraichissement automatique des messages Mssanté. Il vérifiera 30 secondes après le chargement de la page, puis toutes les 15 minutes. Il faut donc mieux laisser un onglet ouvert sur cette page.
 
 
 ## Facilitation des imports

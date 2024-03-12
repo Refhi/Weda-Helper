@@ -6,19 +6,20 @@ function htmlMaker(text) {
 }
 
 var nouveautes = `
+# divers :
+- grosse amélioration du README grace à DrFloW71 ! Merci à lui pour ce rafraichissement !
+
 # ajout :
-- option pour ouvrir automatiquement le panneau d'ordos types à l'ouverture des prescriptions médicamenteuses
-- ajout des courbes de pédiatrie (il suffit de passer la souris au-dessus de l'icone 📈 dans les consultations. Un clic permet de maintenir la courbe affichée. Un autre clic sur 📈 ou sur la courbe permet de la fermer).
+- le type "Biologie" se sélectionne automatiquement lors d'une prescription numérique type "Demande"
+- l'historique peut désormais s'afficher à gauche également dans les pages Courrier (désactivé par défaut), Demande et Certificat. A noter que l'affichage est plus approximatif pour certaines pages. N'hésitez pas à désactiver l'option dans les options si besoin.
+- rafraichissement automatique des messages Mssanté. Il vérifiera 30 secondes après le chargement de la page, puis toutes les 15 minutes. Il faut donc mieux laisser un onglet ouvert sur cette page. (beta, faites-moi part de vos retours svp, je n'utilise pas mssante)
+- les atcds peuvent de façon optionnelle être affichés automatiquement (off par défaut)
+- les questions dans les Consultations se voient automatiquement attribuer une unité (à ajuster dans les options)
 
 # fix :
-- la recherche médicamenteuse se lançait automatiquement au chargement de la page de prescription, ce qui faisait perdre une ou deux secondes
-- le consentement automatique se coche également dans les pages de Demandes
-- le focus était perdu lors de l'apparition de l'historique dans le 1/3 gauche
-- l'historique dans le 1/3 gauche disparaissait en cas de ctrl+S ou d'enregistrement
-- la détection de l'insersion de la carte vitale a été revue pour être plus universelle
-
-# divers :
-- ajout de logs pour préparer le debug de keepmedsearch qui saute parfois ponctuellement
+- fix du champ de recherche de médicament où la rétention du texte se désactivait parfois au DOM refresh
+- les options par défaut de boutons de recherche sont désormais limitées à 3
+- correction d'une faille de sécurité théorique (très hautement improbable... mais corrigée de principe.)
 
 `
 
