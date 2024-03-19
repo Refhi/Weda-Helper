@@ -593,13 +593,14 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Aati.a
                             .then(blob => {
                                 console.log('blob', blob);
                                 sendToCompanion(`print`, blob);
-                                window.close();
                             })
                             .catch(error => {
                                 console.error('Error:', error);
                             })
                             .finally(() => {
-                                window.close();
+                                setTimeout( function() {
+                                    window.close();
+                                }, 500);
                             });
 
                     }
