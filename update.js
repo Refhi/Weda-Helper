@@ -6,20 +6,13 @@ function htmlMaker(text) {
 }
 
 var nouveautes = `
-# divers :
-- grosse amélioration du README grace à DrFloW71 ! Merci à lui pour ce rafraichissement !
+## ajout :
+- raccourci clavier pour l'affichage/masquage des antécédents
+- simplification de la réalisation des arrêts de travail intégrés à Weda (lecture auto CV, selection auto de l'assuré, impression automatique, autofill de la date en cas de sorties libres)
 
-# ajout :
-- le type "Biologie" se sélectionne automatiquement lors d'une prescription numérique type "Demande"
-- l'historique peut désormais s'afficher à gauche également dans les pages Courrier (désactivé par défaut), Demande et Certificat. A noter que l'affichage est plus approximatif pour certaines pages. N'hésitez pas à désactiver l'option dans les options si besoin.
-- rafraichissement automatique des messages Mssanté. Il vérifiera 30 secondes après le chargement de la page, puis toutes les 15 minutes. Il faut donc mieux laisser un onglet ouvert sur cette page. (beta, faites-moi part de vos retours svp, je n'utilise pas mssante)
-- les atcds peuvent de façon optionnelle être affichés automatiquement (off par défaut)
-- les questions dans les Consultations se voient automatiquement attribuer une unité (à ajuster dans les options)
 
-# fix :
-- fix du champ de recherche de médicament où la rétention du texte se désactivait parfois au DOM refresh
-- les options par défaut de boutons de recherche sont désormais limitées à 3
-- correction d'une faille de sécurité théorique (très hautement improbable... mais corrigée de principe.)
+## fix :
+- erreur de date et de mise en page dans le changelog
 
 `
 
@@ -41,6 +34,8 @@ Pour qu'elle fonctionne au mieux :
 Vous pouvez aussi relire <a href="https://github.com/Refhi/Weda-Helper/" target="_blank">Weda-Helper sur gitHub</a> pour plus de précisions, et y faire des suggestions ou des signalements de bugs. 
 
 Et bien sûr m'encourager sur le <a href="https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/m-p/2998" target="_blank">Site de la communauté de weda</a>
+
+💰 Si vous le souhaitez vous pouvez également participer à mes frais de développement (écran, abonnement copilot, etc.) via <a href="https://www.paypal.com/paypalme/refhi" target="_blank">Paypal</a> ("entre proches")
 
 Merci d'utiliser Weda-Helper !
 
@@ -67,6 +62,8 @@ Les suggestions et les rapports de bug c'est toujours par là : <a href="https:/
 
 Et les encouragements toujours par ici :-)  <a href="https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/m-p/2998" target="_blank">Site de la communauté de weda</a>
 
+💰 Si vous le souhaitez vous pouvez également participer à mes frais de développement (écran, abonnement copilot, etc.) via <a href="https://www.paypal.com/paypalme/refhi" target="_blank">Paypal</a> ("entre proches")
+
 Bon courage,
 
 Le dev de Weda-Helper
@@ -74,7 +71,17 @@ Le dev de Weda-Helper
 
 updateMessage = htmlMaker(updateMessage)
 
+var aprilFoolMessage = `
+Weda-Helper vous offre un cadeau ! <br><br>
 
+<button style="
+background-color: #4CAF50;
+color: white;
+padding: 0.5em 1em;
+border: none;
+border-radius: 4px;
+cursor: pointer;" onclick="window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '_blank')">Cliquez l'🥚</button>
+`
 
 function showPopup(text) {
     function createOverlay() {
@@ -111,7 +118,12 @@ function showPopup(text) {
     function createButton(overlay) {
         let button = document.createElement('button');
         button.textContent = 'J\'ai compris';
-        button.style.marginTop = '20px';
+        button.style.backgroundColor = '#4CAF50';
+        button.style.color = 'white';
+        button.style.padding = '0.5em 1em';
+        button.style.border = 'none';
+        button.style.borderRadius = '4px';
+        button.style.cursor = 'pointer';
         button.addEventListener('click', function() {
             document.body.removeChild(overlay);
         });
@@ -132,7 +144,7 @@ function showPopup(text) {
 
 
 // Lancement du message en cas de premier lancement ou de mise à jour
-chrome.storage.local.get(['lastExtensionVersion', 'firstStart'], function(result) {
+chrome.storage.local.get(['lastExtensionVersion', 'firstStart', 'aprilFool'], function(result) {
     if (result.lastExtensionVersion !== currentVersion) {
         // If the last version is different from the current version, there was an update
         showPopup(updateMessage);
@@ -144,5 +156,18 @@ chrome.storage.local.get(['lastExtensionVersion', 'firstStart'], function(result
         showPopup(firstStartMessage);
         // Set firstStart to true
         chrome.storage.local.set({firstStart: true});
+    }
+
+    let aprilFoolDays = [1,2,3];
+    let aprilFoolMonth = 3;
+    let currentDay = new Date().getDate();
+    let currentMonth = new Date().getMonth();
+
+
+    // Easter egg pour le premier avril :) A usage unique.
+    if (!result.aprilFool && currentMonth === aprilFoolMonth && aprilFoolDays.includes(currentDay)) {
+        console.log('April fool');
+        showPopup(aprilFoolMessage);
+        chrome.storage.local.set({aprilFool: true});
     }
 });

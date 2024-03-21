@@ -2,9 +2,17 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
-# [1.9.1] - 2024-03-
+# [2.0] - 2024-03-
+## ajout :
+- raccourci clavier pour l'affichage/masquage des antécédents
+- simplification de la réalisation des arrêts de travail intégrés à Weda (lecture auto CV, selection auto de l'assuré, impression automatique, autofill de la date en cas de sorties libres)
+- amélioration du message d'accueil et de mise à jour <del>et d</del>.
+
 ## fix :
 - erreur de date et de mise en page dans le changelog
+
+
+
 
 # [1.9] - 2024-03-12
 ## divers :

@@ -24,6 +24,7 @@ Cf. ci-dessous pour les retours et les contributions.
   - [Divers](#divers)
     - [Recettes](#recettes)
     - [Messagerie](#messagerie)
+    - [AT](#at)
   - [Facilitation des imports](#facilitation-des-imports)
   - [Weda-Helper-Companion](#weda-helper-companion)
     - [Impression directe automatique ](#impression-directe-automatique)
@@ -54,6 +55,7 @@ Cf. ci-dessous pour les retours et les contributions.
 - Ouvre ou crée la prescription n°1 (Suggestion : Alt+4)
 - Ouvre la recherche (Suggestion : Alt+R)
 - Appuie sur W (Suggestion : Alt+W)
+- Affiche/masque les antécédents (Suggestion : Alt+Z)
 
 **Chrome limite malheureusement les raccourcis par défaut. Les raccourcis doivent donc être définis manuellement (et entièrement personnalisés) dans chrome://extensions/shortcuts**
 
@@ -112,6 +114,10 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Messagerie
 - rafraichissement automatique des messages Mssanté. Il vérifiera 30 secondes après le chargement de la page, puis toutes les 15 minutes. Il faut donc mieux laisser un onglet ouvert sur cette page.
+
+### AT
+- simplification de la réalisation des arrêts de travail intégrés à Weda (lecture auto CV, selection auto de l'assuré, impression automatique, autofill de la date en cas de sorties libres)
+
 
 
 ## Facilitation des imports

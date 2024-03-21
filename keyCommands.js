@@ -19,15 +19,14 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     }
 });
 
-// fonction scanner
-// function lancerScan() {
-//     console.log('shortcut_scanner activé');
-//     // let scanner = document.querySelector('#ContentPlaceHolder1_MenuPeripherique\\:submenu\\:28 .dynamic .level2');
-//     let scanner = document.querySelector('#ContentPlaceHolder1_MenuPeripherique .level1 .level2 .dynamic .level2');
-//     if (scanner) {
-//         scanner.click();
-//     }
-// }
+function toggleAtcd() {
+    console.log('toggleAtcd activé');
+    var element = document.getElementById('ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent');
+    if (element) {
+        element.click();
+    }
+}
+
 
 // Permet d'appuyer sur le bouton "Valider" ou équivalent
 function push_valider() {
@@ -420,9 +419,9 @@ const keyCommands = {
             openSearch();            
         }
     },
-    // 'shortcut_scanner': {
-    //     description: 'Raccourci Scanner',
-    //     key: 'alt+z',
-    //     action: lancerScan
-    // },
+    'shortcut_atcd': {
+        description: 'Raccourci Affichage antécédents',
+        key: 'alt+z',
+        action: toggleAtcd
+    },
 };
