@@ -174,3 +174,4 @@ Les encouragements sont les bienvenus sur [le site de la communauté](https://co
 - à Coralie pour les chocolats 😋 !
 - à tout les utilisateurs qui ont commenté, suggéré et encouragé Weda-Helper !
 - à notre Expert qui est vraiment top (ils se reconnaîtrons)
+- et bien sur à ceux qui ont participé € ^^
