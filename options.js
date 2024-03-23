@@ -157,7 +157,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // ajoute un bouton pour effacer les valeurs des textes de bienvenue
 var clearButton = document.createElement('button');
-clearButton.textContent = 'Raz textes de bienvenue';
+clearButton.textContent = 'Raz textes de bienvenue et métrique utilisateur';
 clearButton.addEventListener('click', function() {
   // Effacez les valeurs lorsque le bouton est cliqué
   chrome.storage.local.remove(['lastExtensionVersion', 'firstStart', 'aprilFool'], function() {
@@ -167,3 +167,14 @@ clearButton.addEventListener('click', function() {
 
 // Ajoutez le bouton à la page
 document.body.appendChild(clearButton);
+
+// affiche une info en fin de page avec les métriques utilisateur stockées dans     chrome.storage.local.get(['clicks', 'drags'], function(result) {
+
+chrome.storage.local.get(['clicks', 'drags'], function(result) {
+  let clics = result.clicks || 0;
+  let drags = result.drags || 0;
+
+  let userMetrics = document.createElement('p');
+  userMetrics.innerHTML = `Nombre d'actions de souris évitées depuis l'installation : <br> Clics: ${clics}<br> Mouvements de souris évités : ${drags}`;
+  document.body.appendChild(userMetrics);
+});

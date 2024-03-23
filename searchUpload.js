@@ -16,6 +16,7 @@ function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = fals
         const elementToFocus = document.getElementById(validTarget);
         if (elementToFocus) {
             elementToFocus.focus();
+            recordMetrics({clicks: 1, drags: 1});
         }
     }
 
@@ -35,6 +36,7 @@ function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = fals
                 const elementToFocus = document.getElementById('ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_' + patient_number);
                 if (elementToFocus) {
                     elementToFocus.focus();
+                    recordMetrics({clicks: 1, drags: 1});
                     break;
                 }
             }
@@ -111,6 +113,8 @@ chrome.storage.local.get('TweakImports', function (result) {
         const pdfViewer = document.querySelector('#ContentPlaceHolder1_ViewPdfDocumentUCForm1_PanelViewDocument');
         if (pdfViewer) {
             pdfViewer.style.height = newsize;
+            // en gros évite un drag (molette)
+            recordMetrics({drags: 1});
         }
 
         const iframe = document.querySelector('#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile');
@@ -182,7 +186,7 @@ chrome.storage.local.get('TweakImports', function (result) {
         if (month < 10 && month.length < 2) {
             month = '0' + month;
         }
-    
+
         return day + '/' + month + '/' + year;
     }
 
@@ -198,8 +202,9 @@ chrome.storage.local.get('TweakImports', function (result) {
                 if (validPattern.test(textField.value)) {
                     // The text is valid, convert it to a full date
                     textField.value = convertDate(textField.value);
+                    const keyStrokes = 10 - textField.value.length;
+                    recordMetrics({keyStrokes: keyStrokes});
                 }
-                // ...
             }
         }
     }
@@ -271,6 +276,7 @@ if (window.location.href === 'https://secure.weda.fr/FolderMedical/FindPatientFo
                     const elementToFocus = document.getElementById(validTarget);
                     if (elementToFocus) {
                         elementToFocus.focus();
+                        recordMetrics({clicks: 1, drags: 1});
                     }
                     // Place un listener sur la searchbox (qui s'auto-entretiens à chaque recherche)
                     SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = true);

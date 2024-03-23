@@ -12,6 +12,10 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Consul
 
             lightObserver('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]',changeTabOrder)
             console.log('ConsultationFormTabOrderer started');
+            // ici aussi les métriques sont difficiles à évaluer. Si on considère environs
+            // 2 éléments par consultation, on peut estimer en gros à 1 clic + 1 drag par consultation
+            recordMetrics({clicks: 1, drags: 1});
+
         }
     });
 
@@ -167,6 +171,8 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Consul
             let url = window.location.href;
             let patDk = url.split('PatDk=')[1].split('&')[0];
             let tc = courbesPossiblesFiltered[key].TC;
+            // pour la métrique je considère que dès que l'url est appelée c'est une action
+            recordMetrics({clicks: 4, drags: 4});
             return `https://secure.weda.fr/CourbeWEDA.aspx?PatDk=${patDk}&TC=${tc}`;
         }
 
@@ -213,6 +219,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Consul
                 }
             }
         });
+        // un peu compliqué de mettre des metrics ici... car les utilisateurs ne mettent en général simplement pas d'unité
     });
         
 }
@@ -225,14 +232,14 @@ let pagesToLeftPannel = [
     { url: 'https://secure.weda.fr/FolderMedical/CertificatForm.aspx', targetElementSelector: '#CE_ContentPlaceHolder1_EditorCertificat_ID', defaut: true},
     { url: 'https://secure.weda.fr/FolderMedical/DemandeForm.aspx', targetElementSelector: '#ContentPlaceHolder1_UpdatePanelAll', defaut: true },
     // { url: 'https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx', targetElementSelector: '#ContentPlaceHolder1_PanelBaseVidalBackGround > table' },
-    // { url: 'https://secure.weda.fr/FolderMedical/FormulaireForm.aspx', targetElementSelector: '#form1 > div:nth-child(14) > table > tbody > tr > td > table' },
+    { url: 'https://secure.weda.fr/FolderMedical/FormulaireForm.aspx', targetElementSelector: '#form1 > div:nth-child(14) > table > tbody > tr > td > table', defaut: true },
     // { url: 'https://secure.weda.fr/FolderMedical/ResultatExamenForm.aspx', targetElementSelector: '#form1 > div:nth-child(14) > table > tbody > tr > td > table' },
     { url: 'https://secure.weda.fr/FolderMedical/CourrierForm.aspx', targetElementSelector: '#form1 > div:nth-child(15) > table > tbody > tr > td:nth-child(1) > table', defaut: false}
 ];
 let currentPage = pagesToLeftPannel.find(page => page.url === window.location.origin + window.location.pathname);
 if (currentPage) {
     // Crée une valeur contenant le type de page où nous sommes (par exemple Consultation, Certificat, Demande, etc.)
-    let pageType = window.location.href.split('/')[4].split('Form')[0];
+    let pageType = window.location.href.split('/')[4].split('Form.aspx')[0];
     console.log('pageType', pageType);
     let optionId = 'MoveHistoriqueToLeft_' + pageType;
     console.log('optionId', optionId);
@@ -292,6 +299,9 @@ if (currentPage) {
 
                         // Modifier la largeur de l'élément de suivi
                         unitsElement.style.width = unitsElementWidth + 'px';
+                    } else if (pageType === "Formulaire") {
+                        targetElement.style.width = targetElementWidth + 'px';
+
                     } else if (pageType === "Certificat" || pageType === "Demande" || pageType === "Courrier") {
                         // modifier la taille du cadre contenant la selection de documents type
                         let documentTypeWidth = (1 - historyProportion) * availableWidth * 0.2;
@@ -332,7 +342,7 @@ if (currentPage) {
                     targetElement.style.marginTop = initialStylesTargetElement.marginTop;
                     targetElement.style.width = initialStylesTargetElement.width;
 
-                    if (pageType === "Consultation") {
+                    if (pageType === "Consultation" || pageType === "Formulaire") {
                         unitsElement.style.position = initialStylesUnitsElement.position;
                         unitsElement.style.left = initialStylesUnitsElement.left;
                         unitsElement.style.marginTop = initialStylesUnitsElement.marginTop;
@@ -407,6 +417,7 @@ if (currentPage) {
                 let iframe = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame > iframe');
                 if (elements.length > 0 && !iframe) {
                     elements[0].click();
+                    recordMetrics({clicks: 1, drags: 1});
                 }
             }, document, true);
 
@@ -425,6 +436,7 @@ if (currentPage) {
                     let buttonAtcd = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent');
                     if (!atcdElement && buttonAtcd) {
                         buttonAtcd.click();
+                        recordMetrics({clicks: 1, drags: 1});
                     }
                 });                
             }, document,true);

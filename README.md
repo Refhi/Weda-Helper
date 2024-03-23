@@ -67,7 +67,7 @@ Cf. ci-dessous pour les retours et les contributions.
 *Cette fonction nécessite le connecteur Weda V3 installé sur votre PC. Demandez son installation à votre technicien.*
 
 ## Consultations
-- Affichage automatique de l'historique dans une colonne à gauche : ouvre automatiquement un historique simplifié (pas de recettes notamment) dans une colonne à gauche de l'écran, uniquement dans les pages de Consultation, de Courrier, de Certificat et Demandes.
+- Affichage automatique de l'historique dans une colonne à gauche : ouvre automatiquement un historique simplifié (pas de recettes notamment) dans une colonne à gauche de l'écran, uniquement dans les pages de Consultation, de Courrier, de Certificat, de Formulaire et Demandes.
 - Ouverture automatique des antécédents (désactivé par défaut)
 - Affichage simplifié des courbes de pédiatrie : dans les pages de consultation, il suffit de survoler "📈" devant "Poids", "Taille", "Pc" ou "IMC" pour afficher les courbes correspondantes (ne s'affiche que pour les âges et genres pertinents). Un clic permet de maintenir la courbe affichée. Un autre clic sur 📈 ou sur la courbe permet de la fermer.
 Modification du comportement de la tabulation après recherche patient. Ctrl+P permet de l'imprimer.

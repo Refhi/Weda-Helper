@@ -23,7 +23,8 @@
           "searchUpload.js",
           "companionlink.js",
           "prescription.js",
-          "update.js"]
+          "update.js",
+          "aati.js"]
     }
   ],
   "commands": {

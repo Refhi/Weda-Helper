@@ -40,6 +40,7 @@ function sendToCompanion(urlCommand, blob = null, buttonToClick = null) {
             .finally(() => {
                 if (buttonToClick) {
                     buttonToClick.click();
+                    recordMetrics({clicks: 1, drags: 1});
                 }
                 console.log('Impression via companion terminée');
             });
@@ -67,6 +68,8 @@ function sendtpeinstruction(amount) {
             console.log('sendinstruction', amount + 'c€' + ' to TPE');
             sendToCompanion(`tpe/${amount}`);
             console.log('Instruction envoyée au TPE');
+            const keyStrokes = amount.toString().length;
+            recordMetrics({ keyStrokes: keyStrokes });
         }
     });
 }
@@ -79,21 +82,12 @@ function sendLastTPEamount() {
         if (lastTPEamount) {
             console.log('lastTPEamount', lastTPEamount);
             sendtpeinstruction(lastTPEamount);
+            const keyStrokes = lastTPEamount.toString().length;
+            recordMetrics({ keyStrokes: keyStrokes });
         }
     });
 }
 
-function startDMPSender() {
-    console.log('startDMPSender started')
-    var dmpCheckBox = document.getElementById('mat-checkbox-1-input');
-    if (dmpCheckBox && dmpCheckBox.checked) {
-        console.log('DMP fixer started car checkbox est cochée');
-        // trouve l'élement avec les classes : mat-focus-indicator mat-flat-button mat-button-base mat-primary
-        var dmpButton = document.getElementsByClassName('mat-focus-indicator mat-flat-button mat-button-base mat-primary')[0];
-        console.log('dmpButton trouvé, je clique dessus');
-        dmpButton.click();
-    }
-}
 
 // déclenchement de l'impression dans Weda-Helper-Companion
 function sendPrint(buttonToClick) {
@@ -136,6 +130,7 @@ function sendPrint(buttonToClick) {
             
                 if (url !== 'about:blank') {
                     clearInterval(intervalId);
+                    recordMetrics({clicks: 3, drags: 4});
                     fetch(url)
                         .then(response => response.blob())
                         .then(blob => {

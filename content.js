@@ -73,6 +73,49 @@ function observeDiseapearance(element, callback, justOnce = false) {
     observer.observe(document, config);
 }
 
+/**
+ * Records metrics about avoided clicks and mouse actions.
+ * @param {{clicks: number, drags: number, keyStrokes: number}} metrics - The metrics to record.
+ */
+let metricsQueue = [];
+let isProcessingQueue = false;
+
+function recordMetrics(metrics) {
+    metricsQueue.push(metrics);
+    if (!isProcessingQueue) {
+        processQueue();
+    }
+}
+
+function processQueue() {
+    if (metricsQueue.length === 0) {
+        isProcessingQueue = false;
+        return;
+    }
+
+    isProcessingQueue = true;
+    let metrics = metricsQueue.shift();
+    chrome.storage.local.get(['clicks', 'drags', 'keyStrokes'], function(result) {
+        let clicks = result.clicks || 0;
+        let drags = result.drags || 0;
+        let keyStrokes = result.keyStrokes || 0;
+
+        if (metrics.clicks) {
+            clicks += metrics.clicks;
+        }
+        if (metrics.drags) {
+            drags += metrics.drags;
+        }
+
+        if (metrics.keyStrokes) {
+            keyStrokes += metrics.keyStrokes;
+        }
+        chrome.storage.local.set({clicks: clicks, drags: drags, keyStrokes: keyStrokes}, processQueue);
+        console.log('Metrics updated:', {clicks, drags, keyStrokes});
+    });
+}
+
+
 // // Boutons du popup
 // Celui pour renvoyer le dernier paiement TPE est dans fse.js
 // Permet de mettre tout les éléments de la page en attente d'import sur "Consultation"
@@ -83,6 +126,7 @@ function allConsultation() {
         // set the dropdown to "Consultation"
         elements[i].selectedIndex = 0;
         console.log('Element set to Consultation:', elements[i]);
+        recordMetrics({clicks: 2, drags: 2});
     }
 }
 
@@ -176,6 +220,7 @@ function clickElementByOnclick(onclickValue) {
     if (element) {
         console.log('Clicking element onclickvalue', onclickValue);
         element.click();
+        recordMetrics({clicks: 1, drags: 1});
         return true;
     } else {
         console.log('Element not found onclickvalue', onclickValue);
@@ -194,6 +239,7 @@ function checkPatientName() {
                 if (spans[i].textContent.includes(patientName)) {
                     console.log('Patient name found');
                     spans[i].click();
+                    recordMetrics({clicks: 1, drags: 1});
                     return true;
                 }
             }
@@ -258,6 +304,7 @@ chrome.storage.local.get('TweakRecetteForm', function (result) {
         var button = document.getElementById('ContentPlaceHolder1_ButtonFind');
         if (button) {
             button.click();
+            recordMetrics({clicks: 1, drags: 1});
             console.log('Button clicked on RecetteForm page');
         }
     }
@@ -279,6 +326,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
                     console.log('cvElement text', cvElement.textContent);
                     if (cvElement.textContent.includes('Vitale insérée')) {
                         console.log('cvElement', cvElement, 'found');
+                        recordMetrics({clicks: 1, drags: 1});
                         clickCarteVitale();
                     }
                 });
@@ -306,6 +354,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
                     if (linkedDossier) {
                         console.log('nextElement', linkedDossier, 'found and clickable');
                         linkedDossier.click();
+                        recordMetrics({clicks: 1, drags: 1});
                     } else {
                         console.log('nextElement', nextElement, 'not found or not clickable');
                     }
@@ -345,6 +394,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
                     copySymbol.addEventListener('click', function () {
                         console.log(copyText);
                         navigator.clipboard.writeText(copyText);
+                        recordMetrics({clicks: 3, drags: 2});
                     });
 
                     // Add the copy symbol next to the element
@@ -363,6 +413,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
                 elements[0].addEventListener('click', function () {
                     console.log('nir', nir);
                     navigator.clipboard.writeText(nir);
+                    recordMetrics({clicks: 3, drags: 2});
                 });
             });
             
@@ -373,6 +424,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
                 elements[0].addEventListener('click', function () {
                     console.log('secu', secu);
                     navigator.clipboard.writeText(secu);
+                    recordMetrics({clicks: 3, drags: 2});
                 });
             });
         }
@@ -388,6 +440,7 @@ if (window.location.href === 'https://secure.weda.fr/vitalzen/gestion.aspx') {
             waitForElement('.mat-icon.notranslate.material-icons.mat-icon-no-color', 'search', 5000, function (element) {
                 console.log('element', element, 'trouvé, je clique dessus');
                 element.click();
+                recordMetrics({clicks: 1, drags: 1});
             });
         }
     });
@@ -493,6 +546,9 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/HprimF
         element.style.top = "0px";
     }
     makeHPRIMListSticky();
+    // dur d'estimer précisement la métrique. Là c'est très grossier, on va dire 5 drags
+    recordMetrics({drags: 5});
+
 }
 
 
@@ -506,107 +562,12 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/WedaEc
                 var element = document.querySelector('#inboxToolbar > li.inbox.selected > a');
                 if (element) {
                     element.click();
+                    recordMetrics({clicks: 1, drags: 1});
                 }
             }
             setTimeout(function() {
                 setInterval(clickOnInbox, 900000);
             }, 30000);
-        }
-    });
-}
-
-// Arrêts de travail automatisés
-if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Aati.aspx') || window.location.href.startsWith('https://secure.weda.fr/BinaryData.aspx')) {
-    chrome.storage.local.get('autoAATI', function (result) {
-        if (result.autoFillAATI !== false) {
-            let selecteurBoutonCV = '#mat-dialog-1 > ng-component > div:nth-child(2) > div.footer.weda-row.weda-main-align-around.weda-cross-align-center.ng-star-inserted > button:nth-child(1)'
-            let selecteurSortieNonLimites = '#form1 > div:nth-child(10) > div > dmp-aati-form > div > div:nth-child(2) > div.ml10 > div > div.frameContent > dmp-aati-leave-permission > div.flexColStart.mt10 > div.flexColStart.mt10.ng-star-inserted > div.flexColStart.pt3.ng-star-inserted > div.flexRow.mt5 > input'
-            let selectorExitButton = '.frameback.dmtiForm.ng-star-inserted .imgfixe a'
-
-            function clickPremierPatientCV () {
-                var boutonPremierPatientCV = document.querySelector('[title="Déclarer l\'AT pour ce bénéficiaire."]');
-                if (boutonPremierPatientCV) {
-                    boutonPremierPatientCV.click();
-                }
-            }
-
-            function fillDateSorties () {
-                var sortieNonLimites = document.querySelector(selecteurSortieNonLimites);
-                if (sortieNonLimites) {
-                    console.log('sortieNonLimites', sortieNonLimites, 'found');
-                    // Get the current date
-                    let currentDate = new Date();
-                    // Format the date as dd/mm/yyyy
-                    let day = String(currentDate.getDate()).padStart(2, '0');
-                    let month = String(currentDate.getMonth() + 1).padStart(2, '0'); // Months are 0-based in JavaScript
-                    let year = currentDate.getFullYear();
-                    let formattedDate = day + '/' + month + '/' + year;
-                    sortieNonLimites.value = formattedDate;
-
-                    // Create a new 'compositionend' event
-                    let event = new Event('compositionend', {
-                        bubbles: true,
-                        cancelable: true
-                    });
-
-                    // Dispatch the event
-                    console.log('sortieNonLimites', sortieNonLimites, 'dispatching event', event);
-                    sortieNonLimites.dispatchEvent(event); // indispensable sinon la date n'est pas prise en compte
-                }
-            }
-
-            function setTimeOfSending(actionName) {
-                // Get the current time as a Unix timestamp (number of milliseconds since the Unix Epoch)
-                let currentTime = Date.now();
-
-                // Create an object to store
-                let obj = {};
-                obj[actionName] = currentTime;
-
-                // Store the object in the local Chrome storage
-                chrome.storage.local.set(obj, function() {
-                    console.log('The time of action "' + actionName + '" was stored as "' + currentTime + '".');
-                });
-            }
-
-
-            lightObserver(selecteurBoutonCV, function (elements) {elements[0].click();});
-            waitForElement('[title="Déclarer l\'AT pour ce bénéficiaire."]', null, 5000, clickPremierPatientCV);
-            lightObserver(selecteurSortieNonLimites, fillDateSorties, document, true);
-            lightObserver(selectorExitButton, function (elements) {
-                setTimeOfSending('autoAATIexit');
-                elements[0].click();
-            });
-
-            if (window.location.href.startsWith('https://secure.weda.fr/BinaryData.aspx')) {
-                // console.log('fenêtre binaryData détectée');
-                // console.log('pour le debug je met la date de sortie à maintenant'); //TODO à supprimer
-                // setTimeOfSending('autoAATIexit'); //TODO à supprimer
-                // check that the Date.now is not > 10 seconds than the stored value of autoAATIexit
-                chrome.storage.local.get('autoAATIexit', function (result) {
-                    if (Date.now() - result.autoAATIexit < 10000) {
-                        console.log('autoAATIexit', result.autoAATIexit, 'is less than 10 seconds ago');
-                        let url = window.location.href;
-                        console.log('url', url);
-                        fetch(url)
-                            .then(response => response.blob())
-                            .then(blob => {
-                                console.log('blob', blob);
-                                sendToCompanion(`print`, blob);
-                            })
-                            .catch(error => {
-                                console.error('Error:', error);
-                            })
-                            .finally(() => {
-                                setTimeout( function() {
-                                    window.close();
-                                }, 500);
-                            });
-
-                    }
-                });
-
-            }
         }
     });
 }
