@@ -170,11 +170,12 @@ document.body.appendChild(clearButton);
 
 // affiche une info en fin de page avec les métriques utilisateur stockées dans     chrome.storage.local.get(['clicks', 'drags'], function(result) {
 
-chrome.storage.local.get(['clicks', 'drags'], function(result) {
+chrome.storage.local.get(['clicks', 'drags', 'keyStrokes'], function(result) {
   let clics = result.clicks || 0;
   let drags = result.drags || 0;
+  let keyStrokes = result.keyStrokes || 0;
 
   let userMetrics = document.createElement('p');
-  userMetrics.innerHTML = `Nombre d'actions de souris évitées depuis l'installation : <br> Clics: ${clics}<br> Mouvements de souris évités : ${drags}`;
+  userMetrics.innerHTML = `Nombre d'actions de souris évitées depuis l'installation : <br> Clics: ${clics}<br> Mouvements de souris évités : ${drags} <br> Frappes de clavier évitées : ${keyStrokes}`;
   document.body.appendChild(userMetrics);
 });
