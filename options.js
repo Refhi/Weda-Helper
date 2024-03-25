@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', function () {
     'defautDataType': 'TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%',
     'autoATCD': false,
     'secureExchangeAutoRefresh': true,
+    'autoAATI': true,
   };
 
   var options = Object.keys(defaultValues);
@@ -178,4 +179,34 @@ chrome.storage.local.get(['clicks', 'drags', 'keyStrokes'], function(result) {
   let userMetrics = document.createElement('p');
   userMetrics.innerHTML = `Nombre d'actions de souris évitées depuis l'installation : <br> Clics: ${clics}<br> Mouvements de souris évités : ${drags} <br> Frappes de clavier évitées : ${keyStrokes}`;
   document.body.appendChild(userMetrics);
+});
+
+
+// affiche l'easter egg du 1er avril
+chrome.storage.local.get(['aprilFool'], function(result) {
+  let aprilFoolDays = [1,2,3];
+  let aprilFoolMonth = 3;
+  let currentDay = new Date().getDate();
+  let currentMonth = new Date().getMonth();
+
+
+  // Easter egg pour le premier avril :) A usage unique.
+  if (!result.aprilFool && currentMonth === aprilFoolMonth && aprilFoolDays.includes(currentDay)) {
+    console.log('April fool');
+    // Création du bouton
+    let aprilFoolButton = document.createElement('button');
+    aprilFoolButton.innerHTML = "Vous avez trouvé l'🥚 !";
+    aprilFoolButton.style.backgroundColor = "#4CAF50";
+    aprilFoolButton.style.color = "white";
+    aprilFoolButton.style.padding = "0.5em 1em";
+    aprilFoolButton.style.border = "none";
+    aprilFoolButton.style.borderRadius = "4px";
+    aprilFoolButton.style.cursor = "pointer";
+    aprilFoolButton.onclick = function() {
+        window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '_blank');
+        chrome.storage.local.set({aprilFool: true});
+    };
+    // Ajout du bouton à la page
+    document.body.appendChild(aprilFoolButton);
+  }
 });

@@ -25,6 +25,8 @@ Cf. ci-dessous pour les retours et les contributions.
     - [Recettes](#recettes)
     - [Messagerie](#messagerie)
     - [AT](#at)
+    - [Métrique](#métrique)
+    - [Courriers](#courriers)
   - [Facilitation des imports](#facilitation-des-imports)
   - [Weda-Helper-Companion](#weda-helper-companion)
     - [Impression directe automatique ](#impression-directe-automatique)
@@ -116,10 +118,13 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - rafraichissement automatique des messages Mssanté. Il vérifiera 30 secondes après le chargement de la page, puis toutes les 15 minutes. Il faut donc mieux laisser un onglet ouvert sur cette page.
 
 ### AT
-- simplification de la réalisation des arrêts de travail intégrés à Weda (lecture auto CV, selection auto de l'assuré, impression automatique, autofill de la date en cas de sorties libres)
+- simplification de la réalisation des arrêts de travail intégrés à Weda (lecture auto CV, selection auto de l'assuré, impression automatique, autofill de la date en cas de sorties libres, fermeture automatique)
 
 ### Métrique
 - une estimation du nombre d'action est désormais présente dans les options ! (Attention, c'est très approximatif)
+
+### Courriers
+- le type de document pour l'envoi au DMP est automatiquemnt sauvegardé d'une fois sur l'autre.
 
 
 
@@ -173,6 +178,7 @@ Les encouragements sont les bienvenus sur [le site de la communauté](https://co
 
 ## Remerciements
 - à Weda pour leur super logiciel (j'espère que ces modestes contributions vous inspirerons)
+- au Frangin
 - à DrFlo pour son soutien et sa contribution aux descriptions des options et à ce Readme qu'il a entièrement remanié (et à certains snipets)
 - à Coralie pour les chocolats 😋 !
 - à tout les utilisateurs qui ont commenté, suggéré et encouragé Weda-Helper !

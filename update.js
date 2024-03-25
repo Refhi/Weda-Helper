@@ -6,14 +6,21 @@ function htmlMaker(text) {
 }
 
 var nouveautes = `
+# [2.0] - 2024-03-25
 ## ajout :
 - raccourci clavier pour l'affichage/masquage des antécédents
 - simplification de la réalisation des arrêts de travail intégrés à Weda (lecture auto CV, selection auto de l'assuré, impression automatique, autofill de la date en cas de sorties libres)
-
+- amélioration du message d'accueil et de mise à jour.
+- ajout des formulaires dans les pages pouvant accueillir l'historique à gauche.
+- ajoute une métrique ! Vous pouvez désormais voir une estimation du nombre de clics, de mouvements de souris et d'entrées claviers économisées depuis l'installation de la 2.0 et faire un reset sur le bouton dans les options ! (Je tiens à souligner que par nature, ces valeurs ont une part approximative)
+- le type de document pour l'envoi au DMP est sauvegardé automatiquement à chaque changement dans la page des Courriers
+- <del>Never Gonna Give You Up</del>.
 
 ## fix :
 - erreur de date et de mise en page dans le changelog
 
+## divers :
+- la partie gérant les arrêts de travail a son fichier aati.js dédiée
 `
 
 nouveautes = htmlMaker(nouveautes)
@@ -50,9 +57,9 @@ firstStartMessage = htmlMaker(firstStartMessage)
 var updateMessage = `
 Bonjour !
 
-Weda-Helper vient d'être mis à jour en version ${currentVersion}.
+Weda-Helper vient d'être mis à jour en version ${currentVersion} !
 
-Je vous conseille d'aller faire un tour dans les options pour vérifier les nouveaux paramètres. (bouton de droite sur l'icone de l'extension puis option))
+Je vous conseille d'aller faire un tour dans les options pour vérifier les nouveaux paramètres : bouton de droite sur l'icone de l'extension puis option.
 
 Voici les nouveautés et les améliorations :
 ${nouveautes}
@@ -62,7 +69,7 @@ Les suggestions et les rapports de bug c'est toujours par là : <a href="https:/
 
 Et les encouragements toujours par ici :-)  <a href="https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/m-p/2998" target="_blank">Site de la communauté de weda</a>
 
-💰 Si vous le souhaitez vous pouvez également participer à mes frais de développement (écran, abonnement copilot, etc.) via <a href="https://www.paypal.com/paypalme/refhi" target="_blank">Paypal</a> ("entre proches")
+<span style="font-size: 3em;">💰</span> Si vous le souhaitez vous pouvez également participer à mes frais de développement (écran, abonnement copilot, etc.) via <a href="https://www.paypal.com/paypalme/refhi" target="_blank">Paypal</a> ("entre proches")
 
 Bon courage,
 
@@ -70,18 +77,6 @@ Le dev de Weda-Helper
 `;
 
 updateMessage = htmlMaker(updateMessage)
-
-var aprilFoolMessage = `
-Weda-Helper vous offre un cadeau ! <br><br>
-
-<button style="
-background-color: #4CAF50;
-color: white;
-padding: 0.5em 1em;
-border: none;
-border-radius: 4px;
-cursor: pointer;" onclick="window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '_blank')">Cliquez l'🥚</button>
-`
 
 function showPopup(text) {
     function createOverlay() {
@@ -144,7 +139,7 @@ function showPopup(text) {
 
 
 // Lancement du message en cas de premier lancement ou de mise à jour
-chrome.storage.local.get(['lastExtensionVersion', 'firstStart', 'aprilFool'], function(result) {
+chrome.storage.local.get(['lastExtensionVersion', 'firstStart'], function(result) {
     if (result.lastExtensionVersion !== currentVersion) {
         // If the last version is different from the current version, there was an update
         showPopup(updateMessage);
@@ -156,18 +151,5 @@ chrome.storage.local.get(['lastExtensionVersion', 'firstStart', 'aprilFool'], fu
         showPopup(firstStartMessage);
         // Set firstStart to true
         chrome.storage.local.set({firstStart: true});
-    }
-
-    let aprilFoolDays = [1,2,3];
-    let aprilFoolMonth = 3;
-    let currentDay = new Date().getDate();
-    let currentMonth = new Date().getMonth();
-
-
-    // Easter egg pour le premier avril :) A usage unique.
-    if (!result.aprilFool && currentMonth === aprilFoolMonth && aprilFoolDays.includes(currentDay)) {
-        console.log('April fool');
-        showPopup(aprilFoolMessage);
-        chrome.storage.local.set({aprilFool: true});
     }
 });
