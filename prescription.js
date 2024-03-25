@@ -69,9 +69,11 @@ if (PrescriptionForm) {
                 var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
                 setTimeout(function() {
                     inputField.value = savedValue;
+                    const keyStrokes = savedValue.length;
+                    recordMetrics({keyStrokes: keyStrokes});
                     var button = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_ButtonFind');
                     button.click();
-
+                    recordMetrics({clicks: 1, drags: 1});
                 }, 10);
             }
         }
@@ -227,6 +229,7 @@ if (DemandeForm || PrescriptionForm) {
             lightObserver('.cdk-overlay-container .mat-radio-label', function(elements) {
                 // console.log('[debug].cdk-overlay-container .mat-radio-label', elements);
                 elements[0].click();
+                recordMetrics({clicks: 1, drags: 1});
             });
         }
     });
@@ -244,6 +247,7 @@ if (DemandeForm || PrescriptionForm) {
                     console.log(logContext, 'checkbox checked', checkbox.checked, 'valueRequested', valueRequested);
                     if (checkbox.checked !== valueRequested) {
                         checkbox.click();
+                        recordMetrics({clicks: 1, drags: 1});
                     }
                 }
             }
@@ -266,10 +270,12 @@ if (DemandeForm) {
     lightObserver('#prescriptionType div', function(element) {
         console.log('menu déroulant trouvé, je clique dessus', element);
         element[0].click();
+        recordMetrics({clicks: 1, drags: 1});
     });
 
     lightObserver('#prescriptionType-panel mat-option .mat-option-text', function(elements) {
         console.log('options trouvées, je clique sur la première', elements);
         elements[0].click();
+        recordMetrics({clicks: 1, drags: 1});
     });
 }

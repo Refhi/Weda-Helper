@@ -2,12 +2,23 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
-# [1.9.1] - 2024-03-
+# [2.0] - 2024-03-
+## ajout :
+- raccourci clavier pour l'affichage/masquage des antécédents
+- simplification de la réalisation des arrêts de travail intégrés à Weda (lecture auto CV, selection auto de l'assuré, impression automatique, autofill de la date en cas de sorties libres)
+- amélioration du message d'accueil et de mise à jour <del>et d</del>.
+- ajout des formulaires dans les pages pouvant accueillir l'historique à gauche.
+- ajoute une métrique ! Vous pouvez désormais voir une estimation du nombre de clics, de mouvements de souris et d'entrées claviers économisées depuis l'installation de la 2.0 et faire un reset sur le bouton dans les options ! (Je tiens à souligner que par nature, ces valeurs ont une part approximative)
+  
 ## ajout :
 - le type de document pour l'envoi au DMP est sauvegardé automatiquement à chaque changement dans la page des Courriers
 
 ## fix :
 - erreur de date et de mise en page dans le changelog
+
+## divers :
+- la partie gérant les arrêts de travail a son fichier aati.js dédiée
+
 
 # [1.9] - 2024-03-12
 ## divers :

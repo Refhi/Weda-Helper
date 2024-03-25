@@ -73,6 +73,49 @@ function observeDiseapearance(element, callback, justOnce = false) {
     observer.observe(document, config);
 }
 
+/**
+ * Records metrics about avoided clicks and mouse actions.
+ * @param {{clicks: number, drags: number, keyStrokes: number}} metrics - The metrics to record.
+ */
+let metricsQueue = [];
+let isProcessingQueue = false;
+
+function recordMetrics(metrics) {
+    metricsQueue.push(metrics);
+    if (!isProcessingQueue) {
+        processQueue();
+    }
+}
+
+function processQueue() {
+    if (metricsQueue.length === 0) {
+        isProcessingQueue = false;
+        return;
+    }
+
+    isProcessingQueue = true;
+    let metrics = metricsQueue.shift();
+    chrome.storage.local.get(['clicks', 'drags', 'keyStrokes'], function(result) {
+        let clicks = result.clicks || 0;
+        let drags = result.drags || 0;
+        let keyStrokes = result.keyStrokes || 0;
+
+        if (metrics.clicks) {
+            clicks += metrics.clicks;
+        }
+        if (metrics.drags) {
+            drags += metrics.drags;
+        }
+
+        if (metrics.keyStrokes) {
+            keyStrokes += metrics.keyStrokes;
+        }
+        chrome.storage.local.set({clicks: clicks, drags: drags, keyStrokes: keyStrokes}, processQueue);
+        console.log('Metrics updated:', {clicks, drags, keyStrokes});
+    });
+}
+
+
 // // Boutons du popup
 // Celui pour renvoyer le dernier paiement TPE est dans fse.js
 // Permet de mettre tout les éléments de la page en attente d'import sur "Consultation"
@@ -83,6 +126,7 @@ function allConsultation() {
         // set the dropdown to "Consultation"
         elements[i].selectedIndex = 0;
         console.log('Element set to Consultation:', elements[i]);
+        recordMetrics({clicks: 2, drags: 2});
     }
 }
 
@@ -176,6 +220,7 @@ function clickElementByOnclick(onclickValue) {
     if (element) {
         console.log('Clicking element onclickvalue', onclickValue);
         element.click();
+        recordMetrics({clicks: 1, drags: 1});
         return true;
     } else {
         console.log('Element not found onclickvalue', onclickValue);
@@ -194,6 +239,7 @@ function checkPatientName() {
                 if (spans[i].textContent.includes(patientName)) {
                     console.log('Patient name found');
                     spans[i].click();
+                    recordMetrics({clicks: 1, drags: 1});
                     return true;
                 }
             }
@@ -258,6 +304,7 @@ chrome.storage.local.get('TweakRecetteForm', function (result) {
         var button = document.getElementById('ContentPlaceHolder1_ButtonFind');
         if (button) {
             button.click();
+            recordMetrics({clicks: 1, drags: 1});
             console.log('Button clicked on RecetteForm page');
         }
     }
@@ -279,6 +326,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
                     console.log('cvElement text', cvElement.textContent);
                     if (cvElement.textContent.includes('Vitale insérée')) {
                         console.log('cvElement', cvElement, 'found');
+                        recordMetrics({clicks: 1, drags: 1});
                         clickCarteVitale();
                     }
                 });
@@ -306,6 +354,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
                     if (linkedDossier) {
                         console.log('nextElement', linkedDossier, 'found and clickable');
                         linkedDossier.click();
+                        recordMetrics({clicks: 1, drags: 1});
                     } else {
                         console.log('nextElement', nextElement, 'not found or not clickable');
                     }
@@ -345,6 +394,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
                     copySymbol.addEventListener('click', function () {
                         console.log(copyText);
                         navigator.clipboard.writeText(copyText);
+                        recordMetrics({clicks: 3, drags: 2});
                     });
 
                     // Add the copy symbol next to the element
@@ -363,6 +413,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
                 elements[0].addEventListener('click', function () {
                     console.log('nir', nir);
                     navigator.clipboard.writeText(nir);
+                    recordMetrics({clicks: 3, drags: 2});
                 });
             });
             
@@ -373,6 +424,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
                 elements[0].addEventListener('click', function () {
                     console.log('secu', secu);
                     navigator.clipboard.writeText(secu);
+                    recordMetrics({clicks: 3, drags: 2});
                 });
             });
         }
@@ -388,6 +440,7 @@ if (window.location.href === 'https://secure.weda.fr/vitalzen/gestion.aspx') {
             waitForElement('.mat-icon.notranslate.material-icons.mat-icon-no-color', 'search', 5000, function (element) {
                 console.log('element', element, 'trouvé, je clique dessus');
                 element.click();
+                recordMetrics({clicks: 1, drags: 1});
             });
         }
     });
@@ -493,6 +546,9 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/HprimF
         element.style.top = "0px";
     }
     makeHPRIMListSticky();
+    // dur d'estimer précisement la métrique. Là c'est très grossier, on va dire 5 drags
+    recordMetrics({drags: 5});
+
 }
 
 
@@ -506,6 +562,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/WedaEc
                 var element = document.querySelector('#inboxToolbar > li.inbox.selected > a');
                 if (element) {
                     element.click();
+                    recordMetrics({clicks: 1, drags: 1});
                 }
             }
             setTimeout(function() {

@@ -1,48 +1,55 @@
 // // lien avec Weda-Helper-Companion
 function sendToCompanion(urlCommand, blob = null, buttonToClick = null) {
-    chrome.storage.local.get(['portCompanion', 'apiKey'], function (result) {
-        const portCompanion = result.portCompanion;
-        const apiKey = result.apiKey;
-        if (!portCompanion || !apiKey) {
-            console.warn('portCompanion ou la clé API ne sont pas définis');
-            return;
-        }
-        let versionToCheck = "1.2";
-        let urlWithParam = `http://localhost:${portCompanion}/${urlCommand}` +
-                  `?apiKey=${apiKey}` +
-                  `&versioncheck=${versionToCheck}`;
-        let fetchOptions = blob ? {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/pdf',
-            },
-            body: blob,
-        } : {};
+    return new Promise((resolve, reject) => {
+        chrome.storage.local.get(['portCompanion', 'apiKey'], function (result) {
+            const portCompanion = result.portCompanion;
+            const apiKey = result.apiKey;
+            if (!portCompanion || !apiKey) {
+                console.warn('portCompanion ou la clé API ne sont pas définis');
+                reject(new Error('portCompanion ou la clé API ne sont pas définis'));
+                return;
+            }
+            let versionToCheck = "1.2";
+            let urlWithParam = `http://localhost:${portCompanion}/${urlCommand}` +
+                      `?apiKey=${apiKey}` +
+                      `&versioncheck=${versionToCheck}`;
+            let fetchOptions = blob ? {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/pdf',
+                },
+                body: blob,
+            } : {};
 
-        let errortype = "[" + urlCommand + "]";
+            let errortype = "[" + urlCommand + "]";
 
-        fetch(urlWithParam, fetchOptions)
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    console.warn(errortype + ' Error:', data.error);
-                    alert(errortype + ' Erreur : ' + data.error);
-                } else {
-                    console.log(data);
-                }
-            })
-            .catch(error => {
-                console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
-                if (!errortype.includes('[focus]')) {
-                    alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
-                }
-            })
-            .finally(() => {
-                if (buttonToClick) {
-                    buttonToClick.click();
-                }
-                console.log('Impression via companion terminée');
-            });
+            fetch(urlWithParam, fetchOptions)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.warn(errortype + ' Error:', data.error);
+                        alert(errortype + ' Erreur : ' + data.error);
+                        reject(new Error(errortype + ' Error: ' + data.error));
+                    } else {
+                        console.log(data);
+                        resolve(data);
+                    }
+                })
+                .catch(error => {
+                    console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
+                    if (!errortype.includes('[focus]')) {
+                        alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
+                    }
+                    reject(error);
+                })
+                .finally(() => {
+                    if (buttonToClick) {
+                        buttonToClick.click();
+                        recordMetrics({clicks: 1, drags: 1});
+                    }
+                    console.log('Impression via companion terminée');
+                });
+        });
     });
 }
 
@@ -67,6 +74,8 @@ function sendtpeinstruction(amount) {
             console.log('sendinstruction', amount + 'c€' + ' to TPE');
             sendToCompanion(`tpe/${amount}`);
             console.log('Instruction envoyée au TPE');
+            const keyStrokes = amount.toString().length;
+            recordMetrics({ keyStrokes: keyStrokes });
         }
     });
 }
@@ -79,21 +88,12 @@ function sendLastTPEamount() {
         if (lastTPEamount) {
             console.log('lastTPEamount', lastTPEamount);
             sendtpeinstruction(lastTPEamount);
+            const keyStrokes = lastTPEamount.toString().length;
+            recordMetrics({ keyStrokes: keyStrokes });
         }
     });
 }
 
-function startDMPSender() {
-    console.log('startDMPSender started')
-    var dmpCheckBox = document.getElementById('mat-checkbox-1-input');
-    if (dmpCheckBox && dmpCheckBox.checked) {
-        console.log('DMP fixer started car checkbox est cochée');
-        // trouve l'élement avec les classes : mat-focus-indicator mat-flat-button mat-button-base mat-primary
-        var dmpButton = document.getElementsByClassName('mat-focus-indicator mat-flat-button mat-button-base mat-primary')[0];
-        console.log('dmpButton trouvé, je clique dessus');
-        dmpButton.click();
-    }
-}
 
 // déclenchement de l'impression dans Weda-Helper-Companion
 function sendPrint(buttonToClick) {
@@ -136,6 +136,7 @@ function sendPrint(buttonToClick) {
             
                 if (url !== 'about:blank') {
                     clearInterval(intervalId);
+                    recordMetrics({clicks: 3, drags: 4});
                     fetch(url)
                         .then(response => response.blob())
                         .then(blob => {

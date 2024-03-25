@@ -19,15 +19,15 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     }
 });
 
-// fonction scanner
-// function lancerScan() {
-//     console.log('shortcut_scanner activé');
-//     // let scanner = document.querySelector('#ContentPlaceHolder1_MenuPeripherique\\:submenu\\:28 .dynamic .level2');
-//     let scanner = document.querySelector('#ContentPlaceHolder1_MenuPeripherique .level1 .level2 .dynamic .level2');
-//     if (scanner) {
-//         scanner.click();
-//     }
-// }
+function toggleAtcd() {
+    console.log('toggleAtcd activé');
+    var element = document.getElementById('ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent');
+    if (element) {
+        element.click();
+        recordMetrics({clicks: 1, drags: 1});
+    }
+}
+
 
 // Permet d'appuyer sur le bouton "Valider" ou équivalent
 function push_valider() {
@@ -38,6 +38,7 @@ function push_valider() {
         for (var i = 0; i < elements.length; i++) {
             if (elements[i].value !== class_exception && elements[i].id !== id_exception) {
                 elements[i].click();
+                recordMetrics({clicks: 1, drags: 1});
                 return true
             }
         }
@@ -60,6 +61,7 @@ function push_valider() {
         console.log('Clicking on target element', targetElement);
         if (targetElement) {
             targetElement.click();
+            recordMetrics({clicks: 1, drags: 1});
             tpesender();
             return true;
         } else {
@@ -180,6 +182,7 @@ function clickFirstPrinter() {
     console.log('first printer Element is', element);
     if (element) {
         element.click();
+        // records metrics fait dans companionLink
         return true;
     } else {
         return false;
@@ -192,6 +195,7 @@ function clickElementByClass(className) {
     if (elements.length > 0) {
         var lastElement = elements[elements.length - 1]; // Get the last element
         lastElement.click(); // Click the last element with the class
+        recordMetrics({clicks: 1, drags: 1});
         console.log('[clickElementByClass] : Element clicked class', className);
         console.dir(lastElement); // Log all properties of the clicked element
         return true;
@@ -209,6 +213,7 @@ function GenericClicker(valueName, value) {
         var element = elements[0]
         // console.log('Clicking element', valueName, value);
         element.click();
+        recordMetrics({clicks: 1, drags: 1});
         return true;
     } else {
         // console.log('Element not found', valueName, value);
@@ -221,6 +226,7 @@ function clickElementById(elementId) {
     var element = document.getElementById(elementId);
     if (element) {
         element.click();
+        recordMetrics({clicks: 1, drags: 1});
         console.log('Element clicked:', elementId);
         return true;
     } else {
@@ -234,6 +240,7 @@ function clickCarteVitale() {
     clickElementByClass("cv");
     if (!GenericClicker("title", "Relance une lecture de la carte vitale")) {
         GenericClicker("mattooltip", "Lire la Carte Vitale");
+        recordMetrics({clicks: 1, drags: 1});
     }
 }
 
@@ -249,6 +256,7 @@ function submenuW(description) {
         console.log('level3Element', level3Element);
         if (level3Element) {
             level3Element.click();
+            recordMetrics({clicks: 1, drags: 3});
             console.log('Element clicked:', level3Element);
             return true;
         } else {
@@ -258,6 +266,7 @@ function submenuW(description) {
             console.log('level2Element', level2Element);
             if (level2Element) {
                 level2Element.click();
+                recordMetrics({clicks: 1, drags: 2});
                 console.log('Element clicked:', level2Element);
                 return true;
             }
@@ -274,6 +283,7 @@ function clickElementByChildtextContent(childtextContent) {
     for (var i = 0; i < elements.length; i++) {
         if (elements[i].textContent === childtextContent) {
             elements[i].parentNode.click();
+            recordMetrics({clicks: 1, drags: 1});
             return true
         }
     }
@@ -287,6 +297,7 @@ function focusElementByName(elementName) {
     var element = document.getElementsByName(elementName)[0];
     if (element) {
         element.focus();
+        recordMetrics({clicks: 1, drags: 1});
         console.log('Focusing element success:', elementName);
     }
 }
@@ -306,6 +317,7 @@ function openSearch() {
     var link = document.createElement('a');
     link.href = 'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx';
     link.click();
+    recordMetrics({clicks: 1, drags: 3});
 }
 
 const keyCommands = {
@@ -420,9 +432,9 @@ const keyCommands = {
             openSearch();            
         }
     },
-    // 'shortcut_scanner': {
-    //     description: 'Raccourci Scanner',
-    //     key: 'alt+z',
-    //     action: lancerScan
-    // },
+    'shortcut_atcd': {
+        description: 'Raccourci Affichage antécédents',
+        key: 'alt+z',
+        action: toggleAtcd
+    },
 };

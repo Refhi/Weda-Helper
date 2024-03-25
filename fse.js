@@ -95,22 +95,30 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
                 function degradeTeleconsult(type) {
                     // fermer la fenêtre de lecture de carte vitale
                     var closeButton = document.querySelector('a[title="Fermer cette fenêtre"]');
-                    if (closeButton) {closeButton.click();}
+                    if (closeButton) {
+                        closeButton.click();
+                        recordMetrics({clicks: 1, drags: 1});
+                    }
                     // Trouver l'icône "fingerprint" et cliquer dessus
                     var fingerprintIcon = document.querySelector('.mat-icon.notranslate.material-icons.mat-icon-no-color');
                     console.log('Détecté : pression sur bouton dégradée. Je clique sur le bouton emprunte digitale');
                     fingerprintIcon.click();
+                    recordMetrics({clicks: 1, drags: 1});
                     // Attendre que le bouton contenant le texte "Degradée" existe et cliquer dessus
                     waitForElement('[class="mat-button-wrapper"]', type, 5000, function(degradeeButton) {
                         setTimeout(function() {
                             console.log('Détecté : pression sur bouton ', type, '. Je clique sur le bouton degradé');
                             degradeeButton.click();
+                            recordMetrics({clicks: 1, drags: 1});
                         }, 100); // un clic trop précoce semble avoir des effets de bord
                         // Puis clique sur le bouton "Adri"
                         setTimeout(function() {
                             console.log('Détecté : pression sur bouton ', type, '. Je clique sur le bouton de lecture adri');
                             var adriElement = document.querySelector('img[src="/Images/adri.png"]');
-                            if (adriElement) {adriElement.click();}
+                            if (adriElement) {
+                                adriElement.click();
+                                recordMetrics({clicks: 1, drags: 1});
+                            }
                         }, 500);
                     });
                 }
@@ -179,6 +187,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
                         for (var i = 0; i < elements.length; i++) {
                             if (elements[i].textContent.includes(patientName)) {
                                 elements[i].click();
+                                recordMetrics({clicks: 1, drags: 1});
                                 break;
                             }
                         }
@@ -193,6 +202,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
                 waitForElement('span', 'CPS non lue', 5000, function(spanElement) {
                     console.log('Détecté : CPS non lue. Je clique sur le bouton de lecture de la CPS');
                     spanElement.click();
+                    recordMetrics({clicks: 1, drags: 1});
 
                 });
             }
@@ -208,6 +218,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
                         var defautElement = Array.from(elements).find(el => el.textContent.trim().includes('Défaut'));
                         if (defautElement) {
                             defautElement.click();
+                            recordMetrics({clicks: 1, drags: 1});
                         } else {
                             console.log('Aucun élément contenant "Défaut" n\'a été trouvé.');
                             alert('Weda-Helper : "cotation par défaut" n\'est pas désactivé dans les options, mais aucune cotation favorite nommée "Défaut" n\'a été trouvé. Vous devez soit ajouter un favori nommé exactement "Défaut", soit désactiver l\'option "cotation par défaut" dans les options de Weda-Helper. Ce changement est rendu nécessaire par la dernière mise à jour.');
@@ -260,6 +271,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
                     if (element && element.type === 'radio') {
                         console.log('trying to check element', element);
                         element.checked = true;
+                        recordMetrics({clicks: 1, drags: 1});
                         element.dispatchEvent(new Event('change'));
                     }
                 }

@@ -24,6 +24,7 @@ Cf. ci-dessous pour les retours et les contributions.
   - [Divers](#divers)
     - [Recettes](#recettes)
     - [Messagerie](#messagerie)
+    - [AT](#at)
   - [Facilitation des imports](#facilitation-des-imports)
   - [Weda-Helper-Companion](#weda-helper-companion)
     - [Impression directe automatique ](#impression-directe-automatique)
@@ -54,6 +55,7 @@ Cf. ci-dessous pour les retours et les contributions.
 - Ouvre ou crée la prescription n°1 (Suggestion : Alt+4)
 - Ouvre la recherche (Suggestion : Alt+R)
 - Appuie sur W (Suggestion : Alt+W)
+- Affiche/masque les antécédents (Suggestion : Alt+Z)
 
 **Chrome limite malheureusement les raccourcis par défaut. Les raccourcis doivent donc être définis manuellement (et entièrement personnalisés) dans chrome://extensions/shortcuts**
 
@@ -65,7 +67,7 @@ Cf. ci-dessous pour les retours et les contributions.
 *Cette fonction nécessite le connecteur Weda V3 installé sur votre PC. Demandez son installation à votre technicien.*
 
 ## Consultations
-- Affichage automatique de l'historique dans une colonne à gauche : ouvre automatiquement un historique simplifié (pas de recettes notamment) dans une colonne à gauche de l'écran, uniquement dans les pages de Consultation, de Courrier, de Certificat et Demandes.
+- Affichage automatique de l'historique dans une colonne à gauche : ouvre automatiquement un historique simplifié (pas de recettes notamment) dans une colonne à gauche de l'écran, uniquement dans les pages de Consultation, de Courrier, de Certificat, de Formulaire et Demandes.
 - Ouverture automatique des antécédents (désactivé par défaut)
 - Affichage simplifié des courbes de pédiatrie : dans les pages de consultation, il suffit de survoler "📈" devant "Poids", "Taille", "Pc" ou "IMC" pour afficher les courbes correspondantes (ne s'affiche que pour les âges et genres pertinents). Un clic permet de maintenir la courbe affichée. Un autre clic sur 📈 ou sur la courbe permet de la fermer.
 Modification du comportement de la tabulation après recherche patient. Ctrl+P permet de l'imprimer.
@@ -112,6 +114,13 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Messagerie
 - rafraichissement automatique des messages Mssanté. Il vérifiera 30 secondes après le chargement de la page, puis toutes les 15 minutes. Il faut donc mieux laisser un onglet ouvert sur cette page.
+
+### AT
+- simplification de la réalisation des arrêts de travail intégrés à Weda (lecture auto CV, selection auto de l'assuré, impression automatique, autofill de la date en cas de sorties libres)
+
+### Métrique
+- une estimation du nombre d'action est désormais présente dans les options ! (Attention, c'est très approximatif)
+
 
 
 ## Facilitation des imports
@@ -168,3 +177,4 @@ Les encouragements sont les bienvenus sur [le site de la communauté](https://co
 - à Coralie pour les chocolats 😋 !
 - à tout les utilisateurs qui ont commenté, suggéré et encouragé Weda-Helper !
 - à notre Expert qui est vraiment top (ils se reconnaîtrons)
+- et bien sur à ceux qui ont participé € ^^

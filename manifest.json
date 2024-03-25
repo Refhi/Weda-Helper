@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper",
-  "version": "1.9",
+  "version": "2.0",
   "options_page": "options.html",
   "permissions": ["storage"],
   "host_permissions": ["http://localhost/"],
@@ -23,7 +23,8 @@
           "searchUpload.js",
           "companionlink.js",
           "prescription.js",
-          "update.js"]
+          "update.js",
+          "aati.js"]
     }
   ],
   "commands": {
@@ -83,6 +84,9 @@
     },
     "shortcut_search" : {
       "description": "Ouvre la recherche (Suggestion : Alt+R)"
+    },
+    "shortcut_atcd" : {
+      "description": "Ouvre les antécédents (Suggestion : Alt+Z)"
     }
   }
 }
