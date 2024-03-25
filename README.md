@@ -118,6 +118,9 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 ### AT
 - simplification de la réalisation des arrêts de travail intégrés à Weda (lecture auto CV, selection auto de l'assuré, impression automatique, autofill de la date en cas de sorties libres)
 
+### Métrique
+- une estimation du nombre d'action est désormais présente dans les options ! (Attention, c'est très approximatif)
+
 
 
 ## Facilitation des imports

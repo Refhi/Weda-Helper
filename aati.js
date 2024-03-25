@@ -56,7 +56,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Aati.a
 
 
             lightObserver(selecteurBoutonCV, function (elements) {elements[0].click();});
-            waitForElement('[title="Déclarer l\'AT pour ce bénéficiaire."]', null, 5000, clickPremierPatientCV);
+            waitForElement('[title="Déclarer l\'AT pour ce bénéficiaire."]', null, 50000, clickPremierPatientCV); // assez long car sinon la demande CPS peux bloquer le processus
             lightObserver(selecteurSortieNonLimites, fillDateSorties, document, true);
             lightObserver(selectorExitButton, function (elements) {
                 setTimeOfSending('autoAATIexit');
@@ -74,21 +74,22 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Aati.a
                             .then(response => response.blob())
                             .then(blob => {
                                 console.log('blob', blob);
-                                sendToCompanion(`print`, blob);
+                                return sendToCompanion(`print`, blob);
+                            })
+                            .then(() => {
+                                // The blob has been successfully transferred
+                                console.log('The blob has been successfully transferred.');
                                 recordMetrics({clicks: 3, drags: 3});
+                                window.close();
                             })
                             .catch(error => {
-                                console.error('Error:', error);
-                            })
-                            .finally(() => {
-                                setTimeout( function() {
-                                    window.close();
-                                }, 500);
+                                console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
+                                if (!errortype.includes('[focus]')) {
+                                    alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
+                                }
                             });
-
                     }
                 });
-
             }
         }
     });
