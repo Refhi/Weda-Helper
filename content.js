@@ -530,3 +530,25 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Aati.a
         }
     });
 }
+
+// Sélection automatique du type de document pour les courriers envoyés au DMP
+if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/CourrierForm.aspx')) {
+    let dropDownMenu = document.querySelector('#ContentPlaceHolder1_DropDownListDocumentTypes');
+    function watchDocumentTypeCourrierDMP() {
+        dropDownMenu.addEventListener('change', function() {
+            console.log('New selected value:', this.value);
+            chrome.storage.local.set({ 'selectedDocumentTypeCourrierDMP': this.value });
+        });
+    }
+
+    // after page load, change the dropdown value to the last selected value
+    chrome.storage.local.get('selectedDocumentTypeCourrierDMP', function (result) {
+        let selectedDocumentTypeCourrierDMP = result.selectedDocumentTypeCourrierDMP;
+        console.log('selectedDocumentTypeCourrierDMP', selectedDocumentTypeCourrierDMP);
+        if (selectedDocumentTypeCourrierDMP) {
+            dropDownMenu.value = selectedDocumentTypeCourrierDMP;
+        }
+    });
+
+    watchDocumentTypeCourrierDMP();
+}

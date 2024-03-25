@@ -3,6 +3,9 @@
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
 # [1.9.1] - 2024-03-
+## ajout :
+- le type de document pour l'envoi au DMP est sauvegardé automatiquement à chaque changement dans la page des Courriers
+
 ## fix :
 - erreur de date et de mise en page dans le changelog
 
