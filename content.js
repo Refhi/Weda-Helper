@@ -73,47 +73,6 @@ function observeDiseapearance(element, callback, justOnce = false) {
     observer.observe(document, config);
 }
 
-/**
- * Records metrics about avoided clicks and mouse actions.
- * @param {{clicks: number, drags: number, keyStrokes: number}} metrics - The metrics to record.
- */
-let metricsQueue = [];
-let isProcessingQueue = false;
-
-function recordMetrics(metrics) {
-    metricsQueue.push(metrics);
-    if (!isProcessingQueue) {
-        processQueue();
-    }
-}
-
-function processQueue() {
-    if (metricsQueue.length === 0) {
-        isProcessingQueue = false;
-        return;
-    }
-
-    isProcessingQueue = true;
-    let metrics = metricsQueue.shift();
-    chrome.storage.local.get(['clicks', 'drags', 'keyStrokes'], function(result) {
-        let clicks = result.clicks || 0;
-        let drags = result.drags || 0;
-        let keyStrokes = result.keyStrokes || 0;
-
-        if (metrics.clicks) {
-            clicks += metrics.clicks;
-        }
-        if (metrics.drags) {
-            drags += metrics.drags;
-        }
-
-        if (metrics.keyStrokes) {
-            keyStrokes += metrics.keyStrokes;
-        }
-        chrome.storage.local.set({clicks: clicks, drags: drags, keyStrokes: keyStrokes}, processQueue);
-        console.log('Metrics updated:', {clicks, drags, keyStrokes});
-    });
-}
 
 
 // // Boutons du popup
@@ -608,4 +567,12 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Courri
     });
 
     watchDocumentTypeCourrierDMP();
+}
+
+
+// Sélection automatique du champ "titre" lors de la création d'un antécédent.
+if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/AntecedentForm.aspx')) {
+    lightObserver('#ContentPlaceHolder1_TextBoxAntecedentNom', function (elements) {
+        elements[0].focus();
+    });
 }

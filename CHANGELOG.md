@@ -2,6 +2,18 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+# [2.1] - 2024
+## ajout :
+- le focus est désormais automatiquement placé sur le champ de titre lors de la création ou l'édition d'un antécédent.
+- métrique utilisateur désormais détaillée par jour/semaine/mois/année et globale
+- 
+## fix :
+- si l'option "Companion" est inactive, la fenêtre de visualisation de l'arrêt de travail ne se ferme pas.
+- amélioration du lien avec le Companion : les arrêts de travail sont maintenant imprimés automatiquement.
+- pour les arrêts de travail (le service AATI) ajout d'un bouton pour le faire avec ou sans la CV du patient.
+- correction d'une coquille dans les options par défaut
+
+
 # [2.0] - 2024-03-25
 ## ajout :
 - raccourci clavier pour l'affichage/masquage des antécédents

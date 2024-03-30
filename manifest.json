@@ -24,7 +24,8 @@
           "companionlink.js",
           "prescription.js",
           "update.js",
-          "aati.js"]
+          "aati.js",
+          "metrics.js"]
     }
   ],
   "commands": {
