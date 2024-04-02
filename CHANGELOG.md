@@ -2,6 +2,11 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+# [2.1] - 
+## fix :
+- coquille dans les options sur "Formulaire"
+- aati [TODO]
+
 # [2.0] - 2024-03-25
 ## ajout :
 - raccourci clavier pour l'affichage/masquage des antécédents

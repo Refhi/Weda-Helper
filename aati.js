@@ -80,7 +80,9 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Aati.a
                                 // The blob has been successfully transferred
                                 console.log('The blob has been successfully transferred.');
                                 recordMetrics({clicks: 3, drags: 3});
-                                window.close();
+                                setTimeout(function () {
+                                    window.close();
+                                }, 1000); // essai avec un délai de 1s
                             })
                             .catch(error => {
                                 console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
