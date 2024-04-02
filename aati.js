@@ -1,8 +1,45 @@
 // Arrêts de travail automatisés
-if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Aati.aspx') || window.location.href.startsWith('https://secure.weda.fr/BinaryData.aspx')) {
+
+
+// Ajout d'un 2e bouton à côté de AT nommé "AT sans CV" pour shunter la lecture automatique de la carte vitale
+if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx')) {
     chrome.storage.local.get('autoAATI', function (result) {
+        console.log('[autoAATI] démarrage de la fonction permettant l\'ajout d\'un bouton "AT sans CV" à côté de "Transmettre un avis d\'arrêt de travail via le téléservice AATi"');
+        if (result.autoFillAATI !== false) {
+            let selecteurBoutonAT = '[title="Transmettre un avis d\'arrêt de travail via le téléservice AATi"]';
+            function processButton (elements) {
+                // remplace le texte "AT" par "AT avec CV | AT sans CV"
+                elements[0].textContent = 'AT avec CV | AT sans CV';
+            
+                // ajoute sur la partie droite de l'élément un event listener pour le click qui met dans le local storage la valeur "timestampAATIsansCV" au moment du click
+                elements[0].addEventListener('click', function(e) {
+                    // Récupère la largeur de l'élément
+                    let boutonWidth = elements[0].offsetWidth;
+            
+                    // Récupère la position du clic relative à l'élément
+                    let clickPosition = e.clientX - elements[0].getBoundingClientRect().left;
+            
+                    // Si le clic est sur la moitié droite de l'élément
+                    if (clickPosition > boutonWidth / 2) {
+                        console.log('Clic sur AT sans CV détecté au timestamp', Date.now());
+                        // Stocke le timestamp actuel dans le stockage local avec la clé "timestampAATIsansCV"
+                        chrome.storage.local.set({timestampAATIsansCV: Date.now()});
+                    }
+                });
+            }
+
+            lightObserver(selecteurBoutonAT, processButton, document, true);
+        }
+    });
+}
+
+
+
+if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Aati.aspx') || window.location.href.startsWith('https://secure.weda.fr/BinaryData.aspx')) {
+    chrome.storage.local.get(['autoAATI','timestampAATIsansCV'], function (result) {
         if (result.autoFillAATI !== false) {
             let selecteurBoutonCV = '#mat-dialog-1 > ng-component > div:nth-child(2) > div.footer.weda-row.weda-main-align-around.weda-cross-align-center.ng-star-inserted > button:nth-child(1)'
+            let selecteurBoutonEntreeManuelle = '' // TODO à définir
             let selecteurSortieNonLimites = '#form1 > div:nth-child(10) > div > dmp-aati-form > div > div:nth-child(2) > div.ml10 > div > div.frameContent > dmp-aati-leave-permission > div.flexColStart.mt10 > div.flexColStart.mt10.ng-star-inserted > div.flexColStart.pt3.ng-star-inserted > div.flexRow.mt5 > input'
             let selectorExitButton = '.frameback.dmtiForm.ng-star-inserted .imgfixe a'
 
@@ -54,8 +91,21 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Aati.a
                 });
             }
 
+            function clickProperButton(elements) {
+                if (Date.now() - result.timestampAATIsansCV < 10000) {
+                    console.log('timestampAATIsansCV', result.timestampAATIsansCV, 'is less than 10 seconds ago donc je dois cliquer sur le bouton "AT sans CV"');
+                    let boutonSansCV = querySelector(selecteurBoutonEntreeManuelle);
+                    if (boutonSansCV) {
+                        boutonSansCV.click();
+                    }
+                } else {
+                    console.log('timestampAATIsansCV', result.timestampAATIsansCV, 'is more than 10 seconds ago donc je dois cliquer sur le bouton "AT avec CV"');
+                    elements[0].click();
+                }
+            }
 
-            lightObserver(selecteurBoutonCV, function (elements) {elements[0].click();});
+
+            lightObserver(selecteurBoutonCV, clickProperButton, document, true);
             waitForElement('[title="Déclarer l\'AT pour ce bénéficiaire."]', null, 50000, clickPremierPatientCV); // assez long car sinon la demande CPS peux bloquer le processus
             lightObserver(selecteurSortieNonLimites, fillDateSorties, document, true);
             lightObserver(selectorExitButton, function (elements) {
@@ -65,8 +115,8 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Aati.a
             });
 
             if (window.location.href.startsWith('https://secure.weda.fr/BinaryData.aspx')) {
-                chrome.storage.local.get('autoAATIexit', function (result) {
-                    if (Date.now() - result.autoAATIexit < 10000) {
+                chrome.storage.local.get(['autoAATIexit', 'RemoveLocalCompanionPrint'], function (result) {
+                    if (Date.now() - result.autoAATIexit < 10000 && result.RemoveLocalCompanionPrint === false) {
                         console.log('autoAATIexit', result.autoAATIexit, 'is less than 10 seconds ago');
                         let url = window.location.href;
                         console.log('url', url);

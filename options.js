@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
     'RemoveLocalCompanionTPE': true,
     'KeepFocus': true,
     'portCompanion': '4821',
-    'defaultCotation': 'GS',
+    'defaultCotation': true,
     'apiKey': 'votre clé API par défaut',
     'keepMedSearch': true,
     'addMedSearchButtons': true,
@@ -158,7 +158,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // ajoute un bouton pour effacer les valeurs des textes de bienvenue
 var clearButton = document.createElement('button');
-clearButton.textContent = 'Raz textes de bienvenue et métrique utilisateur';
+clearButton.textContent = 'Raz textes de bienvenue';
 clearButton.addEventListener('click', function() {
   // Effacez les valeurs lorsque le bouton est cliqué
   chrome.storage.local.remove(['lastExtensionVersion', 'firstStart', 'aprilFool'], function() {
@@ -169,17 +169,100 @@ clearButton.addEventListener('click', function() {
 // Ajoutez le bouton à la page
 document.body.appendChild(clearButton);
 
-// affiche une info en fin de page avec les métriques utilisateur stockées dans     chrome.storage.local.get(['clicks', 'drags'], function(result) {
+// // affiche une info en fin de page avec les métriques utilisateur stockées
+// fonctions suivantes désactivées car elles sont présentes à des fins de test uniquement
+// // effacer les métriques
+// function clearMetrics() {
+//   // Clear all existing metrics
+//   chrome.storage.local.clear(() => {
+//     console.log('All existing metrics cleared');
+//   });
+// }
 
-chrome.storage.local.get(['clicks', 'drags', 'keyStrokes'], function(result) {
-  let clics = result.clicks || 0;
-  let drags = result.drags || 0;
-  let keyStrokes = result.keyStrokes || 0;
+// // Add a button for clearing metrics
+// let clearMetricsButton = document.createElement('button');
+// clearMetricsButton.textContent = 'Effacer toutes les métriques';
+// clearMetricsButton.addEventListener('click', clearMetrics);
+// document.body.appendChild(clearMetricsButton);
 
-  let userMetrics = document.createElement('p');
-  userMetrics.innerHTML = `Nombre d'actions de souris évitées depuis l'installation : <br> Clics: ${clics}<br> Mouvements de souris évités : ${drags} <br> Frappes de clavier évitées : ${keyStrokes}`;
-  document.body.appendChild(userMetrics);
+
+
+
+function getMetricsForPeriod(periodDays) {
+  let startDate = new Date();
+  startDate.setDate(startDate.getDate() - periodDays);
+  let startDateStr = startDate.toISOString().split('T')[0];
+
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(null, function(items) {
+      let periodMetrics = { clicks: 0, drags: 0, keyStrokes: 0 };
+      for (let key in items) {
+        if (key >= startDateStr && key !== 'globalMetrics') {
+          periodMetrics.clicks += items[key].clicks || 0;
+          periodMetrics.drags += items[key].drags || 0;
+          periodMetrics.keyStrokes += items[key].keyStrokes || 0;
+        }
+      }
+      resolve(periodMetrics);
+    });
+  });
+}
+
+Promise.all([
+  getMetricsForPeriod(1), // Today
+  getMetricsForPeriod(7), // Last 7 days
+  getMetricsForPeriod(30), // Last 30 days
+  getMetricsForPeriod(365), // Last 365 days
+  new Promise((resolve, reject) => { // Since installation
+    chrome.storage.local.get(['globalMetrics'], function(result) {
+      resolve(result.globalMetrics || { clicks: 0, drags: 0, keyStrokes: 0 });
+    });
+  })
+]).then(([todayMetrics, weekMetrics, monthMetrics, yearMetrics, totalMetrics]) => {
+  let metricsElement = document.createElement('table');
+  metricsElement.innerHTML = `
+    <tr>
+      <th></th>
+      <th>Clics de souris évités</th>
+      <th>Mouvements de souris évités</th>
+      <th>Frappes de clavier évitées</th>
+    </tr>
+    <tr>
+      <td>Aujourd'hui</td>
+      <td>${todayMetrics.clicks}</td>
+      <td>${todayMetrics.drags}</td>
+      <td>${todayMetrics.keyStrokes}</td>
+    </tr>
+    <tr>
+      <td>Cette semaine</td>
+      <td>${weekMetrics.clicks}</td>
+      <td>${weekMetrics.drags}</td>
+      <td>${weekMetrics.keyStrokes}</td>
+    </tr>
+    <tr>
+      <td>Ce mois</td>
+      <td>${monthMetrics.clicks}</td>
+      <td>${monthMetrics.drags}</td>
+      <td>${monthMetrics.keyStrokes}</td>
+    </tr>
+    <tr>
+      <td>Cette année</td>
+      <td>${yearMetrics.clicks}</td>
+      <td>${yearMetrics.drags}</td>
+      <td>${yearMetrics.keyStrokes}</td>
+    </tr>
+    <tr>
+      <td>Depuis l'installation</td>
+      <td>${totalMetrics.clicks}</td>
+      <td>${totalMetrics.drags}</td>
+      <td>${totalMetrics.keyStrokes}</td>
+    </tr>
+  `;
+  document.body.appendChild(metricsElement);
 });
+
+
+
 
 
 // affiche l'easter egg du 1er avril
