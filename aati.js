@@ -39,11 +39,12 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Aati.a
     chrome.storage.local.get(['autoAATI','timestampAATIsansCV'], function (result) {
         if (result.autoFillAATI !== false) {
             let selecteurBoutonCV = '#mat-dialog-1 > ng-component > div:nth-child(2) > div.footer.weda-row.weda-main-align-around.weda-cross-align-center.ng-star-inserted > button:nth-child(1)'
-            let selecteurBoutonEntreeManuelle = '' // TODO à définir
+            let selecteurBoutonEntreeManuelle = '#mat-dialog-1 > ng-component > div:nth-child(2) > div.footer.weda-row.weda-main-align-around.weda-cross-align-center.ng-star-inserted > button:nth-child(2)'
             let selecteurSortieNonLimites = '#form1 > div:nth-child(10) > div > dmp-aati-form > div > div:nth-child(2) > div.ml10 > div > div.frameContent > dmp-aati-leave-permission > div.flexColStart.mt10 > div.flexColStart.mt10.ng-star-inserted > div.flexColStart.pt3.ng-star-inserted > div.flexRow.mt5 > input'
             let selectorExitButton = '.frameback.dmtiForm.ng-star-inserted .imgfixe a'
 
             function clickPremierPatientCV () {
+                console.log('clickPremierPatientCV déclenché');
                 var boutonPremierPatientCV = document.querySelector('[title="Déclarer l\'AT pour ce bénéficiaire."]');
                 if (boutonPremierPatientCV) {
                     boutonPremierPatientCV.click();
@@ -92,9 +93,11 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Aati.a
             }
 
             function clickProperButton(elements) {
-                if (Date.now() - result.timestampAATIsansCV < 10000) {
+                console.log('clickProperButton déclenché');
+                if (Date.now() - result.timestampAATIsansCV < 5000) {
                     console.log('timestampAATIsansCV', result.timestampAATIsansCV, 'is less than 10 seconds ago donc je dois cliquer sur le bouton "AT sans CV"');
-                    let boutonSansCV = querySelector(selecteurBoutonEntreeManuelle);
+                    let boutonSansCV = document.querySelector(selecteurBoutonEntreeManuelle);
+                    console.log('boutonSansCV', boutonSansCV);
                     if (boutonSansCV) {
                         boutonSansCV.click();
                     }
@@ -110,6 +113,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Aati.a
             lightObserver(selecteurSortieNonLimites, fillDateSorties, document, true);
             lightObserver(selectorExitButton, function (elements) {
                 setTimeOfSending('autoAATIexit');
+                console.log('clicking on the exit button + timestamp');
                 elements[0].click();
                 recordMetrics({clicks: 1, drags: 1});
             });
@@ -140,6 +144,9 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Aati.a
                                     alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
                                 }
                             });
+                    } else {
+                        // en cas de Companion désactivé
+                        window.print();
                     }
                 });
             }

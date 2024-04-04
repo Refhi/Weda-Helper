@@ -531,21 +531,6 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/WedaEc
     });
 }
 
-// Arrêts de travail automatisés
-if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Aati.aspx')) {
-    chrome.storage.local.get('autoAATI', function (result) {
-        if (result.autoFillAATI !== false) {
-            let selecteurBoutonCV = '#mat-dialog-1 > ng-component > div:nth-child(2) > div.footer.weda-row.weda-main-align-around.weda-cross-align-center.ng-star-inserted > button:nth-child(1)'
-            function clickCV () {
-                var boutonLireCarteVitale = document.querySelector(selecteurBoutonCV);
-                if (boutonLireCarteVitale) {
-                    boutonLireCarteVitale.click();
-                }
-            }
-            lightObserver(selecteurBoutonCV, clickCV, document, true);
-        }
-    });
-}
 
 // Sélection automatique du type de document pour les courriers envoyés au DMP
 if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/CourrierForm.aspx')) {

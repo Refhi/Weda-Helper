@@ -9,7 +9,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - 
 ## fix :
 - si l'option "Companion" est inactive, la fenêtre de visualisation de l'arrêt de travail ne se ferme pas.
-- amélioration du lien avec le Companion : les arrêts de travail sont maintenant imprimés automatiquement.
+- amélioration du lien avec le Companion : les arrêts de travail sont maintenant imprimés automatiquement, sinon la fenêtre ouvre automatiquement le menu d'impression.
 - pour les arrêts de travail (le service AATI) ajout d'un bouton pour le faire avec ou sans la CV du patient.
 - correction d'une coquille dans les options par défaut
 - coquille dans les options sur "Formulaire"
