@@ -7,7 +7,7 @@ let isProcessingQueue = false;
 
 function recordMetrics(metrics) {
     let today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
-    metrics.date = today; // Add the date to the metrics
+    metrics.date = 'metrics-' + today; // Add the date to the metrics
     metricsQueue.push(metrics);
     if (!isProcessingQueue) {
         processQueue();
@@ -43,7 +43,7 @@ function processQueue() {
     // Remove data older than 1 year
     let oneYearAgo = new Date();
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    let oneYearAgoStr = oneYearAgo.toISOString().split('T')[0];
+    let oneYearAgoStr = 'metrics-' + oneYearAgo.toISOString().split('T')[0];
     chrome.storage.local.get(null, function(items) {
         for (let key in items) {
             if (key < oneYearAgoStr) {

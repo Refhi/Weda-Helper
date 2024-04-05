@@ -3,10 +3,11 @@
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
 # [2.1] - 2024
+*améliorations arrêt de travail*
 ## ajout :
 - le focus est désormais automatiquement placé sur le champ de titre lors de la création ou l'édition d'un antécédent.
 - métrique utilisateur désormais détaillée par jour/semaine/mois/année et globale
-- 
+
 ## fix :
 - si l'option "Companion" est inactive, la fenêtre de visualisation de l'arrêt de travail ne se ferme pas.
 - amélioration du lien avec le Companion : les arrêts de travail sont maintenant imprimés automatiquement, sinon la fenêtre ouvre automatiquement le menu d'impression.
