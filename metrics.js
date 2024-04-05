@@ -7,7 +7,7 @@ let isProcessingQueue = false;
 
 function recordMetrics(metrics) {
     let today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
-    metrics.date = 'metrics-' + today; // Add the date to the metrics
+    metrics.date = today; // Add the date to the metrics
     metricsQueue.push(metrics);
     if (!isProcessingQueue) {
         processQueue();
@@ -25,16 +25,17 @@ function processQueue() {
     let date = metrics.date;
     delete metrics.date; // Remove the date from the metrics
 
-    chrome.storage.local.get([date], function(result) {
+    let key = 'metrics-' + date;
+    chrome.storage.local.get(key, function(result) {
         // If the metrics for the date are not defined, default to { clicks: 0, drags: 0, keyStrokes: 0 }
-        let dailyMetrics = result[date] || { clicks: 0, drags: 0, keyStrokes: 0 };
+        let dailyMetrics = result[key] || { clicks: 0, drags: 0, keyStrokes: 0 };
         // Add the new metrics to the existing ones
         dailyMetrics.clicks += metrics.clicks || 0;
         dailyMetrics.drags += metrics.drags || 0;
         dailyMetrics.keyStrokes += metrics.keyStrokes || 0;
 
         let updatedMetrics = {};
-        updatedMetrics[date] = dailyMetrics;
+        updatedMetrics[key] = dailyMetrics;
         chrome.storage.local.set(updatedMetrics, processQueue);
 
         console.log('Metrics updated for ' + date + ':', dailyMetrics);
@@ -46,7 +47,7 @@ function processQueue() {
     let oneYearAgoStr = 'metrics-' + oneYearAgo.toISOString().split('T')[0];
     chrome.storage.local.get(null, function(items) {
         for (let key in items) {
-            if (key < oneYearAgoStr) {
+            if (key.startsWith('metrics-') && key < oneYearAgoStr) {
                 chrome.storage.local.remove(key);
             }
         }

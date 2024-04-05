@@ -197,6 +197,9 @@ function getMetricsForPeriod(periodDays) {
       let periodMetrics = { clicks: 0, drags: 0, keyStrokes: 0 };
       for (let key in items) {
         if (key.startsWith('metrics-') && key >= startDateStr && key !== 'metrics-globalMetrics') {
+          if (periodDays > 365) {
+            console.log(key, items[key]);
+          }
           periodMetrics.clicks += items[key].clicks || 0;
           periodMetrics.drags += items[key].drags || 0;
           periodMetrics.keyStrokes += items[key].keyStrokes || 0;
@@ -259,10 +262,10 @@ Promise.all([
   `;
   // prompt all metrics stored : add a button which calls getMetricsForPeriod("All")
   let allMetricsButton = document.createElement('button');
-  allMetricsButton.textContent = 'Voir toutes les métriques dans la console (il faut appuyer sur F12 pour ouvrir la console)';
+  allMetricsButton.textContent = 'Voir toutes les métriques dans la console';
   allMetricsButton.addEventListener('click', function() {
     getMetricsForPeriod(400).then(allMetrics => {
-      console.log('All metrics:', allMetrics);
+      console.log('All Time metrics:', allMetrics);
     });
   });
   metricsElement.appendChild(allMetricsButton);
