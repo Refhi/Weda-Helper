@@ -2,7 +2,7 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
-# [2.1] - 2024
+# [2.1] - 2024-04-13
 *améliorations arrêt de travail*
 ## ajout :
 - le focus est désormais automatiquement placé sur le champ de titre lors de la création ou l'édition d'un antécédent.
