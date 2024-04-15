@@ -6,21 +6,19 @@ function htmlMaker(text) {
 }
 
 var nouveautes = `
-# [2.0] - 2024-03-25
+[note du dev : le message de mise à jour n'était pas à jour... voici le vrai texte pour la 2.1...]
+# [2.1] - 2024-04-13
+*améliorations arrêt de travail*
 ## ajout :
-- raccourci clavier pour l'affichage/masquage des antécédents
-- simplification de la réalisation des arrêts de travail intégrés à Weda (lecture auto CV, selection auto de l'assuré, impression automatique, autofill de la date en cas de sorties libres)
-- amélioration du message d'accueil et de mise à jour.
-- ajout des formulaires dans les pages pouvant accueillir l'historique à gauche.
-- ajoute une métrique ! Vous pouvez désormais voir une estimation du nombre de clics, de mouvements de souris et d'entrées claviers économisées depuis l'installation de la 2.0 et faire un reset sur le bouton dans les options ! (Je tiens à souligner que par nature, ces valeurs ont une part approximative)
-- le type de document pour l'envoi au DMP est sauvegardé automatiquement à chaque changement dans la page des Courriers
-- <del>Never Gonna Give You Up</del>.
-
+- le focus est désormais automatiquement placé sur le champ de titre lors de la création ou l'édition d'un antécédent.
+- métrique utilisateur désormais détaillée par jour/semaine/mois/année et globale
+ 
 ## fix :
-- erreur de date et de mise en page dans le changelog
-
-## divers :
-- la partie gérant les arrêts de travail a son fichier aati.js dédiée
+- si l'option "Companion" est inactive, la fenêtre de visualisation de l'arrêt de travail ne se ferme pas.
+- amélioration du lien avec le Companion : les arrêts de travail sont maintenant imprimés automatiquement, sinon la fenêtre ouvre automatiquement le menu d'impression.
+- pour les arrêts de travail (le service AATI) ajout d'un bouton pour le faire avec ou sans la CV du patient.
+- correction d'une coquille dans les options par défaut
+- coquille dans les options sur "Formulaire"
 `
 
 nouveautes = htmlMaker(nouveautes)
