@@ -1,5 +1,21 @@
 // Tweak the FSE page (Add a button in the FSE page to send the amount to the TPE, implement shortcuts)
 if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx')) {
+    chrome.storage.local.get(['TweakFSEAccident'], function (result) {
+        if (result.TweakFSEAccident !== false) {
+
+            console.log('accident started');
+            var checkExist = setInterval(function() {
+                    var accidentRadio = document.getElementById('mat-radio-9-input');
+                    if (accidentRadio) {
+                        clearInterval(checkExist); // Arrête de vérifier une fois que l'élément est trouvé
+                        accidentRadio.checked = true;
+                        recordMetrics({clicks: 1, drags: 1});
+                        accidentRadio.dispatchEvent(new Event('change'));
+                    }
+                }, 100); 
+
+        }
+    });
     chrome.storage.local.get(['TweakFSECreation'], function (result) {
         if (result.tweakFSEcreation !== false) {
             console.log('fse started');
