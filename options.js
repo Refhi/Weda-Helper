@@ -155,6 +155,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 
+document.getElementById('shortcuts').addEventListener('click', function() {
+            chrome.tabs.update({ url: 'chrome://extensions/shortcuts' }); //Lien direct vers une URL chrome:// est bloqué, https://stackoverflow.com/questions/40362775/link-to-chrome-url-from-a-webpage
+        });
 
 // ajoute un bouton pour effacer les valeurs des textes de bienvenue
 var clearButton = document.createElement('button');

@@ -3,7 +3,7 @@
   "name": "Weda Helper",
   "version": "2.1.0.2",
   "options_page": "options.html",
-  "permissions": ["storage"],
+  "permissions": ["storage", "activeTab"],
   "host_permissions": ["http://localhost/"],
   "action": {
     "default_popup": "popup.html"
