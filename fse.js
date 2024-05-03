@@ -4,10 +4,10 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
         if (result.TweakFSEAccident !== false) {
 
             console.log('accident started');
-            var checkExist = setInterval(function() {
+            var checkAccidentExist = setInterval(function() {
                     var accidentRadio = document.getElementById('mat-radio-9-input');
                     if (accidentRadio) {
-                        clearInterval(checkExist); // Arrête de vérifier une fois que l'élément est trouvé
+                        clearInterval(checkAccidentExist); // Arrête de vérifier une fois que l'élément est trouvé
                         accidentRadio.checked = true;
                         recordMetrics({clicks: 1, drags: 1});
                         accidentRadio.dispatchEvent(new Event('change'));
