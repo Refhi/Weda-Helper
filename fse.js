@@ -8,6 +8,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
                 'n': ['mat-radio-9-input', 'mat-radio-3-input'],
                 'o': ['mat-radio-8-input', 'mat-radio-2-input'],
                 't': ['mat-checkbox-1-input'],
+                'c': ['mat-checkbox-2-input'],
                 // add an entry for the enter key
                 'Enter': ['secure_FSE'],
             }
