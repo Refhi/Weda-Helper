@@ -3,14 +3,10 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
     chrome.storage.local.get(['TweakFSEGestionUnique'], function (result) {
         if (result.TweakFSEGestionUnique !== false) {
 
-            var checkGestionUnique = setInterval(function() {
-                    var gestionUniqueCheckbox = document.getElementById('mat-checkbox-11-input');
-                    if (gestionUniqueCheckbox) {
-                        clearInterval(checkGestionUnique);
-                        gestionUniqueCheckbox.click();
-                        recordMetrics({clicks: 1, drags: 1});
-                    }
-                }, 100); 
+            lightObserver('input[id="mat-checkbox-11-input"]', function(element) {
+                element[0].click();
+                recordMetrics({clicks: 1, drags: 1});
+            });
 
         }
     });
