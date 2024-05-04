@@ -237,9 +237,10 @@ if (DemandeForm || PrescriptionForm) {
 
 
     let logContext = '[WH, prescription.js] ';
-    console.log(logContext, 'selection ordoNum démarrée');
-    chrome.storage.local.get(['NumPresPrescription','NumPresDemande'], function(result) {
-        if (result.NumPresPrescription === true || result.NumPresDemande === true) {
+    let isDemandeImagerie = document.getElementById("ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio").getAttribute("style") != null;
+    console.log(logContext, 'selection ordoNum démarrée', isDemandeImagerie);
+    chrome.storage.local.get(['NumPresPrescription','NumPresDemande', 'NumPresImagerie'], function(result) {
+        if (result.NumPresPrescription === true || result.NumPresDemande === true || result.NumPresImagerie === true) {
             console.log(logContext, 'NumPresPrescription ou NumPresDemande est true');
             function changeCheckBoxViaClick(valueRequested) {
                 var checkbox = document.getElementById('ContentPlaceHolder1_EvenementUcForm1_CheckBoxEPrescription');
@@ -254,6 +255,10 @@ if (DemandeForm || PrescriptionForm) {
             if (DemandeForm) {
                 console.log(logContext, 'DemandeForm', result.NumPresDemande);
                 changeCheckBoxViaClick(result.NumPresDemande === true);
+            }
+            if (isDemandeImagerie && result.NumPresImagerie === true) {
+                console.log(logContext, 'demande imagerie');
+                changeCheckBoxViaClick(false);
             }
             if (PrescriptionForm) {
                 console.log(logContext, 'PrescriptionForm', result.NumPresPrescription);

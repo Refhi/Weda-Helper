@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', function () {
     'autoConsentNumPres': false,
     'NumPresPrescription': false,
     'NumPresDemande': false,
+    'NumPresImagerie': false,
     'postPrintBehavior': 'closePreview', // boutons radio
     'MoveHistoriqueToLeft': true,
     'MoveHistoriqueToLeft_Consultation': true,
