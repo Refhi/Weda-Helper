@@ -3,6 +3,7 @@ chrome.commands.onCommand.addListener(function(command) {
     case 'push_valider':
     case 'push_annuler':
     case 'print_meds':
+    case 'download_document':
     case 'push_enregistrer':
     case 'push_delete':
     case 'shortcut_w':
@@ -22,5 +23,11 @@ chrome.commands.onCommand.addListener(function(command) {
       break;
     default:
       console.log('Unknown command:', command);
+  }
+});
+
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+  if (request.downloadFile !== null) {
+    chrome.downloads.download({url: request.downloadFile}) //Obligatoire car on ne peut pas utiliser chrome.downloads depuis un content script
   }
 });

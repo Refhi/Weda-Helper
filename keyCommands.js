@@ -175,6 +175,31 @@ function startPrinting() {
     }
 }
 
+function startDownload() {
+    console.log("donwload activé")
+    clickFirstPrinter();
+    function whenFrameLoadedDownload(elements) {
+        let iframe = elements[0];
+        let buttonToClick = document.getElementById("ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay");
+        let intervalId = setInterval(() => {
+            let url = iframe.contentWindow.location.href;
+            
+            if (url !== 'about:blank') {
+                clearInterval(intervalId);
+                chrome.runtime.sendMessage({downloadFile:url}); //Obligatoire car l'usage de chrome.download n'est pas possible depuis un content script donc on passe par le background https://stackoverflow.com/questions/42995426/trying-to-use-chrome-downloads-its-undefined-for-some-reason
+                buttonToClick.click();
+                recordMetrics({clicks: 3, drags: 4});
+            }
+        }, 100);
+
+        setTimeout(() => {
+            clearInterval(intervalId);
+        }, 5000);
+        
+    }
+    lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", whenFrameLoadedDownload, parentElement = document, justOne = true);
+}
+
 // // Diverses aides au clic
 // Clique sur la première imprimante
 function clickFirstPrinter() {
@@ -335,6 +360,11 @@ const keyCommands = {
         description: 'Imprime les médicaments',
         key: 'ctrl+p',
         action: startPrinting
+    },
+    'download_document': {
+        description: 'Télécharge le PDF du document',
+        key: 'ctrl+d',
+        action: startDownload
     },
     'push_enregistrer': {
         description: 'Appuie le bouton Enregistrer ou équivalent',
