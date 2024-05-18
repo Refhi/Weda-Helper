@@ -12,6 +12,10 @@
   "background": {
     "service_worker": "background.js"
   },
+  "web_accessible_resources": [{
+     "matches": ["*://secure.weda.fr/*"],
+     "resources": ["pdf.mjs", "pdf.worker.mjs"]
+   }],
   "content_scripts": [
     {
       "matches": ["*://secure.weda.fr/*"],
