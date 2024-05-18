@@ -30,6 +30,13 @@
           "update.js",
           "aati.js",
           "metrics.js"]
+    },
+    {
+      "matches": ["*://secure.weda.fr/FolderMedical/UpLoaderForm.aspx"],
+      "js": [
+        "moment.js",
+        "upload.js"
+      ]
     }
   ],
   "commands": {
