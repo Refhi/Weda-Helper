@@ -186,7 +186,16 @@ function startDownload() {
             
             if (url !== 'about:blank') {
                 clearInterval(intervalId);
-                chrome.runtime.sendMessage({downloadFile:url}); //Obligatoire car l'usage de chrome.download n'est pas possible depuis un content script donc on passe par le background https://stackoverflow.com/questions/42995426/trying-to-use-chrome-downloads-its-undefined-for-some-reason
+                // On va contourner les restrictions de téléchargement en créant un élément 'a' caché
+                // Ce dernier, quand cliqué, va déclencher le téléchargement du fichier via son attribut 'download'
+                // Cela permet de télécharger le fichier sans modifier le manifest
+                var link = document.createElement('a');
+                link.href = url;
+                link.download = 'nom_du_fichier.pdf'; // pas certain que ça soit nécessaire mais ça ne coûte rien
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click(); // Cela déclenche le téléchargement
+                document.body.removeChild(link); // Suppression de l'élément 'a' après le téléchargement
                 buttonToClick.click();
                 recordMetrics({clicks: 3, drags: 4});
             }
