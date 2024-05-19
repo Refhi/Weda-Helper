@@ -25,9 +25,3 @@ chrome.commands.onCommand.addListener(function(command) {
       console.log('Unknown command:', command);
   }
 });
-
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-  if (request.downloadFile !== null) {
-    chrome.downloads.download({url: request.downloadFile}) //Obligatoire car on ne peut pas utiliser chrome.downloads depuis un content script
-  }
-});
