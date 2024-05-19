@@ -18,8 +18,10 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
             var index = {
                 'n': ['mat-radio-9-input', 'mat-radio-3-input'],
                 'o': ['mat-radio-8-input', 'mat-radio-2-input'],
+                't': ['mat-checkbox-1-input'],
+                'c': ['mat-checkbox-2-input'],
                 // add an entry for the enter key
-                'Enter': 'secure_FSE',
+                'Enter': ['secure_FSE'],
             }
             var clue_index = {
                 'n': ['mat-radio-9', 'mat-radio-3'],
@@ -254,29 +256,30 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
             document.addEventListener('keydown', function (event) {
                 if (event.key in index) {
                     console.log('key pressed:', event.key);
-                    let element;
-                    if (!YesNoButtonChecked(0)) {
-                        console.log('No button checked on first yes/no question');
-                        element = document.getElementById(index[event.key][0]);
-                        setTimeout(function () {
-                            addVisualClue(clue_index['n'][1]);
-                            addVisualClue(clue_index['o'][1]);
-                        }, 100);
-                        setTimeout(function () {
-                            removeVisualClue(clue_index['n'][0]);
-                            removeVisualClue(clue_index['o'][0]);
-                        }, 100);
+                    var  element = document.getElementById(index[event.key][0]);
+                    if (event.key =='n' || event.key == 'o') {
+                        if (!YesNoButtonChecked(0)) {
+                            console.log('No button checked on first yes/no question');
+                            setTimeout(function () {
+                                addVisualClue(clue_index['n'][1]);
+                                addVisualClue(clue_index['o'][1]);
+                            }, 100);
+                            setTimeout(function () {
+                                removeVisualClue(clue_index['n'][0]);
+                                removeVisualClue(clue_index['o'][0]);
+                            }, 100);
 
-                    } else if (YesNoButtonChecked(0) && !YesNoButtonChecked(1)) {
-                        element = document.getElementById(index[event.key][1]);
-                        console.log('A button is checked on first yes/no question but not the second one');
-                        setTimeout(function () {
-                            removeVisualClue(clue_index['n'][1]);
-                            removeVisualClue(clue_index['o'][1]);
-                        }, 100);
-                        setDefaultValue();
-                    } else {
-                        console.log('Both yes/no questions have an answer');
+                        } else if (YesNoButtonChecked(0) && !YesNoButtonChecked(1)) {
+                            element = document.getElementById(index[event.key][1]);
+                            console.log('A button is checked on first yes/no question but not the second one');
+                            setTimeout(function () {
+                                removeVisualClue(clue_index['n'][1]);
+                                removeVisualClue(clue_index['o'][1]);
+                            }, 100);
+                            setDefaultValue();
+                        } else {
+                            console.log('Both yes/no questions have an answer');
+                        }
                     }
                     console.log('element to act on is', element);
                     if (element && element.type === 'radio') {
@@ -285,6 +288,12 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
                         recordMetrics({clicks: 1, drags: 1});
                         element.dispatchEvent(new Event('change'));
                     }
+                    else if (element && element.type == 'checkbox') { //checked puis un event change ne fonctionnent pas sur une Checkbox donc on trigger un click()
+                        console.log('trying to click element', element);
+                        element.click(); 
+                        recordMetrics({clicks: 1, drags: 1});
+                    }
+                    
                 }
             });
         }
