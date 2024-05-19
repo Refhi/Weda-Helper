@@ -32,7 +32,9 @@ function parsePDF(url) {
         // console.log(fullText)
         var firstName;
         var documentDate;
+        var dateOfBirth;
         var dateRegex = /[0-9]{2}[\/|-][0-9]{2}[\/|-][0-9]{4}/g; // Match dates dd/mm/yyyy ou dd-mm-yyyy
+        var dateOfBirthRegex = /(?:né\(e\) le|date de naissance:|date de naissance :|née le)[\s\S]([0-9]{2}[\/|-][0-9]{2}[\/|-][0-9]{4})/i; //Match la date de naissance
         var firstNameRegex = /(?:Mme|Madame|Monsieur|M\.) (.*?)(?: \(| né| - né)/gi; // Match pour les courriers, typiquement "Mr. XXX né le"
         var backupFirstNameRegex = /(?:Nom de naissance : |Nom : |Nom de naiss\.: )(.*?)\n/gim; // Match pour les CR d'imagerie, typiquement "Nom : XXX \n"
         let dateMatch = fullText.match(dateRegex);
@@ -53,6 +55,13 @@ function parsePDF(url) {
             dateElement.value = documentDate.format("DD/MM/YYYY");
         }
 
+        let dateOfBirthMatch = fullText.match(dateOfBirthRegex);
+        if (dateOfBirthMatch) {
+          dateOfBirth = moment(dateOfBirthMatch[1], "DD/MM/YYYY"); //On récupére le groupe du Regex
+
+          console.log("Found date of birth: " + dateOfBirth.format("DD/MM/YYYY"));
+        }
+
 
         var nameMatchesIterator = fullText.matchAll(firstNameRegex);
         var nameMatches = Array();
@@ -69,12 +78,31 @@ function parsePDF(url) {
         }
 
         console.log("Found name: " + nameMatches);
-        var firstName = nameMatches[0].match(/\b[A-Z][A-Z]+/g)[0]; //Isole le nom de famille
-        console.log(firstName);
-        let searchField = document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche");
-        searchField.value = firstName;
-        // let searchButton = document.getElementById('ContentPlaceHolder1_FindPatientUcForm1_ButtonRecherchePatient');
-        // searchButton.click();
+        // var firstName = nameMatches[0].match(/\b[A-Z][A-Z]+/g)[0]; //Isole le nom de famille
+        // console.log(firstName);
+        document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_DropDownListRechechePatient").value = "Naissance" //On cherche par DDN
+
+        let searchButton = document.getElementById('ContentPlaceHolder1_FindPatientUcForm1_ButtonRecherchePatient');
+        var searchField = document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherchePatientByDate");
+        if(!searchField)
+        {
+          searchField = document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche");
+        }
+
+        if(searchField.value != dateOfBirth.format("DD/MM/YYYY")){
+          searchField.value = dateOfBirth.format("DD/MM/YYYY");
+          searchButton.click();
+        }
+        else {
+          //On vérifie qu'il n'y a bien qu'un seul patient avec cette DDN
+          let secondPatient = document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_1") //Lien n°2 dans la liste de patient, s'il n'existe pas, il n'y a qu'un patient dans la liste de recherche
+          if (!secondPatient)
+          {
+            let firstPatient = document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0");
+            firstPatient.focus();
+          }
+        }
+        
     });
 }
 
