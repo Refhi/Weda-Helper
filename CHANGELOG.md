@@ -2,6 +2,17 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+
+# [2.2] - 
+## fix :
+- possibilité d'utiliser "entrée" pour valider une fse
+
+## ajout :
+- ajout de t et c pour selectionner le tier payant dans les fses (amo et complémentaire)
+- possibilité de selectionner automatiquement "non" pour accident par un tier (désactivé par défaut)
+- possibilité de cocher automatiquement la case FSE en mode gestion unique pour les C2S (désactivé par défaut)
+- selection automatique de "je suis le médecin traitant" si nous sommes le médecin déclaré (utile quand l'option "je suis médecin traitant de substitution" est part défaut)
+
 # [2.1] - 2024-04-13
 *améliorations arrêt de travail*
 ## ajout :

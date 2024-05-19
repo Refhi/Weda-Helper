@@ -47,6 +47,9 @@
       },
       "description": "Imprime le document en cours (Suggestion : Ctrl+P) (attention, nécessite un module complémentaire pour que l'impression soit entièrement automatique. Sinon affiche directement le PDF.)"
     },
+    "download_document": {
+      "description": "Télécharge le PDF du document en cours (Suggestion: Ctrl+D)"
+    },
     "push_enregistrer": {
       "description": "Appuie Enregistrer (Suggestion : Ctrl+S)"
     },
