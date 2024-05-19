@@ -7,6 +7,8 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
                 element[0].click();
                 recordMetrics({clicks: 1, drags: 1});
             });
+        }
+    });
 
     chrome.storage.local.get(['TweakFSEAccident'], function (result) {
         if (result.TweakFSEAccident !== true) {
