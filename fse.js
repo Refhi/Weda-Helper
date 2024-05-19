@@ -1,5 +1,21 @@
 // Tweak the FSE page (Add a button in the FSE page to send the amount to the TPE, implement shortcuts)
 if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx')) {
+    chrome.storage.local.get(['TweakFSEDetectMT'], function (result) {
+        if (result.TweakFSEDetectMT !== false) {
+            lightObserver('vz-medecin-traitant-weda div.mt10.ng-star-inserted', function(element) {
+                let MTDeclare = element[0].innerText;
+                console.log('found MT: ' + MTDeclare);
+                var loggedInUser = document.getElementById('LabelUserLog').innerText;
+                if (MTDeclare.includes(loggedInUser)) {
+                    console.log('MT déclaré = utilisateur en cours => je coche MT déclaré');
+                    let select = document.querySelector('vz-orientation select');
+                    select.value = '03'; // Je suis le médecin traitant
+                }
+            });
+            
+        }
+    });
+
     chrome.storage.local.get(['TweakFSEGestionUnique'], function (result) {
         if (result.TweakFSEGestionUnique !== false) {
 
