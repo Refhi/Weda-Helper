@@ -1,7 +1,7 @@
 // Tweak the FSE page (Add a button in the FSE page to send the amount to the TPE, implement shortcuts)
 if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx')) {
     chrome.storage.local.get(['TweakFSEAccident'], function (result) {
-        if (result.TweakFSEAccident !== false) {
+        if (result.TweakFSEAccident !== true) {
 
             
             lightObserver('input[id="mat-radio-9-input"]', function(element) {
