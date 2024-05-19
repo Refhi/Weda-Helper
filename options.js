@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', function () {
     'KeyPadPrescription': true,
     'TweakFSEGestion': true,
     'TweakFSECreation': true,
+    'TweakFSEAccident': false,
     'autoSelectPatientCV': true,
     'WarpButtons': true,
     'autoConsentNumPres': false,
