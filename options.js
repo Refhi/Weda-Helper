@@ -34,6 +34,8 @@ document.addEventListener('DOMContentLoaded', function () {
     'TweakFSEGestion': true,
     'TweakFSECreation': true,
     'TweakFSEDetectMT' : false,
+    'TweakFSEGestionUnique': false,
+    'TweakFSEAccident': false,
     'autoSelectPatientCV': true,
     'WarpButtons': true,
     'autoConsentNumPres': false,
