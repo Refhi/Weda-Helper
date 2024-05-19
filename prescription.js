@@ -234,38 +234,42 @@ if (DemandeForm || PrescriptionForm) {
         }
     });
 
+    lightObserver('#ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio', function(elements) { //Actualise la case Ordonnance Numérique à chaque changement de menu
+        let logContext = '[WH, prescription.js] ';
+        chrome.storage.local.get(['NumPresPrescription','NumPresDemande', 'NumPresImagerie'], function(result) {
+            if (result.NumPresPrescription === true || result.NumPresDemande === true || result.NumPresImagerie === true) {
+                console.log(logContext, 'NumPresPrescription ou NumPresDemande ou NumPresImagerie est true');
 
-
-    let logContext = '[WH, prescription.js] ';
-    let isDemandeImagerie = document.getElementById("ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio").getAttribute("style") != null;
-    console.log(logContext, 'selection ordoNum démarrée', isDemandeImagerie);
-    chrome.storage.local.get(['NumPresPrescription','NumPresDemande', 'NumPresImagerie'], function(result) {
-        if (result.NumPresPrescription === true || result.NumPresDemande === true || result.NumPresImagerie === true) {
-            console.log(logContext, 'NumPresPrescription ou NumPresDemande est true');
-            function changeCheckBoxViaClick(valueRequested) {
-                var checkbox = document.getElementById('ContentPlaceHolder1_EvenementUcForm1_CheckBoxEPrescription');
-                if (checkbox) {
-                    console.log(logContext, 'checkbox checked', checkbox.checked, 'valueRequested', valueRequested);
-                    if (checkbox.checked !== valueRequested) {
-                        checkbox.click();
-                        recordMetrics({clicks: 1, drags: 1});
+                function changeCheckBoxViaClick(valueRequested) {
+                    var checkbox = document.getElementById('ContentPlaceHolder1_EvenementUcForm1_CheckBoxEPrescription');
+                    if (checkbox) {
+                        console.log(logContext, 'checkbox checked', checkbox.checked, 'valueRequested', valueRequested);
+                        if (checkbox.checked !== valueRequested) {
+                            checkbox.click();
+                            recordMetrics({clicks: 1, drags: 1});
+                        }
                     }
                 }
+
+                if (DemandeForm) {
+                    let isDemandeImagerie = document.getElementById("ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio").getAttribute("style") =="color:Red;font-weight:bold;";
+                    if (result.NumPresImagerie == true && isDemandeImagerie) { // On ne coche pas la case car c'est une demande d'imagerie
+                
+                        console.log(logContext, 'demande imagerie');
+                        changeCheckBoxViaClick(false);
+                    }
+                    else { // Sinon, on coche la case
+                        console.log(logContext, 'DemandeForm', result.NumPresDemande);
+                        changeCheckBoxViaClick(result.NumPresDemande === true);
+                    }
+                }
+
+                if (PrescriptionForm) {
+                    console.log(logContext, 'PrescriptionForm', result.NumPresPrescription);
+                    changeCheckBoxViaClick(result.NumPresPrescription === true);
+                }
             }
-            if (DemandeForm) {
-                console.log(logContext, 'DemandeForm', result.NumPresDemande);
-                changeCheckBoxViaClick(result.NumPresDemande === true);
-            }
-            if (isDemandeImagerie && result.NumPresImagerie === true) {
-                console.log(logContext, 'demande imagerie');
-                changeCheckBoxViaClick(false);
-            }
-            if (PrescriptionForm) {
-                console.log(logContext, 'PrescriptionForm', result.NumPresPrescription);
-                changeCheckBoxViaClick(result.NumPresPrescription === true);
-            }
-        
-        }
+        });
     });
 }
 
