@@ -6,19 +6,20 @@ function htmlMaker(text) {
 }
 
 var nouveautes = `
-[note du dev : le message de mise à jour n'était pas à jour... voici le vrai texte pour la 2.1...]
-# [2.1] - 2024-04-13
-*améliorations arrêt de travail*
-## ajout :
-- le focus est désormais automatiquement placé sur le champ de titre lors de la création ou l'édition d'un antécédent.
-- métrique utilisateur désormais détaillée par jour/semaine/mois/année et globale
- 
+Arrivée d'un nouveau Dev ! 🎉
+Bienvenue à Abel (cf. le site de la communauté) qui participe désormais au développement de Weda-Helper et de son Companion !
+Merci à lui pour son aide précieuse. Un nouveau Companion sera bientôt disponible (faccultatif) avec une vraie interface graphique !
+
+# [2.2] - 2024-04-20 
 ## fix :
-- si l'option "Companion" est inactive, la fenêtre de visualisation de l'arrêt de travail ne se ferme pas.
-- amélioration du lien avec le Companion : les arrêts de travail sont maintenant imprimés automatiquement, sinon la fenêtre ouvre automatiquement le menu d'impression.
-- pour les arrêts de travail (le service AATI) ajout d'un bouton pour le faire avec ou sans la CV du patient.
-- correction d'une coquille dans les options par défaut
-- coquille dans les options sur "Formulaire"
+- possibilité d'utiliser "entrée" pour valider une fse
+- ajout d'un texte de bienvenue dans la page des options
+
+## ajout :
+- ajout de t et c pour selectionner le tier payant dans les fses (amo et complémentaire)
+- possibilité de selectionner automatiquement "non" pour accident par un tier (désactivé par défaut)
+- possibilité de cocher automatiquement la case FSE en mode gestion unique pour les C2S (désactivé par défaut)
+- selection automatique de "je suis le médecin traitant" si nous sommes le médecin déclaré (utile quand l'option "je suis médecin traitant de substitution" est part défaut)
 `
 
 nouveautes = htmlMaker(nouveautes)

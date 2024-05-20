@@ -3,9 +3,10 @@
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
 
-# [2.2] - 
+# [2.2] - 2024-04-20 
 ## fix :
 - possibilité d'utiliser "entrée" pour valider une fse
+- ajout d'un texte de bienvenue dans la page des options
 
 ## ajout :
 - ajout de t et c pour selectionner le tier payant dans les fses (amo et complémentaire)
