@@ -4,6 +4,7 @@ chrome.commands.onCommand.addListener(function(command) {
     case 'push_annuler':
     case 'print_meds':
     case 'download_document':
+    case 'upload_latest_file':
     case 'push_enregistrer':
     case 'push_delete':
     case 'shortcut_w':

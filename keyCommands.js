@@ -209,6 +209,15 @@ function startDownload() {
     lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", whenFrameLoadedDownload, parentElement = document, justOne = true);
 }
 
+//Fonction appellée par un bouton ou un raccourci clavier pour uploader le dernier fichier d'un dossier dans le dossier patient actuel
+function uploadLatest() {
+    chrome.storage.local.set({ 'automaticUpload': true }, function () { //On met un flag qui informe que l'upload sera automatique
+        let uploadURL = "https://secure.weda.fr/FolderMedical/PopUpUploader.aspx"+window.location.search 
+        console.log(uploadURL);
+        var uploadWindow = window.open(uploadURL, "Upload", "width=700,height=600"); //On ouvre la fenetre d'upload dans un popup
+    });
+}
+
 // // Diverses aides au clic
 // Clique sur la première imprimante
 function clickFirstPrinter() {
@@ -374,6 +383,11 @@ const keyCommands = {
         description: 'Télécharge le PDF du document',
         key: 'ctrl+d',
         action: startDownload
+    },
+    'upload_latest_file':{
+        description: 'Upload le dernier fichier du dossier envoyé par le Companion',
+        key: 'ctrl+u',
+        action: uploadLatest
     },
     'push_enregistrer': {
         description: 'Appuie le bouton Enregistrer ou équivalent',

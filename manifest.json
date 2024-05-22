@@ -25,7 +25,8 @@
           "prescription.js",
           "update.js",
           "aati.js",
-          "metrics.js"]
+          "metrics.js",
+          "upload.js"]
     }
   ],
   "commands": {
@@ -49,6 +50,9 @@
     },
     "download_document": {
       "description": "Télécharge le PDF du document en cours (Suggestion: Ctrl+D)"
+    },
+    "upload_latest_file":{
+      "description": "Upload le dernier fichier du dossier envoyé par le Companion (Suggestion: Ctrl+U)"
     },
     "push_enregistrer": {
       "description": "Appuie Enregistrer (Suggestion : Ctrl+S)"
