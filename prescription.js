@@ -267,15 +267,41 @@ if (DemandeForm || PrescriptionForm) {
 
 // Selectionne automatiquement le type de prescription
 if (DemandeForm) {
-    lightObserver('#prescriptionType div', function(element) {
-        console.log('menu déroulant trouvé, je clique dessus', element);
-        element[0].click();
-        recordMetrics({clicks: 1, drags: 1});
-    });
+    chrome.storage.local.get(['autoSelectTypeOrdoNum'], function(result) {
+        if (result.autoSelectTypeOrdoNum === true) {
 
-    lightObserver('#prescriptionType-panel mat-option .mat-option-text', function(elements) {
-        console.log('options trouvées, je clique sur la première', elements);
-        elements[0].click();
-        recordMetrics({clicks: 1, drags: 1});
+
+            lightObserver('#prescriptionType div', function(element) {
+                console.log('menu déroulant trouvé, je clique dessus', element);
+                element[0].click();
+                recordMetrics({ clicks: 1, drags: 1 });
+            });
+
+            lightObserver('#prescriptionType-panel mat-option .mat-option-text', function(elements) {
+                console.log('options trouvées', elements);
+                var type = 0; //biologie par défaut
+                let infirmierRegex = /IDE|infirmier|pansement|injection/i;
+                let kineRegex = /kiné|kine|kinésithérapie|kinesitherapie|MKDE|kinesitherapeute|kinesithérapeute/i;
+                let pedicureRegex = /pédicure|pedicure|podologie|podologique|podologue/i;
+                let orthophonieRegex = /orthophonie|orthophonique/i;
+                let orthoptieRegex = /orthoptie|orthoptique/i;
+
+                let demandeContent = document.querySelector("#CE_ContentPlaceHolder1_EditorPrescription_ID_Frame").contentWindow.document.body.innerText;
+
+                if (infirmierRegex.test(demandeContent))
+                    type = 1;
+                else if (kineRegex.test(demandeContent))
+                    type = 2;
+                else if (orthophonieRegex.test(demandeContent))
+                    type = 3;
+                else if (orthoptieRegex.test(demandeContent))
+                    type = 4;
+                else if (pedicureRegex.test(demandeContent))
+                    type = 5;
+
+                elements[type].click();
+                recordMetrics({ clicks: 1, drags: 1 });
+            });
+        }
     });
 }
