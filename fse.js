@@ -1,7 +1,7 @@
 // Tweak the FSE page (Add a button in the FSE page to send the amount to the TPE, implement shortcuts)
 if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx')) {
     chrome.storage.local.get(['TweakFSEDetectMT'], function (result) {
-        if (result.TweakFSEDetectMT !== false) {
+        if (result.TweakFSEDetectMT === true) {
             lightObserver('vz-medecin-traitant-weda div.mt10.ng-star-inserted', function(element) {
                 let MTDeclare = element[0].innerText;
                 console.log('found MT: ' + MTDeclare);
@@ -17,9 +17,11 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
     });
 
     chrome.storage.local.get(['TweakFSEGestionUnique'], function (result) {
-        if (result.TweakFSEGestionUnique !== false) {
-
-            lightObserver('input[id="mat-checkbox-11-input"]', function(element) {
+        if (result.TweakFSEGestionUnique === true) {
+            console.log('Gestion unique activée');
+            // attention au selecteur : l'id n'est pas fiable dans les pages en Angular apparemment
+            lightObserver('.mat-checkbox-layout > label > span.mat-checkbox-inner-container.mat-checkbox-inner-container-no-side-margin', function(element) {
+                console.log('Gestion unique activée clic sur element', element);
                 element[0].click();
                 recordMetrics({clicks: 1, drags: 1});
             });
@@ -27,10 +29,9 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
     });
 
     chrome.storage.local.get(['TweakFSEAccident'], function (result) {
-        if (result.TweakFSEAccident !== true) {
-
-            
+        if (result.TweakFSEAccident === true) {            
             lightObserver('input[id="mat-radio-9-input"]', function(element) {
+                console.log('J trouve le bouton "non" pour accident de travail, je le coche', element);
                 element[0].checked = true;
                 recordMetrics({clicks: 1, drags: 1});
                 element[0].dispatchEvent(new Event('change'));
@@ -41,7 +42,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
         if (result.tweakFSEcreation !== false) {
             console.log('fse started');
             // Make a dictionnary with keystrokes and their corresponding actions
-            var index = {
+            var index = { // TODO à inhiber si on est dans un champ de texte
                 'n': ['mat-radio-9-input', 'mat-radio-3-input'],
                 'o': ['mat-radio-8-input', 'mat-radio-2-input'],
                 't': ['mat-checkbox-1-input'],
@@ -308,16 +309,23 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
                         }
                     }
                     console.log('element to act on is', element);
-                    if (element && element.type === 'radio') {
-                        console.log('trying to check element', element);
-                        element.checked = true;
-                        recordMetrics({clicks: 1, drags: 1});
-                        element.dispatchEvent(new Event('change'));
-                    }
-                    else if (element && element.type == 'checkbox') { //checked puis un event change ne fonctionnent pas sur une Checkbox donc on trigger un click()
-                        console.log('trying to click element', element);
-                        element.click(); 
-                        recordMetrics({clicks: 1, drags: 1});
+
+                    // Do nothing if the focus is in a text input field
+                    let focusedElement = document.activeElement;
+                    if (focusedElement && focusedElement.tagName.toLowerCase() === 'input' && focusedElement.type === 'text') {
+                        console.log('Entrée clavier détectée dans un champ de texte, je ne fais rien');
+                    } else {
+                        if (element && element.type === 'radio') {
+                            console.log('trying to check element', element);
+                            element.checked = true;
+                            recordMetrics({clicks: 1, drags: 1});
+                            element.dispatchEvent(new Event('change'));
+                        }
+                        else if (element && element.type == 'checkbox') { //checked puis un ev  ent change ne fonctionnent pas sur une Checkbox donc on trigger un click()
+                            console.log('trying to click element', element);
+                            element.click(); 
+                            recordMetrics({clicks: 1, drags: 1});
+                        }
                     }
                     
                 }
