@@ -529,6 +529,29 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/WedaEc
             }, 30000);
         }
     });
+    chrome.storage.local.get('secureExchangeUncheckIHEMessage', function(result) {
+        if (result.secureExchangeUncheckIHEMessage == true) {
+            lightObserver('we-doc-import', function(elements) {
+                for (const element of elements)
+                {
+                    if (element.className != 'docImportAttach') //Correspond au corps du message
+                    {
+                        element.querySelector('input[type=checkbox]').checked = false;
+                        recordMetrics({ clicks: 1, drags: 1 });
+                    }
+                    else {
+                        let docTitle = element.querySelector('input.docTitle');
+                        if (docTitle.value == 'IHE_XDM.ZIP')
+                        {
+                            element.querySelector('input[type=checkbox]').checked = false;
+                            recordMetrics({ clicks: 1, drags: 1 });
+                        }
+                    }
+                }
+                
+            });
+        }
+    });
 }
 
 
