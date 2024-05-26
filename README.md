@@ -4,7 +4,7 @@ Extension pour Chrome permettant de faciliter les tâches quotidiennes sur Weda,
 
 Bien que satisfait de Weda, j'ai trouvé que le nombre de clics pouvait être très nettement diminué en implémentant des raccourcis claviers et quelques automatismes.
 
-Entièrement codé par un médecin Eurois, pour lui-même et ses pairs, j'espère qu'elle vous plaira autant qu'à moi au quotidien !
+Entièrement codé par un médecin Eurois et un médecin Toulousain, pour eux-mêmes et leurs pairs, j'espère qu'elle vous plaira autant qu'à moi au quotidien !
 
 La plupart des raccourcis et des fonctionnalités peuvent être activées ou non dans les options du module ou dans les raccourcis.
 
