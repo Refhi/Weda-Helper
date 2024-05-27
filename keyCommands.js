@@ -2,8 +2,6 @@
  * Fichier contenant les commandes clés pour l'application.
  * Les commandes clés sont définies comme des objets avec une description, une combinaison de touches et une action associée.
  * @typedef {Object} KeyCommand
- * @property {string} description - La description de la commande clé.
- * @property {string} key - La combinaison de touches associée à la commande clé.
  * @property {Function} action - La fonction exécutée lorsque la commande clé est activée.
  */
 

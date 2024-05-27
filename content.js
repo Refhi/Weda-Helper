@@ -106,48 +106,48 @@ function tooltipshower() {
             cancelable: true
         }));
     }
-    // from keyCommands, extract for each key the action
-    const entries = Object.entries(keyCommands);
-    let submenuDict = {};
+    chrome.storage.local.get("shortcuts", function(result) {
+        // from keyCommands, extract for each key the action
+        const entries = Object.entries(keyCommands);
+        let submenuDict = {};
 
-    for (const [key, value] of entries) {
-        let action = value.action;
-        // in the action extract the variable send to submenuW
-        if (action.toString().includes('submenuW')) {
-            var match = action.toString().match(/submenuW\('(.*)'\)/);
-            if (match) {
-                var submenu = match[1];
-                submenuDict[submenu] = value.key;
+        for (const [key, action] of entries) {
+            // in the action extract the variable send to submenuW
+            if (action.toString().includes('submenuW')) {
+                var match = action.toString().match(/submenuW\('(.*)'\)/);
+                if (match) {
+                    var submenu = match[1];
+                    submenuDict[submenu] = result["shortcuts"][key]; //On récupère le raccourcis dans les réglages
+                }
             }
         }
-    }
+        console.log(submenuDict);
 
-    console.log(submenuDict);
-
-    // change the description of each class="level2 dynamic" whom description contain the key of submenuDict to add the corresponding value
-    var elements = document.getElementsByClassName('level2 dynamic');
-    for (var i = 0; i < elements.length; i++) {
-        var element = elements[i];
-        var description = element.innerText;
-        description = description.replace(/ \(\d+\)$/, '');
-        // console.log('description', description);
-        if (description in submenuDict) {
-            // console.log('description in submenuDict', description);
-            // add a tooltip with the key of submenuDict next to the element
-            var tooltip = document.createElement('div');
-            tooltip.className = 'tooltip';
-            tooltip.style.position = 'absolute';
-            tooltip.style.top = '0px';
-            tooltip.style.left = '100%';
-            tooltip.style.padding = '10px';
-            tooltip.style.backgroundColor = '#284E98';
-            tooltip.style.border = '1px solid black';
-            tooltip.style.zIndex = '1000';
-            // tooltip.style.color = 'black';
-            tooltip.textContent = submenuDict[description];
-            element.appendChild(tooltip);
+        // change the description of each class="level2 dynamic" whom description contain the key of submenuDict to add the corresponding value
+        var elements = document.getElementsByClassName('level2 dynamic');
+        for (var i = 0; i < elements.length; i++) {
+            var element = elements[i];
+            var description = element.innerText;
+            description = description.replace(/ \(\d+\)$/, '');
+         // console.log('description', description);
+            if (description in submenuDict) {
+                // console.log('description in submenuDict', description);
+                // add a tooltip with the key of submenuDict next to the element
+                var tooltip = document.createElement('div');
+                tooltip.className = 'tooltip';
+                tooltip.style.position = 'absolute';
+                tooltip.style.top = '0px';
+                tooltip.style.left = '100%';
+                tooltip.style.padding = '10px';
+                tooltip.style.backgroundColor = '#284E98';
+                tooltip.style.border = '1px solid black';
+                tooltip.style.zIndex = '1000';
+                // tooltip.style.color = 'black';
+                tooltip.textContent = submenuDict[description];
+                element.appendChild(tooltip);
+            }
         }
-    }
+    });  
 }
 
 // retirer l'infobulle d'aide et relacher W
