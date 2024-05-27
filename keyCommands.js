@@ -9,7 +9,8 @@ chrome.storage.local.get("shortcuts", function(result) {
     const entries = Object.entries(keyCommands);
     for (const [key, action] of entries) {
         let shortcut = result["shortcuts"][key];
-        hotkeys(shortcut,action); //Pour chaque raccourci on créée un Hotkeys et on y attribue son action
+        if (shortcut != undefined)
+            hotkeys(shortcut,action); //Pour chaque raccourci on créée un Hotkeys et on y attribue son action
     }
 });
 
