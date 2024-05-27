@@ -351,125 +351,57 @@ function openSearch() {
 }
 
 const keyCommands = {
-    'push_valider': {
-        description: 'Appuie le bouton Valider ou équivalent',
-        key: 'alt+v',
-        action: push_valider
-    },
-    'push_annuler': {
-        description: 'Appuie le bouton Annuler ou équivalent',
-        key: 'alt+a',
-        action: push_annuler
-    },
-    'print_meds': {
-        description: 'Imprime les médicaments',
-        key: 'ctrl+p',
-        action: startPrinting
-    },
-    'download_document': {
-        description: 'Télécharge le PDF du document',
-        key: 'ctrl+d',
-        action: startDownload
-    },
-    'push_enregistrer': {
-        description: 'Appuie le bouton Enregistrer ou équivalent',
-        key: 'ctrl+s',
-        action: function () {
+    'push_valider':  push_valider,
+    'push_annuler': push_annuler,
+    'print_meds': startPrinting,
+    'download_document': startDownload,
+    'push_enregistrer': function () {
             console.log('push_enregistrer activé');
             clickElementById('ButtonSave');
-        }
-    },
-    'push_delete': {
-        description: 'Appuie le bouton Supprimer ou équivalent',
-        key: 'alt+s',
-        action: function () {
+        },
+    'push_delete': function () {
             console.log('push_delete activé');
             clickElementByClass('button delete');
-        }
-    },
-    'shortcut_w': {
-        description: 'Raccourci W',
-        key: 'alt+w',
-        action: function () {
+        },
+    'shortcut_w': function () {
             console.log('shortcut_w activé');
             clickElementByOnclick("ctl00$ContentPlaceHolder1$EvenementUcForm1$MenuNavigate")
-        }
-    },
-    'shortcut_consult': {
-        description: 'Raccourci Consultation (crée une nouvelle consultation ou ouvre celle existante)',
-        key: 'alt+&',
-        action: function () {
+        },
+    'shortcut_consult': function () {
             console.log('shortcut_consult activé');
             submenuW(' Consultation');
-        }
-    },
-    'shortcut_certif': {
-        description: 'Raccourci Certificat (crée un nouveau certificat ou ouvre celui existant)',
-        key: 'alt+é',
-        action: function () {
+        },
+    'shortcut_certif': function () {
             console.log('shortcut_certif activé');
             submenuW(' Certificat');
-        }
-    },
-    'shortcut_demande': {
-        description: 'Raccourci Demande (crée une nouvelle demande ou ouvre celle existante)',
-        key: 'alt+\"',
-        action: function () {
+        },
+    'shortcut_demande': function () {
             console.log('shortcut_demande activé');
             submenuW(' Demande');
-        }
-    },
-    'shortcut_prescription': {
-        description: 'Raccourci Prescription (crée une nouvelle prescription ou ouvre celle existante)',
-        key: 'alt+\'',
-        action: function () {
+        },
+    'shortcut_prescription': function () {
             console.log('shortcut_prescription activé');
             submenuW(' Prescription');
-        }
-    },
-    'shortcut_formulaire': {
-        description: 'Raccourci Formulaire (crée un nouveau formulaire ou ouvre celui existant)',
-        key: 'alt+f',
-        action: function () {
+        },
+    'shortcut_formulaire': function () {
             console.log('shortcut_formulaire activé');
             submenuW(' Formulaire');
-        }
-    },
-    'shortcut_courrier': {
-        description: 'Raccourci Courrier (crée un nouveau courrier ou ouvre celui existant)',
-        key: 'alt+(',
-        action: function () {
+        },
+    'shortcut_courrier': function () {
             console.log('shortcut_courrier activé');
             submenuW(' Courrier');
-        }
-    },
-    'shortcut_fse': {
-        description: 'Raccourci FSE',
-        key: 'alt+-',
-        action: function () {
+        },
+    'shortcut_fse': function () {
             console.log('shortcut_fse activé');
             submenuW(' FSE');
-        }
-    },
-    'shortcut_carte_vitale': {
-        description: 'Raccourci Carte Vitale',
-        key: 'alt+c',
-        action: function () {
+        },
+    'shortcut_carte_vitale': function () {
             console.log('shortcut_carte_vitale activé');
             clickCarteVitale();
-        }
-    },
-    'shortcut_search': {
-        description: 'Raccourci Recherche',
-        key: 'alt+r',
-        action: function () {
+        },
+    'shortcut_search': function () {
             console.log('shortcut_search activé');
             openSearch();            
-        }
-    },
-    'shortcut_atcd': {
-        description: 'Raccourci Affichage antécédents',
-        key: 'alt+z',
-        action: toggleAtcd
-    },
+        },
+    'shortcut_atcd': toggleAtcd
 };
