@@ -6,11 +6,18 @@
  */
 
 chrome.storage.local.get("shortcuts", function(result) {
+    hotkeys.filter = function(event){
+        return true; // Permet d'utiliser les raccourcis depuis un input ou un textarea
+    }
     const entries = Object.entries(keyCommands);
     for (const [key, action] of entries) {
         let shortcut = result["shortcuts"][key];
         if (shortcut != undefined)
-            hotkeys(shortcut,action); //Pour chaque raccourci on créée un Hotkeys et on y attribue son action
+            hotkeys(shortcut,function (event, handler){//Pour chaque raccourci on créée un Hotkeys et on y attribue son action
+                event.preventDefault(); //On annule l'événement par défaut pour permettre de faire les raccourcis dns l'input
+                action();
+
+            }); 
     }
 });
 
