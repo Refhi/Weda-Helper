@@ -54,10 +54,129 @@ document.addEventListener('DOMContentLoaded', function () {
     'secureExchangeAutoRefresh': true,
     'autoAATI': true,
   };
+  var defaultShortcuts = {
+    "push_valider": {
+      "default": "Alt+V",
+      "description": "Appuie Valider"
+    },
+    "push_annuler": {
+      "default": "Alt+A",
+      "description": "Appuie Annuler"
+    },
+    "print_meds": {
+      "default": "Ctrl+P",
+      "description": "Imprime le document en cours (attention, nécessite un module complémentaire pour que l'impression soit entièrement automatique. Sinon affiche directement le PDF.)"
+    },
+    "download_document": {
+      "default": "Ctrl+D",
+      "description": "Télécharge le PDF du document en cours"
+    },
+    "push_enregistrer": {
+      "default": "Ctrl+S",
+      "description": "Appuie Enregistrer"
+    },
+    "push_delete": {
+      "default": "Alt+S",
+      "description": "Appuie Supprimer"
+    },
+    "shortcut_w": {
+      "default": "Alt+W",
+      "description": "Appuie sur W"
+    },
+    "shortcut_consult": {
+      "default": "Alt+1",
+      "description": "Ouvre ou crée la consultation n°1"
+    },
+    "shortcut_certif": {
+      "default": "Alt+2",
+      "description": "Ouvre ou crée le certificat n°1"
+    },
+    "shortcut_demande": {
+      "default": "Alt+3",
+      "description": "Ouvre ou crée la demande n°1"
+    },
+    "shortcut_prescription": {
+      "default": "Alt+4",
+      "description": "Ouvre ou crée la prescription n°1"
+    },
+    "shortcut_formulaire": {
+      "default": "Alt+F",
+      "description": "Ouvre ou crée le formulaire n°1"
+    },
+    "shortcut_courrier": {
+      "default": "Alt+5",
+      "description": "Ouvre ou crée courrier n°1"
+    },
+    "shortcut_fse": {
+      "default": "Alt+6",
+      "description": "Clique sur FSE"
+    },
+    "shortcut_carte_vitale": {
+      "default": "Alt+C",
+      "description": "Lit la carte vitale"
+    },
+    "shortcut_search": {
+      "default": "Alt+R",
+      "description": "Ouvre la recherche"
+    },
+    "shortcut_atcd": {
+      "default": "Alt+Z",
+      "description": "Ouvre les antécédents"
+    }
+  };
+  chrome.storage.local.get("shortcuts", function(result) {
+    Object.entries(defaultShortcuts).forEach(([key, shortcut]) => {
+    // D'abord récupérer les valeurs stockées ou utiliser les valeurs par défaut
 
-  var options = Object.keys(defaultValues);
+      let savedShortcut = result["shortcuts"][key];
+      let defaultShortcutValue = shortcut["default"];
 
+      let node = document.getElementById('shortcuts');
+      var shortcutElement = document.createElement('p');
+      var description = document.createElement('span');
+      description.innerHTML = " " + shortcut["description"];
+      var button = document.createElement('button');
+      button.innerHTML = savedShortcut ? savedShortcut:defaultShortcutValue;
+      button.onclick = shortcutClicked;
+      button.id = key;
+      shortcutElement.appendChild(button);
+      shortcutElement.appendChild(description);
+      node.appendChild(shortcutElement);
 
+    });
+  });
+
+ function keyToWord(key) // Fonction pour afficher les symboles de key sous une forme plus simple
+ {
+  if (key == "⌃")
+    return "Ctrl";
+  else if (key == "⌥")
+    return "Alt";
+  else
+    return key;
+}
+
+function shortcutClicked(buttonEvent) {
+  buttonEvent.target.classList.add('modifying');
+  hotkeys('*', function(event, handler) { // On écoute toutes les pressions de touche
+    event.preventDefault();
+    var keys = hotkeys.getPressedKeyString();
+    console.log(keys);
+    if (keys.length == 2) { //Si l'on a plus de 2 touches, on a un raccourcis donc on l'enregistre
+      let shortcut = keyToWord(keys[0]) +"+"+ keyToWord(keys[1])
+      buttonEvent.target.innerHTML = shortcut;
+      buttonEvent.target.classList.remove('modifying');
+      chrome.storage.local.get("shortcuts", function(result) {
+        var shortcuts = result["shortcuts"];
+        shortcuts[buttonEvent.target.id]=shortcut;
+        chrome.storage.local.set({"shortcuts":shortcuts});
+      });
+      hotkeys.unbind('*');
+    }
+  });
+}
+
+var options = Object.keys(defaultValues);
   options.forEach(function (option) {
     // // D'abord récupérer les valeurs stockées ou utiliser les valeurs par défaut
     chrome.storage.local.get(option, function (result) {
@@ -136,6 +255,18 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       
     });
+
+  var shortcuts={};
+  Object.entries(defaultShortcuts).forEach(([key, shortcut]) => {
+    let element = document.getElementById(key);
+    if (element) {
+      shortcuts[key] = element.innerHTML;
+    }
+    else {
+      console.log('Aucun élément avec l\'ID', key);
+    }
+  });
+  valuesToSave["shortcuts"] = shortcuts;
 
     chrome.storage.local.set(valuesToSave, function () {
       console.log('Sauvegardé avec succès');

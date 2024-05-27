@@ -7,15 +7,11 @@
  * @property {Function} action - La fonction exécutée lorsque la commande clé est activée.
  */
 
-// Ecoute les messages envoyés par le background script
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    console.log('request', request);
+chrome.storage.local.get("shortcuts", function(result) {
     const entries = Object.entries(keyCommands);
-    for (const [key, value] of entries) {
-        if (request.action === key) {
-            value.action();
-            break;
-        }
+    for (const [key, action] of entries) {
+        let shortcut = result["shortcuts"][key];
+        hotkeys(shortcut,action); //Pour chaque raccourci on créée un Hotkeys et on y attribue son action
     }
 });
 
