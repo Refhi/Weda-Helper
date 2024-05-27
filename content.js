@@ -73,6 +73,43 @@ function observeDiseapearance(element, callback, justOnce = false) {
     observer.observe(document, config);
 }
 
+// // Fonctions de contrôle de l'url et de l'option pour lancer une fonction
+// récupération de la valeur de l'option (donc soit la valeur sauvegardée, soit la valeur par défaut)
+function getOption(optionName, callback) {
+    chrome.storage.local.get([optionName, 'defaultValues'], function(result) {
+        callback(result[optionName] ?? result.defaultValues[optionName]);
+    });
+}
+
+// Permet de simplifier le code et de ne pas avoir à écrire la même condition à chaque fois
+// // TODO ajout d'une possibilité d'url "universelle" pour toutes les pages ?
+function ifOptionAndUrlMatches(url, option, callback) {
+    function executeOption(option, callback) {
+        getOption(option, function(optionValue) {
+            if (optionValue === true ) {
+                callback();
+            }
+        });
+    }
+    // on vérifie que l'url correspond à une de celles passées en paramètre
+    let urlMatches = Array.isArray(url) 
+        ? url.some(u => window.location.href.startsWith(u)) 
+        : window.location.href.startsWith(url);
+
+    if (urlMatches) {
+        if (typeof option === 'string' && typeof callback === 'function') {
+            // Si une seule option et un seul callback sont passés, on les utilise directement
+            // ça fait un appel à la fonction plus court
+            executeOption(option, callback);
+        } else if (Array.isArray(option) && option.length > 0) {
+            // Si un tableau d'options et de callbacks est passé, on les utilise tous
+            // permet de ne pas avoir à écrire plusieurs fois la même condition
+            option.forEach(({option, callback}) => {
+                executeOption(option, callback);
+            });
+        }
+    }
+}
 
 
 // // Boutons du popup
@@ -257,24 +294,28 @@ document.addEventListener('keyup', function (event) {
 // // Change certains éléments selon l'URL les options
 // [page de recettes] Appuie automatiquement sur le bouton "rechercher" après avoir sélectionné la page des recettes
 // seulement si la page est https://secure.weda.fr/FolderGestion/RecetteForm.aspx, appuis sur id="ContentPlaceHolder1_ButtonFind"
-chrome.storage.local.get('TweakRecetteForm', function (result) {
-    let TweakRecetteForm = result.TweakRecetteForm;
-    if (window.location.href === 'https://secure.weda.fr/FolderGestion/RecetteForm.aspx' && TweakRecetteForm !== false) {
-        var button = document.getElementById('ContentPlaceHolder1_ButtonFind');
-        if (button) {
-            button.click();
-            recordMetrics({clicks: 1, drags: 1});
-            console.log('Button clicked on RecetteForm page');
-        }
+// Utilisation des nouvelles fonctions pour simplifier le code
+ifOptionAndUrlMatches('https://secure.weda.fr/FolderGestion/RecetteForm.aspx', 'TweakRecetteForm', function() {
+    var button = document.getElementById('ContentPlaceHolder1_ButtonFind');
+    if (button) {
+        button.click();
+        recordMetrics({clicks: 1, drags: 1});
+        console.log('Button clicked on RecetteForm page');
     }
 });
 
+
 // // [page d'accueil]
-if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx') || window.location.href.startsWith('https://secure.weda.fr/FolderMedical/FindPatientForm.aspx')) {
-    chrome.storage.local.get('autoSelectPatientCV', function (result) {
-        console.log('autoSelectPatientCV démarré');
-        let autoSelectPatientCV = result.autoSelectPatientCV;
-        if (autoSelectPatientCV !== false) {
+let homePageUrls = [
+    'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx',
+    'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx'
+];
+
+let homePageFunctions = [
+    {
+        option: 'autoSelectPatientCV',
+        callback: function () {
+            console.log('autoSelectPatientCV démarré');
             // lit automatiquement la carte vitale elle est insérée
             // selecteur de ttt131 : body > weda-notification-container > ng-component > mat-card > div > p
             // selecteur ce jour : body > weda-notification-container > ng-component:nth-child(2) > mat-card > div > p
@@ -329,12 +370,10 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
             }, document, true);
 
         }
-    });
-
-    // copie automatiquement dans le presse papier le NIR du patient quand on clique dessus:
-    chrome.storage.local.get('TweakNIR', function (result) {
-        let TweakNIR = result.TweakNIR;
-        if (TweakNIR !== false) {
+    },
+    {
+        option: 'TweakNIR',
+        callback: function () {
             function addCopySymbol(element, copyText) {
                 // Define the id for the copySymbol
                 var copySymbolId = 'copySymbol-' + element.id;
@@ -387,8 +426,11 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Patien
                 });
             });
         }
-    });
-}
+    },
+];
+
+ifOptionAndUrlMatches(homePageUrls, homePageFunctions);
+
 
 
 // [page de gestion des feuilles de soins]

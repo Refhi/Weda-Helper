@@ -15,6 +15,10 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - possibilité de cocher automatiquement la case FSE en mode gestion unique pour les C2S (désactivé par défaut)
 - selection automatique de "je suis le médecin traitant" si nous sommes le médecin déclaré (utile quand l'option "je suis médecin traitant de substitution" est part défaut)
 
+## divers :
+- passage des options par défaut dans le manifest.json pour éviter les doublons
+- création d'une fonction "ifOptionAndUrlMatches" pour simplifier les conditions de l'attente des pages
+
 # [2.1] - 2024-04-13
 *améliorations arrêt de travail*
 ## ajout :
