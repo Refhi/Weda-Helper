@@ -42,7 +42,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'))
         if (result.tweakFSEcreation !== false) {
             console.log('fse started');
             // Make a dictionnary with keystrokes and their corresponding actions
-            var index = { // TODO à inhiber si on est dans un champ de texte
+            var index = { // TODO à passer dans hotkey.js
                 'n': ['mat-radio-9-input', 'mat-radio-3-input'],
                 'o': ['mat-radio-8-input', 'mat-radio-2-input'],
                 't': ['mat-checkbox-1-input'],

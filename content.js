@@ -82,21 +82,33 @@ function getOption(optionName, callback) {
 }
 
 // Permet de simplifier le code et de ne pas avoir à écrire la même condition à chaque fois
-// // TODO ajout d'une possibilité d'url "universelle" pour toutes les pages ?
-function ifOptionAndUrlMatches(url, option, callback) {
+// Si l'url et/ou les options sont multiples, on peut passer un tableau
+// Pour simplifier le code : on fait un appel à addTweak après chaque tableau d'url/option
+// TODO ajout d'une possibilité d'url "universelle" pour toutes les pages ?
+function addTweak(url, option, callback) {
     function executeOption(option, callback) {
-        getOption(option, function(optionValue) {
-            if (optionValue === true ) {
-                callback();
-            }
-        });
+        if (option === '*') {
+            callback();
+        } else {
+            getOption(option, function(optionValue) {
+                if (optionValue === true ) {
+                    callback();
+                }
+            });
+        }
     }
     // on vérifie que l'url correspond à une de celles passées en paramètre
-    let urlMatches = Array.isArray(url) 
-        ? url.some(u => window.location.href.startsWith(u)) 
-        : window.location.href.startsWith(url);
+    let urlMatches;
+    if (url === '*') {
+        urlMatches = true; // Si l'URL est '*', on considère que ça correspond toujours
+    } else {
+        urlMatches = Array.isArray(url) 
+            ? url.some(u => window.location.href.startsWith(u)) 
+            : window.location.href.startsWith(url);
+    }
 
     if (urlMatches) {
+        console.log(`[addTweak] ${option} activé`);
         if (typeof option === 'string' && typeof callback === 'function') {
             // Si une seule option et un seul callback sont passés, on les utilise directement
             // ça fait un appel à la fonction plus court
@@ -275,6 +287,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 // Ecoute l'appuis de la touches Alt pour afficher l'aide
+// TODO passer ça sur la lib hotkey.js
 var tooltipTimeout;
 document.addEventListener('keydown', function (event) {
     if (event.key === 'Alt') {
@@ -295,7 +308,7 @@ document.addEventListener('keyup', function (event) {
 // [page de recettes] Appuie automatiquement sur le bouton "rechercher" après avoir sélectionné la page des recettes
 // seulement si la page est https://secure.weda.fr/FolderGestion/RecetteForm.aspx, appuis sur id="ContentPlaceHolder1_ButtonFind"
 // Utilisation des nouvelles fonctions pour simplifier le code
-ifOptionAndUrlMatches('https://secure.weda.fr/FolderGestion/RecetteForm.aspx', 'TweakRecetteForm', function() {
+addTweak('https://secure.weda.fr/FolderGestion/RecetteForm.aspx', 'TweakRecetteForm', function() {
     var button = document.getElementById('ContentPlaceHolder1_ButtonFind');
     if (button) {
         button.click();
@@ -315,7 +328,6 @@ let homePageFunctions = [
     {
         option: 'autoSelectPatientCV',
         callback: function () {
-            console.log('autoSelectPatientCV démarré');
             // lit automatiquement la carte vitale elle est insérée
             // selecteur de ttt131 : body > weda-notification-container > ng-component > mat-card > div > p
             // selecteur ce jour : body > weda-notification-container > ng-component:nth-child(2) > mat-card > div > p
@@ -429,118 +441,113 @@ let homePageFunctions = [
     },
 ];
 
-ifOptionAndUrlMatches(homePageUrls, homePageFunctions);
+addTweak(homePageUrls, homePageFunctions);
 
 
 
 // [page de gestion des feuilles de soins]
-if (window.location.href === 'https://secure.weda.fr/vitalzen/gestion.aspx') {
-    chrome.storage.local.get('TweakFSEGestion', function (result) {
-        let TweakFSEGestion = result.TweakFSEGestion;
-        if (TweakFSEGestion !== false) {
-            waitForElement('.mat-icon.notranslate.material-icons.mat-icon-no-color', 'search', 5000, function (element) {
-                console.log('element', element, 'trouvé, je clique dessus');
-                element.click();
-                recordMetrics({clicks: 1, drags: 1});
-            });
-        }
+addTweak('https://secure.weda.fr/vitalzen/gestion.aspx', 'TweakFSEGestion', function() {    
+    waitForElement('.mat-icon.notranslate.material-icons.mat-icon-no-color', 'search', 5000, function (element) {
+        console.log('element', element, 'trouvé, je clique dessus');
+        element.click();
+        recordMetrics({clicks: 1, drags: 1});
     });
-}
-
+});
+    
 
 
 // // Retrait des suggestions de titre
-chrome.storage.local.get('RemoveTitleSuggestions', function (result) {
-    function RemoveTitleSuggestions(elements) {
+let titleSuggestionsUrls = [
+    'https://secure.weda.fr/FolderMedical/ConsultationForm.aspx',
+    'https://secure.weda.fr/FolderMedical/CertificatForm.aspx',
+    'https://secure.weda.fr/FolderMedical/DemandeForm.aspx',
+    'https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx',
+    'https://secure.weda.fr/FolderMedical/FormulaireForm.aspx',
+    'https://secure.weda.fr/FolderMedical/ResultatExamenForm.aspx',
+    'https://secure.weda.fr/FolderMedical/CourrierForm.aspx',
+];
+
+addTweak(titleSuggestionsUrls, 'RemoveTitleSuggestions', function() {
+    function RemoveTitleSuggestions() {
         setTimeout(() => {
             console.log('Remove TitleSuggestions started');
+            let elements = document.querySelectorAll('#DivGlossaireReponse');
             if (elements[0]) {
                 elements[0].remove();
             }
         }, 400);
     }
-    if (result.RemoveTitleSuggestions !== false) {
-        console.log('RemoveTitleSuggestions démarré');
-        // vérifie que l'on est sur une page soufrant du problème
-        if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/')
-            && window.location.href.includes('Form.aspx')
-            && !window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx')
-            && !window.location.href.startsWith('https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx')) {
-            RemoveTitleSuggestions(document.querySelectorAll('#DivGlossaireReponse')); // nécessaire pour certaines pages se chargeant trop vite
-            lightObserver('#DivGlossaireReponse', RemoveTitleSuggestions)
-        }
-    }
+
+    RemoveTitleSuggestions(); // nécessaire pour certaines pages se chargeant trop vite
+    lightObserver('#DivGlossaireReponse', RemoveTitleSuggestions);
 });
 
 
 
-// // Travail sur les boutons des interfaces secu (IMTI, DMP etc.) 
-chrome.storage.local.get('WarpButtons', function (result) {
-    let WarpButtons = result.WarpButtons;
-    if (WarpButtons !== false) {
-        function warpButtons(buttons) {
-            function addIdToButton(button) {
-                var actions = {
-                    'Annuler': ['Continuez sans l\'ordonnance numérique', 'Non', 'NON', 'Annuler'],
-                    'Valider': ['Oui', 'OUI', 'Confirmer', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre']
-                };
-                if (button) {
-                    var action = Object.keys(actions).find(key => actions[key].includes(button.textContent));
-                    // vérifie que l'id n'est pas déjà présent. Utile quand plusieurs boutons sont éligible.
-                    if (document.getElementById('target' + action)) {
-                        console.log(action, 'id already exist !');
-                        return false;
-                    }
-                    if (action) {
-                        button.id = 'target' + action;
-                    }
+// // Travail sur les boutons des interfaces secu (IMTI, DMP etc.)
+addTweak('*', 'WarpButtons', function() {
+    function warpButtons(buttons) {
+        function addIdToButton(button) {
+            var actions = {
+                'Annuler': ['Continuez sans l\'ordonnance numérique', 'Non', 'NON', 'Annuler'],
+                'Valider': ['Oui', 'OUI', 'Confirmer', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre']
+            };
+            if (button) {
+                var action = Object.keys(actions).find(key => actions[key].includes(button.textContent));
+                // vérifie que l'id n'est pas déjà présent. Utile quand plusieurs boutons sont éligible.
+                if (document.getElementById('target' + action)) {
+                    console.log(action, 'id already exist !');
+                    return false;
                 }
-                return true;
-            }
-        
-            function addShortcutsToButton(button) {
-                var raccourcis = {
-                    'targetAnnuler': ' (alt+A)',
-                    'targetValider': ' (alt+V)'
-                };
-                if (button) {
-                    console.log('ajout de raccourcis au button', button);
-                    var raccourci = raccourcis[button.id];
-                    if (raccourci) {
-                        button.textContent += raccourci;
-                    }
-                    if (button.textContent.includes('Désactiver aujourd\'hui')) { // certains boutons nécessitent d'étendre la taille de la fenêtre
-                        resizeTextBox();
-                    }
+                if (action) {
+                    button.id = 'target' + action;
                 }
             }
-        
-            function resizeTextBox () {
-                let textbox = document.querySelector('.mat-dialog-container');
-                let currentHeight = parseInt(window.getComputedStyle(textbox).height, 10);
-                if (textbox && currentHeight < 440) {
-                    textbox.style.height = '440px';
-                } else {
-                    console.log('textBox not found :-/ can\'t resize it');
-                }
-            }
-        
-        
-            buttons.forEach(function (button) {
-                console.log('Bouton trouvé ! Je le redimentionne, lui ajoute un id et note le raccourcis clavier par défaut', button);
-                button.style.width = 'auto';
-                if (addIdToButton(button)) {
-                    addShortcutsToButton(button);
-                }
-            });
+            return true;
         }
-        
-        lightObserver('.cdk-overlay-container .mat-raised-button', warpButtons)
+    
+        function addShortcutsToButton(button) {
+            var raccourcis = {
+                'targetAnnuler': ' (alt+A)',
+                'targetValider': ' (alt+V)'
+            };
+            if (button) {
+                console.log('ajout de raccourcis au button', button);
+                var raccourci = raccourcis[button.id];
+                if (raccourci) {
+                    button.textContent += raccourci;
+                }
+                if (button.textContent.includes('Désactiver aujourd\'hui')) { // certains boutons nécessitent d'étendre la taille de la fenêtre
+                    resizeTextBox();
+                }
+            }
+        }
+    
+        function resizeTextBox () {
+            let textbox = document.querySelector('.mat-dialog-container');
+            let currentHeight = parseInt(window.getComputedStyle(textbox).height, 10);
+            if (textbox && currentHeight < 440) {
+                textbox.style.height = '440px';
+            } else {
+                console.log('textBox not found :-/ can\'t resize it');
+            }
+        }
+    
+    
+        buttons.forEach(function (button) {
+            console.log('Bouton trouvé ! Je le redimentionne, lui ajoute un id et note le raccourcis clavier par défaut', button);
+            button.style.width = 'auto';
+            if (addIdToButton(button)) {
+                addShortcutsToButton(button);
+            }
+        });
     }
+    
+    lightObserver('.cdk-overlay-container .mat-raised-button', warpButtons)
 });
 
 // Page HRPIM
-if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/HprimForm.aspx')) {
+addTweak('https://secure.weda.fr/FolderMedical/HprimForm.aspx', '*', function() {
     function makeHPRIMListSticky() {
         let element = document.querySelector("#ContentPlaceHolder1_UpdatePanelHprimsGrid");
         element.style.position = "sticky";
@@ -550,32 +557,30 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/HprimF
     // dur d'estimer précisement la métrique. Là c'est très grossier, on va dire 5 drags
     recordMetrics({drags: 5});
 
-}
+});
 
 
 // Page Messagerie sécurisée
-if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/WedaEchanges/')) {
-    chrome.storage.local.get('secureExchangeAutoRefresh', function (result) {
-        if (result.secureExchangeAutoRefresh !== false) {
-            // clique sur reçu pour rafraichir la liste des messages à intervalle régulier
-            function clickOnInbox() {
-                console.log('[clickOnInbox] je clique sur reçu pour rafraichir la liste des messages');
-                var element = document.querySelector('#inboxToolbar > li.inbox.selected > a');
-                if (element) {
-                    element.click();
-                    recordMetrics({clicks: 1, drags: 1});
-                }
+addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeAutoRefresh', function() {
+    if (result.secureExchangeAutoRefresh !== false) {
+        // clique sur reçu pour rafraichir la liste des messages à intervalle régulier
+        function clickOnInbox() {
+            console.log('[clickOnInbox] je clique sur reçu pour rafraichir la liste des messages');
+            var element = document.querySelector('#inboxToolbar > li.inbox.selected > a');
+            if (element) {
+                element.click();
+                recordMetrics({clicks: 1, drags: 1});
             }
-            setTimeout(function() {
-                setInterval(clickOnInbox, 900000);
-            }, 30000);
         }
-    });
-}
+        setTimeout(function() {
+            setInterval(clickOnInbox, 900000);
+        }, 30000);
+    }
+});
 
 
 // Sélection automatique du type de document pour les courriers envoyés au DMP
-if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/CourrierForm.aspx')) {
+addTweak('https://secure.weda.fr/FolderMedical/CourrierForm.aspx', '*', function() {
     let dropDownMenu = document.querySelector('#ContentPlaceHolder1_DropDownListDocumentTypes');
     function watchDocumentTypeCourrierDMP() {
         dropDownMenu.addEventListener('change', function() {
@@ -594,12 +599,12 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Courri
     });
 
     watchDocumentTypeCourrierDMP();
-}
+});
 
 
 // Sélection automatique du champ "titre" lors de la création d'un antécédent.
-if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/AntecedentForm.aspx')) {
+addTweak('https://secure.weda.fr/FolderMedical/AntecedentForm.aspx', '*', function() {
     lightObserver('#ContentPlaceHolder1_TextBoxAntecedentNom', function (elements) {
         elements[0].focus();
     });
-}
+});
