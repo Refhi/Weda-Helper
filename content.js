@@ -562,20 +562,18 @@ addTweak('https://secure.weda.fr/FolderMedical/HprimForm.aspx', '*', function() 
 
 // Page Messagerie sécurisée
 addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeAutoRefresh', function() {
-    if (result.secureExchangeAutoRefresh !== false) {
-        // clique sur reçu pour rafraichir la liste des messages à intervalle régulier
-        function clickOnInbox() {
-            console.log('[clickOnInbox] je clique sur reçu pour rafraichir la liste des messages');
-            var element = document.querySelector('#inboxToolbar > li.inbox.selected > a');
-            if (element) {
-                element.click();
-                recordMetrics({clicks: 1, drags: 1});
-            }
+    // clique sur reçu pour rafraichir la liste des messages à intervalle régulier
+    function clickOnInbox() {
+        console.log('[clickOnInbox] je clique sur reçu pour rafraichir la liste des messages');
+        var element = document.querySelector('#inboxToolbar > li.inbox.selected > a');
+        if (element) {
+            element.click();
+            recordMetrics({clicks: 1, drags: 1});
         }
-        setTimeout(function() {
-            setInterval(clickOnInbox, 900000);
-        }, 30000);
     }
+    setTimeout(function() {
+        setInterval(clickOnInbox, 900000);
+    }, 30000);   
 });
 
 
