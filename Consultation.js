@@ -1,4 +1,4 @@
-// [Page de Consultation]
+// [Page de Consultation] // TODO Reprendre là
 if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx')) {
     // Modifier l'ordre de tabulation des valeurs de suivi
     chrome.storage.local.get('TweakTabConsultation', function (result) {    
