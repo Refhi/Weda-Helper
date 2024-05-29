@@ -76,8 +76,8 @@ function observeDiseapearance(element, callback, justOnce = false) {
 // // Fonctions de contrôle de l'url et de l'option pour lancer une fonction
 // récupération de la valeur de l'option (donc soit la valeur sauvegardée, soit la valeur par défaut)
 function getOption(optionName, callback) {
-    chrome.storage.local.get([optionName, 'defaultValues'], function(result) {
-        callback(result[optionName] ?? result.defaultValues[optionName]);
+    chrome.storage.local.get([optionName, 'defaultSettings'], function(result) {
+        callback(result[optionName] ?? result.defaultSettings[optionName]);
     });
 }
 
