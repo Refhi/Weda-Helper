@@ -84,7 +84,10 @@ var defaultSettings = {
   'autoAATI': true,
 };
 
-// Enregistrer les valeurs par défaut dans le stockage
-chrome.storage.local.set({defaultSettings: defaultSettings}, function() {
-  console.log('[background.js] Les valeurs par défaut ont été enregistrées');
+chrome.runtime.onInstalled.addListener((details) => {
+  // Enregistrer les valeurs par défaut dans le stockage
+  chrome.storage.local.set({defaultSettings: defaultSettings}, function() {
+    console.log('[background.js] Les valeurs par défaut ont été enregistrées');
+  });
+  // TODO : à tester
 });

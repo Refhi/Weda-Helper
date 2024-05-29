@@ -84,14 +84,14 @@ function getOption(optionName, callback) {
 // Permet de simplifier le code et de ne pas avoir à écrire la même condition à chaque fois
 // Si l'url et/ou les options sont multiples, on peut passer un tableau
 // Pour simplifier le code : on fait un appel à addTweak après chaque tableau d'url/option
-// TODO ajout d'une possibilité d'url "universelle" pour toutes les pages ?
+// Une option précédée de '!' sera considérée comme négative
 function addTweak(url, option, callback) {
-    function executeOption(option, callback) {
+    function executeOption(option, callback, invert = false) {
         if (option === '*') {
             callback();
         } else {
             getOption(option, function(optionValue) {
-                if (optionValue === true ) {
+                if ((optionValue === true && !invert) || (optionValue === false && invert)) {
                     callback();
                 }
             });
@@ -109,15 +109,21 @@ function addTweak(url, option, callback) {
 
     if (urlMatches) {
         console.log(`[addTweak] ${option} activé`);
+        // permet de gérer les options en négatif
+        let invert = false;
+        if (typeof option === 'string' && option.startsWith('!')) {
+            option = option.slice(1);
+            invert = true;
+        }
         if (typeof option === 'string' && typeof callback === 'function') {
             // Si une seule option et un seul callback sont passés, on les utilise directement
             // ça fait un appel à la fonction plus court
-            executeOption(option, callback);
+            executeOption(option, callback, invert);
         } else if (Array.isArray(option) && option.length > 0) {
             // Si un tableau d'options et de callbacks est passé, on les utilise tous
             // permet de ne pas avoir à écrire plusieurs fois la même condition
             option.forEach(({option, callback}) => {
-                executeOption(option, callback);
+                executeOption(option, callback, invert);
             });
         }
     }

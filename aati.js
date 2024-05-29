@@ -118,9 +118,8 @@ addTweak(urlAATI, 'autoAATI', function () {
 
     // Envoi du document à l'assistant
     // On n'utilise pas addTweak car ici les options appelées sont spécifiques à ce tweak
-    // TODO : passer par getOption, reprendre ici
-    if (window.location.href.startsWith('https://secure.weda.fr/BinaryData.aspx')) {
-        chrome.storage.local.get(['autoAATIexit', 'RemoveLocalCompanionPrint'], function (result) {
+    addTweak('https://secure.weda.fr/BinaryData.aspx', "!RemoveLocalCompanionPrint", function () {
+        chrome.storage.local.get(['autoAATIexit'], function (result) {
             if (Date.now() - result.autoAATIexit < 10000 && result.RemoveLocalCompanionPrint === false) {
                 console.log('autoAATIexit', result.autoAATIexit, 'is less than 10 seconds ago');
                 let url = window.location.href;
@@ -150,6 +149,5 @@ addTweak(urlAATI, 'autoAATI', function () {
                 window.print();
             }
         });
-    }
-
+    });
 });
