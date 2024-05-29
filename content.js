@@ -75,9 +75,16 @@ function observeDiseapearance(element, callback, justOnce = false) {
 
 // // Fonctions de contrôle de l'url et de l'option pour lancer une fonction
 // récupération de la valeur de l'option (donc soit la valeur sauvegardée, soit la valeur par défaut)
-function getOption(optionName, callback) {
-    chrome.storage.local.get([optionName, 'defaultValues'], function(result) {
-        callback(result[optionName] ?? result.defaultValues[optionName]);
+function getOption(optionNames, callback) {
+    let isInputArray = Array.isArray(optionNames);
+
+    if (!isInputArray) {
+        optionNames = [optionNames];
+    }
+
+    chrome.storage.local.get([...optionNames, 'defaultValues'], function(result) {
+        let options = optionNames.map(optionName => result[optionName] ?? result.defaultValues[optionName]);
+        callback(isInputArray ? options : options[0]);
     });
 }
 
