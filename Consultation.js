@@ -219,6 +219,30 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTab
         
 });
 
+// TODO : refactoriser ici pour utiliser getOption et addTweak
+// deux étapes :
+// 1. isoler autoATCD qui clique sur le bouton ATCD
+// 2. pour panel gauche :
+//    - faire la liste des urls
+//    - pour chaque url, faire un addTweak qui appelle moveToLeftWrapper, chacune l'option spécifique
+// par exemple :
+let pagesToLeftPannel_ = [
+    {
+        url: 'https://secure.weda.fr/FolderMedical/ConsultationForm.aspx',
+        targetElementSelector: '#form1 > div:nth-child(14) > div > table > tbody > tr > td:nth-child(1) > table',
+        option: 'optionàappeler'
+    },
+    {
+        url: 'https://secure.weda.fr/FolderMedical/CertificatForm.aspx',
+        targetElementSelector: '#CE_ContentPlaceHolder1_EditorCertificat_ID',
+        option: 'optionàappeler'
+    },
+]
+// 3. Faire un appel de addTweak pour chaque page présente dans pagesToLeftPannel_
+
+
+
+
 
 
 // // Mettre l'historique dans une colonne à gauche de l'écran
