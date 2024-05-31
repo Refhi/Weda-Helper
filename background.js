@@ -95,5 +95,5 @@ chrome.storage.local.get(['lastExtensionVersion', 'firstStart'], function(result
       console.log('[background.js] Les valeurs par défaut ont été enregistrées');
     });
   }
-  // TODO : à tester
+  // TODO : à évaluer : est-ce que ça limite vraiment la charge ?
 });
