@@ -1,17 +1,17 @@
 // Récupérer les valeurs par défaut du stockage
-chrome.storage.local.get('defaultValues', function(result) {
+chrome.storage.local.get('defaultSettings', function(result) {
   // Les valeurs par défaut sont stockées (v >= 2.2)dans manifest.json pour être utilisées dans les options et éviter de dupliquer le code
 
-  let defaultValues = result.defaultValues;
-  console.log("[option.js] valeurs par défaut chargées : ", defaultValues); // Affiche les valeurs par défaut
-  var options = Object.keys(defaultValues);
+  let defaultSettings = result.defaultSettings;
+  console.log("[option.js] valeurs par défaut chargées : ", defaultSettings); // Affiche les valeurs par défaut
+  var options = Object.keys(defaultSettings);
 
 
   options.forEach(function (option) {
     // // D'abord récupérer les valeurs stockées ou utiliser les valeurs par défaut
     chrome.storage.local.get(option, function (result) {
       let savedOptionValue = result[option];
-      let defautOptionValue = defaultValues[option];
+      let defautOptionValue = defaultSettings[option];
 
 
       // ici on gère les boutons radio

@@ -82,8 +82,8 @@ function getOption(optionNames, callback) {
         optionNames = [optionNames];
     }
 
-    chrome.storage.local.get([...optionNames, 'defaultValues'], function(result) {
-        let options = optionNames.map(optionName => result[optionName] ?? result.defaultValues[optionName]);
+    chrome.storage.local.get([...optionNames, 'defaultSettings'], function(result) {
+        let options = optionNames.map(optionName => result[optionName] ?? result.defaultSettings[optionName]);
         callback(isInputArray ? options : options[0]);
     });
 }
