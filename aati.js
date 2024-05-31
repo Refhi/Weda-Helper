@@ -117,37 +117,38 @@ addTweak(urlAATI, 'autoAATI', function () {
 
 
     // Envoi du document à l'assistant
-    // On n'utilise pas addTweak car ici les options appelées sont spécifiques à ce tweak
-    addTweak('https://secure.weda.fr/BinaryData.aspx', "!RemoveLocalCompanionPrint", function () {
+    addTweak('https://secure.weda.fr/BinaryData.aspx', "*", function () {
         chrome.storage.local.get(['autoAATIexit'], function (result) {
-            if (Date.now() - result.autoAATIexit < 10000 && result.RemoveLocalCompanionPrint === false) {
-                console.log('autoAATIexit', result.autoAATIexit, 'is less than 10 seconds ago');
-                let url = window.location.href;
-                console.log('url', url);
-                fetch(url)
-                    .then(response => response.blob())
-                    .then(blob => {
-                        console.log('blob', blob);
-                        return sendToCompanion(`print`, blob);
-                    })
-                    .then(() => {
-                        // The blob has been successfully transferred
-                        console.log('The blob has been successfully transferred.');
-                        recordMetrics({clicks: 3, drags: 3});
-                        setTimeout(function () {
-                            window.close();
-                        }, 1000); // essai avec un délai de 1s
-                    })
-                    .catch(error => {
-                        console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
-                        if (!errortype.includes('[focus]')) {
-                            alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
-                        }
-                    });
-            } else {
-                // en cas de Companion désactivé
-                window.print();
-            }
+            getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
+                if (Date.now() - result.autoAATIexit < 10000 && RemoveLocalCompanionPrint === false) {
+                    console.log('autoAATIexit', result.autoAATIexit, 'is less than 10 seconds ago');
+                    let url = window.location.href;
+                    console.log('url', url);
+                    fetch(url)
+                        .then(response => response.blob())
+                        .then(blob => {
+                            console.log('blob', blob);
+                            return sendToCompanion(`print`, blob);
+                        })
+                        .then(() => {
+                            // The blob has been successfully transferred
+                            console.log('The blob has been successfully transferred.');
+                            recordMetrics({clicks: 3, drags: 3});
+                            setTimeout(function () {
+                                window.close();
+                            }, 1000); // essai avec un délai de 1s
+                        })
+                        .catch(error => {
+                            console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
+                            if (!errortype.includes('[focus]')) {
+                                alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
+                            }
+                        });
+                } else {
+                    // en cas de Companion désactivé
+                    window.print();
+                }
+            });
         });
     });
 });

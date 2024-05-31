@@ -334,7 +334,7 @@ addTweak('https://secure.weda.fr/FolderGestion/RecetteForm.aspx', 'TweakRecetteF
 // // [page d'accueil]
 let homePageUrls = [
     'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx',
-    'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx'
+    'https://secure.weda.fr/FolderMedical/PatientViewForm.aspx'
 ];
 
 let homePageFunctions = [

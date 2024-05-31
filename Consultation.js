@@ -1,23 +1,18 @@
-// [Page de Consultation] // TODO Reprendre là
-if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx')) {
-    // Modifier l'ordre de tabulation des valeurs de suivi
-    chrome.storage.local.get('TweakTabConsultation', function (result) {    
-        if (result.TweakTabConsultation !== false) {        
-            function changeTabOrder(elements) {
-                console.log('changeTabOrder started');
-                for (var i = 0; i < elements.length; i++) {
-                    elements[i].tabIndex = i + 1;
-                }
+// [Page de Consultation]
+addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', function () {
+    // Modifier l'ordre de tabulation des valeurs de suivi    
+        function changeTabOrder(elements) {
+            console.log('changeTabOrder started');
+            for (var i = 0; i < elements.length; i++) {
+                elements[i].tabIndex = i + 1;
             }
-
-            lightObserver('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]',changeTabOrder)
-            console.log('ConsultationFormTabOrderer started');
-            // ici aussi les métriques sont difficiles à évaluer. Si on considère environs
-            // 2 éléments par consultation, on peut estimer en gros à 1 clic + 1 drag par consultation
-            recordMetrics({clicks: 1, drags: 1});
-
         }
-    });
+
+        lightObserver('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]',changeTabOrder)
+        console.log('ConsultationFormTabOrderer started');
+        // ici aussi les métriques sont difficiles à évaluer. Si on considère environs
+        // 2 éléments par consultation, on peut estimer en gros à 1 clic + 1 drag par consultation
+        recordMetrics({clicks: 1, drags: 1});
 
 
     // Afficher en overlay une image issue d'une URL en cas de survol de certains éléments
@@ -193,7 +188,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Consul
 
 
     // Ajouter les unités pour les valeurs de suivi
-    chrome.storage.local.get('defautDataType', function (result) {
+    getOptions(['defautDataType'], function (result) {
         // defautDataType est une liste de valeurs de suivi pour lesquelles les unités doivent être ajoutées
         // il est formaté comme ceci : 'Taille:cm,Poids:kg,Pc:cm,IMC:kg/t²,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%'
         let defautDataType = result.defautDataType
@@ -222,7 +217,7 @@ if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/Consul
         // un peu compliqué de mettre des metrics ici... car les utilisateurs ne mettent en général simplement pas d'unité
     });
         
-}
+});
 
 
 
