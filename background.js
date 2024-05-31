@@ -84,10 +84,16 @@ var defaultSettings = {
   'autoAATI': true,
 };
 
-chrome.runtime.onInstalled.addListener((details) => {
-  // Enregistrer les valeurs par défaut dans le stockage
-  chrome.storage.local.set({defaultSettings: defaultSettings}, function() {
-    console.log('[background.js] Les valeurs par défaut ont été enregistrées');
-  });
+// chrome.runtime.onInstalled.addListener((details) => { // Cette partie ne semble pas fonctionner correctement
+// Donc on passe plutôt par la comparaison des version, qui est déjà gérée de façon fiable dans update.js
+chrome.storage.local.get(['lastExtensionVersion', 'firstStart'], function(result) {
+  let currentVersion = chrome.runtime.getManifest().version;
+  console.log('[background.js] Version actuelle :', currentVersion, 'Dernière version enregistrée :', result.lastExtensionVersion);
+  if (result.lastExtensionVersion !== currentVersion) {
+    // Enregistrer les valeurs par défaut dans le stockage
+    chrome.storage.local.set({defaultSettings: defaultSettings}, function() {
+      console.log('[background.js] Les valeurs par défaut ont été enregistrées');
+    });
+  }
   // TODO : à tester
 });
