@@ -212,19 +212,16 @@ function tweakFSECreation() {
 
     function setDefaultValue() {
         // set defaut value
-        chrome.storage.local.get('defaultCotation', function (result) {
-            var defaultCotation = result.defaultCotation;
-            if (defaultCotation !== false) {
-                var elements = document.querySelectorAll('.flexRow.favoris.ng-star-inserted');
-                console.log('elements', elements);
-                var defautElement = Array.from(elements).find(el => el.textContent.trim().includes('Défaut'));
-                if (defautElement) {
-                    defautElement.click();
-                    recordMetrics({clicks: 1, drags: 1});
-                } else {
-                    console.log('Aucun élément contenant "Défaut" n\'a été trouvé.');
-                    alert('Weda-Helper : "cotation par défaut" n\'est pas désactivé dans les options, mais aucune cotation favorite nommée "Défaut" n\'a été trouvé. Vous devez soit ajouter un favori nommé exactement "Défaut", soit désactiver l\'option "cotation par défaut" dans les options de Weda-Helper. Ce changement est rendu nécessaire par la dernière mise à jour.');
-                }
+        addTweak('*', 'defaultCotation', function() {
+            var elements = document.querySelectorAll('.flexRow.favoris.ng-star-inserted');
+            console.log('elements', elements);
+            var defautElement = Array.from(elements).find(el => el.textContent.trim().includes('Défaut'));
+            if (defautElement) {
+                defautElement.click();
+                recordMetrics({clicks: 1, drags: 1});
+            } else {
+                console.log('Aucun élément contenant "Défaut" n\'a été trouvé.');
+                alert('Weda-Helper : "cotation par défaut" n\'est pas désactivé dans les options, mais aucune cotation favorite nommée "Défaut" n\'a été trouvé. Vous devez soit ajouter un favori nommé exactement "Défaut", soit désactiver l\'option "cotation par défaut" dans les options de Weda-Helper. Ce changement est rendu nécessaire par la dernière mise à jour.');
             }
         });
     }
@@ -236,10 +233,7 @@ function tweakFSECreation() {
     
     // Add visual clues
     addVisualClue(clue_index['n'][0]);
-    addVisualClue(clue_index['o'][0]); 
-
-
-
+    addVisualClue(clue_index['o'][0]);
 
     // Détecte les touches "n" et "o" et cochent les boutons correspondants
     document.addEventListener('keydown', function (event) {
