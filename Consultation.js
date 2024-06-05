@@ -219,46 +219,49 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTab
         
 });
 
-// TODO : refactoriser ici pour utiliser getOption et addTweak
-// deux étapes :
-// 1. isoler autoATCD qui clique sur le bouton ATCD
-// 2. pour panel gauche :
-//    - faire la liste des urls
-//    - pour chaque url, faire un addTweak qui appelle moveToLeftWrapper, chacune l'option spécifique
-// par exemple :
+
+
+// // Historique à gauche
+// Définir les pages pour lesquelles l'historique doit être déplacé à gauche et leur cible
 let pagesToLeftPannel_ = [
     {
         url: 'https://secure.weda.fr/FolderMedical/ConsultationForm.aspx',
         targetElementSelector: '#form1 > div:nth-child(14) > div > table > tbody > tr > td:nth-child(1) > table',
-        option: 'MoveHistoriqueToLeft_Consultation'
+        option: 'MoveHistoriqueToLeft_Consultation',
+        pageType: 'Consultation'
     },
     {
         url: 'https://secure.weda.fr/FolderMedical/CertificatForm.aspx',
         targetElementSelector: '#CE_ContentPlaceHolder1_EditorCertificat_ID',
-        option: 'MoveHistoriqueToLeft_Certificat'
+        option: 'MoveHistoriqueToLeft_Certificat',
+        pageType: 'Certificat'
     },
     {
         url: 'https://secure.weda.fr/FolderMedical/DemandeForm.aspx',
         targetElementSelector: '#ContentPlaceHolder1_UpdatePanelAll',
-        option: 'MoveHistoriqueToLeft_Demande'
+        option: 'MoveHistoriqueToLeft_Demande',
+        pageType: 'Demande'
     },
     {
         url: 'https://secure.weda.fr/FolderMedical/FormulaireForm.aspx',
         targetElementSelector: '#form1 > div:nth-child(14) > table > tbody > tr > td > table',
-        option: 'MoveHistoriqueToLeft_Formulaire'
+        option: 'MoveHistoriqueToLeft_Formulaire',
+        pageType: 'Formulaire'
     },
     {
         url: 'https://secure.weda.fr/FolderMedical/CourrierForm.aspx',
         targetElementSelector: '#form1 > div:nth-child(15) > table > tbody > tr > td:nth-child(1) > table',
-        option: 'MoveHistoriqueToLeft_Courrier'
+        option: 'MoveHistoriqueToLeft_Courrier',
+        pageType: 'Courrier'
     }
 ]
-// 3. Faire un appel de addTweak pour chaque page présente dans pagesToLeftPannel_
 
 
-
+// Faire un loop sur le tableau
 pagesToLeftPannel_.forEach(page => {
     addTweak(page.url, page.option, function() {
+        let pageType = page.pageType;
+        
         console.log('MoveHistoriqueToLeft démarré');
         function moveToLeft(iframes) {
             function warpHistory(elementToShrink) {
@@ -366,7 +369,7 @@ pagesToLeftPannel_.forEach(page => {
 
             // Définition des éléments à déplacer et de la cible
             let elementToMove = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame');
-            let targetElement = document.querySelector(currentPage['targetElementSelector']);
+            let targetElement = document.querySelector(page.targetElementSelector);
             if (pageType === "Consultation") {
                 var unitsElement = document.querySelector('#ContentPlaceHolder1_SuivisGrid'); // spécifique à la page de consultation
             } else if (pageType === "Certificat" || pageType === "Demande" || pageType === "Courrier") {
@@ -439,7 +442,7 @@ pagesToLeftPannel_.forEach(page => {
 });
 
 
-
+// // Afficher les antécédents automatiquement sur les pages où Historique peut être déplacé à gauche (la cible devra peut-être être ajustée)
 pagesToLeftPannel_.forEach((page) => {
     addTweak(page.url, 'autoATCD', function() {
         // Automatiquement afficher l'ATCD
