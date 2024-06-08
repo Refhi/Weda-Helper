@@ -94,7 +94,7 @@ function sendPrint(buttonToClick) {
                 sendToCompanion(`focus`);
             }
             chrome.storage.local.get(['KeepFocus'], function(result) {
-                if (result.KeepFocus !== false) {
+                if (result.KeepFocus !== false) { // TODO : à passer sur getOption
                     console.log('KeepFocus activé');
                     window.addEventListener('blur', getFocus);
                     document.addEventListener('visibilitychange', getFocus);
