@@ -106,7 +106,7 @@ function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = fals
 
 // // Tab and search tweaks
 // [Page d'upload] Tweak the uploader page
-chrome.storage.local.get('TweakImports', function (result) {
+addTweak('https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx', 'TweakImports', function () {
     // Modifie la taille de la fenêtre de prévisualisation du PDF
     function uploaderformResizeElements() {
         const newsize = '600px';
@@ -227,63 +227,52 @@ chrome.storage.local.get('TweakImports', function (result) {
         addEventListeners();
     };
     
-    if (result.TweakImports !== false) {
-        if (window.location.href === 'https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx') {
-            var idsSearchBox = 'ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche';
-            var validTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0';
-            // Create a MutationObserver instance to watch for changes in the DOM
-            var observer = new MutationObserver(function (mutations) {
-                uploaderformSetup();
-            });
+    var idsSearchBox = 'ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche';
+    var validTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0';
+    // Create a MutationObserver instance to watch for changes in the DOM
+    var observer = new MutationObserver(function (mutations) {
+        uploaderformSetup();
+    });
 
-            // Start observing the document with the configured parameters
-            observer.observe(document, { childList: true, subtree: true });
+    // Start observing the document with the configured parameters
+    observer.observe(document, { childList: true, subtree: true });
 
-            uploaderformSetup();
-        }
-    }
+    uploaderformSetup();
 });
 
 
 // [Page de prescriptions] Tweaks the prescription page to select the first medicine after a search
-chrome.storage.local.get('TweakTabPrescription', function (result) {
-    if (result.TweakTabPrescription !== false) {
-        if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx')) {
-            var idsSearchBox = 'ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack';
-            var validTarget = 'ContentPlaceHolder1_BaseVidalUcForm1_VidalPacksGrid_LinkButtonVidalPacksGridName_0';
-            console.log('SearchBoxEntryListener started (prescription)');
-            SearchBoxEntryListener(idsSearchBox, validTarget);
-        }
-    }
+// TODO : à réparer
+addTweak('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx', '*TweakPrescription', function () {
+    var idsSearchBox = 'ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack';
+    var validTarget = 'ContentPlaceHolder1_BaseVidalUcForm1_VidalPacksGrid_LinkButtonVidalPacksGridName_0';
+    SearchBoxEntryListener(idsSearchBox, validTarget);
 });
 
 // [Page de recherche patient] Tweaks the search patient page to select the first patient after a search
-if (window.location.href === 'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx') {
-    chrome.storage.local.get(['TweakTabSearchPatient', 'searchTime'], function (result) {
-        console.log('TweakTabSearchPatient from storage:', result.TweakTabSearchPatient);
-        if (result.TweakTabSearchPatient !== false) {
-            var currentTime = Date.now();
-            var timeDifference = currentTime - result.searchTime;
-            var timeDifferenceInSeconds = timeDifference / 1000;
-            const idsSearchBox = 'ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche';
-            const validTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0';
-            if (timeDifferenceInSeconds >= 5 || isNaN(timeDifferenceInSeconds)) {
-                console.log('délais depuis le dernier alt+r :', timeDifferenceInSeconds, 'secondes donc on lance le tweak');
-                    console.log('TweakTabSearchPatient started');
-                    // Réorganise l'ordre de tabulation des éléments de la liste de patients
-                    ListTabOrderer(validTarget);
-                    // Place le focus sur le premier élément de la liste de patients
-                    const elementToFocus = document.getElementById(validTarget);
-                    if (elementToFocus) {
-                        elementToFocus.focus();
-                        recordMetrics({clicks: 1, drags: 1});
-                    }
-                    // Place un listener sur la searchbox (qui s'auto-entretiens à chaque recherche)
-                    SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = true);
-            } else {
-                console.log('délais depuis le dernier alt+r :', timeDifferenceInSeconds, 'secondes donc la page est appellée depuis alt+r donc on ne lance pas le tweak. Le focus est naturellement dans la case de recherche.');
+addTweak('https://secure.weda.fr/FolderMedical/FindPatientForm.aspx', 'TweakTabSearchPatient', function () {
+    chrome.storage.local.get('searchTime', function (result) {
+        var currentTime = Date.now();
+        var timeDifference = currentTime - result.searchTime;
+        var timeDifferenceInSeconds = timeDifference / 1000;
+        const idsSearchBox = 'ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche';
+        const validTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0';
+        if (timeDifferenceInSeconds >= 5 || isNaN(timeDifferenceInSeconds)) {
+            console.log('délais depuis le dernier alt+r :', timeDifferenceInSeconds, 'secondes donc on lance le tweak');
+                console.log('TweakTabSearchPatient started');
+                // Réorganise l'ordre de tabulation des éléments de la liste de patients
+                ListTabOrderer(validTarget);
+                // Place le focus sur le premier élément de la liste de patients
+                const elementToFocus = document.getElementById(validTarget);
+                if (elementToFocus) {
+                    elementToFocus.focus();
+                    recordMetrics({clicks: 1, drags: 1});
+                }
+                // Place un listener sur la searchbox (qui s'auto-entretiens à chaque recherche)
                 SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = true);
-            }
+        } else {
+            console.log('délais depuis le dernier alt+r :', timeDifferenceInSeconds, 'secondes donc la page est appellée depuis alt+r donc on ne lance pas le tweak. Le focus est naturellement dans la case de recherche.');
+            SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = true);
         }
     });
-}
+});
