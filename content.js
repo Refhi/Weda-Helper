@@ -94,7 +94,7 @@ function getOption(optionNames, callback) {
 // Une option précédée de '!' sera considérée comme négative
 function addTweak(url, option, callback) {
     function executeOption(option, callback, invert = false) {
-        if (option === '*') {
+        if (option.startsWith('*')) {
             callback();
         } else {
             getOption(option, function(optionValue) {
