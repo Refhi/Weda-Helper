@@ -26,7 +26,7 @@ function toggleAtcd() {
     var element = document.getElementById('ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent');
     if (element) {
         element.click();
-        recordMetrics({clicks: 1, drags: 1});
+        recordMetrics({ clicks: 1, drags: 1 });
     }
 }
 
@@ -40,7 +40,7 @@ function push_valider() {
         for (var i = 0; i < elements.length; i++) {
             if (elements[i].value !== class_exception && elements[i].id !== id_exception) {
                 elements[i].click();
-                recordMetrics({clicks: 1, drags: 1});
+                recordMetrics({ clicks: 1, drags: 1 });
                 return true
             }
         }
@@ -54,7 +54,7 @@ function push_valider() {
             // extraire le montant de l'élément
             var amount = montantElement.value;
             // retirer la virgule de amount
-            amount = amount.replace(/\./g, '');            
+            amount = amount.replace(/\./g, '');
             console.log('amount', amount);
             sendtpeinstruction(amount);
         }
@@ -63,7 +63,7 @@ function push_valider() {
         console.log('Clicking on target element', targetElement);
         if (targetElement) {
             targetElement.click();
-            recordMetrics({clicks: 1, drags: 1});
+            recordMetrics({ clicks: 1, drags: 1 });
             tpesender();
             return true;
         } else {
@@ -100,27 +100,79 @@ function push_annuler() {
     actions.some(action => action() !== false);
 }
 
+// Définition de la fonction startPrinting
+// TODO : à refactoriser (trop fouilli avec des morceaux ici et des morceaux dans companionlink.js)
+// pour l'instant exclus de addTweak en attendant le refactoring
+// Refactory :
+// - d'abord il doit localiser le pdf
+// - ensuite il doit décider si on envoie au companion, si on fait un .print() ou un telechargement
+function startPrinting2(type) { // type = 'print' ou 'download' ou 'companion'
+    function locatePDFurl() {
+        // d'abord localiser l'url du pdf
+    }
+
+    function printPDF() {
+        // ouvre le panneau d'impression
+    }
+
+    function downloadPDF() {
+        // télécharger le pdf
+    }
+
+    function fullPrintPDF() {
+        // envoie le pdf au companion pour impression complète
+    }
+
+    // Trier les actions selon le type d'url :
+    // - si on est sur une page de consultation => on cherche à imprimer les courbes, donc on cherche une image avec un attribut pdf
+    // - si on est sur un autre type de page => on clique une imprimante (par défaut la première, mais doit être configurable) puis on cherche le pdf
+
+    // Trier selon le type d'action
+    // - si print => on ouvre le panneau d'impression
+    // - si download => on télécharge le pdf
+    // - si companion => on envoie le pdf au companion
+}
+
 function startPrinting() {
+    // Log pour indiquer que la fonction d'impression est activée
     console.log('print_meds activé');
+
+    // Vérifie si l'URL actuelle commence par l'URL spécifiée
     if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx')) {
         console.log('ConsultationForm détecté : je cherche une image avec le lien pdf');
+
+        // Recherche d'une image avec un attribut data-pdf-url
         var pdfUrl = document.querySelector('img[data-pdf-url]');
+
+        // Si une telle image est trouvée
         if (pdfUrl) {
+            // Récupère l'URL du PDF
             let url = pdfUrl.getAttribute('data-pdf-url');
+
+            // Récupère la valeur de RemoveLocalCompanionPrint du stockage local
             chrome.storage.local.get(['RemoveLocalCompanionPrint'], function (result) {
+                // Si RemoveLocalCompanionPrint est false
                 if (result.RemoveLocalCompanionPrint === false) {
                     console.log('pdfUrl détecté, je lance impression de la courbe', url);
+
+                    // Récupère le PDF à partir de l'URL
                     fetch(url)
                         .then(response => response.blob())
                         .then(blob => {
                             console.log('blob', blob);
+
+                            // Envoie le blob à Companion pour impression
                             sendToCompanion(`print`, blob);
+
+                            // Appelle la fonction watchForFocusLoss
                             watchForFocusLoss();
                         })
                         .catch(error => {
+                            // Log en cas d'erreur
                             console.error('Error:', error);
                         });
-                } else { 
+                } else {
+                    // Crée un nouvel élément iframe pour l'impression
                     let printFrame = document.createElement('iframe');
                     printFrame.name = 'print_frame';
                     printFrame.width = '0';
@@ -128,17 +180,20 @@ function startPrinting() {
                     printFrame.style.display = 'none';
                     document.body.appendChild(printFrame);
 
-                    printFrame.onload = function() {
+                    // Définit une fonction à exécuter lorsque l'iframe est chargée
+                    printFrame.onload = function () {
                         let win = window.frames['print_frame'];
                         win.focus();
                         win.print();
                     };
 
+                    // Vérifie l'origine de l'URL
                     let urlObject = new URL(url);
                     if (urlObject.origin === 'https://secure.weda.fr') {
                         console.log('url origin ok', urlObject.origin);
                         printFrame.src = url;
                     } else {
+                        // Log en cas d'URL non fiable
                         console.error('Untrusted URL:', url);
                     }
                 }
@@ -148,31 +203,37 @@ function startPrinting() {
         }
 
     } else {
-
+        // Appelle la fonction clickFirstPrinter
         clickFirstPrinter();
+
+        // Définition de la fonction whenFrameLoaded
         function whenFrameLoaded(elements) {
             let iframe = elements[0];
             console.log('iframe détecté:', iframe);
+
+            // Récupère les valeurs de RemoveLocalCompanionPrint et postPrintBehavior du stockage local
             chrome.storage.local.get(['RemoveLocalCompanionPrint', 'postPrintBehavior'], function (result) {
                 if (result.RemoveLocalCompanionPrint) {
                     iframe.contentWindow.print();
                 }
                 else {
                     let closebutton = {
-                        'doNothing' : null,
-                        'closePreview' : 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay',
-                        'returnToPatient' : 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
+                        'doNothing': null,
+                        'closePreview': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay',
+                        'returnToPatient': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
                     }
 
                     console.log('id to look for ', closebutton[result.postPrintBehavior], 'postPrintBehavior is ', result.postPrintBehavior)
                     let buttonToClick = document.getElementById(closebutton[result.postPrintBehavior]);
                     console.log('button to click', buttonToClick)
 
+                    // Envoie le bouton à cliquer pour impression
                     sendPrint(buttonToClick);
                     console.log('sendPrint envoyé');
                 }
             });
         }
+        // Appelle la fonction lightObserver
         lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", whenFrameLoaded, parentElement = document, justOne = true);
     }
 }
@@ -185,7 +246,7 @@ function startDownload() {
         let buttonToClick = document.getElementById("ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay");
         let intervalId = setInterval(() => {
             let url = iframe.contentWindow.location.href;
-            
+
             if (url !== 'about:blank') {
                 clearInterval(intervalId);
                 // On va contourner les restrictions de téléchargement en créant un élément 'a' caché
@@ -199,14 +260,14 @@ function startDownload() {
                 link.click(); // Cela déclenche le téléchargement
                 document.body.removeChild(link); // Suppression de l'élément 'a' après le téléchargement
                 buttonToClick.click();
-                recordMetrics({clicks: 3, drags: 4});
+                recordMetrics({ clicks: 3, drags: 4 });
             }
         }, 100);
 
         setTimeout(() => {
             clearInterval(intervalId);
         }, 5000);
-        
+
     }
     lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", whenFrameLoadedDownload, parentElement = document, justOne = true);
 }
@@ -231,7 +292,7 @@ function clickElementByClass(className) {
     if (elements.length > 0) {
         var lastElement = elements[elements.length - 1]; // Get the last element
         lastElement.click(); // Click the last element with the class
-        recordMetrics({clicks: 1, drags: 1});
+        recordMetrics({ clicks: 1, drags: 1 });
         console.log('[clickElementByClass] : Element clicked class', className);
         console.dir(lastElement); // Log all properties of the clicked element
         return true;
@@ -249,7 +310,7 @@ function GenericClicker(valueName, value) {
         var element = elements[0]
         // console.log('Clicking element', valueName, value);
         element.click();
-        recordMetrics({clicks: 1, drags: 1});
+        recordMetrics({ clicks: 1, drags: 1 });
         return true;
     } else {
         // console.log('Element not found', valueName, value);
@@ -262,7 +323,7 @@ function clickElementById(elementId) {
     var element = document.getElementById(elementId);
     if (element) {
         element.click();
-        recordMetrics({clicks: 1, drags: 1});
+        recordMetrics({ clicks: 1, drags: 1 });
         console.log('Element clicked:', elementId);
         return true;
     } else {
@@ -276,7 +337,7 @@ function clickCarteVitale() {
     clickElementByClass("cv");
     if (!GenericClicker("title", "Relance une lecture de la carte vitale")) {
         GenericClicker("mattooltip", "Lire la Carte Vitale");
-        recordMetrics({clicks: 1, drags: 1});
+        recordMetrics({ clicks: 1, drags: 1 });
     }
 }
 
@@ -292,7 +353,7 @@ function submenuW(description) {
         console.log('level3Element', level3Element);
         if (level3Element) {
             level3Element.click();
-            recordMetrics({clicks: 1, drags: 3});
+            recordMetrics({ clicks: 1, drags: 3 });
             console.log('Element clicked:', level3Element);
             return true;
         } else {
@@ -302,7 +363,7 @@ function submenuW(description) {
             console.log('level2Element', level2Element);
             if (level2Element) {
                 level2Element.click();
-                recordMetrics({clicks: 1, drags: 2});
+                recordMetrics({ clicks: 1, drags: 2 });
                 console.log('Element clicked:', level2Element);
                 return true;
             }
@@ -319,7 +380,7 @@ function clickElementByChildtextContent(childtextContent) {
     for (var i = 0; i < elements.length; i++) {
         if (elements[i].textContent === childtextContent) {
             elements[i].parentNode.click();
-            recordMetrics({clicks: 1, drags: 1});
+            recordMetrics({ clicks: 1, drags: 1 });
             return true
         }
     }
@@ -333,7 +394,7 @@ function focusElementByName(elementName) {
     var element = document.getElementsByName(elementName)[0];
     if (element) {
         element.focus();
-        recordMetrics({clicks: 1, drags: 1});
+        recordMetrics({ clicks: 1, drags: 1 });
         console.log('Focusing element success:', elementName);
     }
 }
@@ -353,7 +414,7 @@ function openSearch() {
     var link = document.createElement('a');
     link.href = 'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx';
     link.click();
-    recordMetrics({clicks: 1, drags: 3});
+    recordMetrics({ clicks: 1, drags: 3 });
 }
 
 const keyCommands = {
