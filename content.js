@@ -110,8 +110,8 @@ function addTweak(url, option, callback) {
         urlMatches = true; // Si l'URL est '*', on considère que ça correspond toujours
     } else {
         urlMatches = Array.isArray(url) 
-            ? url.some(u => window.location.href.startsWith(u)) 
-            : window.location.href.startsWith(url);
+        ? url.some(u => window.location.href.startsWith(u)) 
+        : window.location.href.startsWith(url);
     }
 
     if (urlMatches) {
@@ -335,79 +335,79 @@ addTweak('https://secure.weda.fr/FolderGestion/RecetteForm.aspx', 'TweakRecetteF
 let homePageUrls = [
     'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx',
     'https://secure.weda.fr/FolderMedical/PatientViewForm.aspx'
-];
+    ];
 
 let homePageFunctions = [
-    {
-        option: 'autoSelectPatientCV',
-        callback: function () {
+{
+    option: 'autoSelectPatientCV',
+    callback: function () {
             // lit automatiquement la carte vitale elle est insérée
             // selecteur de ttt131 : body > weda-notification-container > ng-component > mat-card > div > p
             // selecteur ce jour : body > weda-notification-container > ng-component:nth-child(2) > mat-card > div > p
-            let cvSelectors = 'weda-notification-container ng-component mat-card div p';
-            lightObserver(cvSelectors, function (elements) {
-                console.log('cvSelectors', elements, 'found');
-                elements.forEach(cvElement => {
-                    console.log('cvElement text', cvElement.textContent);
-                    if (cvElement.textContent.includes('Vitale insérée')) {
-                        console.log('cvElement', cvElement, 'found');
-                        recordMetrics({clicks: 1, drags: 1});
-                        clickCarteVitale();
-                    }
-                });
+        let cvSelectors = 'weda-notification-container ng-component mat-card div p';
+        lightObserver(cvSelectors, function (elements) {
+            console.log('cvSelectors', elements, 'found');
+            elements.forEach(cvElement => {
+                console.log('cvElement text', cvElement.textContent);
+                if (cvElement.textContent.includes('Vitale insérée')) {
+                    console.log('cvElement', cvElement, 'found');
+                    recordMetrics({clicks: 1, drags: 1});
+                    clickCarteVitale();
+                }
             });
+        });
 
             // sélectionne automatiquement le dossier patient lié s'il est seul sur la carte
-            let patientSelector = '#mat-dialog-0 > vz-lecture-cv table .grid-item'
-            const lookForPatient = () => {
-                var elements = document.querySelectorAll(patientSelector);
+        let patientSelector = '#mat-dialog-0 > vz-lecture-cv table .grid-item'
+        const lookForPatient = () => {
+            var elements = document.querySelectorAll(patientSelector);
                 // remove from the elements all without only capital letters or spaces in the text
-                elements = Array.from(elements).filter(element => element.textContent.match(/^[A-Z\s-]+$/));
+            elements = Array.from(elements).filter(element => element.textContent.match(/^[A-Z\s-]+$/));
                 // remove any .patientLink.pointer.ng-star-inserted
-                elements = Array.from(elements).filter(element => !element.querySelector('.patientLink.pointer.ng-star-inserted'));
+            elements = Array.from(elements).filter(element => !element.querySelector('.patientLink.pointer.ng-star-inserted'));
                 // remove any NOT containing a space in the text
-                elements = Array.from(elements).filter(element => element.textContent.match(/\s/));
+            elements = Array.from(elements).filter(element => element.textContent.match(/\s/));
 
-                console.log('les patients trouvés sont', elements);
-                if (elements.length === 1) {
-                    console.log('Patient seul trouvé, je clique dessus', elements[0]);
+            console.log('les patients trouvés sont', elements);
+            if (elements.length === 1) {
+                console.log('Patient seul trouvé, je clique dessus', elements[0]);
                     // target the next element in the DOM on the same level, with .grid-item as class
-                    var nextElement = elements[0].nextElementSibling;
-                    console.log('nextElement', nextElement);
+                var nextElement = elements[0].nextElementSibling;
+                console.log('nextElement', nextElement);
                     // if it have a direct child with .mat-tooltip-trigger.sign click it
-                    let linkedDossier = nextElement.querySelector('.mat-tooltip-trigger.sign');
-                    if (linkedDossier) {
-                        console.log('nextElement', linkedDossier, 'found and clickable');
-                        linkedDossier.click();
-                        recordMetrics({clicks: 1, drags: 1});
-                    } else {
-                        console.log('nextElement', nextElement, 'not found or not clickable');
-                    }
-
-                } else if (elements.length >= 2) {
-                    console.log(elements.length, 'trop de patients trouvé, je ne clique pas', elements);
+                let linkedDossier = nextElement.querySelector('.mat-tooltip-trigger.sign');
+                if (linkedDossier) {
+                    console.log('nextElement', linkedDossier, 'found and clickable');
+                    linkedDossier.click();
+                    recordMetrics({clicks: 1, drags: 1});
                 } else {
-                    console.log('Aucun patient trouvé', elements);
+                    console.log('nextElement', nextElement, 'not found or not clickable');
                 }
-            };
-            lightObserver(patientSelector, function () {
-                setTimeout(lookForPatient, 100);
-            }, document, true);
 
-        }
-    },
-    {
-        option: 'TweakNIR',
-        callback: function () {
-            function addCopySymbol(element, copyText) {
+            } else if (elements.length >= 2) {
+                console.log(elements.length, 'trop de patients trouvé, je ne clique pas', elements);
+            } else {
+                console.log('Aucun patient trouvé', elements);
+            }
+        };
+        lightObserver(patientSelector, function () {
+            setTimeout(lookForPatient, 100);
+        }, document, true);
+
+    }
+},
+{
+    option: 'TweakNIR',
+    callback: function () {
+        function addCopySymbol(element, copyText) {
                 // Define the id for the copySymbol
-                var copySymbolId = 'copySymbol-' + element.id;
+            var copySymbolId = 'copySymbol-' + element.id;
 
                 // Check if an element with the same id already exists
-                if (!document.getElementById(copySymbolId)) {
-                    console.log('copySymbolId', copySymbolId, 'not found, creating it');
+            if (!document.getElementById(copySymbolId)) {
+                console.log('copySymbolId', copySymbolId, 'not found, creating it');
                     // Create a new element for the copy symbol
-                    var copySymbol = document.createElement('span');
+                var copySymbol = document.createElement('span');
                     copySymbol.textContent = '📋'; // Use clipboard emoji as copy symbol
                     copySymbol.style.cursor = 'pointer'; // Change cursor to pointer when hovering over the copy symbol
                     copySymbol.title = 'Cliquez ici pour copier le NIR dans le presse-papiers'; // Add tooltip text
@@ -452,7 +452,7 @@ let homePageFunctions = [
             });
         }
     },
-];
+    ];
 
 addTweak(homePageUrls, homePageFunctions);
 
@@ -466,7 +466,7 @@ addTweak('https://secure.weda.fr/vitalzen/gestion.aspx', 'TweakFSEGestion', func
         recordMetrics({clicks: 1, drags: 1});
     });
 });
-    
+
 
 
 // // Retrait des suggestions de titre
@@ -478,7 +478,7 @@ let titleSuggestionsUrls = [
     'https://secure.weda.fr/FolderMedical/FormulaireForm.aspx',
     'https://secure.weda.fr/FolderMedical/ResultatExamenForm.aspx',
     'https://secure.weda.fr/FolderMedical/CourrierForm.aspx',
-];
+    ];
 
 addTweak(titleSuggestionsUrls, 'RemoveTitleSuggestions', function() {
     function RemoveTitleSuggestions() {
@@ -518,7 +518,7 @@ addTweak('*', 'WarpButtons', function() {
             }
             return true;
         }
-    
+        
         function addShortcutsToButton(button) {
             var raccourcis = {
                 'targetAnnuler': ' (alt+A)',
@@ -535,7 +535,7 @@ addTweak('*', 'WarpButtons', function() {
                 }
             }
         }
-    
+        
         function resizeTextBox () {
             let textbox = document.querySelector('.mat-dialog-container');
             let currentHeight = parseInt(window.getComputedStyle(textbox).height, 10);
@@ -545,8 +545,8 @@ addTweak('*', 'WarpButtons', function() {
                 console.log('textBox not found :-/ can\'t resize it');
             }
         }
-    
-    
+        
+        
         buttons.forEach(function (button) {
             console.log('Bouton trouvé ! Je le redimentionne, lui ajoute un id et note le raccourcis clavier par défaut', button);
             button.style.width = 'auto';
@@ -590,6 +590,25 @@ addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeAu
         }, 30000);
     }
 });
+addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeUncheckIHEMessage', function() {
+    lightObserver('we-doc-import', function(elements) {
+        for (const element of elements) {
+            if (element.className != 'docImportAttach') //Correspond au corps du message
+            {
+                element.querySelector('input[type=checkbox]').checked = false;
+                recordMetrics({ clicks: 1, drags: 1 });
+            } else {
+                let docTitle = element.querySelector('input.docTitle');
+                if (docTitle.value == 'IHE_XDM.ZIP') {
+                    element.querySelector('input[type=checkbox]').checked = false;
+                    recordMetrics({ clicks: 1, drags: 1 });
+                }
+            }
+        }
+
+    });
+});
+
 
 
 // Sélection automatique du type de document pour les courriers envoyés au DMP
