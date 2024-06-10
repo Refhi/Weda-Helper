@@ -14,6 +14,7 @@ Merci à lui pour son aide précieuse. Un nouveau Companion sera bientôt dispon
 ## fix :
 - possibilité d'utiliser "entrée" pour valider une fse
 - ajout d'un texte de bienvenue dans la page des options
+- inhibition des raccourcis claviers dans la FSE si le focus est dans un champ de texte
 
 ## ajout :
 - ajout de t et c pour selectionner le tier payant dans les fses (amo et complémentaire)
