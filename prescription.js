@@ -143,8 +143,9 @@ if (PrescriptionForm) {
 
         function onDOMChange() {
             var panneau = document.querySelector('.paneltransparentpopup');
+            var panneau2 = document.querySelector('.panelpopup');
             console.log('onDOMChange started', panneau);
-            if (!panneau) {
+            if (!panneau && !panneau2) {
                 console.log('onDOMChange started et aucun panneau présent');
                 if (keepMedSearch) {
                     console.log('keepMedSearch started');
