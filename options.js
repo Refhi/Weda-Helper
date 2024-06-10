@@ -1,85 +1,19 @@
 // Récupérer les valeurs par défaut du stockage
-chrome.storage.local.get('defaultSettings', function(result) {
+chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function(result) {
   // Les valeurs par défaut sont stockées (v >= 2.2)dans manifest.json pour être utilisées dans les options et éviter de dupliquer le code
 
   let defaultSettings = result.defaultSettings;
+  let defaultShortcuts = result.defaultShortcuts;
   console.log("[option.js] valeurs par défaut chargées : ", defaultSettings); // Affiche les valeurs par défaut
   var options = Object.keys(defaultSettings);
-  var defaultShortcuts = {
-    "push_valider": {
-      "default": "Alt+V",
-      "description": "Appuie Valider"
-    },
-    "push_annuler": {
-      "default": "Alt+A",
-      "description": "Appuie Annuler"
-    },
-    "print_meds": {
-      "default": "Ctrl+P",
-      "description": "Imprime le document en cours (attention, nécessite un module complémentaire pour que l'impression soit entièrement automatique. Sinon affiche directement le PDF.)"
-    },
-    "download_document": {
-      "default": "Ctrl+D",
-      "description": "Télécharge le PDF du document en cours"
-    },
-    "push_enregistrer": {
-      "default": "Ctrl+S",
-      "description": "Appuie Enregistrer"
-    },
-    "push_delete": {
-      "default": "Alt+S",
-      "description": "Appuie Supprimer"
-    },
-    "shortcut_w": {
-      "default": "Alt+W",
-      "description": "Appuie sur W"
-    },
-    "shortcut_consult": {
-      "default": "Alt+1",
-      "description": "Ouvre ou crée la consultation n°1"
-    },
-    "shortcut_certif": {
-      "default": "Alt+2",
-      "description": "Ouvre ou crée le certificat n°1"
-    },
-    "shortcut_demande": {
-      "default": "Alt+3",
-      "description": "Ouvre ou crée la demande n°1"
-    },
-    "shortcut_prescription": {
-      "default": "Alt+4",
-      "description": "Ouvre ou crée la prescription n°1"
-    },
-    "shortcut_formulaire": {
-      "default": "Alt+F",
-      "description": "Ouvre ou crée le formulaire n°1"
-    },
-    "shortcut_courrier": {
-      "default": "Alt+5",
-      "description": "Ouvre ou crée courrier n°1"
-    },
-    "shortcut_fse": {
-      "default": "Alt+6",
-      "description": "Clique sur FSE"
-    },
-    "shortcut_carte_vitale": {
-      "default": "Alt+C",
-      "description": "Lit la carte vitale"
-    },
-    "shortcut_search": {
-      "default": "Alt+R",
-      "description": "Ouvre la recherche"
-    },
-    "shortcut_atcd": {
-      "default": "Alt+Z",
-      "description": "Ouvre les antécédents"
-    }
-  };
+
   chrome.storage.local.get("shortcuts", function(result) {
     Object.entries(defaultShortcuts).forEach(([key, shortcut]) => {
     // D'abord récupérer les valeurs stockées ou utiliser les valeurs par défaut
 
-      let savedShortcut = result["shortcuts"][key];
+      var savedShortcut;
+      if(result["shortcuts"])
+        savedShortcut = result["shortcuts"][key];
       let defaultShortcutValue = shortcut["default"];
 
       let node = document.getElementById('shortcuts');
@@ -127,7 +61,7 @@ function shortcutClicked(buttonEvent) {
   });
 }
 
-var options = Object.keys(defaultValues);
+var options = Object.keys(defaultSettings);
   options.forEach(function (option) {
     // // D'abord récupérer les valeurs stockées ou utiliser les valeurs par défaut
     chrome.storage.local.get(option, function (result) {
