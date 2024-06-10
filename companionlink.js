@@ -1,14 +1,7 @@
 // // lien avec Weda-Helper-Companion
 function sendToCompanion(urlCommand, blob = null, buttonToClick = null) {
     return new Promise((resolve, reject) => {
-        chrome.storage.local.get(['portCompanion', 'apiKey'], function (result) {
-            const portCompanion = result.portCompanion;
-            const apiKey = result.apiKey;
-            if (!portCompanion || !apiKey) {
-                console.warn('portCompanion ou la clé API ne sont pas définis');
-                reject(new Error('portCompanion ou la clé API ne sont pas définis'));
-                return;
-            }
+        getOption(['portCompanion', 'apiKey'], function ([portCompanion, apiKey]) {
             let versionToCheck = "1.2";
             let urlWithParam = `http://localhost:${portCompanion}/${urlCommand}` +
                       `?apiKey=${apiKey}` +
@@ -59,14 +52,10 @@ function sendtpeinstruction(amount) {
     chrome.storage.local.set({ 'lastTPEamount': amount }, function () {
         console.log('lastTPEamount', amount, 'sauvegardé avec succès');
     });
-        
-    chrome.storage.local.get(['RemoveLocalCompanionTPE'], function (result) {
-        const removeLocalCompanionTPE = result.RemoveLocalCompanionTPE;
-
-        if (removeLocalCompanionTPE !== false) {
-            console.warn('RemoveLocalCompanionTPE ou portCompanion ou la clé API ne sont pas définis ou RemoveLocalCompanionTPE est !false (valeur actuelle :', removeLocalCompanionTPE, ')');
-            return;
-        } else if (!(/^\d+$/.test(amount))) {
+    
+    // Ici c'est pas vraiment l'ajout d'un tweak, mais on l'utilise par simplicité
+    addTweak('*', '!RemoveLocalCompanionTPE', function () {
+        if (!(/^\d+$/.test(amount))) {
             console.log('amount', amount, 'n\'est pas un nombre entier');
             return;
         }
@@ -97,61 +86,53 @@ function sendLastTPEamount() {
 
 // déclenchement de l'impression dans Weda-Helper-Companion
 function sendPrint(buttonToClick) {
-    chrome.storage.local.get('RemoveLocalCompanionPrint', function (result) {
-        const RemoveLocalCompanionPrint = result.RemoveLocalCompanionPrint;
-        if (RemoveLocalCompanionPrint !== false) {
-            console.log('RemoveLocalCompanionPrint est !false (valeur actuelle :', RemoveLocalCompanionPrint, ')');
-            return;
-        } else {
-            console.log('send Print');
-            function watchForFocusLoss() {
-                function getFocus() {
-                    console.log('[getFocus] je tente de récupérer le focus');
-                    sendToCompanion(`focus`);
-                }
-                chrome.storage.local.get(['KeepFocus'], function(result) {
-                    if (result.KeepFocus !== false) {
-                        console.log('KeepFocus activé');
-                        window.addEventListener('blur', getFocus);
-                        document.addEventListener('visibilitychange', getFocus);
-
-                        setTimeout(() => {
-                            window.removeEventListener('blur', getFocus);
-                            document.removeEventListener('visibilitychange', getFocus);
-                        }, 2000); // 2 sec paraît le bon compromis
-                    }
-                });
+    addTweak('*', '!RemoveLocalCompanionPrint', function () {
+        console.log('send Print');
+        function watchForFocusLoss() {
+            function getFocus() {
+                console.log('[getFocus] je tente de récupérer le focus');
+                sendToCompanion(`focus`);
             }
+            chrome.storage.local.get(['KeepFocus'], function(result) {
+                if (result.KeepFocus !== false) { // TODO : à passer sur getOption
+                    console.log('KeepFocus activé');
+                    window.addEventListener('blur', getFocus);
+                    document.addEventListener('visibilitychange', getFocus);
 
-            
-
-            // Obtenez l'élément iframe par son ID
-            let iframe = document.getElementById('ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile');
-            console.log('iframe', iframe);
-
-            // Obtenez l'URL du document dans l'iframe
-            let intervalId = setInterval(() => {
-                let url = iframe.contentWindow.location.href;
-                console.log('url', url);
-            
-                if (url !== 'about:blank') {
-                    clearInterval(intervalId);
-                    recordMetrics({clicks: 3, drags: 4});
-                    fetch(url)
-                        .then(response => response.blob())
-                        .then(blob => {
-                            sendToCompanion(`print`, blob, buttonToClick);
-                            watchForFocusLoss();
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                        });
+                    setTimeout(() => {
+                        window.removeEventListener('blur', getFocus);
+                        document.removeEventListener('visibilitychange', getFocus);
+                    }, 2000); // 2 sec paraît le bon compromis
                 }
-            }, 100);
-            
-            setTimeout(() => {
+            });
+        }       
+
+        // Obtenez l'élément iframe par son ID
+        let iframe = document.getElementById('ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile');
+        console.log('iframe', iframe);
+
+        // Obtenez l'URL du document dans l'iframe
+        let intervalId = setInterval(() => {
+            let url = iframe.contentWindow.location.href;
+            console.log('url', url);
+        
+            if (url !== 'about:blank') {
                 clearInterval(intervalId);
-            }, 5000);
-        }
+                recordMetrics({clicks: 3, drags: 4});
+                fetch(url)
+                    .then(response => response.blob())
+                    .then(blob => {
+                        sendToCompanion(`print`, blob, buttonToClick);
+                        watchForFocusLoss();
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+            }
+        }, 100);
+        
+        setTimeout(() => {
+            clearInterval(intervalId);
+        }, 5000);
     });
 }

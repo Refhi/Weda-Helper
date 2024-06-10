@@ -2,6 +2,10 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+# [2.3] - 2024-05-28
+## refactory :
+- passage des options par défaut dans le manifest.json pour éviter les doublons
+- creation et utilisation prioritaire de 'addTweak' qui simplifie l'ajout de fonctionnalités dans telle ou telle page en fonction de l'option liée. Pour faciliter la lecture du code et la maintenance on l'appelle après chaque ensemble de tableau urls/options/callbacks
 
 # [2.2] - 2024-04-20 
 ## fix :
@@ -14,6 +18,10 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - possibilité de selectionner automatiquement "non" pour accident par un tier (désactivé par défaut)
 - possibilité de cocher automatiquement la case FSE en mode gestion unique pour les C2S (désactivé par défaut)
 - selection automatique de "je suis le médecin traitant" si nous sommes le médecin déclaré (utile quand l'option "je suis médecin traitant de substitution" est part défaut)
+
+## divers :
+- passage des options par défaut dans le manifest.json pour éviter les doublons
+- création d'une fonction "ifOptionAndUrlMatches" pour simplifier les conditions de l'attente des pages
 
 # [2.1] - 2024-04-13
 *améliorations arrêt de travail*
