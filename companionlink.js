@@ -1,48 +1,45 @@
 // // lien avec Weda-Helper-Companion
-function sendToCompanion(urlCommand, blob = null, buttonToClick = null) {
-    return new Promise((resolve, reject) => {
-        getOption(['portCompanion', 'apiKey'], function ([portCompanion, apiKey]) {
-            let versionToCheck = "1.2";
-            let urlWithParam = `http://localhost:${portCompanion}/${urlCommand}` +
-                      `?apiKey=${apiKey}` +
-                      `&versioncheck=${versionToCheck}`;
-            let fetchOptions = blob ? {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/pdf',
-                },
-                body: blob,
-            } : {};
+// Cette partie s'occupe d'envoyer les instructions, quelles qu'elles soient à Weda-Helper-Companion.
+// Donc le montant tpe et l'impression.
+// TODO : évaluer la pertinence de buttonToClick
+function sendToCompanion(urlCommand, blob = null, callback = null) {
+    getOption(['portCompanion', 'apiKey'], function ([portCompanion, apiKey]) {
+        let versionToCheck = "1.2";
+        let urlWithParam = `http://localhost:${portCompanion}/${urlCommand}` +
+                    `?apiKey=${apiKey}` +
+                    `&versioncheck=${versionToCheck}`;
+        let fetchOptions = blob ? {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/pdf',
+            },
+            body: blob,
+        } : {};
 
-            let errortype = "[" + urlCommand + "]";
+        let errortype = "[" + urlCommand + "]";
 
-            fetch(urlWithParam, fetchOptions)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        console.warn(errortype + ' Error:', data.error);
-                        alert(errortype + ' Erreur : ' + data.error);
-                        reject(new Error(errortype + ' Error: ' + data.error));
-                    } else {
-                        console.log(data);
-                        resolve(data);
-                    }
-                })
-                .catch(error => {
-                    console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
-                    if (!errortype.includes('[focus]')) {
-                        alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
-                    }
-                    reject(error);
-                })
-                .finally(() => {
-                    if (buttonToClick) {
-                        buttonToClick.click();
-                        recordMetrics({clicks: 1, drags: 1});
-                    }
-                    console.log('Impression via companion terminée');
-                });
-        });
+        fetch(urlWithParam, fetchOptions)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.warn(errortype + ' Error:', data.error);
+                    alert(errortype + ' Erreur : ' + data.error);
+                } else {
+                    console.log('retour de Weda-Helper-Companion :', data);
+                }
+            })
+            .catch(error => {
+                console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
+                if (!errortype.includes('[focus]')) {
+                    alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
+                }
+            })
+            .finally(() => {
+                if (callback) {
+                    callback();
+                }
+                console.log('Impression via companion terminée');
+            });
     });
 }
 
@@ -83,29 +80,41 @@ function sendLastTPEamount() {
     });
 }
 
+function fetchPDF(url, callback) {
+    console.log('fetchPDF', url);
+    fetch(url)
+    .then(response => response.blob())
+    .then(blob => {
+        callback(blob);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+function watchForFocusLoss() {
+    function getFocus() {
+        console.log('[getFocus] je tente de récupérer le focus');
+        sendToCompanion(`focus`);
+    }
+    getOption('KeepFocus', function (KeepFocus) {
+        if (KeepFocus) {
+            console.log('KeepFocus activé');
+            window.addEventListener('blur', getFocus);
+            document.addEventListener('visibilitychange', getFocus);
+
+            setTimeout(() => {
+                window.removeEventListener('blur', getFocus);
+                document.removeEventListener('visibilitychange', getFocus);
+            }, 2000); // 2 sec paraît le bon compromis
+        }
+    });
+}       
 
 // déclenchement de l'impression dans Weda-Helper-Companion
 function sendPrint(buttonToClick) {
     addTweak('*', '!RemoveLocalCompanionPrint', function () {
         console.log('send Print');
-        function watchForFocusLoss() {
-            function getFocus() {
-                console.log('[getFocus] je tente de récupérer le focus');
-                sendToCompanion(`focus`);
-            }
-            chrome.storage.local.get(['KeepFocus'], function(result) {
-                if (result.KeepFocus !== false) { // TODO : à passer sur getOption
-                    console.log('KeepFocus activé');
-                    window.addEventListener('blur', getFocus);
-                    document.addEventListener('visibilitychange', getFocus);
-
-                    setTimeout(() => {
-                        window.removeEventListener('blur', getFocus);
-                        document.removeEventListener('visibilitychange', getFocus);
-                    }, 2000); // 2 sec paraît le bon compromis
-                }
-            });
-        }       
 
         // Obtenez l'élément iframe par son ID
         let iframe = document.getElementById('ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile');
@@ -119,15 +128,13 @@ function sendPrint(buttonToClick) {
             if (url !== 'about:blank') {
                 clearInterval(intervalId);
                 recordMetrics({clicks: 3, drags: 4});
-                fetch(url)
-                    .then(response => response.blob())
-                    .then(blob => {
-                        sendToCompanion(`print`, blob, buttonToClick);
+                fetchPDF(url, function(blob) {
+                    sendToCompanion(`print`, blob, function() {
+                        buttonToClick.click();
                         watchForFocusLoss();
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
                     });
+
+                });
             }
         }, 100);
         

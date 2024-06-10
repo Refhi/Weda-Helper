@@ -101,6 +101,36 @@ function push_annuler() {
 // Définition de la fonction startPrinting
 // TODO : à refactoriser (trop fouilli avec des morceaux ici et des morceaux dans companionlink.js)
 // pour l'instant exclus de addTweak en attendant le refactoring
+// Refactory :
+// - d'abord il doit localiser le pdf
+// - ensuite il doit décider si on envoie au companion, si on fait un .print() ou un telechargement
+function startPrinting2(type) { // type = 'print' ou 'download' ou 'companion'
+    function locatePDFurl() {
+        // d'abord localiser l'url du pdf
+    }
+
+    function printPDF() {
+        // ouvre le panneau d'impression
+    }
+
+    function downloadPDF() {
+        // télécharger le pdf
+    }
+
+    function fullPrintPDF() {
+        // envoie le pdf au companion pour impression complète
+    }
+
+    // Trier les actions selon le type d'url :
+    // - si on est sur une page de consultation => on cherche à imprimer les courbes, donc on cherche une image avec un attribut pdf
+    // - si on est sur un autre type de page => on clique une imprimante (par défaut la première, mais doit être configurable) puis on cherche le pdf
+
+    // Trier selon le type d'action
+    // - si print => on ouvre le panneau d'impression
+    // - si download => on télécharge le pdf
+    // - si companion => on envoie le pdf au companion
+}
+
 function startPrinting() {
     // Log pour indiquer que la fonction d'impression est activée
     console.log('print_meds activé');
