@@ -104,13 +104,86 @@ function push_annuler() {
 // Refactory :
 // - d'abord il doit localiser le pdf
 // - ensuite il doit décider si on envoie au companion, si on fait un .print() ou un telechargement
-function startPrinting2(type) { // type = 'print' ou 'download' ou 'companion'
+function startPrinting2(handlingType) { // handlingType = 'print' ou 'download' ou 'companion' ?
+    console.log('startPrinting activé');
+    let courbe = window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx');
+    processPrintSequence();
+
     function locatePDFurl() {
-        // d'abord localiser l'url du pdf
+        return new Promise((resolve, reject) => {
+            if (courbe) {
+                handleImage(resolve, reject);
+            } else {
+                handleIframe(resolve, reject);
+            }
+        });
+
+        function handleImage(resolve, reject) {
+            console.log('[locatePDFurl] ConsultationForm détecté : je cherche une image avec le lien pdf');
+
+            var pdfUrl = document.querySelector('img[data-pdf-url]');
+            if (pdfUrl) {
+                let url = pdfUrl.getAttribute('data-pdf-url');
+                resolve(url);
+            } else {
+                console.log('[locatePDFurl] pdfUrl non détecté');
+                reject('pdfUrl non détecté');
+            }
+        }
+
+        function handleIframe(resolve, reject) {
+            // d'abord on attend que l'iframe apparaisse :
+            lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", whenFrameLoaded, parentElement = document, justOne = true);
+            function whenFrameLoaded() {
+                let iframe = document.getElementById('ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile');
+                if (!iframe) {
+                    reject(new Error('Iframe non trouvé'));
+                    return;
+                }
+
+                console.log('[locatePDFurl] recherche de iframe :', iframe);
+
+                let intervalId = setInterval(() => {
+                    let url = iframe.contentWindow.location.href;
+                    console.log('url', url);
+
+                    if (url !== 'about:blank') {
+                        clearInterval(intervalId);
+                        resolve(url);
+                    };
+                }, 100);
+
+                setTimeout(() => {
+                    clearInterval(intervalId);
+                    reject(new Error('Timed out waiting for URL'));
+                }, 5000);
+            }
+        }
+    }
+
+    function handlePDFurl(url, type) {
+        return new Promise((resolve, reject) => {
+            console.log('[handlePDFurl] url:', url);
+            if (type === 'print') {
+                printPDF(url);
+                resolve();
+            } else if (type === 'download') {
+                downloadPDF(url);
+                resolve();
+            } else if (type === 'companion') {
+                fullPrintPDF(url).then(blob => {
+                    sendToCompanion(`print`, blob);
+                    watchForFocusLoss();
+                    resolve();
+                }).catch(reject);
+            } else {
+                reject(new Error('Type non reconnu : ' + type));
+            }
+        });
     }
 
     function printPDF() {
-        // ouvre le panneau d'impression
+        // ouvre le panneau d'impression avec .print()
     }
 
     function downloadPDF() {
@@ -120,6 +193,38 @@ function startPrinting2(type) { // type = 'print' ou 'download' ou 'companion'
     function fullPrintPDF() {
         // envoie le pdf au companion pour impression complète
     }
+
+    function postPrintBehavior() {
+        // comportement après impression
+    }
+
+    function processPrintSequence() {
+        if (!courbe) {
+            // Clique sur le bouton d'impression
+            clickFirstPrinter();
+        }
+
+        // Récupère l'URL du PDF
+        locatePDFurl()
+            .then(url => {
+                // Procèsse le PDF (télécharge, imprime ou envoie au companion)
+                console.log('URL du PDF trouvé :', url);
+                return handlePDFurl(url, handlingType); // Remplacez 'print' par le type d'action que vous voulez effectuer
+            })
+            .then(() => {
+                if (!courbe) {
+                    // Effectue l'opération de cloture
+                }
+                recordMetrics({ clicks: 3, drags: 4 });
+            })
+            .catch(error => {
+                console.error('Erreur lors de la localisation de l\'URL du PDF :', error);
+            });
+    }
+
+
+
+
 
     // Trier les actions selon le type d'url :
     // - si on est sur une page de consultation => on cherche à imprimer les courbes, donc on cherche une image avec un attribut pdf
