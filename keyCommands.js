@@ -101,12 +101,8 @@ function push_annuler() {
 // Définition de la fonction startPrinting
 // TODO :
 // - choix du type de sortie suite à l'impression du document
-// - recordMetrics à ajouter
-// pour l'instant exclus de addTweak en attendant le refactoring
-// Refactory :
-// - d'abord il doit localiser le pdf
-// - ensuite il doit décider si on envoie au companion, si on fait un .print() ou un telechargement
-function startPrinting2(handlingType, modelNumber) {
+// - ajout de la gestion des options pertinentes
+function startPrinting(handlingType, modelNumber) {
     // handlingType = 'print' ou 'download' ou 'companion'
     // modelNumber = integer, correspondant à la place dans la liste des modèles. Commence à 0.
     console.log('startPrinting activé');
@@ -211,13 +207,7 @@ function startPrinting2(handlingType, modelNumber) {
 
                 if (url !== 'about:blank') {
                     clearInterval(intervalId);
-                    fetchPDF(url, function (blob) {
-                        sendToCompanion(`print`, blob, function () {
-                            buttonToClick.click();
-                            watchForFocusLoss();
-                            resolve();
-                        });
-                    });
+                    resolve(url);
                 }
             }, 100);
 
@@ -225,6 +215,25 @@ function startPrinting2(handlingType, modelNumber) {
                 clearInterval(intervalId);
                 reject(new Error('Timeout while waiting for iframe URL'));
             }, 5000);
+        });
+    }
+
+
+    function postPrintAction() {
+        let closebutton = {
+            'doNothing': null,
+            'closePreview': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay',
+            'returnToPatient': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
+        }
+
+        getOption('postPrintBehavior', function (postPrintBehavior) {
+            console.log('postPrintBehavior is ', postPrintBehavior, 'id to look for ', closebutton[postPrintBehavior])
+            let buttonToClick = document.getElementById(closebutton[result.postPrintBehavior]);
+            if (buttonToClick) {
+                console.log('clicking on', buttonToClick)
+                buttonToClick.click();
+                recordMetrics({ clicks: 1, drags: 1 });
+            }
         });
     }
 
@@ -239,6 +248,8 @@ function startPrinting2(handlingType, modelNumber) {
             return;
         }
 
+        recordMetrics({ clicks: 3, drags: 4 });
+
         // deux grands cas de figure : impression d'une courbe ou d'un document
         if (courbe) {
             let url = urlFromImage();
@@ -250,9 +261,8 @@ function startPrinting2(handlingType, modelNumber) {
                 let iframe = makeIframe();
                 loadAndPrintIframe(iframe, url);
             } else if (handlingType === 'companion') {
-                downloadBlob(url).then(blob => {
-                    sendToCompanion('print', blob);
-                });
+                downloadBlob(url)
+                    .then(blob => { sendToCompanion('print', blob); });
             } else if (handlingType === 'download') {
                 download(url);
             }
@@ -274,7 +284,10 @@ function startPrinting2(handlingType, modelNumber) {
                 .then(url => {
                     if (handlingType === 'companion') {
                         downloadBlob(url)
-                            .then(blob => { sendToCompanion('print', blob); });
+                            .then(blob => {
+                                sendToCompanion('print', blob,
+                                    postPrintAction);
+                                });
                     } else if (handlingType === 'download') {
                         download(url);
                     }
@@ -283,158 +296,158 @@ function startPrinting2(handlingType, modelNumber) {
     }
 }
 
-function startPrinting() {
-    // Log pour indiquer que la fonction d'impression est activée
-    console.log('print_meds activé');
+// function startPrinting() {
+//     // Log pour indiquer que la fonction d'impression est activée
+//     console.log('print_meds activé');
 
-    // Vérifie si l'URL actuelle commence par l'URL spécifiée
-    if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx')) {
-        console.log('ConsultationForm détecté : je cherche une image avec le lien pdf');
+//     // Vérifie si l'URL actuelle commence par l'URL spécifiée
+//     if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx')) {
+//         console.log('ConsultationForm détecté : je cherche une image avec le lien pdf');
 
-        // Recherche d'une image avec un attribut data-pdf-url
-        var pdfUrl = document.querySelector('img[data-pdf-url]');
+//         // Recherche d'une image avec un attribut data-pdf-url
+//         var pdfUrl = document.querySelector('img[data-pdf-url]');
 
-        // Si une telle image est trouvée
-        if (pdfUrl) {
-            // Récupère l'URL du PDF
-            let url = pdfUrl.getAttribute('data-pdf-url');
+//         // Si une telle image est trouvée
+//         if (pdfUrl) {
+//             // Récupère l'URL du PDF
+//             let url = pdfUrl.getAttribute('data-pdf-url');
 
-            // Récupère la valeur de RemoveLocalCompanionPrint du stockage local
-            chrome.storage.local.get(['RemoveLocalCompanionPrint'], function (result) {
-                // Si RemoveLocalCompanionPrint est false
-                if (result.RemoveLocalCompanionPrint === false) {
-                    console.log('pdfUrl détecté, je lance impression de la courbe', url);
+//             // Récupère la valeur de RemoveLocalCompanionPrint du stockage local
+//             chrome.storage.local.get(['RemoveLocalCompanionPrint'], function (result) {
+//                 // Si RemoveLocalCompanionPrint est false
+//                 if (result.RemoveLocalCompanionPrint === false) {
+//                     console.log('pdfUrl détecté, je lance impression de la courbe', url);
 
-                    // Récupère le PDF à partir de l'URL
-                    fetch(url)
-                        .then(response => response.blob())
-                        .then(blob => {
-                            console.log('blob', blob);
+//                     // Récupère le PDF à partir de l'URL
+//                     fetch(url)
+//                         .then(response => response.blob())
+//                         .then(blob => {
+//                             console.log('blob', blob);
 
-                            // Envoie le blob à Companion pour impression
-                            sendToCompanion(`print`, blob);
+//                             // Envoie le blob à Companion pour impression
+//                             sendToCompanion(`print`, blob);
 
-                            // Appelle la fonction watchForFocusLoss
-                            watchForFocusLoss();
-                        })
-                        .catch(error => {
-                            // Log en cas d'erreur
-                            console.error('Error:', error);
-                        });
-                } else {
-                    // Crée un nouvel élément iframe pour l'impression
-                    let printFrame = document.createElement('iframe');
-                    printFrame.name = 'print_frame';
-                    printFrame.width = '0';
-                    printFrame.height = '0';
-                    printFrame.style.display = 'none';
-                    document.body.appendChild(printFrame);
+//                             // Appelle la fonction watchForFocusLoss
+//                             watchForFocusLoss();
+//                         })
+//                         .catch(error => {
+//                             // Log en cas d'erreur
+//                             console.error('Error:', error);
+//                         });
+//                 } else {
+//                     // Crée un nouvel élément iframe pour l'impression
+//                     let printFrame = document.createElement('iframe');
+//                     printFrame.name = 'print_frame';
+//                     printFrame.width = '0';
+//                     printFrame.height = '0';
+//                     printFrame.style.display = 'none';
+//                     document.body.appendChild(printFrame);
 
-                    // Définit une fonction à exécuter lorsque l'iframe est chargée
-                    printFrame.onload = function () {
-                        let win = window.frames['print_frame'];
-                        win.focus();
-                        win.print();
-                    };
+//                     // Définit une fonction à exécuter lorsque l'iframe est chargée
+//                     printFrame.onload = function () {
+//                         let win = window.frames['print_frame'];
+//                         win.focus();
+//                         win.print();
+//                     };
 
-                    // Vérifie l'origine de l'URL
-                    let urlObject = new URL(url);
-                    if (urlObject.origin === 'https://secure.weda.fr') {
-                        console.log('url origin ok', urlObject.origin);
-                        printFrame.src = url;
-                    } else {
-                        // Log en cas d'URL non fiable
-                        console.error('Untrusted URL:', url);
-                    }
-                }
-            });
-        } else {
-            console.log('pdfUrl non détecté');
-        }
+//                     // Vérifie l'origine de l'URL
+//                     let urlObject = new URL(url);
+//                     if (urlObject.origin === 'https://secure.weda.fr') {
+//                         console.log('url origin ok', urlObject.origin);
+//                         printFrame.src = url;
+//                     } else {
+//                         // Log en cas d'URL non fiable
+//                         console.error('Untrusted URL:', url);
+//                     }
+//                 }
+//             });
+//         } else {
+//             console.log('pdfUrl non détecté');
+//         }
 
-    } else {
-        // Appelle la fonction clickFirstPrinter
-        clickFirstPrinter();
+//     } else {
+//         // Appelle la fonction clickFirstPrinter
+//         clickFirstPrinter();
 
-        // Définition de la fonction whenFrameLoaded
-        function whenFrameLoaded(elements) {
-            let iframe = elements[0];
-            console.log('iframe détecté:', iframe);
+//         // Définition de la fonction whenFrameLoaded
+//         function whenFrameLoaded(elements) {
+//             let iframe = elements[0];
+//             console.log('iframe détecté:', iframe);
 
-            // Récupère les valeurs de RemoveLocalCompanionPrint et postPrintBehavior du stockage local
-            chrome.storage.local.get(['RemoveLocalCompanionPrint', 'postPrintBehavior'], function (result) {
-                if (result.RemoveLocalCompanionPrint) {
-                    iframe.contentWindow.print();
-                }
-                else {
-                    let closebutton = {
-                        'doNothing': null,
-                        'closePreview': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay',
-                        'returnToPatient': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
-                    }
+//             // Récupère les valeurs de RemoveLocalCompanionPrint et postPrintBehavior du stockage local
+//             chrome.storage.local.get(['RemoveLocalCompanionPrint', 'postPrintBehavior'], function (result) {
+//                 if (result.RemoveLocalCompanionPrint) {
+//                     iframe.contentWindow.print();
+//                 }
+//                 else {
+//                     let closebutton = {
+//                         'doNothing': null,
+//                         'closePreview': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay',
+//                         'returnToPatient': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
+//                     }
 
-                    console.log('id to look for ', closebutton[result.postPrintBehavior], 'postPrintBehavior is ', result.postPrintBehavior)
-                    let buttonToClick = document.getElementById(closebutton[result.postPrintBehavior]);
-                    console.log('button to click', buttonToClick)
+//                     console.log('id to look for ', closebutton[result.postPrintBehavior], 'postPrintBehavior is ', result.postPrintBehavior)
+//                     let buttonToClick = document.getElementById(closebutton[result.postPrintBehavior]);
+//                     console.log('button to click', buttonToClick)
 
-                    // Envoie le bouton à cliquer pour impression
-                    sendPrint(buttonToClick);
-                    console.log('sendPrint envoyé');
-                }
-            });
-        }
-        // Appelle la fonction lightObserver
-        lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", whenFrameLoaded, parentElement = document, justOne = true);
-    }
-}
+//                     // Envoie le bouton à cliquer pour impression
+//                     sendPrint(buttonToClick);
+//                     console.log('sendPrint envoyé');
+//                 }
+//             });
+//         }
+//         // Appelle la fonction lightObserver
+//         lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", whenFrameLoaded, parentElement = document, justOne = true);
+//     }
+// }
 
-function startDownload() {
-    console.log("donwload activé")
-    clickFirstPrinter();
-    function whenFrameLoadedDownload(elements) {
-        let iframe = elements[0];
-        let buttonToClick = document.getElementById("ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay");
-        let intervalId = setInterval(() => {
-            let url = iframe.contentWindow.location.href;
+// function startDownload() {
+//     console.log("donwload activé")
+//     clickFirstPrinter();
+//     function whenFrameLoadedDownload(elements) {
+//         let iframe = elements[0];
+//         let buttonToClick = document.getElementById("ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay");
+//         let intervalId = setInterval(() => {
+//             let url = iframe.contentWindow.location.href;
 
-            if (url !== 'about:blank') {
-                clearInterval(intervalId);
-                // On va contourner les restrictions de téléchargement en créant un élément 'a' caché
-                // Ce dernier, quand cliqué, va déclencher le téléchargement du fichier via son attribut 'download'
-                // Cela permet de télécharger le fichier sans modifier le manifest
-                var link = document.createElement('a');
-                link.href = url;
-                link.download = 'nom_du_fichier.pdf'; // pas certain que ça soit nécessaire mais ça ne coûte rien
-                link.style.display = 'none';
-                document.body.appendChild(link);
-                link.click(); // Cela déclenche le téléchargement
-                document.body.removeChild(link); // Suppression de l'élément 'a' après le téléchargement
-                buttonToClick.click();
-                recordMetrics({ clicks: 3, drags: 4 });
-            }
-        }, 100);
+//             if (url !== 'about:blank') {
+//                 clearInterval(intervalId);
+//                 // On va contourner les restrictions de téléchargement en créant un élément 'a' caché
+//                 // Ce dernier, quand cliqué, va déclencher le téléchargement du fichier via son attribut 'download'
+//                 // Cela permet de télécharger le fichier sans modifier le manifest
+//                 var link = document.createElement('a');
+//                 link.href = url;
+//                 link.download = 'nom_du_fichier.pdf'; // pas certain que ça soit nécessaire mais ça ne coûte rien
+//                 link.style.display = 'none';
+//                 document.body.appendChild(link);
+//                 link.click(); // Cela déclenche le téléchargement
+//                 document.body.removeChild(link); // Suppression de l'élément 'a' après le téléchargement
+//                 buttonToClick.click();
+//                 recordMetrics({ clicks: 3, drags: 4 });
+//             }
+//         }, 100);
 
-        setTimeout(() => {
-            clearInterval(intervalId);
-        }, 5000);
+//         setTimeout(() => {
+//             clearInterval(intervalId);
+//         }, 5000);
 
-    }
-    lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", whenFrameLoadedDownload, parentElement = document, justOne = true);
-}
+//     }
+//     lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", whenFrameLoadedDownload, parentElement = document, justOne = true);
+// }
 
-// // Diverses aides au clic
-// Clique sur la première imprimante
-function clickFirstPrinter() {
-    var element = document.querySelector('[onclick*="ctl00$ContentPlaceHolder1$MenuPrint"][class*="popout-dynamic level2"]');
-    console.log('first printer Element is', element);
-    if (element) {
-        element.click();
-        // records metrics fait dans companionLink
-        return true;
-    } else {
-        return false;
-    }
-}
+// // // Diverses aides au clic
+// // Clique sur la première imprimante
+// function clickFirstPrinter() {
+//     var element = document.querySelector('[onclick*="ctl00$ContentPlaceHolder1$MenuPrint"][class*="popout-dynamic level2"]');
+//     console.log('first printer Element is', element);
+//     if (element) {
+//         element.click();
+//         // records metrics fait dans companionLink
+//         return true;
+//     } else {
+//         return false;
+//     }
+// }
 
 // Clique sur un bouton selon sa classe
 function clickElementByClass(className) {

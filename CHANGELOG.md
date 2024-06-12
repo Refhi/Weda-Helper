@@ -6,6 +6,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 ## refactory :
 - passage des options par défaut dans le manifest.json pour éviter les doublons
 - creation et utilisation prioritaire de 'addTweak' qui simplifie l'ajout de fonctionnalités dans telle ou telle page en fonction de l'option liée. Pour faciliter la lecture du code et la maintenance on l'appelle après chaque ensemble de tableau urls/options/callbacks
+- refactory complet de la gestion des impressions et des téléchargements
 
 # [2.2] - 2024-04-20 
 ## fix :
