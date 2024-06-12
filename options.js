@@ -8,27 +8,33 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function(resul
   var options = Object.keys(defaultSettings);
 
   chrome.storage.local.get("shortcuts", function(result) {
+    var table = document.createElement('table');
+    let node = document.getElementById('shortcuts');
     Object.entries(defaultShortcuts).forEach(([key, shortcut]) => {
     // D'abord récupérer les valeurs stockées ou utiliser les valeurs par défaut
 
       var savedShortcut;
-      if(result["shortcuts"])
+      if(result["shortcuts"]) {
         savedShortcut = result["shortcuts"][key];
+      }
       let defaultShortcutValue = shortcut["default"];
 
-      let node = document.getElementById('shortcuts');
-      var shortcutElement = document.createElement('p');
-      var description = document.createElement('span');
+      var shortcutElement = document.createElement('tr');
+      var description = document.createElement('td');
       description.innerHTML = " " + shortcut["description"];
+      var buttonContainer = document.createElement('td');
       var button = document.createElement('button');
       button.innerHTML = savedShortcut ? savedShortcut:defaultShortcutValue;
       button.onclick = shortcutClicked;
       button.id = key;
-      shortcutElement.appendChild(button);
+      buttonContainer.appendChild(button);
+      shortcutElement.appendChild(buttonContainer);
       shortcutElement.appendChild(description);
-      node.appendChild(shortcutElement);
+      table.appendChild(shortcutElement);
 
     });
+    node.appendChild(document.createElement('br'));
+    node.appendChild(table);
   });
 
  function keyToWord(key) // Fonction pour afficher les symboles de key sous une forme plus simple
