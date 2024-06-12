@@ -595,12 +595,16 @@ addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeUn
         for (const element of elements) {
             if (element.className != 'docImportAttach') //Correspond au corps du message
             {
-                element.querySelector('input[type=checkbox]').checked = false;
+                let checkbox = element.querySelector('input[type=checkbox]')
+                checkbox.checked = false;
+                checkbox.dispatchEvent(new Event('change'));
                 recordMetrics({ clicks: 1, drags: 1 });
             } else {
                 let docTitle = element.querySelector('input.docTitle');
                 if (docTitle.value == 'IHE_XDM.ZIP') {
-                    element.querySelector('input[type=checkbox]').checked = false;
+                    let checkbox = element.querySelector('input[type=checkbox]')
+                    checkbox.checked = false;
+                    checkbox.dispatchEvent(new Event('change'));
                     recordMetrics({ clicks: 1, drags: 1 });
                 }
             }
