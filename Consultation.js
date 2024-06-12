@@ -188,13 +188,9 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTab
 
 
     // Ajouter les unités pour les valeurs de suivi
-    getOption('defautDataType', function (result) {
+    getOption('defautDataType', function (defautDataType) {
         // defautDataType est une liste de valeurs de suivi pour lesquelles les unités doivent être ajoutées
         // il est formaté comme ceci : 'Taille:cm,Poids:kg,Pc:cm,IMC:kg/t²,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%'
-        let defautDataType = result;
-        if (defautDataType === undefined) {
-            defautDataType = 'TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%';
-        }
         let dataTypes = defautDataType.split(',');
         dataTypes.forEach((dataType) => {
             let [key, value] = dataType.split(':');
