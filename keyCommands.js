@@ -99,15 +99,19 @@ function push_annuler() {
 }
 
 // Définition de la fonction startPrinting
-// TODO : à refactoriser (trop fouilli avec des morceaux ici et des morceaux dans companionlink.js)
+// TODO :
+// - choix du type de sortie suite à l'impression du document
+// - recordMetrics à ajouter
 // pour l'instant exclus de addTweak en attendant le refactoring
 // Refactory :
 // - d'abord il doit localiser le pdf
 // - ensuite il doit décider si on envoie au companion, si on fait un .print() ou un telechargement
-function startPrinting2(handlingType) { // handlingType = 'print' ou 'download' ou 'companion' ?
+function startPrinting2(handlingType, modelNumber) {
+    // handlingType = 'print' ou 'download' ou 'companion'
+    // modelNumber = integer, correspondant à la place dans la liste des modèles. Commence à 0.
     console.log('startPrinting activé');
     let courbe = window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx');
-    processPrintSequence(handlingType, courbe);
+    processPrintSequence(handlingType, modelNumber, courbe);
 
     function urlFromImage() {
         var pdfUrl = document.querySelector('img[data-pdf-url]');
@@ -175,50 +179,106 @@ function startPrinting2(handlingType) { // handlingType = 'print' ou 'download' 
         link.click(); // Cela déclenche le téléchargement
         document.body.removeChild(link); // Suppression de l'élément 'a' après le téléchargement
         buttonToClick.click();
-        recordMetrics({ clicks: 3, drags: 4 });
+    }
+
+    function clickPrinterNumber(modelNumber = 0) {
+        var elements = document.querySelectorAll('[onclick*="ctl00$ContentPlaceHolder1$MenuPrint"][class*="popout-dynamic level2"]');
+        console.log('Voici les modeles d impression trouvés', elements);
+        if (elements[modelNumber]) {
+            console.log('clicking on model number', modelNumber, elements[modelNumber]);
+            elements[modelNumber].click();
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    async function grabIframeWhenLoaded() {
+        return new Promise((resolve, reject) => {
+            lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", (newElements) => {
+                // Assuming the first new element is the iframe we're interested in
+                let iframe = newElements[0];
+                resolve(iframe);
+            }, document, true);
+        });
+    }
+
+    function grabUrlFromIframe(iframe) {
+        return new Promise((resolve, reject) => {
+            let intervalId = setInterval(() => {
+                let url = iframe.contentWindow.location.href;
+                console.log('url', url);
+
+                if (url !== 'about:blank') {
+                    clearInterval(intervalId);
+                    fetchPDF(url, function (blob) {
+                        sendToCompanion(`print`, blob, function () {
+                            buttonToClick.click();
+                            watchForFocusLoss();
+                            resolve();
+                        });
+                    });
+                }
+            }, 100);
+
+            setTimeout(() => {
+                clearInterval(intervalId);
+                reject(new Error('Timeout while waiting for iframe URL'));
+            }, 5000);
+        });
     }
 
 
 
 
-    function processPrintSequence(handlingType, courbe) {
-        let url, iframe, blob, hiddenLink;
+    function processPrintSequence(handlingType, modelNumber, courbe) {
+        // vérification du type de demande
         const handlingTypes = ['print', 'download', 'companion'];
         if (!handlingTypes.includes(handlingType)) {
             console.error('[processPrintSequence] Type non reconnu :', handlingType);
             return;
         }
 
+        // deux grands cas de figure : impression d'une courbe ou d'un document
         if (courbe) {
-            url = urlFromImage();
+            let url = urlFromImage();
             if (!url) {
                 console.error('[processPrintSequence] URL non trouvée');
                 return;
             }
             if (handlingType === 'print') {
-                iframe = makeIframe();
+                let iframe = makeIframe();
                 loadAndPrintIframe(iframe, url);
             } else if (handlingType === 'companion') {
                 downloadBlob(url).then(blob => {
                     sendToCompanion('print', blob);
                 });
-            } else if (handlingType === 'download') { // TODO je travaille là
-                hiddenLink = makeHidenLink(url);
-                hiddenLink.click();
-            }
-        } else {
-            iframeToWork = getIframe();
-            url = urlFromIframe();
-            if (handlingType === 'print') {
-                iframeToWork.print();
-            } else if (handlingType === 'companion') {
-                downloadBlob(url).then(blob => {
-                    sendToCompanion('print', blob);
-                });
             } else if (handlingType === 'download') {
-                hiddenLink = makeHidenLink(url);
-                hiddenLink.click();
+                download(url);
             }
+        } else { // cas d'un document
+            // il faut d'abord cliquer sur le modèle d'impression pertinent
+            clickPrinterNumber(modelNumber);
+            // ensuite attendre que l'iframe soit chargé
+            grabIframeWhenLoaded()
+                .then(iframe => {
+                    // On se contente de lancer l'impression si on a demandé l'impression
+                    if (handlingType === 'print') {
+                        iframe.print();
+                        return;
+                    } else {
+                        // sinon on récupère l'URL du document (ce qui prend parfois quelques centaines de ms)
+                        return grabUrlFromIframe(iframe);
+                    }
+                })
+                .then(url => {
+                    if (handlingType === 'companion') {
+                        downloadBlob(url)
+                            .then(blob => { sendToCompanion('print', blob); });
+                    } else if (handlingType === 'download') {
+                        download(url);
+                    }
+                });
         }
     }
 }
