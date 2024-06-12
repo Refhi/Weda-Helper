@@ -601,7 +601,7 @@ addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeUn
                 recordMetrics({ clicks: 1, drags: 1 });
             } else {
                 let docTitle = element.querySelector('input.docTitle');
-                if (docTitle.value == 'IHE_XDM.ZIP') {
+                if (docTitle.value.toUpperCase() == 'IHE_XDM.ZIP') {
                     let checkbox = element.querySelector('input[type=checkbox]')
                     checkbox.checked = false;
                     checkbox.dispatchEvent(new Event('change'));
