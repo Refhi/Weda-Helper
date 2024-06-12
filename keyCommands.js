@@ -594,12 +594,22 @@ const keyCommands = {
     'print_meds': {
         description: 'Imprime les médicaments',
         key: 'ctrl+p',
-        action: startPrinting
+        action: function () {
+            getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
+                if (!RemoveLocalCompanionPrint) {
+                    startPrinting('companion', 0);
+                } else {
+                    startPrinting('print', 0);
+                }
+            });
+        }
     },
     'download_document': {
         description: 'Télécharge le PDF du document',
         key: 'ctrl+d',
-        action: startDownload
+        action: function () {
+            startPrinting('download', 0);
+        }
     },
     'push_enregistrer': {
         description: 'Appuie le bouton Enregistrer ou équivalent',
