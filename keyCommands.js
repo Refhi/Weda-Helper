@@ -99,9 +99,6 @@ function push_annuler() {
 }
 
 // Définition de la fonction startPrinting
-// TODO :
-// - choix du type de sortie suite à l'impression du document
-// - ajout de la gestion des options pertinentes
 function startPrinting(handlingType, modelNumber) {
     // handlingType = 'print' ou 'download' ou 'companion'
     // modelNumber = integer, correspondant à la place dans la liste des modèles. Commence à 0.
@@ -174,7 +171,6 @@ function startPrinting(handlingType, modelNumber) {
         document.body.appendChild(link);
         link.click(); // Cela déclenche le téléchargement
         document.body.removeChild(link); // Suppression de l'élément 'a' après le téléchargement
-        buttonToClick.click();
     }
 
     function clickPrinterNumber(modelNumber = 0) {
@@ -228,7 +224,7 @@ function startPrinting(handlingType, modelNumber) {
 
         getOption('postPrintBehavior', function (postPrintBehavior) {
             console.log('postPrintBehavior is ', postPrintBehavior, 'id to look for ', closebutton[postPrintBehavior])
-            let buttonToClick = document.getElementById(closebutton[result.postPrintBehavior]);
+            let buttonToClick = document.getElementById(closebutton[postPrintBehavior]);
             if (buttonToClick) {
                 console.log('clicking on', buttonToClick)
                 buttonToClick.click();
@@ -254,7 +250,7 @@ function startPrinting(handlingType, modelNumber) {
         if (courbe) {
             let url = urlFromImage();
             if (!url) {
-                console.error('[processPrintSequence] URL non trouvée');
+                console.log('[processPrintSequence] URL non trouvée');
                 return;
             }
             if (handlingType === 'print') {
@@ -274,7 +270,7 @@ function startPrinting(handlingType, modelNumber) {
                 .then(iframe => {
                     // On se contente de lancer l'impression si on a demandé l'impression
                     if (handlingType === 'print') {
-                        iframe.print();
+                        iframe.contentWindow.print();
                         return;
                     } else {
                         // sinon on récupère l'URL du document (ce qui prend parfois quelques centaines de ms)
@@ -290,164 +286,14 @@ function startPrinting(handlingType, modelNumber) {
                                 });
                     } else if (handlingType === 'download') {
                         download(url);
+                        postPrintAction();
                     }
                 });
         }
     }
 }
 
-// function startPrinting() {
-//     // Log pour indiquer que la fonction d'impression est activée
-//     console.log('print_meds activé');
 
-//     // Vérifie si l'URL actuelle commence par l'URL spécifiée
-//     if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx')) {
-//         console.log('ConsultationForm détecté : je cherche une image avec le lien pdf');
-
-//         // Recherche d'une image avec un attribut data-pdf-url
-//         var pdfUrl = document.querySelector('img[data-pdf-url]');
-
-//         // Si une telle image est trouvée
-//         if (pdfUrl) {
-//             // Récupère l'URL du PDF
-//             let url = pdfUrl.getAttribute('data-pdf-url');
-
-//             // Récupère la valeur de RemoveLocalCompanionPrint du stockage local
-//             chrome.storage.local.get(['RemoveLocalCompanionPrint'], function (result) {
-//                 // Si RemoveLocalCompanionPrint est false
-//                 if (result.RemoveLocalCompanionPrint === false) {
-//                     console.log('pdfUrl détecté, je lance impression de la courbe', url);
-
-//                     // Récupère le PDF à partir de l'URL
-//                     fetch(url)
-//                         .then(response => response.blob())
-//                         .then(blob => {
-//                             console.log('blob', blob);
-
-//                             // Envoie le blob à Companion pour impression
-//                             sendToCompanion(`print`, blob);
-
-//                             // Appelle la fonction watchForFocusLoss
-//                             watchForFocusLoss();
-//                         })
-//                         .catch(error => {
-//                             // Log en cas d'erreur
-//                             console.error('Error:', error);
-//                         });
-//                 } else {
-//                     // Crée un nouvel élément iframe pour l'impression
-//                     let printFrame = document.createElement('iframe');
-//                     printFrame.name = 'print_frame';
-//                     printFrame.width = '0';
-//                     printFrame.height = '0';
-//                     printFrame.style.display = 'none';
-//                     document.body.appendChild(printFrame);
-
-//                     // Définit une fonction à exécuter lorsque l'iframe est chargée
-//                     printFrame.onload = function () {
-//                         let win = window.frames['print_frame'];
-//                         win.focus();
-//                         win.print();
-//                     };
-
-//                     // Vérifie l'origine de l'URL
-//                     let urlObject = new URL(url);
-//                     if (urlObject.origin === 'https://secure.weda.fr') {
-//                         console.log('url origin ok', urlObject.origin);
-//                         printFrame.src = url;
-//                     } else {
-//                         // Log en cas d'URL non fiable
-//                         console.error('Untrusted URL:', url);
-//                     }
-//                 }
-//             });
-//         } else {
-//             console.log('pdfUrl non détecté');
-//         }
-
-//     } else {
-//         // Appelle la fonction clickFirstPrinter
-//         clickFirstPrinter();
-
-//         // Définition de la fonction whenFrameLoaded
-//         function whenFrameLoaded(elements) {
-//             let iframe = elements[0];
-//             console.log('iframe détecté:', iframe);
-
-//             // Récupère les valeurs de RemoveLocalCompanionPrint et postPrintBehavior du stockage local
-//             chrome.storage.local.get(['RemoveLocalCompanionPrint', 'postPrintBehavior'], function (result) {
-//                 if (result.RemoveLocalCompanionPrint) {
-//                     iframe.contentWindow.print();
-//                 }
-//                 else {
-//                     let closebutton = {
-//                         'doNothing': null,
-//                         'closePreview': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay',
-//                         'returnToPatient': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
-//                     }
-
-//                     console.log('id to look for ', closebutton[result.postPrintBehavior], 'postPrintBehavior is ', result.postPrintBehavior)
-//                     let buttonToClick = document.getElementById(closebutton[result.postPrintBehavior]);
-//                     console.log('button to click', buttonToClick)
-
-//                     // Envoie le bouton à cliquer pour impression
-//                     sendPrint(buttonToClick);
-//                     console.log('sendPrint envoyé');
-//                 }
-//             });
-//         }
-//         // Appelle la fonction lightObserver
-//         lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", whenFrameLoaded, parentElement = document, justOne = true);
-//     }
-// }
-
-// function startDownload() {
-//     console.log("donwload activé")
-//     clickFirstPrinter();
-//     function whenFrameLoadedDownload(elements) {
-//         let iframe = elements[0];
-//         let buttonToClick = document.getElementById("ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay");
-//         let intervalId = setInterval(() => {
-//             let url = iframe.contentWindow.location.href;
-
-//             if (url !== 'about:blank') {
-//                 clearInterval(intervalId);
-//                 // On va contourner les restrictions de téléchargement en créant un élément 'a' caché
-//                 // Ce dernier, quand cliqué, va déclencher le téléchargement du fichier via son attribut 'download'
-//                 // Cela permet de télécharger le fichier sans modifier le manifest
-//                 var link = document.createElement('a');
-//                 link.href = url;
-//                 link.download = 'nom_du_fichier.pdf'; // pas certain que ça soit nécessaire mais ça ne coûte rien
-//                 link.style.display = 'none';
-//                 document.body.appendChild(link);
-//                 link.click(); // Cela déclenche le téléchargement
-//                 document.body.removeChild(link); // Suppression de l'élément 'a' après le téléchargement
-//                 buttonToClick.click();
-//                 recordMetrics({ clicks: 3, drags: 4 });
-//             }
-//         }, 100);
-
-//         setTimeout(() => {
-//             clearInterval(intervalId);
-//         }, 5000);
-
-//     }
-//     lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", whenFrameLoadedDownload, parentElement = document, justOne = true);
-// }
-
-// // // Diverses aides au clic
-// // Clique sur la première imprimante
-// function clickFirstPrinter() {
-//     var element = document.querySelector('[onclick*="ctl00$ContentPlaceHolder1$MenuPrint"][class*="popout-dynamic level2"]');
-//     console.log('first printer Element is', element);
-//     if (element) {
-//         element.click();
-//         // records metrics fait dans companionLink
-//         return true;
-//     } else {
-//         return false;
-//     }
-// }
 
 // Clique sur un bouton selon sa classe
 function clickElementByClass(className) {
@@ -608,7 +454,7 @@ const keyCommands = {
         description: 'Télécharge le PDF du document',
         key: 'ctrl+d',
         action: function () {
-            startPrinting('download', 0);
+            startPrinting('download', 1);
         }
     },
     'push_enregistrer': {

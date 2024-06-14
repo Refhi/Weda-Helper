@@ -1,7 +1,6 @@
 // // lien avec Weda-Helper-Companion
 // Cette partie s'occupe d'envoyer les instructions, quelles qu'elles soient, à Weda-Helper-Companion.
 // Donc le montant tpe et l'impression.
-// TODO : évaluer la pertinence de buttonToClick
 function sendToCompanion(urlCommand, blob = null, callback = null) {
     getOption(['portCompanion', 'apiKey'], function ([portCompanion, apiKey]) {
         let versionToCheck = "1.2";
@@ -83,17 +82,6 @@ function sendLastTPEamount() {
     });
 }
 
-// function fetchPDF(url, callback) {
-//     console.log('fetchPDF', url);
-//     fetch(url)
-//     .then(response => response.blob())
-//     .then(blob => {
-//         callback(blob);
-//     })
-//     .catch(error => {
-//         console.error('Error:', error);
-//     });
-// }
 
 function watchForFocusLoss() {
     function getFocus() {
@@ -114,35 +102,3 @@ function watchForFocusLoss() {
     });
 }       
 
-// // déclenchement de l'impression dans Weda-Helper-Companion
-// function sendPrint(buttonToClick) {
-//     addTweak('*', '!RemoveLocalCompanionPrint', function () {
-//         console.log('send Print');
-
-//         // Obtenez l'élément iframe par son ID
-//         let iframe = document.getElementById('ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile');
-//         console.log('iframe', iframe);
-
-//         // Obtenez l'URL du document dans l'iframe
-//         let intervalId = setInterval(() => {
-//             let url = iframe.contentWindow.location.href;
-//             console.log('url', url);
-        
-//             if (url !== 'about:blank') {
-//                 clearInterval(intervalId);
-//                 recordMetrics({clicks: 3, drags: 4});
-//                 fetchPDF(url, function(blob) {
-//                     sendToCompanion(`print`, blob, function() {
-//                         buttonToClick.click();
-//                         watchForFocusLoss();
-//                     });
-
-//                 });
-//             }
-//         }, 100);
-        
-//         setTimeout(() => {
-//             clearInterval(intervalId);
-//         }, 5000);
-//     });
-// }
