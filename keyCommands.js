@@ -2,20 +2,22 @@
  * Fichier contenant les commandes clés pour l'application.
  * Les commandes clés sont définies comme des objets avec une description, une combinaison de touches et une action associée.
  * @typedef {Object} KeyCommand
- * @property {string} description - La description de la commande clé.
- * @property {string} key - La combinaison de touches associée à la commande clé.
  * @property {Function} action - La fonction exécutée lorsque la commande clé est activée.
  */
 
-// Ecoute les messages envoyés par le background script
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    console.log('request', request);
+chrome.storage.local.get("shortcuts", function(result) {
+    hotkeys.filter = function(event){
+        return true; // Permet d'utiliser les raccourcis depuis un input ou un textarea
+    }
     const entries = Object.entries(keyCommands);
-    for (const [key, value] of entries) {
-        if (request.action === key) {
-            value.action();
-            break;
-        }
+    for (const [key, action] of entries) {
+        let shortcut = result["shortcuts"][key];
+        if (shortcut != undefined)
+            hotkeys(shortcut,function (event, handler){//Pour chaque raccourci on créée un Hotkeys et on y attribue son action
+                event.preventDefault(); //On annule l'événement par défaut pour permettre de faire les raccourcis dns l'input
+                action();
+
+            }); 
     }
 });
 
@@ -427,20 +429,10 @@ function openSearch() {
 }
 
 const keyCommands = {
-    'push_valider': {
-        description: 'Appuie le bouton Valider ou équivalent',
-        key: 'alt+v',
-        action: push_valider
-    },
-    'push_annuler': {
-        description: 'Appuie le bouton Annuler ou équivalent',
-        key: 'alt+a',
-        action: push_annuler
-    },
-    'print_meds': {
-        description: 'Imprime les médicaments',
-        key: 'ctrl+p',
-        action: function () {
+    'push_valider':  push_valider,
+    'push_annuler': push_annuler,
+    'download_document': startDownload,
+    'print_meds': function () {
             getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
                 if (!RemoveLocalCompanionPrint) {
                     startPrinting('companion', 0);
@@ -448,114 +440,57 @@ const keyCommands = {
                     startPrinting('print', 0);
                 }
             });
-        }
-    },
-    'download_document': {
-        description: 'Télécharge le PDF du document',
-        key: 'ctrl+d',
-        action: function () {
+        },
+    'download_document': function () {
             startPrinting('download', 1);
-        }
-    },
-    'push_enregistrer': {
-        description: 'Appuie le bouton Enregistrer ou équivalent',
-        key: 'ctrl+s',
-        action: function () {
+        },
+    'push_enregistrer': function () {
             console.log('push_enregistrer activé');
             clickElementById('ButtonSave');
-        }
-    },
-    'push_delete': {
-        description: 'Appuie le bouton Supprimer ou équivalent',
-        key: 'alt+s',
-        action: function () {
+        },
+    'push_delete': function () {
             console.log('push_delete activé');
             clickElementByClass('button delete');
-        }
-    },
-    'shortcut_w': {
-        description: 'Raccourci W',
-        key: 'alt+w',
-        action: function () {
+        },
+    'shortcut_w': function () {
             console.log('shortcut_w activé');
             clickElementByOnclick("ctl00$ContentPlaceHolder1$EvenementUcForm1$MenuNavigate")
-        }
-    },
-    'shortcut_consult': {
-        description: 'Raccourci Consultation (crée une nouvelle consultation ou ouvre celle existante)',
-        key: 'alt+&',
-        action: function () {
+        },
+    'shortcut_consult': function () {
             console.log('shortcut_consult activé');
             submenuW(' Consultation');
-        }
-    },
-    'shortcut_certif': {
-        description: 'Raccourci Certificat (crée un nouveau certificat ou ouvre celui existant)',
-        key: 'alt+é',
-        action: function () {
+        },
+    'shortcut_certif': function () {
             console.log('shortcut_certif activé');
             submenuW(' Certificat');
-        }
-    },
-    'shortcut_demande': {
-        description: 'Raccourci Demande (crée une nouvelle demande ou ouvre celle existante)',
-        key: 'alt+\"',
-        action: function () {
+        },
+    'shortcut_demande': function () {
             console.log('shortcut_demande activé');
             submenuW(' Demande');
-        }
-    },
-    'shortcut_prescription': {
-        description: 'Raccourci Prescription (crée une nouvelle prescription ou ouvre celle existante)',
-        key: 'alt+\'',
-        action: function () {
+        },
+    'shortcut_prescription': function () {
             console.log('shortcut_prescription activé');
             submenuW(' Prescription');
-        }
-    },
-    'shortcut_formulaire': {
-        description: 'Raccourci Formulaire (crée un nouveau formulaire ou ouvre celui existant)',
-        key: 'alt+f',
-        action: function () {
+        },
+    'shortcut_formulaire': function () {
             console.log('shortcut_formulaire activé');
             submenuW(' Formulaire');
-        }
-    },
-    'shortcut_courrier': {
-        description: 'Raccourci Courrier (crée un nouveau courrier ou ouvre celui existant)',
-        key: 'alt+(',
-        action: function () {
+        },
+    'shortcut_courrier': function () {
             console.log('shortcut_courrier activé');
             submenuW(' Courrier');
-        }
-    },
-    'shortcut_fse': {
-        description: 'Raccourci FSE',
-        key: 'alt+-',
-        action: function () {
+        },
+    'shortcut_fse': function () {
             console.log('shortcut_fse activé');
             submenuW(' FSE');
-        }
-    },
-    'shortcut_carte_vitale': {
-        description: 'Raccourci Carte Vitale',
-        key: 'alt+c',
-        action: function () {
+        },
+    'shortcut_carte_vitale': function () {
             console.log('shortcut_carte_vitale activé');
             clickCarteVitale();
-        }
-    },
-    'shortcut_search': {
-        description: 'Raccourci Recherche',
-        key: 'alt+r',
-        action: function () {
+        },
+    'shortcut_search': function () {
             console.log('shortcut_search activé');
-            openSearch();
-        }
-    },
-    'shortcut_atcd': {
-        description: 'Raccourci Affichage antécédents',
-        key: 'alt+z',
-        action: toggleAtcd
-    },
+            openSearch();            
+        },
+    'shortcut_atcd': toggleAtcd
 };

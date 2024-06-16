@@ -25,74 +25,10 @@
           "prescription.js",
           "update.js",
           "aati.js",
-          "metrics.js"]
+          "metrics.js",
+          "hotkeys.js"]
     }
-  ],
-  "commands": {
-    "push_valider": {
-      "suggested_key": {
-        "default": "Alt+V"
-      },
-      "description": "Appuie Valider (Suggestion : Alt+V)"
-    },
-    "push_annuler": {
-      "suggested_key": {
-        "default": "Alt+A"
-      },
-      "description": "Appuie Annuler (Suggestion : Alt+A)"
-    },
-    "print_meds": {
-      "suggested_key": {
-        "default": "Ctrl+P"
-      },
-      "description": "Imprime le document en cours (Suggestion : Ctrl+P) (attention, nécessite un module complémentaire pour que l'impression soit entièrement automatique. Sinon affiche directement le PDF.)"
-    },
-    "download_document": {
-      "description": "Télécharge le PDF du document en cours (Suggestion: Ctrl+D)"
-    },
-    "push_enregistrer": {
-      "description": "Appuie Enregistrer (Suggestion : Ctrl+S)"
-    },
-    "push_delete": {
-      "suggested_key": {
-        "default": "Alt+S"
-      },
-      "description": "Appuie Supprimer (Suggestion : Alt+S)"
-    },
-    "shortcut_w": {
-      "description": "Appuie sur W (Suggestion : Alt+W)"
-    },
-    "shortcut_consult": {
-      "description": "Ouvre ou crée la consultation n°1 (Suggestion : Alt+1)"
-    },
-    "shortcut_certif": {
-      "description": "Ouvre ou crée le certificat n°1 (Suggestion : Alt+2)"
-    },
-    "shortcut_demande": {
-      "description": "Ouvre ou crée la demande n°1 (Suggestion : Alt+3)"
-    },
-    "shortcut_prescription": {
-      "description": "Ouvre ou crée la prescription n°1 (Suggestion : Alt+4)"
-    },
-    "shortcut_formulaire": {
-      "description": "Ouvre ou crée le formulaire n°1 (Suggestion : Alt+F)"
-    },
-    "shortcut_courrier": {
-      "description": "Ouvre ou crée courrier n°1 (Suggestion : Alt+5)"
-    },
-    "shortcut_fse": {
-      "description": "Clique sur FSE (Suggestion : Alt+6)"
-    },
-    "shortcut_carte_vitale": {
-      "description": "Lit la carte vitale (Suggestion : Alt+C)"
-    },
-    "shortcut_search" : {
-      "description": "Ouvre la recherche (Suggestion : Alt+R)"
-    },
-    "shortcut_atcd" : {
-      "description": "Ouvre les antécédents (Suggestion : Alt+Z)"
-    }
-  }
+  ]
 }
 
 

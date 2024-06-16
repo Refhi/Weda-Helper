@@ -1,12 +1,73 @@
 // Récupérer les valeurs par défaut du stockage
-chrome.storage.local.get('defaultSettings', function(result) {
+chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function(result) {
   // Les valeurs par défaut sont stockées (v >= 2.2)dans manifest.json pour être utilisées dans les options et éviter de dupliquer le code
 
   let defaultSettings = result.defaultSettings;
+  let defaultShortcuts = result.defaultShortcuts;
   console.log("[option.js] valeurs par défaut chargées : ", defaultSettings); // Affiche les valeurs par défaut
   var options = Object.keys(defaultSettings);
 
+  chrome.storage.local.get("shortcuts", function(result) {
+    var table = document.createElement('table');
+    let node = document.getElementById('shortcuts');
+    Object.entries(defaultShortcuts).forEach(([key, shortcut]) => {
+    // D'abord récupérer les valeurs stockées ou utiliser les valeurs par défaut
 
+      var savedShortcut;
+      if(result["shortcuts"]) {
+        savedShortcut = result["shortcuts"][key];
+      }
+      let defaultShortcutValue = shortcut["default"];
+
+      var shortcutElement = document.createElement('tr');
+      var description = document.createElement('td');
+      description.innerHTML = " " + shortcut["description"];
+      var buttonContainer = document.createElement('td');
+      var button = document.createElement('button');
+      button.innerHTML = savedShortcut ? savedShortcut:defaultShortcutValue;
+      button.onclick = shortcutClicked;
+      button.id = key;
+      buttonContainer.appendChild(button);
+      shortcutElement.appendChild(buttonContainer);
+      shortcutElement.appendChild(description);
+      table.appendChild(shortcutElement);
+
+    });
+    node.appendChild(document.createElement('br'));
+    node.appendChild(table);
+  });
+
+ function keyToWord(key) // Fonction pour afficher les symboles de key sous une forme plus simple
+ {
+  if (key == "⌃")
+    return "Ctrl";
+  else if (key == "⌥")
+    return "Alt";
+  else
+    return key;
+}
+
+function shortcutClicked(buttonEvent) {
+  buttonEvent.target.classList.add('modifying');
+  hotkeys('*', function(event, handler) { // On écoute toutes les pressions de touche
+    event.preventDefault();
+    var keys = hotkeys.getPressedKeyString();
+    console.log(keys);
+    if (keys.length == 2) { //Si l'on a plus de 2 touches, on a un raccourcis donc on l'enregistre
+      let shortcut = keyToWord(keys[0]) +"+"+ keyToWord(keys[1])
+      buttonEvent.target.innerHTML = shortcut;
+      buttonEvent.target.classList.remove('modifying');
+      chrome.storage.local.get("shortcuts", function(result) {
+        var shortcuts = result["shortcuts"];
+        shortcuts[buttonEvent.target.id]=shortcut;
+        chrome.storage.local.set({"shortcuts":shortcuts});
+      });
+      hotkeys.unbind('*');
+    }
+  });
+}
+
+var options = Object.keys(defaultSettings);
   options.forEach(function (option) {
     // // D'abord récupérer les valeurs stockées ou utiliser les valeurs par défaut
     chrome.storage.local.get(option, function (result) {
@@ -85,6 +146,18 @@ chrome.storage.local.get('defaultSettings', function(result) {
       }
       
     });
+
+  var shortcuts={};
+  Object.entries(defaultShortcuts).forEach(([key, shortcut]) => {
+    let element = document.getElementById(key);
+    if (element) {
+      shortcuts[key] = element.innerHTML;
+    }
+    else {
+      console.log('Aucun élément avec l\'ID', key);
+    }
+  });
+  valuesToSave["shortcuts"] = shortcuts;
 
     chrome.storage.local.set(valuesToSave, function () {
       console.log('Sauvegardé avec succès');

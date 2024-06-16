@@ -10,6 +10,16 @@
       .form-group {
           margin-bottom: 1em;
       }
+      table {
+        border-collapse: collapse;
+      }
+
+      td, th {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+      }
+
       label {
           display: block;
           margin-bottom: 0.5em;
@@ -33,6 +43,12 @@
       }
       button:hover {
           background-color: #45a049;
+      }
+      button.modifying {
+          background-color: #007bff;
+      }
+      button.modifying:hover {
+          background-color: #0069d9;
       }
       input[type="radio"] {
           display: inline-block;
@@ -151,7 +167,11 @@
   <h2>Lien avec le TPE :</h2>
   <input type="checkbox" id="RemoveLocalCompanionTPE" style="margin-right: 1em;"> <em><strong>Désactiver</strong></em> la communication avec le TPE et l'option TPE dans les fse <strong>(décocher pour l'activer)</strong><br>
   
+  <h2>Raccourcis</h2>
+  <div id="shortcuts"></div>
+  </br>
   <button id="save">Enregistrer</button>
   <script src="options.js"></script>
+  <script src="hotkeys.js"></script>
 </body>
 </html>
