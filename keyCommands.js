@@ -431,7 +431,7 @@ function openSearch() {
 const keyCommands = {
     'push_valider':  push_valider,
     'push_annuler': push_annuler,
-    'download_document': startDownload,
+    // 'download_document': startDownload, => en attente de https://github.com/Refhi/Weda-Helper/pull/106
     'print_meds': function () {
             getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
                 if (!RemoveLocalCompanionPrint) {
