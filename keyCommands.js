@@ -2,20 +2,22 @@
  * Fichier contenant les commandes clés pour l'application.
  * Les commandes clés sont définies comme des objets avec une description, une combinaison de touches et une action associée.
  * @typedef {Object} KeyCommand
- * @property {string} description - La description de la commande clé.
- * @property {string} key - La combinaison de touches associée à la commande clé.
  * @property {Function} action - La fonction exécutée lorsque la commande clé est activée.
  */
 
-// Ecoute les messages envoyés par le background script
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    console.log('request', request);
+chrome.storage.local.get("shortcuts", function(result) {
+    hotkeys.filter = function(event){
+        return true; // Permet d'utiliser les raccourcis depuis un input ou un textarea
+    }
     const entries = Object.entries(keyCommands);
-    for (const [key, value] of entries) {
-        if (request.action === key) {
-            value.action();
-            break;
-        }
+    for (const [key, action] of entries) {
+        let shortcut = result["shortcuts"][key];
+        if (shortcut != undefined)
+            hotkeys(shortcut,function (event, handler){//Pour chaque raccourci on créée un Hotkeys et on y attribue son action
+                event.preventDefault(); //On annule l'événement par défaut pour permettre de faire les raccourcis dns l'input
+                action();
+
+            }); 
     }
 });
 
@@ -24,7 +26,7 @@ function toggleAtcd() {
     var element = document.getElementById('ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent');
     if (element) {
         element.click();
-        recordMetrics({clicks: 1, drags: 1});
+        recordMetrics({ clicks: 1, drags: 1 });
     }
 }
 
@@ -38,7 +40,7 @@ function push_valider() {
         for (var i = 0; i < elements.length; i++) {
             if (elements[i].value !== class_exception && elements[i].id !== id_exception) {
                 elements[i].click();
-                recordMetrics({clicks: 1, drags: 1});
+                recordMetrics({ clicks: 1, drags: 1 });
                 return true
             }
         }
@@ -52,7 +54,7 @@ function push_valider() {
             // extraire le montant de l'élément
             var amount = montantElement.value;
             // retirer la virgule de amount
-            amount = amount.replace(/\./g, '');            
+            amount = amount.replace(/\./g, '');
             console.log('amount', amount);
             sendtpeinstruction(amount);
         }
@@ -61,7 +63,7 @@ function push_valider() {
         console.log('Clicking on target element', targetElement);
         if (targetElement) {
             targetElement.click();
-            recordMetrics({clicks: 1, drags: 1});
+            recordMetrics({ clicks: 1, drags: 1 });
             tpesender();
             return true;
         } else {
@@ -98,117 +100,206 @@ function push_annuler() {
     actions.some(action => action() !== false);
 }
 
-function startPrinting() {
-    console.log('print_meds activé');
-    if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx')) {
-        console.log('ConsultationForm détecté : je cherche une image avec le lien pdf');
+// Définition de la fonction startPrinting
+function startPrinting(handlingType, modelNumber) {
+    // handlingType = 'print' ou 'download' ou 'companion'
+    // modelNumber = integer, correspondant à la place dans la liste des modèles. Commence à 0.
+    console.log('startPrinting activé');
+    let courbe = window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx');
+    processPrintSequence(handlingType, modelNumber, courbe);
+
+    function urlFromImage() {
         var pdfUrl = document.querySelector('img[data-pdf-url]');
         if (pdfUrl) {
+            console.log('[urlFromImage] pdf Url détecté :', pdfUrl);
             let url = pdfUrl.getAttribute('data-pdf-url');
-            chrome.storage.local.get(['RemoveLocalCompanionPrint'], function (result) {
-                if (result.RemoveLocalCompanionPrint === false) {
-                    console.log('pdfUrl détecté, je lance impression de la courbe', url);
-                    fetch(url)
-                        .then(response => response.blob())
-                        .then(blob => {
-                            console.log('blob', blob);
-                            sendToCompanion(`print`, blob);
-                            watchForFocusLoss();
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                        });
-                } else { 
-                    let printFrame = document.createElement('iframe');
-                    printFrame.name = 'print_frame';
-                    printFrame.width = '0';
-                    printFrame.height = '0';
-                    printFrame.style.display = 'none';
-                    document.body.appendChild(printFrame);
-
-                    printFrame.onload = function() {
-                        let win = window.frames['print_frame'];
-                        win.focus();
-                        win.print();
-                    };
-
-                    let urlObject = new URL(url);
-                    if (urlObject.origin === 'https://secure.weda.fr') {
-                        console.log('url origin ok', urlObject.origin);
-                        printFrame.src = url;
-                    } else {
-                        console.error('Untrusted URL:', url);
-                    }
-                }
-            });
+            return url;
         } else {
-            console.log('pdfUrl non détecté');
+            console.log('[urlFromImage] pdfUrl non détecté');
+            return null;
         }
-
-    } else {
-
-        clickFirstPrinter();
-        function whenFrameLoaded(elements) {
-            let iframe = elements[0];
-            console.log('iframe détecté:', iframe);
-            chrome.storage.local.get(['RemoveLocalCompanionPrint', 'postPrintBehavior'], function (result) {
-                if (result.RemoveLocalCompanionPrint) {
-                    iframe.contentWindow.print();
-                }
-                else {
-                    let closebutton = {
-                        'doNothing' : null,
-                        'closePreview' : 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay',
-                        'returnToPatient' : 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
-                    }
-
-                    console.log('id to look for ', closebutton[result.postPrintBehavior], 'postPrintBehavior is ', result.postPrintBehavior)
-                    let buttonToClick = document.getElementById(closebutton[result.postPrintBehavior]);
-                    console.log('button to click', buttonToClick)
-
-                    sendPrint(buttonToClick);
-                    console.log('sendPrint envoyé');
-                }
-            });
-        }
-        lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", whenFrameLoaded, parentElement = document, justOne = true);
     }
-}
 
-function startDownload() {
-    console.log("donwload activé")
-    clickFirstPrinter();
-    function whenFrameLoadedDownload(elements) {
-        let iframe = elements[0];
-        let buttonToClick = document.getElementById("ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay");
-        let intervalId = setInterval(() => {
-            let url = iframe.contentWindow.location.href;
-            
-            if (url !== 'about:blank') {
+    function makeIframe() {
+        // Crée un nouvel élément iframe pour l'impression
+        let printFrame = document.createElement('iframe');
+        printFrame.name = 'print_frame';
+        printFrame.width = '0';
+        printFrame.height = '0';
+        printFrame.style.display = 'none';
+        document.body.appendChild(printFrame);
+        return printFrame;
+    }
+
+    async function downloadBlob(url) {
+        console.log('fetchPDF', url);
+        try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            return blob;
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+
+
+    function loadAndPrintIframe(printIframe, url) {
+        // Définit une fonction à exécuter lorsque l'iframe est chargée
+        printIframe.onload = function () {
+            let win = window.frames['print_frame'];
+            win.focus();
+            win.print();
+        };
+
+        // Vérifie l'origine de l'URL
+        let urlObject = new URL(url);
+        if (urlObject.origin === 'https://secure.weda.fr') {
+            console.log('url origin ok', urlObject.origin);
+            printIframe.src = url;
+        } else {
+            // Log en cas d'URL non fiable
+            console.error('Untrusted URL:', url);
+        }
+    }
+
+    function download(url) {
+        // On va contourner les restrictions de téléchargement en créant un élément 'a' caché
+        // Ce dernier, quand cliqué, va déclencher le téléchargement du fichier via son attribut 'download'
+        // Cela permet de télécharger le fichier sans modifier le manifest
+        var link = document.createElement('a');
+        link.href = url;
+        link.download = 'nom_du_fichier.pdf'; // pas certain que ça soit nécessaire mais ça ne coûte rien
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click(); // Cela déclenche le téléchargement
+        document.body.removeChild(link); // Suppression de l'élément 'a' après le téléchargement
+    }
+
+    function clickPrinterNumber(modelNumber = 0) {
+        var elements = document.querySelectorAll('[onclick*="ctl00$ContentPlaceHolder1$MenuPrint"][class*="popout-dynamic level2"]');
+        console.log('Voici les modeles d impression trouvés', elements);
+        if (elements[modelNumber]) {
+            console.log('clicking on model number', modelNumber, elements[modelNumber]);
+            elements[modelNumber].click();
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    async function grabIframeWhenLoaded() {
+        return new Promise((resolve, reject) => {
+            lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", (newElements) => {
+                // Assuming the first new element is the iframe we're interested in
+                let iframe = newElements[0];
+                resolve(iframe);
+            }, document, true);
+        });
+    }
+
+    function grabUrlFromIframe(iframe) {
+        return new Promise((resolve, reject) => {
+            let intervalId = setInterval(() => {
+                let url = iframe.contentWindow.location.href;
+                console.log('url', url);
+
+                if (url !== 'about:blank') {
+                    clearInterval(intervalId);
+                    resolve(url);
+                }
+            }, 100);
+
+            setTimeout(() => {
                 clearInterval(intervalId);
-                // On va contourner les restrictions de téléchargement en créant un élément 'a' caché
-                // Ce dernier, quand cliqué, va déclencher le téléchargement du fichier via son attribut 'download'
-                // Cela permet de télécharger le fichier sans modifier le manifest
-                var link = document.createElement('a');
-                link.href = url;
-                link.download = 'nom_du_fichier.pdf'; // pas certain que ça soit nécessaire mais ça ne coûte rien
-                link.style.display = 'none';
-                document.body.appendChild(link);
-                link.click(); // Cela déclenche le téléchargement
-                document.body.removeChild(link); // Suppression de l'élément 'a' après le téléchargement
-                buttonToClick.click();
-                recordMetrics({clicks: 3, drags: 4});
-            }
-        }, 100);
-
-        setTimeout(() => {
-            clearInterval(intervalId);
-        }, 5000);
-        
+                reject(new Error('Timeout while waiting for iframe URL'));
+            }, 5000);
+        });
     }
-    lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", whenFrameLoadedDownload, parentElement = document, justOne = true);
-}
 
+
+    function postPrintAction() {
+        let closebutton = {
+            'doNothing': null,
+            'closePreview': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay',
+            'returnToPatient': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
+        }
+
+        getOption('postPrintBehavior', function (postPrintBehavior) {
+            console.log('postPrintBehavior is ', postPrintBehavior, 'id to look for ', closebutton[postPrintBehavior])
+            let buttonToClick = document.getElementById(closebutton[postPrintBehavior]);
+            if (buttonToClick) {
+                console.log('clicking on', buttonToClick)
+                buttonToClick.click();
+                recordMetrics({ clicks: 1, drags: 1 });
+            }
+        });
+    }
+
+
+
+
+    function processPrintSequence(handlingType, modelNumber, courbe) {
+        // vérification du type de demande
+        const handlingTypes = ['print', 'download', 'companion'];
+        if (!handlingTypes.includes(handlingType)) {
+            console.error('[processPrintSequence] Type non reconnu :', handlingType);
+            return;
+        }
+
+        recordMetrics({ clicks: 3, drags: 4 });
+
+        // deux grands cas de figure : impression d'une courbe ou d'un document
+        if (courbe) {
+            let url = urlFromImage();
+            if (!url) {
+                console.log('[processPrintSequence] URL non trouvée');
+                return;
+            }
+            if (handlingType === 'print') {
+                let iframe = makeIframe();
+                loadAndPrintIframe(iframe, url);
+            } else if (handlingType === 'companion') {
+                downloadBlob(url)
+                    .then(blob => { sendToCompanion('print', blob); });
+            } else if (handlingType === 'download') {
+                download(url);
+            }
+        } else { // cas d'un document
+            // il faut d'abord cliquer sur le modèle d'impression pertinent
+            clickPrinterNumber(modelNumber);
+            // ensuite attendre que l'iframe soit chargé
+            grabIframeWhenLoaded()
+                .then(iframe => {
+                    // On se contente de lancer l'impression si on a demandé l'impression
+                    if (handlingType === 'print') {
+                        iframe.contentWindow.print();
+                        return;
+                    } else {
+                        // sinon on récupère l'URL du document (ce qui prend parfois quelques centaines de ms)
+                        return grabUrlFromIframe(iframe);
+                    }
+                })
+                .then(url => {
+                    if (handlingType === 'companion') {
+                        downloadBlob(url)
+                            .then(blob => {
+                                sendToCompanion('print', blob,
+                                    postPrintAction);
+                                });
+                    } else if (handlingType === 'download') {
+                        download(url);
+                        postPrintAction();
+                    }
+                });
+        }
+//Fonction appellée par un bouton ou un raccourci clavier pour uploader le dernier fichier d'un dossier dans le dossier patient actuel
+function uploadLatest() {
+    chrome.storage.local.set({ 'automaticUpload': true }, function () { //On met un flag qui informe que l'upload sera automatique
+        let uploadURL = "https://secure.weda.fr/FolderMedical/PopUpUploader.aspx"+window.location.search 
+        console.log(uploadURL);
+        var uploadWindow = window.open(uploadURL, "Upload", "width=700,height=600"); //On ouvre la fenetre d'upload dans un popup
+    });
+}
 //Fonction appellée par un bouton ou un raccourci clavier pour uploader le dernier fichier d'un dossier dans le dossier patient actuel
 function uploadLatest() {
     chrome.storage.local.set({ 'automaticUpload': true }, function () { //On met un flag qui informe que l'upload sera automatique
@@ -232,13 +323,15 @@ function clickFirstPrinter() {
     }
 }
 
+
+
 // Clique sur un bouton selon sa classe
 function clickElementByClass(className) {
     var elements = document.getElementsByClassName(className);
     if (elements.length > 0) {
         var lastElement = elements[elements.length - 1]; // Get the last element
         lastElement.click(); // Click the last element with the class
-        recordMetrics({clicks: 1, drags: 1});
+        recordMetrics({ clicks: 1, drags: 1 });
         console.log('[clickElementByClass] : Element clicked class', className);
         console.dir(lastElement); // Log all properties of the clicked element
         return true;
@@ -256,7 +349,7 @@ function GenericClicker(valueName, value) {
         var element = elements[0]
         // console.log('Clicking element', valueName, value);
         element.click();
-        recordMetrics({clicks: 1, drags: 1});
+        recordMetrics({ clicks: 1, drags: 1 });
         return true;
     } else {
         // console.log('Element not found', valueName, value);
@@ -269,7 +362,7 @@ function clickElementById(elementId) {
     var element = document.getElementById(elementId);
     if (element) {
         element.click();
-        recordMetrics({clicks: 1, drags: 1});
+        recordMetrics({ clicks: 1, drags: 1 });
         console.log('Element clicked:', elementId);
         return true;
     } else {
@@ -283,7 +376,7 @@ function clickCarteVitale() {
     clickElementByClass("cv");
     if (!GenericClicker("title", "Relance une lecture de la carte vitale")) {
         GenericClicker("mattooltip", "Lire la Carte Vitale");
-        recordMetrics({clicks: 1, drags: 1});
+        recordMetrics({ clicks: 1, drags: 1 });
     }
 }
 
@@ -299,7 +392,7 @@ function submenuW(description) {
         console.log('level3Element', level3Element);
         if (level3Element) {
             level3Element.click();
-            recordMetrics({clicks: 1, drags: 3});
+            recordMetrics({ clicks: 1, drags: 3 });
             console.log('Element clicked:', level3Element);
             return true;
         } else {
@@ -309,7 +402,7 @@ function submenuW(description) {
             console.log('level2Element', level2Element);
             if (level2Element) {
                 level2Element.click();
-                recordMetrics({clicks: 1, drags: 2});
+                recordMetrics({ clicks: 1, drags: 2 });
                 console.log('Element clicked:', level2Element);
                 return true;
             }
@@ -326,7 +419,7 @@ function clickElementByChildtextContent(childtextContent) {
     for (var i = 0; i < elements.length; i++) {
         if (elements[i].textContent === childtextContent) {
             elements[i].parentNode.click();
-            recordMetrics({clicks: 1, drags: 1});
+            recordMetrics({ clicks: 1, drags: 1 });
             return true
         }
     }
@@ -340,7 +433,7 @@ function focusElementByName(elementName) {
     var element = document.getElementsByName(elementName)[0];
     if (element) {
         element.focus();
-        recordMetrics({clicks: 1, drags: 1});
+        recordMetrics({ clicks: 1, drags: 1 });
         console.log('Focusing element success:', elementName);
     }
 }
@@ -360,134 +453,72 @@ function openSearch() {
     var link = document.createElement('a');
     link.href = 'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx';
     link.click();
-    recordMetrics({clicks: 1, drags: 3});
+    recordMetrics({ clicks: 1, drags: 3 });
 }
 
 const keyCommands = {
-    'push_valider': {
-        description: 'Appuie le bouton Valider ou équivalent',
-        key: 'alt+v',
-        action: push_valider
-    },
-    'push_annuler': {
-        description: 'Appuie le bouton Annuler ou équivalent',
-        key: 'alt+a',
-        action: push_annuler
-    },
-    'print_meds': {
-        description: 'Imprime les médicaments',
-        key: 'ctrl+p',
-        action: startPrinting
-    },
-    'download_document': {
-        description: 'Télécharge le PDF du document',
-        key: 'ctrl+d',
-        action: startDownload
-    },
-    'upload_latest_file':{
-        description: 'Upload le dernier fichier du dossier envoyé par le Companion',
-        key: 'ctrl+u',
-        action: uploadLatest
-    },
-    'push_enregistrer': {
-        description: 'Appuie le bouton Enregistrer ou équivalent',
-        key: 'ctrl+s',
-        action: function () {
+    'push_valider':  push_valider,
+    'push_annuler': push_annuler,
+    // 'download_document': startDownload, => en attente de https://github.com/Refhi/Weda-Helper/pull/106
+    'print_meds': function () {
+            getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
+                if (!RemoveLocalCompanionPrint) {
+                    startPrinting('companion', 0);
+                } else {
+                    startPrinting('print', 0);
+                }
+            });
+        },
+    'download_document': function () {
+            startPrinting('download', 1);
+        },
+    'push_enregistrer': function () {
             console.log('push_enregistrer activé');
             clickElementById('ButtonSave');
-        }
-    },
-    'push_delete': {
-        description: 'Appuie le bouton Supprimer ou équivalent',
-        key: 'alt+s',
-        action: function () {
+        },
+    'push_delete': function () {
             console.log('push_delete activé');
             clickElementByClass('button delete');
-        }
-    },
-    'shortcut_w': {
-        description: 'Raccourci W',
-        key: 'alt+w',
-        action: function () {
+        },
+    'shortcut_w': function () {
             console.log('shortcut_w activé');
             clickElementByOnclick("ctl00$ContentPlaceHolder1$EvenementUcForm1$MenuNavigate")
-        }
-    },
-    'shortcut_consult': {
-        description: 'Raccourci Consultation (crée une nouvelle consultation ou ouvre celle existante)',
-        key: 'alt+&',
-        action: function () {
+        },
+    'shortcut_consult': function () {
             console.log('shortcut_consult activé');
             submenuW(' Consultation');
-        }
-    },
-    'shortcut_certif': {
-        description: 'Raccourci Certificat (crée un nouveau certificat ou ouvre celui existant)',
-        key: 'alt+é',
-        action: function () {
+        },
+    'shortcut_certif': function () {
             console.log('shortcut_certif activé');
             submenuW(' Certificat');
-        }
-    },
-    'shortcut_demande': {
-        description: 'Raccourci Demande (crée une nouvelle demande ou ouvre celle existante)',
-        key: 'alt+\"',
-        action: function () {
+        },
+    'shortcut_demande': function () {
             console.log('shortcut_demande activé');
             submenuW(' Demande');
-        }
-    },
-    'shortcut_prescription': {
-        description: 'Raccourci Prescription (crée une nouvelle prescription ou ouvre celle existante)',
-        key: 'alt+\'',
-        action: function () {
+        },
+    'shortcut_prescription': function () {
             console.log('shortcut_prescription activé');
             submenuW(' Prescription');
-        }
-    },
-    'shortcut_formulaire': {
-        description: 'Raccourci Formulaire (crée un nouveau formulaire ou ouvre celui existant)',
-        key: 'alt+f',
-        action: function () {
+        },
+    'shortcut_formulaire': function () {
             console.log('shortcut_formulaire activé');
             submenuW(' Formulaire');
-        }
-    },
-    'shortcut_courrier': {
-        description: 'Raccourci Courrier (crée un nouveau courrier ou ouvre celui existant)',
-        key: 'alt+(',
-        action: function () {
+        },
+    'shortcut_courrier': function () {
             console.log('shortcut_courrier activé');
             submenuW(' Courrier');
-        }
-    },
-    'shortcut_fse': {
-        description: 'Raccourci FSE',
-        key: 'alt+-',
-        action: function () {
+        },
+    'shortcut_fse': function () {
             console.log('shortcut_fse activé');
             submenuW(' FSE');
-        }
-    },
-    'shortcut_carte_vitale': {
-        description: 'Raccourci Carte Vitale',
-        key: 'alt+c',
-        action: function () {
+        },
+    'shortcut_carte_vitale': function () {
             console.log('shortcut_carte_vitale activé');
             clickCarteVitale();
-        }
-    },
-    'shortcut_search': {
-        description: 'Raccourci Recherche',
-        key: 'alt+r',
-        action: function () {
+        },
+    'shortcut_search': function () {
             console.log('shortcut_search activé');
             openSearch();            
-        }
-    },
-    'shortcut_atcd': {
-        description: 'Raccourci Affichage antécédents',
-        key: 'alt+z',
-        action: toggleAtcd
-    },
+        },
+    'shortcut_atcd': toggleAtcd
 };

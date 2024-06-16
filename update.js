@@ -6,19 +6,18 @@ function htmlMaker(text) {
 }
 
 var nouveautes = `
-[note du dev : le message de mise à jour n'était pas à jour... voici le vrai texte pour la 2.1...]
-# [2.1] - 2024-04-13
-*améliorations arrêt de travail*
-## ajout :
-- le focus est désormais automatiquement placé sur le champ de titre lors de la création ou l'édition d'un antécédent.
-- métrique utilisateur désormais détaillée par jour/semaine/mois/année et globale
- 
-## fix :
-- si l'option "Companion" est inactive, la fenêtre de visualisation de l'arrêt de travail ne se ferme pas.
-- amélioration du lien avec le Companion : les arrêts de travail sont maintenant imprimés automatiquement, sinon la fenêtre ouvre automatiquement le menu d'impression.
-- pour les arrêts de travail (le service AATI) ajout d'un bouton pour le faire avec ou sans la CV du patient.
-- correction d'une coquille dans les options par défaut
-- coquille dans les options sur "Formulaire"
+Nouvelle version de Weda-Helper !
+
+Peu de modifications visibles pour vous, mais beaucoup de travail en coulisses pour améliorer la stabilité et la maintenabilité du code.
+Le plus gros changement est la refonte de la gestion des impressions et des téléchargements, qui devrait être plus fiable et plus rapide.
+Les raccourcis claviers sont désormais directement gérés dans les options ! Vous devrez donc les redéfinir si vous les aviez personnalisés.
+
+# [2.3] - 2024-05-28
+## refactory :
+- passage des options par défaut dans le manifest.json pour éviter les doublons
+- creation et utilisation prioritaire de 'addTweak' qui simplifie l'ajout de fonctionnalités dans telle ou telle page en fonction de l'option liée. Pour faciliter la lecture du code et la maintenance on l'appelle après chaque ensemble de tableau urls/options/callbacks
+- refactory complet de la gestion des impressions et des téléchargements
+- Les raccourcis claviers sont désormais directement gérés dans les options ! Vous devrez donc les redéfinir si vous les aviez personnalisés.
 `
 
 nouveautes = htmlMaker(nouveautes)

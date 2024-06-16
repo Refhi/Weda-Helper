@@ -10,6 +10,16 @@
       .form-group {
           margin-bottom: 1em;
       }
+      table {
+        border-collapse: collapse;
+      }
+
+      td, th {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+      }
+
       label {
           display: block;
           margin-bottom: 0.5em;
@@ -34,6 +44,12 @@
       button:hover {
           background-color: #45a049;
       }
+      button.modifying {
+          background-color: #007bff;
+      }
+      button.modifying:hover {
+          background-color: #0069d9;
+      }
       input[type="radio"] {
           display: inline-block;
           margin-right: 10px;
@@ -55,6 +71,12 @@
 </head>
 <body>
   <h1 id="MainTitle">Options de Weda-Helper</h1>
+  <p>Bienvenue dans les options de Weda-Helper !</p>
+  <p> Weda-Helper et son companion sont entièrement gratuits et open-source. Ils sont développés par <a href="https://github.com/Refhi" target="_blank">Refhi</a>, un médecin Euroi, et <a href="https://github.com/Abeldvlpr" target="_blank">Abeldvlpr</a>, un médecin Toulousain</p>
+  <p>Vous pouvez ici activer ou désactiver les fonctionnalités de Weda-Helper selon vos besoins.</p>
+  <p>Pour accéder au code source de Weda-Helper, suggérer des fonctionnalités ou signaler des bugs, c'est par ici : <a href="https://github.com/Refhi/Weda-Helper" target="_blank">https://github.com/Refhi/Weda-Helper</a> et <a href="https://github.com/Refhi/Weda-Helper-Companion" target="_blank">https://github.com/Refhi/Weda-Helper-Companion</a></p>
+  <p>Si vous souhaitez faire des remarques plus générales ou simplement exprimer votre soutien, c'est par là : <a href="https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/td-p/2791" target="_blank">https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/td-p/2791</a></p>
+  <p>Et enfin si vous souhaitez soutenir le développement de Weda-Helper, vous pouvez également faire un don via PayPal : <a href="https://www.paypal.com/paypalme/refhi" target="_blank">https://www.paypal.com/paypalme/refhi</a> (Pour un encouragement à l'attention d'Abel, le <a href="https://communaute.weda.fr/t5/user/viewprofilepage/user-id/186" target="_blank">contacter directement sur le site de la communauté</a>)</p>
   <h2>Options générales :</h2>
   <input type="checkbox" id="TweakImports"> Activer les modifications pour la fenêtre d'importations (page télécharger des documents).<br>
   <input type="checkbox" id="EnableHelp"> Affiche l'aide en appuyant sur Alt de manière prolongée.<br>
@@ -118,7 +140,7 @@
   <h2>Options de connexion :</h2>
   <div style="display: flex; align-items: center;">
     <input type="text" id="portCompanion" name="portCompanion" style="width: 15ch; margin-right: 1em;">
-    <label for="portCompanion">Port Weda-Helper-Companion (default 4821) cf. https://github.com/Refhi/Weda-Helper-Companion doit être mentionné dans conf.ini du companion. ATTENTION : Le numéro de port doit être le même dans les options de l’extension WEDA HELPER et dans le fichier conf.ini du COMPANION.</label>
+    <label for="portCompanion">Port Weda-Helper-Companion (default 4821) cf. <a href="https://github.com/Refhi/Weda-Helper-Companion" target="_blank">https://github.com/Refhi/Weda-Helper-Companion</a> doit être mentionné dans conf.ini du companion. ATTENTION : Le numéro de port doit être le même dans les options de l’extension WEDA HELPER et dans le fichier conf.ini du COMPANION.</label>
   </div>
   <div style="display: flex; align-items: center;">
     <input type="text" id="apiKey" name="apiKey" style="width: 30ch; margin-right: 1em;">
@@ -145,7 +167,11 @@
   <h2>Lien avec le TPE :</h2>
   <input type="checkbox" id="RemoveLocalCompanionTPE" style="margin-right: 1em;"> <em><strong>Désactiver</strong></em> la communication avec le TPE et l'option TPE dans les fse <strong>(décocher pour l'activer)</strong><br>
   
+  <h2>Raccourcis</h2>
+  <div id="shortcuts"></div>
+  </br>
   <button id="save">Enregistrer</button>
   <script src="options.js"></script>
+  <script src="hotkeys.js"></script>
 </body>
 </html>

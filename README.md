@@ -4,7 +4,7 @@ Extension pour Chrome permettant de faciliter les tâches quotidiennes sur Weda,
 
 Bien que satisfait de Weda, j'ai trouvé que le nombre de clics pouvait être très nettement diminué en implémentant des raccourcis claviers et quelques automatismes.
 
-Entièrement codé par un médecin Eurois, pour lui-même et ses pairs, j'espère qu'elle vous plaira autant qu'à moi au quotidien !
+Entièrement codé par un médecin Eurois et un médecin Toulousain, pour eux-mêmes et leurs pairs, j'espère qu'elle vous plaira autant qu'à moi au quotidien !
 
 La plupart des raccourcis et des fonctionnalités peuvent être activées ou non dans les options du module ou dans les raccourcis.
 
@@ -105,9 +105,12 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 ## Feuilles de soin
 *Toute la FSE : [alt+6], [n], [n], [alt+v]*
 - les touches "n" et "o" permettent de sélectionner "non"/"oui" pour accidents de droit commun, puis ALD
+- les touches "t" et "c" permettent de sélectionner les tiers payants correspondants (AMO et AMC)
 - Si elles sont utilisées, entre automatiquement la cotation par défaut (Une de vos cotations favorites doit être nommée 'Défaut')
 - Lecture automatique de la carte vitale si elle est non lue
 - Affichage de boutons directs pour la réalisation de FDS dégradées et téléconsultation
+- Option pour cocher automatiquement "accident causé par un tier" ou "gestion unique"
+- Sélection automatique de "je suis le médecin traitant" quand c'est le cas et qu'un autre cas de figure est sélectionné
 
 
 ## Divers
