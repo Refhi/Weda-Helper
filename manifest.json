@@ -14,19 +14,24 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://secure.weda.fr/*"],
+      "matches": ["*://secure.weda.fr/*"], 
       "js": [
           "content.js",
           "Consultation.js",
           "fse.js",
-          "keyCommands.js",
           "searchUpload.js",
           "companionlink.js",
           "prescription.js",
           "update.js",
           "aati.js",
-          "metrics.js",
+          "metrics.js"]
+    },
+    { 
+      "matches": ["*://secure.weda.fr/*"], "all_frames":true, //On insère ces deux scripts dans toutes les iframe pour pouvoir récupérer les raccourcis partout
+      "js": [
+          "keyCommands.js",
           "hotkeys.js"]
+
     }
   ]
 }

@@ -21,12 +21,24 @@ chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function(result) {
         else {
             shortcut = result.shortcuts[key];
         }
-        if (shortcut != undefined)
+        if (shortcut != undefined) {
             hotkeys(shortcut,function (event, handler){//Pour chaque raccourci on créée un Hotkeys et on y attribue son action
                 event.preventDefault(); //On annule l'événement par défaut pour permettre de faire les raccourcis dns l'input
-                action();
-
+                //Au cas où nous serions dans une iframe, on sort de l'iframe pour l'exécuter en passant par background.js
+                chrome.runtime.sendMessage({shortcut:key});
             }); 
+        }
+    }
+});
+
+chrome.runtime.onMessage.addListener(function(message, sender) { //Exécute le raccourcis envoyé par le message
+    if (window.frameElement) {
+        return; //Nous sommes dans l'iframe, on ne fait rien de ce message
+    }
+    if (message.shortcut) { //Nous somme hors de l'iframe, on peut executer le raccourcis.
+        if(keyCommands[message.shortcut]){
+            keyCommands[message.shortcut]();
+        }
     }
 });
 

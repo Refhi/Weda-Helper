@@ -139,3 +139,9 @@ chrome.storage.local.get(['lastExtensionVersion', 'firstStart'], function(result
   }
   // TODO : à évaluer : est-ce que ça limite vraiment la charge ?
 });
+
+chrome.runtime.onMessage.addListener(function(message, sender) {
+    if (message.shortcut) {
+        chrome.tabs.sendMessage(sender.tab.id, message);
+    }
+});
