@@ -50,11 +50,15 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function(resul
 function shortcutClicked(buttonEvent) {
   buttonEvent.target.classList.add('modifying');
   hotkeys('*', function(event, handler) { // On écoute toutes les pressions de touche
-    event.preventDefault();
-    var keys = hotkeys.getPressedKeyString();
-    console.log(keys);
-    if (keys.length == 2) { //Si l'on a plus de 2 touches, on a un raccourcis donc on l'enregistre
-      let shortcut = keyToWord(keys[0]) +"+"+ keyToWord(keys[1])
+    function saveShortcut(keys) {
+      var shortcut = "";
+      for (var i = 0; i < keys.length; i++) {
+        var separator="+";
+        if (i==0) {
+          separator="";
+        }
+        shortcut = shortcut + separator + keyToWord(keys[i]);
+      }
       buttonEvent.target.innerHTML = shortcut;
       buttonEvent.target.classList.remove('modifying');
       chrome.storage.local.get("shortcuts", function(result) {
@@ -63,6 +67,29 @@ function shortcutClicked(buttonEvent) {
         chrome.storage.local.set({"shortcuts":shortcuts});
       });
       hotkeys.unbind('*');
+    }
+
+    function isLetterOrNumber(element) {
+      return element.match(/\w{1}/);
+    }
+
+    function isfunctionKey(element) 
+    {
+      return element.match(/f\w{1,2}/);
+    }
+
+    event.preventDefault();
+    var keys = hotkeys.getPressedKeyString();
+    console.log(keys);
+    if(keys.length <= 1) { //Une seule touche, on accepte F1 à F19
+      if (isfunctionKey(keys[0])) {
+        saveShortcut(keys);
+      }
+    }
+    else  { //Si l'on a plus de 2 touches, il faut au moins une lettre ou un chiffre
+      if (keys.some(isLetterOrNumber)) {
+        saveShortcut(keys);
+      }
     }
   });
 }
