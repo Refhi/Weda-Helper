@@ -467,6 +467,7 @@ const keyCommands = {
     'download_document': function () {
             startPrinting('download', 1);
         },
+    'upload_latest_file': uploadLatest,
     'push_enregistrer': function () {
             console.log('push_enregistrer activé');
             clickElementById('ButtonSave');
