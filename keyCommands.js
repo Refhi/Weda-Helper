@@ -5,13 +5,22 @@
  * @property {Function} action - La fonction exécutée lorsque la commande clé est activée.
  */
 
-chrome.storage.local.get("shortcuts", function(result) {
+chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function(result) {
     hotkeys.filter = function(event){
         return true; // Permet d'utiliser les raccourcis depuis un input ou un textarea
     }
     const entries = Object.entries(keyCommands);
     for (const [key, action] of entries) {
-        let shortcut = result["shortcuts"][key];
+        var shortcut;
+        if (result.shortcuts == undefined) {
+            shortcut = result.defaultShortcuts[key]["default"];
+        }
+        else if (result.shortcuts[key] == undefined) {
+            shortcut = result.defaultShortcuts[key]["default"];
+        }
+        else {
+            shortcut = result.shortcuts[key];
+        }
         if (shortcut != undefined)
             hotkeys(shortcut,function (event, handler){//Pour chaque raccourci on créée un Hotkeys et on y attribue son action
                 event.preventDefault(); //On annule l'événement par défaut pour permettre de faire les raccourcis dns l'input
