@@ -292,6 +292,8 @@ function startPrinting(handlingType, modelNumber) {
                     }
                 });
         }
+    }
+}
         
 //Fonction appellée par un bouton ou un raccourci clavier pour uploader le dernier fichier d'un dossier dans le dossier patient actuel
 function uploadLatest() {
