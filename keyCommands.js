@@ -6,6 +6,8 @@
  */
 
 
+
+
 const keyCommands = {
     'push_valider':  push_valider,
     'push_annuler': push_annuler,
@@ -113,16 +115,24 @@ function addShortcuts(keyCommands, scope, scopeName) {
 
 
 window.onload = function() {
+    document.addEventListener('keydown', function(event) {
+        console.log('Touche pressée:', event.key);
+    });
     setTimeout(() => {
         addShortcuts(keyCommands, document, 'all');
 
         var iframes = document.querySelectorAll('iframe');
-        iframes.forEach(function(iframe) {
-            console.log('iframe', iframe);
+        iframes.forEach(function(iframe, index) {
+            console.log('iframe' + (index + 1), iframe);
             // Wait for the iframe to load before adding shortcuts
-                addShortcuts(keyCommands, iframe.contentDocument, 'iframe');
+            addShortcuts(keyCommands, iframe.contentDocument, 'iframe' + (index + 1));
+            // Sélectionnez l'élément
+            // Ajoutez l'event listener
+            iframe.contentDocument.addEventListener('keydown', function(event) {
+                console.log('Touche pressée:', event.key);
+            });
         });
-    }, 1000);
+    }, 5000);
 }
 
 
