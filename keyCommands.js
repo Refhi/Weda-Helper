@@ -78,7 +78,7 @@ const keyCommands = {
 // Pour ajouter les raccourcis sur un élément spécifique
 function addHotkeyToDocument(scope, element, shortcut, action) {
     if (shortcut != undefined)
-        console.log('Ajout du raccourci', shortcut, 'avec la fonction', action, 'dans le scope', scope);
+        console.log('Ajout du raccourci', shortcut, 'avec la fonction', action, 'dans le scope', scope, 'et l\'élément', element);
         hotkeys(shortcut, { scope: scope, element: element }, function (event, handler) {
             event.preventDefault();
 
@@ -107,25 +107,22 @@ function addShortcuts(keyCommands, scope, scopeName) {
             action = keyCommands[key];
             shortcut = shortcutDefaut(result.shortcuts, result.defaultShortcuts, key);
             addHotkeyToDocument(scopeName, scope, shortcut, action);
-            // => TODO => reprendre ici
-            // lightObserver('iframe', function (newElements) {
-            //     for (const [key, action] of entries) {
-            //         addHotkeyToDocument("iframes", newElements[0].contentDocument, shortcut, action);
-            //     }
-            // }, document, false, true);
         }
     });
 }
 
-window.onload = function() {
-    addShortcuts(keyCommands, document, 'all');
 
-    var iframes = document.querySelectorAll('iframe');
-    iframes.forEach(function(iframe) {
-        console.log('iframe', iframe);
-        // Wait for the iframe to load before adding shortcuts
-        setTimeout(() => addShortcuts(keyCommands, iframe.contentDocument, 'iframe'), 1000);
-    });
+window.onload = function() {
+    setTimeout(() => {
+        addShortcuts(keyCommands, document, 'all');
+
+        var iframes = document.querySelectorAll('iframe');
+        iframes.forEach(function(iframe) {
+            console.log('iframe', iframe);
+            // Wait for the iframe to load before adding shortcuts
+                addShortcuts(keyCommands, iframe.contentDocument, 'iframe');
+        });
+    }, 1000);
 }
 
 
