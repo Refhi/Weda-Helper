@@ -24,14 +24,9 @@
           "prescription.js",
           "update.js",
           "aati.js",
-          "metrics.js"]
-    },
-    { 
-      "matches": ["*://secure.weda.fr/*"], "all_frames":true, //On insère ces deux scripts dans toutes les iframe pour pouvoir récupérer les raccourcis partout
-      "js": [
-          "keyCommands.js",
-          "hotkeys.js"]
-
+          "metrics.js",
+          "hotkeys.js",
+          "keyCommands.js"]
     }
   ]
 }

@@ -5,10 +5,17 @@
  * @property {Function} action - La fonction exécutée lorsque la commande clé est activée.
  */
 
-chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function(result) {
-    hotkeys.filter = function(event){
-        return true; // Permet d'utiliser les raccourcis depuis un input ou un textarea
-    }
+function addHotkeyToDocument(scope, element, shortcut, action) {
+    if (shortcut != undefined)
+        console.log('Ajout du raccourci', shortcut, 'dans', element, 'scope:', scope);
+        hotkeys(shortcut, { scope: scope, element: element }, function (event, handler) {
+            event.preventDefault();
+            action();
+        });
+}
+
+function addShortcuts(scope, element) {
+    chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function(result) {
     const entries = Object.entries(keyCommands);
     for (const [key, action] of entries) {
         var shortcut;
@@ -21,26 +28,36 @@ chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function(result) {
         else {
             shortcut = result.shortcuts[key];
         }
-        if (shortcut != undefined) {
-            hotkeys(shortcut,function (event, handler){//Pour chaque raccourci on créée un Hotkeys et on y attribue son action
-                event.preventDefault(); //On annule l'événement par défaut pour permettre de faire les raccourcis dns l'input
-                //Au cas où nous serions dans une iframe, on sort de l'iframe pour l'exécuter en passant par background.js
-                chrome.runtime.sendMessage({shortcut:key});
-            }); 
+        addHotkeyToDocument(scope, element, shortcut, action);
         }
-    }
+    });
+
+}
+
+hotkeys.filter = function(event){
+        return true; // Permet d'utiliser les raccourcis depuis un input ou un textarea
+}
+
+window.addEventListener('focus', function(event) { //On surveille le focus sur la page principale
+    console.log('focus on mainWindow');
+    hotkeys.setScope('document');
 });
 
-chrome.runtime.onMessage.addListener(function(message, sender) { //Exécute le raccourcis envoyé par le message
-    if (window.frameElement) {
-        return; //Nous sommes dans l'iframe, on ne fait rien de ce message
-    }
-    if (message.shortcut) { //Nous somme hors de l'iframe, on peut executer le raccourcis.
-        if(keyCommands[message.shortcut]){
-            keyCommands[message.shortcut]();
+addShortcuts("document", document); //On ajoute les raccourcis sur la page principale
+
+setTimeout(function(){
+    let iframes = document.querySelectorAll('iframe');
+    for (const frame of iframes) {
+        addShortcuts(frame.id, frame.contentWindow); //On ajoute les raccourcis dans une éventuelle iframe
+        if (document.activeElement.tagName == "IFRAME") {
+            hotkeys.setScope(document.activeElement.id);
         }
+        frame.contentWindow.addEventListener('focus', function(event) { //On surveille le focus sur l'iframe
+            console.log('focus on iframe');
+            hotkeys.setScope(event.target.frameElement.id);
+        });
     }
-});
+}, 2000);
 
 function toggleAtcd() {
     console.log('toggleAtcd activé');
