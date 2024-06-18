@@ -81,7 +81,10 @@ const keyCommands = {
 function addHotkeyToDocument(scope, element, shortcut, action) {
     if (shortcut != undefined)
         console.log('Ajout du raccourci', shortcut, 'avec la fonction', action, 'dans le scope', scope, 'et l\'élément', element);
-        hotkeys(shortcut, { scope: scope, element: element }, function (event, handler) {
+        hotkeys(shortcut, {
+            scope: scope,
+            element: element
+        }, function (event, handler) {
             event.preventDefault();
 
             action();
@@ -113,27 +116,22 @@ function addShortcuts(keyCommands, scope, scopeName) {
     });
 }
 
-
-window.onload = function() {
-    document.addEventListener('keydown', function(event) {
-        console.log('Touche pressée:', event.key);
-    });
-    setTimeout(() => {
-        addShortcuts(keyCommands, document, 'all');
-
-        var iframes = document.querySelectorAll('iframe');
-        iframes.forEach(function(iframe, index) {
-            console.log('iframe' + (index + 1), iframe);
-            // Wait for the iframe to load before adding shortcuts
-            addShortcuts(keyCommands, iframe.contentDocument, 'iframe' + (index + 1));
-            // Sélectionnez l'élément
-            // Ajoutez l'event listener
-            iframe.contentDocument.addEventListener('keydown', function(event) {
-                console.log('Touche pressée:', event.key);
-            });
+addShortcuts(keyCommands, document, 'all');
+setTimeout(() => { // pas réussi à trouver mieux qu'un timeout pour attendre que les iframes soient chargées...
+    var iframes = document.querySelectorAll('iframe');
+    iframes.forEach(function(iframe, index) {
+        console.log('iframe' + (index + 1), iframe);
+        // Wait for the iframe to load before adding shortcuts
+        addShortcuts(keyCommands, iframe.contentDocument, 'iframe' + (index + 1));
+        // Sélectionnez l'élément
+        // Ajoutez l'event listener
+        iframe.contentDocument.addEventListener('keydown', function(event) {
+            console.log('Touche pressée:', event.key);
+            
         });
-    }, 5000);
-}
+    });
+}, 1000);
+
 
 
 function toggleAtcd() {
