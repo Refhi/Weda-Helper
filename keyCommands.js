@@ -5,6 +5,19 @@
  * @property {Function} action - La fonction exécutée lorsque la commande clé est activée.
  */
 
+
+// // Gestion des raccourcis claviers via hotkeys.js
+// Pour ajouter les raccourcis sur un élément spécifique
+function addHotkeyToDocument(scope, element, shortcut, action) {
+    if (shortcut != undefined)
+        console.log('Ajout du raccourci', shortcut, 'avec la fonction', action, 'dans le scope', scope);
+        hotkeys(shortcut, { scope: scope, element: element }, function (event, handler) {
+            event.preventDefault();
+
+            action();
+        });
+}
+
 chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function(result) {
     hotkeys.filter = function(event){
         return true; // Permet d'utiliser les raccourcis depuis un input ou un textarea
@@ -21,12 +34,13 @@ chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function(result) {
         else {
             shortcut = result.shortcuts[key];
         }
-        if (shortcut != undefined)
-            hotkeys(shortcut,function (event, handler){//Pour chaque raccourci on créée un Hotkeys et on y attribue son action
-                event.preventDefault(); //On annule l'événement par défaut pour permettre de faire les raccourcis dns l'input
-                action();
-
-            }); 
+        addHotkeyToDocument("all", document, shortcut, action);
+        // => TODO => reprendre ici
+        // lightObserver('iframe', function (newElements) {
+        //     for (const [key, action] of entries) {
+        //         addHotkeyToDocument("iframes", newElements[0].contentDocument, shortcut, action);
+        //     }
+        // }, document, true);
     }
 });
 
