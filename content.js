@@ -189,7 +189,7 @@ function tooltipshower() {
             cancelable: true
         }));
     }
-    chrome.storage.local.get("shortcuts", function(result) {
+    chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function(result) {
         // from keyCommands, extract for each key the action
         const entries = Object.entries(keyCommands);
         let submenuDict = {};
@@ -200,7 +200,7 @@ function tooltipshower() {
                 var match = action.toString().match(/submenuW\('(.*)'\)/);
                 if (match) {
                     var submenu = match[1];
-                    submenuDict[submenu] = result["shortcuts"][key]; //On récupère le raccourcis dans les réglages
+                    submenuDict[submenu] = shortcutDefaut(result.shortcuts, result.defaultShortcuts, key);
                 }
             }
         }
