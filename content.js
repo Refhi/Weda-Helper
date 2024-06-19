@@ -1,6 +1,25 @@
 // // Différentes petites fonctions ajoutées ou supprimées de Weda
 // // Ne justifiant pas la création d'un fichier séparé
 
+// // Sorte de post-chargement pour les pages, car le onload fonctionne mal, et après une mutation c'est pas toujours évident
+function afterMutations(delay, callback) {
+    let timeoutId = null;
+    const action = () => {
+        console.log('Aucune mutation détectée pendant 100ms, je considère la page comme chargée. Rechargement des raccourcis...');
+        callback();
+    };
+
+    const observer = new MutationObserver((mutationsList, observer) => {
+        for(let mutation of mutationsList) {
+            // Réinitialise le délai chaque fois qu'une mutation est détectée
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(action, delay);
+        }
+    });
+
+    observer.observe(document, { childList: true, subtree: true });
+};
+
 // // Fonction pour attendre la présence d'un élément avant de lancer une fonction
 // // ! Très utilisé dans toute l'exension, a vocation a laisser sa place à lightObserver
 function waitForElement(selector, text = null, timeout, callback) {
@@ -42,6 +61,8 @@ function lightObserver(selector, callback, parentElement = document, justOnce = 
                         if (debug) {console.log('[lightObserver] Element', element, ' has appeared');}
                         observedElements.set(element, true); // Add the element to the WeakMap
                         newElements.push(element);
+                    } else {
+                        if (debug) {console.log('[lightObserver] Element', element, ' already observed');}
                     }
                 }
                 if (newElements.length > 0) {

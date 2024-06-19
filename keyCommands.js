@@ -5,21 +5,135 @@
  * @property {Function} action - La fonction exécutée lorsque la commande clé est activée.
  */
 
-chrome.storage.local.get("shortcuts", function(result) {
-    hotkeys.filter = function(event){
-        return true; // Permet d'utiliser les raccourcis depuis un input ou un textarea
-    }
-    const entries = Object.entries(keyCommands);
-    for (const [key, action] of entries) {
-        let shortcut = result["shortcuts"][key];
-        if (shortcut != undefined)
-            hotkeys(shortcut,function (event, handler){//Pour chaque raccourci on créée un Hotkeys et on y attribue son action
-                event.preventDefault(); //On annule l'événement par défaut pour permettre de faire les raccourcis dns l'input
-                action();
 
-            }); 
+
+
+const keyCommands = {
+    'push_valider':  push_valider,
+    'push_annuler': push_annuler,
+    // 'download_document': startDownload, => en attente de https://github.com/Refhi/Weda-Helper/pull/106
+    'print_meds': function () {
+            getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
+                if (!RemoveLocalCompanionPrint) {
+                    startPrinting('companion', 0);
+                } else {
+                    startPrinting('print', 0);
+                }
+            });
+        },
+    'download_document': function () {
+            startPrinting('download', 1);
+        },
+    'upload_latest_file': uploadLatest,
+    'push_enregistrer': function () {
+            console.log('push_enregistrer activé');
+            clickElementById('ButtonSave');
+        },
+    'push_delete': function () {
+            console.log('push_delete activé');
+            clickElementByClass('button delete');
+        },
+    'shortcut_w': function () {
+            console.log('shortcut_w activé');
+            clickElementByOnclick("ctl00$ContentPlaceHolder1$EvenementUcForm1$MenuNavigate")
+        },
+    'shortcut_consult': function () {
+            console.log('shortcut_consult activé');
+            submenuW(' Consultation');
+        },
+    'shortcut_certif': function () {
+            console.log('shortcut_certif activé');
+            submenuW(' Certificat');
+        },
+    'shortcut_demande': function () {
+            console.log('shortcut_demande activé');
+            submenuW(' Demande');
+        },
+    'shortcut_prescription': function () {
+            console.log('shortcut_prescription activé');
+            submenuW(' Prescription');
+        },
+    'shortcut_formulaire': function () {
+            console.log('shortcut_formulaire activé');
+            submenuW(' Formulaire');
+        },
+    'shortcut_courrier': function () {
+            console.log('shortcut_courrier activé');
+            submenuW(' Courrier');
+        },
+    'shortcut_fse': function () {
+            console.log('shortcut_fse activé');
+            submenuW(' FSE');
+        },
+    'shortcut_carte_vitale': function () {
+            console.log('shortcut_carte_vitale activé');
+            clickCarteVitale();
+        },
+    'shortcut_search': function () {
+            console.log('shortcut_search activé');
+            openSearch();            
+        },
+    'shortcut_atcd': toggleAtcd
+};
+
+
+// // Gestion des raccourcis claviers via hotkeys.js
+// Pour ajouter les raccourcis sur un élément spécifique
+function addHotkeyToDocument(scope, element, shortcut, action) {
+    if (shortcut != undefined)
+        // console.log('Ajout du raccourci', shortcut, 'avec la fonction', action, 'dans le scope', scope, 'et l\'élément', element);
+        hotkeys(shortcut, {
+            scope: scope,
+            element: element
+        }, function (event, handler) {
+            event.preventDefault();
+
+            action();
+        });
+}
+
+function shortcutDefaut(shortcuts, defaultShortcuts, key) {
+    if (shortcuts == undefined) {
+        return result.defaultShortcuts[key]["default"];
     }
-});
+    else if (shortcuts[key] == undefined) {
+        return defaultShortcuts[key]["default"];
+    }
+    else {
+        return shortcuts[key];
+    }
+}
+
+function addShortcuts(keyCommands, scope, scopeName) {
+    chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function(result) {
+        hotkeys.filter = function(event){
+            return true; // Permet d'utiliser les raccourcis depuis un input ou un textarea
+        }
+        console.log('[addShortcuts] ajout des raccourcis sur element', scope, 'avec scopeName', scopeName, 'et result', result);
+        for (let key in keyCommands) {
+            action = keyCommands[key];
+            shortcut = shortcutDefaut(result.shortcuts, result.defaultShortcuts, key);
+            addHotkeyToDocument(scopeName, scope, shortcut, action);
+        }
+    });
+}
+
+function addShortcutsToIframe() {
+    var iframes = document.querySelectorAll('iframe');
+    if (iframes.length !== 0) {
+        hotkeys.setScope('iframe1');
+        iframes.forEach(function(iframe, index) {
+            console.log('iframe' + (index + 1), iframe);
+            addShortcuts(keyCommands, iframe.contentDocument, 'iframe' + (index + 1));
+        });
+    }
+}
+
+// Ajout des raccourcis claviers sur le document racine
+addShortcuts(keyCommands, document, 'all');
+afterMutations(100, addShortcutsToIframe); // ajoute les raccourcis à toutes les iframes après chaque mutation du document
+
+
 
 function toggleAtcd() {
     console.log('toggleAtcd activé');
@@ -437,71 +551,3 @@ function openSearch() {
     link.click();
     recordMetrics({ clicks: 1, drags: 3 });
 }
-
-const keyCommands = {
-    'push_valider':  push_valider,
-    'push_annuler': push_annuler,
-    // 'download_document': startDownload, => en attente de https://github.com/Refhi/Weda-Helper/pull/106
-    'print_meds': function () {
-            getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
-                if (!RemoveLocalCompanionPrint) {
-                    startPrinting('companion', 0);
-                } else {
-                    startPrinting('print', 0);
-                }
-            });
-        },
-    'download_document': function () {
-            startPrinting('download', 1);
-        },
-    'upload_latest_file': uploadLatest,
-    'push_enregistrer': function () {
-            console.log('push_enregistrer activé');
-            clickElementById('ButtonSave');
-        },
-    'push_delete': function () {
-            console.log('push_delete activé');
-            clickElementByClass('button delete');
-        },
-    'shortcut_w': function () {
-            console.log('shortcut_w activé');
-            clickElementByOnclick("ctl00$ContentPlaceHolder1$EvenementUcForm1$MenuNavigate")
-        },
-    'shortcut_consult': function () {
-            console.log('shortcut_consult activé');
-            submenuW(' Consultation');
-        },
-    'shortcut_certif': function () {
-            console.log('shortcut_certif activé');
-            submenuW(' Certificat');
-        },
-    'shortcut_demande': function () {
-            console.log('shortcut_demande activé');
-            submenuW(' Demande');
-        },
-    'shortcut_prescription': function () {
-            console.log('shortcut_prescription activé');
-            submenuW(' Prescription');
-        },
-    'shortcut_formulaire': function () {
-            console.log('shortcut_formulaire activé');
-            submenuW(' Formulaire');
-        },
-    'shortcut_courrier': function () {
-            console.log('shortcut_courrier activé');
-            submenuW(' Courrier');
-        },
-    'shortcut_fse': function () {
-            console.log('shortcut_fse activé');
-            submenuW(' FSE');
-        },
-    'shortcut_carte_vitale': function () {
-            console.log('shortcut_carte_vitale activé');
-            clickCarteVitale();
-        },
-    'shortcut_search': function () {
-            console.log('shortcut_search activé');
-            openSearch();            
-        },
-    'shortcut_atcd': toggleAtcd
-};

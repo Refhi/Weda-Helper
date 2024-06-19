@@ -130,16 +130,7 @@ var defaultShortcuts = {
     }
 };
 
-// chrome.runtime.onInstalled.addListener((details) => { // Cette partie ne semble pas fonctionner correctement
-// Donc on passe plutôt par la comparaison des version, qui est déjà gérée de façon fiable dans update.js
-chrome.storage.local.get(['lastExtensionVersion', 'firstStart'], function(result) {
-  let currentVersion = chrome.runtime.getManifest().version;
-  console.log('[background.js] Version actuelle :', currentVersion, 'Dernière version enregistrée :', result.lastExtensionVersion);
-  if (result.lastExtensionVersion !== currentVersion) {
-    // Enregistrer les valeurs par défaut dans le stockage
-    chrome.storage.local.set({defaultSettings: defaultSettings, defaultShortcuts: defaultShortcuts}, function() {
-      console.log('[background.js] Les valeurs et raccourcis par défaut ont été enregistrées');
-    });
-  }
-  // TODO : à évaluer : est-ce que ça limite vraiment la charge ?
+// retour à un chargement systématique, a priori sans impact évident sur le temps de chargement
+chrome.storage.local.set({defaultSettings: defaultSettings, defaultShortcuts: defaultShortcuts}, function() {
+    console.log('[background.js] Les valeurs et raccourcis par défaut ont été enregistrées');
 });

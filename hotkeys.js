@@ -361,7 +361,8 @@
     let modifiersMatch;
 
     // 看它是否在当前范围
-    if (handler.scope === scope || handler.scope === 'all') {
+    // if (handler.scope === scope || handler.scope === 'all') {
+    if (true) { // la récupération du scope semble buguée => fix sale
       // 检查是否匹配修饰符（如果有返回true）
       modifiersMatch = handler.mods.length > 0;
       for (const y in _mods) {
@@ -522,6 +523,8 @@
       if (option.single === true) single = true; // eslint-disable-line
     }
     if (typeof option === 'string') scope = option;
+
+    // console.log('[hotkey.js] define hotkey : key/scope/method/element', key, scope, method, element);
 
     // 如果只允许单个callback，先unbind
     if (single) unbind(key, scope);
