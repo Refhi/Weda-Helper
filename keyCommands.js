@@ -44,6 +44,9 @@ window.addEventListener('focus', function(event) { //On surveille le focus sur l
 });
 
 addShortcuts("document", document); //On ajoute les raccourcis sur la page principale
+if (document.activeElement.tagName != "IFRAME") {
+        hotkeys.setScope('document');
+}
 
 setTimeout(function(){
     let iframes = document.querySelectorAll('iframe');
