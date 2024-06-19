@@ -93,7 +93,7 @@ function addHotkeyToDocument(scope, element, shortcut, action) {
 
 function shortcutDefaut(shortcuts, defaultShortcuts, key) {
     if (shortcuts == undefined) {
-        return result.defaultShortcuts[key]["default"];
+        return defaultShortcuts[key]["default"];
     }
     else if (shortcuts[key] == undefined) {
         return defaultShortcuts[key]["default"];
