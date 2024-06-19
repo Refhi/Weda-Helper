@@ -80,7 +80,7 @@ const keyCommands = {
 // Pour ajouter les raccourcis sur un élément spécifique
 function addHotkeyToDocument(scope, element, shortcut, action) {
     if (shortcut != undefined)
-        console.log('Ajout du raccourci', shortcut, 'avec la fonction', action, 'dans le scope', scope, 'et l\'élément', element);
+        // console.log('Ajout du raccourci', shortcut, 'avec la fonction', action, 'dans le scope', scope, 'et l\'élément', element);
         hotkeys(shortcut, {
             scope: scope,
             element: element
@@ -108,6 +108,7 @@ function addShortcuts(keyCommands, scope, scopeName) {
         hotkeys.filter = function(event){
             return true; // Permet d'utiliser les raccourcis depuis un input ou un textarea
         }
+        console.log('[addShortcuts] ajout des raccourcis sur element', scope, 'avec scopeName', scopeName, 'et result', result);
         for (let key in keyCommands) {
             action = keyCommands[key];
             shortcut = shortcutDefaut(result.shortcuts, result.defaultShortcuts, key);
@@ -116,30 +117,20 @@ function addShortcuts(keyCommands, scope, scopeName) {
     });
 }
 
-// TODO :
-// - implémenter le changement de scope lors du focus dans un iframe ?
-// - retirer les modifs dans hotkey
-// - tester le fait de ne mettre les raccourcis que dans un des iframes
+function addShortcutsToIframe() {
+    var iframes = document.querySelectorAll('iframe');
+    if (iframes.length !== 0) {
+        hotkeys.setScope('iframe1');
+        iframes.forEach(function(iframe, index) {
+            console.log('iframe' + (index + 1), iframe);
+            addShortcuts(keyCommands, iframe.contentDocument, 'iframe' + (index + 1));
+        });
+    }
+}
 
-
+// Ajout des raccourcis claviers sur le document racine
 addShortcuts(keyCommands, document, 'all');
-lightObserver('iframe', (iframes) => {
-    iframes.forEach(function(iframe, index) {
-        console.log('iframe', iframe);
-        addShortcuts(keyCommands, iframe.contentDocument, 'iframe' + (index + 1));
-    });
-}, document, false);
-
-// setTimeout(() => { // pas réussi à trouver mieux qu'un timeout pour attendre que les iframes soient chargées...
-//     var iframes = document.querySelectorAll('iframe');
-//     if (iframes.length !== 0) {
-//         hotkeys.setScope('iframe1');
-//         iframes.forEach(function(iframe, index) {
-//             console.log('iframe' + (index + 1), iframe);
-//             addShortcuts(keyCommands, iframe.contentDocument, 'iframe' + (index + 1));
-//         });
-//     }
-// }, 5000);
+afterMutations(100, addShortcutsToIframe); // ajoute les raccourcis à toutes les iframes après chaque mutation du document
 
 
 
