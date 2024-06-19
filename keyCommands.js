@@ -116,21 +116,30 @@ function addShortcuts(keyCommands, scope, scopeName) {
     });
 }
 
+// TODO :
+// - implémenter le changement de scope lors du focus dans un iframe ?
+// - retirer les modifs dans hotkey
+// - tester le fait de ne mettre les raccourcis que dans un des iframes
+
+
 addShortcuts(keyCommands, document, 'all');
-setTimeout(() => { // pas réussi à trouver mieux qu'un timeout pour attendre que les iframes soient chargées...
-    var iframes = document.querySelectorAll('iframe');
+lightObserver('iframe', (iframes) => {
     iframes.forEach(function(iframe, index) {
-        console.log('iframe' + (index + 1), iframe);
-        // Wait for the iframe to load before adding shortcuts
+        console.log('iframe', iframe);
         addShortcuts(keyCommands, iframe.contentDocument, 'iframe' + (index + 1));
-        // Sélectionnez l'élément
-        // Ajoutez l'event listener
-        iframe.contentDocument.addEventListener('keydown', function(event) {
-            console.log('Touche pressée:', event.key);
-            
-        });
     });
-}, 1000);
+}, document, false);
+
+// setTimeout(() => { // pas réussi à trouver mieux qu'un timeout pour attendre que les iframes soient chargées...
+//     var iframes = document.querySelectorAll('iframe');
+//     if (iframes.length !== 0) {
+//         hotkeys.setScope('iframe1');
+//         iframes.forEach(function(iframe, index) {
+//             console.log('iframe' + (index + 1), iframe);
+//             addShortcuts(keyCommands, iframe.contentDocument, 'iframe' + (index + 1));
+//         });
+//     }
+// }, 5000);
 
 
 
