@@ -611,6 +611,29 @@ addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeAu
         }, 30000);
     }
 });
+addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeUncheckIHEMessage', function() {
+    lightObserver('we-doc-import', function(elements) {
+        for (const element of elements) {
+            if (element.className != 'docImportAttach') //Correspond au corps du message
+            {
+                let checkbox = element.querySelector('input[type=checkbox]')
+                checkbox.checked = false;
+                checkbox.dispatchEvent(new Event('change'));
+                recordMetrics({ clicks: 1, drags: 1 });
+            } else {
+                let docTitle = element.querySelector('input.docTitle');
+                if (docTitle.value.toUpperCase() == 'IHE_XDM.ZIP') {
+                    let checkbox = element.querySelector('input[type=checkbox]')
+                    checkbox.checked = false;
+                    checkbox.dispatchEvent(new Event('change'));
+                    recordMetrics({ clicks: 1, drags: 1 });
+                }
+            }
+        }
+
+    });
+});
+
 
 
 // Sélection automatique du type de document pour les courriers envoyés au DMP
