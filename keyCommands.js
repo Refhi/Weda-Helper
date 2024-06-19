@@ -304,19 +304,6 @@ function uploadLatest() {
     });
 }
 
-// // Diverses aides au clic
-// Clique sur la première imprimante
-function clickFirstPrinter() {
-    var element = document.querySelector('[onclick*="ctl00$ContentPlaceHolder1$MenuPrint"][class*="popout-dynamic level2"]');
-    console.log('first printer Element is', element);
-    if (element) {
-        element.click();
-        // records metrics fait dans companionLink
-        return true;
-    } else {
-        return false;
-    }
-}
 
 
 
