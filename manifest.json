@@ -26,7 +26,8 @@
           "update.js",
           "aati.js",
           "metrics.js",
-          "hotkeys.js"]
+          "hotkeys.js",
+          "upload.js"]
     }
   ]
 }

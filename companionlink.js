@@ -1,7 +1,7 @@
 // // lien avec Weda-Helper-Companion
 // Cette partie s'occupe d'envoyer les instructions, quelles qu'elles soient, à Weda-Helper-Companion.
 // Donc le montant tpe et l'impression.
-function sendToCompanion(urlCommand, blob = null, callback = null) {
+function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithData = null) {
     getOption(['portCompanion', 'apiKey'], function ([portCompanion, apiKey]) {
         let versionToCheck = "1.2";
         let urlWithParam = `http://localhost:${portCompanion}/${urlCommand}` +
@@ -24,6 +24,9 @@ function sendToCompanion(urlCommand, blob = null, callback = null) {
                     console.warn(errortype + ' Error:', data.error);
                     alert(errortype + ' Erreur : ' + data.error);
                 } else {
+                    if (callbackWithData) {
+                        callbackWithData(data);
+                    }
                     console.log('retour de Weda-Helper-Companion :', data);
                 }
             })

@@ -24,6 +24,7 @@ const keyCommands = {
     'download_document': function () {
             startPrinting('download', 1);
         },
+    'upload_latest_file': uploadLatest,
     'push_enregistrer': function () {
             console.log('push_enregistrer activé');
             clickElementById('ButtonSave');
@@ -407,6 +408,16 @@ function startPrinting(handlingType, modelNumber) {
         }
     }
 }
+        
+//Fonction appellée par un bouton ou un raccourci clavier pour uploader le dernier fichier d'un dossier dans le dossier patient actuel
+function uploadLatest() {
+    chrome.storage.local.set({ 'automaticUpload': true }, function () { //On met un flag qui informe que l'upload sera automatique
+        let uploadURL = "https://secure.weda.fr/FolderMedical/PopUpUploader.aspx"+window.location.search 
+        console.log(uploadURL);
+        var uploadWindow = window.open(uploadURL, "Upload", "width=700,height=600"); //On ouvre la fenetre d'upload dans un popup
+    });
+}
+
 
 
 
@@ -540,4 +551,3 @@ function openSearch() {
     link.click();
     recordMetrics({ clicks: 1, drags: 3 });
 }
-
