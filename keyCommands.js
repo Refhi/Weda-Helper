@@ -131,7 +131,7 @@ function addShortcutsToIframe() {
 
 // Ajout des raccourcis claviers sur le document racine
 addShortcuts(keyCommands, document, 'all');
-afterMutations(100, addShortcutsToIframe); // ajoute les raccourcis à toutes les iframes après chaque mutation du document
+afterMutations(300, addShortcutsToIframe); // ajoute les raccourcis à toutes les iframes après chaque mutation du document
 
 
 

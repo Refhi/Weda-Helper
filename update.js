@@ -12,12 +12,16 @@ Peu de modifications visibles pour vous, mais beaucoup de travail en coulisses p
 Le plus gros changement est la refonte de la gestion des impressions et des téléchargements, qui devrait être plus fiable et plus rapide.
 Les raccourcis claviers sont désormais directement gérés dans les options ! Vous devrez donc les redéfinir si vous les aviez personnalisés.
 
+
 # [2.3] - 2024-05-28
 ## refactory :
 - passage des options par défaut dans le manifest.json pour éviter les doublons
 - creation et utilisation prioritaire de 'addTweak' qui simplifie l'ajout de fonctionnalités dans telle ou telle page en fonction de l'option liée. Pour faciliter la lecture du code et la maintenance on l'appelle après chaque ensemble de tableau urls/options/callbacks
 - refactory complet de la gestion des impressions et des téléchargements
 - Les raccourcis claviers sont désormais directement gérés dans les options ! Vous devrez donc les redéfinir si vous les aviez personnalisés.
+
+## ajout :
+- on peut désormais uploader un document en un seul raccourcis clavier ! (par défaut Ctrl+U) Définissez le dossier dans le companion (v1.4+). Ctrl+U enverra automatiquement le dernier fichier créé.
 `
 
 nouveautes = htmlMaker(nouveautes)

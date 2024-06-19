@@ -9,6 +9,10 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - refactory complet de la gestion des impressions et des téléchargements
 - Les raccourcis claviers sont désormais directement gérés dans les options ! Vous devrez donc les redéfinir si vous les aviez personnalisés.
 
+## ajout :
+- on peut désormais uploader un document en un seul raccourcis clavier ! (par défaut Ctrl+U) Définissez le dossier dans le companion (v1.4+). Ctrl+U enverra automatiquement le dernier fichier créé.
+
+
 # [2.2] - 2024-04-20 
 ## fix :
 - possibilité d'utiliser "entrée" pour valider une fse
