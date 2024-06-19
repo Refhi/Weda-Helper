@@ -72,6 +72,10 @@ var defaultShortcuts = {
         "default": "Ctrl+D",
         "description": "Télécharge le PDF du document en cours"
     },
+    "upload_latest_file":{
+        "default": "Ctrl+U",
+        "description": "Upload le dernier fichier du dossier envoyé par le Companion",
+    },
     "push_enregistrer": {
         "default": "Ctrl+S",
         "description": "Appuie Enregistrer"
