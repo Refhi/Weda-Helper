@@ -38,6 +38,7 @@ var defaultSettings = {
   'TweakFSEAccident': false,
   'autoSelectPatientCV': true,
   'WarpButtons': true,
+  'autoSelectTypeOrdoNum': true,
   'autoConsentNumPres': false,
   'NumPresPrescription': false,
   'NumPresDemande': false,
