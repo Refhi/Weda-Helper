@@ -173,15 +173,15 @@ if (PrescriptionForm) {
 }
 
 addTweak(prescriptionUrl, 'autoOpenOrdoType', function() {
-    window.onload = function() {
+    // window.onload = function() { // paradoxalement plus fiable sans !
         document.getElementById('ContentPlaceHolder1_ButtonPrescritionType').click();
-        setTimeout(function() { //On remet le focus sur la barre de recherche, nécessite un petit délai
-                    var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
-                    if (inputField) {
-                        inputField.focus();
-                    }
-                }, 1000);
-    };
+        afterMutations(100, function() { //On remet le focus sur la barre de recherche, nécessite un petit délai
+            var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
+            if (inputField) {
+                inputField.focus();
+            }
+        });
+    // };
 });
 
 

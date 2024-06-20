@@ -6,6 +6,9 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 ## ajout :
 - Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée
 
+## fix :
+- le focus reste dans le champ de recherche après l'ouverture automatique des prescriptions-types
+
 # [2.3] - 2024-05-28
 ## refactory :
 - passage des options par défaut dans le manifest.json pour éviter les doublons
