@@ -362,6 +362,12 @@ pagesToLeftPannel_.forEach(page => {
                 }
             }
 
+            // Pour éviter de très gênantes superpositions de fenêtres
+            let previewWindow = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_ViewPdfDocumentUCForm1_PanelViewDocument');
+            if (previewWindow) {
+                return;
+            }
+
 
             // Définition des éléments à déplacer et de la cible
             let elementToMove = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame');

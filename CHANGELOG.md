@@ -9,6 +9,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 
 ## fix :
 - le focus reste dans le champ de recherche après l'ouverture automatique des prescriptions-types
+- blocage du historyToLeft si une fenêtre de prévisualisation est ouverte pour éviter des superpositions
 
 # [2.3] - 2024-05-28
 ## refactory :
