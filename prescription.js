@@ -266,8 +266,8 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function() {
         let infirmierRegex = /IDE|infirmier|pansement|injection/i;
         let kineRegex = /kiné|kine|kinésithérapie|kinesitherapie|MKDE|kinesitherapeute|kinesithérapeute/i;
         let pedicureRegex = /pédicure|pedicure|podologie|podologique|podologue/i;
-        let orthophonieRegex = /orthophonie|orthophonique/i;
-        let orthoptieRegex = /orthoptie|orthoptique/i;
+        let orthophonieRegex = /orthophonie|orthophonique|orthophoniste/i;
+        let orthoptieRegex = /orthoptie|orthoptique|orthoptiste/i;
 
         let demandeContent = document.querySelector("#CE_ContentPlaceHolder1_EditorPrescription_ID_Frame").contentWindow.document.body.innerText;
 
