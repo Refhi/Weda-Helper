@@ -2,6 +2,10 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+# [2.4] - 
+## ajout :
+- Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée
+
 # [2.3] - 2024-05-28
 ## refactory :
 - passage des options par défaut dans le manifest.json pour éviter les doublons
