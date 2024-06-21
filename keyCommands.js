@@ -131,7 +131,7 @@ function addShortcutsToIframe() {
 
 // Ajout des raccourcis claviers sur le document racine
 addShortcuts(keyCommands, document, 'all');
-afterMutations(300, addShortcutsToIframe); // ajoute les raccourcis à toutes les iframes après chaque mutation du document
+afterMutations(300, addShortcutsToIframe, "ajout raccourcis aux iframes"); // ajoute les raccourcis à toutes les iframes après chaque mutation du document
 
 
 
@@ -188,6 +188,7 @@ function push_valider() {
     const actions = [
         () => clickElementById('targetValider'), // utilisé quand j'ajoute une cible à un bouton
         () => clickElementById('ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonValidDocument'),
+        () => clickElementById('ContentPlaceHolder1_ButtonLibreValid'),
         () => clickElementById('ContentPlaceHolder1_FindPatientUcForm1_ButtonValidFamille'),
         () => clickClassExceptIf('button valid', 'Chercher', 'ContentPlaceHolder1_btnScanDatamatrix'),
         () => GenericClicker("title", "Enregistrer et quitter"),

@@ -2,10 +2,10 @@
 // // Ne justifiant pas la création d'un fichier séparé
 
 // // Sorte de post-chargement pour les pages, car le onload fonctionne mal, et après une mutation c'est pas toujours évident
-function afterMutations(delay, callback) {
+function afterMutations(delay, callback, callBackId = "callback id undefined") {
     let timeoutId = null;
     const action = () => {
-        console.log('Aucune mutation détectée pendant 100ms, je considère la page comme chargée. Rechargement des raccourcis...');
+        console.log(`Aucune mutation détectée pendant ${delay}ms, je considère la page comme chargée. Appel du Callback. (${callBackId})`);
         callback();
     };
 
