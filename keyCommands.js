@@ -13,15 +13,15 @@ const keyCommands = {
     'push_annuler': push_annuler,
     // 'download_document': startDownload, => en attente de https://github.com/Refhi/Weda-Helper/pull/106
     'print_meds': function () {
-            getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
-                if (!RemoveLocalCompanionPrint) {
-                    startPrinting('companion', 0);
-                } else {
-                    startPrinting('print', 0);
-                }
-            });
+            printIfOption(0);
+        },    
+    'print_meds_bis': function () {
+            printIfOption(1);
         },
     'download_document': function () {
+            startPrinting('download', 0);
+        },
+    'download_document_bis': function () {
             startPrinting('download', 1);
         },
     'upload_latest_file': uploadLatest,
@@ -213,6 +213,17 @@ function push_annuler() {
     ];
 
     actions.some(action => action() !== false);
+}
+
+// Fonction permettant d'imprimer selon les options choisies
+function printIfOption(modelNumber = 0) {    
+    getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
+        if (!RemoveLocalCompanionPrint) {
+            startPrinting('companion', modelNumber);
+        } else {
+            startPrinting('print', modelNumber);
+        }
+    });
 }
 
 // Définition de la fonction startPrinting
