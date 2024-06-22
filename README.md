@@ -140,6 +140,8 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 - Complétion automatique des dates partielles
 - En cliquant sur l'icône de l'extension, le bouton "Tout mettre en consultation" permet de sélectionner d'un coup "Consultation" pour l'ensemble des documents en attente d'importation.
 
+On peut désormais utiliser Ctrl+U pour uploader directement dans Weda le document le plus récent présent dans un dossier pré-sélectionné dans le Companion.
+
 
 ## Weda-Helper-Companion
 *Autant pousser l'économie de mouvements jusqu'au bout*
