@@ -253,6 +253,10 @@ function mouseoutW() {
 }
 
 
+// // vérification de la présence du Companion TODO
+
+
+
 
 // // Aide au clic
 // permet de cliquer sur un élément selon l'attribut onclick
@@ -321,7 +325,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 // Ecoute l'appuis de la touches Alt pour afficher l'aide
-// TODO passer ça sur la lib hotkey.js
 var tooltipTimeout;
 document.addEventListener('keydown', function (event) {
     if (event.key === 'Alt') {

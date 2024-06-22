@@ -186,6 +186,7 @@ function push_valider() {
     }
     // click other elements, one after the other, until one of them works
     const actions = [
+        () => clickElementById('ButtonValidFileStream'),
         () => clickElementById('targetValider'), // utilisé quand j'ajoute une cible à un bouton
         () => clickElementById('ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonValidDocument'),
         () => clickElementById('ContentPlaceHolder1_FindPatientUcForm1_ButtonValidFamille'),
