@@ -210,7 +210,7 @@ var options = Object.keys(defaultSettings);
   clearButton.textContent = 'Raz textes de bienvenue';
   clearButton.addEventListener('click', function() {
     // Effacez les valeurs lorsque le bouton est cliqué
-    chrome.storage.local.remove(['lastExtensionVersion', 'firstStart', 'aprilFool'], function() {
+    chrome.storage.local.remove(['lastExtensionVersion', 'firstStart', 'aprilFool', 'promptCompanionMessage'], function() {
       console.log('Les valeurs ont été effacées avec succès');
     });
   });
