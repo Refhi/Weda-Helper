@@ -31,13 +31,11 @@ nouveautes = htmlMaker(nouveautes)
 var firstStartMessage = `
 Bienvenue sur Weda-Helper !
 
-Pour commencer, vous devez configurer l'extension. Pour cela, cliquez sur l'icône puzzle en haut à droite de votre navigateur.
+Tout devrait fonctionner de base sans configuration, mais vous pouvez personnaliser l'extension dans les options (clic droit sur l'icone W de l'extension puis options).
 
 Je vous conseille de la mettre en favori en cliquant sur la punaise pour la garder visible.
 
-Pour qu'elle fonctionne au mieux :
-- allez dans les options (bouton de droite sur l'icone de l'extension puis option), vérfiez vos choix puis sauvegardez.
-- définissez les raccourcis clavier dans chrome (idem mais cliquez sur gérer les extensions)
+Je vous encourage également à installer le Companion <a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.exe" target="_blank">disponible ici pour windows</a> et <a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.dmg" target="_blank">ou pour mac</a> pour profiter de fonctionnalités supplémentaires (Impression totale, lien avec le TPE et upload automatisé).
 
 Vous pouvez aussi relire <a href="https://github.com/Refhi/Weda-Helper/" target="_blank">Weda-Helper sur gitHub</a> pour plus de précisions, et y faire des suggestions ou des signalements de bugs. 
 
@@ -61,6 +59,8 @@ Bonjour !
 Weda-Helper vient d'être mis à jour en version ${currentVersion} !
 
 Je vous conseille d'aller faire un tour dans les options pour vérifier les nouveaux paramètres : bouton de droite sur l'icone de l'extension puis option.
+
+Si vous ne l'avez pas encore, n'hésitez pas à tester le Companion : <a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.exe" target="_blank">disponible ici pour windows</a> et <a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.dmg" target="_blank">ou pour mac</a> pour profiter de fonctionnalités supplémentaires (Impression totale, lien avec le TPE et upload automatisé).
 
 Voici les nouveautés et les améliorations :
 ${nouveautes}

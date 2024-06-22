@@ -12,6 +12,10 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 ## ajout :
 - on peut désormais uploader un document en un seul raccourcis clavier ! (par défaut Ctrl+U) Définissez le dossier dans le companion (v1.4+). Ctrl+U enverra automatiquement le dernier fichier créé.
 
+## fix :
+- ajout d'une période refractaire pour certains raccourcis claviers pour éviter les activations multiples dans certains cas de figure
+- message de bienvenue étendu pour ajouter des liens vers le Companion mac et windows
+
 
 # [2.2] - 2024-04-20 
 ## fix :
