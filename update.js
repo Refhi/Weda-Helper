@@ -21,7 +21,7 @@ var nouveautes = `
 
 <h3>## ajout :</h3>
 🆕 on peut désormais uploader un document en un seul raccourcis clavier ! (par défaut Ctrl+U) Définissez le dossier dans le companion (v1.4+). Ctrl+U enverra automatiquement le dernier fichier créé. (nécessite le Companion v1.4+)
-🆕 création d'une fiche-mémo <a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/FicheMemo.pdf" target="_blank">disponible ici</a> pour vous aider à vous familiariser avec les raccourcis claviers et les fonctionnalités de Weda-Helper
+🆕 création d'une fiche-mémo <a href="https://github.com/Refhi/Weda-Helper/releases/latest/download/FicheMemo.pdf" target="_blank">disponible ici</a> pour vous aider à vous familiariser avec les raccourcis claviers et les fonctionnalités de Weda-Helper
 
 <h3># Companion v1.4.2 !</h3>
 🆕 ajout de la possibilité de définir le dossier d'upload automatique

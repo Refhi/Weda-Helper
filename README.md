@@ -39,7 +39,7 @@ Cf. ci-dessous pour les retours et les contributions.
 
 ## Raccourcis claviers
 *Toutes vos tâches quotidiennes à portée de clavier*
-[Fiche Mémo des raccourcis à imprimer](https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/FicheMemo.pdf)
+[Fiche Mémo des raccourcis à imprimer](https://github.com/Refhi/Weda-Helper/releases/latest/download/FicheMemo.pdf)
 - Imprime le document en cours (Suggestion : Ctrl+P) (attention, nécessite le module [Weda-Helper-Companion](#weda-helper-companion) pour que l'impression soit entièrement automatique. Sinon affiche directement le PDF.)
 - Appuie Annuler (Suggestion : Alt+A)
 - Appuie Supprimer (Suggestion : Alt+S)
