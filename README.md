@@ -31,9 +31,6 @@ Cf. ci-dessous pour les retours et les contributions.
   - [Weda-Helper-Companion](#weda-helper-companion)
     - [Impression directe automatique ](#impression-directe-automatique)
     - [Installation de Weda Helper Companion](#installation-de-weda-helper-companion)
-    - [Lancer le Companion automatiquement au démarrage de Windows](#lancer-le-companion-automatiquement-au-démarrage-de-windows)
-    - [Activation du lien avec votre TPE](#activation-du-lien-avec-votre-tpe)
-    - [Pour les geeks](#pour-les-geeks)
   - [Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):](#problèmes-et-limitations-connues-qui-seront-peut-être-résolues-dans-de-futures-mises-à-jour)
   - [Contributions](#contributions)
   - [Remerciements](#remerciements)
@@ -42,6 +39,7 @@ Cf. ci-dessous pour les retours et les contributions.
 
 ## Raccourcis claviers
 *Toutes vos tâches quotidiennes à portée de clavier*
+[Fiche Mémo des raccourcis à imprimer](https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/FicheMemo.pdf)
 - Imprime le document en cours (Suggestion : Ctrl+P) (attention, nécessite le module [Weda-Helper-Companion](#weda-helper-companion) pour que l'impression soit entièrement automatique. Sinon affiche directement le PDF.)
 - Appuie Annuler (Suggestion : Alt+A)
 - Appuie Supprimer (Suggestion : Alt+S)
@@ -151,29 +149,18 @@ Si une impression dans Weda est déclenchée via raccourci clavier (ctrl-P par e
 Envoie le montant à régler à votre TPE
 Si une FSE est validée via raccourcis clavier  (Alt+v par exemple) et que le paiement carte bancaire est sélectionné, le Companion envoie une demande de règlement au TPE avec le solde à régler (TPE à paramétrer avec l'aide de votre installateur de TPE)
 ### Installation de Weda Helper Companion
-Télécharger le fichier exécutable [companion.exe](https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/companion.exe) dans le dossier de votre choix, et le démarrer.
-ATTENTION ! Votre navigateur Chrome peut bloquer le téléchargement. Si c’est le cas suivez la procédure suivante :
-Cliquez sur le menu Chrome puis sur Téléchargement. Vous pouvez aussi utiliser le raccourci clavier Ctrl + J.
-Cliquez sur le bouton Converser le fichier dangereux sous le fichier bloqué.
-Confirmez l'opération en cliquant sur Conserver quand même.
+Télécharger le fichier exécutable :
+Windows : [Weda.Companion.exe](https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.exe)
+Mac : [Weda.Companion.dmg](https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.dmg)
+Et le démarrer. (vous aurez probablement une alerte de sécurité à passer)
 
-Windows aussi va probablement afficher un message de prudence concernant les risques d'exécution d'un programme extérieur. Je vous rassure : le programme a été fait sans aucun virus/malware/etc... Mais n'hésitez pas à passer un coup d'antivirus pour vous rassurer avant d'autoriser l'exception (vous aurez peut-être besoin de cliquer sur "plus de renseignements" sous Windows 11)
-Puis suivre les instructions pour l’installation en quelques secondes puis aller dans le dossier d’installation et ouvrez le fichier conf.ini (avec un éditeur de texte comme wordpad) pour le configurer selon les instructions incluses.
-### Lancer le Companion automatiquement au démarrage de Windows
-Vous pouvez placer un raccourcis dans le dossier "démarrage" de votre session pour que le Companion se lance automatiquement au démarrage (Win+R, puis taper shell:startup, puis coller le raccourcis du Companion dans le dossier démarrage)
-### Activation du lien avec votre TPE
-Pour le lien avec le TPE, appelez votre fournisseur et demandez lui d’activer le mode caisse (protocole caisse ou kk). Puis il faut trouver l’adresse IP du TPE (dans les paramètres du TPE ou de votre box internet) et son port (en général 5000 pour VERIFONE et 8888 pour INGENICO).
-Ces informations sont à rentrer dans le fichier conf.ini qui se trouve dans le dossier d’installation du Companion.
-### Pour les geeks
-Vous pouvez directement récupérer companion.py (et le module tpe.py) et l'executer de la même façon (avec une limitation : le vol de focus ne peut être contré que via l'exe)
+Plus de détails (sécurité, lancement automatique, lien TPE, etc.) ici : [Readme du Companion](https://github.com/Refhi/Weda-Helper-Companion)
+
 
 
 ## Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):
 *C'est là où vos pull requests sont les bienvenus*
-
 - La touche Alt n'affiche pas l'aide quand le curseur est dans un champ de texte
-- Les raccourcis claviers se substituent au comportement normal de Chrome, y compris hors de Weda
-Adobe reader, lors d'une impression déclenchée par Ctrl+P vole parfois le focus de Chrome.
 
 ## Contributions
 
