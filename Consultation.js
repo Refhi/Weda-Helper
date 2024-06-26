@@ -253,6 +253,27 @@ let pagesToLeftPannel_ = [
 ]
 
 
+// à intégrer après le addTweak
+// Étape 1 : Récupérer les paramètres de l'URL actuelle
+function getUrlParams() {
+    let url = window.location.href;
+    let params = url.split('?')[1];
+    return params; // Retourne la chaîne de requête
+}
+
+// Étape 2 : Créer une nouvelle iframe
+function createIframe() {
+    let iframe = document.createElement('iframe');
+    iframe.style.width = "100%";
+    iframe.style.height = "600px"; // Ajuster selon les besoins
+    return iframe;
+}
+
+// Étape 3 : Configurer l'URL de la nouvelle iframe
+function setIframeSrc(iframe, baseUrl, queryParams) {
+    iframe.src = `${baseUrl}?${queryParams}`;
+}
+
 // Faire un loop sur le tableau
 pagesToLeftPannel_.forEach(page => {
     addTweak(page.url, page.option, function() {

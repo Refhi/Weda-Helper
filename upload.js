@@ -1,5 +1,5 @@
 // Fonctions permettant l'upload automatique d'un fichier transmis par le Companion
-addTweak('https://secure.weda.fr/FolderMedical/PopUpUploader.aspx', '*', function() {
+addTweak('https://secure.weda.fr/FolderMedical/PopUpUploader.aspx', '*hotkeyUpload', function() {
 
     chrome.storage.local.get('automaticUpload', function(result) { //On vérifie que le flag automaticUpload est bien présent
         if (result.automaticUpload == true) {
