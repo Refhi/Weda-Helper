@@ -363,6 +363,7 @@ pagesToLeftPannel_.forEach(page => {
             removeElements(iframe.contentDocument);
         });
         adjustLayout(page.pageType, iframe, targetElement);
+        recordMetrics({ clicks: 1, drags: 1 });
     });
 });
 

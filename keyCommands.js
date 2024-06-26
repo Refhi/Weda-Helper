@@ -11,7 +11,6 @@
 const keyCommands = {
     'push_valider':  push_valider,
     'push_annuler': push_annuler,
-    // 'download_document': startDownload, => en attente de https://github.com/Refhi/Weda-Helper/pull/106
     'print_meds': function () {
             printIfOption(0);
         },    
