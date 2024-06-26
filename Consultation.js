@@ -277,6 +277,7 @@ function createIframe(targetElement) {
     iframe.src = getUrlHistory();
     iframe.style.position = 'absolute'; // ou 'fixed' si vous voulez qu'elle reste en place lors du défilement
     iframe.style.left = '0px'; // Aligné avec le bord gauche
+    iframe.style.border = "none";
     // Injecter l'iframe dans le DOM proche de targetElement pour que ça soit au même niveau (sur l'axe vertical)
     const parent = targetElement.parentNode;
     if (parent) {
