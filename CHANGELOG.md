@@ -13,6 +13,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - le focus reste dans le champ de recherche après l'ouverture automatique des prescriptions-types
 - blocage du historyToLeft si une fenêtre de prévisualisation est ouverte pour éviter des superpositions
 - alt+V fonctionne désormais aussi pour valider l'import de documents
+- message [addTweak] plus explicite dans la console
 
 # [2.3] - 2024-05-28
 ## refactory :

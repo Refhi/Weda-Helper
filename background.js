@@ -48,6 +48,7 @@ var defaultSettings = {
   'MoveHistoriqueToLeft_Certificat': true,
   'MoveHistoriqueToLeft_Demande': true,
   'MoveHistoriqueToLeft_Courrier': false,
+  'MoveHistoriqueToLeft_Formulaire': false,
   'ShowExplanatoryText': true,
   'autoOpenOrdoType': false,
   'defautDataType': 'TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%',

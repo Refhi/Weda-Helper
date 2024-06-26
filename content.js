@@ -136,7 +136,6 @@ function addTweak(url, option, callback) {
     }
 
     if (urlMatches) {
-        console.log(`[addTweak] ${option} activé`);
         // permet de gérer les options en négatif
         let invert = false;
         if (typeof option === 'string' && option.startsWith('!')) {
@@ -146,11 +145,13 @@ function addTweak(url, option, callback) {
         if (typeof option === 'string' && typeof callback === 'function') {
             // Si une seule option et un seul callback sont passés, on les utilise directement
             // ça fait un appel à la fonction plus court
+            console.log(`[addTweak] ${option} activé`);
             executeOption(option, callback, invert);
         } else if (Array.isArray(option) && option.length > 0) {
             // Si un tableau d'options et de callbacks est passé, on les utilise tous
             // permet de ne pas avoir à écrire plusieurs fois la même condition
             option.forEach(({ option, callback }) => {
+                console.log(`[addTweaks] ${option} activé`);
                 executeOption(option, callback, invert);
             });
         }
@@ -523,7 +524,7 @@ let homePageFunctions = [
     },
 ];
 
-addTweak(homePageUrls, homePageFunctions);
+addTweak(homePageUrls, homePageFunctions); //TODO à vérifier : semble engendrer un message abscond dans la console
 
 
 
@@ -629,7 +630,7 @@ addTweak('*', 'WarpButtons', function () {
 });
 
 // Page HRPIM
-addTweak('https://secure.weda.fr/FolderMedical/HprimForm.aspx', '*', function () {
+addTweak('https://secure.weda.fr/FolderMedical/HprimForm.aspx', '*HPRIMtweak', function () {
     function makeHPRIMListSticky() {
         let element = document.querySelector("#ContentPlaceHolder1_UpdatePanelHprimsGrid");
         element.style.position = "sticky";
@@ -685,7 +686,7 @@ addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeUn
 
 
 // Sélection automatique du type de document pour les courriers envoyés au DMP
-addTweak('https://secure.weda.fr/FolderMedical/CourrierForm.aspx', '*', function () {
+addTweak('https://secure.weda.fr/FolderMedical/CourrierForm.aspx', '*autoDocTypeSelection', function () {
     let dropDownMenu = document.querySelector('#ContentPlaceHolder1_DropDownListDocumentTypes');
     function watchDocumentTypeCourrierDMP() {
         dropDownMenu.addEventListener('change', function () {
@@ -708,7 +709,7 @@ addTweak('https://secure.weda.fr/FolderMedical/CourrierForm.aspx', '*', function
 
 
 // Sélection automatique du champ "titre" lors de la création d'un antécédent.
-addTweak('https://secure.weda.fr/FolderMedical/AntecedentForm.aspx', '*', function () {
+addTweak('https://secure.weda.fr/FolderMedical/AntecedentForm.aspx', '*autoSelectTitleField', function () {
     lightObserver('#ContentPlaceHolder1_TextBoxAntecedentNom', function (elements) {
         elements[0].focus();
     });
