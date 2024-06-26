@@ -120,16 +120,21 @@ function addShortcuts(keyCommands, scope, scopeName) {
 function addShortcutsToIframe() {
     var iframes = document.querySelectorAll('iframe');
     if (iframes.length !== 0) {
-        hotkeys.setScope('iframe1');
+        hotkeys.unbind();
         iframes.forEach(function(iframe, index) {
+            let scopeName = 'iframe' + (index + 1);
+            hotkeys.setScope(scopeName);    
             console.log('iframe' + (index + 1), iframe);
-            addShortcuts(keyCommands, iframe.contentDocument, 'iframe' + (index + 1));
+            addShortcuts(keyCommands, iframe.contentDocument, scopeName);
         });
+        addShortcuts(keyCommands, document, 'all');
     }
 }
 
 // Ajout des raccourcis claviers sur le document racine
-addShortcuts(keyCommands, document, 'all');
+setTimeout(function() {
+    addShortcutsToIframe(); // ajoute les raccourcis à toutes les iframes dès le chargement de la page
+}, 20);
 afterMutations(300, addShortcutsToIframe, "ajout raccourcis aux iframes"); // ajoute les raccourcis à toutes les iframes après chaque mutation du document
 
 
