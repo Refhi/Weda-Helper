@@ -270,12 +270,17 @@ function getUrlHistory() {
     return `https://secure.weda.fr/FolderMedical/FrameHistoriqueForm.aspx?${params}`;
 }
 
-function createIframe() {
+function createIframe(targetElement) {
     const iframe = document.createElement('iframe');
     iframe.style.width = `${window.innerWidth * HISTORY_PROPORTION}px`;
     iframe.style.height = "600px";
     iframe.src = getUrlHistory();
-    document.body.appendChild(iframe);
+    // Injecter l'iframe dans le DOM proche de targetElement pour que ça soit au même niveau
+    // TODO S'assurer que l'iframe soit à gauche de l'écran
+    const parent = targetElement.parentNode;
+    if (parent) {
+        parent.insertBefore(iframe, targetElement.nextSibling); // Insère l'iframe juste après targetElement
+    }
     return iframe;
 }
 
@@ -314,12 +319,13 @@ function getAdjustment(availableWidth, adjustmentTable) {
 
 pagesToLeftPannel_.forEach(page => {
     addTweak(page.url, page.option, () => {
-        const iframe = createIframe();
+        const targetElement = document.querySelector(page.targetElementSelector);
+        const iframe = createIframe(targetElement);
         iframe.addEventListener('load', () => {
             removeElements(iframe.contentDocument);
         });
 
-        const targetElement = document.querySelector(page.targetElementSelector);
+        
         adjustLayout(page.pageType, iframe, targetElement);
     });
 });
