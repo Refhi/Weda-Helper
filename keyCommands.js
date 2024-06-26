@@ -131,7 +131,7 @@ function addShortcutsToIframe() {
 
 // Ajout des raccourcis claviers sur le document racine
 addShortcuts(keyCommands, document, 'all');
-afterMutations(300, addShortcutsToIframe); // ajoute les raccourcis à toutes les iframes après chaque mutation du document
+afterMutations(300, addShortcutsToIframe, "ajout raccourcis aux iframes"); // ajoute les raccourcis à toutes les iframes après chaque mutation du document
 
 
 
@@ -189,6 +189,7 @@ function push_valider() {
         () => clickElementById('ButtonValidFileStream'),
         () => clickElementById('targetValider'), // utilisé quand j'ajoute une cible à un bouton
         () => clickElementById('ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonValidDocument'),
+        () => clickElementById('ContentPlaceHolder1_ButtonLibreValid'),
         () => clickElementById('ContentPlaceHolder1_FindPatientUcForm1_ButtonValidFamille'),
         () => clickClassExceptIf('button valid', 'Chercher', 'ContentPlaceHolder1_btnScanDatamatrix'),
         () => GenericClicker("title", "Enregistrer et quitter"),
@@ -465,13 +466,31 @@ function GenericClicker(valueName, value) {
     }
 }
 
+// Clique sur un bouton et inhibe les clics trop rapides
+var lastClickTime = 0;
+function clickWithRefractoryPeriod(element) {
+    var currentTime = new Date().getTime();
+    var timeSinceLastClick = currentTime - lastClickTime;
+
+    if (timeSinceLastClick >= 200) {
+        element.click();
+        recordMetrics({ clicks: 1, drags: 1 });
+        console.log('Element clicked:', element);
+        lastClickTime = currentTime;
+    } else {
+        console.log('Clicking too fast, waiting', 200 - timeSinceLastClick, 'ms');
+        setTimeout(function() {
+            lastClickTime = new Date().getTime();
+        }, 200 - timeSinceLastClick);
+    }
+}
+
+
 // Clique sur un bouton selon son Id
 function clickElementById(elementId) {
     var element = document.getElementById(elementId);
     if (element) {
-        element.click();
-        recordMetrics({ clicks: 1, drags: 1 });
-        console.log('Element clicked:', elementId);
+        clickWithRefractoryPeriod(element); // Utilise une période réfractaire pour éviter les clics trop rapides
         return true;
     } else {
         console.log('Element not found:', elementId);
