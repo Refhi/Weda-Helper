@@ -38,6 +38,7 @@ var defaultSettings = {
   'TweakFSEAccident': false,
   'autoSelectPatientCV': true,
   'WarpButtons': true,
+  'autoSelectTypeOrdoNum': true,
   'autoConsentNumPres': false,
   'NumPresPrescription': false,
   'NumPresDemande': false,
@@ -52,6 +53,7 @@ var defaultSettings = {
   'defautDataType': 'TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%',
   'autoATCD': false,
   'secureExchangeAutoRefresh': true,
+  'secureExchangeUncheckIHEMessage': false,
   'autoAATI': true,
 };
 
@@ -66,11 +68,19 @@ var defaultShortcuts = {
     },
     "print_meds": {
         "default": "Ctrl+P",
-        "description": "Imprime le document en cours (attention, nécessite un module complémentaire pour que l'impression soit entièrement automatique. Sinon affiche directement le PDF.)"
+        "description": "Imprime le document en cours (1er modèle). Nécessite un module complémentaire pour que l'impression soit entièrement automatique. Sinon affiche directement le PDF."
+    },
+    "print_meds_bis": {
+        "default": "Ctrl+Shift+P",
+        "description": "Imprime le document en cours (2e modèle)"
     },
     "download_document": {
         "default": "Ctrl+D",
-        "description": "Télécharge le PDF du document en cours"
+        "description": "Télécharge le PDF du document en cours (1er modèle)"
+    },
+    "download_document_bis": {
+        "default": "Ctrl+Shift+D",
+        "description": "Télécharge le PDF du document en cours (2e modèle)"
     },
     "upload_latest_file":{
         "default": "Ctrl+U",

@@ -10,7 +10,7 @@ function afterMutations(delay, callback, callBackId = "callback id undefined") {
     };
 
     const observer = new MutationObserver((mutationsList, observer) => {
-        for(let mutation of mutationsList) {
+        for (let mutation of mutationsList) {
             // Réinitialise le délai chaque fois qu'une mutation est détectée
             clearTimeout(timeoutId);
             timeoutId = setTimeout(action, delay);
@@ -23,7 +23,7 @@ function afterMutations(delay, callback, callBackId = "callback id undefined") {
 // // Fonction pour attendre la présence d'un élément avant de lancer une fonction
 // // ! Très utilisé dans toute l'exension, a vocation a laisser sa place à lightObserver
 function waitForElement(selector, text = null, timeout, callback) {
-    var checkInterval = setInterval(function() {
+    var checkInterval = setInterval(function () {
         var elements = document.querySelectorAll(selector);
         for (var i = 0; i < elements.length; i++) {
             if (!text || elements[i].textContent.includes(text)) {
@@ -35,7 +35,7 @@ function waitForElement(selector, text = null, timeout, callback) {
         }
     }, 100);
 
-    var timeoutId = setTimeout(function() {
+    var timeoutId = setTimeout(function () {
         clearInterval(checkInterval);
         console.log(`Element ${selector} ${text ? 'with text "' + text + '"' : ''} not found after ${timeout} ms`);
     }, timeout);
@@ -58,11 +58,11 @@ function lightObserver(selector, callback, parentElement = document, justOnce = 
                 for (let j = 0; j < elements.length; j++) {
                     let element = elements[j];
                     if (!observedElements.has(element)) {
-                        if (debug) {console.log('[lightObserver] Element', element, ' has appeared');}
+                        if (debug) { console.log('[lightObserver] Element', element, ' has appeared'); }
                         observedElements.set(element, true); // Add the element to the WeakMap
                         newElements.push(element);
                     } else {
-                        if (debug) {console.log('[lightObserver] Element', element, ' already observed');}
+                        if (debug) { console.log('[lightObserver] Element', element, ' already observed'); }
                     }
                 }
                 if (newElements.length > 0) {
@@ -103,7 +103,7 @@ function getOption(optionNames, callback) {
         optionNames = [optionNames];
     }
 
-    chrome.storage.local.get([...optionNames, 'defaultSettings'], function(result) {
+    chrome.storage.local.get([...optionNames, 'defaultSettings'], function (result) {
         let options = optionNames.map(optionName => result[optionName] ?? result.defaultSettings[optionName]);
         callback(isInputArray ? options : options[0]);
     });
@@ -118,7 +118,7 @@ function addTweak(url, option, callback) {
         if (option.startsWith('*')) {
             callback();
         } else {
-            getOption(option, function(optionValue) {
+            getOption(option, function (optionValue) {
                 if ((optionValue === true && !invert) || (optionValue === false && invert)) {
                     callback();
                 }
@@ -130,8 +130,8 @@ function addTweak(url, option, callback) {
     if (url === '*') {
         urlMatches = true; // Si l'URL est '*', on considère que ça correspond toujours
     } else {
-        urlMatches = Array.isArray(url) 
-            ? url.some(u => window.location.href.startsWith(u)) 
+        urlMatches = Array.isArray(url)
+            ? url.some(u => window.location.href.startsWith(u))
             : window.location.href.startsWith(url);
     }
 
@@ -150,7 +150,7 @@ function addTweak(url, option, callback) {
         } else if (Array.isArray(option) && option.length > 0) {
             // Si un tableau d'options et de callbacks est passé, on les utilise tous
             // permet de ne pas avoir à écrire plusieurs fois la même condition
-            option.forEach(({option, callback}) => {
+            option.forEach(({ option, callback }) => {
                 executeOption(option, callback, invert);
             });
         }
@@ -168,7 +168,7 @@ function allConsultation() {
         // set the dropdown to "Consultation"
         elements[i].selectedIndex = 0;
         console.log('Element set to Consultation:', elements[i]);
-        recordMetrics({clicks: 2, drags: 2});
+        recordMetrics({ clicks: 2, drags: 2 });
     }
 }
 
@@ -189,7 +189,7 @@ function tooltipshower() {
             cancelable: true
         }));
     }
-    chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function(result) {
+    chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function (result) {
         // from keyCommands, extract for each key the action
         const entries = Object.entries(keyCommands);
         let submenuDict = {};
@@ -212,7 +212,7 @@ function tooltipshower() {
             var element = elements[i];
             var description = element.innerText;
             description = description.replace(/ \(\d+\)$/, '');
-         // console.log('description', description);
+            // console.log('description', description);
             if (description in submenuDict) {
                 // console.log('description in submenuDict', description);
                 // add a tooltip with the key of submenuDict next to the element
@@ -230,7 +230,7 @@ function tooltipshower() {
                 element.appendChild(tooltip);
             }
         }
-    });  
+    });
 }
 
 // retirer l'infobulle d'aide et relacher W
@@ -253,6 +253,55 @@ function mouseoutW() {
 }
 
 
+// // vérification de la présence du Companion TODO
+
+function testCompanion() {
+    function askLinkActivation() {
+        chrome.storage.local.get('promptCompanionMessage', function (result) {
+            if (result.promptCompanionMessage !== false) {
+                // Demander à l'utilisateur s'il souhaite activer RemoveLocalCompanionPrint
+                const choixUtilisateur = confirm("[Weda Helper] : Le Companion est bien détecté, mais les options de lien sont désactivées. Cliquez sur ok pour activer l'impression automatique ou allez dans les options de Weda Helper pour le TPE. Cliquez sur annuler pour ignorer définitivement ce message.");
+                
+                if (choixUtilisateur) {
+                    // Si l'utilisateur confirme, activer RemoveLocalCompanionPrint
+                    chrome.storage.local.set({'RemoveLocalCompanionPrint': false});
+                    alert("Le lien avec l'imprimate a été activé. Pensez à définir acrobat reader ou équivalent comme lecteur par défaut. Vous pouvez désactiver cette fonctionnalité dans les options de Weda Helper");
+                } else {
+                    // Si l'utilisateur refuse, ne rien faire ou afficher un message
+                    console.log("L'utilisateur a choisi de ne pas activer RemoveLocalCompanionPrint.");
+                    chrome.storage.local.set({ 'promptCompanionMessage': false });
+                }
+            } else {
+                console.log("Le message de demande d'activation du lien avec le Companion a déjà été affiché.");
+            }
+        });
+    }
+
+    setTimeout(() =>
+        sendToCompanion('', null, (isPresent) => {
+            if (isPresent) {
+                console.log('Companion présent');
+                getOption(['RemoveLocalCompanionPrint','RemoveLocalCompanionTPE'], function ([RemoveLocalCompanionPrint, RemoveLocalCompanionTPE]) {
+                    console.log('Remove Companion print =', RemoveLocalCompanionPrint)
+                    console.log('Remove Companion TPE =', RemoveLocalCompanionTPE)
+                    if (RemoveLocalCompanionPrint && RemoveLocalCompanionTPE) {
+                        console.log('Companion présent, mais options désactivées');
+                        // Afficher un message proposant d'activer le lien pour l'impression
+                        askLinkActivation();
+                    } else {
+                        console.log('Companion présent, et au moins une option de lien activée');
+                    }
+                });
+            } else {
+                console.log('Companion non présent');
+            }
+        }, null, true)
+    , 1000); // vérification de la présence du Companion après 1s
+}
+testCompanion();
+
+
+
 
 // // Aide au clic
 // permet de cliquer sur un élément selon l'attribut onclick
@@ -262,7 +311,7 @@ function clickElementByOnclick(onclickValue) {
     if (element) {
         console.log('Clicking element onclickvalue', onclickValue);
         element.click();
-        recordMetrics({clicks: 1, drags: 1});
+        recordMetrics({ clicks: 1, drags: 1 });
         return true;
     } else {
         console.log('Element not found onclickvalue', onclickValue);
@@ -273,15 +322,15 @@ function clickElementByOnclick(onclickValue) {
 
 // Vérifie la présence de l'élément avec title="Prénom du patient"
 function checkPatientName() {
-    waitForElement('[title="Prénom du patient"]', null, 5000, function(patientNameElement) {
+    waitForElement('[title="Prénom du patient"]', null, 5000, function (patientNameElement) {
         var patientName = patientNameElement.value;
-        waitForElement('vz-lecture-cv-widget', null, 5000, function(widgetElement) {
+        waitForElement('vz-lecture-cv-widget', null, 5000, function (widgetElement) {
             var spans = widgetElement.getElementsByTagName('span');
             for (var i = 0; i < spans.length; i++) {
                 if (spans[i].textContent.includes(patientName)) {
                     console.log('Patient name found');
                     spans[i].click();
-                    recordMetrics({clicks: 1, drags: 1});
+                    recordMetrics({ clicks: 1, drags: 1 });
                     return true;
                 }
             }
@@ -299,7 +348,7 @@ window.addEventListener('blur', function () {
     console.log('Window lost focus (blur)');
     mouseoutW();
 });
-document.addEventListener('visibilitychange', function() {
+document.addEventListener('visibilitychange', function () {
     if (document.hidden) {
         console.log('Window lost focus (hidden)');
         mouseoutW();
@@ -321,7 +370,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 // Ecoute l'appuis de la touches Alt pour afficher l'aide
-// TODO passer ça sur la lib hotkey.js
 var tooltipTimeout;
 document.addEventListener('keydown', function (event) {
     if (event.key === 'Alt') {
@@ -342,11 +390,11 @@ document.addEventListener('keyup', function (event) {
 // [page de recettes] Appuie automatiquement sur le bouton "rechercher" après avoir sélectionné la page des recettes
 // seulement si la page est https://secure.weda.fr/FolderGestion/RecetteForm.aspx, appuis sur id="ContentPlaceHolder1_ButtonFind"
 // Utilisation des nouvelles fonctions pour simplifier le code
-addTweak('https://secure.weda.fr/FolderGestion/RecetteForm.aspx', 'TweakRecetteForm', function() {
+addTweak('https://secure.weda.fr/FolderGestion/RecetteForm.aspx', 'TweakRecetteForm', function () {
     var button = document.getElementById('ContentPlaceHolder1_ButtonFind');
     if (button) {
         button.click();
-        recordMetrics({clicks: 1, drags: 1});
+        recordMetrics({ clicks: 1, drags: 1 });
         console.log('Button clicked on RecetteForm page');
     }
 });
@@ -372,7 +420,7 @@ let homePageFunctions = [
                     console.log('cvElement text', cvElement.textContent);
                     if (cvElement.textContent.includes('Vitale insérée')) {
                         console.log('cvElement', cvElement, 'found');
-                        recordMetrics({clicks: 1, drags: 1});
+                        recordMetrics({ clicks: 1, drags: 1 });
                         clickCarteVitale();
                     }
                 });
@@ -400,7 +448,7 @@ let homePageFunctions = [
                     if (linkedDossier) {
                         console.log('nextElement', linkedDossier, 'found and clickable');
                         linkedDossier.click();
-                        recordMetrics({clicks: 1, drags: 1});
+                        recordMetrics({ clicks: 1, drags: 1 });
                     } else {
                         console.log('nextElement', nextElement, 'not found or not clickable');
                     }
@@ -438,7 +486,7 @@ let homePageFunctions = [
                     copySymbol.addEventListener('click', function () {
                         console.log(copyText);
                         navigator.clipboard.writeText(copyText);
-                        recordMetrics({clicks: 3, drags: 2});
+                        recordMetrics({ clicks: 3, drags: 2 });
                     });
 
                     // Add the copy symbol next to the element
@@ -457,10 +505,10 @@ let homePageFunctions = [
                 elements[0].addEventListener('click', function () {
                     console.log('nir', nir);
                     navigator.clipboard.writeText(nir);
-                    recordMetrics({clicks: 3, drags: 2});
+                    recordMetrics({ clicks: 3, drags: 2 });
                 });
             });
-            
+
             lightObserver('#ContentPlaceHolder1_EtatCivilUCForm1_LabelPatientSecuriteSocial', (elements) => {
                 var secu = elements[0].textContent.match(/(\d{1} \d{2} \d{2} \d{2} \d{3} \d{3} \d{2})/)[1];
                 secu = secu.replace(/\s/g, ''); // Supprime tous les espaces de la chaîne
@@ -468,7 +516,7 @@ let homePageFunctions = [
                 elements[0].addEventListener('click', function () {
                     console.log('secu', secu);
                     navigator.clipboard.writeText(secu);
-                    recordMetrics({clicks: 3, drags: 2});
+                    recordMetrics({ clicks: 3, drags: 2 });
                 });
             });
         }
@@ -480,14 +528,14 @@ addTweak(homePageUrls, homePageFunctions);
 
 
 // [page de gestion des feuilles de soins]
-addTweak('https://secure.weda.fr/vitalzen/gestion.aspx', 'TweakFSEGestion', function() {    
+addTweak('https://secure.weda.fr/vitalzen/gestion.aspx', 'TweakFSEGestion', function () {
     waitForElement('.mat-icon.notranslate.material-icons.mat-icon-no-color', 'search', 5000, function (element) {
         console.log('element', element, 'trouvé, je clique dessus');
         element.click();
-        recordMetrics({clicks: 1, drags: 1});
+        recordMetrics({ clicks: 1, drags: 1 });
     });
 });
-    
+
 
 
 // // Retrait des suggestions de titre
@@ -501,7 +549,7 @@ let titleSuggestionsUrls = [
     'https://secure.weda.fr/FolderMedical/CourrierForm.aspx',
 ];
 
-addTweak(titleSuggestionsUrls, 'RemoveTitleSuggestions', function() {
+addTweak(titleSuggestionsUrls, 'RemoveTitleSuggestions', function () {
     function RemoveTitleSuggestions() {
         setTimeout(() => {
             console.log('Remove TitleSuggestions started');
@@ -519,7 +567,7 @@ addTweak(titleSuggestionsUrls, 'RemoveTitleSuggestions', function() {
 
 
 // // Travail sur les boutons des interfaces secu (IMTI, DMP etc.)
-addTweak('*', 'WarpButtons', function() {
+addTweak('*', 'WarpButtons', function () {
     function warpButtons(buttons) {
         function addIdToButton(button) {
             var actions = {
@@ -539,7 +587,7 @@ addTweak('*', 'WarpButtons', function() {
             }
             return true;
         }
-    
+
         function addShortcutsToButton(button) {
             var raccourcis = {
                 'targetAnnuler': ' (alt+A)',
@@ -556,8 +604,8 @@ addTweak('*', 'WarpButtons', function() {
                 }
             }
         }
-    
-        function resizeTextBox () {
+
+        function resizeTextBox() {
             let textbox = document.querySelector('.mat-dialog-container');
             let currentHeight = parseInt(window.getComputedStyle(textbox).height, 10);
             if (textbox && currentHeight < 440) {
@@ -566,8 +614,8 @@ addTweak('*', 'WarpButtons', function() {
                 console.log('textBox not found :-/ can\'t resize it');
             }
         }
-    
-    
+
+
         buttons.forEach(function (button) {
             console.log('Bouton trouvé ! Je le redimentionne, lui ajoute un id et note le raccourcis clavier par défaut', button);
             button.style.width = 'auto';
@@ -576,12 +624,12 @@ addTweak('*', 'WarpButtons', function() {
             }
         });
     }
-    
+
     lightObserver('.cdk-overlay-container .mat-raised-button', warpButtons)
 });
 
 // Page HRPIM
-addTweak('https://secure.weda.fr/FolderMedical/HprimForm.aspx', '*', function() {
+addTweak('https://secure.weda.fr/FolderMedical/HprimForm.aspx', '*', function () {
     function makeHPRIMListSticky() {
         let element = document.querySelector("#ContentPlaceHolder1_UpdatePanelHprimsGrid");
         element.style.position = "sticky";
@@ -589,13 +637,13 @@ addTweak('https://secure.weda.fr/FolderMedical/HprimForm.aspx', '*', function() 
     }
     makeHPRIMListSticky();
     // dur d'estimer précisement la métrique. Là c'est très grossier, on va dire 5 drags
-    recordMetrics({drags: 5});
+    recordMetrics({ drags: 5 });
 
 });
 
 
 // Page Messagerie sécurisée
-addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeAutoRefresh', function() {
+addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeAutoRefresh', function () {
     if (result.secureExchangeAutoRefresh !== false) {
         // clique sur reçu pour rafraichir la liste des messages à intervalle régulier
         function clickOnInbox() {
@@ -603,21 +651,44 @@ addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeAu
             var element = document.querySelector('#inboxToolbar > li.inbox.selected > a');
             if (element) {
                 element.click();
-                recordMetrics({clicks: 1, drags: 1});
+                recordMetrics({ clicks: 1, drags: 1 });
             }
         }
-        setTimeout(function() {
+        setTimeout(function () {
             setInterval(clickOnInbox, 900000);
         }, 30000);
     }
 });
+addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeUncheckIHEMessage', function () {
+    lightObserver('we-doc-import', function (elements) {
+        for (const element of elements) {
+            if (element.className != 'docImportAttach') //Correspond au corps du message
+            {
+                let checkbox = element.querySelector('input[type=checkbox]')
+                checkbox.checked = false;
+                checkbox.dispatchEvent(new Event('change'));
+                recordMetrics({ clicks: 1, drags: 1 });
+            } else {
+                let docTitle = element.querySelector('input.docTitle');
+                if (docTitle.value.toUpperCase() == 'IHE_XDM.ZIP') {
+                    let checkbox = element.querySelector('input[type=checkbox]')
+                    checkbox.checked = false;
+                    checkbox.dispatchEvent(new Event('change'));
+                    recordMetrics({ clicks: 1, drags: 1 });
+                }
+            }
+        }
+
+    });
+});
+
 
 
 // Sélection automatique du type de document pour les courriers envoyés au DMP
-addTweak('https://secure.weda.fr/FolderMedical/CourrierForm.aspx', '*', function() {
+addTweak('https://secure.weda.fr/FolderMedical/CourrierForm.aspx', '*', function () {
     let dropDownMenu = document.querySelector('#ContentPlaceHolder1_DropDownListDocumentTypes');
     function watchDocumentTypeCourrierDMP() {
-        dropDownMenu.addEventListener('change', function() {
+        dropDownMenu.addEventListener('change', function () {
             console.log('New selected value:', this.value);
             chrome.storage.local.set({ 'selectedDocumentTypeCourrierDMP': this.value });
         });
@@ -637,7 +708,7 @@ addTweak('https://secure.weda.fr/FolderMedical/CourrierForm.aspx', '*', function
 
 
 // Sélection automatique du champ "titre" lors de la création d'un antécédent.
-addTweak('https://secure.weda.fr/FolderMedical/AntecedentForm.aspx', '*', function() {
+addTweak('https://secure.weda.fr/FolderMedical/AntecedentForm.aspx', '*', function () {
     lightObserver('#ContentPlaceHolder1_TextBoxAntecedentNom', function (elements) {
         elements[0].focus();
     });

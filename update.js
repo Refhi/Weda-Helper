@@ -6,30 +6,10 @@ function htmlMaker(text) {
 }
 
 var nouveautes = `
-# [2.3] - 2024-05-28
+# [2.4] - 2024-
 
-<strong>🔍 Peu de modifications visibles pour vous</strong>, mais beaucoup de travail en coulisses pour améliorer la stabilité et la maintenabilité du code.
-💡 Le plus gros changement est la refonte de la gestion des impressions et des téléchargements, qui devrait être plus fiable et plus rapide.
-⚙️ Les raccourcis claviers sont désormais directement gérés dans les options ! Vous devrez donc les redéfinir si vous les aviez personnalisés.
+TODO
 
-
-## refactory :
-✅ passage des options par défaut dans le manifest.json pour éviter les doublons
-✅ creation et utilisation prioritaire de 'addTweak' qui simplifie l'ajout de fonctionnalités dans telle ou telle page en fonction de l'option liée. Pour faciliter la lecture du code et la maintenance on l'appelle après chaque ensemble de tableau urls/options/callbacks
-✅ refactory complet de la gestion des impressions et des téléchargements
-✅ Les raccourcis claviers sont désormais directement gérés dans les options ! Vous devrez donc les redéfinir si vous les aviez personnalisés.
-
-## ajout :
-🆕 on peut désormais uploader un document en un seul raccourcis clavier ! (par défaut Ctrl+U) Définissez le dossier dans le companion (v1.4+). Ctrl+U enverra automatiquement le dernier fichier créé. (nécessite le Companion v1.4+)
-🆕 création d'une fiche-mémo <a href="https://github.com/Refhi/Weda-Helper/releases/latest/download/FicheMemo.pdf" target="_blank">disponible ici</a> pour vous aider à vous familiariser avec les raccourcis claviers et les fonctionnalités de Weda-Helper
-
-# Companion v1.4.2 !
-🆕 ajout de la possibilité de définir le dossier d'upload automatique
-🆕 ajout d'une interface graphique
-🆕 retrait de la console noire qui s'ouvrait à chaque lancement, remplacée par un "W" dans la barre des tâches
-🆕 une version Mac !
-=> par ici pour les détails et les téléchargements : <a href="https://github.com/Refhi/Weda-Helper-Companion" target="_blank">Weda-Helper Companion</a>
-🆕 installation très grandement simplifiée (récupération clé API automatique, réglages par défaut immédiatements fonctionnels, etc.)
 
 `
 

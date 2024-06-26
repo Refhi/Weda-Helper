@@ -1,7 +1,7 @@
 // // lien avec Weda-Helper-Companion
 // Cette partie s'occupe d'envoyer les instructions, quelles qu'elles soient, à Weda-Helper-Companion.
 // Donc le montant tpe et l'impression.
-function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithData = null) {
+function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithData = null, testing = false) {
     getOption(['portCompanion', 'apiKey'], function ([portCompanion, apiKey]) {
         let versionToCheck = "1.2";
         let urlWithParam = `http://localhost:${portCompanion}/${urlCommand}` +
@@ -29,21 +29,37 @@ function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithD
                     }
                     console.log('retour de Weda-Helper-Companion :', data);
                 }
+                if (testing) {
+                    callback(true);
+                    return;
+                }
             })
             .catch(error => {
+                if (testing) {
+                    console.log('testing error', error);
+                    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+                        callback(false);
+                        return;
+                    } else {
+                        callback(true);
+                        return;
+                    }
+                }
                 console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
                 if (!errortype.includes('[focus]')) {
                     alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
                 }
             })
             .finally(() => {
-                if (urlCommand === 'print') {
-                    watchForFocusLoss();
+                if (!testing) {
+                    if (urlCommand === 'print') {
+                        watchForFocusLoss();
+                    }
+                    if (callback) {
+                        callback();
+                    }
+                    console.log('Impression via companion terminée');
                 }
-                if (callback) {
-                    callback();
-                }
-                console.log('Impression via companion terminée');
             });
     });
 }
