@@ -127,12 +127,12 @@ function addShortcutsToIframe() {
             console.log('iframe' + (index + 1), iframe);
             addShortcuts(keyCommands, iframe.contentDocument, scopeName);
         });
-        addShortcuts(keyCommands, document, 'all');
     }
 }
 
 // Ajout des raccourcis claviers sur le document racine
 setTimeout(function() {
+    addShortcuts(keyCommands, document, 'all');
     addShortcutsToIframe(); // ajoute les raccourcis à toutes les iframes dès le chargement de la page
 }, 20);
 afterMutations(300, addShortcutsToIframe, "ajout raccourcis aux iframes"); // ajoute les raccourcis à toutes les iframes après chaque mutation du document
