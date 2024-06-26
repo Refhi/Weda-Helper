@@ -275,8 +275,9 @@ function createIframe(targetElement) {
     iframe.style.width = `${window.innerWidth * HISTORY_PROPORTION}px`;
     iframe.style.height = "600px";
     iframe.src = getUrlHistory();
-    // Injecter l'iframe dans le DOM proche de targetElement pour que ça soit au même niveau
-    // TODO S'assurer que l'iframe soit à gauche de l'écran
+    iframe.style.position = 'absolute'; // ou 'fixed' si vous voulez qu'elle reste en place lors du défilement
+    iframe.style.left = '0px'; // Aligné avec le bord gauche
+    // Injecter l'iframe dans le DOM proche de targetElement pour que ça soit au même niveau (sur l'axe vertical)
     const parent = targetElement.parentNode;
     if (parent) {
         parent.insertBefore(iframe, targetElement.nextSibling); // Insère l'iframe juste après targetElement
@@ -291,6 +292,30 @@ function removeElements(iframeDocument) {
     });
 }
 
+function setBackgroundDmp() {
+    let prescriptionDmp = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelPrescriptionDmp');
+    if (prescriptionDmp) {
+        Object.assign(prescriptionDmp.style, {
+            position: 'relative',
+            zIndex: '-1'
+        });
+    }
+}
+
+function moveAndResizeDocTypes(availableWidth) {
+    let documentTypeWidth = (1 - HISTORY_PROPORTION) * availableWidth * 0.2;
+    var toSetRight = document.querySelector('#ContentPlaceHolder1_UpdatePanelBaseGlossaireUCForm1').parentNode;
+    toSetRight.setAttribute("align", "right");
+    var toSetFifty = document.querySelector('#ContentPlaceHolder1_UpdatePanelBaseGlossaireUCForm1 table');
+    toSetFifty.style.width = `${documentTypeWidth}px`;
+}
+
+function resizeTextArea(availableWidth, pageType, targetElement) {
+    const adjustement = getAdjustment(availableWidth, pageType);
+    const textAreaWidth = (1 - HISTORY_PROPORTION) * (availableWidth * adjustement) * 0.8;
+    targetElement.style.width = `${textAreaWidth}px`;
+}
+
 function adjustLayout(pageType, iframe, targetElement) {
     const availableWidth = window.innerWidth;
     const targetElementWidth = (1 - HISTORY_PROPORTION - 0.01) * availableWidth;
@@ -300,21 +325,34 @@ function adjustLayout(pageType, iframe, targetElement) {
     targetElement.style.width = `${targetElementWidth}px`;
 
     if (["Certificat", "Demande", "Courrier"].includes(pageType)) {
-        const adjustmentTable = {
-            "Certificat": { 1500: 0.85, 1700: 0.9, 2000: 0.95, 5000: 1 },
-            "Demande": { 1300: 0.7, 1700: 0.8, 2000: 0.9, 2500: 1 },
-            "Courrier": { 1500: 0.75, 1700: 0.85, 1900: 0.9, 2100: 0.95, 5000: 1 }
-        };
-        const adjustement = getAdjustment(availableWidth, adjustmentTable[pageType]);
-        const textAreaWidth = (1 - HISTORY_PROPORTION) * (availableWidth * adjustement) * 0.8;
-        targetElement.style.width = `${textAreaWidth}px`;
+        moveAndResizeDocTypes(availableWidth);
+        resizeTextArea(availableWidth, pageType, targetElement);
+        setBackgroundDmp();
     }
 }
 
-function getAdjustment(availableWidth, adjustmentTable) {
-    const keys = Object.keys(adjustmentTable).sort((a, b) => a - b);
-    const adjustementKey = keys.find(key => availableWidth <= key);
-    return adjustmentTable[adjustementKey] || adjustmentTable[keys[keys.length - 1]];
+function getAdjustment(availableWidth, pageType) {
+    const adjustmentTable = {
+        "Certificat": { 1500: 0.85, 1700: 0.9, 2000: 0.95, 5000: 1 },
+        "Demande": { 1300: 0.7, 1700: 0.8, 2000: 0.9, 2500: 1 },
+        "Courrier": { 1500: 0.75, 1700: 0.85, 1900: 0.9, 2100: 0.95, 5000: 1 }
+    };
+
+    const keys = Object.keys(adjustmentTable[pageType]).sort((a, b) => a - b);
+    let adjustment = 1; // Valeur par défaut si aucune correspondance n'est trouvée
+    for (let i = 0; i < keys.length; i++) {
+        if (availableWidth <= keys[i]) {
+            adjustment = adjustmentTable[pageType][keys[i]];
+            break;
+        }
+    }
+
+    // Si availableWidth est supérieur à toutes les clés, utilisez la dernière valeur d'ajustement
+    if (availableWidth > keys[keys.length - 1]) {
+        adjustment = adjustmentTable[pageType][keys[keys.length - 1]];
+    }
+
+    return adjustment;
 }
 
 pagesToLeftPannel_.forEach(page => {
@@ -324,8 +362,6 @@ pagesToLeftPannel_.forEach(page => {
         iframe.addEventListener('load', () => {
             removeElements(iframe.contentDocument);
         });
-
-        
         adjustLayout(page.pageType, iframe, targetElement);
     });
 });
