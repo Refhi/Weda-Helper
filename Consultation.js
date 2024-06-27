@@ -357,7 +357,6 @@ function getAdjustment(availableWidth, pageType) {
 }
 
 function historyToLeft() {
-    // TODO ajouter fonction pour encapsuler ce truc et le déclencher aussi aux afterMutation ?
     pagesToLeftPannel_.forEach(page => {
         addTweak(page.url, page.option, () => {
             const targetElement = document.querySelector(page.targetElementSelector);
