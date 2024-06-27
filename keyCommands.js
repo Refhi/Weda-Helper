@@ -139,7 +139,7 @@ function addAllShortcuts() {
 setTimeout(function() {
     addAllShortcuts();
 }, 20);
-afterMutations(300, addAllShortcuts, "ajout raccourcis aux iframes"); // ajoute les raccourcis à toutes les iframes après chaque mutation du document
+afterMutations(50, addAllShortcuts, "ajout raccourcis aux iframes"); // ajoute les raccourcis à toutes les iframes après chaque mutation du document
 
 
 
