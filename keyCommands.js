@@ -120,7 +120,6 @@ function addShortcuts(keyCommands, scope, scopeName) {
 function addShortcutsToIframe() {
     var iframes = document.querySelectorAll('iframe');
     if (iframes.length !== 0) {
-        hotkeys.unbind();
         iframes.forEach(function(iframe, index) {
             let scopeName = 'iframe' + (index + 1);
             hotkeys.setScope(scopeName);    
@@ -131,6 +130,7 @@ function addShortcutsToIframe() {
 }
 
 function addAllShortcuts() {
+    hotkeys.unbind(); // nécessaire pour éviter les doublons de raccourcis clavier entrainant des doublons de documents...
     addShortcuts(keyCommands, document, 'all');
     addShortcutsToIframe();
 }
