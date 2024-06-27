@@ -356,17 +356,23 @@ function getAdjustment(availableWidth, pageType) {
     return adjustment;
 }
 
-pagesToLeftPannel_.forEach(page => {
-    addTweak(page.url, page.option, () => {
-        const targetElement = document.querySelector(page.targetElementSelector);
-        const iframe = createIframe(targetElement);
-        iframe.addEventListener('load', () => {
-            removeElements(iframe.contentDocument);
+function historyToLeft() {
+    // TODO ajouter fonction pour encapsuler ce truc et le déclencher aussi aux afterMutation ?
+    pagesToLeftPannel_.forEach(page => {
+        addTweak(page.url, page.option, () => {
+            const targetElement = document.querySelector(page.targetElementSelector);
+            const iframe = createIframe(targetElement);
+            iframe.addEventListener('load', () => {
+                removeElements(iframe.contentDocument);
+            });
+            adjustLayout(page.pageType, iframe, targetElement);
+            recordMetrics({ clicks: 1, drags: 1 });
         });
-        adjustLayout(page.pageType, iframe, targetElement);
-        recordMetrics({ clicks: 1, drags: 1 });
     });
-});
+}
+
+historyToLeft();
+lightObserver('#ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonDemandeRadioType', historyToLeft, document, false); // nécessaire pour les pages de demande
 
 
 // // Afficher les antécédents automatiquement sur les pages où Historique peut être déplacé à gauche (la cible devra peut-être être ajustée)
