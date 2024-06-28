@@ -173,9 +173,15 @@ if (PrescriptionForm) {
 }
 
 addTweak(prescriptionUrl, 'autoOpenOrdoType', function() {
-    window.onload = function() {
+    // window.onload = function() { // paradoxalement plus fiable sans !
         document.getElementById('ContentPlaceHolder1_ButtonPrescritionType').click();
-    };
+        afterMutations(100, function() { //On remet le focus sur la barre de recherche, nécessite un petit délai
+            var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
+            if (inputField) {
+                inputField.focus();
+            }
+        });
+    // };
 });
 
 
@@ -246,18 +252,37 @@ addTweak([demandeUrl, prescriptionUrl], '*NumPres', function() {
     });
 });
 
-
-// Selectionne automatiquement le type de prescription (pour l'instant pas d'option assignée)
-addTweak(demandeUrl,'*AutoSelectPrescriptionType', function() {
+// Selectionne automatiquement le type de prescription
+addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function() {
     lightObserver('#prescriptionType div', function(element) {
         console.log('menu déroulant trouvé, je clique dessus', element);
         element[0].click();
-        recordMetrics({clicks: 1, drags: 1});
+        recordMetrics({clicks: 1,drags: 1});
     });
 
     lightObserver('#prescriptionType-panel mat-option .mat-option-text', function(elements) {
-        console.log('options trouvées, je clique sur la première', elements);
-        elements[0].click();
-        recordMetrics({clicks: 1, drags: 1});
+        console.log('options trouvées', elements);
+        var type = 0; //biologie par défaut
+        let infirmierRegex = /IDE|infirmier|pansement|injection/i;
+        let kineRegex = /kiné|kine|kinésithérapie|kinesitherapie|MKDE|kinesitherapeute|kinesithérapeute/i;
+        let pedicureRegex = /pédicure|pedicure|podologie|podologique|podologue/i;
+        let orthophonieRegex = /orthophonie|orthophonique|orthophoniste/i;
+        let orthoptieRegex = /orthoptie|orthoptique|orthoptiste/i;
+
+        let demandeContent = document.querySelector("#CE_ContentPlaceHolder1_EditorPrescription_ID_Frame").contentWindow.document.body.innerText;
+
+        if (infirmierRegex.test(demandeContent))
+            type = 1;
+        else if (kineRegex.test(demandeContent))
+            type = 2;
+        else if (orthophonieRegex.test(demandeContent))
+            type = 3;
+        else if (orthoptieRegex.test(demandeContent))
+            type = 4;
+        else if (pedicureRegex.test(demandeContent))
+            type = 5;
+
+        elements[type].click();
+        recordMetrics({clicks: 1,drags: 1});
     });
 });

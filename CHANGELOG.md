@@ -2,6 +2,22 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+# [2.4] - 28/06/2024
+## ajout :
+- Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée
+- Sélection automatique du type d'ordonnance numérique quand il s'agit d'une Demande, et qu'un mot-clé est détecté : (infirmierRegex = /IDE|infirmier|pansement|injection/i; kineRegex = /kiné|kine|kinésithérapie|kinesitherapie|MKDE|kinesitherapeute|kinesithérapeute/i; pedicureRegex = /pédicure|pedicure|podologie|podologique|podologue/i; orthophonieRegex = /orthophonie|orthophonique|orthophoniste/i; let orthoptieRegex = /orthoptie|orthoptique|orthoptiste/i;) => n'hésitez pas à nous demander d'ajouter d'autres mot-clés pertinents.
+- 2 raccourcis désormais possibles selon le modèle d'impression preféré, idem pour les téléchargements : Ctrl+P pour l'impression et Ctrl+D pour le téléchargement pour le premier modèle, et Ctrl+Shift+P et Ctrl+Shift+D pour le second modèle.
+- détection automatique du Companion s'il est en route, mais n'est pas activé dans les options de Weda-Helper
+
+## fix :
+- le focus reste dans le champ de recherche après l'ouverture automatique des prescriptions-types
+- blocage du historyToLeft si une fenêtre de prévisualisation est ouverte pour éviter des superpositions
+- alt+V fonctionne désormais aussi pour valider l'import de documents
+- message [addTweak] plus explicite dans la console
+- nette amélioration de la fiabilité des raccourcis claviers
+- amélioration de la fonction "historyToLeft" qui est désormais bien plus rapide, et hautomatiquement dimensionnée pour la taille de l'écran
+- amélioration du Readme, notamment la partie sur le Companion et les raccourcis claviers
+
 # [2.3] - 2024-05-28
 ## refactory :
 - passage des options par défaut dans le manifest.json pour éviter les doublons
