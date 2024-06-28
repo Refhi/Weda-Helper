@@ -29,8 +29,6 @@ Cf. ci-dessous pour les retours et les contributions.
     - [Courriers](#courriers)
   - [Facilitation des imports](#facilitation-des-imports)
   - [Weda-Helper-Companion](#weda-helper-companion)
-    - [Impression directe automatique ](#impression-directe-automatique)
-    - [Installation de Weda Helper Companion](#installation-de-weda-helper-companion)
   - [Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):](#problèmes-et-limitations-connues-qui-seront-peut-être-résolues-dans-de-futures-mises-à-jour)
   - [Contributions](#contributions)
   - [Remerciements](#remerciements)
@@ -39,23 +37,27 @@ Cf. ci-dessous pour les retours et les contributions.
 
 ## Raccourcis claviers
 *Toutes vos tâches quotidiennes à portée de clavier*
-[Fiche Mémo des raccourcis à imprimer](https://github.com/Refhi/Weda-Helper/releases/latest/download/FicheMemo.pdf)
-- Imprime le document en cours (Suggestion : Ctrl+P) (attention, nécessite le module [Weda-Helper-Companion](#weda-helper-companion) pour que l'impression soit entièrement automatique. Sinon affiche directement le PDF.)
-- Appuie Annuler (Suggestion : Alt+A)
-- Appuie Supprimer (Suggestion : Alt+S)
-- Appuie Enregistrer (Suggestion : Ctrl+S)
-- Appuie Valider (Suggestion : Alt+V)
-- Lit la carte vitale (Suggestion : Alt+C)
-- Ouvre ou crée le certificat n°1 (Suggestion : Alt+2)
-- Ouvre ou crée la consultation n°1 (Suggestion : Alt+1)
-- Ouvre ou crée courrier n°1 (Suggestion : Alt+5)
-- Ouvre ou crée la demande n°1 (Suggestion : Alt+3)
-- Ouvre ou crée le formulaire n°1 (Suggestion : Alt+F)
-- Clique sur FSE (Suggestion : Alt+6)
-- Ouvre ou crée la prescription n°1 (Suggestion : Alt+4)
-- Ouvre la recherche (Suggestion : Alt+R)
-- Appuie sur W (Suggestion : Alt+W)
-- Affiche/masque les antécédents (Suggestion : Alt+Z)
+[Fiche Mémo des raccourcis à imprimer](https://github.com/Refhi/Weda-Helper/blob/main/FicheMemo.pdf)
+Ctrl+D	Télécharge le PDF du document en cours (1er modèle)
+Ctrl+Shift+D	Télécharge le PDF du document en cours (2e modèle)
+Ctrl+P	Imprime le document en cours (1er modèle). Nécessite un module complémentaire pour que l'impression soit entièrement automatique. Sinon affiche directement le PDF.
+Ctrl+Shift+P	Imprime le document en cours (2e modèle)
+Alt+A	Appuie Annuler
+Alt+S	Appuie Supprimer
+Ctrl+S	Appuie Enregistrer
+Alt+V	Appuie Valider
+Alt+Z	Ouvre les antécédents
+Alt+C	Lit la carte vitale
+Alt+2	Ouvre ou crée le certificat n°1
+Alt+1	Ouvre ou crée la consultation n°1
+Alt+5	Ouvre ou crée courrier n°1
+Alt+3	Ouvre ou crée la demande n°1
+Alt+F	Ouvre ou crée le formulaire n°1
+Alt+6	Clique sur FSE
+Alt+4	Ouvre ou crée la prescription n°1
+Alt+R	Ouvre la recherche
+Alt+W	Appuie sur W
+Ctrl+U	Upload le dernier fichier du dossier envoyé par le Companion
 
 **Chrome limite malheureusement les raccourcis par défaut. Les raccourcis doivent donc être définis manuellement (et entièrement personnalisés) dans chrome://extensions/shortcuts**
 
@@ -98,6 +100,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - Permet d’activer automatiquement par défaut les ordonnances numériques pour les médicaments mais aussi pour les autres prescriptions.
 - Permet aussi de cocher automatiquement le consentement des patients. Attention vous êtes toujours tenu de demander l'autorisation au patient systématiquement.
 - le type "Biologie" se sélectionne automatiquement lors d'une prescription numérique type "Demande"
+- Sélection automatique du type d'ordonnance numérique quand il s'agit d'une Demande, et qu'un mot-clé est détecté (cf. https://github.com/Refhi/Weda-Helper/blob/main/CHANGELOG.md pour le détail des mots-clés)
 
 
 ## Feuilles de soin
@@ -138,24 +141,17 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 - Complétion automatique des dates partielles
 - En cliquant sur l'icône de l'extension, le bouton "Tout mettre en consultation" permet de sélectionner d'un coup "Consultation" pour l'ensemble des documents en attente d'importation.
 
-On peut désormais utiliser Ctrl+U pour uploader directement dans Weda le document le plus récent présent dans un dossier pré-sélectionné dans le Companion.
+- On peut désormais utiliser Ctrl+U pour uploader directement dans Weda le document le plus récent présent dans un dossier pré-sélectionné dans le Companion.
+- Option pour décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée
 
 
 ## Weda-Helper-Companion
 *Autant pousser l'économie de mouvements jusqu'au bout*
-Installez et laisser tourner ce logiciel sur votre ordinateur pour avoir des fonctionnalités supplémentaires. Une fois installé, et les options de l’extension Weda-Helper dans Chrome paramétrées, il doit être lancé et laissé en fond de tâche. Il exécutera les tâches suivantes :
-### Impression directe automatique 
-Si une impression dans Weda est déclenchée via raccourci clavier (ctrl-P par exemple), il lance complètement l'impression. (si cette option est désactivée, ctrl+P amène jusqu'à la dernière validation de l'impression) et ferme la fenêtre de prévisualisation avec retour possible aux prescriptions ou au dossier patient directement (à paramétrer au choix dans les options de Weda Helper).
-Envoie le montant à régler à votre TPE
-Si une FSE est validée via raccourcis clavier  (Alt+v par exemple) et que le paiement carte bancaire est sélectionné, le Companion envoie une demande de règlement au TPE avec le solde à régler (TPE à paramétrer avec l'aide de votre installateur de TPE)
-### Installation de Weda Helper Companion
-Télécharger le fichier exécutable :
-Windows : [Weda.Companion.exe](https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.exe)
-Mac : [Weda.Companion.dmg](https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.dmg)
-Et le démarrer. (vous aurez probablement une alerte de sécurité à passer)
+Installez et laisser tourner ce logiciel sur votre ordinateur pour avoir des fonctionnalités supplémentaires :
+- impression directe automatique complète
+- Envoie le montant à régler à votre TPE
 
-Plus de détails (sécurité, lancement automatique, lien TPE, etc.) ici : [Readme du Companion](https://github.com/Refhi/Weda-Helper-Companion)
-
+=> Procédures d'installation et de paramétrage sur [le readme du Companion](https://github.com/Refhi/Weda-Helper-Companion)
 
 
 ## Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):
@@ -169,6 +165,7 @@ Les retours constructifs, rapport de bug et pull requests sont les bienvenus sur
 Les encouragements sont les bienvenus sur [le site de la communauté](https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/td-p/2791)
 
 ## Remerciements
+- à Abel pour ses nombreuses contributions !
 - à Weda pour leur super logiciel (j'espère que ces modestes contributions vous inspirerons)
 - au Frangin
 - à DrFlo pour son soutien et sa contribution aux descriptions des options et à ce Readme qu'il a entièrement remanié (et à certains snipets)

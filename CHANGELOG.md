@@ -2,7 +2,7 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
-# [2.4] - 
+# [2.4] - 28/06/2024
 ## ajout :
 - Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée
 - Sélection automatique du type d'ordonnance numérique quand il s'agit d'une Demande, et qu'un mot-clé est détecté : (infirmierRegex = /IDE|infirmier|pansement|injection/i; kineRegex = /kiné|kine|kinésithérapie|kinesitherapie|MKDE|kinesitherapeute|kinesithérapeute/i; pedicureRegex = /pédicure|pedicure|podologie|podologique|podologue/i; orthophonieRegex = /orthophonie|orthophonique|orthophoniste/i; let orthoptieRegex = /orthoptie|orthoptique|orthoptiste/i;) => n'hésitez pas à nous demander d'ajouter d'autres mot-clés pertinents.
@@ -14,6 +14,9 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - blocage du historyToLeft si une fenêtre de prévisualisation est ouverte pour éviter des superpositions
 - alt+V fonctionne désormais aussi pour valider l'import de documents
 - message [addTweak] plus explicite dans la console
+- nette amélioration de la fiabilité des raccourcis claviers
+- amélioration de la fonction "historyToLeft" qui est désormais bien plus rapide, et hautomatiquement dimensionnée pour la taille de l'écran
+- amélioration du Readme, notamment la partie sur le Companion et les raccourcis claviers
 
 # [2.3] - 2024-05-28
 ## refactory :

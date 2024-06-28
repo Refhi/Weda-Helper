@@ -273,7 +273,7 @@ function getUrlHistory() {
 function createIframe(targetElement) {
     const iframe = document.createElement('iframe');
     iframe.style.width = `${window.innerWidth * HISTORY_PROPORTION}px`;
-    iframe.style.height = "600px";
+    iframe.style.height = `${window.innerHeight - 175}px`;
     iframe.src = getUrlHistory();
     iframe.style.position = 'absolute'; // ou 'fixed' si vous voulez qu'elle reste en place lors du défilement
     iframe.style.left = '0px'; // Aligné avec le bord gauche

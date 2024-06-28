@@ -6,11 +6,19 @@ function htmlMaker(text) {
 }
 
 var nouveautes = `
-# [2.4] - 2024-
+# [2.4] - 28/06/2024
+## ajout :
+- Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée
+- Sélection automatique du type d'ordonnance numérique quand il s'agit d'une Demande, et qu'un mot-clé est détecté : (infirmierRegex = /IDE|infirmier|pansement|injection/i; kineRegex = /kiné|kine|kinésithérapie|kinesitherapie|MKDE|kinesitherapeute|kinesithérapeute/i; pedicureRegex = /pédicure|pedicure|podologie|podologique|podologue/i; orthophonieRegex = /orthophonie|orthophonique|orthophoniste/i; let orthoptieRegex = /orthoptie|orthoptique|orthoptiste/i;) => n'hésitez pas à nous demander d'ajouter d'autres mot-clés pertinents.
+- 2 raccourcis désormais possibles selon le modèle d'impression preféré, idem pour les téléchargements : Ctrl+P pour l'impression et Ctrl+D pour le téléchargement pour le premier modèle, et Ctrl+Shift+P et Ctrl+Shift+D pour le second modèle.
+- détection automatique du Companion s'il est en route, mais n'est pas activé dans les options de Weda-Helper
 
-TODO
-
-
+## fix :
+- le focus reste dans le champ de recherche après l'ouverture automatique des prescriptions-types
+- blocage du historyToLeft si une fenêtre de prévisualisation est ouverte pour éviter des superpositions
+- alt+V fonctionne désormais aussi pour valider l'import de documents
+- message [addTweak] plus explicite dans la console
+- amélioration du Readme, notamment la partie sur le Companion et les raccourcis claviers
 `
 
 nouveautes = htmlMaker(nouveautes)
@@ -27,6 +35,8 @@ var firstStartMessage = `
 🔧 Je vous encourage également à installer le Companion <a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.exe" target="_blank">disponible ici pour windows</a> et <a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.dmg" target="_blank">ou pour mac</a> pour profiter de fonctionnalités supplémentaires (Impression totale, lien avec le TPE et upload automatisé).
 
 📝 Vous pouvez aussi relire <a href="https://github.com/Refhi/Weda-Helper/" target="_blank">Weda-Helper sur gitHub</a> pour plus de précisions, et y faire des suggestions ou des signalements de bugs. 
+
+<a href="https://github.com/Refhi/Weda-Helper/blob/main/FicheMemo.pdf" target="_blank">📄 Fiche mémo</a> pour les raccourcis clavier.
 
 💖 Et bien sûr m'encourager sur le <a href="https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/m-p/2998" target="_blank">Site de la communauté de weda</a>
 
@@ -50,6 +60,8 @@ var updateMessage = `
 🔧 Je vous conseille d'aller faire un tour dans les options pour vérifier les nouveaux paramètres : bouton de droite sur l'icone de l'extension puis option.
 
 🚀 Si vous ne l'avez pas encore, n'hésitez pas à tester le Companion : <a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.exe" target="_blank">disponible ici pour windows</a> et <a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.dmg" target="_blank">ou pour mac</a> pour profiter de fonctionnalités supplémentaires (Impression totale, lien avec le TPE et upload automatisé).</strong>
+
+<a href="https://github.com/Refhi/Weda-Helper/blob/main/FicheMemo.pdf" target="_blank">📄 et à télécharger la Fiche mémo</a> pour les raccourcis clavier.
 
 <strong>🌟 Voici les nouveautés et les améliorations :</strong>
 ${nouveautes}
