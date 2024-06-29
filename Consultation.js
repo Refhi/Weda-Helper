@@ -8,11 +8,31 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTab
         }
     }
 
-    lightObserver('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]', changeTabOrder)
-    console.log('ConsultationFormTabOrderer started');
-    // ici aussi les métriques sont difficiles à évaluer. Si on considère environs
-    // 2 éléments par consultation, on peut estimer en gros à 1 clic + 1 drag par consultation
-    recordMetrics({ clicks: 1, drags: 1 });
+    lightObserver('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]', function(elements) {
+        changeTabOrder(elements)
+        console.log('ConsultationFormTabOrderer started');
+        // ici aussi les métriques sont difficiles à évaluer. Si on considère environs
+        // 2 éléments par consultation, on peut estimer en gros à 1 clic + 1 drag par consultation
+        recordMetrics({ clicks: 1, drags: 1 });
+    });
+});
+
+addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*CourbesPediatriques', function () {
+    // Modifier l'ordre de tabulation des valeurs de suivi    
+    function changeTabOrder(elements) {
+        console.log('changeTabOrder started');
+        for (var i = 0; i < elements.length; i++) {
+            elements[i].tabIndex = i + 1;
+        }
+    }
+
+    lightObserver('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]', function(elements) {
+        changeTabOrder(elements)
+        console.log('ConsultationFormTabOrderer started');
+        // ici aussi les métriques sont difficiles à évaluer. Si on considère environs
+        // 2 éléments par consultation, on peut estimer en gros à 1 clic + 1 drag par consultation
+        recordMetrics({ clicks: 1, drags: 1 });
+    });
 
 
     // Afficher en overlay une image issue d'une URL en cas de survol de certains éléments
