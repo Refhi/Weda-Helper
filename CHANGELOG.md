@@ -2,6 +2,10 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+# [2.4.1] - ... - bugfix
+## fix :
+- les courbes pédiatriques s'affichent désormais devant l'historique de gauche
+
 # [2.4] - 28/06/2024
 ## ajout :
 - Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée
