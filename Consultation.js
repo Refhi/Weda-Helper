@@ -81,6 +81,7 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTab
             tooltip.style.top = '50%';
             tooltip.style.left = '50%';
             tooltip.style.transform = 'translate(-50%, -50%)';
+            tooltip.style.zIndex = '1000';
             return tooltip;
         }
 
