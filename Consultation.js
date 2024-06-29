@@ -136,7 +136,7 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*Courbes
             let explanationText = createExplanatoryText();
             tooltip.appendChild(loadingText);
             tooltip.appendChild(img);
-            element.appendChild(tooltip);
+            document.body.appendChild(tooltip);
 
             element.addEventListener('mouseover', function () {
                 let imageUrl = urlImage(key);
@@ -299,6 +299,7 @@ function createIframe(targetElement) {
     iframe.style.position = 'absolute'; // ou 'fixed' si vous voulez qu'elle reste en place lors du défilement
     iframe.style.left = '0px'; // Aligné avec le bord gauche
     iframe.style.border = "none";
+    iframe.style.zIndex = '-1';
     // Injecter l'iframe dans le DOM proche de targetElement pour que ça soit au même niveau (sur l'axe vertical)
     const parent = targetElement.parentNode;
     if (parent) {
@@ -345,6 +346,7 @@ function adjustLayout(pageType, iframe, targetElement) {
     targetElement.style.left = `${iframe.getBoundingClientRect().right}px`;
     targetElement.style.marginTop = '0px';
     targetElement.style.width = `${targetElementWidth}px`;
+    targetElement.style.zIndex = '-1';
 
     if (["Certificat", "Demande", "Courrier"].includes(pageType)) {
         moveAndResizeDocTypes(availableWidth);
