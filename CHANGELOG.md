@@ -5,6 +5,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 # [2.4.1] - ... - bugfix
 ## fix :
 - les courbes pédiatriques s'affichent désormais devant l'historique de gauche
+- les documents joint à une consultation/Demande/etc. s'affichent désormais devant les autres éléments
 
 # [2.4] - 28/06/2024
 ## ajout :
