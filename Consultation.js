@@ -249,7 +249,7 @@ let pagesToLeftPannel_ = [
     },
     {
         url: 'https://secure.weda.fr/FolderMedical/CertificatForm.aspx',
-        targetElementSelector: '#CE_ContentPlaceHolder1_EditorCertificat_ID',
+        targetElementSelector: '#form1 > div:nth-child(15) > table > tbody > tr > td:nth-child(1) > table > tbody > tr',
         option: 'MoveHistoriqueToLeft_Certificat',
         pageType: 'Certificat'
     },
@@ -383,7 +383,7 @@ function historyToLeft() {
     pagesToLeftPannel_.forEach(page => {
         addTweak(page.url, page.option, () => {
             const targetElement = document.querySelector(page.targetElementSelector);
-            const iframe = createIframe(targetElement);
+            const iframe = createIframe(targetElement); // ici targetElement est nécessaire comme référence pour l'insertion de l'iframe
             iframe.addEventListener('load', () => {
                 removeElements(iframe.contentDocument);
             });
