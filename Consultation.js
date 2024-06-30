@@ -8,11 +8,31 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTab
         }
     }
 
-    lightObserver('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]', changeTabOrder)
-    console.log('ConsultationFormTabOrderer started');
-    // ici aussi les métriques sont difficiles à évaluer. Si on considère environs
-    // 2 éléments par consultation, on peut estimer en gros à 1 clic + 1 drag par consultation
-    recordMetrics({ clicks: 1, drags: 1 });
+    lightObserver('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]', function(elements) {
+        changeTabOrder(elements)
+        console.log('ConsultationFormTabOrderer started');
+        // ici aussi les métriques sont difficiles à évaluer. Si on considère environs
+        // 2 éléments par consultation, on peut estimer en gros à 1 clic + 1 drag par consultation
+        recordMetrics({ clicks: 1, drags: 1 });
+    });
+});
+
+addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*CourbesPediatriques', function () {
+    // Modifier l'ordre de tabulation des valeurs de suivi    
+    function changeTabOrder(elements) {
+        console.log('changeTabOrder started');
+        for (var i = 0; i < elements.length; i++) {
+            elements[i].tabIndex = i + 1;
+        }
+    }
+
+    lightObserver('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]', function(elements) {
+        changeTabOrder(elements)
+        console.log('ConsultationFormTabOrderer started');
+        // ici aussi les métriques sont difficiles à évaluer. Si on considère environs
+        // 2 éléments par consultation, on peut estimer en gros à 1 clic + 1 drag par consultation
+        recordMetrics({ clicks: 1, drags: 1 });
+    });
 
 
     // Afficher en overlay une image issue d'une URL en cas de survol de certains éléments
@@ -26,8 +46,8 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTab
         "Taille-Poids : 18 ans (M)": { "TC": "15", "Question": "Taille", "Genre": "M", "AgeMin": 3, "AgeMax": 18 },
         "IMC : 18 ans": { "TC": "16", "Question": "IMC", "Genre": "F", "AgeMin": 0, "AgeMax": 18 },
         "IMC : 18 ans (M)": { "TC": "17", "Question": "IMC", "Genre": "M", "AgeMin": 0, "AgeMax": 18 },
-        "Garçon 0 mois à 6 mois (OMS)": { "TC": "18", "Question": "Poids", "Genre": "M", "AgeMin": 0, "AgeMax": 1 },
-        "Fille 0 mois à 6 mois (OMS)": { "TC": "19", "Question": "Poids", "Genre": "F", "AgeMin": 0, "AgeMax": 1 }
+        "Garçon 0 mois à 6 mois (OMS)": { "TC": "18", "Question": "Poids", "Genre": "M", "AgeMin": 0, "AgeMax": 0 },
+        "Fille 0 mois à 6 mois (OMS)": { "TC": "19", "Question": "Poids", "Genre": "F", "AgeMin": 0, "AgeMax": 0 }
     };
 
     // // Récupère les valeurs de genre et d'âge dans la page.
@@ -81,6 +101,7 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTab
             tooltip.style.top = '50%';
             tooltip.style.left = '50%';
             tooltip.style.transform = 'translate(-50%, -50%)';
+            tooltip.style.zIndex = '1000';
             return tooltip;
         }
 
@@ -115,7 +136,7 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTab
             let explanationText = createExplanatoryText();
             tooltip.appendChild(loadingText);
             tooltip.appendChild(img);
-            element.appendChild(tooltip);
+            document.body.appendChild(tooltip);
 
             element.addEventListener('mouseover', function () {
                 let imageUrl = urlImage(key);
@@ -228,7 +249,7 @@ let pagesToLeftPannel_ = [
     },
     {
         url: 'https://secure.weda.fr/FolderMedical/CertificatForm.aspx',
-        targetElementSelector: '#CE_ContentPlaceHolder1_EditorCertificat_ID',
+        targetElementSelector: '#form1 > div:nth-child(15) > table > tbody > tr > td:nth-child(1) > table > tbody > tr',
         option: 'MoveHistoriqueToLeft_Certificat',
         pageType: 'Certificat'
     },
@@ -278,6 +299,7 @@ function createIframe(targetElement) {
     iframe.style.position = 'absolute'; // ou 'fixed' si vous voulez qu'elle reste en place lors du défilement
     iframe.style.left = '0px'; // Aligné avec le bord gauche
     iframe.style.border = "none";
+    iframe.style.zIndex = '-1';
     // Injecter l'iframe dans le DOM proche de targetElement pour que ça soit au même niveau (sur l'axe vertical)
     const parent = targetElement.parentNode;
     if (parent) {
@@ -324,6 +346,7 @@ function adjustLayout(pageType, iframe, targetElement) {
     targetElement.style.left = `${iframe.getBoundingClientRect().right}px`;
     targetElement.style.marginTop = '0px';
     targetElement.style.width = `${targetElementWidth}px`;
+    targetElement.style.zIndex = '-1';
 
     if (["Certificat", "Demande", "Courrier"].includes(pageType)) {
         moveAndResizeDocTypes(availableWidth);
@@ -360,7 +383,7 @@ function historyToLeft() {
     pagesToLeftPannel_.forEach(page => {
         addTweak(page.url, page.option, () => {
             const targetElement = document.querySelector(page.targetElementSelector);
-            const iframe = createIframe(targetElement);
+            const iframe = createIframe(targetElement); // ici targetElement est nécessaire comme référence pour l'insertion de l'iframe
             iframe.addEventListener('load', () => {
                 removeElements(iframe.contentDocument);
             });

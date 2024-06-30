@@ -2,6 +2,15 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+# [2.4.1] - ... - bugfix
+## fix de bugs :
+- #152 - L'option "Ouvre automatiquement la fenêtre des ordonnances-types lors des prescriptions médicamenteuses" empêchait la rédaction d'un conseil médicamenteux
+- #153 - De nouveau superpositions quand ouverture d'un document joint lors d'une consultation
+- #154 - La recherche de médicament s'efface lors d'un premier lancement de Weda dans certaines conditions
+- #155 - Courbes pédiatriques vont derrière l'iframe de l'history2Left
+- #149 - Courbes pédiatriques HS si "Activer la navigation entre les valeurs de suivi avec la touche Tab dans les consultations." est décochée
+- #161 - bug bouton impression manquant dans certificat si affichage historique activé
+
 # [2.4] - 28/06/2024
 ## ajout :
 - Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée

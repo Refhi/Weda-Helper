@@ -108,7 +108,7 @@ function addShortcuts(keyCommands, scope, scopeName) {
         hotkeys.filter = function(event){
             return true; // Permet d'utiliser les raccourcis depuis un input ou un textarea
         }
-        console.log('[addShortcuts] ajout des raccourcis sur element', scope, 'avec scopeName', scopeName, 'et result', result);
+        // console.log('[addShortcuts] ajout des raccourcis sur element', scope, 'avec scopeName', scopeName, 'et result', result);
         for (let key in keyCommands) {
             action = keyCommands[key];
             shortcut = shortcutDefaut(result.shortcuts, result.defaultShortcuts, key);
@@ -123,13 +123,14 @@ function addShortcutsToIframe() {
         iframes.forEach(function(iframe, index) {
             let scopeName = 'iframe' + (index + 1);
             hotkeys.setScope(scopeName);    
-            console.log('iframe' + (index + 1), iframe);
+            // console.log('iframe' + (index + 1), iframe);
             addShortcuts(keyCommands, iframe.contentDocument, scopeName);
         });
     }
 }
 
 function addAllShortcuts() {
+    console.log('[addAllShortcuts] activé');
     hotkeys.unbind(); // nécessaire pour éviter les doublons de raccourcis clavier entrainant des doublons de documents...
     addShortcuts(keyCommands, document, 'all');
     addShortcutsToIframe();
