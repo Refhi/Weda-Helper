@@ -173,15 +173,13 @@ if (PrescriptionForm) {
 }
 
 addTweak(prescriptionUrl, 'autoOpenOrdoType', function() {
-    // window.onload = function() { // paradoxalement plus fiable sans !
-        document.getElementById('ContentPlaceHolder1_ButtonPrescritionType').click();
-        afterMutations(100, function() { //On remet le focus sur la barre de recherche, nécessite un petit délai
-            var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
-            if (inputField) {
-                inputField.focus();
-            }
-        });
-    // };
+    document.getElementById('ContentPlaceHolder1_ButtonPrescritionType').click();
+    lightObserver("#ContentPlaceHolder1_BaseGlossaireUCForm2_UpdatePanelDocument", function() {
+        var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
+        if (inputField) {
+            inputField.focus();
+        }
+    });
 });
 
 
