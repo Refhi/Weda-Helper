@@ -6,19 +6,14 @@ function htmlMaker(text) {
 }
 
 var nouveautes = `
-# [2.4] - 28/06/2024
-## ajout :
-- Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée
-- Sélection automatique du type d'ordonnance numérique quand il s'agit d'une Demande, et qu'un mot-clé est détecté : (infirmierRegex = /IDE|infirmier|pansement|injection/i; kineRegex = /kiné|kine|kinésithérapie|kinesitherapie|MKDE|kinesitherapeute|kinesithérapeute/i; pedicureRegex = /pédicure|pedicure|podologie|podologique|podologue/i; orthophonieRegex = /orthophonie|orthophonique|orthophoniste/i; let orthoptieRegex = /orthoptie|orthoptique|orthoptiste/i;) => n'hésitez pas à nous demander d'ajouter d'autres mot-clés pertinents.
-- 2 raccourcis désormais possibles selon le modèle d'impression preféré, idem pour les téléchargements : Ctrl+P pour l'impression et Ctrl+D pour le téléchargement pour le premier modèle, et Ctrl+Shift+P et Ctrl+Shift+D pour le second modèle.
-- détection automatique du Companion s'il est en route, mais n'est pas activé dans les options de Weda-Helper
-
-## fix :
-- le focus reste dans le champ de recherche après l'ouverture automatique des prescriptions-types
-- blocage du historyToLeft si une fenêtre de prévisualisation est ouverte pour éviter des superpositions
-- alt+V fonctionne désormais aussi pour valider l'import de documents
-- message [addTweak] plus explicite dans la console
-- amélioration du Readme, notamment la partie sur le Companion et les raccourcis claviers
+v2.4.1 - hotfix
+## (les numéros correspondent aux "issues" sur github)
+- #152 - L'option "Ouvre automatiquement la fenêtre des ordonnances-types lors des prescriptions médicamenteuses" empêchait la rédaction d'un conseil médicamenteux
+- #153 - De nouveau superpositions quand ouverture d'un document joint lors d'une consultation
+- #154 - La recherche de médicament s'efface lors d'un premier lancement de Weda dans certaines conditions
+- #155 - Courbes pédiatriques vont derrière l'iframe de l'history2Left
+- #149 - Courbes pédiatriques HS si "Activer la navigation entre les valeurs de suivi avec la touche Tab dans les consultations." est décochée
+- #161 - bug bouton impression manquant dans certificat si affichage historique activé
 `
 
 nouveautes = htmlMaker(nouveautes)
