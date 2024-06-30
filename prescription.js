@@ -166,8 +166,8 @@ if (PrescriptionForm) {
                 }
             }
         }
-
         lightObserver('#ContentPlaceHolder1_BaseVidalUcForm1_DropDownListRecherche', onDOMChange);
+        onDOMChange() // a priori nécessaire sur certains setups en plus du lightObserver
     });
 
 }
