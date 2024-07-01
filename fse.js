@@ -4,7 +4,7 @@
 // (tableau et bouche après)
 function tweakFSECreation() {
     // Make a dictionnary with keystrokes and their corresponding actions
-    var index = { // TODO à passer dans hotkey.js
+    var index = {
         'n': ['mat-radio-9-input', 'mat-radio-3-input'],
         'o': ['mat-radio-8-input', 'mat-radio-2-input'],
         't': ['mat-checkbox-1-input'],
@@ -211,18 +211,53 @@ function tweakFSECreation() {
 
 
     function setDefaultValue() {
-        // set defaut value
+        // Si on envisage d'ajouter des cotations automatisées plus complexes, on pourra simplement se greffer sur cette fonction
+        // par exemple en mettant dans une des conditions la récupération d'une valeur mémoire spécifique
+        let conditionalCotations = [
+            {
+                condition: function() {
+                    let isALD = document.querySelector('#mat-radio-2-input').checked;
+                    return isALD;
+                },
+                action: 'DéfautALD'
+            },
+            {
+                condition: function() {
+                    let ageString = document.querySelector('#LabelInfoPatientNom > span > span:nth-child(4)').textContent;
+                    let age = parseInt(ageString.match(/\d+/)[0]);
+                    console.log('Age du patient :', age);
+                    return age < 7;
+                },
+                action: 'DéfautPédia'
+            },
+            {
+                condition: function() {
+                    return true; // Cette condition sera toujours vraie pour la cotation "Défaut"
+                },
+                action: 'Défaut'
+            },            
+        ];
+
+        // Définit la cotation par défaut
         addTweak('*', 'defaultCotation', function() {
             var elements = document.querySelectorAll('.flexRow.favoris.ng-star-inserted');
             console.log('elements', elements);
-            var defautElement = Array.from(elements).find(el => el.textContent.trim().includes('Défaut'));
-            if (defautElement) {
-                defautElement.click();
-                recordMetrics({clicks: 1, drags: 1});
-            } else {
-                console.log('Aucun élément contenant "Défaut" n\'a été trouvé.');
-                alert('Weda-Helper : "cotation par défaut" n\'est pas désactivé dans les options, mais aucune cotation favorite nommée "Défaut" n\'a été trouvé. Vous devez soit ajouter un favori nommé exactement "Défaut", soit désactiver l\'option "cotation par défaut" dans les options de Weda-Helper. Ce changement est rendu nécessaire par la dernière mise à jour.');
+
+            for (let i = 0; i < conditionalCotations.length; i++) {
+                if (conditionalCotations[i].condition()) {
+                    let action = conditionalCotations[i].action;
+                    let targetElement = Array.from(elements).find(el => el.textContent.trim().includes(action));
+                    if (targetElement) {
+                        targetElement.click();
+                        recordMetrics({clicks: 1, drags: 1});
+                        console.log('Cotation appliquée:', action);
+                        return; // Arrête la fonction après avoir appliqué une cotation
+                    }
+                }
             }
+
+            // Si aucune condition n'est remplie, afficher un message d'erreur
+            console.log('Aucune condition remplie pour appliquer une cotation spécifique.');
         });
     }
 
