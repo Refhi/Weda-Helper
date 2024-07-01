@@ -1,6 +1,12 @@
 # Changelog
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
+# [2.5.0] - 
+## ajout :
+- [#101](https://github.com/Refhi/Weda-Helper/issues/101) - Ajout d'une cotation par défaut selon le mode de la FSE
+=> vous pouvez désormais créer une cotation "DéfautALD" dans vos favoris et elle sera automatiquement sélectionnée lors de la création d'une FSE en mode ALD
+=> idem pour "DéfautPédia" qui sera automatiquement sélectionnée pour les enfants 0-6 ans
+
 
 # [2.4.2] - 01/07/2024
 ## fix 

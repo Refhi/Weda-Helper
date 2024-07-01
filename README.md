@@ -107,7 +107,10 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 *Toute la FSE : [alt+6], [n], [n], [alt+v]*
 - les touches "n" et "o" permettent de sélectionner "non"/"oui" pour accidents de droit commun, puis ALD
 - les touches "t" et "c" permettent de sélectionner les tiers payants correspondants (AMO et AMC)
-- Si elles sont utilisées, entre automatiquement la cotation par défaut (Une de vos cotations favorites doit être nommée 'Défaut')
+- Si elles sont utilisées, utilise une cotation dans vos favoris :
+  - la cotation "DéfautPédia" pour les 0-6 ans
+  - la cotation "DéfautALD" pour les ALD
+  - la cotation "Défaut" pour les autres 
 - Lecture automatique de la carte vitale si elle est non lue
 - Affichage de boutons directs pour la réalisation de FDS dégradées et téléconsultation
 - Option pour cocher automatiquement "accident causé par un tier" ou "gestion unique"
