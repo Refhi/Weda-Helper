@@ -252,6 +252,10 @@ function tweakFSECreation() {
                         recordMetrics({clicks: 1, drags: 1});
                         console.log('Cotation appliquée:', action);
                         return; // Arrête la fonction après avoir appliqué une cotation
+                    } else if (action === 'Défaut') {
+                        console.log('Action "Défaut" spécifiée mais non trouvée parmi les éléments.');
+                        alert('Weda-Helper : "cotation par défaut" n\'est pas désactivé dans les options, mais aucune cotation favorite nommée "Défaut" n\'a été trouvé. Vous devez soit ajouter un favori nommé exactement "Défaut", soit désactiver l\'option "cotation par défaut" dans les options de Weda-Helper. Vous pouvez également définir DéfautPédia et DéfautALD.');
+                        return; // Arrête la fonction si "Défaut" est spécifié mais non trouvé
                     }
                 }
             }
