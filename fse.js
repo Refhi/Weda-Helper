@@ -223,7 +223,7 @@ function tweakFSECreation() {
             },
             {
                 condition: function() {
-                    let ageString = document.querySelector('#LabelInfoPatientNom > span > span:nth-child(4)').textContent;
+                    let ageString = document.querySelector('#LabelInfoPatientNom > span > span:last-child').textContent;
                     let age = parseInt(ageString.match(/\d+/)[0]);
                     console.log('Age du patient :', age);
                     return age < 7;
@@ -243,10 +243,11 @@ function tweakFSECreation() {
             var elements = document.querySelectorAll('.flexRow.favoris.ng-star-inserted');
             console.log('elements', elements);
 
-            for (let i = 0; i < conditionalCotations.length; i++) {
-                if (conditionalCotations[i].condition()) {
-                    let action = conditionalCotations[i].action;
-                    let targetElement = Array.from(elements).find(el => el.textContent.trim().includes(action));
+            for (let i = 0; i < conditionalCotations.length; i++) { // Loop dans le dico des cotations conditionnelles
+                if (conditionalCotations[i].condition()) {// Si la condition est remplie
+                    let action = conditionalCotations[i].action; // L'action c'est le nom du favori à appliquer
+                    let targetElement = Array.from(elements).find(el => el.textContent.trim() === 'keyboard_arrow_right'+action);
+                    // keyboard_arrow_right est nécessaire pour matcher le texte complet du favori qui contient ">" devant le nom
                     if (targetElement) {
                         targetElement.click();
                         recordMetrics({clicks: 1, drags: 1});
