@@ -299,7 +299,7 @@ function createIframe(targetElement) {
     iframe.style.position = 'absolute'; // ou 'fixed' si vous voulez qu'elle reste en place lors du défilement
     iframe.style.left = '0px'; // Aligné avec le bord gauche
     iframe.style.border = "none";
-    iframe.style.zIndex = '-1';
+    iframe.style.zIndex = '0';
     // Injecter l'iframe dans le DOM proche de targetElement pour que ça soit au même niveau (sur l'axe vertical)
     const parent = targetElement.parentNode;
     if (parent) {
@@ -346,7 +346,7 @@ function adjustLayout(pageType, iframe, targetElement) {
     targetElement.style.left = `${iframe.getBoundingClientRect().right}px`;
     targetElement.style.marginTop = '0px';
     targetElement.style.width = `${targetElementWidth}px`;
-    targetElement.style.zIndex = '-1';
+    targetElement.style.zIndex = '0';
 
     if (["Certificat", "Demande", "Courrier"].includes(pageType)) {
         moveAndResizeDocTypes(availableWidth);
@@ -380,17 +380,21 @@ function getAdjustment(availableWidth, pageType) {
 }
 
 function historyToLeft() {
-    pagesToLeftPannel_.forEach(page => {
-        addTweak(page.url, page.option, () => {
-            const targetElement = document.querySelector(page.targetElementSelector);
-            const iframe = createIframe(targetElement); // ici targetElement est nécessaire comme référence pour l'insertion de l'iframe
-            iframe.addEventListener('load', () => {
-                removeElements(iframe.contentDocument);
+    // ne pas activer l'historique si le panneau de prévisu est détecté
+    let previsuPanel = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_ViewPdfDocumentUCForm1_PanelViewDocument');
+    if (!previsuPanel) {
+        pagesToLeftPannel_.forEach(page => {
+            addTweak(page.url, page.option, () => {
+                const targetElement = document.querySelector(page.targetElementSelector);
+                const iframe = createIframe(targetElement); // ici targetElement est nécessaire comme référence pour l'insertion de l'iframe
+                iframe.addEventListener('load', () => {
+                    removeElements(iframe.contentDocument);
+                });
+                adjustLayout(page.pageType, iframe, targetElement);
+                recordMetrics({ clicks: 1, drags: 1 });
             });
-            adjustLayout(page.pageType, iframe, targetElement);
-            recordMetrics({ clicks: 1, drags: 1 });
         });
-    });
+    }
 }
 
 historyToLeft();
