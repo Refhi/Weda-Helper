@@ -6,6 +6,10 @@ function htmlMaker(text) {
 }
 
 var nouveautes = `
+v2.4.2 - hotfix
+- #168 - Perte curseur lors prescription d'une demande avec l'historique affiché
+
+
 v2.4.1 - hotfix
 ## (les numéros correspondent aux "issues" sur github)
 - #152 - L'option "Ouvre automatiquement la fenêtre des ordonnances-types lors des prescriptions médicamenteuses" empêchait la rédaction d'un conseil médicamenteux

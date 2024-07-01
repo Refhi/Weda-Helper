@@ -2,6 +2,11 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+# [2.4.2] - 01/07/2024
+## fix 
+- [#168](https://github.com/Refhi/Weda-Helper/issues/168) - Perte curseur lors prescription d'une demande avec l'historique affiché
+- le panneau de DMP est de nouveau masqué dans les Courriers lorsqu'historyToLeft est activé
+
 # [2.4.1] - ... - bugfix
 ## fix de bugs :
 - #152 - L'option "Ouvre automatiquement la fenêtre des ordonnances-types lors des prescriptions médicamenteuses" empêchait la rédaction d'un conseil médicamenteux
