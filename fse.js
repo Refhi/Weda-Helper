@@ -232,6 +232,14 @@ function tweakFSECreation() {
             },
             {
                 condition: function() {
+                    let fseTypeElement = document.querySelector('#form1 > div:nth-child(14) > div > div:nth-child(2) > vz-feuille-de-soin > div.fseContainer > div > div.toolbarContainer.thinCards.flexRow > mat-card.mat-card.mat-focus-indicator.cvContainer > vz-lecture-cv-widget > div > vz-mode-teletrans > div')
+                    let isTeleconsultation = fseTypeElement.textContent === 'SV';
+                    return isTeleconsultation;
+                },
+                action: 'DéfautTC'
+            },
+            {
+                condition: function() {
                     return true; // Cette condition sera toujours vraie pour la cotation "Défaut"
                 },
                 action: 'Défaut'
