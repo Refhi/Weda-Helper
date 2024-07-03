@@ -663,7 +663,7 @@ addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeAu
 addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeUncheckIHEMessage', function () {
     lightObserver('we-doc-import', function (elements) {
         for (const element of elements) {
-            if (element.className != 'docImportAttach') //Correspond au corps du message
+            if (!element.className.includes('docImportAttach')) //docImportAttach correspond aux documents joints donc si il n'y a pas cette classe, il s'agit du corps du message
             {
                 let checkbox = element.querySelector('input[type=checkbox]')
                 checkbox.checked = false;
