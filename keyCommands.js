@@ -117,6 +117,17 @@ function addShortcuts(keyCommands, scope, scopeName) {
     });
 }
 
+function removeExceedingSpaces(iframe) {
+    var element = iframe.contentDocument.body.querySelector('div:last-child');
+    if (element === null) {
+        element = iframe.contentDocument.body
+    }
+    console.log('je retire les 3 espaces excédentaires de ', element);
+    var value = element.textContent;
+    console.log('sur les valeurs', value);
+    element.textContent = value.replace(/ {3,}/g, "");
+}
+
 function addShortcutsToIframe() {
     var iframes = document.querySelectorAll('iframe');
     if (iframes.length !== 0) {
@@ -125,6 +136,24 @@ function addShortcutsToIframe() {
             hotkeys.setScope(scopeName);    
             // console.log('iframe' + (index + 1), iframe);
             addShortcuts(keyCommands, iframe.contentDocument, scopeName);
+
+            addHotkeyToDocument(scopeName, iframe.contentDocument, 'tab', function() {
+                console.log('tab activé');
+                removeExceedingSpaces(iframe);
+                // focus on next iframe
+                if (index + 1 < iframes.length) {
+                    iframes[index + 1].focus();
+                }
+            });
+
+            addHotkeyToDocument(scopeName, iframe.contentDocument, 'shift+tab', function() {
+                console.log('shift+tab activé');
+                removeExceedingSpaces(iframe);
+                // focus on previous iframe
+                if (index - 1 >= 0) {
+                    iframes[index - 1].focus();
+                }
+            });
         });
     }
 }
@@ -142,6 +171,7 @@ setTimeout(function() {
 }, 20);
 afterMutations(300, addAllShortcuts, "ajout raccourcis aux iframes"); // ajoute les raccourcis à toutes les iframes après chaque mutation du document
 // ne pas mettre moins de 300ms sinon les raccourcis s'ajoutent quand même de façon cumulative
+afterMutations(1000, addAllShortcuts, "ajout raccourcis aux iframes"); // 2e ajout car parfois fonctionne mal
 
 
 
