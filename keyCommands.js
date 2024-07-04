@@ -122,10 +122,28 @@ function removeExceedingSpaces(iframe) {
     if (element === null) {
         element = iframe.contentDocument.body
     }
-    console.log('je retire les 3 espaces excédentaires de ', element);
     var value = element.textContent;
-    console.log('sur les valeurs', value);
-    element.textContent = value.replace(/ {3,}/g, "");
+    element.textContent = value.replace("   ", "");
+}
+
+function addTabsToIframe(scopeName, iframe, index, iframes) {
+    addHotkeyToDocument(scopeName, iframe.contentDocument, 'tab', function() {
+        console.log('tab activé');
+        removeExceedingSpaces(iframe);
+        // focus on next iframe
+        if (index + 1 < iframes.length) {
+            iframes[index + 1].focus();
+        }
+    });
+
+    addHotkeyToDocument(scopeName, iframe.contentDocument, 'shift+tab', function() {
+        console.log('shift+tab activé');
+        removeExceedingSpaces(iframe);
+        // focus on previous iframe
+        if (index - 1 >= 0) {
+            iframes[index - 1].focus();
+        }
+    });
 }
 
 function addShortcutsToIframe() {
@@ -136,23 +154,8 @@ function addShortcutsToIframe() {
             hotkeys.setScope(scopeName);    
             // console.log('iframe' + (index + 1), iframe);
             addShortcuts(keyCommands, iframe.contentDocument, scopeName);
-
-            addHotkeyToDocument(scopeName, iframe.contentDocument, 'tab', function() {
-                console.log('tab activé');
-                removeExceedingSpaces(iframe);
-                // focus on next iframe
-                if (index + 1 < iframes.length) {
-                    iframes[index + 1].focus();
-                }
-            });
-
-            addHotkeyToDocument(scopeName, iframe.contentDocument, 'shift+tab', function() {
-                console.log('shift+tab activé');
-                removeExceedingSpaces(iframe);
-                // focus on previous iframe
-                if (index - 1 >= 0) {
-                    iframes[index - 1].focus();
-                }
+            addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*addTabNav', function() {
+                addTabsToIframe(scopeName, iframe, index, iframes);
             });
         });
     }
