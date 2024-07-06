@@ -11,6 +11,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#151](https://github.com/Refhi/Weda-Helper/issues/151) - ajout de semelle et orthoplastie dans les mots-clés pour la classification "podologie" automatique
 - [#116](https://github.com/Refhi/Weda-Helper/issues/116) - enregistre automatiquement le dernier type de document pour l'envoi au DMP pour les PDF classés comme courrier dans Weda
 - [#173](https://github.com/Refhi/Weda-Helper/issues/173) - le bouton "TPE Bis" dans la popup de l'extension envoie 1€ si aucun règlement n'a été récemment demandé. Ce afin de faciliter les tests de liaison avec le Companion/TPE.
+- [#119](https://github.com/Refhi/Weda-Helper/issues/119) - ajout d'un bouton pour imprimer directement les pdfs présents dans les "documents du cabinet medical"
 
 
 # [2.4.2] - 01/07/2024
