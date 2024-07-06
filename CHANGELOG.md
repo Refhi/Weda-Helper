@@ -9,6 +9,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#171](https://github.com/Refhi/Weda-Helper/issues/171) - Correction d'un bug dans la fonction "Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée" qui décochait le document joint dans certains cas
 - [#131](https://github.com/Refhi/Weda-Helper/issues/131) - navigation entre champs de texte via Tab et Shift+Tab dans les pages de consultation. Focus possible à l'ouverture d'une consultation dans le champ de titre.
 - [#151](https://github.com/Refhi/Weda-Helper/issues/151) - ajout de semelle et orthoplastie dans les mots-clés pour la classification "podologie" automatique
+- [#116](https://github.com/Refhi/Weda-Helper/issues/116) - enregistre automatiquement le dernier type de document pour l'envoi au DMP pour les PDF classés comme courrier dans Weda
 
 
 # [2.4.2] - 01/07/2024
