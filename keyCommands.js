@@ -117,6 +117,8 @@ function addShortcuts(keyCommands, scope, scopeName) {
     });
 }
 
+
+
 function addShortcutsToIframe() {
     var iframes = document.querySelectorAll('iframe');
     if (iframes.length !== 0) {
@@ -125,6 +127,9 @@ function addShortcutsToIframe() {
             hotkeys.setScope(scopeName);    
             // console.log('iframe' + (index + 1), iframe);
             addShortcuts(keyCommands, iframe.contentDocument, scopeName);
+            addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', function() {                
+                addTabsToIframe(scopeName, iframe, index, iframes); // est géré dans Constation.js dans la section TweakTabConsultation
+            });
         });
     }
 }
@@ -142,6 +147,7 @@ setTimeout(function() {
 }, 20);
 afterMutations(300, addAllShortcuts, "ajout raccourcis aux iframes"); // ajoute les raccourcis à toutes les iframes après chaque mutation du document
 // ne pas mettre moins de 300ms sinon les raccourcis s'ajoutent quand même de façon cumulative
+afterMutations(1000, addAllShortcuts, "ajout raccourcis aux iframes"); // 2e ajout car parfois fonctionne mal
 
 
 

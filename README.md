@@ -75,7 +75,7 @@ Ctrl+U	Upload le dernier fichier du dossier envoyé par le Companion
 Modification du comportement de la tabulation après recherche patient. Ctrl+P permet de l'imprimer.
 - Les questions de suivi sont automatiquement affublées d'un type.
 - Permet, après la saisie du nom d'un patient, d'être directement positionné sur son nom, puis de pouvoir naviguer de patient en patient avec la touche Tab (ou maj+Tab pour aller vers le haut)
-- Facilitation du remplissage des valeurs tensionnelles (ex. *'Poids' 75 [tab] 'TAS' 150 [tab] 'TAD' 80*) : dans la fenêtre de consultation, lorsque l'on rempli une valeur de suivi, la touche tabulation envoie directement vers la case suivante (plus besoin d'appuyer 4 fois)
+- Facilitation de la navigation via 'Tab' et 'Shift+Tab' pour naviguer entre les champs de texte et de suivi.
 - Retrait des suggestions des titres de consultation : dans les fenêtres contenant un Titre, désactive le panneau de suggestion (fenêtres d'ordonnance, consultation, certificat, prescription, formulaire, résultats d'examen).
 
 

@@ -2,6 +2,7 @@
 var defaultSettings = {
   'TweakImports': true,
   'TweakTabConsultation': true,
+  'FocusOnTitleInConsultation': false,
   'RemoveTitleSuggestions': true,
   'EnableHelp': true,
   'TweakTabSearchPatient': true,
