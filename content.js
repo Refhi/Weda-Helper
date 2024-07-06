@@ -740,3 +740,32 @@ addTweak('https://secure.weda.fr/FolderMedical/AntecedentForm.aspx', '*autoSelec
         elements[0].focus();
     });
 });
+
+
+// Ajout d'une icone d'imprimante dans les "Documents du cabinet"
+addTweak('https://secure.weda.fr/FolderTools/BiblioForm.aspx', '*addPrintIcon', function () {
+    let allElements = document.querySelectorAll('[id^="ContentPlaceHolder1_TreeViewBibliot"]');
+    let allElementsEndingWithI = Array.from(allElements).filter(element => element.id.endsWith('i'));
+    let filteredElementspdf = Array.from(allElementsEndingWithI).filter(element => {
+        let imgTags = element.querySelectorAll('img');
+        return Array.from(imgTags).some(img => img.getAttribute('src') === "../Images/Icons/pdf.gif");
+    });
+    console.log('filteredElementspdf', filteredElementspdf);
+
+    // Ajouter l'emoji d'imprimante à chaque élément filtré
+    filteredElementspdf.forEach(element => {
+        let printIcon = document.createElement('span');
+        printIcon.textContent = '🖨️'; // Utiliser l'emoji d'imprimante
+        printIcon.style.fontSize = '16px'; // Ajuster la taille si nécessaire
+        printIcon.style.marginLeft = '5px';
+        printIcon.style.position = 'relative';
+        printIcon.style.top = '-2px'; // Décaler de 2px vers le haut
+
+        // Ajouter un gestionnaire d'événements de clic sur l'icône d'imprimante
+        printIcon.addEventListener('click', function() {
+            printIfOption()
+        });
+
+        element.appendChild(printIcon);
+    });
+});
