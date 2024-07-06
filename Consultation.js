@@ -1,10 +1,75 @@
 // [Page de Consultation]
+// addTabsToIframe est appelé depuis keyCommands.js au moment où on injecte les raccourcis clavier via addShortcutsToIframe
+
+function removeHistoryIframe(iframes) {
+    iframes = Array.from(iframes).filter(iframe => !iframe.src.startsWith('https://secure.weda.fr/FolderMedical/FrameHistoriqueForm.aspx'));
+    return iframes;
+}
+
+function removeExceedingSpaces(iframe) {
+    function removeSpacesFromElement(element) {
+        // Si l'élément est un nœud de texte, remplacez les espaces insécables triples
+        if (element.nodeType === 3) {
+            element.nodeValue = element.nodeValue.replace(/\u00A0\u00A0\u00A0/g, "");
+        } else if (element.nodeType === 1) { // Si l'élément est un nœud d'élément, parcourez ses enfants
+            Array.from(element.childNodes).forEach(removeSpacesFromElement);
+        }
+    }
+
+    // Commencez par le corps du document dans l'iframe
+    removeSpacesFromElement(iframe.contentDocument.body);
+}
+
+function addTabsToIframe(scopeName, iframe, index, iframes) {
+    iframes = removeHistoryIframe(iframes);
+    addHotkeyToDocument(scopeName, iframe.contentDocument, 'tab', function() {
+        console.log('tab activé');
+        removeExceedingSpaces(iframe);
+        // focus on next iframe or specific element if it's the last iframe
+        if (index + 1 < iframes.length) {
+            recordMetrics({ clicks: 1, drags: 1 });
+            iframes[index + 1].focus();
+        } else {
+            // Si c'est le dernier iframe, mettre le focus sur l'élément spécifié
+            console.log('focus sur le premier élément de suivi');
+            document.querySelector('#ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_0').focus();
+        }
+    });
+
+    addHotkeyToDocument(scopeName, iframe.contentDocument, 'shift+tab', function() {
+        console.log('shift+tab activé');
+        removeExceedingSpaces(iframe);
+        // focus on previous iframe or specific element if it's the first iframe
+        if (index - 1 >= 0) {
+            recordMetrics({ clicks: 1, drags: 1 });
+            iframes[index - 1].focus();
+        } else {
+            // Si c'est le premier iframe, mettre le focus sur l'élément spécifié
+            document.querySelector('#TextBoxDocumentTitre').focus();
+        }
+    });
+}
+
 addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', function () {
+    let titleElement = document.querySelector('#TextBoxEvenementTitre');
+    titleElement.tabIndex = 1;
+    let subTitleElement = document.querySelector('#TextBoxDocumentTitre');
+    subTitleElement.tabIndex = 2;
+
+    var iframes = document.querySelectorAll('iframe');
+    iframes = removeHistoryIframe(iframes); // retirer les iframes d'historique qui n'on pas besoin de navigation par tabulation
+    let firstIframe = iframes[0];
+    firstIframe.tabIndex = 3;
+    let lastIframe = iframes[iframes.length - 1];
+    lastIframe.tabIndex = 4;
+
+
+
     // Modifier l'ordre de tabulation des valeurs de suivi    
     function changeTabOrder(elements) {
         console.log('changeTabOrder started');
         for (var i = 0; i < elements.length; i++) {
-            elements[i].tabIndex = i + 1;
+            elements[i].tabIndex = i + 1 + 4; // pour sauter les 4 premiers champs attribués plus haut
         }
     }
 
@@ -17,24 +82,16 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTab
     });
 });
 
-addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*CourbesPediatriques', function () {
-    // Modifier l'ordre de tabulation des valeurs de suivi    
-    function changeTabOrder(elements) {
-        console.log('changeTabOrder started');
-        for (var i = 0; i < elements.length; i++) {
-            elements[i].tabIndex = i + 1;
-        }
-    }
-
-    lightObserver('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]', function(elements) {
-        changeTabOrder(elements)
-        console.log('ConsultationFormTabOrderer started');
-        // ici aussi les métriques sont difficiles à évaluer. Si on considère environs
-        // 2 éléments par consultation, on peut estimer en gros à 1 clic + 1 drag par consultation
-        recordMetrics({ clicks: 1, drags: 1 });
+addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'FocusOnTitleInConsultation', function () {
+    let titleElement = document.querySelector('#TextBoxEvenementTitre');
+    afterMutations(300, () => {
+        titleElement.focus();
     });
+    recordMetrics({ clicks: 1, drags: 1 });
+});
 
 
+addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*CourbesPediatriques', function () {
     // Afficher en overlay une image issue d'une URL en cas de survol de certains éléments
     // Récupérer la liste des éléments présents dans le suivi
     let courbesPossibles = {

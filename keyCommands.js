@@ -117,34 +117,7 @@ function addShortcuts(keyCommands, scope, scopeName) {
     });
 }
 
-function removeExceedingSpaces(iframe) {
-    var element = iframe.contentDocument.body.querySelector('div:last-child');
-    if (element === null) {
-        element = iframe.contentDocument.body
-    }
-    var value = element.textContent;
-    element.textContent = value.replace("   ", "");
-}
 
-function addTabsToIframe(scopeName, iframe, index, iframes) {
-    addHotkeyToDocument(scopeName, iframe.contentDocument, 'tab', function() {
-        console.log('tab activé');
-        removeExceedingSpaces(iframe);
-        // focus on next iframe
-        if (index + 1 < iframes.length) {
-            iframes[index + 1].focus();
-        }
-    });
-
-    addHotkeyToDocument(scopeName, iframe.contentDocument, 'shift+tab', function() {
-        console.log('shift+tab activé');
-        removeExceedingSpaces(iframe);
-        // focus on previous iframe
-        if (index - 1 >= 0) {
-            iframes[index - 1].focus();
-        }
-    });
-}
 
 function addShortcutsToIframe() {
     var iframes = document.querySelectorAll('iframe');
@@ -154,8 +127,8 @@ function addShortcutsToIframe() {
             hotkeys.setScope(scopeName);    
             // console.log('iframe' + (index + 1), iframe);
             addShortcuts(keyCommands, iframe.contentDocument, scopeName);
-            addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*addTabNav', function() {
-                addTabsToIframe(scopeName, iframe, index, iframes);
+            addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', function() {                
+                addTabsToIframe(scopeName, iframe, index, iframes); // est géré dans Constation.js dans la section TweakTabConsultation
             });
         });
     }
