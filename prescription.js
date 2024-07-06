@@ -263,7 +263,7 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function() {
         var type = 0; //biologie par défaut
         let infirmierRegex = /IDE|infirmier|pansement|injection/i;
         let kineRegex = /kiné|kine|kinésithérapie|kinesitherapie|MKDE|kinesitherapeute|kinesithérapeute/i;
-        let pedicureRegex = /pédicure|pedicure|podologie|podologique|podologue/i;
+        let pedicureRegex = /pédicure|pedicure|podologie|podologique|podologue|semelle|orthoplastie/i;
         let orthophonieRegex = /orthophonie|orthophonique|orthophoniste/i;
         let orthoptieRegex = /orthoptie|orthoptique|orthoptiste/i;
 
