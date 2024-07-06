@@ -27,6 +27,7 @@ Cf. ci-dessous pour les retours et les contributions.
     - [AT](#at)
     - [Métrique](#métrique)
     - [Courriers](#courriers)
+    - [Documents du cabinet](#documents-du-cabinet)
   - [Facilitation des imports](#facilitation-des-imports)
   - [Weda-Helper-Companion](#weda-helper-companion)
   - [Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):](#problèmes-et-limitations-connues-qui-seront-peut-être-résolues-dans-de-futures-mises-à-jour)
@@ -132,6 +133,9 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Courriers
 - le type de document pour l'envoi au DMP est automatiquemnt sauvegardé d'une fois sur l'autre.
+
+### Documents du cabinet
+- ajout d'un bouton permettant l'impression directe d'un PDF
 
 
 
