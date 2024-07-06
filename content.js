@@ -262,10 +262,10 @@ function testCompanion() {
             if (result.promptCompanionMessage !== false) {
                 // Demander à l'utilisateur s'il souhaite activer RemoveLocalCompanionPrint
                 const choixUtilisateur = confirm("[Weda Helper] : Le Companion est bien détecté, mais les options de lien sont désactivées. Cliquez sur ok pour activer l'impression automatique ou allez dans les options de Weda Helper pour le TPE. Cliquez sur annuler pour ignorer définitivement ce message.");
-                
+
                 if (choixUtilisateur) {
                     // Si l'utilisateur confirme, activer RemoveLocalCompanionPrint
-                    chrome.storage.local.set({'RemoveLocalCompanionPrint': false});
+                    chrome.storage.local.set({ 'RemoveLocalCompanionPrint': false });
                     alert("Le lien avec l'imprimate a été activé. Pensez à définir acrobat reader ou équivalent comme lecteur par défaut. Vous pouvez désactiver cette fonctionnalité dans les options de Weda Helper");
                 } else {
                     // Si l'utilisateur refuse, ne rien faire ou afficher un message
@@ -282,7 +282,7 @@ function testCompanion() {
         sendToCompanion('', null, (isPresent) => {
             if (isPresent) {
                 console.log('Companion présent');
-                getOption(['RemoveLocalCompanionPrint','RemoveLocalCompanionTPE'], function ([RemoveLocalCompanionPrint, RemoveLocalCompanionTPE]) {
+                getOption(['RemoveLocalCompanionPrint', 'RemoveLocalCompanionTPE'], function ([RemoveLocalCompanionPrint, RemoveLocalCompanionTPE]) {
                     console.log('Remove Companion print =', RemoveLocalCompanionPrint)
                     console.log('Remove Companion TPE =', RemoveLocalCompanionTPE)
                     if (RemoveLocalCompanionPrint && RemoveLocalCompanionTPE) {
@@ -297,7 +297,7 @@ function testCompanion() {
                 console.log('Companion non présent');
             }
         }, null, true)
-    , 1000); // vérification de la présence du Companion après 1s
+        , 1000); // vérification de la présence du Companion après 1s
 }
 testCompanion();
 
@@ -744,28 +744,31 @@ addTweak('https://secure.weda.fr/FolderMedical/AntecedentForm.aspx', '*autoSelec
 
 // Ajout d'une icone d'imprimante dans les "Documents du cabinet"
 addTweak('https://secure.weda.fr/FolderTools/BiblioForm.aspx', '*addPrintIcon', function () {
-    let allElements = document.querySelectorAll('[id^="ContentPlaceHolder1_TreeViewBibliot"]');
-    let allElementsEndingWithI = Array.from(allElements).filter(element => element.id.endsWith('i'));
-    let filteredElementspdf = Array.from(allElementsEndingWithI).filter(element => {
-        let imgTags = element.querySelectorAll('img');
-        return Array.from(imgTags).some(img => img.getAttribute('src') === "../Images/Icons/pdf.gif");
-    });
-    console.log('filteredElementspdf', filteredElementspdf);
-
-    // Ajouter l'emoji d'imprimante à chaque élément filtré
-    filteredElementspdf.forEach(element => {
-        let printIcon = document.createElement('span');
-        printIcon.textContent = '🖨️'; // Utiliser l'emoji d'imprimante
-        printIcon.style.fontSize = '16px'; // Ajuster la taille si nécessaire
-        printIcon.style.marginLeft = '5px';
-        printIcon.style.position = 'relative';
-        printIcon.style.top = '-2px'; // Décaler de 2px vers le haut
-
-        // Ajouter un gestionnaire d'événements de clic sur l'icône d'imprimante
-        printIcon.addEventListener('click', function() {
-            printIfOption()
+    function addPrintIcon() {
+        let allElements = document.querySelectorAll('[id^="ContentPlaceHolder1_TreeViewBibliot"]');
+        let allElementsEndingWithI = Array.from(allElements).filter(element => element.id.endsWith('i'));
+        let filteredElementspdf = Array.from(allElementsEndingWithI).filter(element => {
+            let imgTags = element.querySelectorAll('img');
+            return Array.from(imgTags).some(img => img.getAttribute('src') === "../Images/Icons/pdf.gif");
         });
+        console.log('filteredElementspdf', filteredElementspdf);
 
-        element.appendChild(printIcon);
-    });
+        // Ajouter l'emoji d'imprimante à chaque élément filtré
+        filteredElementspdf.forEach(element => {
+            let printIcon = document.createElement('span');
+            printIcon.textContent = '🖨️'; // Utiliser l'emoji d'imprimante
+            printIcon.style.fontSize = '16px'; // Ajuster la taille si nécessaire
+            printIcon.style.marginLeft = '5px';
+            printIcon.style.position = 'relative';
+            printIcon.style.top = '-2px'; // Décaler de 2px vers le haut
+
+            // Ajouter un gestionnaire d'événements de clic sur l'icône d'imprimante
+            printIcon.addEventListener('click', function () {
+                printIfOption()
+            });
+
+            element.appendChild(printIcon);
+        });
+    }
+    lightObserver('[id^="ContentPlaceHolder1_TreeViewBibliot"]', addPrintIcon);
 });
