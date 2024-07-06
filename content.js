@@ -685,7 +685,8 @@ addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeUn
 
 
 
-// Sélection automatique du type de document pour les courriers envoyés au DMP
+// // Sélection automatique du type de document pour les courriers envoyés au DMP
+// Au moment de l'impression des courriers
 addTweak('https://secure.weda.fr/FolderMedical/CourrierForm.aspx', '*autoDocTypeSelection', function () {
     let dropDownMenu = document.querySelector('#ContentPlaceHolder1_DropDownListDocumentTypes');
     function watchDocumentTypeCourrierDMP() {
@@ -707,6 +708,31 @@ addTweak('https://secure.weda.fr/FolderMedical/CourrierForm.aspx', '*autoDocType
     watchDocumentTypeCourrierDMP();
 });
 
+// Si on envoie un pdf considéré comme un courrier dans Weda :
+addTweak('https://secure.weda.fr/FolderMedical/DMP/view', '*autoDocTypeSelectionPDFUpload', function () {
+    // fonction permettant de surveiller un éventuel changement de choix dans le menu déroulant
+    function watchDocumentTypeCourrierPDFDMP(menuASurveiller) {
+        menuASurveiller.addEventListener('change', function () {
+            console.log('[autoDocTypeSelectionPDFUpload] Nouvelle valeur par défaut enregistrée :', this.value);
+            chrome.storage.local.set({ 'selectedDocumentTypeCourrierPDFDMP': this.value });
+        });
+    }
+
+    const listeChoixTypeDMP = document.querySelector('#form1 > div:nth-child(11) > div > div.patientDmpContainer > dmp-container > div > div.frameContent > dmp-main > dmp-share-document > div > div > div > div.fieldContainer > select');
+    watchDocumentTypeCourrierPDFDMP(listeChoixTypeDMP);
+
+    const choixActuelTypeDMP = listeChoixTypeDMP.value;
+
+    if (choixActuelTypeDMP === '11490-0') {
+        console.log('[autoDocTypeSelectionPDFUpload] choix type courrier défaut détecté, je change pour le dernier choix enregistré');
+        chrome.storage.local.get('selectedDocumentTypeCourrierPDFDMP', function (result) {
+            let selectedDocumentTypeCourrierPDFDMP = result.selectedDocumentTypeCourrierPDFDMP;
+            if (selectedDocumentTypeCourrierPDFDMP) {
+                listeChoixTypeDMP.value = selectedDocumentTypeCourrierPDFDMP;
+            }
+        });
+    }
+});
 
 // Sélection automatique du champ "titre" lors de la création d'un antécédent.
 addTweak('https://secure.weda.fr/FolderMedical/AntecedentForm.aspx', '*autoSelectTitleField', function () {
