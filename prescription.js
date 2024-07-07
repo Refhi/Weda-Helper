@@ -6,16 +6,16 @@ let PrescriptionForm = window.location.href.startsWith(prescriptionUrl);
 if (PrescriptionForm) {
     var isFirstCall = true;
     var firstCallTimeStamp = Date.now();
-    chrome.storage.local.set({medSearchText: ''});
+    chrome.storage.local.set({ medSearchText: '' });
     // maintient le texte d'un type de recherche à l'autre et ajoute des boutons de recherche
-    getOption(['keepMedSearch', 'addMedSearchButtons'], function([keepMedSearch, addMedSearchButtons]) {        
+    getOption(['keepMedSearch', 'addMedSearchButtons'], function ([keepMedSearch, addMedSearchButtons]) {
         console.log('keepMedSearch', keepMedSearch, 'addMedSearchButtons', addMedSearchButtons);
 
         function storeSearchSelection() {
             var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
             if (inputField) {
                 console.log('Le texte de recherche actuel est ', inputField.value, 'je le stocke localement suite à sa modification');
-                chrome.storage.local.set({medSearchText: inputField.value});
+                chrome.storage.local.set({ medSearchText: inputField.value });
             } else {
                 console.log('Le champ d\'entrée n\'a pas été trouvé');
             }
@@ -23,12 +23,12 @@ if (PrescriptionForm) {
 
         function searchTextKeeper() {
             // il semble nécessaire de répéter la recherche de l'élément pour éviter les erreurs
-            lightObserver('#ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack', function() {
+            lightObserver('#ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack', function () {
                 var searchTextField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
                 if (searchTextField) {
                     console.log('searchTextKeeper started sur ', searchTextField);
                     if (!searchTextField.getAttribute('data-hasListener')) { // éviter d'ajouter plusieurs écouteurs
-                        searchTextField.addEventListener('input', function() {
+                        searchTextField.addEventListener('input', function () {
                             // Stocker la valeur de inputField dans medSearchText lorsque le texte est modifié
                             storeSearchSelection();
                         });
@@ -49,7 +49,7 @@ if (PrescriptionForm) {
 
             // Obtenez la valeur actuelle du menu déroulant
             var medSearchSelectionCurrent = selectMenu.value;
-            chrome.storage.local.get(['medSearchSelection', 'medSearchText'], function(result) {
+            chrome.storage.local.get(['medSearchSelection', 'medSearchText'], function (result) {
                 var medSearchSelection = result.medSearchSelection;
                 var medSearchText = result.medSearchText;
                 // Si la valeur stockée localement est différente de la valeur actuelle
@@ -69,13 +69,13 @@ if (PrescriptionForm) {
             if (savedValue !== undefined) {
                 console.log('typeText started with savedValue', savedValue);
                 var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
-                setTimeout(function() {
+                setTimeout(function () {
                     inputField.value = savedValue;
                     const keyStrokes = savedValue.length;
-                    recordMetrics({keyStrokes: keyStrokes});
+                    recordMetrics({ keyStrokes: keyStrokes });
                     var button = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_ButtonFind');
                     button.click();
-                    recordMetrics({clicks: 1, drags: 1});
+                    recordMetrics({ clicks: 1, drags: 1 });
                 }, 10);
             }
         }
@@ -100,18 +100,18 @@ if (PrescriptionForm) {
             var parentElement = selectMenu.parentElement;
 
             function makeOnClickFunction(value) {
-                return function() {
+                return function () {
                     console.log('boutonRecherche-' + value, 'cliqué');
                     storeSearchSelection();
                     selectMenu.value = value;
                 };
             }
 
-            var optionsBoutonRecherche = Object.keys(dropDownList).map(function(key) {
+            var optionsBoutonRecherche = Object.keys(dropDownList).map(function (key) {
                 return 'boutonRecherche-' + key;
             });
 
-            chrome.storage.local.get(optionsBoutonRecherche, function(result) {
+            chrome.storage.local.get(optionsBoutonRecherche, function (result) {
                 for (var key in dropDownList) {
                     // Ajoutez le préfixe à la clé avant de vérifier l'option
                     var storageKey = 'boutonRecherche-' + key;
@@ -121,12 +121,12 @@ if (PrescriptionForm) {
                     if (result[storageKey] === true || (result[storageKey] === undefined && defautOptions.includes(storageKey))) {
                         // Ajoutez un identifiant unique à chaque bouton
                         var buttonId = 'button-search-' + key;
-                
+
                         // Vérifiez si un bouton avec cet identifiant existe déjà
                         if (document.getElementById(buttonId)) {
                             continue; // Si c'est le cas, passez à la prochaine itération de la boucle
                         }
-                
+
                         var button = document.createElement('button');
                         button.id = buttonId; // Attribuez l'identifiant au bouton
                         button.textContent = dropDownList[key].shortText;
@@ -172,9 +172,9 @@ if (PrescriptionForm) {
 
 }
 
-addTweak(prescriptionUrl, 'autoOpenOrdoType', function() {
+addTweak(prescriptionUrl, 'autoOpenOrdoType', function () {
     document.getElementById('ContentPlaceHolder1_ButtonPrescritionType').click();
-    lightObserver("#ContentPlaceHolder1_BaseGlossaireUCForm2_UpdatePanelDocument", function() {
+    lightObserver("#ContentPlaceHolder1_BaseGlossaireUCForm2_UpdatePanelDocument", function () {
         var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
         if (inputField) {
             inputField.focus();
@@ -183,7 +183,7 @@ addTweak(prescriptionUrl, 'autoOpenOrdoType', function() {
 });
 
 
-addTweak(prescriptionUrl, 'KeyPadPrescription', function() {
+addTweak(prescriptionUrl, 'KeyPadPrescription', function () {
     var index = {
         '0': 'SetQuantite(0);',
         '1': 'SetQuantite(1);',
@@ -197,7 +197,7 @@ addTweak(prescriptionUrl, 'KeyPadPrescription', function() {
         '9': 'SetQuantite(9);',
         '/': 'SetQuantite(\'/\');',
         '.': 'SetQuantite(\',\');',
-        ',' : 'SetQuantite(\',\');',
+        ',': 'SetQuantite(\',\');',
         'Backspace': 'AnnulerQuantite();',
         'à': 'SetQuantite(\' à \');',
     };
@@ -213,52 +213,74 @@ addTweak(prescriptionUrl, 'KeyPadPrescription', function() {
 
 
 // autoclique le bouton de consentement de l'ordonnance numérique
-addTweak([demandeUrl, prescriptionUrl], 'autoConsentNumPres', function() {
-    lightObserver('.cdk-overlay-container .mat-radio-label', function(elements) {
+addTweak([demandeUrl, prescriptionUrl], 'autoConsentNumPres', function () {
+    lightObserver('.cdk-overlay-container .mat-radio-label', function (elements) {
         // console.log('[debug].cdk-overlay-container .mat-radio-label', elements);
         elements[0].click();
-        recordMetrics({clicks: 1, drags: 1});
+        recordMetrics({ clicks: 1, drags: 1 });
     });
 });
 
 
 // Selectionne automatiquement l'ordonnance numérique sur les pages souhaitées
-// pas vraiment possible d'utiliser addTweak ici car on est à cheval entre deux pages et deux options...
-addTweak([demandeUrl, prescriptionUrl], '*NumPres', function() {
-    function changeCheckBoxViaClick(valueRequested) {
-        console.log('changeCheckBoxViaClick started');
-        var checkbox = document.getElementById('ContentPlaceHolder1_EvenementUcForm1_CheckBoxEPrescription');
-        if (checkbox) {
-            console.log('checkbox checked', checkbox.checked, 'valueRequested', valueRequested);
-            if (checkbox.checked !== valueRequested) {
-                checkbox.click();
-                recordMetrics({clicks: 1, drags: 1});
+// pas vraiment possible d'utiliser addTweak correctement ici car on est à cheval entre deux pages et deux options...
+addTweak([demandeUrl, prescriptionUrl], '*NumPres', function () {
+    getOption(['NumPresDemande', 'NumPresPrescription'], function ([NumPresDemande, NumPresPrescription]) {
+        let checkboxInitiale = document.getElementById('ContentPlaceHolder1_EvenementUcForm1_CheckBoxEPrescription');
+        let ordoNumeriquePreCoche = checkboxInitiale && checkboxInitiale.checked;
+
+        function changeCheckBoxViaClick(valueRequested) {
+            console.log('changeCheckBoxViaClick started');
+            var checkbox = document.getElementById('ContentPlaceHolder1_EvenementUcForm1_CheckBoxEPrescription');
+            if (checkbox) {
+                console.log('checkbox checked', checkbox.checked, 'valueRequested', valueRequested);
+                if (checkbox.checked !== valueRequested) {
+                    checkbox.click();
+                    recordMetrics({ clicks: 1, drags: 1 });
+                }
+            } else {
+                console.log('checkbox non trouvé');
             }
-        } else {
-            console.log(logContext, 'checkbox non trouvé');
         }
-    }
-    getOption(['NumPresDemande', 'NumPresPrescription'], function([NumPresDemande, NumPresPrescription]) {
-        if (NumPresDemande || NumPresPrescription ) {
+
+        function uncheckSiImagerie() { // n'est appelé que si l'ordo numérique est demandée ou déjà cochée
+            let imagerieElement = document.querySelector('#ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio');
+            if (imagerieElement && imagerieElement.style.color.toLowerCase() === 'red') {
+                changeCheckBoxViaClick(false);
+            } else {
+                changeCheckBoxViaClick(true);
+            }
+        }
+
+        if (NumPresDemande || NumPresPrescription) {
             console.log('NumPresDemande', NumPresDemande, 'NumPresPrescription', NumPresPrescription);
             if (DemandeForm) {
                 changeCheckBoxViaClick(NumPresDemande);
+                if (NumPresDemande) {
+                    addTweak('*', 'uncheckDMPIfImagerie', function () {
+                        lightObserver('#ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio', uncheckSiImagerie);
+                    });
+                }
             } else if (PrescriptionForm) {
                 changeCheckBoxViaClick(NumPresPrescription);
             }
+        } else if (ordoNumeriquePreCoche && DemandeForm) {
+            addTweak('*', 'uncheckDMPIfImagerie', function () {
+                lightObserver('#ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio', uncheckSiImagerie);
+            });
         }
     });
 });
 
 // Selectionne automatiquement le type de prescription
-addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function() {
-    lightObserver('#prescriptionType div', function(element) {
+addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
+    lightObserver('#prescriptionType div', function (element) {
         console.log('menu déroulant trouvé, je clique dessus', element);
         element[0].click();
-        recordMetrics({clicks: 1,drags: 1});
+        recordMetrics({ clicks: 1, drags: 1 });
     });
 
-    lightObserver('#prescriptionType-panel mat-option .mat-option-text', function(elements) {
+    lightObserver('#prescriptionType-panel mat-option .mat-option-text', function (elements) {
         console.log('options trouvées', elements);
         var type = 0; //biologie par défaut
         let infirmierRegex = /IDE|infirmier|pansement|injection/i;
@@ -281,6 +303,6 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function() {
             type = 5;
 
         elements[type].click();
-        recordMetrics({clicks: 1,drags: 1});
+        recordMetrics({ clicks: 1, drags: 1 });
     });
 });
