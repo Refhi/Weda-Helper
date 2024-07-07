@@ -37,6 +37,7 @@ var defaultSettings = {
   'TweakFSEDetectMT' : false,
   'TweakFSEGestionUnique': false,
   'TweakFSEAccident': false,
+  'TweakSCORDegradee': false,
   'autoSelectPatientCV': true,
   'WarpButtons': true,
   'autoSelectTypeOrdoNum': true,

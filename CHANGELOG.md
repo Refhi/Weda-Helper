@@ -14,6 +14,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#123](https://github.com/Refhi/Weda-Helper/issues/123) - mise à jour des textes explicatifs au sujet de la configuration du Companion.
 - [#179](https://github.com/Refhi/Weda-Helper/issues/179) - décoche automatiquement la case "ordonnance numérique" si on fait une Demande d'Imagerie
 - [#137](https://github.com/Refhi/Weda-Helper/issues/137) - valider automatiquement une prescription de médicament
+- [#99](https://github.com/Refhi/Weda-Helper/issues/99) - sélection automatique du type de document "FSE dégradée" lors de l'import d'une PJ SCOR
 
 ## fix :
 - [#171](https://github.com/Refhi/Weda-Helper/issues/171) - Correction d'un bug dans la fonction "Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée" qui décochait le document joint dans certains cas

@@ -390,4 +390,17 @@ fseTable.forEach(tweak => {
     addTweak(fseUrl, tweak.option, tweak.callBack);
 });
 
+addTweak('https://secure.weda.fr/vitalzen/gestion.aspx', 'TweakSCORDegradee', function () {
+    lightObserver('mat-select[name=selectedType]', function (element) {
+        console.log('menu déroulant trouvé, je clique dessus', element);
+        element[0].click();
+        recordMetrics({ clicks: 1, drags: 1 });
+    });
+
+    lightObserver('#mat-select-8-panel mat-option .mat-option-text', function (elements) {
+        console.log('options trouvées', elements);
+        elements[0].click();
+        recordMetrics({ clicks: 1, drags: 1 });
+    });
+});
 
