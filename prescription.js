@@ -182,6 +182,22 @@ addTweak(prescriptionUrl, 'autoOpenOrdoType', function () {
     });
 });
 
+addTweak(prescriptionUrl, 'AlertOnMedicationInteraction', function () {
+    lightObserver("div.imgInter4", function (elements) { //Déclenché en cas de présence d'une contre-indication absolue
+        var interactions = [];
+        for (element of elements) {
+            if(!interactions.includes(element.title)) {
+                interactions.push(element.title);
+               var interactionDiv = document.createElement("div");
+                interactionDiv.style="padding: .75rem 1.25rem; color: #721c24; background-color: #f8d7da; border-color: #f5c6cb; border: 1px solid transparent; border-radius: .25rem; margin-bottom: 1rem; margin-top: 1rem;"
+               interactionDiv.textContent = element.title;
+                let node = document.getElementById('ContentPlaceHolder1_PrescriptionsGrid');
+                let parentNode = node.parentNode;
+                parentNode.insertBefore(interactionDiv, node);
+            }
+        }
+    });
+});
 
 addTweak(prescriptionUrl, 'KeyPadPrescription', function () {
     var index = {

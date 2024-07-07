@@ -15,6 +15,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#179](https://github.com/Refhi/Weda-Helper/issues/179) - décoche automatiquement la case "ordonnance numérique" si on fait une Demande d'Imagerie
 - [#137](https://github.com/Refhi/Weda-Helper/issues/137) - valider automatiquement une prescription de médicament
 - [#99](https://github.com/Refhi/Weda-Helper/issues/99) - sélection automatique du type de document "FSE dégradée" lors de l'import d'une PJ SCOR
+- [#182](https://github.com/Refhi/Weda-Helper/issues/182) - affichage d'un message d'alerte en cas de contre-indication médicamenteuse absolue
 
 ## fix :
 - [#171](https://github.com/Refhi/Weda-Helper/issues/171) - Correction d'un bug dans la fonction "Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée" qui décochait le document joint dans certains cas

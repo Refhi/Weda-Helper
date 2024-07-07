@@ -55,6 +55,7 @@ var defaultSettings = {
   'MoveHistoriqueToLeft_Formulaire': false,
   'ShowExplanatoryText': true,
   'autoOpenOrdoType': false,
+  'AlertOnMedicationInteraction': true,
   'defautDataType': 'TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%',
   'autoATCD': false,
   'secureExchangeAutoRefresh': true,
