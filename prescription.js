@@ -223,7 +223,7 @@ addTweak([demandeUrl, prescriptionUrl], 'autoConsentNumPres', function() {
 
 
 // Selectionne automatiquement l'ordonnance numérique sur les pages souhaitées
-// pas vraiment possible d'utiliser addTweak ici car on est à cheval entre deux pages et deux options...
+// pas vraiment possible d'utiliser addTweak correctement ici car on est à cheval entre deux pages et deux options...
 addTweak([demandeUrl, prescriptionUrl], '*NumPres', function() {
     function changeCheckBoxViaClick(valueRequested) {
         console.log('changeCheckBoxViaClick started');
@@ -242,9 +242,18 @@ addTweak([demandeUrl, prescriptionUrl], '*NumPres', function() {
         if (NumPresDemande || NumPresPrescription ) {
             console.log('NumPresDemande', NumPresDemande, 'NumPresPrescription', NumPresPrescription);
             if (DemandeForm) {
+                function uncheckSiImagerie() {
+                    let imagerieElement = document.querySelector('#ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio');
+                    if (imagerieElement && imagerieElement.style.color.toLowerCase() === 'red') {
+                        changeCheckBoxViaClick(false);
+                    } else {
+                        changeCheckBoxViaClick(NumPresDemande);
+                    }
+                }
                 changeCheckBoxViaClick(NumPresDemande);
-            } else if (PrescriptionForm) {
-                changeCheckBoxViaClick(NumPresPrescription);
+                addTweak('*', 'uncheckDMPIfImagerie', function() {
+                    lightObserver('#ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio', uncheckSiImagerie);
+                });
             }
         }
     });

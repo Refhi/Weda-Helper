@@ -102,6 +102,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - Permet aussi de cocher automatiquement le consentement des patients. Attention vous êtes toujours tenu de demander l'autorisation au patient systématiquement.
 - le type "Biologie" se sélectionne automatiquement lors d'une prescription numérique type "Demande"
 - Sélection automatique du type d'ordonnance numérique quand il s'agit d'une Demande, et qu'un mot-clé est détecté (cf. https://github.com/Refhi/Weda-Helper/blob/main/CHANGELOG.md pour le détail des mots-clés)
+- "Ordonnance numérique" se décoche automatiquement si on sélection une Demande d'Imagerie.
 
 
 ## Feuilles de soin

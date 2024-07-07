@@ -43,6 +43,7 @@ var defaultSettings = {
   'autoConsentNumPres': false,
   'NumPresPrescription': false,
   'NumPresDemande': false,
+  'uncheckDMPIfImagerie': true,
   'postPrintBehavior': 'closePreview', // boutons radio
   'MoveHistoriqueToLeft': true,
   'MoveHistoriqueToLeft_Consultation': true,
