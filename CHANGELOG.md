@@ -18,6 +18,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 
 ## fix :
 - [#171](https://github.com/Refhi/Weda-Helper/issues/171) - Correction d'un bug dans la fonction "Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée" qui décochait le document joint dans certains cas
+- Correction de l'option "Cocher automatiquement la case "Réaliser une FSE en gestion unique" pour les patients C2S" qui ne fonctionnait plus
 
 
 # [2.4.2] - 01/07/2024
