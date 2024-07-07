@@ -218,6 +218,14 @@ addTweak([demandeUrl, prescriptionUrl], 'autoConsentNumPres', function () {
         // console.log('[debug].cdk-overlay-container .mat-radio-label', elements);
         elements[0].click();
         recordMetrics({ clicks: 1, drags: 1 });
+        if(PrescriptionForm) {
+            getOption('autoValidateOrdoNum', function(autoValidateOrdoNum) {
+                if (autoValidateOrdoNum) {
+                    document.querySelector('.cdk-overlay-container .mat-raised-button[type="submit"]').click();
+                    recordMetrics({ clicks: 1, drags: 1 });
+                }
+            });
+        }
     });
 });
 
