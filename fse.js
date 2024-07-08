@@ -361,9 +361,12 @@ let fseTable =
             option: 'TweakFSEGestionUnique',
             callBack: function() {
                 lightObserver('label[for=mat-checkbox-11-input] > span.mat-checkbox-inner-container.mat-checkbox-inner-container-no-side-margin > input', function(element) {
-                    console.log('Gestion unique activée clic sur element', element);
-                    element[0].click();
-                    recordMetrics({clicks: 1, drags: 1});
+                    if(element[0].parentElement.parentElement.parentElement.parentElement.parentElement.textContent.includes('Réaliser une FSE en gestion unique')) //Fix un peu sale
+                    {
+                        console.log('Gestion unique activée clic sur element', element);
+                        element[0].click();
+                        recordMetrics({clicks: 1, drags: 1});
+                    }
                 });
             }
         },
