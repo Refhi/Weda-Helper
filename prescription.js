@@ -233,6 +233,13 @@ addTweak([demandeUrl, prescriptionUrl], 'autoConsentNumPres', function () {
     });
 });
 
+function isElementSelected(elementid) {
+    element = document.getElementById(elementid);
+    if(element && element.style.color.toLowerCase() === 'red' && element.style.fontWeight.toLowerCase() == 'bold')
+        return true;
+    else
+        return false;
+}
 
 // Selectionne automatiquement l'ordonnance numérique sur les pages souhaitées
 // pas vraiment possible d'utiliser addTweak correctement ici car on est à cheval entre deux pages et deux options...
@@ -256,8 +263,7 @@ addTweak([demandeUrl, prescriptionUrl], '*NumPres', function () {
         }
 
         function uncheckSiImagerie() { // n'est appelé que si l'ordo numérique est demandée ou déjà cochée
-            let imagerieElement = document.querySelector('#ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio');
-            if (imagerieElement && imagerieElement.style.color.toLowerCase() === 'red') {
+            if (isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio')) {
                 changeCheckBoxViaClick(false);
             } else {
                 changeCheckBoxViaClick(true);
@@ -292,47 +298,40 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
         recordMetrics({ clicks: 1, drags: 1 });
     });
 
-    function isBiologie()
-    {
-        let biologieElement = document.querySelector('#ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILAnalyses');
-            if (biologieElement && biologieElement.style.color.toLowerCase() === 'red') {
-                return true;
-            }
-            else {
-                return false;
-            }
-    }
-
     lightObserver('#prescriptionType-panel mat-option .mat-option-text', function (elements) {
         console.log('options trouvées', elements);
-        var type = -1; //pas de type par défaut
-        let infirmierRegex = /IDE|infirmier|pansement|injection/i;
-        let kineRegex = /kiné|kine|kinésithérapie|kinesitherapie|MKDE|kinesitherapeute|kinesithérapeute/i;
-        let pedicureRegex = /pédicure|pedicure|podologie|podologique|podologue|semelle|orthoplastie/i;
-        let orthophonieRegex = /orthophonie|orthophonique|orthophoniste/i;
-        let orthoptieRegex = /orthoptie|orthoptique|orthoptiste/i;
+        setTimeout(function() { //Ajout d'un timer car l'iframe de contenu de l'ordonnance se recharge à l'impression
+            var type = -1; //non définit
+            if (isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILKine')) { //Ordonnance Paramédicale
+                let infirmierRegex = /\bIDE\b|infirmier|pansement|injection/i;
+                let kineRegex = /\bkiné\b|\bkine\b|kinésithérapie|kinesitherapie|MKDE|kinesitherapeute|kinesithérapeute/i;
+                let pedicureRegex = /pédicure|pedicure|podologie|podologique|podologue|semelle|orthoplastie/i;
+                let orthophonieRegex = /orthophonie|orthophonique|orthophoniste/i;
+                let orthoptieRegex = /orthoptie|orthoptique|orthoptiste/i;
 
-        let demandeContent = document.querySelector("#CE_ContentPlaceHolder1_EditorPrescription_ID_Frame").contentWindow.document.body.innerText;
+                let demandeContent = document.querySelector("#CE_ContentPlaceHolder1_EditorPrescription_ID_Frame").contentWindow.document.body.innerText;
 
-        if (infirmierRegex.test(demandeContent))
-            type = 1;
-        else if (kineRegex.test(demandeContent))
-            type = 2;
-        else if (orthophonieRegex.test(demandeContent))
-            type = 3;
-        else if (orthoptieRegex.test(demandeContent))
-            type = 4;
-        else if (pedicureRegex.test(demandeContent))
-            type = 5;
-        else if (isBiologie())
-            type = 0;
+                if (infirmierRegex.test(demandeContent))
+                    type = 1;
+                else if (kineRegex.test(demandeContent))
+                    type = 2;
+                else if (orthophonieRegex.test(demandeContent))
+                    type = 3;
+                else if (orthoptieRegex.test(demandeContent))
+                    type = 4;
+                else if (pedicureRegex.test(demandeContent))
+                    type = 5;
+            }
+        
+            else if (isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILAnalyses')) //Ordonnance de laboratoire
+                type = 0;
 
-        if(type != -1)
-        {
-            elements[type].click();
-            recordMetrics({ clicks: 1, drags: 1 });
-
-            validateOrdoNumIfOptionActivated();
-        }
+            if(type != -1) {
+                elements[type].click();
+                recordMetrics({ clicks: 1, drags: 1 });
+                validateOrdoNumIfOptionActivated();
+            }
+        }, 200);
+        
     });
 });
