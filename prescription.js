@@ -211,6 +211,14 @@ addTweak(prescriptionUrl, 'KeyPadPrescription', function () {
     });
 });
 
+function validateOrdoNumIfOptionActivated() {
+    getOption('autoValidateOrdoNum', function(autoValidateOrdoNum) {
+        if (autoValidateOrdoNum) {
+            document.querySelector('.cdk-overlay-container .mat-raised-button[type="submit"]').click();
+            recordMetrics({ clicks: 1, drags: 1 });
+        }
+    });
+}
 
 // autoclique le bouton de consentement de l'ordonnance numérique
 addTweak([demandeUrl, prescriptionUrl], 'autoConsentNumPres', function () {
@@ -218,13 +226,9 @@ addTweak([demandeUrl, prescriptionUrl], 'autoConsentNumPres', function () {
         // console.log('[debug].cdk-overlay-container .mat-radio-label', elements);
         elements[0].click();
         recordMetrics({ clicks: 1, drags: 1 });
-        if(PrescriptionForm) {
-            getOption('autoValidateOrdoNum', function(autoValidateOrdoNum) {
-                if (autoValidateOrdoNum) {
-                    document.querySelector('.cdk-overlay-container .mat-raised-button[type="submit"]').click();
-                    recordMetrics({ clicks: 1, drags: 1 });
-                }
-            });
+
+        if(PrescriptionForm) { //Pas de selection du type de l'ordonnance donc on valide une fois le consentement coché
+            validateOrdoNumIfOptionActivated();
         }
     });
 });
@@ -288,9 +292,20 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
         recordMetrics({ clicks: 1, drags: 1 });
     });
 
+    function isBiologie()
+    {
+        let biologieElement = document.querySelector('#ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILAnalyses');
+            if (biologieElement && biologieElement.style.color.toLowerCase() === 'red') {
+                return true;
+            }
+            else {
+                return false;
+            }
+    }
+
     lightObserver('#prescriptionType-panel mat-option .mat-option-text', function (elements) {
         console.log('options trouvées', elements);
-        var type = 0; //biologie par défaut
+        var type = -1; //pas de type par défaut
         let infirmierRegex = /IDE|infirmier|pansement|injection/i;
         let kineRegex = /kiné|kine|kinésithérapie|kinesitherapie|MKDE|kinesitherapeute|kinesithérapeute/i;
         let pedicureRegex = /pédicure|pedicure|podologie|podologique|podologue|semelle|orthoplastie/i;
@@ -309,8 +324,15 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
             type = 4;
         else if (pedicureRegex.test(demandeContent))
             type = 5;
+        else if (isBiologie())
+            type = 0;
 
-        elements[type].click();
-        recordMetrics({ clicks: 1, drags: 1 });
+        if(type != -1)
+        {
+            elements[type].click();
+            recordMetrics({ clicks: 1, drags: 1 });
+
+            validateOrdoNumIfOptionActivated();
+        }
     });
 });

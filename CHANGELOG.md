@@ -13,7 +13,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#119](https://github.com/Refhi/Weda-Helper/issues/119) - ajout d'un bouton pour imprimer directement les pdfs présents dans les "documents du cabinet medical"
 - [#123](https://github.com/Refhi/Weda-Helper/issues/123) - mise à jour des textes explicatifs au sujet de la configuration du Companion.
 - [#179](https://github.com/Refhi/Weda-Helper/issues/179) - décoche automatiquement la case "ordonnance numérique" si on fait une Demande d'Imagerie
-- [#137](https://github.com/Refhi/Weda-Helper/issues/137) - valider automatiquement une prescription de médicament
+- [#137](https://github.com/Refhi/Weda-Helper/issues/137) - valider automatiquement une ordonnance numérique
 - [#99](https://github.com/Refhi/Weda-Helper/issues/99) - sélection automatique du type de document "FSE dégradée" lors de l'import d'une PJ SCOR
 
 ## fix :
