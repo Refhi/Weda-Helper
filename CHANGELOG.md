@@ -1,6 +1,10 @@
 # Changelog
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
+# [2.6] -
+## ajout :
+- [#185](https://github.com/Refhi/Weda-Helper/issues/185) - ajout d'un raccourci clavier pour insérer la date du jour dans un champ de texte (Alt+D) par défaut
+
 # [2.5.0] - 
 ## ajout :
 - [#101](https://github.com/Refhi/Weda-Helper/issues/101) - Ajout d'une cotation par défaut selon le mode de la FSE

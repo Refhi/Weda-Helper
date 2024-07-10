@@ -92,6 +92,10 @@ var defaultShortcuts = {
         "default": "Ctrl+U",
         "description": "Upload le dernier fichier du dossier envoyé par le Companion",
     },
+    "insert_date":{
+        "default": "Alt+D",
+        "description": "Insère la date du jour dans le champ de texte en cours d'édition",
+    },
     "push_enregistrer": {
         "default": "Ctrl+S",
         "description": "Appuie Enregistrer"
