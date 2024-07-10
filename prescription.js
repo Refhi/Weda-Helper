@@ -323,48 +323,98 @@ addTweak([demandeUrl, prescriptionUrl], '*NumPres', function () {
     });
 });
 
-// Selectionne automatiquement le type de prescription
+// Selectionne automatiquement le type de prescription numérique
 addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
-    lightObserver('#prescriptionType div', function (element) {
-        console.log('menu déroulant trouvé, je clique dessus', element);
-        element[0].click();
-        recordMetrics({ clicks: 1, drags: 1 });
-    });
+    const typesSoins = [
+        { regex: /\bIDE\b|infirmier|pansement|injection/i, type: 1 },
+        { regex: /\bkiné\b|\bkine\b|kinésithérapie|kinesitherapie|MKDE|kinesitherapeute|kinesithérapeute/i, type: 2 },
+        { regex: /pédicure|pedicure|podologie|podologique|podologue|semelle|orthoplastie/i, type: 5 },
+        { regex: /orthophonie|orthophonique|orthophoniste/i, type: 3 },
+        { regex: /orthoptie|orthoptique|orthoptiste/i, type: 4 }
+    ];
 
-    lightObserver('#prescriptionType-panel mat-option .mat-option-text', function (elements) {
-        console.log('options trouvées', elements);
-        setTimeout(function () { //Ajout d'un timer car l'iframe de contenu de l'ordonnance se recharge à l'impression
-            var type = -1; //non définit
-            if (isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILKine')) { //Ordonnance Paramédicale
-                let infirmierRegex = /\bIDE\b|infirmier|pansement|injection/i;
-                let kineRegex = /\bkiné\b|\bkine\b|kinésithérapie|kinesitherapie|MKDE|kinesitherapeute|kinesithérapeute/i;
-                let pedicureRegex = /pédicure|pedicure|podologie|podologique|podologue|semelle|orthoplastie/i;
-                let orthophonieRegex = /orthophonie|orthophonique|orthophoniste/i;
-                let orthoptieRegex = /orthoptie|orthoptique|orthoptiste/i;
+    let contexteSoins = [
+        { regex: /domicile/i, checkBoxText: " Soins à réaliser à domicile " },
+        { regex: /urgent|urgence/i, checkBoxText: " Prescription à caractère urgent " },
+        { regex: /prevention|prévention/i, checkBoxText: " Prescription dans le cadre de la prévention " },
+    ]
 
-                let demandeContent = document.querySelector("#CE_ContentPlaceHolder1_EditorPrescription_ID_Frame").contentWindow.document.body.innerText;
+    function checkContexteSoins(demandeContent) {
+        lightObserver('.horCBoxWithLabel > span', function (checkBoxElements) {
+            console.log('checkContexteSoins déclenché', demandeContent);
+            contexteSoins.forEach(contexte => {
+                if (contexte.regex.test(demandeContent)) {
+                    checkBoxElements.forEach(element => {
+                        let checkBoxInput = element.parentElement.querySelector('mat-checkbox > label > span > input');
+                        if (element.textContent === contexte.checkBoxText) {
+                            checkBoxInput.click();
+                        }
+                    });
+                }
+            });
+        }, document, true);
 
-                if (infirmierRegex.test(demandeContent))
-                    type = 1;
-                else if (kineRegex.test(demandeContent))
-                    type = 2;
-                else if (orthophonieRegex.test(demandeContent))
-                    type = 3;
-                else if (orthoptieRegex.test(demandeContent))
-                    type = 4;
-                else if (pedicureRegex.test(demandeContent))
-                    type = 5;
+    }
+
+    // Déterminer quel ligne il faut cliquer dans le menu déroulant
+    function determinerTypeSoin(demandeContent) {
+        for (let soin of typesSoins) {
+            if (soin.regex.test(demandeContent)) {
+                return soin.type;
             }
+        }
+        return null; // Retourne null si aucun type de soin n'est trouvé
+    }
 
-            else if (isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILAnalyses')) //Ordonnance de laboratoire
-                type = 0;
 
-            if (type != -1) {
-                elements[type].click();
+    function clickDropDownMenuWhenObserved(callback) {
+            lightObserver('#prescriptionType div', function (elements) {
+                console.log('menu déroulant trouvé, je clique dessus', elements);
+                elements[0].click();
                 recordMetrics({ clicks: 1, drags: 1 });
-                validateOrdoNumIfOptionActivated();
-            }
-        }, 200);
+                callback();
+            }, document, true);
+    }
 
-    });
+
+
+    function clickOnProperDropDownOption(demandeContent) {
+        console.log('clickOnProperDropDownOption déclenché');
+        // Attend l'apparition des choix possibles dans le menu déroulant
+        lightObserver('#prescriptionType-panel mat-option .mat-option-text', function (choixPossibles) {
+            let type = null; //non déf
+            let isLab = isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILAnalyses');
+            let isParamedical = isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILKine');
+            let isImagerie = isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio');
+
+            if (isImagerie) { reject("Imagerie détectée, je ne peux pas traiter ce cas"); }
+
+            if (isLab) { type = 0; }
+            else if (isParamedical) {
+                type = determinerTypeSoin(demandeContent);
+            }
+            if (type === null) { console.log("Type de soin non détecté, je laisse l'utilisateur sélectionner le bon"); }
+            else {
+                console.log('type de soin trouvé', type, 'je clique dessus', choixPossibles[type]);
+                choixPossibles[type].click();
+                recordMetrics({ clicks: 1, drags: 1 });
+            }
+        }, document, true);
+    };
+
+
+    lightObserver('.mat-dialog-title', function (element) {
+        console.log("menu 'Création d'une ordonnance numérique' trouvé", element);
+        setTimeout(function () {
+            let demandeContent = document.querySelector("#CE_ContentPlaceHolder1_EditorPrescription_ID_Frame").contentWindow.document.body.innerText;
+            console.log('[demandeContent]', demandeContent);  
+            clickDropDownMenuWhenObserved(function () {
+                clickOnProperDropDownOption(demandeContent);
+                checkContexteSoins(demandeContent);
+                setTimeout(function () {
+                    validateOrdoNumIfOptionActivated();
+                }, 200); // attendre un peu pour laisser le temps au cochage de se faire
+            });
+        }, 200);        
+    }, document, false, false, 'Création d\'une ordonnance numérique');
 });
