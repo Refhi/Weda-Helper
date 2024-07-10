@@ -45,7 +45,7 @@ function waitForElement(selector, text = null, timeout, callback) {
 
 // Fonction "light" pour observer l'apparition d'un élément dans le DOM
 let observedElements = new WeakMap();
-function lightObserver(selector, callback, parentElement = document, justOnce = false, debug = false) {
+function lightObserver(selector, callback, parentElement = document, justOnce = false, debug = false, textContent = null) {
     let observer = new MutationObserver((mutations) => {
         for (let i = 0; i < mutations.length; i++) {
             let mutation = mutations[i];
@@ -54,6 +54,9 @@ function lightObserver(selector, callback, parentElement = document, justOnce = 
                     console.log('[lightObserver]', selector, parentElement, ' Mutation:', mutation);
                 }
                 let elements = parentElement.querySelectorAll(selector);
+                if (textContent) {
+                    elements = Array.from(elements).filter(element => element.textContent.includes(textContent));
+                }
                 let newElements = [];
                 for (let j = 0; j < elements.length; j++) {
                     let element = elements[j];
