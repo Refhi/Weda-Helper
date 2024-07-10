@@ -186,11 +186,11 @@ addTweak(prescriptionUrl, 'AlertOnMedicationInteraction', function () {
     lightObserver("div.imgInter4", function (elements) { //Déclenché en cas de présence d'une contre-indication absolue
         var interactions = [];
         for (element of elements) {
-            if(!interactions.includes(element.title)) {
+            if (!interactions.includes(element.title)) {
                 interactions.push(element.title);
-               var interactionDiv = document.createElement("div");
-                interactionDiv.style="padding: .75rem 1.25rem; color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: .25rem; margin-bottom: 1rem; margin-top: 1rem;"
-               interactionDiv.textContent = element.title;
+                var interactionDiv = document.createElement("div");
+                interactionDiv.style = "padding: .75rem 1.25rem; color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: .25rem; margin-bottom: 1rem; margin-top: 1rem;"
+                interactionDiv.textContent = element.title;
                 let node = document.getElementById('ContentPlaceHolder1_PrescriptionsGrid');
                 let parentNode = node.parentNode;
                 parentNode.insertBefore(interactionDiv, node);
@@ -228,7 +228,7 @@ addTweak(prescriptionUrl, 'KeyPadPrescription', function () {
 });
 
 function validateOrdoNumIfOptionActivated() {
-    getOption('autoValidateOrdoNum', function(autoValidateOrdoNum) {
+    getOption('autoValidateOrdoNum', function (autoValidateOrdoNum) {
         if (autoValidateOrdoNum) {
             document.querySelector('.cdk-overlay-container .mat-raised-button[type="submit"]').click();
             recordMetrics({ clicks: 1, drags: 1 });
@@ -243,15 +243,15 @@ addTweak([demandeUrl, prescriptionUrl], 'autoConsentNumPres', function () {
         elements[0].click();
         recordMetrics({ clicks: 1, drags: 1 });
 
-        if(PrescriptionForm) { //Pas de selection du type de l'ordonnance donc on valide une fois le consentement coché
+        if (PrescriptionForm) { //Pas de selection du type de l'ordonnance donc on valide une fois le consentement coché
             validateOrdoNumIfOptionActivated();
         }
     });
 });
 
 function isElementSelected(elementid) {
-    element = document.getElementById(elementid);
-    if(element && element.style.color.toLowerCase() === 'red' && element.style.fontWeight.toLowerCase() == 'bold')
+    let element = document.getElementById(elementid);
+    if (element && element.style.color.toLowerCase() === 'red' && element.style.fontWeight.toLowerCase() == 'bold')
         return true;
     else
         return false;
@@ -265,7 +265,6 @@ addTweak([demandeUrl, prescriptionUrl], '*NumPres', function () {
         let ordoNumeriquePreCoche = checkboxInitiale && checkboxInitiale.checked;
 
         function changeCheckBoxViaClick(valueRequested) {
-            console.log('changeCheckBoxViaClick started');
             var checkbox = document.getElementById('ContentPlaceHolder1_EvenementUcForm1_CheckBoxEPrescription');
             if (checkbox) {
                 console.log('checkbox checked', checkbox.checked, 'valueRequested', valueRequested);
@@ -279,29 +278,47 @@ addTweak([demandeUrl, prescriptionUrl], '*NumPres', function () {
         }
 
         function uncheckSiImagerie() { // n'est appelé que si l'ordo numérique est demandée ou déjà cochée
-            if (isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio')) {
-                changeCheckBoxViaClick(false);
-            } else {
-                changeCheckBoxViaClick(true);
+            addTweak('*', 'uncheckDMPIfImagerie', function () {
+                lightObserver('#ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio', function () {
+                    if (isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio')) {
+                        changeCheckBoxViaClick(false);
+                    } else {
+                        // seulement si ordoNumeriquePreCoche est vrai
+                        if (ordoNumeriquePreCoche) {
+                            changeCheckBoxViaClick(true);
+                        }
+                    }
+                    observeCheckbox();
+                });
+            });
+        }
+
+        function observeCheckbox() {
+            // Sélection de l'élément cible
+            let checkbox = document.getElementById('ContentPlaceHolder1_EvenementUcForm1_CheckBoxEPrescription');
+
+            // Vérification si l'élément checkbox existe
+            if (checkbox) {
+                // Ajout d'un écouteur d'événements pour détecter les changements
+                checkbox.addEventListener('change', function () {
+                    // Enregistrement du statut de la case à cocher
+                    ordoNumeriquePreCoche = checkbox.checked;
+                });
             }
         }
 
         if (NumPresDemande || NumPresPrescription) {
-            console.log('NumPresDemande', NumPresDemande, 'NumPresPrescription', NumPresPrescription);
+            ordoNumeriquePreCoche = true; // quand on a une des optiosn activées, ça signifie que de base on veut que ça soit coché
             if (DemandeForm) {
                 changeCheckBoxViaClick(NumPresDemande);
                 if (NumPresDemande) {
-                    addTweak('*', 'uncheckDMPIfImagerie', function () {
-                        lightObserver('#ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio', uncheckSiImagerie);
-                    });
+                    uncheckSiImagerie();
                 }
             } else if (PrescriptionForm) {
                 changeCheckBoxViaClick(NumPresPrescription);
             }
         } else if (ordoNumeriquePreCoche && DemandeForm) {
-            addTweak('*', 'uncheckDMPIfImagerie', function () {
-                lightObserver('#ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio', uncheckSiImagerie);
-            });
+            uncheckSiImagerie();
         }
     });
 });
@@ -316,7 +333,7 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
 
     lightObserver('#prescriptionType-panel mat-option .mat-option-text', function (elements) {
         console.log('options trouvées', elements);
-        setTimeout(function() { //Ajout d'un timer car l'iframe de contenu de l'ordonnance se recharge à l'impression
+        setTimeout(function () { //Ajout d'un timer car l'iframe de contenu de l'ordonnance se recharge à l'impression
             var type = -1; //non définit
             if (isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILKine')) { //Ordonnance Paramédicale
                 let infirmierRegex = /\bIDE\b|infirmier|pansement|injection/i;
@@ -338,16 +355,16 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
                 else if (pedicureRegex.test(demandeContent))
                     type = 5;
             }
-        
+
             else if (isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILAnalyses')) //Ordonnance de laboratoire
                 type = 0;
 
-            if(type != -1) {
+            if (type != -1) {
                 elements[type].click();
                 recordMetrics({ clicks: 1, drags: 1 });
                 validateOrdoNumIfOptionActivated();
             }
         }, 200);
-        
+
     });
 });
