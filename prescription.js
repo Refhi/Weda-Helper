@@ -228,9 +228,12 @@ addTweak(prescriptionUrl, 'KeyPadPrescription', function () {
 });
 
 function validateOrdoNumIfOptionActivated() {
+    console.log('[validateOrdoNumIfOptionActivated] started');
     getOption('autoValidateOrdoNum', function (autoValidateOrdoNum) {
         if (autoValidateOrdoNum) {
-            document.querySelector('.cdk-overlay-container .mat-raised-button[type="submit"]').click();
+            let buttonValider = document.querySelector('.cdk-overlay-container .mat-raised-button[type="submit"]')
+            console.log('[validateOrdoNumIfOptionActivated] buttonValider', buttonValider);
+            buttonValider.click();
             recordMetrics({ clicks: 1, drags: 1 });
         }
     });
@@ -339,7 +342,7 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
         { regex: /prevention|prévention/i, checkBoxText: " Prescription dans le cadre de la prévention " },
     ]
 
-    function checkContexteSoins(demandeContent) {
+    function checkContexteSoins(demandeContent, callback) {
         lightObserver('.horCBoxWithLabel > span', function (checkBoxElements) {
             console.log('checkContexteSoins déclenché', demandeContent);
             contexteSoins.forEach(contexte => {
@@ -351,6 +354,7 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
                         }
                     });
                 }
+                if (callback) { callback(); }
             });
         }, document, true);
 
@@ -378,42 +382,41 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
 
 
 
-    function clickOnProperDropDownOption(demandeContent) {
-        console.log('clickOnProperDropDownOption déclenché');
-        // Attend l'apparition des choix possibles dans le menu déroulant
-        lightObserver('#prescriptionType-panel mat-option .mat-option-text', function (choixPossibles) {
-            let type = null; //non déf
-            let isLab = isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILAnalyses');
-            let isParamedical = isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILKine');
-            let isImagerie = isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio');
+    function clickOnProperDropDownOption(demandeContent, callback) {
+        let choixPossibles = document.querySelectorAll('.mat-option-text');
+        let type = null; //non déf
+        let isLab = isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILAnalyses');
+        let isParamedical = isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILKine');
+        let isImagerie = isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio');
 
-            if (isImagerie) { reject("Imagerie détectée, je ne peux pas traiter ce cas"); }
+        if (isImagerie) { reject("Imagerie détectée, je ne peux pas traiter ce cas"); }
 
-            if (isLab) { type = 0; }
-            else if (isParamedical) {
-                type = determinerTypeSoin(demandeContent);
-            }
-            if (type === null) { console.log("Type de soin non détecté, je laisse l'utilisateur sélectionner le bon"); }
-            else {
-                console.log('type de soin trouvé', type, 'je clique dessus', choixPossibles[type]);
-                choixPossibles[type].click();
-                recordMetrics({ clicks: 1, drags: 1 });
-            }
-        }, document, true);
+        if (isLab) { type = 0; }
+        else if (isParamedical) {
+            type = determinerTypeSoin(demandeContent);
+        }
+        if (type === null) { console.log("Type de soin non détecté, je laisse l'utilisateur sélectionner le bon"); }
+        else {
+            console.log('type de soin trouvé', type, 'je clique dessus', choixPossibles[type]);
+            choixPossibles[type].click();
+            recordMetrics({ clicks: 1, drags: 1 });
+            if (callback) { callback(); }
+
+        }
     };
 
 
     lightObserver('.mat-dialog-title', function (element) {
         console.log("menu 'Création d'une ordonnance numérique' trouvé", element);
-        setTimeout(function () {
+        setTimeout(function () { // attendre un peu pour que le contenu de l'iframe soit chargé
             let demandeContent = document.querySelector("#CE_ContentPlaceHolder1_EditorPrescription_ID_Frame").contentWindow.document.body.innerText;
             console.log('[demandeContent]', demandeContent);  
             clickDropDownMenuWhenObserved(function () {
-                clickOnProperDropDownOption(demandeContent);
-                checkContexteSoins(demandeContent);
-                setTimeout(function () {
-                    validateOrdoNumIfOptionActivated();
-                }, 200); // attendre un peu pour laisser le temps au cochage de se faire
+                clickOnProperDropDownOption(demandeContent, function () {
+                    checkContexteSoins(demandeContent, function () {
+                        validateOrdoNumIfOptionActivated();
+                    });
+                });
             });
         }, 200);        
     }, document, false, false, 'Création d\'une ordonnance numérique');
