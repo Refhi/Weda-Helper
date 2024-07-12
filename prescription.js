@@ -409,7 +409,16 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
     lightObserver('.mat-dialog-title', function (element) {
         console.log("menu 'Création d'une ordonnance numérique' trouvé", element);
         setTimeout(function () { // attendre un peu pour que le contenu de l'iframe soit chargé
-            let demandeContent = document.querySelector("#CE_ContentPlaceHolder1_EditorPrescription_ID_Frame").contentWindow.document.body.innerText;
+            let demandeContent = '';
+            let horsALDFrame = document.querySelector("#CE_ContentPlaceHolder1_EditorPrescription_ID_Frame");
+            let ALDFrame = document.querySelector("#CE_ContentPlaceHolder1_EditorPrescriptionBizone_ID_Frame");
+            if (horsALDFrame && horsALDFrame.contentWindow && horsALDFrame.contentWindow.document.body) {
+                demandeContent += horsALDFrame.contentWindow.document.body.innerText;
+            }
+            if (ALDFrame && ALDFrame.contentWindow && ALDFrame.contentWindow.document.body) {
+                demandeContent += " " + ALDFrame.contentWindow.document.body.innerText; // Ajout d'un espace pour séparer le contenu des deux iframes
+            }
+    
             console.log('[demandeContent]', demandeContent);  
             clickDropDownMenuWhenObserved(function () {
                 clickOnProperDropDownOption(demandeContent, function () {
