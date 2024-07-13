@@ -44,6 +44,13 @@ function waitForElement(selector, text = null, timeout, callback) {
 
 
 // Fonction "light" pour observer l'apparition d'un élément dans le DOM
+// -> waitForElement(selector ...)
+
+async function waitForElement(selector, parentElement = document, justOnce = false, debug = false, textContent = null) {
+    ///
+    return element
+}
+
 let observedElements = new WeakMap();
 function lightObserver(selector, callback, parentElement = document, justOnce = false, debug = false, textContent = null) {
     let observer = new MutationObserver((mutations) => {

@@ -248,12 +248,14 @@ function printIfOption(modelNumber = 0) {
 // - Mettre ça dans un fichier à part ++++
 // - sortir les sous-fonctions de startPrinting
 // - renommer en printkkchose
-function startPrinting(handlingType, modelNumber) {
+async function startPrinting(handlingType, modelNumber) {
     // handlingType = 'print' ou 'download' ou 'companion'
     // modelNumber = integer, correspondant à la place dans la liste des modèles. Commence à 0.
     console.log('startPrinting activé');
-    let courbe = window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx');
-    processPrintSequence(handlingType, modelNumber, courbe);
+    let courbe = window.location.href.startsWith(
+        'https://secure.weda.fr/FolderMedical/ConsultationForm.aspx'
+    );
+    await processPrintSequence(handlingType, modelNumber, courbe);
 
     function urlFromImage() { // à renommer, par exemple fetchPdfUrlFromImageData
         var pdfUrl = document.querySelector('img[data-pdf-url]');
@@ -309,6 +311,7 @@ function startPrinting(handlingType, modelNumber) {
         }
     }
 
+    // déclenche le téléchargement direct d'une url
     function download(url) {
         // On va contourner les restrictions de téléchargement en créant un élément 'a' caché
         // Ce dernier, quand cliqué, va déclencher le téléchargement du fichier via son attribut 'download'
@@ -318,10 +321,16 @@ function startPrinting(handlingType, modelNumber) {
         link.download = ''; // Pour forcer le téléchargement
         link.style.display = 'none';
         document.body.appendChild(link);
-        link.click(); // Cela déclenche le téléchargement
-        document.body.removeChild(link); // Suppression de l'élément 'a' après le téléchargement
+        try {
+            // Cela déclenche le téléchargement
+            link.click();
+        } finally {
+            // Suppression de l'élément 'a' après le téléchargement
+            document.body.removeChild(link);
+        }
     }
 
+    // TODO -> clickPrintModelNumber
     function clickPrinterNumber(modelNumber = 0) {
         var elements = document.querySelectorAll('[onclick*="ctl00$ContentPlaceHolder1$MenuPrint"][class*="popout-dynamic level2"]');
         console.log('Voici les modeles d impression trouvés', elements);
@@ -334,7 +343,7 @@ function startPrinting(handlingType, modelNumber) {
         }
     }
 
-    async function grabIframeWhenLoaded() {
+    function grabIframeWhenLoaded() {
         return new Promise((resolve, reject) => {
             lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", (newElements) => {
                 // Assuming the first new element is the iframe we're interested in
@@ -385,7 +394,7 @@ function startPrinting(handlingType, modelNumber) {
 
 
 
-    function processPrintSequence(handlingType, modelNumber, courbe) {
+    async function processPrintSequence(handlingType, modelNumber, courbe) {
         // vérification du type de demande
         const handlingTypes = ['print', 'download', 'companion'];
         if (!handlingTypes.includes(handlingType)) {
@@ -415,29 +424,21 @@ function startPrinting(handlingType, modelNumber) {
             // il faut d'abord cliquer sur le modèle d'impression pertinent
             clickPrinterNumber(modelNumber);
             // ensuite attendre que l'iframe soit chargé
-            grabIframeWhenLoaded()
-                .then(iframe => {
-                    // On se contente de lancer l'impression si on a demandé l'impression
-                    if (handlingType === 'print') {
-                        iframe.contentWindow.print();
-                        return;
-                    } else {
-                        // sinon on récupère l'URL du document (ce qui prend parfois quelques centaines de ms)
-                        return grabUrlFromIframe(iframe);
-                    }
-                })
-                .then(url => {
-                    if (handlingType === 'companion') {
-                        downloadBlob(url)
-                            .then(blob => {
-                                sendToCompanion('print', blob,
-                                    postPrintAction);
-                                });
-                    } else if (handlingType === 'download') {
-                        download(url);
-                        postPrintAction();
-                    }
-                });
+            iframe = await grabIframeWhenLoaded();
+            // On se contente de lancer l'impression si on a demandé l'impression
+            if (handlingType === 'print') {
+                iframe.contentWindow.print();
+                return;
+            } 
+            // sinon on récupère l'URL du document (ce qui prend parfois quelques centaines de ms)
+            url = await grabUrlFromIframe(iframe);
+            if (handlingType === 'companion') {
+                const blob = await downloadBlob(url);
+                sendToCompanion('print', blob, postPrintAction);
+            } else if (handlingType === 'download') {
+                download(url);
+                postPrintAction();
+            }
         }
     }
 }
