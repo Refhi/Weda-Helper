@@ -28,6 +28,12 @@
           "aati.js",
           "metrics.js",
           "upload.js"]
+    },
+    {
+      "matches": ["*://secure.weda.fr/FolderAgenda/AgendaForm.aspx"],
+      "js": [
+          "agenda.js"
+        ]
     }
   ]
 }
