@@ -244,6 +244,10 @@ function printIfOption(modelNumber = 0) {
 }
 
 // Définition de la fonction startPrinting
+// TODO :
+// - Mettre ça dans un fichier à part ++++
+// - sortir les sous-fonctions de startPrinting
+// - renommer en printkkchose
 function startPrinting(handlingType, modelNumber) {
     // handlingType = 'print' ou 'download' ou 'companion'
     // modelNumber = integer, correspondant à la place dans la liste des modèles. Commence à 0.
@@ -251,7 +255,7 @@ function startPrinting(handlingType, modelNumber) {
     let courbe = window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx');
     processPrintSequence(handlingType, modelNumber, courbe);
 
-    function urlFromImage() {
+    function urlFromImage() { // à renommer, par exemple fetchPdfUrlFromImageData
         var pdfUrl = document.querySelector('img[data-pdf-url]');
         if (pdfUrl) {
             console.log('[urlFromImage] pdf Url détecté :', pdfUrl);
@@ -263,7 +267,7 @@ function startPrinting(handlingType, modelNumber) {
         }
     }
 
-    function makeIframe() {
+    function makeIframe() { // à renommer makeHiddenIframe
         // Crée un nouvel élément iframe pour l'impression
         let printFrame = document.createElement('iframe');
         printFrame.name = 'print_frame';
@@ -275,7 +279,7 @@ function startPrinting(handlingType, modelNumber) {
     }
 
     async function downloadBlob(url) {
-        console.log('fetchPDF', url);
+        console.log('downloadBlob', url);
         try {
             const response = await fetch(url);
             const blob = await response.blob();
@@ -286,9 +290,9 @@ function startPrinting(handlingType, modelNumber) {
     }
 
 
-    function loadAndPrintIframe(printIframe, url) {
+    function loadAndPrintIframe(iframe, url) {
         // Définit une fonction à exécuter lorsque l'iframe est chargée
-        printIframe.onload = function () {
+        iframe.onload = function () {
             let win = window.frames['print_frame'];
             win.focus();
             win.print();
@@ -298,7 +302,7 @@ function startPrinting(handlingType, modelNumber) {
         let urlObject = new URL(url);
         if (urlObject.origin === 'https://secure.weda.fr') {
             console.log('url origin ok', urlObject.origin);
-            printIframe.src = url;
+            iframe.src = url;
         } else {
             // Log en cas d'URL non fiable
             console.error('Untrusted URL:', url);
@@ -311,7 +315,7 @@ function startPrinting(handlingType, modelNumber) {
         // Cela permet de télécharger le fichier sans modifier le manifest
         var link = document.createElement('a');
         link.href = url;
-        link.download = 'nom_du_fichier.pdf'; // pas certain que ça soit nécessaire mais ça ne coûte rien
+        link.download = ''; // Pour forcer le téléchargement
         link.style.display = 'none';
         document.body.appendChild(link);
         link.click(); // Cela déclenche le téléchargement
