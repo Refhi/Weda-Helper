@@ -1,8 +1,8 @@
 # Changelog
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
-# [2.5.0] - 
-## ajout :
+# [2.5.0] - 17/07/2024
+## ajout :
 - [#101](https://github.com/Refhi/Weda-Helper/issues/101) - Ajout d'une cotation par défaut selon le mode de la FSE
 => vous pouvez désormais créer une cotation "DéfautALD" dans vos favoris et elle sera automatiquement sélectionnée lors de la création d'une FSE en mode ALD
 => idem pour "DéfautPédia" qui sera automatiquement sélectionnée pour les enfants 0-6 ans
@@ -17,17 +17,18 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#99](https://github.com/Refhi/Weda-Helper/issues/99) - sélection automatique du type de document "FSE dégradée" lors de l'import d'une PJ SCOR
 - [#182](https://github.com/Refhi/Weda-Helper/issues/182) - affichage d'un message d'alerte en cas de contre-indication médicamenteuse absolue
 
-## fix :
+## fix :
 - [#171](https://github.com/Refhi/Weda-Helper/issues/171) - Correction d'un bug dans la fonction "Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée" qui décochait le document joint dans certains cas
 - Correction de l'option "Cocher automatiquement la case "Réaliser une FSE en gestion unique" pour les patients C2S" qui ne fonctionnait plus
+- Amélioration du message de bienvenue et de mise à jour pour y ajouter un ascenseur et la possibilité de le fermer en cliquant à l'exérieur
 
 
 # [2.4.2] - 01/07/2024
-## fix 
+## fix 
 - [#168](https://github.com/Refhi/Weda-Helper/issues/168) - Perte curseur lors prescription d'une demande avec l'historique affiché
 - le panneau de DMP est de nouveau masqué dans les Courriers lorsqu'historyToLeft est activé
 
-# [2.4.1] - ... - bugfix
+# [2.4.1] - ... - bugfix
 ## fix de bugs :
 - #152 - L'option "Ouvre automatiquement la fenêtre des ordonnances-types lors des prescriptions médicamenteuses" empêchait la rédaction d'un conseil médicamenteux
 - #153 - De nouveau superpositions quand ouverture d'un document joint lors d'une consultation
@@ -37,13 +38,13 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - #161 - bug bouton impression manquant dans certificat si affichage historique activé
 
 # [2.4] - 28/06/2024
-## ajout :
+## ajout :
 - Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée
 - Sélection automatique du type d'ordonnance numérique quand il s'agit d'une Demande, et qu'un mot-clé est détecté : (infirmierRegex = /IDE|infirmier|pansement|injection/i; kineRegex = /kiné|kine|kinésithérapie|kinesitherapie|MKDE|kinesitherapeute|kinesithérapeute/i; pedicureRegex = /pédicure|pedicure|podologie|podologique|podologue/i; orthophonieRegex = /orthophonie|orthophonique|orthophoniste/i; let orthoptieRegex = /orthoptie|orthoptique|orthoptiste/i;) => n'hésitez pas à nous demander d'ajouter d'autres mot-clés pertinents.
 - 2 raccourcis désormais possibles selon le modèle d'impression preféré, idem pour les téléchargements : Ctrl+P pour l'impression et Ctrl+D pour le téléchargement pour le premier modèle, et Ctrl+Shift+P et Ctrl+Shift+D pour le second modèle.
 - détection automatique du Companion s'il est en route, mais n'est pas activé dans les options de Weda-Helper
 
-## fix :
+## fix :
 - le focus reste dans le champ de recherche après l'ouverture automatique des prescriptions-types
 - blocage du historyToLeft si une fenêtre de prévisualisation est ouverte pour éviter des superpositions
 - alt+V fonctionne désormais aussi pour valider l'import de documents
@@ -63,7 +64,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - on peut désormais uploader un document en un seul raccourcis clavier ! (par défaut Ctrl+U) Définissez le dossier dans le companion (v1.4+). Ctrl+U enverra automatiquement le dernier fichier créé.
 - création d'une fiche-mémo [Fiche Mémo des raccourcis à imprimer](https://github.com/Refhi/Weda-Helper/releases/latest/download/FicheMemo.pdf)
 
-## fix :
+## fix :
 - ajout d'une période refractaire pour certains raccourcis claviers pour éviter les activations multiples dans certains cas de figure
 - message de bienvenue étendu pour ajouter des liens vers le Companion mac et windows
 
