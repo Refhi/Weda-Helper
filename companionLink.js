@@ -97,6 +97,9 @@ function sendLastTPEamount() {
             sendtpeinstruction(lastTPEamount);
             const keyStrokes = lastTPEamount.toString().length;
             recordMetrics({ keyStrokes: keyStrokes });
+        } else {
+            console.log('Pas de montant précédent pour le TPE, j\'en envoie 1€ par défaut pour tester');
+            sendtpeinstruction(100);
         }
     });
 }

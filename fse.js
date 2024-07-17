@@ -4,7 +4,7 @@
 // (tableau et bouche après)
 function tweakFSECreation() {
     // Make a dictionnary with keystrokes and their corresponding actions
-    var index = { // TODO à passer dans hotkey.js
+    var index = {
         'n': ['mat-radio-9-input', 'mat-radio-3-input'],
         'o': ['mat-radio-8-input', 'mat-radio-2-input'],
         't': ['mat-checkbox-1-input'],
@@ -211,18 +211,66 @@ function tweakFSECreation() {
 
 
     function setDefaultValue() {
-        // set defaut value
+        // Si on envisage d'ajouter des cotations automatisées plus complexes, on pourra simplement se greffer sur cette fonction
+        // par exemple en mettant dans une des conditions la récupération d'une valeur mémoire spécifique
+        let conditionalCotations = [
+            {
+                condition: function() {
+                    let isALD = document.querySelector('#mat-radio-2-input').checked;
+                    return isALD;
+                },
+                action: 'DéfautALD'
+            },
+            {
+                condition: function() {
+                    let ageString = document.querySelector('#LabelInfoPatientNom > span > span:last-child').textContent;
+                    let age = parseInt(ageString.match(/\d+/)[0]);
+                    console.log('Age du patient :', age);
+                    return age < 7;
+                },
+                action: 'DéfautPédia'
+            },
+            {
+                condition: function() {
+                    let fseTypeElement = document.querySelector('#form1 > div:nth-child(14) > div > div:nth-child(2) > vz-feuille-de-soin > div.fseContainer > div > div.toolbarContainer.thinCards.flexRow > mat-card.mat-card.mat-focus-indicator.cvContainer > vz-lecture-cv-widget > div > vz-mode-teletrans > div')
+                    let isTeleconsultation = fseTypeElement.textContent === 'SV';
+                    return isTeleconsultation;
+                },
+                action: 'DéfautTC'
+            },
+            {
+                condition: function() {
+                    return true; // Cette condition sera toujours vraie pour la cotation "Défaut"
+                },
+                action: 'Défaut'
+            },            
+        ];
+
+        // Définit la cotation par défaut
         addTweak('*', 'defaultCotation', function() {
             var elements = document.querySelectorAll('.flexRow.favoris.ng-star-inserted');
             console.log('elements', elements);
-            var defautElement = Array.from(elements).find(el => el.textContent.trim().includes('Défaut'));
-            if (defautElement) {
-                defautElement.click();
-                recordMetrics({clicks: 1, drags: 1});
-            } else {
-                console.log('Aucun élément contenant "Défaut" n\'a été trouvé.');
-                alert('Weda-Helper : "cotation par défaut" n\'est pas désactivé dans les options, mais aucune cotation favorite nommée "Défaut" n\'a été trouvé. Vous devez soit ajouter un favori nommé exactement "Défaut", soit désactiver l\'option "cotation par défaut" dans les options de Weda-Helper. Ce changement est rendu nécessaire par la dernière mise à jour.');
+
+            for (let i = 0; i < conditionalCotations.length; i++) { // Loop dans le dico des cotations conditionnelles
+                if (conditionalCotations[i].condition()) {// Si la condition est remplie
+                    let action = conditionalCotations[i].action; // L'action c'est le nom du favori à appliquer
+                    let targetElement = Array.from(elements).find(el => el.textContent.trim() === 'keyboard_arrow_right'+action);
+                    // keyboard_arrow_right est nécessaire pour matcher le texte complet du favori qui contient ">" devant le nom
+                    if (targetElement) {
+                        targetElement.click();
+                        recordMetrics({clicks: 1, drags: 1});
+                        console.log('Cotation appliquée:', action);
+                        return; // Arrête la fonction après avoir appliqué une cotation
+                    } else if (action === 'Défaut') {
+                        console.log('Action "Défaut" spécifiée mais non trouvée parmi les éléments.');
+                        alert('Weda-Helper : "cotation par défaut" n\'est pas désactivé dans les options, mais aucune cotation favorite nommée "Défaut" n\'a été trouvé. Vous devez soit ajouter un favori nommé exactement "Défaut", soit désactiver l\'option "cotation par défaut" dans les options de Weda-Helper. Vous pouvez également définir DéfautPédia et DéfautALD.');
+                        return; // Arrête la fonction si "Défaut" est spécifié mais non trouvé
+                    }
+                }
             }
+
+            // Si aucune condition n'est remplie, afficher un message d'erreur
+            console.log('Aucune condition remplie pour appliquer une cotation spécifique.');
         });
     }
 
@@ -312,10 +360,13 @@ let fseTable =
         {
             option: 'TweakFSEGestionUnique',
             callBack: function() {
-                lightObserver('.mat-checkbox-layout > label > span.mat-checkbox-inner-container.mat-checkbox-inner-container-no-side-margin', function(element) {
-                    console.log('Gestion unique activée clic sur element', element);
-                    element[0].click();
-                    recordMetrics({clicks: 1, drags: 1});
+                lightObserver('label[for=mat-checkbox-11-input] > span.mat-checkbox-inner-container.mat-checkbox-inner-container-no-side-margin > input', function(element) {
+                    if(element[0].parentElement.parentElement.parentElement.parentElement.parentElement.textContent.includes('Réaliser une FSE en gestion unique')) //Fix un peu sale
+                    {
+                        console.log('Gestion unique activée clic sur element', element);
+                        element[0].click();
+                        recordMetrics({clicks: 1, drags: 1});
+                    }
                 });
             }
         },
@@ -342,4 +393,17 @@ fseTable.forEach(tweak => {
     addTweak(fseUrl, tweak.option, tweak.callBack);
 });
 
+addTweak('https://secure.weda.fr/vitalzen/gestion.aspx', 'TweakSCORDegradee', function () {
+    lightObserver('mat-select[name=selectedType]', function (element) {
+        console.log('menu déroulant trouvé, je clique dessus', element);
+        element[0].click();
+        recordMetrics({ clicks: 1, drags: 1 });
+    });
+
+    lightObserver('#mat-select-8-panel mat-option .mat-option-text', function (elements) {
+        console.log('options trouvées', elements);
+        elements[1].click();
+        recordMetrics({ clicks: 1, drags: 1 });
+    });
+});
 

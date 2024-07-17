@@ -95,7 +95,8 @@
   <input type="checkbox" id="autoAATI"> Automatise la réalisation des arrêts de travail (lecture CV auto, selection patient auto, impression auto etc. Nécessite le Companion pour fonctionner totalement.)<br>
 
   <h2>Options de consultation :</h2>
-  <input type="checkbox" id="TweakTabConsultation"> Activer la navigation entre les valeurs de suivi avec la touche Tab dans les consultations.<br>
+  <input type="checkbox" id="TweakTabConsultation"> Activer la navigation entre les champs de texte dans les consultations via Tab et Shift+Tab<br>
+  <input type="checkbox" id="FocusOnTitleInConsultation"> Mettre le focus dans le champ de titre à l'ouverture d'une nouvelle consultation<br>
   <input type="checkbox" id="ShowExplanatoryText"> Affiche le texte d'explication à droite des courbes pédiatriques dans la page des consultations<br>
   <input type="checkbox" id="RemoveTitleSuggestions"> Retire le panneau de suggestion dans les Titres (ex. de Consultation).<br>
   <div style="display: flex; align-items: center;">
@@ -107,10 +108,13 @@
   <input type="checkbox" id="TweakTabPrescription"> Activer les modifications de la fenêtre recherche médicaments (navigation facilitée avec la touche Tab).<br>
   <input type="checkbox" id="KeyPadPrescription"> Activer l’utilisation du clavier numérique lors de prescription d'un médicament.<br>
   <input type="checkbox" id="autoOpenOrdoType"> Ouvre automatiquement la fenêtre des ordonnances-types lors des prescriptions médicamenteuses<br>
+  <input type="checkbox" id="AlertOnMedicationInteraction"> Affiche un message d'alerte lorsqu'une prescription de médicaments présente une contre-indication absolue<br>
   <h2>Options d'ordonnance numérique :</h2>
   <input type="checkbox" id="autoSelectTypeOrdoNum"> Sélectionner automatiquement le type d'ordonnance numérique selon le contenu de la prescription (biologie, kinésithérapie, infirmier, pédicure, orthoptie, orthophonie, etc.)<br>
   <input type="checkbox" id="autoConsentNumPres"> Coche automatiquement la case de consentement de l'ordonnance numérique. Attention vous êtes toujours tenu de demander l'autorisation au patient systématiquement.<br>
-  <h3>Options de cochage/décochage automatique (pour que le décochage fonctionne, au moins une des deux options doit être activée.):</h3>
+  <input type="checkbox" id="autoValidateOrdoNum"> Valider automatiquement une ordonnance numérique de médicaments lors de l'impression (nécessite d'activer l'option "Coche automatiquement la case de consentement" ci dessus).<br>
+  <input type="checkbox" id="uncheckDMPIfImagerie"> Décoche automatiquement l'ordonnance numérique si "Imagerie" est sélectionné dans une Demande.<br>
+  <h3>Options de cochage/décochage automatique (pour que le décochage fonctionne, au moins une des deux options doit être activée. Cf. https://secure.weda.fr/FolderSetting/PreferenceForm.aspx pour activer/désactiver l'ensemble):</h3>
   <input type="checkbox" id="NumPresPrescription"> Cocher/Décocher automatiquement la case « ordonnance numérique » pour les prescriptions de médicaments.<br>
   <input type="checkbox" id="NumPresDemande"> Cocher/Décocher automatiquement la case « ordonnance numérique » pour les ordonnances de demandes numériques (labo/imagerie/paramédical)<br>
   <h2>Options de recherche médicale :</h2>
@@ -137,16 +141,17 @@
   <input type="checkbox" id="TweakFSEDetectMT"> Sélectionne automatiquement l'option "Je suis le médecin traitant" si vous êtes le médecin traitant du patient<br>
   <input type="checkbox" id="TweakFSEGestionUnique"> Cocher automatiquement la case "Réaliser une FSE en gestion unique" pour les patients C2S<br>
   <input type="checkbox" id="TweakFSEAccident"> Coche automatiquement la case "Non" pour un accident de droit commun<br>
+  <input type="checkbox" id="TweakSCORDegradee"> Sélectionne automatiquement "Feuille de soins dégradée" lors de l'importation d'une pièce jointe SCOR<br>
   </div>
   <h1>Lien avec Weda-Helper-Companion:</h1>
   <h2>Options de connexion :</h2>
   <div style="display: flex; align-items: center;">
     <input type="text" id="portCompanion" name="portCompanion" style="width: 15ch; margin-right: 1em;">
-    <label for="portCompanion">Port Weda-Helper-Companion (default 4821) cf. <a href="https://github.com/Refhi/Weda-Helper-Companion" target="_blank">https://github.com/Refhi/Weda-Helper-Companion</a> doit être mentionné dans conf.ini du companion. ATTENTION : Le numéro de port doit être le même dans les options de l’extension WEDA HELPER et dans le fichier conf.ini du COMPANION.</label>
+    <label for="portCompanion">Port Weda-Helper-Companion (default 4821) cf. <a href="https://github.com/Refhi/Weda-Helper-Companion" target="_blank">https://github.com/Refhi/Weda-Helper-Companion</a> doit être le même ici et dans le Companion.</label>
   </div>
   <div style="display: flex; align-items: center;">
     <input type="text" id="apiKey" name="apiKey" style="width: 30ch; margin-right: 1em;">
-    <label for="apiKey">Clé API. Doit être mentionné dans conf.ini du companion. ATTENTION : Le numéro d’API doit être le même dans les options de l’extension WEDA HELPER et dans le fichier conf.ini du COMPANION.</label>
+    <label for="apiKey">Clé API. Doit être identique à celle du Companion (normalement fait automatiquement lors de la première requête au Companion).</label>
   </div>
   <h2>Options d'impression automatique :</h2>
   <input type="checkbox" id="RemoveLocalCompanionPrint" style="margin-right: 1em;"> <em><strong>Désactiver</strong></em> l'impression automatique complète via le companion <strong>(décocher pour l'activer)</strong><br>

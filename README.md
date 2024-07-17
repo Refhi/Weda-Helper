@@ -27,6 +27,7 @@ Cf. ci-dessous pour les retours et les contributions.
     - [AT](#at)
     - [Métrique](#métrique)
     - [Courriers](#courriers)
+    - [Documents du cabinet](#documents-du-cabinet)
   - [Facilitation des imports](#facilitation-des-imports)
   - [Weda-Helper-Companion](#weda-helper-companion)
   - [Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):](#problèmes-et-limitations-connues-qui-seront-peut-être-résolues-dans-de-futures-mises-à-jour)
@@ -75,7 +76,7 @@ Ctrl+U	Upload le dernier fichier du dossier envoyé par le Companion
 Modification du comportement de la tabulation après recherche patient. Ctrl+P permet de l'imprimer.
 - Les questions de suivi sont automatiquement affublées d'un type.
 - Permet, après la saisie du nom d'un patient, d'être directement positionné sur son nom, puis de pouvoir naviguer de patient en patient avec la touche Tab (ou maj+Tab pour aller vers le haut)
-- Facilitation du remplissage des valeurs tensionnelles (ex. *'Poids' 75 [tab] 'TAS' 150 [tab] 'TAD' 80*) : dans la fenêtre de consultation, lorsque l'on rempli une valeur de suivi, la touche tabulation envoie directement vers la case suivante (plus besoin d'appuyer 4 fois)
+- Facilitation de la navigation via 'Tab' et 'Shift+Tab' pour naviguer entre les champs de texte et de suivi.
 - Retrait des suggestions des titres de consultation : dans les fenêtres contenant un Titre, désactive le panneau de suggestion (fenêtres d'ordonnance, consultation, certificat, prescription, formulaire, résultats d'examen).
 
 
@@ -101,13 +102,17 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - Permet aussi de cocher automatiquement le consentement des patients. Attention vous êtes toujours tenu de demander l'autorisation au patient systématiquement.
 - le type "Biologie" se sélectionne automatiquement lors d'une prescription numérique type "Demande"
 - Sélection automatique du type d'ordonnance numérique quand il s'agit d'une Demande, et qu'un mot-clé est détecté (cf. https://github.com/Refhi/Weda-Helper/blob/main/CHANGELOG.md pour le détail des mots-clés)
+- "Ordonnance numérique" se décoche automatiquement si on sélection une Demande d'Imagerie.
 
 
 ## Feuilles de soin
 *Toute la FSE : [alt+6], [n], [n], [alt+v]*
 - les touches "n" et "o" permettent de sélectionner "non"/"oui" pour accidents de droit commun, puis ALD
 - les touches "t" et "c" permettent de sélectionner les tiers payants correspondants (AMO et AMC)
-- Si elles sont utilisées, entre automatiquement la cotation par défaut (Une de vos cotations favorites doit être nommée 'Défaut')
+- Si elles sont utilisées, utilise une cotation dans vos favoris :
+  - la cotation "DéfautPédia" pour les 0-6 ans
+  - la cotation "DéfautALD" pour les ALD
+  - la cotation "Défaut" pour les autres 
 - Lecture automatique de la carte vitale si elle est non lue
 - Affichage de boutons directs pour la réalisation de FDS dégradées et téléconsultation
 - Option pour cocher automatiquement "accident causé par un tier" ou "gestion unique"
@@ -129,6 +134,9 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Courriers
 - le type de document pour l'envoi au DMP est automatiquemnt sauvegardé d'une fois sur l'autre.
+
+### Documents du cabinet
+- ajout d'un bouton permettant l'impression directe d'un PDF
 
 
 

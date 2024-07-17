@@ -45,7 +45,7 @@ function waitForElement(selector, text = null, timeout, callback) {
 
 // Fonction "light" pour observer l'apparition d'un élément dans le DOM
 let observedElements = new WeakMap();
-function lightObserver(selector, callback, parentElement = document, justOnce = false, debug = false) {
+function lightObserver(selector, callback, parentElement = document, justOnce = false, debug = false, textContent = null) {
     let observer = new MutationObserver((mutations) => {
         for (let i = 0; i < mutations.length; i++) {
             let mutation = mutations[i];
@@ -54,6 +54,9 @@ function lightObserver(selector, callback, parentElement = document, justOnce = 
                     console.log('[lightObserver]', selector, parentElement, ' Mutation:', mutation);
                 }
                 let elements = parentElement.querySelectorAll(selector);
+                if (textContent) {
+                    elements = Array.from(elements).filter(element => element.textContent.includes(textContent));
+                }
                 let newElements = [];
                 for (let j = 0; j < elements.length; j++) {
                     let element = elements[j];
@@ -262,10 +265,10 @@ function testCompanion() {
             if (result.promptCompanionMessage !== false) {
                 // Demander à l'utilisateur s'il souhaite activer RemoveLocalCompanionPrint
                 const choixUtilisateur = confirm("[Weda Helper] : Le Companion est bien détecté, mais les options de lien sont désactivées. Cliquez sur ok pour activer l'impression automatique ou allez dans les options de Weda Helper pour le TPE. Cliquez sur annuler pour ignorer définitivement ce message.");
-                
+
                 if (choixUtilisateur) {
                     // Si l'utilisateur confirme, activer RemoveLocalCompanionPrint
-                    chrome.storage.local.set({'RemoveLocalCompanionPrint': false});
+                    chrome.storage.local.set({ 'RemoveLocalCompanionPrint': false });
                     alert("Le lien avec l'imprimate a été activé. Pensez à définir acrobat reader ou équivalent comme lecteur par défaut. Vous pouvez désactiver cette fonctionnalité dans les options de Weda Helper");
                 } else {
                     // Si l'utilisateur refuse, ne rien faire ou afficher un message
@@ -282,7 +285,7 @@ function testCompanion() {
         sendToCompanion('', null, (isPresent) => {
             if (isPresent) {
                 console.log('Companion présent');
-                getOption(['RemoveLocalCompanionPrint','RemoveLocalCompanionTPE'], function ([RemoveLocalCompanionPrint, RemoveLocalCompanionTPE]) {
+                getOption(['RemoveLocalCompanionPrint', 'RemoveLocalCompanionTPE'], function ([RemoveLocalCompanionPrint, RemoveLocalCompanionTPE]) {
                     console.log('Remove Companion print =', RemoveLocalCompanionPrint)
                     console.log('Remove Companion TPE =', RemoveLocalCompanionTPE)
                     if (RemoveLocalCompanionPrint && RemoveLocalCompanionTPE) {
@@ -297,7 +300,7 @@ function testCompanion() {
                 console.log('Companion non présent');
             }
         }, null, true)
-    , 1000); // vérification de la présence du Companion après 1s
+        , 1000); // vérification de la présence du Companion après 1s
 }
 testCompanion();
 
@@ -663,7 +666,7 @@ addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeAu
 addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeUncheckIHEMessage', function () {
     lightObserver('we-doc-import', function (elements) {
         for (const element of elements) {
-            if (element.className != 'docImportAttach') //Correspond au corps du message
+            if (!element.className.includes('docImportAttach')) //docImportAttach correspond aux documents joints donc si il n'y a pas cette classe, il s'agit du corps du message
             {
                 let checkbox = element.querySelector('input[type=checkbox]')
                 checkbox.checked = false;
@@ -685,7 +688,8 @@ addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeUn
 
 
 
-// Sélection automatique du type de document pour les courriers envoyés au DMP
+// // Sélection automatique du type de document pour les courriers envoyés au DMP
+// Au moment de l'impression des courriers
 addTweak('https://secure.weda.fr/FolderMedical/CourrierForm.aspx', '*autoDocTypeSelection', function () {
     let dropDownMenu = document.querySelector('#ContentPlaceHolder1_DropDownListDocumentTypes');
     function watchDocumentTypeCourrierDMP() {
@@ -707,10 +711,67 @@ addTweak('https://secure.weda.fr/FolderMedical/CourrierForm.aspx', '*autoDocType
     watchDocumentTypeCourrierDMP();
 });
 
+// Si on envoie un pdf considéré comme un courrier dans Weda :
+addTweak('https://secure.weda.fr/FolderMedical/DMP/view', '*autoDocTypeSelectionPDFUpload', function () {
+    // fonction permettant de surveiller un éventuel changement de choix dans le menu déroulant
+    function watchDocumentTypeCourrierPDFDMP(menuASurveiller) {
+        menuASurveiller.addEventListener('change', function () {
+            console.log('[autoDocTypeSelectionPDFUpload] Nouvelle valeur par défaut enregistrée :', this.value);
+            chrome.storage.local.set({ 'selectedDocumentTypeCourrierPDFDMP': this.value });
+        });
+    }
+
+    const listeChoixTypeDMP = document.querySelector('#form1 > div:nth-child(11) > div > div.patientDmpContainer > dmp-container > div > div.frameContent > dmp-main > dmp-share-document > div > div > div > div.fieldContainer > select');
+    watchDocumentTypeCourrierPDFDMP(listeChoixTypeDMP);
+
+    const choixActuelTypeDMP = listeChoixTypeDMP.value;
+
+    if (choixActuelTypeDMP === '11490-0') {
+        console.log('[autoDocTypeSelectionPDFUpload] choix type courrier défaut détecté, je change pour le dernier choix enregistré');
+        chrome.storage.local.get('selectedDocumentTypeCourrierPDFDMP', function (result) {
+            let selectedDocumentTypeCourrierPDFDMP = result.selectedDocumentTypeCourrierPDFDMP;
+            if (selectedDocumentTypeCourrierPDFDMP) {
+                listeChoixTypeDMP.value = selectedDocumentTypeCourrierPDFDMP;
+            }
+        });
+    }
+});
 
 // Sélection automatique du champ "titre" lors de la création d'un antécédent.
 addTweak('https://secure.weda.fr/FolderMedical/AntecedentForm.aspx', '*autoSelectTitleField', function () {
     lightObserver('#ContentPlaceHolder1_TextBoxAntecedentNom', function (elements) {
         elements[0].focus();
     });
+});
+
+
+// Ajout d'une icone d'imprimante dans les "Documents du cabinet"
+addTweak('https://secure.weda.fr/FolderTools/BiblioForm.aspx', '*addPrintIcon', function () {
+    function addPrintIcon() {
+        let allElements = document.querySelectorAll('[id^="ContentPlaceHolder1_TreeViewBibliot"]');
+        let allElementsEndingWithI = Array.from(allElements).filter(element => element.id.endsWith('i'));
+        let filteredElementspdf = Array.from(allElementsEndingWithI).filter(element => {
+            let imgTags = element.querySelectorAll('img');
+            return Array.from(imgTags).some(img => img.getAttribute('src') === "../Images/Icons/pdf.gif");
+        });
+        console.log('filteredElementspdf', filteredElementspdf);
+
+        // Ajouter l'emoji d'imprimante à chaque élément filtré
+        filteredElementspdf.forEach(element => {
+            let printIcon = document.createElement('span');
+            printIcon.textContent = '🖨️'; // Utiliser l'emoji d'imprimante
+            printIcon.style.fontSize = '16px'; // Ajuster la taille si nécessaire
+            printIcon.style.marginLeft = '5px';
+            printIcon.style.position = 'relative';
+            printIcon.style.top = '-2px'; // Décaler de 2px vers le haut
+
+            // Ajouter un gestionnaire d'événements de clic sur l'icône d'imprimante
+            printIcon.addEventListener('click', function () {
+                printIfOption()
+            });
+
+            element.appendChild(printIcon);
+        });
+    }
+    lightObserver('[id^="ContentPlaceHolder1_TreeViewBibliot"]', addPrintIcon);
 });
