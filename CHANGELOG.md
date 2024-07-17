@@ -1,7 +1,7 @@
 # Changelog
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
-# [2.5.0] - 
+# [2.5.0] - 17/07/2024
 ## ajout :
 - [#101](https://github.com/Refhi/Weda-Helper/issues/101) - Ajout d'une cotation par défaut selon le mode de la FSE
 => vous pouvez désormais créer une cotation "DéfautALD" dans vos favoris et elle sera automatiquement sélectionnée lors de la création d'une FSE en mode ALD
@@ -20,6 +20,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 ## fix :
 - [#171](https://github.com/Refhi/Weda-Helper/issues/171) - Correction d'un bug dans la fonction "Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée" qui décochait le document joint dans certains cas
 - Correction de l'option "Cocher automatiquement la case "Réaliser une FSE en gestion unique" pour les patients C2S" qui ne fonctionnait plus
+- Amélioration du message de bienvenue et de mise à jour pour y ajouter un ascenseur et la possibilité de le fermer en cliquant à l'exérieur
 
 
 # [2.4.2] - 01/07/2024
