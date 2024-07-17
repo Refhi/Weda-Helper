@@ -6,18 +6,30 @@ function htmlMaker(text) {
 }
 
 var nouveautes = `
-v2.4.2 - hotfix
-- #168 - Perte curseur lors prescription d'une demande avec l'historique affiché
-
-
-v2.4.1 - hotfix
-## (les numéros correspondent aux "issues" sur github)
-- #152 - L'option "Ouvre automatiquement la fenêtre des ordonnances-types lors des prescriptions médicamenteuses" empêchait la rédaction d'un conseil médicamenteux
-- #153 - De nouveau superpositions quand ouverture d'un document joint lors d'une consultation
-- #154 - La recherche de médicament s'efface lors d'un premier lancement de Weda dans certaines conditions
-- #155 - Courbes pédiatriques vont derrière l'iframe de l'history2Left
-- #149 - Courbes pédiatriques HS si "Activer la navigation entre les valeurs de suivi avec la touche Tab dans les consultations." est décochée
-- #161 - bug bouton impression manquant dans certificat si affichage historique activé
+<ul>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/101">#101</a> - Ajout d'une cotation par défaut selon le mode de la FSE
+    <ul>
+      <li>vous pouvez désormais créer une cotation "DéfautALD" dans vos favoris et elle sera automatiquement sélectionnée lors de la création d'une FSE en mode ALD</li>
+      <li>idem pour "DéfautPédia" qui sera automatiquement sélectionnée pour les enfants 0-6 ans</li>
+    </ul>
+  </li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/131">#131</a> - navigation entre champs de texte via Tab et Shift+Tab dans les pages de consultation. Focus possible à l'ouverture d'une consultation dans le champ de titre.</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/151">#151</a> - ajout de semelle et orthoplastie dans les mots-clés pour la classification "podologie" automatique</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/116">#116</a> - enregistre automatiquement le dernier type de document pour l'envoi au DMP pour les PDF classés comme courrier dans Weda</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/173">#173</a> - le bouton "TPE Bis" dans la popup de l'extension envoie 1€ si aucun règlement n'a été récemment demandé. Ce afin de faciliter les tests de liaison avec le Companion/TPE.</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/119">#119</a> - ajout d'un bouton pour imprimer directement les pdfs présents dans les "documents du cabinet medical"</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/123">#123</a> - mise à jour des textes explicatifs au sujet de la configuration du Companion.</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/179">#179</a> - décoche automatiquement la case "ordonnance numérique" si on fait une Demande d'Imagerie</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/137">#137</a> - valider automatiquement une ordonnance numérique</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/99">#99</a> - sélection automatique du type de document "FSE dégradée" lors de l'import d'une PJ SCOR</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/182">#182</a> - affichage d'un message d'alerte en cas de contre-indication médicamenteuse absolue</li>
+</ul>
+<h2>fix :</h2>
+<ul>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/171">#171</a> - Correction d'un bug dans la fonction "Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée" qui décochait le document joint dans certains cas</li>
+  <li>Correction de l'option "Cocher automatiquement la case "Réaliser une FSE en gestion unique" pour les patients C2S" qui ne fonctionnait plus</li>
+  <li>Amélioration du message de bienvenue et de mise à jour pour y ajouter un ascenseur et la possibilité de le fermer en cliquant à l'exérieur</li>
+</ul>
 `
 
 nouveautes = htmlMaker(nouveautes)
@@ -77,8 +89,6 @@ Bon courage,
 Les devs de Weda-Helper
 `;
 
-updateMessage = htmlMaker(updateMessage)
-
 function showPopup(text) {
     function createOverlay() {
         let overlay = document.createElement('div');
@@ -92,6 +102,12 @@ function showPopup(text) {
         overlay.style.height = '100%';
         overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
         overlay.style.zIndex = 1000;
+        // Ajout d'un écouteur d'événements pour fermer l'overlay si l'utilisateur clique en dehors de la boîte
+        overlay.addEventListener('click', function (event) {
+            if (event.target === overlay) {
+                document.body.removeChild(overlay);
+            }
+        });
         return overlay;
     }
 
@@ -102,6 +118,9 @@ function showPopup(text) {
         box.style.borderRadius = '10px';
         box.style.color = 'black';
         box.style.maxWidth = '80%';
+        box.style.maxHeight = '80%';
+        box.style.display = 'flex';
+        box.style.flexDirection = 'column';
         return box;
     }
 
@@ -120,37 +139,45 @@ function showPopup(text) {
         button.style.border = 'none';
         button.style.borderRadius = '4px';
         button.style.cursor = 'pointer';
-        button.addEventListener('click', function() {
+        button.addEventListener('click', function () {
             document.body.removeChild(overlay);
         });
         return button;
     }
 
+    function createTextContainer() {
+        let textContainer = document.createElement('div');
+        textContainer.style.overflowY = 'auto';
+        textContainer.style.marginBottom = '20px';
+        textContainer.style.flexGrow = 1;
+        return textContainer;
+    }
 
     let overlay = createOverlay();
     let box = createBox();
     let textElement = createText(text);
     let button = createButton(overlay);
+    let textContainer = createTextContainer();
 
-    box.appendChild(textElement);
-    box.appendChild(button);
+    textContainer.appendChild(textElement); // Ajoutez le texte au conteneur de texte
+    textContainer.appendChild(button); // Ajoutez le bouton à la fin du conteneur de texte
+    box.appendChild(textContainer); // Ajoutez le conteneur de texte à la boîte
     overlay.appendChild(box);
     document.body.appendChild(overlay);
 }
 
-
 // Lancement du message en cas de premier lancement ou de mise à jour
-chrome.storage.local.get(['lastExtensionVersion', 'firstStart'], function(result) {
+chrome.storage.local.get(['lastExtensionVersion', 'firstStart'], function (result) {
     if (result.lastExtensionVersion !== currentVersion) {
         // If the last version is different from the current version, there was an update
         showPopup(updateMessage);
-        chrome.storage.local.set({lastExtensionVersion: currentVersion});
+        chrome.storage.local.set({ lastExtensionVersion: currentVersion });
     }
-    
+
     if (!result.firstStart) {
         // If there's no last version, this is the first launch
         showPopup(firstStartMessage);
         // Set firstStart to true
-        chrome.storage.local.set({firstStart: true});
+        chrome.storage.local.set({ firstStart: true });
     }
 });
