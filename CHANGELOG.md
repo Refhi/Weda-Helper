@@ -1,6 +1,11 @@
 # Changelog
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
+# [2.6] - 
+## fix :
+- [#198](https://github.com/Refhi/Weda-Helper/issues/198) - la cotation par défaut fonctionne automatiquement dès que le 2e choix o/n est fait, même à la souris
+
+
 # [2.5.0] - 17/07/2024
 ## ajout :
 - [#101](https://github.com/Refhi/Weda-Helper/issues/101) - Ajout d'une cotation par défaut selon le mode de la FSE

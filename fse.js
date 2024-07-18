@@ -307,7 +307,6 @@ function tweakFSECreation() {
                         removeVisualClue(clue_index['n'][1]);
                         removeVisualClue(clue_index['o'][1]);
                     }, 100);
-                    setDefaultValue();
                 } else {
                     console.log('Both yes/no questions have an answer');
                 }
@@ -333,6 +332,17 @@ function tweakFSECreation() {
             }
             
         }
+    });
+
+    // Détecte le fait de cocher un élément contenant for='mat-radio-3-input' et for='mat-radio-2-input' puis déclencher setDefaultValue
+    lightObserver('#mat-radio-3-input', function() {
+        let boutonsRadioASurveiller = document.querySelectorAll('#mat-radio-3-input, #mat-radio-2-input');
+        boutonsRadioASurveiller.forEach(function(bouton) {
+            bouton.addEventListener('change', function() {
+                console.log('[debug] change event detected');
+                setDefaultValue();
+            });
+        });
     });
 }
 
