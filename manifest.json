@@ -27,7 +27,8 @@
           "update.js",
           "aati.js",
           "metrics.js",
-          "upload.js"]
+          "upload.js",
+          "agenda.js"]
     }
   ]
 }
