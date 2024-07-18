@@ -24,6 +24,7 @@ const keyCommands = {
             startPrinting('download', 1);
         },
     'upload_latest_file': uploadLatest,
+    'insert_date': insertDate,
     'push_enregistrer': function () {
             console.log('push_enregistrer activé');
             clickElementById('ButtonSave');
@@ -448,6 +449,25 @@ function uploadLatest() {
 }
 
 
+function insertDate() {
+    let date = new Date();
+    let currentDate = String(date.getDate()).padStart(2, '0') + "/" + String(date.getMonth()+ 1).padStart(2, '0') + "/" + String(date.getFullYear());
+    let activeElement = document.activeElement;
+    if (!activeElement)
+        return;
+    
+    var tagName = activeElement.tagName.toLowerCase();
+    if (tagName == 'iframe') {
+        activeElement = activeElement.contentWindow.document.activeElement; //On récupère l'activeElement dans l'iframe
+        tagName = 'body'
+    }
+    if (tagName == 'input' || tagName == 'textarea') {
+        activeElement.value += currentDate;
+    }
+    else if (tagName == 'body') {
+        activeElement.textContent += currentDate;
+    }
+}
 
 
 // Clique sur un bouton selon sa classe
