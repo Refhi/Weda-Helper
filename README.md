@@ -28,6 +28,7 @@ Cf. ci-dessous pour les retours et les contributions.
     - [Métrique](#métrique)
     - [Courriers](#courriers)
     - [Documents du cabinet](#documents-du-cabinet)
+    - [Agenda](#agenda)
   - [Facilitation des imports](#facilitation-des-imports)
   - [Weda-Helper-Companion](#weda-helper-companion)
   - [Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):](#problèmes-et-limitations-connues-qui-seront-peut-être-résolues-dans-de-futures-mises-à-jour)
@@ -45,6 +46,7 @@ Ctrl+P	Imprime le document en cours (1er modèle). Nécessite un module complém
 Ctrl+Shift+P	Imprime le document en cours (2e modèle)
 Alt+A	Appuie Annuler
 Alt+S	Appuie Supprimer
+Alt+D	Insère la date du jour
 Ctrl+S	Appuie Enregistrer
 Alt+V	Appuie Valider
 Alt+Z	Ouvre les antécédents
@@ -137,6 +139,9 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Documents du cabinet
 - ajout d'un bouton permettant l'impression directe d'un PDF
+
+### Agenda
+- ouverture du dossier patient directement depuis l'agenda via un clic droit sur le rendez-vous
 
 
 

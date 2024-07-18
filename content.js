@@ -202,10 +202,10 @@ function tooltipshower() {
             const match = action.toString().match(/submenuW\('(.*)'\)/);
             if (match) {
                 const submenu = match[1];
-                submenuDict[submenu] = getShortcut(shortcuts, defaultShortcuts, key);
+                submenuDict[submenu] = shortcutDefaut(shortcuts, defaultShortcuts, key);
             }
             submenuDictAll[key] = {
-                raccourci: getShortcut(shortcuts, defaultShortcuts, key),
+                raccourci: shortcutDefaut(shortcuts, defaultShortcuts, key),
                 description: defaultShortcuts[key].description
             };
         });
@@ -220,9 +220,6 @@ function tooltipshower() {
         displayShortcutsList(submenuDictAll);
     });
     
-    function getShortcut(shortcuts, defaultShortcuts, key) {
-        return shortcuts[key] || defaultShortcuts[key].shortcut;
-    }
     
     function updateElementsWithTooltips(submenuDict) {
         document.querySelectorAll('.level2.dynamic').forEach(element => {
