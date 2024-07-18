@@ -4,6 +4,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 # [2.6] - 
 ## fix :
 - [#198](https://github.com/Refhi/Weda-Helper/issues/198) - la cotation par défaut fonctionne automatiquement dès que le 2e choix o/n est fait, même à la souris
+- [#186](https://github.com/Refhi/Weda-Helper/issues/186) - "n" et "o" dans les fse ne fonctionnent pas quand assurance "maternité"  
 
 
 # [2.5.0] - 17/07/2024
