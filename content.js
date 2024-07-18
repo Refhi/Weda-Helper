@@ -184,7 +184,7 @@ function tooltipshower() {
         return;
     }
 
-    // first force the mouseover status to the element with class="level1 static" and aria-haspopup="ContentPlaceHolder1_MenuNavigate:submenu:2"
+    // simuler un survol de W
     var element = document.querySelector('[class="has-popup static"]');
     if (element) {
         element.dispatchEvent(new MouseEvent('mouseover', {
@@ -194,47 +194,91 @@ function tooltipshower() {
         }));
     }
     chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function (result) {
-        // from keyCommands, extract for each key the action
-        const entries = Object.entries(keyCommands);
+        const { shortcuts, defaultShortcuts } = result;
         let submenuDict = {};
-
-        for (const [key, action] of entries) {
-            // in the action extract the variable send to submenuW
-            if (action.toString().includes('submenuW')) {
-                var match = action.toString().match(/submenuW\('(.*)'\)/);
-                if (match) {
-                    var submenu = match[1];
-                    submenuDict[submenu] = shortcutDefaut(result.shortcuts, result.defaultShortcuts, key);
-                }
+        let submenuDictAll = {};
+    
+        Object.entries(keyCommands).forEach(([key, action]) => {
+            const match = action.toString().match(/submenuW\('(.*)'\)/);
+            if (match) {
+                const submenu = match[1];
+                submenuDict[submenu] = getShortcut(shortcuts, defaultShortcuts, key);
             }
-        }
-        console.log(submenuDict);
-
-        // change the description of each class="level2 dynamic" whom description contain the key of submenuDict to add the corresponding value
-        var elements = document.getElementsByClassName('level2 dynamic');
-        for (var i = 0; i < elements.length; i++) {
-            var element = elements[i];
-            var description = element.innerText;
-            description = description.replace(/ \(\d+\)$/, '');
-            // console.log('description', description);
-            if (description in submenuDict) {
-                // console.log('description in submenuDict', description);
-                // add a tooltip with the key of submenuDict next to the element
-                var tooltip = document.createElement('div');
-                tooltip.className = 'tooltip';
-                tooltip.style.position = 'absolute';
-                tooltip.style.top = '0px';
-                tooltip.style.left = '100%';
-                tooltip.style.padding = '10px';
-                tooltip.style.backgroundColor = '#284E98';
-                tooltip.style.border = '1px solid black';
-                tooltip.style.zIndex = '1000';
-                // tooltip.style.color = 'black';
-                tooltip.textContent = submenuDict[description];
+            submenuDictAll[key] = {
+                raccourci: getShortcut(shortcuts, defaultShortcuts, key),
+                description: defaultShortcuts[key].description
+            };
+        });
+    
+        // Ajouts manuels
+        Object.assign(submenuDictAll, {
+            "ouinonfse": { raccourci: 'n/o', description: "Valide oui/non dans les FSE" },
+            "pavnumordo": { raccourci: "pavé num. /'à'", description: "Permet d’utiliser les touches 0 à 9 et « à » pour faire les prescriptions de médicaments." }
+        });
+    
+        updateElementsWithTooltips(submenuDict);
+        displayShortcutsList(submenuDictAll);
+    });
+    
+    function getShortcut(shortcuts, defaultShortcuts, key) {
+        return shortcuts[key] || defaultShortcuts[key].shortcut;
+    }
+    
+    function updateElementsWithTooltips(submenuDict) {
+        document.querySelectorAll('.level2.dynamic').forEach(element => {
+            const description = element.innerText.replace(/ \(\d+\)$/, '');
+            if (submenuDict[description]) {
+                const tooltip = createTooltip(submenuDict[description]);
                 element.appendChild(tooltip);
             }
-        }
-    });
+        });
+    }
+    
+    function createTooltip(text) {
+        const tooltip = document.createElement('div');
+        tooltip.className = 'tooltip';
+        Object.assign(tooltip.style, {
+            position: 'absolute',
+            top: '0px',
+            left: '100%',
+            padding: '10px',
+            backgroundColor: '#284E98',
+            border: '1px solid black',
+            zIndex: '1000',
+        });
+        tooltip.textContent = text;
+        return tooltip;
+    }
+    
+    function displayShortcutsList(submenuDictAll) {
+        const shortcutsList = document.createElement('div');
+        shortcutsList.className = 'tooltip';
+        Object.assign(shortcutsList.style, {
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: '1001',
+            backgroundColor: '#ffffff',
+            padding: '20px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+            border: '1px solid #e0e0e0',
+            fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+            color: '#333',
+            fontSize: '14px',
+        });
+        shortcutsList.innerHTML = buildTableHTML(submenuDictAll);
+        document.body.appendChild(shortcutsList);
+    }
+    
+    function buildTableHTML(submenuDictAll) {
+        let tableHTML = '<table><tr><th style="text-align:right;">Raccourci&nbsp;</th><th style="text-align:left">&nbsp;Description</th></tr>';
+        Object.entries(submenuDictAll).forEach(([_, { raccourci, description }]) => {
+            tableHTML += `<tr><td style="text-align:right;">${raccourci}&nbsp;</td><td style="text-align:left">&nbsp;${description}</td></tr>`;
+        });
+        return tableHTML + '</table>';
+    }
 }
 
 // retirer l'infobulle d'aide et relacher W
