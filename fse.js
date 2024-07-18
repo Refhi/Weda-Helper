@@ -18,9 +18,15 @@ function tweakFSECreation() {
     }
 
     // Vérifie si un bouton "oui" ou "non" est coché pour la question question_number
+    // Renvoie également true si la première question n'existe pas
     function YesNoButtonChecked(question_number) {
         var element1 = document.getElementById(index['n'][question_number]);
         var element2 = document.getElementById(index['o'][question_number]);
+        // Si la première question n'existe pas, renvoie true
+        if (question_number == 0 && (!element1 || !element2)) {
+            return true;
+        }
+        // Sinon renvoie true si l'un des deux boutons est coché
         if (element1.checked || element2.checked) {
             return true;
         } else {
@@ -279,9 +285,17 @@ function tweakFSECreation() {
         CarteVitaleNonLue();
     }, 50); // Attendre 50 ms avant de vérifier la carte vitale
     
-    // Add visual clues
-    addVisualClue(clue_index['n'][0]);
-    addVisualClue(clue_index['o'][0]);
+
+    // Ajoute un indice visuel pour les touches "n" et "o"
+    // selon la présence ou non de la première question oui/non
+    let firstQuestionExist = document.getElementById('mat-radio-9-input');
+    if (firstQuestionExist) {
+        addVisualClue(clue_index['n'][0]);
+        addVisualClue(clue_index['o'][0]);
+    } else {
+        addVisualClue(clue_index['n'][1]);
+        addVisualClue(clue_index['o'][1]);
+    }
 
     // Détecte les touches "n" et "o" et cochent les boutons correspondants
     document.addEventListener('keydown', function (event) {
@@ -307,7 +321,6 @@ function tweakFSECreation() {
                         removeVisualClue(clue_index['n'][1]);
                         removeVisualClue(clue_index['o'][1]);
                     }, 100);
-                    setDefaultValue();
                 } else {
                     console.log('Both yes/no questions have an answer');
                 }
@@ -333,6 +346,17 @@ function tweakFSECreation() {
             }
             
         }
+    });
+
+    // Détecte le fait de cocher un élément contenant for='mat-radio-3-input' et for='mat-radio-2-input' puis déclencher setDefaultValue
+    lightObserver('#mat-radio-3-input', function() {
+        let boutonsRadioASurveiller = document.querySelectorAll('#mat-radio-3-input, #mat-radio-2-input');
+        boutonsRadioASurveiller.forEach(function(bouton) {
+            bouton.addEventListener('change', function() {
+                console.log('[debug] change event detected');
+                setDefaultValue();
+            });
+        });
     });
 }
 
