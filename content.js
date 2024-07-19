@@ -418,6 +418,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 var tooltipTimeout;
 document.addEventListener('keydown', function (event) {
     if (event.key === 'Alt') {
+        console.log('Alt key pressed');
         tooltipTimeout = setTimeout(function () {
             tooltipshower();
         }, 500);
@@ -427,6 +428,7 @@ document.addEventListener('keyup', function (event) {
     if (event.key === 'Alt') {
         clearTimeout(tooltipTimeout);
         mouseoutW();
+        console.log('Alt key released');
     }
 });
 
