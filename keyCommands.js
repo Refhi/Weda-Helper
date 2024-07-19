@@ -35,7 +35,9 @@ const keyCommands = {
         },
     'shortcut_w': function () {
             console.log('shortcut_w activé');
-            clickElementByOnclick("ctl00$ContentPlaceHolder1$EvenementUcForm1$MenuNavigate")
+            if (!clickElementByOnclick("ctl00$ContentPlaceHolder1$EvenementUcForm1$MenuNavigate")) {
+                clickElementByOnclick('ctl00$ContentPlaceHolder1$MenuNavigate');
+            }
         },
     'shortcut_consult': function () {
             console.log('shortcut_consult activé');
