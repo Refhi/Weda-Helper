@@ -448,3 +448,52 @@ addTweak('https://secure.weda.fr/vitalzen/gestion.aspx', 'TweakSCORDegradee', fu
     });
 });
 
+
+addTweak('https://secure.weda.fr/vitalzen/fse.aspx', '*keepPrintDegradeeParameters', function() {
+    lightObserver('#mat-slide-toggle-1-input', function(element) {
+        // d'abord rechercher tout les éléments avec comme role="switch"
+        let toggles = document.querySelectorAll('[role="switch"]');
+        // rechercher le parent, puis le frère du parent nommé span, puis son fils nommé span
+        function toggleText(toggle) {
+            let parentParent = toggle.parentElement.parentElement;
+            console.log("[keepPrintDegradeeParameters] le gd parent de l'element est", parentParent);
+            let textElement = parentParent.querySelector('span > span');
+            console.log("[keepPrintDegradeeParameters] l'element contenant le texte est", textElement);
+            console.log("[keepPrintDegradeeParameters] le texte est", textElement.innerText);
+            return textElement.innerText;
+        }
+        console.log("[keepPrintDegradeeParameters] found toggles", toggles, toggleText(toggles[0]), toggleText(toggles[1])  );
+
+
+        let backgroundToggle = document.querySelector('#mat-slide-toggle-1-input');
+        let canSignToggle = document.querySelector('#mat-slide-toggle-2-input');        
+        console.log("[keepPrintDegradeeParameters] found toggles", backgroundToggle, canSignToggle);
+        
+        // Add watcher to the background toggle
+        backgroundToggle.addEventListener('change', function() {
+            chrome.storage.local.set({backgroundToggle: backgroundToggle.checked}, function() {
+                console.log('[keepPrintDegradeeParameters] backgroundToggle saved', backgroundToggle.checked);
+            });
+        });
+        
+        // Add watcher to the canSign toggle
+        canSignToggle.addEventListener('change', function() {
+            chrome.storage.local.set({canSignToggle: canSignToggle.checked}, function() {
+                console.log('[keepPrintDegradeeParameters] canSignToggle saved', canSignToggle.checked);
+            });
+        });
+
+        // If their state is different from the last time, set them to the last state
+        chrome.storage.local.get(['backgroundToggle', 'canSignToggle'], function(result) {
+            console.log('[keepPrintDegradeeParameters] Value currently is backgroundToggle : ' + result.backgroundToggle, 'canSignToggle : ' + result.canSignToggle);
+            if (result.backgroundToggle !== undefined) {
+                backgroundToggle.checked = result.backgroundToggle;
+                console.log('[keepPrintDegradeeParameters] backgroundToggle set to', result.backgroundToggle);
+            }
+            if (result.canSignToggle !== undefined) {
+                canSignToggle.checked = result.canSignToggle;
+                console.log('[keepPrintDegradeeParameters] canSignToggle set to', result.canSignToggle);
+            }
+        });
+    });
+});

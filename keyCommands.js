@@ -236,7 +236,7 @@ function push_annuler() {
 }
 
 // Fonction permettant d'imprimer selon les options choisies
-function printIfOption(modelNumber = 0) {    
+function printIfOption(modelNumber = 0) {
     getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
         if (!RemoveLocalCompanionPrint) {
             startPrinting('companion', modelNumber);
@@ -247,12 +247,16 @@ function printIfOption(modelNumber = 0) {
 }
 
 // Définition de la fonction startPrinting
-function startPrinting(handlingType, modelNumber) {
+function startPrinting(handlingType, modelNumber = null) {
     // handlingType = 'print' ou 'download' ou 'companion'
+    // whatToPrint = 0 ou 1, correspondant à la place dans la liste des modèles. Sinon
+    // whatToPrint = 'courbe' si c'est une courbe ou 'fse' si c'est une FSE
     // modelNumber = integer, correspondant à la place dans la liste des modèles. Commence à 0.
     console.log('startPrinting activé');
     let courbe = window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx');
-    processPrintSequence(handlingType, modelNumber, courbe);
+    let isFSE = window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx');
+    let whatToPrint = courbe ? 'courbe' : (isFSE ? 'fse' : modelNumber);
+    processPrintSequence(handlingType, whatToPrint);
 
     function urlFromImage() {
         var pdfUrl = document.querySelector('img[data-pdf-url]');
@@ -333,9 +337,9 @@ function startPrinting(handlingType, modelNumber) {
         }
     }
 
-    async function grabIframeWhenLoaded() {
+    async function grabIframeWhenLoaded(selector) {
         return new Promise((resolve, reject) => {
-            lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", (newElements) => {
+            lightObserver(selector, (newElements) => {
                 // Assuming the first new element is the iframe we're interested in
                 let iframe = newElements[0];
                 resolve(iframe);
@@ -384,7 +388,7 @@ function startPrinting(handlingType, modelNumber) {
 
 
 
-    function processPrintSequence(handlingType, modelNumber, courbe) {
+    function processPrintSequence(handlingType, whatToPrint) {
         // vérification du type de demande
         const handlingTypes = ['print', 'download', 'companion'];
         if (!handlingTypes.includes(handlingType)) {
@@ -395,7 +399,7 @@ function startPrinting(handlingType, modelNumber) {
         recordMetrics({ clicks: 3, drags: 4 });
 
         // deux grands cas de figure : impression d'une courbe ou d'un document
-        if (courbe) {
+        if (whatToPrint === 'courbe') {
             let url = urlFromImage();
             if (!url) {
                 console.log('[processPrintSequence] URL non trouvée');
@@ -410,34 +414,55 @@ function startPrinting(handlingType, modelNumber) {
             } else if (handlingType === 'download') {
                 download(url);
             }
-        } else { // cas d'un document
+        } else if (whatToPrint === 'fse') {
+            console.log('printing FSE');
+            // TODO : gérer l'impression des FSE
+            // Cherche l'élément avec class 'mat-button-wrapper' et texte 'Imprimer'
+            let boutons = document.querySelectorAll('span.mat-button-wrapper');
+            let boutonImprimer = Array.from(boutons).find(bouton => bouton.innerText === 'Imprimer');
+            boutonImprimer.click();
+
+            // Quand l'iframe est chargée, lancer l'impression
+            printIframeWhenAvailable("iframe");
+
+            // Puis fermer la fenêtre
+            boutons = document.querySelectorAll('mat-button-wrapper');
+            let boutonFermer = Array.from(boutons).find(bouton => bouton.innerText === 'Fermer');
+            boutonFermer.click();
+
+        } else {
+            let modelNumber = whatToPrint // cas d'un document
             // il faut d'abord cliquer sur le modèle d'impression pertinent
             clickPrinterNumber(modelNumber);
             // ensuite attendre que l'iframe soit chargé
-            grabIframeWhenLoaded()
-                .then(iframe => {
-                    // On se contente de lancer l'impression si on a demandé l'impression
-                    if (handlingType === 'print') {
-                        iframe.contentWindow.print();
-                        return;
-                    } else {
-                        // sinon on récupère l'URL du document (ce qui prend parfois quelques centaines de ms)
-                        return grabUrlFromIframe(iframe);
-                    }
-                })
-                .then(url => {
-                    if (handlingType === 'companion') {
-                        downloadBlob(url)
-                            .then(blob => {
-                                sendToCompanion('print', blob,
-                                    postPrintAction);
-                                });
-                    } else if (handlingType === 'download') {
-                        download(url);
-                        postPrintAction();
-                    }
-                });
+            printIframeWhenAvailable("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile");
         }
+    }
+
+    function printIframeWhenAvailable(selector) {
+        grabIframeWhenLoaded(selector)
+            .then(iframe => {
+                // On se contente de lancer l'impression si on a demandé l'impression
+                if (handlingType === 'print') {
+                    iframe.contentWindow.print();
+                    return;
+                } else {
+                    // sinon on récupère l'URL du document (ce qui prend parfois quelques centaines de ms)
+                    return grabUrlFromIframe(iframe);
+                }
+            })
+            .then(url => {
+                if (handlingType === 'companion') {
+                    downloadBlob(url)
+                        .then(blob => {
+                            sendToCompanion('print', blob,
+                                postPrintAction);
+                            });
+                } else if (handlingType === 'download') {
+                    download(url);
+                    postPrintAction();
+                }
+            });
     }
 }
         
