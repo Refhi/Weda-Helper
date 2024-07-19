@@ -414,43 +414,45 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 });
 
-// Ecoute l'appuis de la touches Alt pour afficher l'aide
-var lastAltPressTime = 0;
-var altKeyPressCount = 0; // Compteur d'appuis sur la touche Alt
-var checkAltReleaseInterval = null;
-var resetAltKeyPressCountInterval = null;
+addTweak('*', '*Tooltip', function () {
+    // Ecoute l'appuis de la touches Alt pour afficher l'aide
+    var lastAltPressTime = 0;
+    var altKeyPressCount = 0; // Compteur d'appuis sur la touche Alt
+    var checkAltReleaseInterval = null;
+    var resetAltKeyPressCountInterval = null;
 
 
-document.addEventListener('keydown', function (event) {
-    if (event.key === 'Alt') {
-        console.log('Alt key pressed');
-        lastAltPressTime = Date.now();
-        altKeyPressCount++; // Incrémenter le compteur à chaque appui sur Alt
-        clearTimeout(resetAltKeyPressCountInterval);
-        resetAltKeyPressCountInterval = setTimeout(function() {
-            altKeyPressCount = 0; // Réinitialiser altKeyPressCount après 1 seconde sans appui sur Alt
-        }, 1000); // Délai de 1 seconde
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Alt') {
+            console.log('Alt key pressed');
+            lastAltPressTime = Date.now();
+            altKeyPressCount++; // Incrémenter le compteur à chaque appui sur Alt
+            clearTimeout(resetAltKeyPressCountInterval);
+            resetAltKeyPressCountInterval = setTimeout(function() {
+                altKeyPressCount = 0; // Réinitialiser altKeyPressCount après 1 seconde sans appui sur Alt
+            }, 1000); // Délai de 1 seconde
 
-        // Ignorer le premier appui sur Alt
-        if (altKeyPressCount > 1) {
-            if (altKeyPressCount === 2) {
-                tooltipshower();
-            }
-            // Si l'intervalle n'est pas déjà en cours, le démarrer
-            if (!checkAltReleaseInterval) {
-                checkAltReleaseInterval = setInterval(function () {
-                    // Si plus de 100ms se sont écoulées depuis la dernière pression
-                    if (Date.now() - lastAltPressTime > 100) {
-                        console.log('Alt key released');
-                        clearInterval(checkAltReleaseInterval);
-                        checkAltReleaseInterval = null; // Réinitialiser l'intervalle
-                        mouseoutW(); // Appeler la fonction de relâchement
-                        altKeyPressCount = 0; // Réinitialiser le compteur pour permettre la détection lors de la prochaine série d'appuis
-                    }
-                }, 100); // Vérifier toutes les 100ms
+            // Ignorer le premier appui sur Alt
+            if (altKeyPressCount > 1) {
+                if (altKeyPressCount === 2) {
+                    tooltipshower();
+                }
+                // Si l'intervalle n'est pas déjà en cours, le démarrer
+                if (!checkAltReleaseInterval) {
+                    checkAltReleaseInterval = setInterval(function () {
+                        // Si plus de 100ms se sont écoulées depuis la dernière pression
+                        if (Date.now() - lastAltPressTime > 100) {
+                            console.log('Alt key released');
+                            clearInterval(checkAltReleaseInterval);
+                            checkAltReleaseInterval = null; // Réinitialiser l'intervalle
+                            mouseoutW(); // Appeler la fonction de relâchement
+                            altKeyPressCount = 0; // Réinitialiser le compteur pour permettre la détection lors de la prochaine série d'appuis
+                        }
+                    }, 100); // Vérifier toutes les 100ms
+                }
             }
         }
-    }
+    });
 });
 
 // // Change certains éléments selon l'URL les options
