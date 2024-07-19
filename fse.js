@@ -229,9 +229,26 @@ function tweakFSECreation() {
             },
             {
                 condition: function() {
-                    let ageString = document.querySelector('#LabelInfoPatientNom > span > span:last-child').textContent;
-                    let age = parseInt(ageString.match(/\d+/)[0]);
-                    console.log('Age du patient :', age);
+                    // Étape 1: Sélectionner le span et extraire la date de naissance du title
+                    let spanWithTitle = document.querySelector('#LabelInfoPatientNom > span > span:last-child');
+                    let title = spanWithTitle.getAttribute('title');
+                    let birthDateString = title.match(/(\d{2}\/\d{2}\/\d{4})/)[0];
+                
+                    // Étape 2: Convertir la chaîne de date en un objet Date
+                    let birthDateParts = birthDateString.split('/');
+                    let birthDate = new Date(birthDateParts[2], birthDateParts[1] - 1, birthDateParts[0]);
+                
+                    // Étape 3: Calculer l'âge
+                    let today = new Date();
+                    let age = today.getFullYear() - birthDate.getFullYear();
+                    let m = today.getMonth() - birthDate.getMonth();
+                    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                        age--;
+                    }
+                
+                    console.log('Age du patient :', age, 'ans');
+                
+                    // Étape 4: Retourner true si l'âge est inférieur à 7 ans
                     return age < 7;
                 },
                 action: 'DéfautPédia'

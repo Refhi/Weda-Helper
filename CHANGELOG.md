@@ -10,6 +10,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#198](https://github.com/Refhi/Weda-Helper/issues/198) - la cotation par défaut fonctionne automatiquement dès que le 2e choix o/n est fait, même à la souris
 - [#186](https://github.com/Refhi/Weda-Helper/issues/186) - "n" et "o" dans les fse même quand assurance "maternité" est sélectionnée
 - [#208](https://github.com/Refhi/Weda-Helper/issues/208) - Alt+W fonctionne depuis les pages d'accueil
+- [#209](https://github.com/Refhi/Weda-Helper/issues/209) - défaultPédia fonctionne désormais pour les ages <1 an
 
 
 # [2.5.0] - 17/07/2024
