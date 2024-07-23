@@ -448,3 +448,73 @@ addTweak('https://secure.weda.fr/vitalzen/gestion.aspx', 'TweakSCORDegradee', fu
     });
 });
 
+
+addTweak('https://secure.weda.fr/vitalzen/fse.aspx', '*keepPrintDegradeeParameters', function() {
+    lightObserver('.mat-slide-toggle-label span', function(element) { // on cherche aussi le texte, mais cf. Fin de fonction
+        // d'abord rechercher tout les éléments avec comme role="switch"
+        let toggles = document.querySelectorAll('[role="switch"]');
+        let backgroundToggle;
+        let canSignToggle;
+        
+        // retourne le texte de l'élément "switch" passé en paramètre
+        function textOfToggle(toggle) {
+            let parentParent = toggle.parentElement.parentElement;
+            let textElement = parentParent.querySelector('span');
+            return textElement.innerText;
+        }
+
+        toggles.forEach(function(toggle) {
+            let textofTheToggle = textOfToggle(toggle);
+            if (textofTheToggle === 'Retirer le fond') {
+                backgroundToggle = toggle;
+                console.log('[keepPrintDegradeeParameters] found backgroundToggle', backgroundToggle, ' dont le texte est: ',textofTheToggle);
+            } else if (textofTheToggle === 'le patient peut signer') {
+                canSignToggle = toggle;
+                console.log('[keepPrintDegradeeParameters] found canSignToggle', canSignToggle, ' dont le texte est: ',textofTheToggle);
+            } else {
+                console.log('[keepPrintDegradeeParameters] found an unknown toggle : ', toggle, ' . With text :', textofTheToggle);
+            }
+        });
+
+
+        // surveille les changements de valeur des boutons et les enregistre dans le stockage local
+        function addToggleWatcher(toggleElement, storageKey) {
+            toggleElement.addEventListener('change', function() {
+                let saveObj = {};
+                saveObj[storageKey] = toggleElement.checked;
+                chrome.storage.local.set(saveObj, function() {
+                    console.log(`[${storageKey}] ${storageKey} saved`, toggleElement.checked);
+                });
+            });
+        }
+        
+        // Ajoute un écouteur d'événement pour chaque bouton
+        addToggleWatcher(backgroundToggle, 'backgroundToggle');
+        addToggleWatcher(canSignToggle, 'canSignToggle');
+
+        // If their state is different from the last time, set them to the last state
+        chrome.storage.local.get(['backgroundToggle', 'canSignToggle'], function(result) {
+            console.log('[keepPrintDegradeeParameters] Value currently is backgroundToggle : ' + result.backgroundToggle, 'canSignToggle : ' + result.canSignToggle);
+            function changeToggleIfDifferent(toggleElement, storageKey) {
+                if (result[storageKey] !== undefined && toggleElement.checked !== result[storageKey]) {
+                    toggleElement.click();
+                    console.log('[keepPrintDegradeeParameters] ', storageKey, ' set to', result[storageKey]);
+                    return true
+                } else {
+                    console.log('[keepPrintDegradeeParameters] ', storageKey, ' already set to', result[storageKey]);
+                    return false
+                }
+            }
+            let backGroundToggleIsNotSet = changeToggleIfDifferent(backgroundToggle, 'backgroundToggle');
+            let canSignToggleIsNotSet = changeToggleIfDifferent(canSignToggle, 'canSignToggle');
+            if (!backGroundToggleIsNotSet && !canSignToggleIsNotSet) {
+                console.log('[keepPrintDegradeeParameters] No toggle was changed, greenLight for printing');
+                let date = new Date();
+                let timestamp = date.getTime();
+                chrome.storage.local.set({FSEPrintGreenLightTimestamp: timestamp}, function() {
+                    console.log('[keepPrintDegradeeParameters] FSEPrintGreenLightTimestamp saved', timestamp);
+                });
+            };
+        });
+    }, document, false, false, "le patient peut signer");
+});
