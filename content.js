@@ -844,16 +844,171 @@ addTweak('https://secure.weda.fr/FolderTools/BiblioForm.aspx', '*addPrintIcon', 
 // Lien avec l'API de Weda (https://secure.weda.fr/api/patients/[numeropatient])
 // Exemple pour Mme DESMAUX (un dossier de démonstration) :
 // https://secure.weda.fr/api/patients/65407357 qui retourne un objet JSON
+// par exemple :
+// getPatientInfo(65407357)
+//     .then(data => {
+//         let name = data.birthName;
+//         console.log('getPatientInfo ok, name:', name);
+//     });
+// Le json contiens les éléments suivants :
+// {
+//     "id": 65407357,
+//     "patientFileUrl": "/FolderMedical/PatientViewForm.aspx?PatDk=[numéro du patient]|0|0|0&crypt=[clé selon la session]",]",
+//     "medicalOfficeId": 4341,
+//     "createdDate": "2023-09-15T00:00:00",
+//     "lastModifiedDate": "2023-09-15T09:12:07.527",
+//     "prefix": "Mme",
+//     "sex": "F",
+//     "birthName": "DESMAUX",
+//     "lastName": "DESMAUX",
+//     "firstNames": "NATHALIE",
+//     "preferredBirthFirstName": "NATHALIE",
+//     "preferredFirstName": "NATHALIE",
+//     "isLunarBirthDate": false,
+//     "birthDate": "1955-06-15T00:00:00",
+//     "lunarBirthDate": null,
+//     "dateOfBirth": {
+//       "date": "15/06/1955",
+//       "isLunar": false
+//     },
+//     "birthPlace": "inconnu",
+//     "birthPlaceInsee": "99999",
+//     "familyStatus": null,
+//     "zip": "27670",
+//     "city": "ST OUEN DU TILLEUL",
+//     "profession": null,
+//     "professionFreeForm": "",
+//     "nir": "2550699999999",
+//     "nirCle": "34",
+//     "birthRank": "1",
+//     "nationality": null,
+//     "isDeceased": false,
+//     "deathDate": null,
+//     "deathCause": null,
+//     "refDoctorUserId": 37637,
+//     "refDoctorStart": "2024-05-19T00:00:00",
+//     "refDoctorEnd": null,
+//     "recordNumber": "",
+//     "appointmentTag": null,
+//     "prematurity": {
+//       "isPremature": false,
+//       "weeks": 0,
+//       "days": 0
+//     },
+//     "refDoctorNote": null,
+//     "consent": {
+//       "consentSharingWithinStructure": false,
+//       "consentSharingWithDmp": 0,
+//       "mspVisitData": null
+//     }
+// }
+
+
 
 // Fonction pour récupérer les informations du patient
-function getPatientInfo(patientId) {
-    fetch('https://secure.weda.fr/api/patients/' + patientId)
+async function getPatientInfo(patientId) {
+    return fetch('https://secure.weda.fr/api/patients/' + patientId)
         .then(response => {
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
             return response.json();
         })
-        .then(data => console.log(data))
         .catch(error => console.error('There has been a problem with your fetch operation:', error));
 }
+
+
+// // Ajout d'un accès simplifié dans un onglet dédié aux antécédents, depuis n'importe
+// quelle page affichant une liste de patient après recherche
+let urls = [
+    'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx',
+    'https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx',
+    'https://secure.weda.fr/FolderMedical/WedaEchanges/'
+];
+
+addTweak(urls, '*addATCDShortcut', function () {
+    let patientsSelector = '[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"]';
+
+    async function addPatientUrlParams(element, patientFileNumber) {
+        let patientInfo = await getPatientInfo(patientFileNumber);
+        console.log('patientInfo', patientInfo);
+        let patientFileUrl = patientInfo.patientFileUrl;
+        let patientFileUrlParts = patientFileUrl.split('?');
+        let patientFileUrlParams = patientFileUrlParts[1];
+        console.log('patientFileUrlParams', patientFileUrlParams);
+        // Ajoute l'information dans une propriété UrlParams
+        element.UrlParams = patientFileUrlParams;
+        console.log('ajout de ', patientFileUrlParams, 'à', element, 'ce qui donne ', element.UrlParams);
+    }
+
+    function openPatientNotes(element) {
+        const baseUrl = 'https://secure.weda.fr/FolderMedical/PopUpRappel.aspx?';
+        let patientFileUrlParams = element.UrlParams;
+        let url = baseUrl + patientFileUrlParams;
+        window.open(url, '_blank');
+    }
+
+    function openPatientATCD(element) {
+        const baseUrl = 'https://secure.weda.fr/FolderMedical/AntecedentForm.aspx?';
+        let patientFileUrlParams = element.UrlParams;
+        let url = baseUrl + patientFileUrlParams;
+        window.open(url, '_blank');
+    }
+
+    function addHintOverlay(element) {
+        element.title = 'Clic droit pour ajouter une note, clic du milieu pour gérer les antécédents';
+    }
+
+
+    function addATCDShortcut(elements = null) {
+        if (!elements) {
+            elements = document.querySelectorAll(patientsSelector);
+        }
+        elements.forEach(element => {
+            let title = element.title;
+            let parts = title.split('|');
+            let patientFileNumber = parts[0]; // Prendre le premier élément
+            if (parseInt(patientFileNumber, 10) === 0) {
+                console.log('Ne fonctionne pas pour Achimed');
+                return;
+            } console.log('patientFileNumber', patientFileNumber);
+
+            addHintOverlay(element);
+            addPatientUrlParams(element, patientFileNumber);
+
+
+            // Gestion du clic droit
+            element.addEventListener('contextmenu', function (event) {
+                event.preventDefault(); // Empêche le menu contextuel de s'ouvrir
+                openPatientNotes(element);
+            });
+
+            // Gestion du clic du milieu
+            element.addEventListener('mousedown', function (event) {
+                if (event.button === 1) { // Bouton du milieu
+                    // retirer l'élément href pour éviter l'ouverture d'un nouvel onglet
+                    let href = element.getAttribute('href');
+                    element.removeAttribute('href');
+                    event.preventDefault(); // Empêche le comportement par défaut (comme ouvrir un lien dans un nouvel onglet)
+                    console.log('Clic du milieu sur', event.target);
+                    openPatientATCD(element);
+
+                    // Rétablir l'attribut href après un délai
+                    setTimeout(() => {
+                        element.setAttribute('href', href);
+                    }, 500);
+                }
+            });
+
+        });
+    }
+
+    lightObserver(patientsSelector, addATCDShortcut);
+});
+
+// Set the focus in the text fied https://secure.weda.fr/FolderMedical/PopUpRappel.aspx
+addTweak('https://secure.weda.fr/FolderMedical/PopUpRappel.aspx', '*focusOnTextArea', function () {
+    let textAreaSelector = '#TextBoxCabinetPatientRappel';
+    let textArea = document.querySelector(textAreaSelector);
+    textArea.focus();
+});

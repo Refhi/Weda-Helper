@@ -215,7 +215,8 @@ function push_valider() {
         () => GenericClicker("title", "Valider"),
         () => clickElementByChildtextContent("VALIDER"),
         () => clickElementById('ContentPlaceHolder1_ButtonQuitter2'),
-        () => clicSecure()
+        () => clicSecure(),
+        () => clickElementById('ButtonFermerRappel')
     ];
 
     actions.some(action => action() !== false);
