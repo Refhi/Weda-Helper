@@ -945,6 +945,7 @@ addTweak(urls, '*addATCDShortcut', function () {
         const baseUrl = 'https://secure.weda.fr/FolderMedical/PopUpRappel.aspx?';
         let patientFileUrlParams = element.UrlParams;
         let url = baseUrl + patientFileUrlParams;
+        recordMetrics({ clicks: 2, drags: 2 });
         window.open(url, '_blank');
     }
 
@@ -952,6 +953,7 @@ addTweak(urls, '*addATCDShortcut', function () {
         const baseUrl = 'https://secure.weda.fr/FolderMedical/AntecedentForm.aspx?';
         let patientFileUrlParams = element.UrlParams;
         let url = baseUrl + patientFileUrlParams;
+        recordMetrics({ clicks: 2, drags: 2 });
         window.open(url, '_blank');
     }
 
@@ -1011,4 +1013,5 @@ addTweak('https://secure.weda.fr/FolderMedical/PopUpRappel.aspx', '*focusOnTextA
     let textAreaSelector = '#TextBoxCabinetPatientRappel';
     let textArea = document.querySelector(textAreaSelector);
     textArea.focus();
+    recordMetrics({ clicks: 1, drags: 1 });
 });
