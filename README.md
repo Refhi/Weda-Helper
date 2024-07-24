@@ -146,6 +146,9 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 ### Agenda
 - ouverture du dossier patient directement depuis l'agenda via un clic droit sur le rendez-vous
 
+### Accès facilité aux ATCD et aux notes depuis les recherches patients
+- accès facilité aux ATCD et aux notes patients depuis n'importe quelle liste de patients issus d'une recherche : Bouton de droite pour les notes, bouton du milieu pour les ATCD
+
 
 
 ## Facilitation des imports

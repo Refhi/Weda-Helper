@@ -215,7 +215,8 @@ function push_valider() {
         () => GenericClicker("title", "Valider"),
         () => clickElementByChildtextContent("VALIDER"),
         () => clickElementById('ContentPlaceHolder1_ButtonQuitter2'),
-        () => clicSecure()
+        () => clicSecure(),
+        () => clickElementById('ButtonFermerRappel')
     ];
 
     actions.some(action => action() !== false);
@@ -446,7 +447,6 @@ function startPrinting(handlingType, modelNumber = null) {
             let boutonImprimer = Array.from(boutons).find(bouton => bouton.innerText === 'Imprimer');
             boutonImprimer.click();
 
-
             // D'abord attendre le feu vert pour l'impression. On doit attendre que le timestamp contenu dans le storage FSEPrintGreenLightTimestamp date de moins de 10 secondes
             function waitForFSEPrintGreenLight() {
                 const startTime = Date.now(); // Enregistre le moment du début            
@@ -470,7 +470,6 @@ function startPrinting(handlingType, modelNumber = null) {
                 checkConditionAndRetry(); // Appel initial pour démarrer la vérification
             }
             waitForFSEPrintGreenLight();
-
 
 
         } else {
