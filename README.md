@@ -29,6 +29,7 @@ Cf. ci-dessous pour les retours et les contributions.
     - [Courriers](#courriers)
     - [Documents du cabinet](#documents-du-cabinet)
     - [Agenda](#agenda)
+    - [Antécédents :](#antécédents-)
   - [Facilitation des imports](#facilitation-des-imports)
   - [Weda-Helper-Companion](#weda-helper-companion)
   - [Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):](#problèmes-et-limitations-connues-qui-seront-peut-être-résolues-dans-de-futures-mises-à-jour)
@@ -148,6 +149,10 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Accès facilité aux ATCD et aux notes depuis les recherches patients
 - accès facilité aux ATCD et aux notes patients depuis n'importe quelle liste de patients issus d'une recherche : Bouton de droite pour les notes, bouton du milieu pour les ATCD
+
+### Antécédents :
+- ajout d'options pour limiter le nombre d'atcd affichés en CIM 10 et de les trier par ordre alphabétique
+
 
 
 

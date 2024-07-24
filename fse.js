@@ -355,7 +355,7 @@ function tweakFSECreation() {
                     recordMetrics({clicks: 1, drags: 1});
                     element.dispatchEvent(new Event('change'));
                 }
-                else if (element && element.type == 'checkbox' && !event.altKey) { //checked puis un ev  ent change ne fonctionnent pas sur une Checkbox donc on trigger un click()
+                else if (element && element.type == 'checkbox' && !event.altKey) { //checked puis un event change ne fonctionnent pas sur une Checkbox donc on trigger un click()
                     console.log('trying to click element', element);
                     element.click(); 
                     recordMetrics({clicks: 1, drags: 1});

@@ -2,11 +2,18 @@
 // // Ne justifiant pas la création d'un fichier séparé
 
 // // Sorte de post-chargement pour les pages, car le onload fonctionne mal, et après une mutation c'est pas toujours évident
-function afterMutations(delay, callback, callBackId = "callback id undefined") {
+function afterMutations(delay, callback, callBackId = "callback id undefined", preventMultiple = false) {
     let timeoutId = null;
     const action = () => {
         console.log(`Aucune mutation détectée pendant ${delay}ms, je considère la page comme chargée. Appel du Callback. (${callBackId})`);
-        callback();
+        if (preventMultiple) {
+            observer.disconnect();
+            callback();
+            afterMutations(delay, callback, callBackId, preventMultiple);
+        } else {
+            callback();
+        }
+        
     };
 
     const observer = new MutationObserver((mutationsList, observer) => {
