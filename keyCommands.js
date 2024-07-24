@@ -340,6 +340,14 @@ function startPrinting(handlingType, modelNumber = null) {
 
     async function grabIframeWhenLoaded(selector) {
         return new Promise((resolve, reject) => {
+            // Dans le cas d'une FSE, l'iframe est déjà présent dans le DOM car
+            // on appelle cette fonction alors que l'iframe est déjà chargée
+            if (isFSE) {
+                let iframe = document.querySelector(selector);
+                resolve(iframe);
+                return;
+            }
+
             lightObserver(selector, (newElements) => {
                 // Assuming the first new element is the iframe we're interested in
                 let iframe = newElements[0];
@@ -369,21 +377,37 @@ function startPrinting(handlingType, modelNumber = null) {
 
 
     function postPrintAction() {
-        let closebutton = {
-            'doNothing': null,
-            'closePreview': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay',
-            'returnToPatient': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
+        console.log('postPrintAction activé');
+        function closeFSEPrintWindow() {
+            // Puis fermer la fenêtre
+            boutons = document.querySelectorAll('span.mat-button-wrapper');
+            let boutonFermer = Array.from(boutons).find(bouton => bouton.innerText === 'Fermer');
+            if (boutonFermer) {
+                console.log('boutonFermer', boutonFermer);
+                boutonFermer.click();
+            }
         }
 
-        getOption('postPrintBehavior', function (postPrintBehavior) {
-            console.log('postPrintBehavior is ', postPrintBehavior, 'id to look for ', closebutton[postPrintBehavior])
-            let buttonToClick = document.getElementById(closebutton[postPrintBehavior]);
-            if (buttonToClick) {
-                console.log('clicking on', buttonToClick)
-                buttonToClick.click();
-                recordMetrics({ clicks: 1, drags: 1 });
+        // cas d'une FSE
+        if (isFSE) {
+            console.log('FSE detected, je tente de fermer la fenêtre');
+            closeFSEPrintWindow();
+        } else {
+            let closebutton = {
+                'doNothing': null,
+                'closePreview': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay',
+                'returnToPatient': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
             }
-        });
+            getOption('postPrintBehavior', function (postPrintBehavior) {
+                console.log('postPrintBehavior is ', postPrintBehavior, 'id to look for ', closebutton[postPrintBehavior])
+                let buttonToClick = document.getElementById(closebutton[postPrintBehavior]);
+                if (buttonToClick) {
+                    console.log('clicking on', buttonToClick)
+                    buttonToClick.click();
+                    recordMetrics({ clicks: 1, drags: 1 });
+                }
+            });
+        }
     }
 
 
@@ -423,13 +447,30 @@ function startPrinting(handlingType, modelNumber = null) {
             let boutonImprimer = Array.from(boutons).find(bouton => bouton.innerText === 'Imprimer');
             boutonImprimer.click();
 
-            // Quand l'iframe est chargée, lancer l'impression
-            printIframeWhenAvailable("iframe");
+            // D'abord attendre le feu vert pour l'impression. On doit attendre que le timestamp contenu dans le storage FSEPrintGreenLightTimestamp date de moins de 10 secondes
+            function waitForFSEPrintGreenLight() {
+                const startTime = Date.now(); // Enregistre le moment du début            
+                function checkConditionAndRetry() {
+                    chrome.storage.local.get('FSEPrintGreenLightTimestamp', function (result) {
+                        console.log('FSEPrintGreenLightTimestamp', result.FSEPrintGreenLightTimestamp);
+                        if (Date.now() - result.FSEPrintGreenLightTimestamp < 10000) {
+                            console.log('FSEPrintGreenLightTimestamp is less than 10 seconds ago, je lance l\'impression');
+                            // Quand l'iframe est chargée, lancer l'impression
+                            printIframeWhenAvailable("iframe");
+                        } else if (Date.now() - startTime > 10000) {
+                            console.log('Timeout while waiting for FSEPrintGreenLightTimestamp');
+                            return
+                        } else {
+                            console.log('FSEPrintGreenLightTimestamp is more than 10 seconds ago, je réessaie dans 100ms');
+                            setTimeout(checkConditionAndRetry, 100); // Rappelle checkConditionAndRetry après 100 ms
+                        }
+                    });
+                }
+            
+                checkConditionAndRetry(); // Appel initial pour démarrer la vérification
+            }
+            waitForFSEPrintGreenLight();
 
-            // Puis fermer la fenêtre
-            boutons = document.querySelectorAll('mat-button-wrapper');
-            let boutonFermer = Array.from(boutons).find(bouton => bouton.innerText === 'Fermer');
-            boutonFermer.click();
 
         } else {
             let modelNumber = whatToPrint // cas d'un document
@@ -443,6 +484,7 @@ function startPrinting(handlingType, modelNumber = null) {
     function printIframeWhenAvailable(selector) {
         grabIframeWhenLoaded(selector)
             .then(iframe => {
+                console.log('iframe trouvée :', iframe);
                 // On se contente de lancer l'impression si on a demandé l'impression
                 if (handlingType === 'print') {
                     iframe.contentWindow.print();

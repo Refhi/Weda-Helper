@@ -114,11 +114,14 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - Si elles sont utilisées, utilise une cotation dans vos favoris :
   - la cotation "DéfautPédia" pour les 0-6 ans
   - la cotation "DéfautALD" pour les ALD
-  - la cotation "Défaut" pour les autres 
+  - la cotation "DéfautTC" pour les téléconsultations
+  - la cotation "Défaut" pour les autres
 - Lecture automatique de la carte vitale si elle est non lue
 - Affichage de boutons directs pour la réalisation de FDS dégradées et téléconsultation
 - Option pour cocher automatiquement "accident causé par un tier" ou "gestion unique"
 - Sélection automatique de "je suis le médecin traitant" quand c'est le cas et qu'un autre cas de figure est sélectionné
+- Ctrl+P imprime la FDS dans le cas des FSE dégradées
+- Mémorisation des derniers choix ("ne peux signer" et "Retirer le fond")
 
 
 ## Divers

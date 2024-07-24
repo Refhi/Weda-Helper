@@ -450,50 +450,71 @@ addTweak('https://secure.weda.fr/vitalzen/gestion.aspx', 'TweakSCORDegradee', fu
 
 
 addTweak('https://secure.weda.fr/vitalzen/fse.aspx', '*keepPrintDegradeeParameters', function() {
-    lightObserver('#mat-slide-toggle-1-input', function(element) {
+    lightObserver('.mat-slide-toggle-label span', function(element) { // on cherche aussi le texte, mais cf. Fin de fonction
         // d'abord rechercher tout les éléments avec comme role="switch"
         let toggles = document.querySelectorAll('[role="switch"]');
-        // rechercher le parent, puis le frère du parent nommé span, puis son fils nommé span
-        function toggleText(toggle) {
+        let backgroundToggle;
+        let canSignToggle;
+        
+        // retourne le texte de l'élément "switch" passé en paramètre
+        function textOfToggle(toggle) {
             let parentParent = toggle.parentElement.parentElement;
-            console.log("[keepPrintDegradeeParameters] le gd parent de l'element est", parentParent);
-            let textElement = parentParent.querySelector('span > span');
-            console.log("[keepPrintDegradeeParameters] l'element contenant le texte est", textElement);
-            console.log("[keepPrintDegradeeParameters] le texte est", textElement.innerText);
+            let textElement = parentParent.querySelector('span');
             return textElement.innerText;
         }
-        console.log("[keepPrintDegradeeParameters] found toggles", toggles, toggleText(toggles[0]), toggleText(toggles[1])  );
+
+        toggles.forEach(function(toggle) {
+            let textofTheToggle = textOfToggle(toggle);
+            if (textofTheToggle === 'Retirer le fond') {
+                backgroundToggle = toggle;
+                console.log('[keepPrintDegradeeParameters] found backgroundToggle', backgroundToggle, ' dont le texte est: ',textofTheToggle);
+            } else if (textofTheToggle === 'le patient peut signer') {
+                canSignToggle = toggle;
+                console.log('[keepPrintDegradeeParameters] found canSignToggle', canSignToggle, ' dont le texte est: ',textofTheToggle);
+            } else {
+                console.log('[keepPrintDegradeeParameters] found an unknown toggle : ', toggle, ' . With text :', textofTheToggle);
+            }
+        });
 
 
-        let backgroundToggle = document.querySelector('#mat-slide-toggle-1-input');
-        let canSignToggle = document.querySelector('#mat-slide-toggle-2-input');        
-        console.log("[keepPrintDegradeeParameters] found toggles", backgroundToggle, canSignToggle);
-        
-        // Add watcher to the background toggle
-        backgroundToggle.addEventListener('change', function() {
-            chrome.storage.local.set({backgroundToggle: backgroundToggle.checked}, function() {
-                console.log('[keepPrintDegradeeParameters] backgroundToggle saved', backgroundToggle.checked);
+        // surveille les changements de valeur des boutons et les enregistre dans le stockage local
+        function addToggleWatcher(toggleElement, storageKey) {
+            toggleElement.addEventListener('change', function() {
+                let saveObj = {};
+                saveObj[storageKey] = toggleElement.checked;
+                chrome.storage.local.set(saveObj, function() {
+                    console.log(`[${storageKey}] ${storageKey} saved`, toggleElement.checked);
+                });
             });
-        });
+        }
         
-        // Add watcher to the canSign toggle
-        canSignToggle.addEventListener('change', function() {
-            chrome.storage.local.set({canSignToggle: canSignToggle.checked}, function() {
-                console.log('[keepPrintDegradeeParameters] canSignToggle saved', canSignToggle.checked);
-            });
-        });
+        // Ajoute un écouteur d'événement pour chaque bouton
+        addToggleWatcher(backgroundToggle, 'backgroundToggle');
+        addToggleWatcher(canSignToggle, 'canSignToggle');
 
         // If their state is different from the last time, set them to the last state
         chrome.storage.local.get(['backgroundToggle', 'canSignToggle'], function(result) {
             console.log('[keepPrintDegradeeParameters] Value currently is backgroundToggle : ' + result.backgroundToggle, 'canSignToggle : ' + result.canSignToggle);
-            if (result.backgroundToggle !== undefined) {
-                backgroundToggle.checked = result.backgroundToggle;
-                console.log('[keepPrintDegradeeParameters] backgroundToggle set to', result.backgroundToggle);
+            function changeToggleIfDifferent(toggleElement, storageKey) {
+                if (result[storageKey] !== undefined && toggleElement.checked !== result[storageKey]) {
+                    toggleElement.click();
+                    console.log('[keepPrintDegradeeParameters] ', storageKey, ' set to', result[storageKey]);
+                    return true
+                } else {
+                    console.log('[keepPrintDegradeeParameters] ', storageKey, ' already set to', result[storageKey]);
+                    return false
+                }
             }
-            if (result.canSignToggle !== undefined) {
-                canSignToggle.checked = result.canSignToggle;
-                console.log('[keepPrintDegradeeParameters] canSignToggle set to', result.canSignToggle);
-            }
+            let backGroundToggleIsNotSet = changeToggleIfDifferent(backgroundToggle, 'backgroundToggle');
+            let canSignToggleIsNotSet = changeToggleIfDifferent(canSignToggle, 'canSignToggle');
+            if (!backGroundToggleIsNotSet && !canSignToggleIsNotSet) {
+                console.log('[keepPrintDegradeeParameters] No toggle was changed, greenLight for printing');
+                let date = new Date();
+                let timestamp = date.getTime();
+                chrome.storage.local.set({FSEPrintGreenLightTimestamp: timestamp}, function() {
+                    console.log('[keepPrintDegradeeParameters] FSEPrintGreenLightTimestamp saved', timestamp);
+                });
+            };
         });
-    });
+    }, document, false, false, "le patient peut signer");
 });
