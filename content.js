@@ -197,7 +197,7 @@ function tooltipshower() {
         const { shortcuts, defaultShortcuts } = result;
         let submenuDict = {};
         let submenuDictAll = {};
-    
+
         Object.entries(keyCommands).forEach(([key, action]) => {
             const match = action.toString().match(/submenuW\('(.*)'\)/);
             if (match) {
@@ -209,18 +209,18 @@ function tooltipshower() {
                 description: defaultShortcuts[key].description
             };
         });
-    
+
         // Ajouts manuels
         Object.assign(submenuDictAll, {
             "ouinonfse": { raccourci: 'n/o', description: "Valide oui/non dans les FSE" },
             "pavnumordo": { raccourci: "pavé num. /'à'", description: "Permet d’utiliser les touches 0 à 9 et « à » pour faire les prescriptions de médicaments." }
         });
-    
+
         updateElementsWithTooltips(submenuDict);
         displayShortcutsList(submenuDictAll);
     });
-    
-    
+
+
     function updateElementsWithTooltips(submenuDict) {
         document.querySelectorAll('.level2.dynamic').forEach(element => {
             const description = element.innerText.replace(/ \(\d+\)$/, '');
@@ -230,7 +230,7 @@ function tooltipshower() {
             }
         });
     }
-    
+
     function createTooltip(text) {
         const tooltip = document.createElement('div');
         tooltip.className = 'tooltip';
@@ -246,7 +246,7 @@ function tooltipshower() {
         tooltip.textContent = text;
         return tooltip;
     }
-    
+
     function displayShortcutsList(submenuDictAll) {
         const shortcutsList = document.createElement('div');
         shortcutsList.className = 'tooltip';
@@ -268,7 +268,7 @@ function tooltipshower() {
         shortcutsList.innerHTML = buildTableHTML(submenuDictAll);
         document.body.appendChild(shortcutsList);
     }
-    
+
     function buildTableHTML(submenuDictAll) {
         let tableHTML = '<table><tr><th style="text-align:right;">Raccourci&nbsp;</th><th style="text-align:left">&nbsp;Description</th></tr>';
         Object.entries(submenuDictAll).forEach(([_, { raccourci, description }]) => {
@@ -428,7 +428,7 @@ addTweak('*', '*Tooltip', function () {
             lastAltPressTime = Date.now();
             altKeyPressCount++; // Incrémenter le compteur à chaque appui sur Alt
             clearTimeout(resetAltKeyPressCountInterval);
-            resetAltKeyPressCountInterval = setTimeout(function() {
+            resetAltKeyPressCountInterval = setTimeout(function () {
                 altKeyPressCount = 0; // Réinitialiser altKeyPressCount après 1 seconde sans appui sur Alt
             }, 1000); // Délai de 1 seconde
 
@@ -840,3 +840,20 @@ addTweak('https://secure.weda.fr/FolderTools/BiblioForm.aspx', '*addPrintIcon', 
     }
     lightObserver('[id^="ContentPlaceHolder1_TreeViewBibliot"]', addPrintIcon);
 });
+
+// Lien avec l'API de Weda (https://secure.weda.fr/api/patients/[numeropatient])
+// Exemple pour Mme DESMAUX (un dossier de démonstration) :
+// https://secure.weda.fr/api/patients/65407357 qui retourne un objet JSON
+
+// Fonction pour récupérer les informations du patient
+function getPatientInfo(patientId) {
+    fetch('https://secure.weda.fr/api/patients/' + patientId)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => console.log(data))
+        .catch(error => console.error('There has been a problem with your fetch operation:', error));
+}
