@@ -248,8 +248,8 @@ function tweakFSECreation() {
                 
                     console.log('Age du patient :', age, 'ans');
                 
-                    // Étape 4: Retourner true si l'âge est inférieur à 7 ans
-                    return age < 7;
+                    // Étape 4: Retourner true si l'âge est inférieur à 6 ans
+                    return age < 6;
                 },
                 action: 'DéfautPédia'
             },
