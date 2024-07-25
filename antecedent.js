@@ -78,13 +78,15 @@ addTweak('https://secure.weda.fr/FolderMedical/AntecedentForm.aspx', '*trimCIM10
                 let elementContainingCIM10 = atcd.querySelector('table > tbody > tr > td > a > span:nth-child(3)');
                 if (elementContainingCIM10) {
                     let cim10 = elementContainingCIM10.innerText;
-                    // RegExp pour détecter une deuxième décimale
+                    // On ne poursuit que si le CIM10 contient un point suivi de 2 chiffres ou plus
                     let regex = /\[\w+\.\d{2,}\]/;
                     if (regex.test(cim10)) {
-                        // Supprime l'élément atcd si la valeur CIM10
-                        // contient une deuxième décimale
-                        atcd.remove();
-
+                        // On vérifie qu'on supprime un élément présent sur la racine
+                        // de l'arborecence CIM10 et non un élément déployé par l'utilisateur
+                        let nombreIncrements = atcd.querySelectorAll('td').length;
+                        if (nombreIncrements < 6) {
+                            atcd.remove();
+                        }
                     }
                 };
             });
@@ -136,7 +138,7 @@ addTweak('https://secure.weda.fr/FolderMedical/AntecedentForm.aspx', '*trimCIM10
     shrinkFavText();
     // Ajoute la checkbox à chaque fois que l'arbre CIM10 est mis à jour
     let refractory = false;
-    afterMutations(200, function () {
+    afterMutations(30, function () {
         if (refractory) {
             return;
         }
@@ -149,7 +151,7 @@ addTweak('https://secure.weda.fr/FolderMedical/AntecedentForm.aspx', '*trimCIM10
             sortAtcd();
             setTimeout(function () {
                 refractory = false;
-            }, 200);
+            }, 30);
         }
     }, 'adding checkbox', true);
 });
