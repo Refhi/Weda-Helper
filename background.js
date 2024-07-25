@@ -61,6 +61,8 @@ var defaultSettings = {
   'secureExchangeAutoRefresh': true,
   'secureExchangeUncheckIHEMessage': false,
   'autoAATI': true,
+  'trimCIM10': true,
+  'sortCIM10': true
 };
 
 var defaultShortcuts = {
