@@ -16,6 +16,7 @@
     {
       "matches": ["*://secure.weda.fr/*"],
       "js": [
+          "metrics.js",
           "lib/hotkeys.js",
           "content.js",
           "consultation.js",
@@ -26,7 +27,6 @@
           "prescription.js",
           "update.js",
           "aati.js",
-          "metrics.js",
           "upload.js",
           "agenda.js",
           "antecedent.js"]

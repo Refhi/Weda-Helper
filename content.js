@@ -927,10 +927,12 @@ async function getPatientInfo(patientId) {
 
 // // Ajout d'un accès simplifié dans un onglet dédié aux antécédents, depuis n'importe
 // quelle page affichant une liste de patient après recherche
+// Ainsi que dans les pages de biologie où 
 let urls = [
     'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx',
     'https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx',
-    'https://secure.weda.fr/FolderMedical/WedaEchanges/'
+    'https://secure.weda.fr/FolderMedical/WedaEchanges/',
+    'https://secure.weda.fr/FolderMedical/HprimForm.aspx'
 ];
 
 addTweak(urls, '*addATCDShortcut', function () {
@@ -965,11 +967,11 @@ addTweak(urls, '*addATCDShortcut', function () {
     }
 
     function addHintOverlay(element) {
-        element.title = 'Clic droit pour ajouter une note, clic du milieu pour gérer les antécédents';
+        element.title = '[Weda-Helper] Clic droit pour ajouter une note, clic du milieu pour gérer les antécédents';
     }
 
 
-    function addATCDShortcut(elements = null) {
+    function processFoundPatientList(elements = null) {
         if (!elements) {
             elements = document.querySelectorAll(patientsSelector);
         }
@@ -981,38 +983,56 @@ addTweak(urls, '*addATCDShortcut', function () {
                 console.log('Ne fonctionne pas pour Achimed');
                 return;
             } console.log('patientFileNumber', patientFileNumber);
-
-            addHintOverlay(element);
             addPatientUrlParams(element, patientFileNumber);
-
-
-            // Gestion du clic droit
-            element.addEventListener('contextmenu', function (event) {
-                event.preventDefault(); // Empêche le menu contextuel de s'ouvrir
-                openPatientNotes(element);
-            });
-
-            // Gestion du clic du milieu
-            element.addEventListener('mousedown', function (event) {
-                if (event.button === 1) { // Bouton du milieu
-                    // retirer l'élément href pour éviter l'ouverture d'un nouvel onglet
-                    let href = element.getAttribute('href');
-                    element.removeAttribute('href');
-                    event.preventDefault(); // Empêche le comportement par défaut (comme ouvrir un lien dans un nouvel onglet)
-                    console.log('Clic du milieu sur', event.target);
-                    openPatientATCD(element);
-
-                    // Rétablir l'attribut href après un délai
-                    setTimeout(() => {
-                        element.setAttribute('href', href);
-                    }, 500);
-                }
-            });
-
+            addATCDShortcut(element);
         });
     }
 
-    lightObserver(patientsSelector, addATCDShortcut);
+    function addATCDShortcut(element) {
+        addHintOverlay(element);
+
+
+        // Gestion du clic droit
+        element.addEventListener('contextmenu', function (event) {
+            event.preventDefault(); // Empêche le menu contextuel de s'ouvrir
+            openPatientNotes(element);
+        });
+
+        // Gestion du clic du milieu
+        element.addEventListener('mousedown', function (event) {
+            if (event.button === 1) { // Bouton du milieu
+                // retirer l'élément href pour éviter l'ouverture d'un nouvel onglet
+                let href = element.getAttribute('href');
+                element.removeAttribute('href');
+                event.preventDefault(); // Empêche le comportement par défaut (comme ouvrir un lien dans un nouvel onglet)
+                console.log('Clic du milieu sur', event.target);
+                openPatientATCD(element);
+
+                // Rétablir l'attribut href après un délai
+                setTimeout(() => {
+                    element.setAttribute('href', href);
+                }, 500);
+            }
+        });
+    }
+    // Pour tout les endroits où une liste de patient est issue d'un champ de recherche
+    lightObserver(patientsSelector, processFoundPatientList);  
+
+    // Puis la gestion des ATCD dans les pages de biologie et messagerie sécurisée
+    let selecteurHprimEtMessagesSecurises = '[title="Ouvrir le dossier patient dans un autre onglet"], [title="Ouvrir la fiche patient dans un onglet"]';
+    function ProcessHprimEtMessagesSecurises() {
+        let elements = document.querySelectorAll(selecteurHprimEtMessagesSecurises);
+        console.log('ProcessHprimEtMS', elements);
+        elements.forEach(element => {
+            let href = element.getAttribute('href');
+            if (href) {
+                let patientFileNumber = href.match(/PatDk=(\d+)/)[1];
+                addPatientUrlParams(element, patientFileNumber);
+                addATCDShortcut(element);
+            }
+        });
+    }
+    lightObserver(selecteurHprimEtMessagesSecurises, ProcessHprimEtMessagesSecurises);
 });
 
 // Set the focus in the text fied https://secure.weda.fr/FolderMedical/PopUpRappel.aspx
