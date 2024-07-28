@@ -10,6 +10,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#144](https://github.com/Refhi/Weda-Helper/issues/144) - memorisation des choix d'impression pour la FSE + ctrl+P imprime la FSE automatiquement (donc une FSE dégradée peut être validée via 'n/o' => 'n/o' => ctrl+P puis alt+V)
 - [#112](https://github.com/Refhi/Weda-Helper/issues/112) - ajout d'options pour limiter le nombre d'atcd affichés en CIM 10 et de les trier par ordre alphabétique
 - [#184](https://github.com/Refhi/Weda-Helper/issues/184) - ajout du calcul automatique du Z-score pour les courbes pédiatriques (vous devez créer un suivi nommé "Z-IMC" pour que cela fonctionne) => pour les courbes pédiatriques et le Z-score vous devez cliquer sur "Enregistrer" (Ctrl+S) pour que les valeurs du jour soient prises en compte.
+- la validation d'un règlement manuel envoie désormais une demande au TPE
 
 ## fix :
 - [#198](https://github.com/Refhi/Weda-Helper/issues/198) - la cotation par défaut fonctionne automatiquement dès que le 2e choix o/n est fait, même à la souris

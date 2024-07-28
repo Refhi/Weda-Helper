@@ -175,7 +175,7 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 *Autant pousser l'économie de mouvements jusqu'au bout*
 Installez et laisser tourner ce logiciel sur votre ordinateur pour avoir des fonctionnalités supplémentaires :
 - impression directe automatique complète
-- Envoie le montant à régler à votre TPE
+- Envoie le montant à régler à votre TPE (quand on valide une FSE via alt+V ou qu'on valide un règlement manuel)
 
 => Procédures d'installation et de paramétrage sur [le readme du Companion](https://github.com/Refhi/Weda-Helper-Companion)
 

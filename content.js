@@ -476,6 +476,37 @@ addTweak('https://secure.weda.fr/FolderGestion/RecetteForm.aspx', 'TweakRecetteF
 });
 
 
+// [page de recettes manuelles] Envoie automatiquement au TPE si on clique sur #ContentPlaceHolder1_ButtonValid
+addTweak('https://secure.weda.fr/FolderGestion/ReglementForm.aspx', '!RemoveLocalCompanionTPE', function () {
+    function sendToTPE() {
+        console.log('sendToTPE');
+        let menuDeroulant = document.getElementById('ContentPlaceHolder1_DropDownListRecetteLabelMode');
+        let amountElement = document.getElementById('ContentPlaceHolder1_TextBoxRecetteMontant');
+        if (menuDeroulant && amountElement) {
+            // vérifier que le mode de paiement est "C.B."
+            if (menuDeroulant.options[menuDeroulant.selectedIndex].text !== "C.B.") {
+                console.log('Le mode de paiement n\'est pas "C.B."');
+                return;
+            }
+            let amount = amountElement.value;
+            // retirer la virgule du montant et le convertir en entier
+            amount = parseInt(amount.replace(/,/g, ''), 10);
+            if (amount) {
+                console.log('Je demande au TPE le montant : ', amount);
+                sendtpeinstruction(amount);
+                recordMetrics({ clicks: 4 });
+            }
+        }
+    }
+
+    lightObserver('#ContentPlaceHolder1_ButtonValid', function (elements) {
+        console.log('Ecouteur sur le bouton de validation de la recette manuelle', elements);
+        elements[0].addEventListener('click', sendToTPE);
+    });
+});
+
+
+
 // // [page d'accueil]
 let homePageUrls = [
     'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx',
