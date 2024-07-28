@@ -19,6 +19,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#209](https://github.com/Refhi/Weda-Helper/issues/209) - défaultPédia fonctionne désormais pour les ages <1 an
 - [#190](https://github.com/Refhi/Weda-Helper/issues/190) - accès facilité aux ATCD et aux notes patients depuis n'importe quelle liste de patients issus d'une recherche : Bouton de droite pour les notes, bouton du milieu pour les ATCD
 - [#211](https://github.com/Refhi/Weda-Helper/issues/211) - La cotation DéfaultPédia se déclenchait pour ages < 7 ans au lieu de 6
+- [#207](https://github.com/Refhi/Weda-Helper/issues/207) - le mode vertical ne casse plus certaines fonctions d'imports et raccourcis
 
 
 # [2.5.0] - 17/07/2024
