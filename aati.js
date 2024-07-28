@@ -111,7 +111,9 @@ addTweak(urlAATI, 'autoAATI', function () {
     lightObserver(selectorExitButton, function (elements) {
         setTimeOfSending('autoAATIexit');
         console.log('clicking on the exit button + timestamp');
-        elements[0].click();
+        setTimeout(function () {
+            elements[0].click();
+        }, 1000); // essai avec un délai de 1s
         recordMetrics({clicks: 1, drags: 1});
     });
 
