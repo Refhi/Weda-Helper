@@ -56,7 +56,7 @@ var defaultSettings = {
   'ShowExplanatoryText': true,
   'autoOpenOrdoType': false,
   'AlertOnMedicationInteraction': true,
-  'defautDataType': 'TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%',
+  'defautDataType': 'TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%, Z-IMC:ds',
   'autoATCD': false,
   'secureExchangeAutoRefresh': true,
   'secureExchangeUncheckIHEMessage': false,
