@@ -281,6 +281,14 @@ function tweakFSECreation() {
                     // keyboard_arrow_right est nécessaire pour matcher le texte complet du favori qui contient ">" devant le nom
                     if (targetElement) {
                         targetElement.click();
+                        if (action === 'DéfautTC') {
+                            // Rechercher l'élément avec value="VI" et cliquer dessus
+                            let teleconsultationElement = document.querySelector('option[value="VI"]');
+                            let menu = teleconsultationElement.parentElement;
+                            menu.value = 'VI';
+                            teleconsultationElement.click();
+                        }
+
                         recordMetrics({clicks: 1, drags: 1});
                         console.log('Cotation appliquée:', action);
                         return; // Arrête la fonction après avoir appliqué une cotation
