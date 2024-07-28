@@ -1,24 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Popup</title>
     <style>
         body {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start; /* Aligner les éléments au début */
-            justify-content: center;
-            height: auto;
-            width: 300px;
-            margin: 0;
-            background-color: #f4f4f4;
             font-family: Arial, sans-serif;
-            padding: 10px; /* Ajouter un peu d'espace autour du contenu */
+            margin: 20px;
         }
         .button-container {
-            display: flex; /* Utiliser flexbox pour aligner les boutons et le texte */
-            align-items: center; /* Centrer verticalement les éléments */
+            display: flex;
+            align-items: center;
             margin-bottom: 10px; /* Ajouter un peu d'espace entre les lignes */
         }
         button {
@@ -34,6 +27,13 @@
         button:hover {
             background-color: #0056b3;
         }
+        input[type="number"] {
+            width: 100px; /* Réduire la taille du champ de saisie */
+            padding: 10px;
+            font-size: 1em;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
@@ -43,7 +43,11 @@
     </div>
     <div class="button-container">
         <button id="tpebis">TPE Bis</button>
-        <span>Relance le dernier règlement sur le TPE (ou envoie 1€ pour tester la liaison)</span>
+        <span>Relance le dernier règlement sur le TPE</span>
+    </div>
+    <div class="button-container">
+        <button id="sendCustomAmount">Envoyer au TPE</button>
+        <input type="number" id="customAmount" placeholder="Montant">
     </div>
     <script src="popup.js"></script>
 </body>

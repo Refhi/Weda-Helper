@@ -13,7 +13,7 @@ function afterMutations(delay, callback, callBackId = "callback id undefined", p
         } else {
             callback();
         }
-        
+
     };
 
     const observer = new MutationObserver((mutationsList, observer) => {
@@ -411,13 +411,25 @@ document.addEventListener('visibilitychange', function () {
 // Ecoute les instructions du script de fond au sujet de la popup
 const actions = {
     'allConsultation': allConsultation,
-    'tpebis': () => sendLastTPEamount()
+    'tpebis': () => sendLastTPEamount(),
+    'sendCustomAmount': (amount) => sendtpeinstruction(amount) // Ajout de l'action sendCustomAmount
+
 };
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action in actions) {
         console.log(request.action + ' demandé');
-        actions[request.action]();
+        if (request.action === 'sendCustomAmount' && request.amount !== undefined) {
+            let amountStr = request.amount.replace(/[.,]/g, ''); // Retirer les points et les virgules
+            let amount = parseInt(amountStr, 10);
+            if (!isNaN(amount)) {
+                actions[request.action](amount); // Appel avec le montant personnalisé
+            } else {
+                console.error('Amount is not a valid number');
+            }
+        } else {
+            actions[request.action]();
+        }
     }
 });
 
@@ -1047,7 +1059,7 @@ addTweak(urls, '*addATCDShortcut', function () {
         });
     }
     // Pour tout les endroits où une liste de patient est issue d'un champ de recherche
-    lightObserver(patientsSelector, processFoundPatientList);  
+    lightObserver(patientsSelector, processFoundPatientList);
 
     // Puis la gestion des ATCD dans les pages de biologie et messagerie sécurisée
     let selecteurHprimEtMessagesSecurises = '[title="Ouvrir le dossier patient dans un autre onglet"], [title="Ouvrir la fiche patient dans un onglet"]';
