@@ -217,13 +217,27 @@ function tweakFSECreation() {
 
 
     function setDefaultValue() {
-        // Si on envisage d'ajouter des cotations automatisées plus complexes, on pourra simplement se greffer sur cette fonction
-        // par exemple en mettant dans une des conditions la récupération d'une valeur mémoire spécifique
+        // va parcourir dans l'ordre le tableau de conditions et appliquer la première qui est remplie
         let conditionalCotations = [
             {
                 condition: function() {
                     let isALD = document.querySelector('#mat-radio-2-input').checked;
                     return isALD;
+                },
+                action: 'DéfautALD'
+            },
+            {
+                condition: function() {
+                    // accident de travail
+                    // Chercher le menu contenant les choix possibles de type d'assurance
+                    // C'est le parent de l'élément contenant le texte "Accident du travail / Maladie professionnelle"
+                    let textToSearch = 'Accident du travail / Maladie professionnelle';
+                    let elements = document.querySelectorAll('.ng-star-inserted');
+                    let elementOptionAT = Array.from(elements).find(el => el.textContent === textToSearch);
+                    if (elementOptionAT) {
+                        let menu = elementOptionAT.parentElement;
+                        return menu.value === '41';
+                    }
                 },
                 action: 'DéfautALD'
             },
@@ -259,7 +273,13 @@ function tweakFSECreation() {
                     let isTeleconsultation = fseTypeElement.textContent === 'SV';
                     return isTeleconsultation;
                 },
-                action: 'DéfautTC'
+                action: 'DéfautTC',
+                secondaryAction: function() {
+                    let teleconsultationElement = document.querySelector('option[value="VI"]');
+                    let menu = teleconsultationElement.parentElement;
+                    menu.value = 'VI';
+                    teleconsultationElement.click();
+                }
             },
             {
                 condition: function() {
@@ -277,16 +297,13 @@ function tweakFSECreation() {
             for (let i = 0; i < conditionalCotations.length; i++) { // Loop dans le dico des cotations conditionnelles
                 if (conditionalCotations[i].condition()) {// Si la condition est remplie
                     let action = conditionalCotations[i].action; // L'action c'est le nom du favori à appliquer
+                    let secondaryAction = conditionalCotations[i].secondaryAction; // L'action secondaire est une fonction à exécuter après avoir cliqué sur le favori
                     let targetElement = Array.from(elements).find(el => el.textContent.trim() === 'keyboard_arrow_right'+action);
                     // keyboard_arrow_right est nécessaire pour matcher le texte complet du favori qui contient ">" devant le nom
                     if (targetElement) {
                         targetElement.click();
-                        if (action === 'DéfautTC') {
-                            // Rechercher l'élément avec value="VI" et cliquer dessus
-                            let teleconsultationElement = document.querySelector('option[value="VI"]');
-                            let menu = teleconsultationElement.parentElement;
-                            menu.value = 'VI';
-                            teleconsultationElement.click();
+                        if (secondaryAction) {
+                            secondaryAction();
                         }
 
                         recordMetrics({clicks: 1, drags: 1});

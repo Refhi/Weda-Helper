@@ -116,7 +116,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - les touches "t" et "c" permettent de sélectionner les tiers payants correspondants (AMO et AMC)
 - Si elles sont utilisées, utilise une cotation dans vos favoris :
   - la cotation "DéfautPédia" pour les 0-6 ans
-  - la cotation "DéfautALD" pour les ALD
+  - la cotation "DéfautALD" pour les ALD et les Accidents de travail
   - la cotation "DéfautTC" pour les téléconsultations
   - la cotation "Défaut" pour les autres
 - Lecture automatique de la carte vitale si elle est non lue
@@ -150,7 +150,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - ouverture du dossier patient directement depuis l'agenda via un clic droit sur le rendez-vous
 
 ### Accès facilité aux ATCD et aux notes depuis les recherches patients
-- accès facilité aux ATCD et aux notes patients depuis n'importe quelle liste de patients issus d'une recherche : Bouton de droite pour les notes, ctrl+clic (ou bouton du milieu) pour les ATCD
+- accès facilité aux ATCD et aux notes patients depuis n'importe quelle liste de patients issus d'une recherche : Bouton de droite pour les notes, bouton du milieu pour les ATCD
 
 ### Antécédents :
 - ajout d'options pour limiter le nombre d'atcd affichés en CIM 10 et de les trier par ordre alphabétique

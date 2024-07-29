@@ -7,6 +7,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#196](https://github.com/Refhi/Weda-Helper/issues/196) - Accés direct au dossier patient depuis l'agenda via un clic droit
 - [#185](https://github.com/Refhi/Weda-Helper/issues/185) - Alt+D insère la date du jour dans n'importe quel champ de texte
 - oublié dans la documentation : DéfautTC existe ! (pour les téléconsultations) + sélection automatique du mode "Virement" pour les téléconsultations
+- [#217](https://github.com/Refhi/Weda-Helper/issues/217) - DéfautALD est également utilisé pour les accidents du travail
 - [#144](https://github.com/Refhi/Weda-Helper/issues/144) - memorisation des choix d'impression pour la FSE + ctrl+P imprime la FSE automatiquement (donc une FSE dégradée peut être validée via 'n/o' => 'n/o' => ctrl+P puis alt+V)
 - [#112](https://github.com/Refhi/Weda-Helper/issues/112) - ajout d'options pour limiter le nombre d'atcd affichés en CIM 10 et de les trier par ordre alphabétique
 - [#184](https://github.com/Refhi/Weda-Helper/issues/184) - ajout du calcul automatique du Z-score pour les courbes pédiatriques (vous devez créer un suivi nommé "Z-IMC" pour que cela fonctionne) => pour les courbes pédiatriques et le Z-score vous devez cliquer sur "Enregistrer" (Ctrl+S) pour que les valeurs du jour soient prises en compte.
