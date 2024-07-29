@@ -305,8 +305,7 @@ function mouseoutW() {
 }
 
 
-// // vérification de la présence du Companion TODO
-
+// // vérification de la présence du Companion
 function testCompanion() {
     function askLinkActivation() {
         chrome.storage.local.get('promptCompanionMessage', function (result) {
@@ -659,7 +658,7 @@ let homePageFunctions = [
     },
 ];
 
-addTweak(homePageUrls, homePageFunctions); //TODO à vérifier : semble engendrer un message abscond dans la console
+addTweak(homePageUrls, homePageFunctions);
 
 
 
@@ -1117,7 +1116,7 @@ addTweak('https://secure.weda.fr/FolderMedical/PopUpRappel.aspx', '*focusOnTextA
 
 
 // Retirer le caractère "gras" du prénom du patient dans la page d'accueil pour plus facilement distinguer le nom du prénom
-addTweak('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx', '*removeBoldPatientFirstName', function () {
+addTweak('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx', 'removeBoldPatientFirstName', function () {
     let elementPrenom1 = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_LabelPatientPrenom');
     let elementPrenom2 = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_LabelPatientJeuneFille');
     if (elementPrenom1) {
@@ -1127,5 +1126,3 @@ addTweak('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx', '*removeBo
         elementPrenom2.style.fontWeight = 'normal';
     }
 });
-
-// TODO => à mettre en option

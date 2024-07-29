@@ -62,7 +62,8 @@ var defaultSettings = {
   'secureExchangeUncheckIHEMessage': false,
   'autoAATI': true,
   'trimCIM10': true,
-  'sortCIM10': true
+  'sortCIM10': true,
+  'removeBoldPatientFirstName': false,
 };
 
 var defaultShortcuts = {

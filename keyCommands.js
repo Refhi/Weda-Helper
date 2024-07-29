@@ -441,7 +441,6 @@ function startPrinting(handlingType, modelNumber = null) {
             }
         } else if (whatToPrint === 'fse') {
             console.log('printing FSE');
-            // TODO : gérer l'impression des FSE
             // Cherche l'élément avec class 'mat-button-wrapper' et texte 'Imprimer'
             let boutons = document.querySelectorAll('span.mat-button-wrapper');
             let boutonImprimer = Array.from(boutons).find(bouton => bouton.innerText === 'Imprimer');
