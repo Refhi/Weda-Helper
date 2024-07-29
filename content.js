@@ -1012,7 +1012,7 @@ addTweak(urls, '*addATCDShortcut', function () {
     }
 
     function addHintOverlay(element) {
-        element.title = '[Weda-Helper] Clic droit pour ajouter une note, clic du milieu pour gérer les antécédents';
+        element.title = '[Weda-Helper] Clic droit pour ajouter une note, ctrl+clic (ou clic du milieu) pour gérer les antécédents';
     }
 
 
@@ -1045,7 +1045,7 @@ addTweak(urls, '*addATCDShortcut', function () {
 
         // Gestion du clic du milieu
         element.addEventListener('mousedown', function (event) {
-            if (event.button === 1) { // Bouton du milieu
+            if (event.button === 1 || (event.ctrlKey && event.button === 0)) { // Bouton du milieu ou Ctrl+clic gauche
                 // retirer l'élément href pour éviter l'ouverture d'un nouvel onglet
                 let href = element.getAttribute('href');
                 element.removeAttribute('href');

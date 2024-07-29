@@ -150,7 +150,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - ouverture du dossier patient directement depuis l'agenda via un clic droit sur le rendez-vous
 
 ### Accès facilité aux ATCD et aux notes depuis les recherches patients
-- accès facilité aux ATCD et aux notes patients depuis n'importe quelle liste de patients issus d'une recherche : Bouton de droite pour les notes, bouton du milieu pour les ATCD
+- accès facilité aux ATCD et aux notes patients depuis n'importe quelle liste de patients issus d'une recherche : Bouton de droite pour les notes, ctrl+clic (ou bouton du milieu) pour les ATCD
 
 ### Antécédents :
 - ajout d'options pour limiter le nombre d'atcd affichés en CIM 10 et de les trier par ordre alphabétique
