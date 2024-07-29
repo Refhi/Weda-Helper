@@ -430,3 +430,13 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
         }, 200);        
     }, document, false, false, 'Création d\'une ordonnance numérique');
 });
+
+
+// Automatiquement basculer le contenu de l'ordonnance entre les zones ALD et hors ALD
+addTweak(demandeUrl, '*autoSwitchALD', function () {
+    lightObserver('#ContentPlaceHolder1_ButtonInversion', function (elements) {
+        console.log('autoSwitchALD déclenché', elements);
+        elements[0].click();
+        recordMetrics({ clicks: 1, drags: 1 });
+    }, document, true);
+});

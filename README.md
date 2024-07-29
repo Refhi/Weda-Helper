@@ -18,6 +18,7 @@ Cf. ci-dessous pour les retours et les contributions.
   - [Prescriptions](#prescriptions)
     - [Écoute des entrées claviers lors de l'usage de la calculette de prescription](#écoute-des-entrées-claviers-lors-de-lusage-de-la-calculette-de-prescription)
     - [Ordonnances-types](#ordonnances-types)
+    - [Demandes](#demandes)
     - [Recherche de médicaments](#recherche-de-médicaments)
     - [Options d'ordonnance numérique](#options-dordonnance-numérique)
   - [Feuilles de soin](#feuilles-de-soin)
@@ -97,6 +98,9 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Ordonnances-types
 - Option pour afficher automatiquement les ordonnances-type à l'ouverture des pages de prescription.
+
+### Demandes
+- Cliquer sur "Basculer en mode prescription bi-zone" déplace aussi le texte présent dans le champ ALD
 
 ### Recherche de médicaments
 - Lors de la recherche d'un médicament le texte est normalement effacé à chaque changement de type de recherche. L'extension maintient le dernier texte recherché.
