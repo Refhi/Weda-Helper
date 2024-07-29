@@ -1034,17 +1034,25 @@ addTweak(urls, '*addATCDShortcut', function () {
     }
 
     function addATCDShortcut(element) {
-        addHintOverlay(element);
+        // Trouver l'élément parent pour les pages HPRIM, sinon l'élément lui-même
+        let target
+        if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/HprimForm.aspx')) {
+            target = element.parentElement.parentElement;
+        } else {
+            target = element;
+        }
+
+        addHintOverlay(target);
 
 
         // Gestion du clic droit
-        element.addEventListener('contextmenu', function (event) {
+        target.addEventListener('contextmenu', function (event) {
             event.preventDefault(); // Empêche le menu contextuel de s'ouvrir
             openPatientNotes(element);
         });
 
         // Gestion du clic du milieu
-        element.addEventListener('mousedown', function (event) {
+        target.addEventListener('mousedown', function (event) {
             if (event.button === 1 || (event.ctrlKey && event.button === 0)) { // Bouton du milieu ou Ctrl+clic gauche
                 // retirer l'élément href pour éviter l'ouverture d'un nouvel onglet
                 let href = element.getAttribute('href');
@@ -1064,7 +1072,9 @@ addTweak(urls, '*addATCDShortcut', function () {
     lightObserver(patientsSelector, processFoundPatientList);
 
     // Puis la gestion des ATCD dans les pages de biologie et messagerie sécurisée
-    let selecteurHprimEtMessagesSecurises = '[title="Ouvrir le dossier patient dans un autre onglet"], [title="Ouvrir la fiche patient dans un onglet"]';
+    let selecteurHprimEtMessagesSecurises = 
+        '[title="Ouvrir le dossier patient dans un autre onglet"], ' + // Dans la messagerie sécurisée
+        '[title="Ouvrir la fiche patient dans un onglet"]'; // Dans HPRIM
     function ProcessHprimEtMessagesSecurises() {
         let elements = document.querySelectorAll(selecteurHprimEtMessagesSecurises);
         console.log('ProcessHprimEtMS', elements);
