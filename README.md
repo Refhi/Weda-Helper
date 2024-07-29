@@ -64,9 +64,7 @@ Alt+R	Ouvre la recherche
 Alt+W	Appuie sur W
 Ctrl+U	Upload le dernier fichier du dossier envoyé par le Companion
 
-**Chrome limite malheureusement les raccourcis par défaut. Les raccourcis doivent donc être définis manuellement (et entièrement personnalisés) dans chrome://extensions/shortcuts**
-
-- Rappel des raccourcis : Un appui sur la touche Alt prolongé (> 1 seconde) affiche un rappel des principaux raccourcis claviers
+- Rappel des raccourcis : Un appui sur la touche Alt prolongé (> 1 seconde) affiche un rappel des raccourcis claviers
 
 ## Accueil dossier patient
 - Ajout d'icones pour copier automatiquement le NIR dans le presse-papier
@@ -104,7 +102,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Recherche de médicaments
 - Lors de la recherche d'un médicament le texte est normalement effacé à chaque changement de type de recherche. L'extension maintient le dernier texte recherché.
-- Des boutons de type de recherche favori (paramétrable dans les raccourcis) sont affichés. Par défaut "médicament", "DCI" et "recherche par molécule. (A noter qu'il faut enregistrer le panneau d'option pour que seuls les boutons choisis apparaissent. Sinon tous sont affichés.)
+- Des boutons de type de recherche favori (paramétrable dans les options) sont affichés. Par défaut "médicament", "DCI" et "recherche par molécule. (A noter qu'il faut enregistrer le panneau d'option pour que seuls les boutons choisis apparaissent. Sinon tous sont affichés.)
 
 ### Options d'ordonnance numérique
 - Permet d’activer automatiquement par défaut les ordonnances numériques pour les médicaments mais aussi pour les autres prescriptions.
@@ -136,7 +134,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - Affiche automatiquement la recette du jour lors de l'ouverture de la page
 
 ### Messagerie
-- rafraichissement automatique des messages Mssanté. Il vérifiera 30 secondes après le chargement de la page, puis toutes les 15 minutes. Il faut donc mieux laisser un onglet ouvert sur cette page.
+- rafraichissement automatique des messages Mssanté. Il vérifiera 30 secondes après le chargement de la page, puis toutes les 15 minutes. Il vaut donc mieux laisser un onglet ouvert sur cette page.
 
 ### AT
 - simplification de la réalisation des arrêts de travail intégrés à Weda (lecture auto CV, selection auto de l'assuré, impression automatique, autofill de la date en cas de sorties libres, fermeture automatique)
@@ -154,7 +152,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - ouverture du dossier patient directement depuis l'agenda via un clic droit sur le rendez-vous
 
 ### Accès facilité aux ATCD et aux notes depuis les recherches patients
-- accès facilité aux ATCD et aux notes patients depuis n'importe quelle liste de patients issus d'une recherche : Bouton de droite pour les notes, bouton du milieu pour les ATCD
+- accès facilité aux ATCD et aux notes patients depuis n'importe quelle liste de patients issus d'une recherche : Bouton de droite pour les notes, bouton du milieu (ou ctrl+clic) pour les ATCD
 
 ### Antécédents :
 - ajout d'options pour limiter le nombre d'atcd affichés en CIM 10 et de les trier par ordre alphabétique
@@ -179,7 +177,7 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 *Autant pousser l'économie de mouvements jusqu'au bout*
 Installez et laisser tourner ce logiciel sur votre ordinateur pour avoir des fonctionnalités supplémentaires :
 - impression directe automatique complète
-- Envoie le montant à régler à votre TPE (quand on valide une FSE via alt+V ou qu'on valide un règlement manuel)
+- Envoie le montant à régler à votre TPE (quand on valide une FSE - via alt+v - ou un règlement manuel)
 
 => Procédures d'installation et de paramétrage sur [le readme du Companion](https://github.com/Refhi/Weda-Helper-Companion)
 
