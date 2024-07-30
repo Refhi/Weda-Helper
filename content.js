@@ -2,7 +2,7 @@
 // // Ne justifiant pas la création d'un fichier séparé
 
 // // Sorte de post-chargement pour les pages, car le onload fonctionne mal, et après une mutation c'est pas toujours évident
-// TODO : destructurer cette fonction pour la rendre plus modulaire
+// TODO : destructurer cette fonction pour la rendre plus modulaire => revoir le script python de transformation
 
 function afterMutations(delay, callback, callBackId = "callback id undefined", preventMultiple = false) {
     let timeoutId = null;
