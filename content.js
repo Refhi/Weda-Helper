@@ -29,36 +29,13 @@ function afterMutations(delay, callback, callBackId = "callback id undefined", p
     observer.observe(document, { childList: true, subtree: true });
 };
 
-// // Fonction pour attendre la présence d'un élément avant de lancer une fonction
-// // ! Très utilisé dans toute l'exension, a vocation a laisser sa place à elementDetector
-// TODO : à supprimer une fois elementDetector bien en place
-function waitForElement(selector, text = null, timeout, callback) {
-    var checkInterval = setInterval(function () {
-        var elements = document.querySelectorAll(selector);
-        for (var i = 0; i < elements.length; i++) {
-            if (!text || elements[i].textContent.includes(text)) {
-                callback(elements[i]);
-                clearInterval(checkInterval);
-                clearTimeout(timeoutId);
-                return;
-            }
-        }
-    }, 100);
-
-    var timeoutId = setTimeout(function () {
-        clearInterval(checkInterval);
-        console.log(`Element ${selector} ${text ? 'with text "' + text + '"' : ''} not found after ${timeout} ms`);
-    }, timeout);
-}
-
-
 
 // // Fonction pour attendre la présence d'un élément avant de lancer une fonction
 // remplace lightObserver (qui est wrappé un peu plus bas pour des raison
 // de compatibilité avec les anciennes fonctions)
 // TODO : à vérifier + à remplacer partout
 let observedElements = new WeakMap();
-async function elementDetector({selector, parentElement = document, justOnce = false, debug = false, textContent = null}) {
+async function waitForElement({ selector, parentElement = document, justOnce = false, debug = false, textContent = null, timeout = null }) {
     return new Promise((resolve, reject) => {
         let observer = new MutationObserver((mutations) => {
             for (let i = 0; i < mutations.length; i++) {
@@ -93,11 +70,19 @@ async function elementDetector({selector, parentElement = document, justOnce = f
 
         let config = { childList: true, subtree: true };
         observer.observe(parentElement, config);
+
+        // Timeout handling
+        if (timeout) {
+            setTimeout(() => {
+                observer.disconnect();
+                reject(new Error(`Timeout: Element with selector "${selector}" not found within ${timeout}ms`));
+            }, timeout);
+        }
     });
 }
 
 function lightObserver(selector, callback, parentElement = document, justOnce = false, debug = false, textContent = null) {
-    elementDetector({selector, parentElement, justOnce, debug, textContent}).then(callback);
+    waitForElement({ selector, parentElement, justOnce, debug, textContent }).then(callback);
 }
 
 function observeDiseapearance(element, callback, justOnce = false) {
@@ -384,22 +369,26 @@ function clickElementByOnclick(onclickValue) {
 
 // Vérifie la présence de l'élément avec title="Prénom du patient"
 function checkPatientName() {
-    waitForElement('[title="Prénom du patient"]', null, 5000, function (patientNameElement) {
-        var patientName = patientNameElement.value;
-        waitForElement('vz-lecture-cv-widget', null, 5000, function (widgetElement) {
-            var spans = widgetElement.getElementsByTagName('span');
-            for (var i = 0; i < spans.length; i++) {
-                if (spans[i].textContent.includes(patientName)) {
-                    console.log('Patient name found');
-                    spans[i].click();
-                    recordMetrics({ clicks: 1, drags: 1 });
-                    return true;
-                }
-            }
-            console.log('Patient name not found');
-            return false;
+    waitForElement({ selector: '[title="Prénom du patient"]', timeout: 5000 })
+        .then((patientNameElements) => {
+            var patientNameElement = patientNameElements[0];
+            var patientName = patientNameElement.value;
+            waitForElement({ selector: 'vz-lecture-cv-widget', timeout: 5000 })
+                .then((widgetElements) => {
+                    var widgetElement = widgetElements[0];
+                    var spans = widgetElement.getElementsByTagName('span');
+                    for (var i = 0; i < spans.length; i++) {
+                        if (spans[i].textContent.includes(patientName)) {
+                            console.log('Patient name found');
+                            spans[i].click();
+                            recordMetrics({ clicks: 1, drags: 1 });
+                            return true;
+                        }
+                    }
+                    console.log('Patient name not found');
+                    return false;
+                });
         });
-    });
 }
 
 
@@ -675,11 +664,13 @@ addTweak(homePageUrls, homePageFunctions);
 
 // [page de gestion des feuilles de soins]
 addTweak('https://secure.weda.fr/vitalzen/gestion.aspx', 'TweakFSEGestion', function () {
-    waitForElement('.mat-icon.notranslate.material-icons.mat-icon-no-color', 'search', 5000, function (element) {
-        console.log('element', element, 'trouvé, je clique dessus');
-        element.click();
-        recordMetrics({ clicks: 1, drags: 1 });
-    });
+    waitForElement({ selector: '.mat-icon.notranslate.material-icons.mat-icon-no-color', textContent: 'search', timeout: 5000 })
+        .then((elements) => {
+            let element = elements[0];
+            console.log('element', element, 'trouvé, je clique dessus');
+            element.click();
+            recordMetrics({ clicks: 1, drags: 1 });
+        })
 });
 
 
@@ -1006,7 +997,7 @@ let urls = [
 ];
 
 addTweak(urls, '*addATCDShortcut', function () {
-    let patientsSelector = 
+    let patientsSelector =
         '[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"], ' +
         '[id^="ContentPlaceHolder1_FindPatientUcForm2_PatientsGrid_LinkButtonPatientGetNomPrenom_"]' // mode vertical dans les imports
 
@@ -1099,7 +1090,7 @@ addTweak(urls, '*addATCDShortcut', function () {
     lightObserver(patientsSelector, processFoundPatientList);
 
     // Puis la gestion des ATCD dans les pages de biologie et messagerie sécurisée
-    let selecteurHprimEtMessagesSecurises = 
+    let selecteurHprimEtMessagesSecurises =
         '[title="Ouvrir le dossier patient dans un autre onglet"], ' + // Dans la messagerie sécurisée
         '[title="Ouvrir la fiche patient dans un onglet"]'; // Dans HPRIM
     function ProcessHprimEtMessagesSecurises() {

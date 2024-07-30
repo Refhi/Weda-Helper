@@ -96,7 +96,7 @@ function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = fals
             if (event.key === 'Enter') {
                 console.log('Enter pressed in search box');
                 elementToLookFor = '[id^="' + validTarget + '"]';
-                waitForElement(elementToLookFor, null, 1000, function () {
+                waitLegacyForElement(elementToLookFor, null, 1000, function () {
                     console.log('element found');
                     setupUIInteractions();
                     watchForEarlyDOMChanges();
