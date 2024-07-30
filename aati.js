@@ -104,6 +104,18 @@ addTweak(urlAATI, 'autoAATI', function () {
         });
     }
 
+    // Fonction pour vérifier la valeur de autoAATIexit
+    function checkAutoAATIexit() {
+        chrome.storage.local.get(['autoAATIexit'], function (result) {
+            if (result.autoAATIexit === 0) {
+                // Si autoAATIexit est égal à 0, déclencher le clic et arrêter l'intervalle
+                elements[0].click();
+                clearInterval(intervalId);
+            }
+        });
+    }
+
+
 
     lightObserver(selecteurBoutonCV, clickProperButton, document, true);
     waitForElement('[title="Déclarer l\'AT pour ce bénéficiaire."]', null, 50000, clickPremierPatientCV); // assez long car sinon la demande CPS peux bloquer le processus
@@ -111,9 +123,7 @@ addTweak(urlAATI, 'autoAATI', function () {
     lightObserver(selectorExitButton, function (elements) {
         setTimeOfSending('autoAATIexit');
         console.log('clicking on the exit button + timestamp');
-        setTimeout(function () {
-            elements[0].click();
-        }, 1000); // essai avec un délai de 1s
+        let intervalId = setInterval(checkAutoAATIexit, 20000);
         recordMetrics({clicks: 1, drags: 1});
     });
 
@@ -124,6 +134,7 @@ addTweak(urlAATI, 'autoAATI', function () {
             getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
                 if (Date.now() - result.autoAATIexit < 10000 && RemoveLocalCompanionPrint === false) {
                     console.log('autoAATIexit', result.autoAATIexit, 'is less than 10 seconds ago');
+                    chrome.storage.local.set({autoAATIexit: 0});
                     let url = window.location.href;
                     console.log('url', url);
                     fetch(url)
