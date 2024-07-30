@@ -2,6 +2,8 @@
 // // Ne justifiant pas la création d'un fichier séparé
 
 // // Sorte de post-chargement pour les pages, car le onload fonctionne mal, et après une mutation c'est pas toujours évident
+// TODO : destructurer cette fonction pour la rendre plus modulaire
+
 function afterMutations(delay, callback, callBackId = "callback id undefined", preventMultiple = false) {
     let timeoutId = null;
     const action = () => {
@@ -28,7 +30,8 @@ function afterMutations(delay, callback, callBackId = "callback id undefined", p
 };
 
 // // Fonction pour attendre la présence d'un élément avant de lancer une fonction
-// // ! Très utilisé dans toute l'exension, a vocation a laisser sa place à lightObserver
+// // ! Très utilisé dans toute l'exension, a vocation a laisser sa place à elementDetector
+// TODO : à supprimer une fois elementDetector bien en place
 function waitForElement(selector, text = null, timeout, callback) {
     var checkInterval = setInterval(function () {
         var elements = document.querySelectorAll(selector);
@@ -50,43 +53,51 @@ function waitForElement(selector, text = null, timeout, callback) {
 
 
 
-// Fonction "light" pour observer l'apparition d'un élément dans le DOM
+// // Fonction pour attendre la présence d'un élément avant de lancer une fonction
+// remplace lightObserver (qui est wrappé un peu plus bas pour des raison
+// de compatibilité avec les anciennes fonctions)
+// TODO : à vérifier + à remplacer partout
 let observedElements = new WeakMap();
-function lightObserver(selector, callback, parentElement = document, justOnce = false, debug = false, textContent = null) {
-    let observer = new MutationObserver((mutations) => {
-        for (let i = 0; i < mutations.length; i++) {
-            let mutation = mutations[i];
-            if (mutation.type === 'childList') {
-                if (debug) {
-                    console.log('[lightObserver]', selector, parentElement, ' Mutation:', mutation);
-                }
-                let elements = parentElement.querySelectorAll(selector);
-                if (textContent) {
-                    elements = Array.from(elements).filter(element => element.textContent.includes(textContent));
-                }
-                let newElements = [];
-                for (let j = 0; j < elements.length; j++) {
-                    let element = elements[j];
-                    if (!observedElements.has(element)) {
-                        if (debug) { console.log('[lightObserver] Element', element, ' has appeared'); }
-                        observedElements.set(element, true); // Add the element to the WeakMap
-                        newElements.push(element);
-                    } else {
-                        if (debug) { console.log('[lightObserver] Element', element, ' already observed'); }
+async function elementDetector({selector, parentElement = document, justOnce = false, debug = false, textContent = null}) {
+    return new Promise((resolve, reject) => {
+        let observer = new MutationObserver((mutations) => {
+            for (let i = 0; i < mutations.length; i++) {
+                let mutation = mutations[i];
+                if (mutation.type === 'childList') {
+                    if (debug) {
+                        console.log('[lightObserver]', selector, parentElement, ' Mutation:', mutation);
                     }
-                }
-                if (newElements.length > 0) {
-                    if (justOnce) {
+                    let elements = parentElement.querySelectorAll(selector);
+                    if (textContent) {
+                        elements = Array.from(elements).filter(element => element.textContent.includes(textContent));
+                    }
+                    let newElements = [];
+                    for (let j = 0; j < elements.length; j++) {
+                        let element = elements[j];
+                        if (!observedElements.has(element)) {
+                            if (debug) { console.log('[lightObserver] Element', element, ' has appeared'); }
+                            observedElements.set(element, true); // Add the element to the WeakMap
+                            newElements.push(element);
+                        } else {
+                            if (debug) { console.log('[lightObserver] Element', element, ' already observed'); }
+                        }
+                    }
+                    if (newElements.length > 0) {
                         observer.disconnect();
+                        resolve(newElements);
+                        return;
                     }
-                    callback(newElements)
                 }
             }
-        }
-    });
+        });
 
-    let config = { childList: true, subtree: true };
-    observer.observe(parentElement, config);
+        let config = { childList: true, subtree: true };
+        observer.observe(parentElement, config);
+    });
+}
+
+function lightObserver(selector, callback, parentElement = document, justOnce = false, debug = false, textContent = null) {
+    elementDetector({selector, parentElement, justOnce, debug, textContent}).then(callback);
 }
 
 function observeDiseapearance(element, callback, justOnce = false) {

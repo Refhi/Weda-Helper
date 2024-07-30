@@ -1,6 +1,11 @@
 # Changelog
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
+
+# [2.7] - refactory
+## refactory :
+- deplacement de l'impression dans un fichier à part
+
 # [2.6] - 
 ## ajouts :
 - [#162](https://github.com/Refhi/Weda-Helper/issues/162) - Mettre tout les raccourcis claviers lors d'un appuis long de Alt
