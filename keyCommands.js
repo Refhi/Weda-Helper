@@ -148,9 +148,9 @@ function addAllShortcuts() {
 setTimeout(function() {
     addAllShortcuts();
 }, 20);
-afterMutations(300, addAllShortcuts, "ajout raccourcis aux iframes"); // ajoute les raccourcis à toutes les iframes après chaque mutation du document
+afterMutations({delay:300, callback:addAllShortcuts, callBackId:'ajout raccourcis aux iframes'}); // ajoute les raccourcis à toutes les iframes après chaque mutation du document
 // ne pas mettre moins de 300ms sinon les raccourcis s'ajoutent quand même de façon cumulative
-afterMutations(1000, addAllShortcuts, "ajout raccourcis aux iframes"); // 2e ajout car parfois fonctionne mal
+afterMutations({delay:1000, callback:addAllShortcuts, callBackId:'ajout raccourcis aux iframes'});; // 2e ajout car parfois fonctionne mal
 
 
 

@@ -84,8 +84,10 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTab
 
 addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'FocusOnTitleInConsultation', function () {
     let titleElement = document.querySelector('#TextBoxEvenementTitre');
-    afterMutations(300, () => {
-        titleElement.focus();
+    afterMutations({delay: 300,callBackId: 'FocusOnTitleInConsultation',
+        callback: function() {
+            titleElement.focus();
+        }
     });
     recordMetrics({ clicks: 1, drags: 1 });
 });

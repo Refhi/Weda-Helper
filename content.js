@@ -2,16 +2,14 @@
 // // Ne justifiant pas la création d'un fichier séparé
 
 // // Sorte de post-chargement pour les pages, car le onload fonctionne mal, et après une mutation c'est pas toujours évident
-// TODO : destructurer cette fonction pour la rendre plus modulaire => revoir le script python de transformation
-
-function afterMutations(delay, callback, callBackId = "callback id undefined", preventMultiple = false) {
+function afterMutations({delay, callback, callBackId = "callback id undefined", preventMultiple = false}) {
     let timeoutId = null;
     const action = () => {
         console.log(`Aucune mutation détectée pendant ${delay}ms, je considère la page comme chargée. Appel du Callback. (${callBackId})`);
         if (preventMultiple) {
             observer.disconnect();
             callback();
-            afterMutations(delay, callback, callBackId, preventMultiple);
+            afterMutations({delay, callback, callBackId, preventMultiple});
         } else {
             callback();
         }
@@ -34,55 +32,47 @@ function afterMutations(delay, callback, callBackId = "callback id undefined", p
 // remplace lightObserver (qui est wrappé un peu plus bas pour des raison
 // de compatibilité avec les anciennes fonctions)
 // TODO : à vérifier + à remplacer partout
+// Fonction "light" pour observer l'apparition d'un élément dans le DOM
 let observedElements = new WeakMap();
-async function waitForElement({ selector, parentElement = document, justOnce = false, debug = false, textContent = null, timeout = null }) {
-    return new Promise((resolve, reject) => {
-        let observer = new MutationObserver((mutations) => {
-            for (let i = 0; i < mutations.length; i++) {
-                let mutation = mutations[i];
-                if (mutation.type === 'childList') {
-                    if (debug) {
-                        console.log('[lightObserver]', selector, parentElement, ' Mutation:', mutation);
-                    }
-                    let elements = parentElement.querySelectorAll(selector);
-                    if (textContent) {
-                        elements = Array.from(elements).filter(element => element.textContent.includes(textContent));
-                    }
-                    let newElements = [];
-                    for (let j = 0; j < elements.length; j++) {
-                        let element = elements[j];
-                        if (!observedElements.has(element)) {
-                            if (debug) { console.log('[lightObserver] Element', element, ' has appeared'); }
-                            observedElements.set(element, true); // Add the element to the WeakMap
-                            newElements.push(element);
-                        } else {
-                            if (debug) { console.log('[lightObserver] Element', element, ' already observed'); }
-                        }
-                    }
-                    if (newElements.length > 0) {
-                        observer.disconnect();
-                        resolve(newElements);
-                        return;
+function waitForElement({selector, callback, parentElement = document, justOnce = false, debug = false, textContent = null}) {
+    let observer = new MutationObserver((mutations) => {
+        for (let i = 0; i < mutations.length; i++) {
+            let mutation = mutations[i];
+            if (mutation.type === 'childList') {
+                if (debug) {
+                    console.log('[lightObserver]', selector, parentElement, ' Mutation:', mutation);
+                }
+                let elements = parentElement.querySelectorAll(selector);
+                if (textContent) {
+                    elements = Array.from(elements).filter(element => element.textContent.includes(textContent));
+                }
+                let newElements = [];
+                for (let j = 0; j < elements.length; j++) {
+                    let element = elements[j];
+                    if (!observedElements.has(element)) {
+                        if (debug) { console.log('[lightObserver] Element', element, ' has appeared'); }
+                        observedElements.set(element, true); // Add the element to the WeakMap
+                        newElements.push(element);
+                    } else {
+                        if (debug) { console.log('[lightObserver] Element', element, ' already observed'); }
                     }
                 }
+                if (newElements.length > 0) {
+                    if (justOnce) {
+                        observer.disconnect();
+                    }
+                    callback(newElements)
+                }
             }
-        });
-
-        let config = { childList: true, subtree: true };
-        observer.observe(parentElement, config);
-
-        // Timeout handling
-        if (timeout) {
-            setTimeout(() => {
-                observer.disconnect();
-                reject(new Error(`Timeout: Element with selector "${selector}" not found within ${timeout}ms`));
-            }, timeout);
         }
     });
+
+    let config = { childList: true, subtree: true };
+    observer.observe(parentElement, config);
 }
 
 function lightObserver(selector, callback, parentElement = document, justOnce = false, debug = false, textContent = null) {
-    waitForElement({ selector, parentElement, justOnce, debug, textContent }).then(callback);
+    waitForElement({ selector, callback, parentElement, justOnce, debug, textContent })
 }
 
 function observeDiseapearance(element, callback, justOnce = false) {
@@ -369,12 +359,12 @@ function clickElementByOnclick(onclickValue) {
 
 // Vérifie la présence de l'élément avec title="Prénom du patient"
 function checkPatientName() {
-    waitForElement({ selector: '[title="Prénom du patient"]', timeout: 5000 })
-        .then((patientNameElements) => {
+    waitForElement({ selector: '[title="Prénom du patient"]', timeout: 5000,
+        callback: patientNameElements => {
             var patientNameElement = patientNameElements[0];
             var patientName = patientNameElement.value;
-            waitForElement({ selector: 'vz-lecture-cv-widget', timeout: 5000 })
-                .then((widgetElements) => {
+            waitForElement({ selector: 'vz-lecture-cv-widget', timeout: 5000,
+                callback: widgetElements => {
                     var widgetElement = widgetElements[0];
                     var spans = widgetElement.getElementsByTagName('span');
                     for (var i = 0; i < spans.length; i++) {
@@ -387,8 +377,10 @@ function checkPatientName() {
                     }
                     console.log('Patient name not found');
                     return false;
-                });
-        });
+                }
+            });
+        }
+    });
 }
 
 
@@ -664,13 +656,14 @@ addTweak(homePageUrls, homePageFunctions);
 
 // [page de gestion des feuilles de soins]
 addTweak('https://secure.weda.fr/vitalzen/gestion.aspx', 'TweakFSEGestion', function () {
-    waitForElement({ selector: '.mat-icon.notranslate.material-icons.mat-icon-no-color', textContent: 'search', timeout: 5000 })
-        .then((elements) => {
+    waitForElement({ selector: '.mat-icon.notranslate.material-icons.mat-icon-no-color', textContent: 'search', timeout: 5000, justOnce: true,
+        callback: elements => {
             let element = elements[0];
             console.log('element', element, 'trouvé, je clique dessus');
             element.click();
             recordMetrics({ clicks: 1, drags: 1 });
-        })
+        }
+    });
 });
 
 
