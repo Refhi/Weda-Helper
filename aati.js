@@ -105,8 +105,10 @@ addTweak(urlAATI, 'autoAATI', function () {
     }
 
     // Fonction pour vérifier la valeur de autoAATIexit
-    function checkAutoAATIexit() {
+    let intervalId;
+    function checkAutoAATIexit(elements) {
         chrome.storage.local.get(['autoAATIexit'], function (result) {
+            console.log('[debug] autoAATIexit', result.autoAATIexit);
             if (result.autoAATIexit === 0) {
                 // Si autoAATIexit est égal à 0, déclencher le clic et arrêter l'intervalle
                 elements[0].click();
@@ -123,7 +125,8 @@ addTweak(urlAATI, 'autoAATI', function () {
     lightObserver(selectorExitButton, function (elements) {
         setTimeOfSending('autoAATIexit');
         console.log('clicking on the exit button + timestamp');
-        let intervalId = setInterval(checkAutoAATIexit, 20000);
+        intervalId = setInterval(() => checkAutoAATIexit(elements), 100); // Vérifier toutes les 100ms
+        setTimeout(() => clearInterval(intervalId), 20000); // Arrêter après 20 secondes
         recordMetrics({clicks: 1, drags: 1});
     });
 
