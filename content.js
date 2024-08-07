@@ -93,6 +93,11 @@ function waitForElement({selector, callback, parentElement = document, justOnce 
     observer.observe(parentElement, config);
 }
 
+
+/**
+ * @deprecated Utilisez `waitForElement` à la place.
+ * @see waitForElement
+ */
 function lightObserver(selector, callback, parentElement = document, justOnce = false, debug = false, textContent = null) {
     waitForElement({ selector, callback, parentElement, justOnce, debug, textContent })
 }
