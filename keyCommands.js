@@ -24,6 +24,7 @@ const keyCommands = {
             startPrinting('download', 1);
         },
     'upload_latest_file': uploadLatest,
+    'insert_date': insertDate,
     'push_enregistrer': function () {
             console.log('push_enregistrer activé');
             clickElementById('ButtonSave');
@@ -34,7 +35,9 @@ const keyCommands = {
         },
     'shortcut_w': function () {
             console.log('shortcut_w activé');
-            clickElementByOnclick("ctl00$ContentPlaceHolder1$EvenementUcForm1$MenuNavigate")
+            if (!clickElementByOnclick("ctl00$ContentPlaceHolder1$EvenementUcForm1$MenuNavigate")) {
+                clickElementByOnclick('ctl00$ContentPlaceHolder1$MenuNavigate');
+            }
         },
     'shortcut_consult': function () {
             console.log('shortcut_consult activé');
@@ -212,7 +215,8 @@ function push_valider() {
         () => GenericClicker("title", "Valider"),
         () => clickElementByChildtextContent("VALIDER"),
         () => clickElementById('ContentPlaceHolder1_ButtonQuitter2'),
-        () => clicSecure()
+        () => clicSecure(),
+        () => clickElementById('ButtonFermerRappel')
     ];
 
     actions.some(action => action() !== false);
@@ -233,7 +237,7 @@ function push_annuler() {
 }
 
 // Fonction permettant d'imprimer selon les options choisies
-function printIfOption(modelNumber = 0) {    
+function printIfOption(modelNumber = 0) {
     getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
         if (!RemoveLocalCompanionPrint) {
             startPrinting('companion', modelNumber);
@@ -244,12 +248,16 @@ function printIfOption(modelNumber = 0) {
 }
 
 // Définition de la fonction startPrinting
-function startPrinting(handlingType, modelNumber) {
+function startPrinting(handlingType, modelNumber = null) {
     // handlingType = 'print' ou 'download' ou 'companion'
+    // whatToPrint = 0 ou 1, correspondant à la place dans la liste des modèles. Sinon
+    // whatToPrint = 'courbe' si c'est une courbe ou 'fse' si c'est une FSE
     // modelNumber = integer, correspondant à la place dans la liste des modèles. Commence à 0.
     console.log('startPrinting activé');
     let courbe = window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx');
-    processPrintSequence(handlingType, modelNumber, courbe);
+    let isFSE = window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx');
+    let whatToPrint = courbe ? 'courbe' : (isFSE ? 'fse' : modelNumber);
+    processPrintSequence(handlingType, whatToPrint);
 
     function urlFromImage() {
         var pdfUrl = document.querySelector('img[data-pdf-url]');
@@ -330,9 +338,17 @@ function startPrinting(handlingType, modelNumber) {
         }
     }
 
-    async function grabIframeWhenLoaded() {
+    async function grabIframeWhenLoaded(selector) {
         return new Promise((resolve, reject) => {
-            lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", (newElements) => {
+            // Dans le cas d'une FSE, l'iframe est déjà présent dans le DOM car
+            // on appelle cette fonction alors que l'iframe est déjà chargée
+            if (isFSE) {
+                let iframe = document.querySelector(selector);
+                resolve(iframe);
+                return;
+            }
+
+            lightObserver(selector, (newElements) => {
                 // Assuming the first new element is the iframe we're interested in
                 let iframe = newElements[0];
                 resolve(iframe);
@@ -361,27 +377,43 @@ function startPrinting(handlingType, modelNumber) {
 
 
     function postPrintAction() {
-        let closebutton = {
-            'doNothing': null,
-            'closePreview': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay',
-            'returnToPatient': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
+        console.log('postPrintAction activé');
+        function closeFSEPrintWindow() {
+            // Puis fermer la fenêtre
+            boutons = document.querySelectorAll('span.mat-button-wrapper');
+            let boutonFermer = Array.from(boutons).find(bouton => bouton.innerText === 'Fermer');
+            if (boutonFermer) {
+                console.log('boutonFermer', boutonFermer);
+                boutonFermer.click();
+            }
         }
 
-        getOption('postPrintBehavior', function (postPrintBehavior) {
-            console.log('postPrintBehavior is ', postPrintBehavior, 'id to look for ', closebutton[postPrintBehavior])
-            let buttonToClick = document.getElementById(closebutton[postPrintBehavior]);
-            if (buttonToClick) {
-                console.log('clicking on', buttonToClick)
-                buttonToClick.click();
-                recordMetrics({ clicks: 1, drags: 1 });
+        // cas d'une FSE
+        if (isFSE) {
+            console.log('FSE detected, je tente de fermer la fenêtre');
+            closeFSEPrintWindow();
+        } else {
+            let closebutton = {
+                'doNothing': null,
+                'closePreview': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay',
+                'returnToPatient': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
             }
-        });
+            getOption('postPrintBehavior', function (postPrintBehavior) {
+                console.log('postPrintBehavior is ', postPrintBehavior, 'id to look for ', closebutton[postPrintBehavior])
+                let buttonToClick = document.getElementById(closebutton[postPrintBehavior]);
+                if (buttonToClick) {
+                    console.log('clicking on', buttonToClick)
+                    buttonToClick.click();
+                    recordMetrics({ clicks: 1, drags: 1 });
+                }
+            });
+        }
     }
 
 
 
 
-    function processPrintSequence(handlingType, modelNumber, courbe) {
+    function processPrintSequence(handlingType, whatToPrint) {
         // vérification du type de demande
         const handlingTypes = ['print', 'download', 'companion'];
         if (!handlingTypes.includes(handlingType)) {
@@ -392,7 +424,7 @@ function startPrinting(handlingType, modelNumber) {
         recordMetrics({ clicks: 3, drags: 4 });
 
         // deux grands cas de figure : impression d'une courbe ou d'un document
-        if (courbe) {
+        if (whatToPrint === 'courbe') {
             let url = urlFromImage();
             if (!url) {
                 console.log('[processPrintSequence] URL non trouvée');
@@ -407,34 +439,72 @@ function startPrinting(handlingType, modelNumber) {
             } else if (handlingType === 'download') {
                 download(url);
             }
-        } else { // cas d'un document
+        } else if (whatToPrint === 'fse') {
+            console.log('printing FSE');
+            // Cherche l'élément avec class 'mat-button-wrapper' et texte 'Imprimer'
+            let boutons = document.querySelectorAll('span.mat-button-wrapper');
+            let boutonImprimer = Array.from(boutons).find(bouton => bouton.innerText === 'Imprimer');
+            boutonImprimer.click();
+
+            // D'abord attendre le feu vert pour l'impression. On doit attendre que le timestamp contenu dans le storage FSEPrintGreenLightTimestamp date de moins de 10 secondes
+            function waitForFSEPrintGreenLight() {
+                const startTime = Date.now(); // Enregistre le moment du début            
+                function checkConditionAndRetry() {
+                    chrome.storage.local.get('FSEPrintGreenLightTimestamp', function (result) {
+                        console.log('FSEPrintGreenLightTimestamp', result.FSEPrintGreenLightTimestamp);
+                        if (Date.now() - result.FSEPrintGreenLightTimestamp < 10000) {
+                            console.log('FSEPrintGreenLightTimestamp is less than 10 seconds ago, je lance l\'impression');
+                            // Quand l'iframe est chargée, lancer l'impression
+                            printIframeWhenAvailable("iframe");
+                        } else if (Date.now() - startTime > 10000) {
+                            console.log('Timeout while waiting for FSEPrintGreenLightTimestamp');
+                            return
+                        } else {
+                            console.log('FSEPrintGreenLightTimestamp is more than 10 seconds ago, je réessaie dans 100ms');
+                            setTimeout(checkConditionAndRetry, 100); // Rappelle checkConditionAndRetry après 100 ms
+                        }
+                    });
+                }
+            
+                checkConditionAndRetry(); // Appel initial pour démarrer la vérification
+            }
+            waitForFSEPrintGreenLight();
+
+
+        } else {
+            let modelNumber = whatToPrint // cas d'un document
             // il faut d'abord cliquer sur le modèle d'impression pertinent
             clickPrinterNumber(modelNumber);
             // ensuite attendre que l'iframe soit chargé
-            grabIframeWhenLoaded()
-                .then(iframe => {
-                    // On se contente de lancer l'impression si on a demandé l'impression
-                    if (handlingType === 'print') {
-                        iframe.contentWindow.print();
-                        return;
-                    } else {
-                        // sinon on récupère l'URL du document (ce qui prend parfois quelques centaines de ms)
-                        return grabUrlFromIframe(iframe);
-                    }
-                })
-                .then(url => {
-                    if (handlingType === 'companion') {
-                        downloadBlob(url)
-                            .then(blob => {
-                                sendToCompanion('print', blob,
-                                    postPrintAction);
-                                });
-                    } else if (handlingType === 'download') {
-                        download(url);
-                        postPrintAction();
-                    }
-                });
+            printIframeWhenAvailable("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile");
         }
+    }
+
+    function printIframeWhenAvailable(selector) {
+        grabIframeWhenLoaded(selector)
+            .then(iframe => {
+                console.log('iframe trouvée :', iframe);
+                // On se contente de lancer l'impression si on a demandé l'impression
+                if (handlingType === 'print') {
+                    iframe.contentWindow.print();
+                    return;
+                } else {
+                    // sinon on récupère l'URL du document (ce qui prend parfois quelques centaines de ms)
+                    return grabUrlFromIframe(iframe);
+                }
+            })
+            .then(url => {
+                if (handlingType === 'companion') {
+                    downloadBlob(url)
+                        .then(blob => {
+                            sendToCompanion('print', blob,
+                                postPrintAction);
+                            });
+                } else if (handlingType === 'download') {
+                    download(url);
+                    postPrintAction();
+                }
+            });
     }
 }
         
@@ -448,6 +518,25 @@ function uploadLatest() {
 }
 
 
+function insertDate() {
+    let date = new Date();
+    let currentDate = String(date.getDate()).padStart(2, '0') + "/" + String(date.getMonth()+ 1).padStart(2, '0') + "/" + String(date.getFullYear());
+    let activeElement = document.activeElement;
+    if (!activeElement)
+        return;
+    
+    var tagName = activeElement.tagName.toLowerCase();
+    if (tagName == 'iframe') {
+        activeElement = activeElement.contentWindow.document.activeElement; //On récupère l'activeElement dans l'iframe
+        tagName = 'body'
+    }
+    if (tagName == 'input' || tagName == 'textarea') {
+        activeElement.value += currentDate;
+    }
+    else if (tagName == 'body') {
+        activeElement.textContent += currentDate;
+    }
+}
 
 
 // Clique sur un bouton selon sa classe

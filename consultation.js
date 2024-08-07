@@ -22,7 +22,7 @@ function removeExceedingSpaces(iframe) {
 
 function addTabsToIframe(scopeName, iframe, index, iframes) {
     iframes = removeHistoryIframe(iframes);
-    addHotkeyToDocument(scopeName, iframe.contentDocument, 'tab', function() {
+    addHotkeyToDocument(scopeName, iframe.contentDocument, 'tab', function () {
         console.log('tab activé');
         removeExceedingSpaces(iframe);
         // focus on next iframe or specific element if it's the last iframe
@@ -36,7 +36,7 @@ function addTabsToIframe(scopeName, iframe, index, iframes) {
         }
     });
 
-    addHotkeyToDocument(scopeName, iframe.contentDocument, 'shift+tab', function() {
+    addHotkeyToDocument(scopeName, iframe.contentDocument, 'shift+tab', function () {
         console.log('shift+tab activé');
         removeExceedingSpaces(iframe);
         // focus on previous iframe or specific element if it's the first iframe
@@ -73,7 +73,7 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTab
         }
     }
 
-    lightObserver('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]', function(elements) {
+    lightObserver('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]', function (elements) {
         changeTabOrder(elements)
         console.log('ConsultationFormTabOrderer started');
         // ici aussi les métriques sont difficiles à évaluer. Si on considère environs
@@ -89,6 +89,22 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'FocusOnT
     });
     recordMetrics({ clicks: 1, drags: 1 });
 });
+
+// l'age
+function ageCalculated() {
+    let birthdateElement = document.querySelector('span[title^="Patient"]');
+    let birthdateString = birthdateElement.title.split(' ')[3];
+    let birthdate = new Date(birthdateString.split('/').reverse().join('-'));
+    let ageDiff = Date.now() - birthdate.getTime();
+    let ageDate = new Date(ageDiff);
+    let age = Math.abs(ageDate.getUTCFullYear() - 1970);
+    return age;
+}
+
+function genderCalculated() {
+    return document.querySelector('[title="Sexe féminin"]') ? 'F' :
+        (document.querySelector('[title="Sexe masculin"]') ? 'M' : undefined);
+}
 
 
 addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*CourbesPediatriques', function () {
@@ -108,21 +124,10 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*Courbes
     };
 
     // // Récupère les valeurs de genre et d'âge dans la page.
-    // l'age
-    function ageCalculated() {
-        let birthdateElement = document.querySelector('span[title^="Patient"]');
-        let birthdateString = birthdateElement.title.split(' ')[3];
-        let birthdate = new Date(birthdateString.split('/').reverse().join('-'));
-        let ageDiff = Date.now() - birthdate.getTime();
-        let ageDate = new Date(ageDiff);
-        let age = Math.abs(ageDate.getUTCFullYear() - 1970);
-        return age;
-    }
     let age = ageCalculated();
 
     // Le genre
-    let gender = document.querySelector('[title="Sexe féminin"]') ? 'F' :
-        (document.querySelector('[title="Sexe masculin"]') ? 'M' : undefined);
+    let gender = genderCalculated();
     console.log('age and gender', age, gender);
 
     // épurer courbesPossibles pour ne garder que les lignes pertinentes selon l'age et le genre
@@ -291,6 +296,167 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*Courbes
         // un peu compliqué de mettre des metrics ici... car les utilisateurs ne mettent en général simplement pas d'unité
     });
 
+});
+
+addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*ZScoreIMC', function () {
+    // Calcul automatique du Z-score pour l'IMC
+    // 1 - tableau du Z-score selon les références Françaises (source : https://banco.podia.com/calculette-imc-z-score)
+    // L, S et M sont les paramètres de la courbe de référence utilisés dans le calcul du Z-score
+    // m et f pour masculin et féminin
+    const zscoreData = [
+        { 'age': 0.0, 'Lm': 0.24, 'Sm': 0.0925, 'Mm': 13.21, 'Lf': 0.27, 'Sf': 0.0842, 'Mf': 12.92 },
+        { 'age': 0.1, 'Lm': -0.16, 'Sm': 0.0882, 'Mm': 14.56, 'Lf': 0.18, 'Sf': 0.0805, 'Mf': 14.26 },
+        { 'age': 0.2, 'Lm': -0.29, 'Sm': 0.0864, 'Mm': 15.38, 'Lf': 0.14, 'Sf': 0.0797, 'Mf': 15.04 },
+        { 'age': 0.3, 'Lm': -0.37, 'Sm': 0.0852, 'Mm': 16.01, 'Lf': 0.12, 'Sf': 0.0794, 'Mf': 15.66 },
+        { 'age': 0.4, 'Lm': -0.43, 'Sm': 0.0841, 'Mm': 16.49, 'Lf': 0.1, 'Sf': 0.0794, 'Mf': 16.15 },
+        { 'age': 0.5, 'Lm': -0.48, 'Sm': 0.0832, 'Mm': 16.84, 'Lf': 0.09, 'Sf': 0.0795, 'Mf': 16.54 },
+        { 'age': 0.6, 'Lm': -0.51, 'Sm': 0.0823, 'Mm': 17.1, 'Lf': 0.07, 'Sf': 0.0796, 'Mf': 16.81 },
+        { 'age': 0.7, 'Lm': -0.53, 'Sm': 0.0815, 'Mm': 17.27, 'Lf': 0.06, 'Sf': 0.0797, 'Mf': 17.01 },
+        { 'age': 0.8, 'Lm': -0.54, 'Sm': 0.0808, 'Mm': 17.37, 'Lf': 0.05, 'Sf': 0.0797, 'Mf': 17.12 },
+        { 'age': 0.9, 'Lm': -0.55, 'Sm': 0.0801, 'Mm': 17.42, 'Lf': 0.04, 'Sf': 0.0797, 'Mf': 17.18 },
+        { 'age': 1.0, 'Lm': -0.55, 'Sm': 0.0794, 'Mm': 17.42, 'Lf': 0.03, 'Sf': 0.0798, 'Mf': 17.2 },
+        { 'age': 1.1, 'Lm': -0.55, 'Sm': 0.0787, 'Mm': 17.39, 'Lf': 0.03, 'Sf': 0.0797, 'Mf': 17.18 },
+        { 'age': 1.2, 'Lm': -0.55, 'Sm': 0.0781, 'Mm': 17.32, 'Lf': 0.02, 'Sf': 0.0797, 'Mf': 17.12 },
+        { 'age': 1.3, 'Lm': -0.54, 'Sm': 0.0775, 'Mm': 17.25, 'Lf': 0.01, 'Sf': 0.0797, 'Mf': 17.05 },
+        { 'age': 1.4, 'Lm': -0.54, 'Sm': 0.0769, 'Mm': 17.15, 'Lf': 0.005, 'Sf': 0.0796, 'Mf': 16.97 },
+        { 'age': 1.5, 'Lm': -0.53, 'Sm': 0.0763, 'Mm': 17.06, 'Lf': 0.001, 'Sf': 0.0796, 'Mf': 16.88 },
+        { 'age': 2.0, 'Lm': -0.47, 'Sm': 0.0741, 'Mm': 16.58, 'Lf': -0.03, 'Sf': 0.079, 'Mf': 16.44 },
+        { 'age': 2.5, 'Lm': -0.41, 'Sm': 0.0726, 'Mm': 16.23, 'Lf': -0.06, 'Sf': 0.0785, 'Mf': 16.12 },
+        { 'age': 3.0, 'Lm': -0.35, 'Sm': 0.0718, 'Mm': 15.98, 'Lf': -0.09, 'Sf': 0.0781, 'Mf': 15.86 },
+        { 'age': 3.5, 'Lm': -0.32, 'Sm': 0.0716, 'Mm': 15.81, 'Lf': -0.13, 'Sf': 0.078, 'Mf': 15.64 },
+        { 'age': 4.0, 'Lm': -0.29, 'Sm': 0.072, 'Mm': 15.69, 'Lf': -0.17, 'Sf': 0.0781, 'Mf': 15.45 },
+        { 'age': 4.5, 'Lm': -0.29, 'Sm': 0.0729, 'Mm': 15.58, 'Lf': -0.22, 'Sf': 0.0785, 'Mf': 15.31 },
+        { 'age': 5.0, 'Lm': -0.3, 'Sm': 0.0742, 'Mm': 15.51, 'Lf': -0.27, 'Sf': 0.0792, 'Mf': 15.2 },
+        { 'age': 5.5, 'Lm': -0.33, 'Sm': 0.0759, 'Mm': 15.46, 'Lf': -0.31, 'Sf': 0.0803, 'Mf': 15.14 },
+        { 'age': 6.0, 'Lm': -0.37, 'Sm': 0.0779, 'Mm': 15.44, 'Lf': -0.36, 'Sf': 0.0817, 'Mf': 15.16 },
+        { 'age': 6.5, 'Lm': -0.41, 'Sm': 0.0802, 'Mm': 15.47, 'Lf': -0.41, 'Sf': 0.0834, 'Mf': 15.16 },
+        { 'age': 7.0, 'Lm': -0.47, 'Sm': 0.0826, 'Mm': 15.53, 'Lf': -0.45, 'Sf': 0.0855, 'Mf': 15.22 },
+        { 'age': 7.5, 'Lm': -0.53, 'Sm': 0.0851, 'Mm': 15.62, 'Lf': -0.5, 'Sf': 0.0879, 'Mf': 15.32 },
+        { 'age': 8.0, 'Lm': -0.59, 'Sm': 0.0877, 'Mm': 15.75, 'Lf': -0.54, 'Sf': 0.0907, 'Mf': 15.44 },
+        { 'age': 8.5, 'Lm': -0.66, 'Sm': 0.0902, 'Mm': 15.89, 'Lf': -0.57, 'Sf': 0.0937, 'Mf': 15.59 },
+        { 'age': 9.0, 'Lm': -0.72, 'Sm': 0.0928, 'Mm': 16.04, 'Lf': -0.61, 'Sf': 0.0968, 'Mf': 15.76 },
+        { 'age': 9.5, 'Lm': -0.77, 'Sm': 0.0952, 'Mm': 16.2, 'Lf': -0.64, 'Sf': 0.1001, 'Mf': 15.96 },
+        { 'age': 10.0, 'Lm': -0.82, 'Sm': 0.0975, 'Mm': 16.36, 'Lf': -0.67, 'Sf': 0.1033, 'Mf': 16.18 },
+        { 'age': 10.5, 'Lm': -0.87, 'Sm': 0.0997, 'Mm': 16.53, 'Lf': -0.69, 'Sf': 0.1064, 'Mf': 16.44 },
+        { 'age': 11.0, 'Lm': -0.9, 'Sm': 0.1017, 'Mm': 16.73, 'Lf': -0.71, 'Sf': 0.1094, 'Mf': 16.73 },
+        { 'age': 11.5, 'Lm': -0.92, 'Sm': 0.1035, 'Mm': 16.94, 'Lf': -0.73, 'Sf': 0.1121, 'Mf': 17.04 },
+        { 'age': 12.0, 'Lm': -0.93, 'Sm': 0.1052, 'Mm': 17.2, 'Lf': -0.75, 'Sf': 0.1145, 'Mf': 17.38 },
+        { 'age': 12.5, 'Lm': -0.93, 'Sm': 0.1065, 'Mm': 17.48, 'Lf': -0.77, 'Sf': 0.1164, 'Mf': 17.74 },
+        { 'age': 13.0, 'Lm': -0.93, 'Sm': 0.1077, 'Mm': 17.8, 'Lf': -0.79, 'Sf': 0.1181, 'Mf': 18.12 },
+        { 'age': 13.5, 'Lm': -0.91, 'Sm': 0.1086, 'Mm': 18.14, 'Lf': -0.81, 'Sf': 0.1193, 'Mf': 18.49 },
+        { 'age': 14.0, 'Lm': -0.9, 'Sm': 0.1093, 'Mm': 18.49, 'Lf': -0.82, 'Sf': 0.1202, 'Mf': 18.85 },
+        { 'age': 14.5, 'Lm': -0.87, 'Sm': 0.1099, 'Mm': 18.85, 'Lf': -0.84, 'Sf': 0.1207, 'Mf': 19.19 },
+        { 'age': 15.0, 'Lm': -0.85, 'Sm': 0.1102, 'Mm': 19.18, 'Lf': -0.85, 'Sf': 0.1209, 'Mf': 19.48 },
+        { 'age': 15.5, 'Lm': -0.82, 'Sm': 0.1105, 'Mm': 19.51, 'Lf': -0.87, 'Sf': 0.1208, 'Mf': 19.74 },
+        { 'age': 16.0, 'Lm': -0.8, 'Sm': 0.1106, 'Mm': 19.81, 'Lf': -0.88, 'Sf': 0.1206, 'Mf': 19.96 },
+        { 'age': 16.5, 'Lm': -0.77, 'Sm': 0.1106, 'Mm': 20.09, 'Lf': -0.9, 'Sf': 0.1202, 'Mf': 20.13 },
+        { 'age': 17.0, 'Lm': -0.74, 'Sm': 0.1106, 'Mm': 20.35, 'Lf': -0.92, 'Sf': 0.1198, 'Mf': 20.26 },
+        { 'age': 18.0, 'Lm': -0.69, 'Sm': 0.1106, 'Mm': 20.8, 'Lf': -0.95, 'Sf': 0.1189, 'Mf': 20.44 },
+        { 'age': 19.0, 'Lm': -0.65, 'Sm': 0.1106, 'Mm': 21.18, 'Lf': -0.99, 'Sf': 0.1185, 'Mf': 20.54 },
+        { 'age': 20.0, 'Lm': -0.61, 'Sm': 0.1107, 'Mm': 21.52, 'Lf': -1.03, 'Sf': 0.1187, 'Mf': 20.59 },
+        { 'age': 21.0, 'Lm': -0.57, 'Sm': 0.1111, 'Mm': 21.83, 'Lf': -1.07, 'Sf': 0.1197, 'Mf': 20.61 },
+        { 'age': 22.0, 'Lm': -0.54, 'Sm': 0.1116, 'Mm': 22.1, 'Lf': -1.12, 'Sf': 0.1213, 'Mf': 20.63 },
+        { 'age': 23.0, 'Lm': -0.51, 'Sm': 0.1124, 'Mm': 22.32, 'Lf': -1.16, 'Sf': 0.1231, 'Mf': 20.65 },
+        { 'age': 24.0, 'Lm': -0.5, 'Sm': 0.1132, 'Mm': 22.52, 'Lf': -1.19, 'Sf': 0.1253, 'Mf': 20.69 },
+        { 'age': 25.0, 'Lm': -0.49, 'Sm': 0.1141, 'Mm': 22.7, 'Lf': -1.22, 'Sf': 0.1277, 'Mf': 20.74 },
+        { 'age': 26.0, 'Lm': -0.48, 'Sm': 0.115, 'Mm': 22.85, 'Lf': -1.25, 'Sf': 0.1301, 'Mf': 20.8 },
+        { 'age': 27.0, 'Lm': -0.48, 'Sm': 0.116, 'Mm': 22.99, 'Lf': -1.28, 'Sf': 0.1325, 'Mf': 20.88 },
+        { 'age': 28.0, 'Lm': -0.48, 'Sm': 0.1168, 'Mm': 23.11, 'Lf': -1.29, 'Sf': 0.1347, 'Mf': 20.96 },
+        { 'age': 29.0, 'Lm': -0.48, 'Sm': 0.1175, 'Mm': 23.25, 'Lf': -1.31, 'Sf': 0.137, 'Mf': 21.05 },
+        { 'age': 30.0, 'Lm': -0.47, 'Sm': 0.1182, 'Mm': 23.37, 'Lf': -1.32, 'Sf': 0.139, 'Mf': 21.16 },
+        { 'age': 31.0, 'Lm': -0.47, 'Sm': 0.1188, 'Mm': 23.49, 'Lf': -1.32, 'Sf': 0.1411, 'Mf': 21.27 },
+        { 'age': 32.0, 'Lm': -0.47, 'Sm': 0.1193, 'Mm': 23.62, 'Lf': -1.32, 'Sf': 0.1429, 'Mf': 21.39 },
+        { 'age': 33.0, 'Lm': -0.47, 'Sm': 0.1198, 'Mm': 23.75, 'Lf': -1.32, 'Sf': 0.1447, 'Mf': 21.53 },
+        { 'age': 34.0, 'Lm': -0.47, 'Sm': 0.1203, 'Mm': 23.88, 'Lf': -1.31, 'Sf': 0.1465, 'Mf': 21.68 },
+        { 'age': 35.0, 'Lm': -0.47, 'Sm': 0.1207, 'Mm': 24.02, 'Lf': -1.3, 'Sf': 0.1482, 'Mf': 21.84 },
+        { 'age': 36.0, 'Lm': -0.47, 'Sm': 0.121, 'Mm': 24.15, 'Lf': -1.28, 'Sf': 0.1498, 'Mf': 21.99 },
+        { 'age': 37.0, 'Lm': -0.46, 'Sm': 0.1214, 'Mm': 24.27, 'Lf': -1.27, 'Sf': 0.1514, 'Mf': 22.14 },
+        { 'age': 38.0, 'Lm': -0.45, 'Sm': 0.1218, 'Mm': 24.39, 'Lf': -1.25, 'Sf': 0.153, 'Mf': 22.29 },
+        { 'age': 39.0, 'Lm': -0.45, 'Sm': 0.1221, 'Mm': 24.48, 'Lf': -1.22, 'Sf': 0.1547, 'Mf': 22.43 },
+        { 'age': 40.0, 'Lm': -0.43, 'Sm': 0.1226, 'Mm': 24.58, 'Lf': -1.2, 'Sf': 0.1562, 'Mf': 22.57 }
+    ];
+
+
+    // 2 - Calcul du Z-score à partir de l'age et de l'IMC via la formule =(((IMC/M)^L)-1)/(L*S)
+    function calculateZscore(age, gender, imc) {
+        // Trouver les données de référence pour l'âge donné
+        const reference = zscoreData.find(data => data.age === age);
+        if (!reference) {
+            // Trouver l'âge le plus proche
+            let closestReference = null;
+            let closestAgeDifference = Infinity;
+
+            for (const data of zscoreData) {
+                const ageDifference = Math.abs(data.age - age);
+                if (ageDifference < closestAgeDifference) {
+                    closestAgeDifference = ageDifference;
+                    closestReference = data;
+                }
+            }
+
+            // Vérifier si l'âge le plus proche est dans une différence de 1 an
+            if (closestAgeDifference > 1) {
+                console.log('Impossible de trouver une référence pour l\'âge donné');
+                return null;
+            }
+
+            reference = closestReference;
+        }
+
+        // Sélectionner les valeurs de référence en fonction du genre
+        const L = gender === 'f' ? reference.Lf : reference.Lm;
+        const S = gender === 'f' ? reference.Sf : reference.Sm;
+        const M = gender === 'f' ? reference.Mf : reference.Mm;
+
+        // Calculer le Z-score
+        const zscore = (((imc / M) ** L) - 1) / (L * S);
+
+        return zscore;
+    }
+
+    // 3 - Récupérer les paramètres nécessaires pour le calcul du Z-score
+    let age = ageCalculated();
+    let gender = genderCalculated();
+
+    function textAreaOfTitleSuiviVariable(title) {
+        let TitleElement = document.querySelector(`[title="${title}"]`);
+        if (!TitleElement) {
+            console.log('Element non trouvé pour le titre', title);
+            return null;
+        }
+        let ValueElement = TitleElement.parentElement.parentElement.querySelector('.entry');
+        return ValueElement;
+    }
+
+    let IMC = textAreaOfTitleSuiviVariable("IMC").value;
+
+    // Vérifier si le champ de texte est vide
+    if (!IMC.trim()) {
+        console.log('Le champ IMC est vide');
+        return;
+    }
+
+    // Convertir l'IMC au format décimal
+    IMC = parseFloat(IMC.replace(',', '.'));
+
+    // Vérifier si la conversion a réussi
+    if (isNaN(IMC)) {
+        console.log('IMC invalide');
+        return;
+    }
+
+    // 4 - Calculer le Z-score
+    let zscore = calculateZscore(age, gender, IMC);
+    console.log('Z-score calculé :', zscore);
+
+    // 5 - Afficher le Z-score dans le champ de texte "Z-IMC"
+    let ZScoreIMCElement = textAreaOfTitleSuiviVariable("Z-IMC");
+    if (ZScoreIMCElement) {
+        ZScoreIMCElement.value = zscore.toFixed(2);
+
+        // très grossièrement
+        recordMetrics({ clicks: 6, drags: 6, keyStrokes: 6 });
+    }
 });
 
 

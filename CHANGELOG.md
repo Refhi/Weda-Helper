@@ -1,6 +1,29 @@
 # Changelog
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
+# [2.6] - 
+## ajouts :
+- [#162](https://github.com/Refhi/Weda-Helper/issues/162) - Mettre tout les raccourcis claviers lors d'un appuis long de Alt
+- [#196](https://github.com/Refhi/Weda-Helper/issues/196) - Accés direct au dossier patient depuis l'agenda via un clic droit
+- [#185](https://github.com/Refhi/Weda-Helper/issues/185) - Alt+D insère la date du jour dans n'importe quel champ de texte
+- oublié dans la documentation : DéfautTC existe ! (pour les téléconsultations) + sélection automatique du mode "Virement" pour les téléconsultations
+- [#217](https://github.com/Refhi/Weda-Helper/issues/217) - DéfautALD est également utilisé pour les accidents du travail
+- [#144](https://github.com/Refhi/Weda-Helper/issues/144) - memorisation des choix d'impression pour la FSE + ctrl+P imprime la FSE automatiquement (donc une FSE dégradée peut être validée via 'n/o' => 'n/o' => ctrl+P puis alt+V)
+- [#112](https://github.com/Refhi/Weda-Helper/issues/112) - ajout d'options pour limiter le nombre d'atcd affichés en CIM 10 et de les trier par ordre alphabétique
+- [#184](https://github.com/Refhi/Weda-Helper/issues/184) - ajout du calcul automatique du Z-score pour les courbes pédiatriques (vous devez créer un suivi nommé "Z-IMC" pour que cela fonctionne) => pour les courbes pédiatriques et le Z-score vous devez cliquer sur "Enregistrer" (Ctrl+S) pour que les valeurs du jour soient prises en compte.
+- [#212](https://github.com/Refhi/Weda-Helper/issues/212) : la validation d'un règlement manuel envoie désormais une demande au TPE, et possibilité de saisir manuellement un montant à envoyer dans la popup (ce qui s'affiche quand on clique sur l'icone de Weda Helper).
+- Cliquer sur "Basculer en mode prescription bi-zone" déplace aussi le texte présent dans le champ ALD
+
+## fix :
+- [#198](https://github.com/Refhi/Weda-Helper/issues/198) - la cotation par défaut fonctionne automatiquement dès que le 2e choix o/n est fait, même à la souris
+- [#186](https://github.com/Refhi/Weda-Helper/issues/186) - "n" et "o" dans les fse même quand assurance "maternité" est sélectionnée
+- [#208](https://github.com/Refhi/Weda-Helper/issues/208) - Alt+W fonctionne depuis les pages d'accueil
+- [#209](https://github.com/Refhi/Weda-Helper/issues/209) - défaultPédia fonctionne désormais pour les ages <1 an
+- [#190](https://github.com/Refhi/Weda-Helper/issues/190) - accès facilité aux ATCD et aux notes patients depuis n'importe quelle liste de patients issus d'une recherche : Bouton de droite pour les notes, bouton du milieu pour les ATCD
+- [#211](https://github.com/Refhi/Weda-Helper/issues/211) - La cotation DéfaultPédia se déclenchait pour ages < 7 ans au lieu de 6
+- [#207](https://github.com/Refhi/Weda-Helper/issues/207) - le mode vertical ne casse plus certaines fonctions d'imports et raccourcis
+
+
 # [2.5.0] - 17/07/2024
 ## ajout :
 - [#101](https://github.com/Refhi/Weda-Helper/issues/101) - Ajout d'une cotation par défaut selon le mode de la FSE

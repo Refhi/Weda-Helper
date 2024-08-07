@@ -56,11 +56,14 @@ var defaultSettings = {
   'ShowExplanatoryText': true,
   'autoOpenOrdoType': false,
   'AlertOnMedicationInteraction': true,
-  'defautDataType': 'TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%',
+  'defautDataType': 'TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%, Z-IMC:ds',
   'autoATCD': false,
   'secureExchangeAutoRefresh': true,
   'secureExchangeUncheckIHEMessage': false,
   'autoAATI': true,
+  'trimCIM10': true,
+  'sortCIM10': true,
+  'removeBoldPatientFirstName': false,
 };
 
 var defaultShortcuts = {
@@ -91,6 +94,10 @@ var defaultShortcuts = {
     "upload_latest_file":{
         "default": "Ctrl+U",
         "description": "Upload le dernier fichier du dossier envoyé par le Companion",
+    },
+    "insert_date":{
+        "default": "Alt+D",
+        "description": "Insère la date du jour dans le champ de texte en cours d'édition",
     },
     "push_enregistrer": {
         "default": "Ctrl+S",

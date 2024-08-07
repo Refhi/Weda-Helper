@@ -2,11 +2,18 @@
 // // Ne justifiant pas la création d'un fichier séparé
 
 // // Sorte de post-chargement pour les pages, car le onload fonctionne mal, et après une mutation c'est pas toujours évident
-function afterMutations(delay, callback, callBackId = "callback id undefined") {
+function afterMutations(delay, callback, callBackId = "callback id undefined", preventMultiple = false) {
     let timeoutId = null;
     const action = () => {
         console.log(`Aucune mutation détectée pendant ${delay}ms, je considère la page comme chargée. Appel du Callback. (${callBackId})`);
-        callback();
+        if (preventMultiple) {
+            observer.disconnect();
+            callback();
+            afterMutations(delay, callback, callBackId, preventMultiple);
+        } else {
+            callback();
+        }
+
     };
 
     const observer = new MutationObserver((mutationsList, observer) => {
@@ -184,7 +191,7 @@ function tooltipshower() {
         return;
     }
 
-    // first force the mouseover status to the element with class="level1 static" and aria-haspopup="ContentPlaceHolder1_MenuNavigate:submenu:2"
+    // simuler un survol de W
     var element = document.querySelector('[class="has-popup static"]');
     if (element) {
         element.dispatchEvent(new MouseEvent('mouseover', {
@@ -194,47 +201,88 @@ function tooltipshower() {
         }));
     }
     chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function (result) {
-        // from keyCommands, extract for each key the action
-        const entries = Object.entries(keyCommands);
+        const { shortcuts, defaultShortcuts } = result;
         let submenuDict = {};
+        let submenuDictAll = {};
 
-        for (const [key, action] of entries) {
-            // in the action extract the variable send to submenuW
-            if (action.toString().includes('submenuW')) {
-                var match = action.toString().match(/submenuW\('(.*)'\)/);
-                if (match) {
-                    var submenu = match[1];
-                    submenuDict[submenu] = shortcutDefaut(result.shortcuts, result.defaultShortcuts, key);
-                }
+        Object.entries(keyCommands).forEach(([key, action]) => {
+            const match = action.toString().match(/submenuW\('(.*)'\)/);
+            if (match) {
+                const submenu = match[1];
+                submenuDict[submenu] = shortcutDefaut(shortcuts, defaultShortcuts, key);
             }
-        }
-        console.log(submenuDict);
+            submenuDictAll[key] = {
+                raccourci: shortcutDefaut(shortcuts, defaultShortcuts, key),
+                description: defaultShortcuts[key].description
+            };
+        });
 
-        // change the description of each class="level2 dynamic" whom description contain the key of submenuDict to add the corresponding value
-        var elements = document.getElementsByClassName('level2 dynamic');
-        for (var i = 0; i < elements.length; i++) {
-            var element = elements[i];
-            var description = element.innerText;
-            description = description.replace(/ \(\d+\)$/, '');
-            // console.log('description', description);
-            if (description in submenuDict) {
-                // console.log('description in submenuDict', description);
-                // add a tooltip with the key of submenuDict next to the element
-                var tooltip = document.createElement('div');
-                tooltip.className = 'tooltip';
-                tooltip.style.position = 'absolute';
-                tooltip.style.top = '0px';
-                tooltip.style.left = '100%';
-                tooltip.style.padding = '10px';
-                tooltip.style.backgroundColor = '#284E98';
-                tooltip.style.border = '1px solid black';
-                tooltip.style.zIndex = '1000';
-                // tooltip.style.color = 'black';
-                tooltip.textContent = submenuDict[description];
+        // Ajouts manuels
+        Object.assign(submenuDictAll, {
+            "ouinonfse": { raccourci: 'n/o', description: "Valide oui/non dans les FSE" },
+            "pavnumordo": { raccourci: "pavé num. /'à'", description: "Permet d’utiliser les touches 0 à 9 et « à » pour faire les prescriptions de médicaments." }
+        });
+
+        updateElementsWithTooltips(submenuDict);
+        displayShortcutsList(submenuDictAll);
+    });
+
+
+    function updateElementsWithTooltips(submenuDict) {
+        document.querySelectorAll('.level2.dynamic').forEach(element => {
+            const description = element.innerText.replace(/ \(\d+\)$/, '');
+            if (submenuDict[description]) {
+                const tooltip = createTooltip(submenuDict[description]);
                 element.appendChild(tooltip);
             }
-        }
-    });
+        });
+    }
+
+    function createTooltip(text) {
+        const tooltip = document.createElement('div');
+        tooltip.className = 'tooltip';
+        Object.assign(tooltip.style, {
+            position: 'absolute',
+            top: '0px',
+            left: '100%',
+            padding: '10px',
+            backgroundColor: '#284E98',
+            border: '1px solid black',
+            zIndex: '1000',
+        });
+        tooltip.textContent = text;
+        return tooltip;
+    }
+
+    function displayShortcutsList(submenuDictAll) {
+        const shortcutsList = document.createElement('div');
+        shortcutsList.className = 'tooltip';
+        Object.assign(shortcutsList.style, {
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: '1001',
+            backgroundColor: '#ffffff',
+            padding: '20px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+            border: '1px solid #e0e0e0',
+            fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+            color: '#333',
+            fontSize: '14px',
+        });
+        shortcutsList.innerHTML = buildTableHTML(submenuDictAll);
+        document.body.appendChild(shortcutsList);
+    }
+
+    function buildTableHTML(submenuDictAll) {
+        let tableHTML = '<table><tr><th style="text-align:right;">Raccourci&nbsp;</th><th style="text-align:left">&nbsp;Description</th></tr>';
+        Object.entries(submenuDictAll).forEach(([_, { raccourci, description }]) => {
+            tableHTML += `<tr><td style="text-align:right;">${raccourci}&nbsp;</td><td style="text-align:left">&nbsp;${description}</td></tr>`;
+        });
+        return tableHTML + '</table>';
+    }
 }
 
 // retirer l'infobulle d'aide et relacher W
@@ -257,8 +305,7 @@ function mouseoutW() {
 }
 
 
-// // vérification de la présence du Companion TODO
-
+// // vérification de la présence du Companion
 function testCompanion() {
     function askLinkActivation() {
         chrome.storage.local.get('promptCompanionMessage', function (result) {
@@ -363,32 +410,85 @@ document.addEventListener('visibilitychange', function () {
 // Ecoute les instructions du script de fond au sujet de la popup
 const actions = {
     'allConsultation': allConsultation,
-    'tpebis': () => sendLastTPEamount()
+    'tpebis': () => sendLastTPEamount(),
+    'sendCustomAmount': (amount) => sendtpeinstruction(amount) // Ajout de l'action sendCustomAmount
+
 };
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action in actions) {
         console.log(request.action + ' demandé');
-        actions[request.action]();
+        if (request.action === 'sendCustomAmount' && request.amount !== undefined) {
+            let amount = request.amount;
+            // First the amount must contain only digits and exactly one or zero comma or dot
+            let amountCheck = amount.replace(/[^0-9,.]/g, '');
+            if (amountCheck.length !== amount.length) {
+                console.log('Amount', amount, 'is not valid');
+                console.warn('Amount', amount, 'is not valid');
+                return;
+            }
+            if (amount.match(/[,.]/g) && amount.match(/[,.]/g).length > 1) {
+                console.log('Amount', amount, 'is not valid');
+                console.warn('Amount', amount, 'is not valid');
+                return;
+            }
+            let splitedAmount = amount.split(/,|\./);
+            let amountUnits = splitedAmount[0];
+            let amountDecimals = splitedAmount[1] || '00';
+            if (amountDecimals.length === 1) {
+                amountDecimals += '0'; // Ajoute un zéro si la partie décimale a une seule position
+            } else if (amountDecimals.length > 2) {
+                amountDecimals = amountDecimals.slice(0, 2); // Coupe la partie décimale à 2 positions
+            }
+            amount = parseInt(amountUnits + amountDecimals, 10);
+            console.warn('[debug] pause');
+            actions[request.action](amount); // Appel avec le montant personnalisé
+        } else {
+            actions[request.action]();
+        }
     }
 });
 
-// Ecoute l'appuis de la touches Alt pour afficher l'aide
-var tooltipTimeout;
-document.addEventListener('keydown', function (event) {
-    if (event.key === 'Alt') {
-        tooltipTimeout = setTimeout(function () {
-            tooltipshower();
-        }, 500);
-    }
-});
-document.addEventListener('keyup', function (event) {
-    if (event.key === 'Alt') {
-        clearTimeout(tooltipTimeout);
-        mouseoutW();
-    }
-});
+addTweak('*', '*Tooltip', function () {
+    // Ecoute l'appuis de la touches Alt pour afficher l'aide
+    var lastAltPressTime = 0;
+    var altKeyPressCount = 0; // Compteur d'appuis sur la touche Alt
+    var checkAltReleaseInterval = null;
+    var resetAltKeyPressCountInterval = null;
 
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Alt') {
+            console.log('Alt key pressed');
+            lastAltPressTime = Date.now();
+            altKeyPressCount++; // Incrémenter le compteur à chaque appui sur Alt
+            clearTimeout(resetAltKeyPressCountInterval);
+            resetAltKeyPressCountInterval = setTimeout(function () {
+                altKeyPressCount = 0; // Réinitialiser altKeyPressCount après 1 seconde sans appui sur Alt
+            }, 1000); // Délai de 1 seconde
+
+            // Ignorer le premier appui sur Alt
+            if (altKeyPressCount > 1) {
+                if (altKeyPressCount === 2) {
+                    tooltipshower();
+                }
+                // Si l'intervalle n'est pas déjà en cours, le démarrer
+                if (!checkAltReleaseInterval) {
+                    checkAltReleaseInterval = setInterval(function () {
+                        // Si plus de 100ms se sont écoulées depuis la dernière pression
+                        if (Date.now() - lastAltPressTime > 100) {
+                            console.log('Alt key released');
+                            clearInterval(checkAltReleaseInterval);
+                            checkAltReleaseInterval = null; // Réinitialiser l'intervalle
+                            mouseoutW(); // Appeler la fonction de relâchement
+                            altKeyPressCount = 0; // Réinitialiser le compteur pour permettre la détection lors de la prochaine série d'appuis
+                        }
+                    }, 100); // Vérifier toutes les 100ms
+                }
+            }
+        }
+    });
+});
 
 // // Change certains éléments selon l'URL les options
 // [page de recettes] Appuie automatiquement sur le bouton "rechercher" après avoir sélectionné la page des recettes
@@ -402,6 +502,37 @@ addTweak('https://secure.weda.fr/FolderGestion/RecetteForm.aspx', 'TweakRecetteF
         console.log('Button clicked on RecetteForm page');
     }
 });
+
+
+// [page de recettes manuelles] Envoie automatiquement au TPE si on clique sur #ContentPlaceHolder1_ButtonValid
+addTweak('https://secure.weda.fr/FolderGestion/ReglementForm.aspx', '!RemoveLocalCompanionTPE', function () {
+    function sendToTPE() {
+        console.log('sendToTPE');
+        let menuDeroulant = document.getElementById('ContentPlaceHolder1_DropDownListRecetteLabelMode');
+        let amountElement = document.getElementById('ContentPlaceHolder1_TextBoxRecetteMontant');
+        if (menuDeroulant && amountElement) {
+            // vérifier que le mode de paiement est "C.B."
+            if (menuDeroulant.options[menuDeroulant.selectedIndex].text !== "C.B.") {
+                console.log('Le mode de paiement n\'est pas "C.B."');
+                return;
+            }
+            let amount = amountElement.value;
+            // retirer la virgule du montant et le convertir en entier
+            amount = parseInt(amount.replace(/,/g, ''), 10);
+            if (amount) {
+                console.log('Je demande au TPE le montant : ', amount);
+                sendtpeinstruction(amount);
+                recordMetrics({ clicks: 4 });
+            }
+        }
+    }
+
+    lightObserver('#ContentPlaceHolder1_ButtonValid', function (elements) {
+        console.log('Ecouteur sur le bouton de validation de la recette manuelle', elements);
+        elements[0].addEventListener('click', sendToTPE);
+    });
+});
+
 
 
 // // [page d'accueil]
@@ -527,7 +658,7 @@ let homePageFunctions = [
     },
 ];
 
-addTweak(homePageUrls, homePageFunctions); //TODO à vérifier : semble engendrer un message abscond dans la console
+addTweak(homePageUrls, homePageFunctions);
 
 
 
@@ -774,4 +905,224 @@ addTweak('https://secure.weda.fr/FolderTools/BiblioForm.aspx', '*addPrintIcon', 
         });
     }
     lightObserver('[id^="ContentPlaceHolder1_TreeViewBibliot"]', addPrintIcon);
+});
+
+// Lien avec l'API de Weda (https://secure.weda.fr/api/patients/[numeropatient])
+// Exemple pour Mme DESMAUX (un dossier de démonstration) :
+// https://secure.weda.fr/api/patients/65407357 qui retourne un objet JSON
+// par exemple :
+// getPatientInfo(65407357)
+//     .then(data => {
+//         let name = data.birthName;
+//         console.log('getPatientInfo ok, name:', name);
+//     });
+// Le json contiens les éléments suivants :
+// {
+//     "id": 65407357,
+//     "patientFileUrl": "/FolderMedical/PatientViewForm.aspx?PatDk=[numéro du patient]|0|0|0&crypt=[clé selon la session]",]",
+//     "medicalOfficeId": 4341,
+//     "createdDate": "2023-09-15T00:00:00",
+//     "lastModifiedDate": "2023-09-15T09:12:07.527",
+//     "prefix": "Mme",
+//     "sex": "F",
+//     "birthName": "DESMAUX",
+//     "lastName": "DESMAUX",
+//     "firstNames": "NATHALIE",
+//     "preferredBirthFirstName": "NATHALIE",
+//     "preferredFirstName": "NATHALIE",
+//     "isLunarBirthDate": false,
+//     "birthDate": "1955-06-15T00:00:00",
+//     "lunarBirthDate": null,
+//     "dateOfBirth": {
+//       "date": "15/06/1955",
+//       "isLunar": false
+//     },
+//     "birthPlace": "inconnu",
+//     "birthPlaceInsee": "99999",
+//     "familyStatus": null,
+//     "zip": "27670",
+//     "city": "ST OUEN DU TILLEUL",
+//     "profession": null,
+//     "professionFreeForm": "",
+//     "nir": "2550699999999",
+//     "nirCle": "34",
+//     "birthRank": "1",
+//     "nationality": null,
+//     "isDeceased": false,
+//     "deathDate": null,
+//     "deathCause": null,
+//     "refDoctorUserId": 37637,
+//     "refDoctorStart": "2024-05-19T00:00:00",
+//     "refDoctorEnd": null,
+//     "recordNumber": "",
+//     "appointmentTag": null,
+//     "prematurity": {
+//       "isPremature": false,
+//       "weeks": 0,
+//       "days": 0
+//     },
+//     "refDoctorNote": null,
+//     "consent": {
+//       "consentSharingWithinStructure": false,
+//       "consentSharingWithDmp": 0,
+//       "mspVisitData": null
+//     }
+// }
+
+
+
+// Fonction pour récupérer les informations du patient
+async function getPatientInfo(patientId) {
+    return fetch('https://secure.weda.fr/api/patients/' + patientId)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .catch(error => console.error('There has been a problem with your fetch operation:', error));
+}
+
+
+// // Ajout d'un accès simplifié dans un onglet dédié aux antécédents, depuis n'importe
+// quelle page affichant une liste de patient après recherche
+// Ainsi que dans les pages de biologie où 
+let urls = [
+    'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx',
+    'https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx',
+    'https://secure.weda.fr/FolderMedical/WedaEchanges/',
+    'https://secure.weda.fr/FolderMedical/HprimForm.aspx'
+];
+
+addTweak(urls, '*addATCDShortcut', function () {
+    let patientsSelector = 
+        '[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"], ' +
+        '[id^="ContentPlaceHolder1_FindPatientUcForm2_PatientsGrid_LinkButtonPatientGetNomPrenom_"]' // mode vertical dans les imports
+
+    async function addPatientUrlParams(element, patientFileNumber) {
+        let patientInfo = await getPatientInfo(patientFileNumber);
+        console.log('patientInfo', patientInfo);
+        let patientFileUrl = patientInfo.patientFileUrl;
+        let patientFileUrlParts = patientFileUrl.split('?');
+        let patientFileUrlParams = patientFileUrlParts[1];
+        console.log('patientFileUrlParams', patientFileUrlParams);
+        // Ajoute l'information dans une propriété UrlParams
+        element.UrlParams = patientFileUrlParams;
+        console.log('ajout de ', patientFileUrlParams, 'à', element, 'ce qui donne ', element.UrlParams);
+    }
+
+    function openPatientNotes(element) {
+        const baseUrl = 'https://secure.weda.fr/FolderMedical/PopUpRappel.aspx?';
+        let patientFileUrlParams = element.UrlParams;
+        let url = baseUrl + patientFileUrlParams;
+        recordMetrics({ clicks: 2, drags: 2 });
+        window.open(url, '_blank');
+    }
+
+    function openPatientATCD(element) {
+        const baseUrl = 'https://secure.weda.fr/FolderMedical/AntecedentForm.aspx?';
+        let patientFileUrlParams = element.UrlParams;
+        let url = baseUrl + patientFileUrlParams;
+        recordMetrics({ clicks: 2, drags: 2 });
+        window.open(url, '_blank');
+    }
+
+    function addHintOverlay(element) {
+        element.title = '[Weda-Helper] Clic droit pour ajouter une note, ctrl+clic (ou clic du milieu) pour gérer les antécédents';
+    }
+
+
+    function processFoundPatientList(elements = null) {
+        if (!elements) {
+            elements = document.querySelectorAll(patientsSelector);
+        }
+        elements.forEach(element => {
+            let title = element.title;
+            let parts = title.split('|');
+            let patientFileNumber = parts[0]; // Prendre le premier élément
+            if (parseInt(patientFileNumber, 10) === 0) {
+                console.log('Ne fonctionne pas pour Achimed');
+                return;
+            } console.log('patientFileNumber', patientFileNumber);
+            addPatientUrlParams(element, patientFileNumber);
+            addATCDShortcut(element);
+        });
+    }
+
+    function addATCDShortcut(element) {
+        // Trouver l'élément parent pour les pages HPRIM, sinon l'élément lui-même
+        let target
+        if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/HprimForm.aspx')) {
+            target = element.parentElement.parentElement;
+        } else {
+            target = element;
+        }
+
+        addHintOverlay(target);
+
+
+        // Gestion du clic droit
+        target.addEventListener('contextmenu', function (event) {
+            event.preventDefault(); // Empêche le menu contextuel de s'ouvrir
+            openPatientNotes(element);
+        });
+
+        // Gestion du clic du milieu
+        target.addEventListener('mousedown', function (event) {
+            if (event.button === 1 || (event.ctrlKey && event.button === 0)) { // Bouton du milieu ou Ctrl+clic gauche
+                // retirer l'élément href pour éviter l'ouverture d'un nouvel onglet
+                let href = element.getAttribute('href');
+                element.removeAttribute('href');
+                event.preventDefault(); // Empêche le comportement par défaut (comme ouvrir un lien dans un nouvel onglet)
+                console.log('Clic du milieu sur', event.target);
+                openPatientATCD(element);
+
+                // Rétablir l'attribut href après un délai
+                setTimeout(() => {
+                    element.setAttribute('href', href);
+                }, 500);
+            }
+        });
+    }
+    // Pour tout les endroits où une liste de patient est issue d'un champ de recherche
+    lightObserver(patientsSelector, processFoundPatientList);
+
+    // Puis la gestion des ATCD dans les pages de biologie et messagerie sécurisée
+    let selecteurHprimEtMessagesSecurises = 
+        '[title="Ouvrir le dossier patient dans un autre onglet"], ' + // Dans la messagerie sécurisée
+        '[title="Ouvrir la fiche patient dans un onglet"]'; // Dans HPRIM
+    function ProcessHprimEtMessagesSecurises() {
+        let elements = document.querySelectorAll(selecteurHprimEtMessagesSecurises);
+        console.log('ProcessHprimEtMS', elements);
+        elements.forEach(element => {
+            let href = element.getAttribute('href');
+            if (href) {
+                let patientFileNumber = href.match(/PatDk=(\d+)/)[1];
+                addPatientUrlParams(element, patientFileNumber);
+                addATCDShortcut(element);
+            }
+        });
+    }
+    lightObserver(selecteurHprimEtMessagesSecurises, ProcessHprimEtMessagesSecurises);
+});
+
+// Set the focus in the text fied https://secure.weda.fr/FolderMedical/PopUpRappel.aspx
+addTweak('https://secure.weda.fr/FolderMedical/PopUpRappel.aspx', '*focusOnTextArea', function () {
+    let textAreaSelector = '#TextBoxCabinetPatientRappel';
+    let textArea = document.querySelector(textAreaSelector);
+    textArea.focus();
+    recordMetrics({ clicks: 1, drags: 1 });
+});
+
+
+// Retirer le caractère "gras" du prénom du patient dans la page d'accueil pour plus facilement distinguer le nom du prénom
+addTweak('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx', 'removeBoldPatientFirstName', function () {
+    let elementPrenom1 = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_LabelPatientPrenom');
+    let elementPrenom2 = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_LabelPatientJeuneFille');
+    if (elementPrenom1) {
+        elementPrenom1.style.fontWeight = 'normal';
+    }
+    if (elementPrenom2) {
+        elementPrenom2.style.fontWeight = 'normal';
+    }
 });

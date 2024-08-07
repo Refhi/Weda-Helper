@@ -18,6 +18,7 @@ Cf. ci-dessous pour les retours et les contributions.
   - [Prescriptions](#prescriptions)
     - [Écoute des entrées claviers lors de l'usage de la calculette de prescription](#écoute-des-entrées-claviers-lors-de-lusage-de-la-calculette-de-prescription)
     - [Ordonnances-types](#ordonnances-types)
+    - [Demandes](#demandes)
     - [Recherche de médicaments](#recherche-de-médicaments)
     - [Options d'ordonnance numérique](#options-dordonnance-numérique)
   - [Feuilles de soin](#feuilles-de-soin)
@@ -28,6 +29,8 @@ Cf. ci-dessous pour les retours et les contributions.
     - [Métrique](#métrique)
     - [Courriers](#courriers)
     - [Documents du cabinet](#documents-du-cabinet)
+    - [Agenda](#agenda)
+    - [Antécédents :](#antécédents-)
   - [Facilitation des imports](#facilitation-des-imports)
   - [Weda-Helper-Companion](#weda-helper-companion)
   - [Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):](#problèmes-et-limitations-connues-qui-seront-peut-être-résolues-dans-de-futures-mises-à-jour)
@@ -45,6 +48,7 @@ Ctrl+P	Imprime le document en cours (1er modèle). Nécessite un module complém
 Ctrl+Shift+P	Imprime le document en cours (2e modèle)
 Alt+A	Appuie Annuler
 Alt+S	Appuie Supprimer
+Alt+D	Insère la date du jour
 Ctrl+S	Appuie Enregistrer
 Alt+V	Appuie Valider
 Alt+Z	Ouvre les antécédents
@@ -72,8 +76,10 @@ Ctrl+U	Upload le dernier fichier du dossier envoyé par le Companion
 ## Consultations
 - Affichage automatique de l'historique dans une colonne à gauche : ouvre automatiquement un historique simplifié (pas de recettes notamment) dans une colonne à gauche de l'écran, uniquement dans les pages de Consultation, de Courrier, de Certificat, de Formulaire et Demandes.
 - Ouverture automatique des antécédents (désactivé par défaut)
-- Affichage simplifié des courbes de pédiatrie : dans les pages de consultation, il suffit de survoler "📈" devant "Poids", "Taille", "Pc" ou "IMC" pour afficher les courbes correspondantes (ne s'affiche que pour les âges et genres pertinents). Un clic permet de maintenir la courbe affichée. Un autre clic sur 📈 ou sur la courbe permet de la fermer.
-Modification du comportement de la tabulation après recherche patient. Ctrl+P permet de l'imprimer.
+- Affichage simplifié des courbes de pédiatrie : dans les pages de consultation, il suffit de survoler "📈" devant "Poids", "Taille", "Pc" ou "IMC" pour afficher les courbes correspondantes (ne s'affiche que pour les âges et genres pertinents). Un clic permet de maintenir la courbe affichée. Un autre clic sur 📈 ou sur la courbe permet de la fermer. Ctrl+P permet de l'imprimer.
+- Le Z-score de l'IMC est automatiquement calculé si un IMC est présent. Nécessite un champ "Z-IMC" dans les questions de suivi.
+=> pour les courbes pédiatriques et le Z-score vous devez cliquer sur "Enregistrer" (Ctrl+S) pour que les valeurs du jour soient prises en compte.
+- Modification du comportement de la tabulation après recherche patient. 
 - Les questions de suivi sont automatiquement affublées d'un type.
 - Permet, après la saisie du nom d'un patient, d'être directement positionné sur son nom, puis de pouvoir naviguer de patient en patient avec la touche Tab (ou maj+Tab pour aller vers le haut)
 - Facilitation de la navigation via 'Tab' et 'Shift+Tab' pour naviguer entre les champs de texte et de suivi.
@@ -93,6 +99,9 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 ### Ordonnances-types
 - Option pour afficher automatiquement les ordonnances-type à l'ouverture des pages de prescription.
 
+### Demandes
+- Cliquer sur "Basculer en mode prescription bi-zone" déplace aussi le texte présent dans le champ ALD
+
 ### Recherche de médicaments
 - Lors de la recherche d'un médicament le texte est normalement effacé à chaque changement de type de recherche. L'extension maintient le dernier texte recherché.
 - Des boutons de type de recherche favori (paramétrable dans les raccourcis) sont affichés. Par défaut "médicament", "DCI" et "recherche par molécule. (A noter qu'il faut enregistrer le panneau d'option pour que seuls les boutons choisis apparaissent. Sinon tous sont affichés.)
@@ -111,12 +120,15 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - les touches "t" et "c" permettent de sélectionner les tiers payants correspondants (AMO et AMC)
 - Si elles sont utilisées, utilise une cotation dans vos favoris :
   - la cotation "DéfautPédia" pour les 0-6 ans
-  - la cotation "DéfautALD" pour les ALD
-  - la cotation "Défaut" pour les autres 
+  - la cotation "DéfautALD" pour les ALD et les Accidents de travail
+  - la cotation "DéfautTC" pour les téléconsultations
+  - la cotation "Défaut" pour les autres
 - Lecture automatique de la carte vitale si elle est non lue
 - Affichage de boutons directs pour la réalisation de FDS dégradées et téléconsultation
 - Option pour cocher automatiquement "accident causé par un tier" ou "gestion unique"
 - Sélection automatique de "je suis le médecin traitant" quand c'est le cas et qu'un autre cas de figure est sélectionné
+- Ctrl+P imprime la FDS dans le cas des FSE dégradées
+- Mémorisation des derniers choix ("ne peux signer" et "Retirer le fond")
 
 
 ## Divers
@@ -138,6 +150,16 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 ### Documents du cabinet
 - ajout d'un bouton permettant l'impression directe d'un PDF
 
+### Agenda
+- ouverture du dossier patient directement depuis l'agenda via un clic droit sur le rendez-vous
+
+### Accès facilité aux ATCD et aux notes depuis les recherches patients
+- accès facilité aux ATCD et aux notes patients depuis n'importe quelle liste de patients issus d'une recherche : Bouton de droite pour les notes, bouton du milieu pour les ATCD
+
+### Antécédents :
+- ajout d'options pour limiter le nombre d'atcd affichés en CIM 10 et de les trier par ordre alphabétique
+
+
 
 
 ## Facilitation des imports
@@ -157,7 +179,7 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 *Autant pousser l'économie de mouvements jusqu'au bout*
 Installez et laisser tourner ce logiciel sur votre ordinateur pour avoir des fonctionnalités supplémentaires :
 - impression directe automatique complète
-- Envoie le montant à régler à votre TPE
+- Envoie le montant à régler à votre TPE (quand on valide une FSE via alt+V ou qu'on valide un règlement manuel)
 
 => Procédures d'installation et de paramétrage sur [le readme du Companion](https://github.com/Refhi/Weda-Helper-Companion)
 

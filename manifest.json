@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper",
-  "version": "2.5",
+  "version": "2.6",
   "options_page": "options.html",
   "permissions": ["storage"],
   "host_permissions": ["http://localhost/"],
@@ -16,6 +16,7 @@
     {
       "matches": ["*://secure.weda.fr/*"],
       "js": [
+          "metrics.js",
           "lib/hotkeys.js",
           "content.js",
           "consultation.js",
@@ -26,8 +27,9 @@
           "prescription.js",
           "update.js",
           "aati.js",
-          "metrics.js",
-          "upload.js"]
+          "upload.js",
+          "agenda.js",
+          "antecedent.js"]
     }
   ]
 }

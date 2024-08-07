@@ -7,28 +7,26 @@ function htmlMaker(text) {
 
 var nouveautes = `
 <ul>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/101">#101</a> - Ajout d'une cotation par défaut selon le mode de la FSE
-    <ul>
-      <li>vous pouvez désormais créer une cotation "DéfautALD" dans vos favoris et elle sera automatiquement sélectionnée lors de la création d'une FSE en mode ALD</li>
-      <li>idem pour "DéfautPédia" qui sera automatiquement sélectionnée pour les enfants 0-6 ans</li>
-    </ul>
-  </li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/131">#131</a> - navigation entre champs de texte via Tab et Shift+Tab dans les pages de consultation. Focus possible à l'ouverture d'une consultation dans le champ de titre.</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/151">#151</a> - ajout de semelle et orthoplastie dans les mots-clés pour la classification "podologie" automatique</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/116">#116</a> - enregistre automatiquement le dernier type de document pour l'envoi au DMP pour les PDF classés comme courrier dans Weda</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/173">#173</a> - le bouton "TPE Bis" dans la popup de l'extension envoie 1€ si aucun règlement n'a été récemment demandé. Ce afin de faciliter les tests de liaison avec le Companion/TPE.</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/119">#119</a> - ajout d'un bouton pour imprimer directement les pdfs présents dans les "documents du cabinet medical"</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/123">#123</a> - mise à jour des textes explicatifs au sujet de la configuration du Companion.</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/179">#179</a> - décoche automatiquement la case "ordonnance numérique" si on fait une Demande d'Imagerie</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/137">#137</a> - valider automatiquement une ordonnance numérique</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/99">#99</a> - sélection automatique du type de document "FSE dégradée" lors de l'import d'une PJ SCOR</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/182">#182</a> - affichage d'un message d'alerte en cas de contre-indication médicamenteuse absolue</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/162">#162</a> - Mettre tout les raccourcis claviers lors d'un appuis long de Alt</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/196">#196</a> - Accés direct au dossier patient depuis l'agenda via un clic droit</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/185">#185</a> - Alt+D insère la date du jour dans n'importe quel champ de texte</li>
+  <li>oublié dans la documentation : DéfautTC existe ! (pour les téléconsultations) + sélection automatique du mode "Virement" pour les téléconsultations</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/217">#217</a> - DéfautALD est également utilisé pour les accidents du travail</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/144">#144</a> - memorisation des choix d'impression pour la FSE + ctrl+P imprime la FSE automatiquement (donc une FSE dégradée peut être validée via 'n/o' => 'n/o' => ctrl+P puis alt+V)</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/112">#112</a> - ajout d'options pour limiter le nombre d'atcd affichés en CIM 10 et de les trier par ordre alphabétique</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/184">#184</a> - ajout du calcul automatique du Z-score pour les courbes pédiatriques (vous devez créer un suivi nommé "Z-IMC" pour que cela fonctionne) => pour les courbes pédiatriques et le Z-score vous devez cliquer sur "Enregistrer" (Ctrl+S) pour que les valeurs du jour soient prises en compte.</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/212">#212</a> - la validation d'un règlement manuel envoie désormais une demande au TPE, et possibilité de saisir manuellement un montant à envoyer dans la popup (ce qui s'affiche quand on clique sur l'icone de Weda Helper).</li>
+  <li>Cliquer sur "Basculer en mode prescription bi-zone" déplace aussi le texte présent dans le champ ALD</li>
 </ul>
 <h2>fix :</h2>
 <ul>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/171">#171</a> - Correction d'un bug dans la fonction "Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée" qui décochait le document joint dans certains cas</li>
-  <li>Correction de l'option "Cocher automatiquement la case "Réaliser une FSE en gestion unique" pour les patients C2S" qui ne fonctionnait plus</li>
-  <li>Amélioration du message de bienvenue et de mise à jour pour y ajouter un ascenseur et la possibilité de le fermer en cliquant à l'exérieur</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/198">#198</a> - la cotation par défaut fonctionne automatiquement dès que le 2e choix o/n est fait, même à la souris</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/186">#186</a> - "n" et "o" dans les fse même quand assurance "maternité" est sélectionnée</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/208">#208</a> - Alt+W fonctionne depuis les pages d'accueil</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/209">#209</a> - défaultPédia fonctionne désormais pour les ages <1 an</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/190">#190</a> - accès facilité aux ATCD et aux notes patients depuis n'importe quelle liste de patients issus d'une recherche : Bouton de droite pour les notes, bouton du milieu pour les ATCD</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/211">#211</a> - La cotation DéfaultPédia se déclenchait pour ages < 7 ans au lieu de 6</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/207">#207</a> - le mode vertical ne casse plus certaines fonctions d'imports et raccourcis</li>
 </ul>
 `
 
@@ -64,29 +62,37 @@ firstStartMessage = htmlMaker(firstStartMessage)
 
 
 var updateMessage = `
-<strong>👋 Bonjour !</strong>
+<strong>👋 Bonjour !</strong><br><br>
 
-<strong>✨ Weda-Helper vient d'être mis à jour en version ${currentVersion} !
+<strong>✨ Weda-Helper vient d'être mis à jour en version ${currentVersion} !</strong><br><br>
 
-🔧 Je vous conseille d'aller faire un tour dans les options pour vérifier les nouveaux paramètres : bouton de droite sur l'icone de l'extension puis option.
+<strong>🔧 Je vous conseille d'aller faire un tour dans les options pour vérifier les nouveaux paramètres : bouton de droite sur l'icone de l'extension puis option.</strong><br><br>
 
-🚀 Si vous ne l'avez pas encore, n'hésitez pas à tester le Companion : <a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.exe" target="_blank">disponible ici pour windows</a> et <a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.dmg" target="_blank">ou pour mac</a> pour profiter de fonctionnalités supplémentaires (Impression totale, lien avec le TPE et upload automatisé).</strong>
+<strong>🚀 Si vous ne l'avez pas encore, n'hésitez pas à tester le Companion :</strong> 
+<a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.exe" target="_blank">disponible ici pour windows</a> 
+<strong>et</strong> 
+<a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.dmg" target="_blank">ou pour mac</a> 
+<strong>pour profiter de fonctionnalités supplémentaires (Impression totale, lien avec le TPE et upload automatisé).</strong><br><br>
 
-<a href="https://github.com/Refhi/Weda-Helper/blob/main/FicheMemo.pdf" target="_blank">📄 et à télécharger la Fiche mémo</a> pour les raccourcis clavier.
+<strong>📄 Vous pouvez maintenir Alt pour afficher la fiche mémo !</strong> <br><br>
 
-<strong>🌟 Voici les nouveautés et les améliorations :</strong>
-${nouveautes}
+<strong>🌟 Voici les nouveautés et les améliorations :</strong><br>
+${nouveautes}<br><br>
 
+📝 Les suggestions et les rapports de bug c'est toujours par là : 
+<a href="https://github.com/Refhi/Weda-Helper/" target="_blank">Weda-Helper sur gitHub</a><br><br>
 
-📝 Les suggestions et les rapports de bug c'est toujours par là : <a href="https://github.com/Refhi/Weda-Helper/" target="_blank">Weda-Helper sur gitHub</a>
+💖 Et les encouragements toujours par ici :-)  
+<a href="https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/m-p/2998" target="_blank">Site de la communauté de weda</a><br><br>
 
-💖 Et les encouragements toujours par ici :-)  <a href="https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/m-p/2998" target="_blank">Site de la communauté de weda</a>
+<span style="font-size: 3em;">💰</span> 
+<strong>Si vous le souhaitez vous pouvez également participer à mes frais de développement (écran, abonnement copilot, etc.) via</strong> 
+<a href="https://www.paypal.com/paypalme/refhi" target="_blank">Paypal</a> 
+<strong>("entre proches")</strong><br><br>
 
-<span style="font-size: 3em;">💰</span> Si vous le souhaitez vous pouvez également participer à mes frais de développement (écran, abonnement copilot, etc.) via <a href="https://www.paypal.com/paypalme/refhi" target="_blank">Paypal</a> ("entre proches")
+<strong>Bon courage,</strong><br><br>
 
-Bon courage,
-
-Les devs de Weda-Helper
+<strong>Les devs de Weda-Helper</strong>
 `;
 
 function showPopup(text) {

@@ -12,11 +12,11 @@ function ListTabOrderer(validTarget) {
 // place a listener on the search box and focus on the first element of the list after a search
 function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = false) {
     var searchBox = document.getElementById(idsSearchBox);
-    function focusOnFirstListElement(validTarget) {    
+    function focusOnFirstListElement(validTarget) {
         const elementToFocus = document.getElementById(validTarget);
         if (elementToFocus) {
             elementToFocus.focus();
-            recordMetrics({clicks: 1, drags: 1});
+            recordMetrics({ clicks: 1, drags: 1 });
         }
     }
 
@@ -36,19 +36,23 @@ function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = fals
                 const elementToFocus = document.getElementById('ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_' + patient_number);
                 if (elementToFocus) {
                     elementToFocus.focus();
-                    recordMetrics({clicks: 1, drags: 1});
+                    recordMetrics({ clicks: 1, drags: 1 });
                     break;
                 }
             }
         }
     }
-    
+
 
     // place a listner on all patients names (ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 etc.)
     function PatientSelectEntryListener() {
+        console.log('[debug] PatientSelectEntryListener started');
         // place a listener on all elements starting with ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_
-        var elements = document.querySelectorAll('[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"]');
+        var elements = document.querySelectorAll(
+            '[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"], ' + // mode horizontal
+            '[id^="ContentPlaceHolder1_FindPatientUcForm2_PatientsGrid_LinkButtonPatientGetNomPrenom_"]'); // mode vertical
         for (var i = 0; i < elements.length; i++) {
+            console.log('added event listener to patient name', elements[i]);
             elements[i].addEventListener('keydown', function (event) {
                 if (event.key === 'Enter') {
                     console.log('Enter pressed on patient name');
@@ -68,7 +72,7 @@ function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = fals
             var elapsedTime = Date.now() - startTime;
             if (elapsedTime >= 500) {
                 observer.disconnect();
-                startTime = null;                
+                startTime = null;
             }
             setupUIInteractions();
 
@@ -83,7 +87,7 @@ function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = fals
         }
         focusOnFirstListElement(validTarget);
         SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer);
-    } 
+    }
 
 
     if (searchBox) {
@@ -114,7 +118,7 @@ addTweak('https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx', 'TweakImports
         if (pdfViewer) {
             pdfViewer.style.height = newsize;
             // en gros évite un drag (molette)
-            recordMetrics({drags: 1});
+            recordMetrics({ drags: 1 });
         }
 
         const iframe = document.querySelector('#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile');
@@ -136,7 +140,7 @@ addTweak('https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx', 'TweakImports
             'ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_',
             'ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_'
         ];
-    
+
         let tabIndex = 1;
         for (let i = 0; i <= 7; i++) {
             elementIds.forEach(function (elementId) {
@@ -157,7 +161,7 @@ addTweak('https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx', 'TweakImports
         let year = new Date().getFullYear();
         let length = day.length;
         let validDayLengths = [1, 2, 4, 6, 8];
-        
+
         if (length === 4) {
             // If truncatedDate is 4 digits, assume the first 2 digits are the day and the last 2 digits are the month
             day = truncatedDate.substring(0, 2);
@@ -172,7 +176,7 @@ addTweak('https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx', 'TweakImports
             day = truncatedDate.substring(0, 2);
             month = truncatedDate.substring(2, 4);
             year = truncatedDate.substring(4, 8);
-        } else if (!validDayLengths.includes(length)){
+        } else if (!validDayLengths.includes(length)) {
             // If truncatedDate is not 4, 6, or 8 digits, return it without modification
             console.log('Invalid date format:', truncatedDate);
             return truncatedDate;
@@ -182,7 +186,7 @@ addTweak('https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx', 'TweakImports
         if (day < 10 && day.length < 2) {
             day = '0' + day;
         }
-        
+
         if (month < 10 && month.length < 2) {
             month = '0' + month;
         }
@@ -203,7 +207,7 @@ addTweak('https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx', 'TweakImports
                     // The text is valid, convert it to a full date
                     textField.value = convertDate(textField.value);
                     const keyStrokes = 10 - textField.value.length;
-                    recordMetrics({keyStrokes: keyStrokes});
+                    recordMetrics({ keyStrokes: keyStrokes });
                 }
             }
         }
@@ -218,26 +222,42 @@ addTweak('https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx', 'TweakImports
             }
         }
     }
-    
+
     // modifie la page d'upload : modifie la taille de prévisu, modifie l'ordre de tabulation et place un listener sur la searchbox.
-    function uploaderformSetup() {
-        uploaderformResizeElements();
+    function uploaderformSetup(verticalMode) {
+        if (!verticalMode) {
+            uploaderformResizeElements();
+        }
         uploaderformSetTabOrder();
-        SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = true);
+        SearchBoxEntryListener(idsSearchBox, validTarget, true);
         addEventListeners();
     };
-    
-    var idsSearchBox = 'ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche';
-    var validTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0';
+
+    let verticalModeCheckBox = document.getElementById('ContentPlaceHolder1_CheckBoxHorizontal');
+
+    // L'ID de la searchbox change en fonction du mode d'affichage
+    let verticalMode = verticalModeCheckBox.checked;
+    let idsSearchBox = '';
+    let validTarget = '';
+    if (verticalMode) {
+        console.log('Mode vertical');
+        idsSearchBox = 'ContentPlaceHolder1_FindPatientUcForm2_TextBoxRecherche';
+        validTarget = 'ContentPlaceHolder1_FindPatientUcForm2_PatientsGrid_LinkButtonPatientGetNomPrenom_0';
+    } else {
+        console.log('Mode horizontal');
+        idsSearchBox = 'ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche';
+        validTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0';
+    }
+
     // Create a MutationObserver instance to watch for changes in the DOM
     var observer = new MutationObserver(function (mutations) {
-        uploaderformSetup();
+        uploaderformSetup(verticalMode);
     });
 
     // Start observing the document with the configured parameters
     observer.observe(document, { childList: true, subtree: true });
 
-    uploaderformSetup();
+    uploaderformSetup(verticalMode);
 });
 
 
@@ -259,20 +279,20 @@ addTweak('https://secure.weda.fr/FolderMedical/FindPatientForm.aspx', 'TweakTabS
         const validTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0';
         if (timeDifferenceInSeconds >= 5 || isNaN(timeDifferenceInSeconds)) {
             console.log('délais depuis le dernier alt+r :', timeDifferenceInSeconds, 'secondes donc on lance le tweak');
-                console.log('TweakTabSearchPatient started');
-                // Réorganise l'ordre de tabulation des éléments de la liste de patients
-                ListTabOrderer(validTarget);
-                // Place le focus sur le premier élément de la liste de patients
-                const elementToFocus = document.getElementById(validTarget);
-                if (elementToFocus) {
-                    elementToFocus.focus();
-                    recordMetrics({clicks: 1, drags: 1});
-                }
-                // Place un listener sur la searchbox (qui s'auto-entretiens à chaque recherche)
-                SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = true);
+            console.log('TweakTabSearchPatient started');
+            // Réorganise l'ordre de tabulation des éléments de la liste de patients
+            ListTabOrderer(validTarget);
+            // Place le focus sur le premier élément de la liste de patients
+            const elementToFocus = document.getElementById(validTarget);
+            if (elementToFocus) {
+                elementToFocus.focus();
+                recordMetrics({ clicks: 1, drags: 1 });
+            }
+            // Place un listener sur la searchbox (qui s'auto-entretiens à chaque recherche)
+            SearchBoxEntryListener(idsSearchBox, validTarget, true);
         } else {
             console.log('délais depuis le dernier alt+r :', timeDifferenceInSeconds, 'secondes donc la page est appellée depuis alt+r donc on ne lance pas le tweak. Le focus est naturellement dans la case de recherche.');
-            SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = true);
+            SearchBoxEntryListener(idsSearchBox, validTarget, true);
         }
     });
 });

@@ -18,9 +18,15 @@ function tweakFSECreation() {
     }
 
     // Vérifie si un bouton "oui" ou "non" est coché pour la question question_number
+    // Renvoie également true si la première question n'existe pas
     function YesNoButtonChecked(question_number) {
         var element1 = document.getElementById(index['n'][question_number]);
         var element2 = document.getElementById(index['o'][question_number]);
+        // Si la première question n'existe pas, renvoie true
+        if (question_number == 0 && (!element1 || !element2)) {
+            return true;
+        }
+        // Sinon renvoie true si l'un des deux boutons est coché
         if (element1.checked || element2.checked) {
             return true;
         } else {
@@ -211,8 +217,7 @@ function tweakFSECreation() {
 
 
     function setDefaultValue() {
-        // Si on envisage d'ajouter des cotations automatisées plus complexes, on pourra simplement se greffer sur cette fonction
-        // par exemple en mettant dans une des conditions la récupération d'une valeur mémoire spécifique
+        // va parcourir dans l'ordre le tableau de conditions et appliquer la première qui est remplie
         let conditionalCotations = [
             {
                 condition: function() {
@@ -223,10 +228,42 @@ function tweakFSECreation() {
             },
             {
                 condition: function() {
-                    let ageString = document.querySelector('#LabelInfoPatientNom > span > span:last-child').textContent;
-                    let age = parseInt(ageString.match(/\d+/)[0]);
-                    console.log('Age du patient :', age);
-                    return age < 7;
+                    // accident de travail
+                    // Chercher le menu contenant les choix possibles de type d'assurance
+                    // C'est le parent de l'élément contenant le texte "Accident du travail / Maladie professionnelle"
+                    let textToSearch = 'Accident du travail / Maladie professionnelle';
+                    let elements = document.querySelectorAll('.ng-star-inserted');
+                    let elementOptionAT = Array.from(elements).find(el => el.textContent === textToSearch);
+                    if (elementOptionAT) {
+                        let menu = elementOptionAT.parentElement;
+                        return menu.value === '41';
+                    }
+                },
+                action: 'DéfautALD'
+            },
+            {
+                condition: function() {
+                    // Étape 1: Sélectionner le span et extraire la date de naissance du title
+                    let spanWithTitle = document.querySelector('#LabelInfoPatientNom > span > span:last-child');
+                    let title = spanWithTitle.getAttribute('title');
+                    let birthDateString = title.match(/(\d{2}\/\d{2}\/\d{4})/)[0];
+                
+                    // Étape 2: Convertir la chaîne de date en un objet Date
+                    let birthDateParts = birthDateString.split('/');
+                    let birthDate = new Date(birthDateParts[2], birthDateParts[1] - 1, birthDateParts[0]);
+                
+                    // Étape 3: Calculer l'âge
+                    let today = new Date();
+                    let age = today.getFullYear() - birthDate.getFullYear();
+                    let m = today.getMonth() - birthDate.getMonth();
+                    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                        age--;
+                    }
+                
+                    console.log('Age du patient :', age, 'ans');
+                
+                    // Étape 4: Retourner true si l'âge est inférieur à 6 ans
+                    return age < 6;
                 },
                 action: 'DéfautPédia'
             },
@@ -236,7 +273,13 @@ function tweakFSECreation() {
                     let isTeleconsultation = fseTypeElement.textContent === 'SV';
                     return isTeleconsultation;
                 },
-                action: 'DéfautTC'
+                action: 'DéfautTC',
+                secondaryAction: function() {
+                    let teleconsultationElement = document.querySelector('option[value="VI"]');
+                    let menu = teleconsultationElement.parentElement;
+                    menu.value = 'VI';
+                    teleconsultationElement.click();
+                }
             },
             {
                 condition: function() {
@@ -254,10 +297,15 @@ function tweakFSECreation() {
             for (let i = 0; i < conditionalCotations.length; i++) { // Loop dans le dico des cotations conditionnelles
                 if (conditionalCotations[i].condition()) {// Si la condition est remplie
                     let action = conditionalCotations[i].action; // L'action c'est le nom du favori à appliquer
+                    let secondaryAction = conditionalCotations[i].secondaryAction; // L'action secondaire est une fonction à exécuter après avoir cliqué sur le favori
                     let targetElement = Array.from(elements).find(el => el.textContent.trim() === 'keyboard_arrow_right'+action);
                     // keyboard_arrow_right est nécessaire pour matcher le texte complet du favori qui contient ">" devant le nom
                     if (targetElement) {
                         targetElement.click();
+                        if (secondaryAction) {
+                            secondaryAction();
+                        }
+
                         recordMetrics({clicks: 1, drags: 1});
                         console.log('Cotation appliquée:', action);
                         return; // Arrête la fonction après avoir appliqué une cotation
@@ -279,9 +327,17 @@ function tweakFSECreation() {
         CarteVitaleNonLue();
     }, 50); // Attendre 50 ms avant de vérifier la carte vitale
     
-    // Add visual clues
-    addVisualClue(clue_index['n'][0]);
-    addVisualClue(clue_index['o'][0]);
+
+    // Ajoute un indice visuel pour les touches "n" et "o"
+    // selon la présence ou non de la première question oui/non
+    let firstQuestionExist = document.getElementById('mat-radio-9-input');
+    if (firstQuestionExist) {
+        addVisualClue(clue_index['n'][0]);
+        addVisualClue(clue_index['o'][0]);
+    } else {
+        addVisualClue(clue_index['n'][1]);
+        addVisualClue(clue_index['o'][1]);
+    }
 
     // Détecte les touches "n" et "o" et cochent les boutons correspondants
     document.addEventListener('keydown', function (event) {
@@ -307,7 +363,6 @@ function tweakFSECreation() {
                         removeVisualClue(clue_index['n'][1]);
                         removeVisualClue(clue_index['o'][1]);
                     }, 100);
-                    setDefaultValue();
                 } else {
                     console.log('Both yes/no questions have an answer');
                 }
@@ -325,7 +380,7 @@ function tweakFSECreation() {
                     recordMetrics({clicks: 1, drags: 1});
                     element.dispatchEvent(new Event('change'));
                 }
-                else if (element && element.type == 'checkbox') { //checked puis un ev  ent change ne fonctionnent pas sur une Checkbox donc on trigger un click()
+                else if (element && element.type == 'checkbox' && !event.altKey) { //checked puis un event change ne fonctionnent pas sur une Checkbox donc on trigger un click()
                     console.log('trying to click element', element);
                     element.click(); 
                     recordMetrics({clicks: 1, drags: 1});
@@ -333,6 +388,17 @@ function tweakFSECreation() {
             }
             
         }
+    });
+
+    // Détecte le fait de cocher un élément contenant for='mat-radio-3-input' et for='mat-radio-2-input' puis déclencher setDefaultValue
+    lightObserver('#mat-radio-3-input', function() {
+        let boutonsRadioASurveiller = document.querySelectorAll('#mat-radio-3-input, #mat-radio-2-input');
+        boutonsRadioASurveiller.forEach(function(bouton) {
+            bouton.addEventListener('change', function() {
+                console.log('[debug] change event detected');
+                setDefaultValue();
+            });
+        });
     });
 }
 
@@ -407,3 +473,73 @@ addTweak('https://secure.weda.fr/vitalzen/gestion.aspx', 'TweakSCORDegradee', fu
     });
 });
 
+
+addTweak('https://secure.weda.fr/vitalzen/fse.aspx', '*keepPrintDegradeeParameters', function() {
+    lightObserver('.mat-slide-toggle-label span', function(element) { // on cherche aussi le texte, mais cf. Fin de fonction
+        // d'abord rechercher tout les éléments avec comme role="switch"
+        let toggles = document.querySelectorAll('[role="switch"]');
+        let backgroundToggle;
+        let canSignToggle;
+        
+        // retourne le texte de l'élément "switch" passé en paramètre
+        function textOfToggle(toggle) {
+            let parentParent = toggle.parentElement.parentElement;
+            let textElement = parentParent.querySelector('span');
+            return textElement.innerText;
+        }
+
+        toggles.forEach(function(toggle) {
+            let textofTheToggle = textOfToggle(toggle);
+            if (textofTheToggle === 'Retirer le fond') {
+                backgroundToggle = toggle;
+                console.log('[keepPrintDegradeeParameters] found backgroundToggle', backgroundToggle, ' dont le texte est: ',textofTheToggle);
+            } else if (textofTheToggle === 'le patient peut signer') {
+                canSignToggle = toggle;
+                console.log('[keepPrintDegradeeParameters] found canSignToggle', canSignToggle, ' dont le texte est: ',textofTheToggle);
+            } else {
+                console.log('[keepPrintDegradeeParameters] found an unknown toggle : ', toggle, ' . With text :', textofTheToggle);
+            }
+        });
+
+
+        // surveille les changements de valeur des boutons et les enregistre dans le stockage local
+        function addToggleWatcher(toggleElement, storageKey) {
+            toggleElement.addEventListener('change', function() {
+                let saveObj = {};
+                saveObj[storageKey] = toggleElement.checked;
+                chrome.storage.local.set(saveObj, function() {
+                    console.log(`[${storageKey}] ${storageKey} saved`, toggleElement.checked);
+                });
+            });
+        }
+        
+        // Ajoute un écouteur d'événement pour chaque bouton
+        addToggleWatcher(backgroundToggle, 'backgroundToggle');
+        addToggleWatcher(canSignToggle, 'canSignToggle');
+
+        // If their state is different from the last time, set them to the last state
+        chrome.storage.local.get(['backgroundToggle', 'canSignToggle'], function(result) {
+            console.log('[keepPrintDegradeeParameters] Value currently is backgroundToggle : ' + result.backgroundToggle, 'canSignToggle : ' + result.canSignToggle);
+            function changeToggleIfDifferent(toggleElement, storageKey) {
+                if (result[storageKey] !== undefined && toggleElement.checked !== result[storageKey]) {
+                    toggleElement.click();
+                    console.log('[keepPrintDegradeeParameters] ', storageKey, ' set to', result[storageKey]);
+                    return true
+                } else {
+                    console.log('[keepPrintDegradeeParameters] ', storageKey, ' already set to', result[storageKey]);
+                    return false
+                }
+            }
+            let backGroundToggleIsNotSet = changeToggleIfDifferent(backgroundToggle, 'backgroundToggle');
+            let canSignToggleIsNotSet = changeToggleIfDifferent(canSignToggle, 'canSignToggle');
+            if (!backGroundToggleIsNotSet && !canSignToggleIsNotSet) {
+                console.log('[keepPrintDegradeeParameters] No toggle was changed, greenLight for printing');
+                let date = new Date();
+                let timestamp = date.getTime();
+                chrome.storage.local.set({FSEPrintGreenLightTimestamp: timestamp}, function() {
+                    console.log('[keepPrintDegradeeParameters] FSEPrintGreenLightTimestamp saved', timestamp);
+                });
+            };
+        });
+    }, document, false, false, "le patient peut signer");
+});
