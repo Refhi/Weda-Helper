@@ -1,29 +1,29 @@
 // Arrêts de travail automatisés
 // Ajout d'un 2e bouton à côté de AT nommé "AT sans CV" pour shunter la lecture automatique de la carte vitale
-addTweak('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx', 'autoAATI', function () {
+addTweak('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx','autoAATI', function () {
     let selecteurBoutonAT = '[title="Transmettre un avis d\'arrêt de travail via le téléservice AATi"]';
-    function processButton(elements) {
+    function processButton (elements) {
         // remplace le texte "AT" par "AT avec CV | AT sans CV"
         elements[0].textContent = 'AT avec CV | AT sans CV';
-
+    
         // ajoute sur la partie droite de l'élément un event listener pour le click qui met dans le local storage la valeur "timestampAATIsansCV" au moment du click
-        elements[0].addEventListener('click', function (e) {
+        elements[0].addEventListener('click', function(e) {
             // Récupère la largeur de l'élément
             let boutonWidth = elements[0].offsetWidth;
-
+    
             // Récupère la position du clic relative à l'élément
             let clickPosition = e.clientX - elements[0].getBoundingClientRect().left;
-
+    
             // Si le clic est sur la moitié droite de l'élément
             if (clickPosition > boutonWidth / 2) {
                 console.log('Clic sur AT sans CV détecté au timestamp', Date.now());
                 // Stocke le timestamp actuel dans le stockage local avec la clé "timestampAATIsansCV"
-                chrome.storage.local.set({ timestampAATIsansCV: Date.now() });
+                chrome.storage.local.set({timestampAATIsansCV: Date.now()});
             }
         });
     }
 
-    waitForElement({ selector: selecteurBoutonAT, justOnce: true, callback: processButton });
+    waitForElement({selector: selecteurBoutonAT, justOnce: true, callback: processButton });
 });
 
 
@@ -38,16 +38,16 @@ addTweak(urlAATI, 'autoAATI', function () {
     let selecteurSortieNonLimites = '#form1 > div:nth-child(10) > div > dmp-aati-form > div > div:nth-child(2) > div.ml10 > div > div.frameContent > dmp-aati-leave-permission > div.flexColStart.mt10 > div.flexColStart.mt10.ng-star-inserted > div.flexColStart.pt3.ng-star-inserted > div.flexRow.mt5 > input'
     let selectorExitButton = '.frameback.dmtiForm.ng-star-inserted .imgfixe a'
 
-    function clickPremierPatientCV() {
+    function clickPremierPatientCV () {
         console.log('clickPremierPatientCV déclenché');
         var boutonPremierPatientCV = document.querySelector('[title="Déclarer l\'AT pour ce bénéficiaire."]');
         if (boutonPremierPatientCV) {
             boutonPremierPatientCV.click();
-            recordMetrics({ clicks: 1, drags: 1 });
+            recordMetrics({clicks: 1, drags: 1});
         }
     }
 
-    function fillDateSorties() {
+    function fillDateSorties () {
         var sortieNonLimites = document.querySelector(selecteurSortieNonLimites);
         if (sortieNonLimites) {
             console.log('sortieNonLimites', sortieNonLimites, 'found');
@@ -68,7 +68,7 @@ addTweak(urlAATI, 'autoAATI', function () {
 
             // Dispatch the event
             console.log('sortieNonLimites', sortieNonLimites, 'dispatching event', event);
-            recordMetrics({ keyStroke: 10 });
+            recordMetrics({keyStroke: 10});
             sortieNonLimites.dispatchEvent(event); // indispensable sinon la date n'est pas prise en compte
         }
     }
@@ -82,7 +82,7 @@ addTweak(urlAATI, 'autoAATI', function () {
         obj[actionName] = currentTime;
 
         // Store the object in the local Chrome storage
-        chrome.storage.local.set(obj, function () {
+        chrome.storage.local.set(obj, function() {
             console.log('The time of action "' + actionName + '" was stored as "' + currentTime + '".');
         });
     }
@@ -104,6 +104,20 @@ addTweak(urlAATI, 'autoAATI', function () {
         });
     }
 
+    // Fonction pour vérifier la valeur de autoAATIexit
+    let intervalId;
+    function checkAutoAATIexit(elements) {
+        chrome.storage.local.get(['autoAATIexit'], function (result) {
+            console.log('[debug] autoAATIexit', result.autoAATIexit);
+            if (result.autoAATIexit === 0) {
+                // Si autoAATIexit est égal à 0, déclencher le clic et arrêter l'intervalle
+                elements[0].click();
+                clearInterval(intervalId);
+            }
+        });
+    }
+
+
 
     lightObserver(selecteurBoutonCV, clickProperButton, document, true);
     waitLegacyForElement('[title="Déclarer l\'AT pour ce bénéficiaire."]', null, 50000, clickPremierPatientCV); // assez long car sinon la demande CPS peux bloquer le processus
@@ -111,10 +125,9 @@ addTweak(urlAATI, 'autoAATI', function () {
     lightObserver(selectorExitButton, function (elements) {
         setTimeOfSending('autoAATIexit');
         console.log('clicking on the exit button + timestamp');
-        setTimeout(function () {
-            elements[0].click();
-        }, 1000); // essai avec un délai de 1s
-        recordMetrics({ clicks: 1, drags: 1 });
+        intervalId = setInterval(() => checkAutoAATIexit(elements), 100); // Vérifier toutes les 100ms
+        setTimeout(() => clearInterval(intervalId), 20000); // Arrêter après 20 secondes
+        recordMetrics({clicks: 1, drags: 1});
     });
 
 
@@ -124,6 +137,7 @@ addTweak(urlAATI, 'autoAATI', function () {
             getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
                 if (Date.now() - result.autoAATIexit < 10000 && RemoveLocalCompanionPrint === false) {
                     console.log('autoAATIexit', result.autoAATIexit, 'is less than 10 seconds ago');
+                    chrome.storage.local.set({autoAATIexit: 0});
                     let url = window.location.href;
                     console.log('url', url);
                     fetch(url)
@@ -135,7 +149,7 @@ addTweak(urlAATI, 'autoAATI', function () {
                         .then(() => {
                             // The blob has been successfully transferred
                             console.log('The blob has been successfully transferred.');
-                            recordMetrics({ clicks: 3, drags: 3 });
+                            recordMetrics({clicks: 3, drags: 3});
                             setTimeout(function () {
                                 window.close();
                             }, 1000); // essai avec un délai de 1s
