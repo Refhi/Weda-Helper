@@ -1,6 +1,28 @@
 // // Différentes petites fonctions ajoutées ou supprimées de Weda
 // // Ne justifiant pas la création d'un fichier séparé
 
+
+// TODO : à supprimer une fois waitForElement bien en place
+function waitLegacyForElement(selector, text = null, timeout, callback) {
+    var checkInterval = setInterval(function () {
+        var elements = document.querySelectorAll(selector);
+        for (var i = 0; i < elements.length; i++) {
+            if (!text || elements[i].textContent.includes(text)) {
+                callback(elements[i]);
+                clearInterval(checkInterval);
+                clearTimeout(timeoutId);
+                return;
+            }
+        }
+    }, 100);
+
+    var timeoutId = setTimeout(function () {
+        clearInterval(checkInterval);
+        console.log(`Element ${selector} ${text ? 'with text "' + text + '"' : ''} not found after ${timeout} ms`);
+    }, timeout);
+}
+
+
 // // Sorte de post-chargement pour les pages, car le onload fonctionne mal, et après une mutation c'est pas toujours évident
 function afterMutations({delay, callback, callBackId = "callback id undefined", preventMultiple = false}) {
     let timeoutId = null;
