@@ -428,6 +428,11 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*ZScoreI
         return ValueElement;
     }
 
+    if(!textAreaOfTitleSuiviVariable("IMC")) {
+        console.log('Le champ IMC n\'existe pas');
+        return;
+    }
+
     let IMC = textAreaOfTitleSuiviVariable("IMC").value;
 
     // Vérifier si le champ de texte est vide
