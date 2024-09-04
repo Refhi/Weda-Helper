@@ -655,13 +655,16 @@ pagesToLeftPannel_.forEach((page) => {
             justOnce: true,
             callback: () => {
                 console.log('[autoATCD] bouton atcd détecté');
-                lightObserver('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame', () => {
-                    console.log('[autoATCD] iframe chargé');
-                    let atcdElement = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelAntecedent');
-                    let buttonAtcd = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent');
-                    if (!atcdElement && buttonAtcd) {
-                        buttonAtcd.click();
-                        recordMetrics({ clicks: 1, drags: 1 });
+                waitForElement({
+                    selector: '#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame',
+                    callback: () => {
+                        console.log('[autoATCD] iframe chargé');
+                        let atcdElement = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelAntecedent');
+                        let buttonAtcd = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent');
+                        if (!atcdElement && buttonAtcd) {
+                            buttonAtcd.click();
+                            recordMetrics({ clicks: 1, drags: 1 });
+                        }
                     }
                 });
             }

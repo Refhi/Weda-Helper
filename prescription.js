@@ -23,19 +23,22 @@ if (PrescriptionForm) {
 
         function searchTextKeeper() {
             // il semble nécessaire de répéter la recherche de l'élément pour éviter les erreurs
-            lightObserver('#ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack', function () {
-                var searchTextField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
-                if (searchTextField) {
-                    console.log('searchTextKeeper started sur ', searchTextField);
-                    if (!searchTextField.getAttribute('data-hasListener')) { // éviter d'ajouter plusieurs écouteurs
-                        searchTextField.addEventListener('input', function () {
-                            // Stocker la valeur de inputField dans medSearchText lorsque le texte est modifié
-                            storeSearchSelection();
-                        });
-                        searchTextField.setAttribute('data-hasListener', 'true');
+            waitForElement({
+                selector: '#ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack',
+                callback: function () {
+                    var searchTextField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
+                    if (searchTextField) {
+                        console.log('searchTextKeeper started sur ', searchTextField);
+                        if (!searchTextField.getAttribute('data-hasListener')) { // éviter d'ajouter plusieurs écouteurs
+                            searchTextField.addEventListener('input', function () {
+                                // Stocker la valeur de inputField dans medSearchText lorsque le texte est modifié
+                                storeSearchSelection();
+                            });
+                            searchTextField.setAttribute('data-hasListener', 'true');
+                        }
+                    } else {
+                        console.log('searchTextKeeper non démarré car searchTextField non trouvé');
                     }
-                } else {
-                    console.log('searchTextKeeper non démarré car searchTextField non trouvé');
                 }
             });
         }
@@ -166,34 +169,43 @@ if (PrescriptionForm) {
                 }
             }
         }
-        lightObserver('#ContentPlaceHolder1_BaseVidalUcForm1_DropDownListRecherche', onDOMChange);
-        onDOMChange() // a priori nécessaire sur certains setups en plus du lightObserver
-    });
 
+        waitForElement({
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_DropDownListRecherche',
+            callback: onDOMChange
+        });
+        onDOMChange() // a priori nécessaire sur certains setups en plus du waitForElement({selector: lightObserver, callback: None});});
+    });
 }
 
 addTweak(prescriptionUrl, 'autoOpenOrdoType', function () {
     document.getElementById('ContentPlaceHolder1_ButtonPrescritionType').click();
-    lightObserver("#ContentPlaceHolder1_BaseGlossaireUCForm2_UpdatePanelDocument", function () {
-        var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
-        if (inputField) {
-            inputField.focus();
+    waitForElement({
+        selector: "#ContentPlaceHolder1_BaseGlossaireUCForm2_UpdatePanelDocument",
+        callback: function () {
+            var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
+            if (inputField) {
+                inputField.focus();
+            }
         }
     });
 });
 
 addTweak(prescriptionUrl, 'AlertOnMedicationInteraction', function () {
-    lightObserver("div.imgInter4", function (elements) { //Déclenché en cas de présence d'une contre-indication absolue
-        var interactions = [];
-        for (element of elements) {
-            if (!interactions.includes(element.title)) {
-                interactions.push(element.title);
-                var interactionDiv = document.createElement("div");
-                interactionDiv.style = "padding: .75rem 1.25rem; color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: .25rem; margin-bottom: 1rem; margin-top: 1rem;"
-                interactionDiv.textContent = element.title;
-                let node = document.getElementById('ContentPlaceHolder1_PrescriptionsGrid');
-                let parentNode = node.parentNode;
-                parentNode.insertBefore(interactionDiv, node);
+    waitForElement({
+        selector: "div.imgInter4",
+        callback: function (elements) { //Déclenché en cas de présence d'une contre-indication absolue
+            var interactions = [];
+            for (element of elements) {
+                if (!interactions.includes(element.title)) {
+                    interactions.push(element.title);
+                    var interactionDiv = document.createElement("div");
+                    interactionDiv.style = "padding: .75rem 1.25rem; color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: .25rem; margin-bottom: 1rem; margin-top: 1rem;"
+                    interactionDiv.textContent = element.title;
+                    let node = document.getElementById('ContentPlaceHolder1_PrescriptionsGrid');
+                    let parentNode = node.parentNode;
+                    parentNode.insertBefore(interactionDiv, node);
+                }
             }
         }
     });
@@ -241,13 +253,16 @@ function validateOrdoNumIfOptionActivated() {
 
 // autoclique le bouton de consentement de l'ordonnance numérique
 addTweak([demandeUrl, prescriptionUrl], 'autoConsentNumPres', function () {
-    lightObserver('.cdk-overlay-container .mat-radio-label', function (elements) {
-        // console.log('[debug].cdk-overlay-container .mat-radio-label', elements);
-        elements[0].click();
-        recordMetrics({ clicks: 1, drags: 1 });
+    waitForElement({
+        selector: '.cdk-overlay-container .mat-radio-label',
+        callback: function (elements) {
+            // console.log('[debug].cdk-overlay-container .mat-radio-label', elements);
+            elements[0].click();
+            recordMetrics({ clicks: 1, drags: 1 });
 
-        if (PrescriptionForm) { //Pas de selection du type de l'ordonnance donc on valide une fois le consentement coché
-            validateOrdoNumIfOptionActivated();
+            if (PrescriptionForm) { //Pas de selection du type de l'ordonnance donc on valide une fois le consentement coché
+                validateOrdoNumIfOptionActivated();
+            }
         }
     });
 });
@@ -282,16 +297,19 @@ addTweak([demandeUrl, prescriptionUrl], '*NumPres', function () {
 
         function uncheckSiImagerie() { // n'est appelé que si l'ordo numérique est demandée ou déjà cochée
             addTweak('*', 'uncheckDMPIfImagerie', function () {
-                lightObserver('#ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio', function () {
-                    if (isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio')) {
-                        changeCheckBoxViaClick(false);
-                    } else {
-                        // seulement si ordoNumeriquePreCoche est vrai
-                        if (ordoNumeriquePreCoche) {
-                            changeCheckBoxViaClick(true);
+                waitForElement({
+                    selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio',
+                    callback: function () {
+                        if (isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio')) {
+                            changeCheckBoxViaClick(false);
+                        } else {
+                            // seulement si ordoNumeriquePreCoche est vrai
+                            if (ordoNumeriquePreCoche) {
+                                changeCheckBoxViaClick(true);
+                            }
                         }
+                        observeCheckbox();
                     }
-                    observeCheckbox();
                 });
             });
         }
@@ -343,21 +361,24 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
     ]
 
     function checkContexteSoins(demandeContent, callback) {
-        lightObserver('.horCBoxWithLabel > span', function (checkBoxElements) {
-            console.log('checkContexteSoins déclenché', demandeContent);
-            contexteSoins.forEach(contexte => {
-                if (contexte.regex.test(demandeContent)) {
-                    checkBoxElements.forEach(element => {
-                        let checkBoxInput = element.parentElement.querySelector('mat-checkbox > label > span > input');
-                        if (element.textContent === contexte.checkBoxText) {
-                            checkBoxInput.click();
-                        }
-                    });
-                }
-                if (callback) { callback(); }
-            });
-        }, document, true);
-
+        waitForElement({
+            selector: '.horCBoxWithLabel > span',
+            justOnce: true,
+            callback: function (checkBoxElements) {
+                console.log('checkContexteSoins déclenché', demandeContent);
+                contexteSoins.forEach(contexte => {
+                    if (contexte.regex.test(demandeContent)) {
+                        checkBoxElements.forEach(element => {
+                            let checkBoxInput = element.parentElement.querySelector('mat-checkbox > label > span > input');
+                            if (element.textContent === contexte.checkBoxText) {
+                                checkBoxInput.click();
+                            }
+                        });
+                    }
+                    if (callback) { callback(); }
+                });
+            }
+        });
     }
 
     // Déterminer quel ligne il faut cliquer dans le menu déroulant
@@ -372,12 +393,16 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
 
 
     function clickDropDownMenuWhenObserved(callback) {
-            lightObserver('#prescriptionType div', function (elements) {
+        waitForElement({
+            selector: '#prescriptionType div',
+            justOnce: true,
+            callback: function (elements) {
                 console.log('menu déroulant trouvé, je clique dessus', elements);
                 elements[0].click();
                 recordMetrics({ clicks: 1, drags: 1 });
                 callback();
-            }, document, true);
+            }
+        });
     }
 
 
@@ -399,37 +424,46 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
     };
 
 
-    lightObserver('.mat-dialog-title', function (element) {
-        console.log("menu 'Création d'une ordonnance numérique' trouvé", element);
-        setTimeout(function () { // attendre un peu pour que le contenu de l'iframe soit chargé
-            let demandeContent = '';
-            let horsALDFrame = document.querySelector("#CE_ContentPlaceHolder1_EditorPrescription_ID_Frame");
-            let ALDFrame = document.querySelector("#CE_ContentPlaceHolder1_EditorPrescriptionBizone_ID_Frame");
-            if (horsALDFrame && horsALDFrame.contentWindow && horsALDFrame.contentWindow.document.body) {
-                demandeContent += horsALDFrame.contentWindow.document.body.innerText;
-            }
-            if (ALDFrame && ALDFrame.contentWindow && ALDFrame.contentWindow.document.body) {
-                demandeContent += " " + ALDFrame.contentWindow.document.body.innerText; // Ajout d'un espace pour séparer le contenu des deux iframes
-            }
-    
-            console.log('[demandeContent]', demandeContent);  
-            clickDropDownMenuWhenObserved(function () {
-                clickOnProperDropDownOption(demandeContent, function () {
-                    checkContexteSoins(demandeContent, function () {
-                        validateOrdoNumIfOptionActivated();
+    waitForElement({
+        selector: '.mat-dialog-title',
+        textContent: 'Création d\'une ordonnance numérique',
+        callback: function (element) {
+            console.log("menu 'Création d'une ordonnance numérique' trouvé", element);
+            setTimeout(function () { // attendre un peu pour que le contenu de l'iframe soit chargé
+                let demandeContent = '';
+                let horsALDFrame = document.querySelector("#CE_ContentPlaceHolder1_EditorPrescription_ID_Frame");
+                let ALDFrame = document.querySelector("#CE_ContentPlaceHolder1_EditorPrescriptionBizone_ID_Frame");
+                if (horsALDFrame && horsALDFrame.contentWindow && horsALDFrame.contentWindow.document.body) {
+                    demandeContent += horsALDFrame.contentWindow.document.body.innerText;
+                }
+                if (ALDFrame && ALDFrame.contentWindow && ALDFrame.contentWindow.document.body) {
+                    demandeContent += " " + ALDFrame.contentWindow.document.body.innerText; // Ajout d'un espace pour séparer le contenu des deux iframes
+                }
+
+                console.log('[demandeContent]', demandeContent);
+                clickDropDownMenuWhenObserved(function () {
+                    clickOnProperDropDownOption(demandeContent, function () {
+                        checkContexteSoins(demandeContent, function () {
+                            validateOrdoNumIfOptionActivated();
+                        });
                     });
                 });
-            });
-        }, 400);        
-    }, document, false, false, 'Création d\'une ordonnance numérique');
+            }, 400);
+        }
+    });
 });
 
 
 // Automatiquement basculer le contenu de l'ordonnance entre les zones ALD et hors ALD
 addTweak(demandeUrl, '*autoSwitchALD', function () {
-    lightObserver('#ContentPlaceHolder1_ButtonInversion', function (elements) {
-        console.log('autoSwitchALD déclenché', elements);
-        elements[0].click();
-        recordMetrics({ clicks: 1, drags: 1 });
-    }, document, true);
+
+    waitForElement({
+        selector: '#ContentPlaceHolder1_ButtonInversion',
+        justOnce: true,
+        callback: function (elements) {
+            console.log('autoSwitchALD déclenché', elements);
+            elements[0].click();
+            recordMetrics({ clicks: 1, drags: 1 });
+        }
+    });
 });
