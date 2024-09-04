@@ -112,11 +112,17 @@ function startPrinting(handlingType, modelNumber = null) {
                 return;
             }
 
-            lightObserver(selector, (newElements) => {
+            
+waitForElement({
+    selector: selector,
+    justOnce: true,
+    callback: (newElements) => {
                 // Assuming the first new element is the iframe we're interested in
                 let iframe = newElements[0];
                 resolve(iframe);
-            }, document, true);
+            },
+});
+
         });
     }
 
