@@ -174,7 +174,7 @@ if (PrescriptionForm) {
             selector: '#ContentPlaceHolder1_BaseVidalUcForm1_DropDownListRecherche',
             callback: onDOMChange
         });
-        onDOMChange() // a priori nécessaire sur certains setups en plus du waitForElement({selector: lightObserver, callback: None});});
+        onDOMChange() // a priori nécessaire sur certains setups en plus du waitForElement
     });
 }
 
