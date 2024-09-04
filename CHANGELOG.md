@@ -1,6 +1,11 @@
 # Changelog
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
+
+# [2.7] - refactory
+## refactory :
+- deplacement de l'impression dans un fichier à part
+
 # [2.6.1] - 
 ## fix :
 - [#221](https://github.com/Refhi/Weda-Helper/issues/198) - l'affichage de l'historique à gauche ne fonctionnait plus dans certains cas.

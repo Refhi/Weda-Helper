@@ -79,7 +79,7 @@ function tweakFSECreation() {
         // - soit la présence du texte d'erreur de cv non lue
         var carteVitaleLue = false; // Indicateur pour suivre si la carte vitale a été lue
         console.log('CarteVitaleNonLue demarré : je vérifie la présence du texte d erreur ou de l absence de cv');
-        waitForElement('span', 'Le nom, le prénom et/ou la date de naissance sont différents entre les données du bénéficiaire et celles contenues dans le dossier patient Weda.', 5000, function(spanElement) {
+        waitLegacyForElement('span', 'Le nom, le prénom et/ou la date de naissance sont différents entre les données du bénéficiaire et celles contenues dans le dossier patient Weda.', 5000, function(spanElement) {
             if (carteVitaleLue) return; // Si la carte vitale a déjà été lue, arrête la surveillance
             console.log('Détecté : nom/prenom != dossier patient Weda. Je clique sur le bouton de lecture de la carte vitale');
             clickCarteVitale(); // cf. keyCommands.js
@@ -88,7 +88,7 @@ function tweakFSECreation() {
             carteVitaleLue = true; // Indique que la carte vitale a été lue
         });
         setTimeout(function() {
-            waitForElement('span', 'Carte Vitale non lue', 5000, function(spanElement) {
+            waitLegacyForElement('span', 'Carte Vitale non lue', 5000, function(spanElement) {
                 if (carteVitaleLue) return; // Si la carte vitale a déjà été lue, arrête la surveillance
                 console.log('Détecté : Carte Vitale non lue. Je clique sur le bouton de lecture de la carte vitale');
                 clickCarteVitale(); // cf. keyCommands.js
@@ -113,7 +113,7 @@ function tweakFSECreation() {
             fingerprintIcon.click();
             recordMetrics({clicks: 1, drags: 1});
             // Attendre que le bouton contenant le texte "Degradée" existe et cliquer dessus
-            waitForElement('[class="mat-button-wrapper"]', type, 5000, function(degradeeButton) {
+            waitLegacyForElement('[class="mat-button-wrapper"]', type, 5000, function(degradeeButton) {
                 setTimeout(function() {
                     console.log('Détecté : pression sur bouton ', type, '. Je clique sur le bouton degradé');
                     degradeeButton.click();
@@ -131,7 +131,7 @@ function tweakFSECreation() {
             });
         }
         // Attendre que l'élément "Lire la carte vitale" existe
-        waitForElement('a[title="Relance une lecture de la carte vitale"]', null, 5000, function(lireCarteVitaleElement) {
+        waitLegacyForElement('a[title="Relance une lecture de la carte vitale"]', null, 5000, function(lireCarteVitaleElement) {
             // Créer le premier bouton
             var button1 = document.createElement('button');
             button1.textContent = 'FSE dégradée';
@@ -185,11 +185,11 @@ function tweakFSECreation() {
 
 
         console.log('checkPatientName démarré');
-        waitForElement('[title="Prénom du patient"]', null, 5000, function(patientNameElement) {
+        waitLegacyForElement('[title="Prénom du patient"]', null, 5000, function(patientNameElement) {
             var patientName = patientNameElement.textContent;
             patientName = replaceSpecialChars(patientName).toUpperCase(); // convertie un prénom classique en majuscules sans accents
             console.log('Le prénom du patient est : ' + patientName);
-            waitForElement('[class="grid-item pointer"]', patientName, 5000, function(widgetElement) {
+            waitLegacyForElement('[class="grid-item pointer"]', patientName, 5000, function(widgetElement) {
                 console.log('patient trouvé, je clique sur son nom');
                 elements = document.getElementsByClassName('grid-item pointer');
                 for (var i = 0; i < elements.length; i++) {
@@ -207,7 +207,7 @@ function tweakFSECreation() {
 
     function CPSNonLue() {
         console.log('CPSNonLue démarré');
-        waitForElement('span', 'CPS non lue', 5000, function(spanElement) {
+        waitLegacyForElement('span', 'CPS non lue', 5000, function(spanElement) {
             console.log('Détecté : CPS non lue. Je clique sur le bouton de lecture de la CPS');
             spanElement.click();
             recordMetrics({clicks: 1, drags: 1});

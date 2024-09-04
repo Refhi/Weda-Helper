@@ -23,7 +23,7 @@ addTweak('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx','autoAATI',
         });
     }
 
-    lightObserver(selecteurBoutonAT, processButton, document, true);
+    waitForElement({selector: selecteurBoutonAT, justOnce: true, callback: processButton });
 });
 
 
@@ -120,7 +120,7 @@ addTweak(urlAATI, 'autoAATI', function () {
 
 
     lightObserver(selecteurBoutonCV, clickProperButton, document, true);
-    waitForElement('[title="Déclarer l\'AT pour ce bénéficiaire."]', null, 50000, clickPremierPatientCV); // assez long car sinon la demande CPS peux bloquer le processus
+    waitLegacyForElement('[title="Déclarer l\'AT pour ce bénéficiaire."]', null, 50000, clickPremierPatientCV); // assez long car sinon la demande CPS peux bloquer le processus
     lightObserver(selecteurSortieNonLimites, fillDateSorties, document, true);
     lightObserver(selectorExitButton, function (elements) {
         setTimeOfSending('autoAATIexit');

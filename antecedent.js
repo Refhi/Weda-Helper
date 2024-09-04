@@ -139,8 +139,9 @@ addTweak('https://secure.weda.fr/FolderMedical/AntecedentForm.aspx', '*trimCIM10
     shrinkFavText();
     // Ajoute la checkbox à chaque fois que l'arbre CIM10 est mis à jour
     let refractory = false;
-    afterMutations(30, function () {
-        if (refractory) {
+    afterMutations({delay: 30,callBackId: 'adding checkbox',preventMultiple: true,
+        callback: function() {
+            if (refractory) {
             return;
         }
         if (!refractory) {
@@ -154,5 +155,6 @@ addTweak('https://secure.weda.fr/FolderMedical/AntecedentForm.aspx', '*trimCIM10
                 refractory = false;
             }, 30);
         }
-    }, 'adding checkbox', true);
+        }
+    });
 });

@@ -1,35 +1,9 @@
 // // Différentes petites fonctions ajoutées ou supprimées de Weda
 // // Ne justifiant pas la création d'un fichier séparé
 
-// // Sorte de post-chargement pour les pages, car le onload fonctionne mal, et après une mutation c'est pas toujours évident
-function afterMutations(delay, callback, callBackId = "callback id undefined", preventMultiple = false) {
-    let timeoutId = null;
-    const action = () => {
-        console.log(`Aucune mutation détectée pendant ${delay}ms, je considère la page comme chargée. Appel du Callback. (${callBackId})`);
-        if (preventMultiple) {
-            observer.disconnect();
-            callback();
-            afterMutations(delay, callback, callBackId, preventMultiple);
-        } else {
-            callback();
-        }
 
-    };
-
-    const observer = new MutationObserver((mutationsList, observer) => {
-        for (let mutation of mutationsList) {
-            // Réinitialise le délai chaque fois qu'une mutation est détectée
-            clearTimeout(timeoutId);
-            timeoutId = setTimeout(action, delay);
-        }
-    });
-
-    observer.observe(document, { childList: true, subtree: true });
-};
-
-// // Fonction pour attendre la présence d'un élément avant de lancer une fonction
-// // ! Très utilisé dans toute l'exension, a vocation a laisser sa place à lightObserver
-function waitForElement(selector, text = null, timeout, callback) {
+// TODO : à supprimer une fois waitForElement bien en place
+function waitLegacyForElement(selector, text = null, timeout, callback) {
     var checkInterval = setInterval(function () {
         var elements = document.querySelectorAll(selector);
         for (var i = 0; i < elements.length; i++) {
@@ -49,10 +23,40 @@ function waitForElement(selector, text = null, timeout, callback) {
 }
 
 
+// // Sorte de post-chargement pour les pages, car le onload fonctionne mal, et après une mutation c'est pas toujours évident
+function afterMutations({delay, callback, callBackId = "callback id undefined", preventMultiple = false}) {
+    let timeoutId = null;
+    const action = () => {
+        console.log(`Aucune mutation détectée pendant ${delay}ms, je considère la page comme chargée. Appel du Callback. (${callBackId})`);
+        if (preventMultiple) {
+            observer.disconnect();
+            callback();
+            afterMutations({delay, callback, callBackId, preventMultiple});
+        } else {
+            callback();
+        }
 
+    };
+
+    const observer = new MutationObserver((mutationsList, observer) => {
+        for (let mutation of mutationsList) {
+            // Réinitialise le délai chaque fois qu'une mutation est détectée
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(action, delay);
+        }
+    });
+
+    observer.observe(document, { childList: true, subtree: true });
+};
+
+
+// // Fonction pour attendre la présence d'un élément avant de lancer une fonction
+// remplace lightObserver (qui est wrappé un peu plus bas pour des raison
+// de compatibilité avec les anciennes fonctions)
+// TODO : à vérifier + à remplacer partout
 // Fonction "light" pour observer l'apparition d'un élément dans le DOM
 let observedElements = new WeakMap();
-function lightObserver(selector, callback, parentElement = document, justOnce = false, debug = false, textContent = null) {
+function waitForElement({selector, callback, parentElement = document, justOnce = false, debug = false, textContent = null}) {
     let observer = new MutationObserver((mutations) => {
         for (let i = 0; i < mutations.length; i++) {
             let mutation = mutations[i];
@@ -87,6 +91,15 @@ function lightObserver(selector, callback, parentElement = document, justOnce = 
 
     let config = { childList: true, subtree: true };
     observer.observe(parentElement, config);
+}
+
+
+/**
+ * @deprecated Utilisez `waitForElement` à la place.
+ * @see waitForElement
+ */
+function lightObserver(selector, callback, parentElement = document, justOnce = false, debug = false, textContent = null) {
+    waitForElement({ selector, callback, parentElement, justOnce, debug, textContent })
 }
 
 function observeDiseapearance(element, callback, justOnce = false) {
@@ -373,21 +386,27 @@ function clickElementByOnclick(onclickValue) {
 
 // Vérifie la présence de l'élément avec title="Prénom du patient"
 function checkPatientName() {
-    waitForElement('[title="Prénom du patient"]', null, 5000, function (patientNameElement) {
-        var patientName = patientNameElement.value;
-        waitForElement('vz-lecture-cv-widget', null, 5000, function (widgetElement) {
-            var spans = widgetElement.getElementsByTagName('span');
-            for (var i = 0; i < spans.length; i++) {
-                if (spans[i].textContent.includes(patientName)) {
-                    console.log('Patient name found');
-                    spans[i].click();
-                    recordMetrics({ clicks: 1, drags: 1 });
-                    return true;
+    waitForElement({ selector: '[title="Prénom du patient"]', timeout: 5000,
+        callback: patientNameElements => {
+            var patientNameElement = patientNameElements[0];
+            var patientName = patientNameElement.value;
+            waitForElement({ selector: 'vz-lecture-cv-widget', timeout: 5000,
+                callback: widgetElements => {
+                    var widgetElement = widgetElements[0];
+                    var spans = widgetElement.getElementsByTagName('span');
+                    for (var i = 0; i < spans.length; i++) {
+                        if (spans[i].textContent.includes(patientName)) {
+                            console.log('Patient name found');
+                            spans[i].click();
+                            recordMetrics({ clicks: 1, drags: 1 });
+                            return true;
+                        }
+                    }
+                    console.log('Patient name not found');
+                    return false;
                 }
-            }
-            console.log('Patient name not found');
-            return false;
-        });
+            });
+        }
     });
 }
 
@@ -664,10 +683,13 @@ addTweak(homePageUrls, homePageFunctions);
 
 // [page de gestion des feuilles de soins]
 addTweak('https://secure.weda.fr/vitalzen/gestion.aspx', 'TweakFSEGestion', function () {
-    waitForElement('.mat-icon.notranslate.material-icons.mat-icon-no-color', 'search', 5000, function (element) {
-        console.log('element', element, 'trouvé, je clique dessus');
-        element.click();
-        recordMetrics({ clicks: 1, drags: 1 });
+    waitForElement({ selector: '.mat-icon.notranslate.material-icons.mat-icon-no-color', textContent: 'search', timeout: 5000, justOnce: true,
+        callback: elements => {
+            let element = elements[0];
+            console.log('element', element, 'trouvé, je clique dessus');
+            element.click();
+            recordMetrics({ clicks: 1, drags: 1 });
+        }
     });
 });
 
@@ -996,7 +1018,7 @@ let urls = [
 ];
 
 addTweak(urls, '*addATCDShortcut', function () {
-    let patientsSelector = 
+    let patientsSelector =
         '[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"], ' +
         '[id^="ContentPlaceHolder1_FindPatientUcForm2_PatientsGrid_LinkButtonPatientGetNomPrenom_"]' // mode vertical dans les imports
 
@@ -1089,7 +1111,7 @@ addTweak(urls, '*addATCDShortcut', function () {
     lightObserver(patientsSelector, processFoundPatientList);
 
     // Puis la gestion des ATCD dans les pages de biologie et messagerie sécurisée
-    let selecteurHprimEtMessagesSecurises = 
+    let selecteurHprimEtMessagesSecurises =
         '[title="Ouvrir le dossier patient dans un autre onglet"], ' + // Dans la messagerie sécurisée
         '[title="Ouvrir la fiche patient dans un onglet"]'; // Dans HPRIM
     function ProcessHprimEtMessagesSecurises() {
