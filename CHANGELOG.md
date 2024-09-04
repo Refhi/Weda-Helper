@@ -1,6 +1,10 @@
 # Changelog
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
+# [2.6.1] - 
+## fix :
+- [#221](https://github.com/Refhi/Weda-Helper/issues/198) - l'affichage de l'historique à gauche ne fonctionnait plus dans certains cas.
+
 # [2.6] - 
 ## ajouts :
 - [#162](https://github.com/Refhi/Weda-Helper/issues/162) - Mettre tout les raccourcis claviers lors d'un appuis long de Alt

@@ -329,11 +329,11 @@ addTweak([demandeUrl, prescriptionUrl], '*NumPres', function () {
 // Selectionne automatiquement le type de prescription numérique
 addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
     const typesSoins = [
-        { regex: /\bIDE\b|infirmier|pansement|injection/i, type: 1 },
-        { regex: /\bkiné\b|\bkine\b|kinésithérapie|kinesitherapie|MKDE|kinesitherapeute|kinesithérapeute|rééducation|reeducation/i, type: 2 },
-        { regex: /pédicure|pedicure|podologie|podologique|podologue|semelle|orthoplastie/i, type: 5 },
-        { regex: /orthophonie|orthophonique|orthophoniste/i, type: 3 },
-        { regex: /orthoptie|orthoptique|orthoptiste/i, type: 4 }
+        { regex: /\bIDE\b|infirmier|pansement|injection/i, type: 0 },
+        { regex: /\bkiné\b|\bkine\b|kinésithérapie|kinesitherapie|MKDE|kinesitherapeute|kinesithérapeute|rééducation|reeducation/i, type: 1 },
+        { regex: /orthophonie|orthophonique|orthophoniste/i, type: 2 },
+        { regex: /orthoptie|orthoptique|orthoptiste/i, type: 3 },
+        { regex: /pédicure|pedicure|podologie|podologique|podologue|semelle|orthoplastie/i, type: 4 }
     ];
 
     let contexteSoins = [
@@ -384,18 +384,11 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
 
     function clickOnProperDropDownOption(demandeContent, callback) {
         let choixPossibles = document.querySelectorAll('.mat-option-text');
-        let type = null; //non déf
-        let isLab = isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILAnalyses');
-        let isParamedical = isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILKine');
-        let isImagerie = isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio');
-
-        if (isImagerie) { reject("Imagerie détectée, je ne peux pas traiter ce cas"); }
-
-        if (isLab) { type = 0; }
-        else if (isParamedical) {
-            type = determinerTypeSoin(demandeContent);
+        let type = determinerTypeSoin(demandeContent);
+        if (type === null) {
+            console.log("Type de soin non détecté, je laisse l'utilisateur sélectionner le bon");
         }
-        if (type === null) { console.log("Type de soin non détecté, je laisse l'utilisateur sélectionner le bon"); }
+
         else {
             console.log('type de soin trouvé', type, 'je clique dessus', choixPossibles[type]);
             choixPossibles[type].click();
@@ -427,7 +420,7 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
                     });
                 });
             });
-        }, 200);        
+        }, 400);        
     }, document, false, false, 'Création d\'une ordonnance numérique');
 });
 
