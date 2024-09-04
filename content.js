@@ -50,11 +50,29 @@ function afterMutations({delay, callback, callBackId = "callback id undefined", 
 };
 
 
-// // Fonction pour attendre la présence d'un élément avant de lancer une fonction
-// remplace lightObserver (qui est wrappé un peu plus bas pour des raison
-// de compatibilité avec les anciennes fonctions)
 // TODO : à vérifier + à remplacer partout
-// Fonction "light" pour observer l'apparition d'un élément dans le DOM
+/**
+ * Observe l'apparition d'un élément dans le DOM et exécute une fonction de rappel.
+ * Remplace @see lightObserver
+ * @param {Object} options - Les options sous forme destructurée pour plus de clarté :
+ * @param {string} options.selector - Le sélecteur de l'élément à observer.
+ * @param {Function} options.callback - La fonction à exécuter lorsque l'élément apparaît.
+ * @param {HTMLElement} [options.parentElement=document] - L'élément parent dans lequel observer les mutations.
+ * @param {boolean} [options.justOnce=false] - Si vrai, l'observation s'arrête après la première apparition de l'élément.
+ * @param {boolean} [options.debug=false] - Si vrai, affiche des messages de debug dans la console.
+ * @param {string|null} [options.textContent=null] - Filtre les éléments par leur contenu textuel.
+ *
+ * @example
+ * waitForElement({
+ *   selector: '.my-element',
+ *   callback: (elements) => { console.log('Elements found:', elements); },
+ *   parentElement: document.body,
+ *   justOnce: true,
+ *   debug: true,
+ *   textContent: 'Hello'
+ * });
+ */
+
 let observedElements = new WeakMap();
 function waitForElement({selector, callback, parentElement = document, justOnce = false, debug = false, textContent = null}) {
     let observer = new MutationObserver((mutations) => {

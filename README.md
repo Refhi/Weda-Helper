@@ -41,6 +41,7 @@ Cf. ci-dessous pour les retours et les contributions.
 
 ## Raccourcis claviers
 *Toutes vos tâches quotidiennes à portée de clavier*
+=> Un appui sur la touche Alt prolongé (> 1 seconde) affiche un rappel des raccourcis claviers
 [Fiche Mémo des raccourcis à imprimer](https://github.com/Refhi/Weda-Helper/blob/main/FicheMemo.pdf)
 Ctrl+D	Télécharge le PDF du document en cours (1er modèle)
 Ctrl+Shift+D	Télécharge le PDF du document en cours (2e modèle)
@@ -63,8 +64,6 @@ Alt+4	Ouvre ou crée la prescription n°1
 Alt+R	Ouvre la recherche
 Alt+W	Appuie sur W
 Ctrl+U	Upload le dernier fichier du dossier envoyé par le Companion
-
-- Rappel des raccourcis : Un appui sur la touche Alt prolongé (> 1 seconde) affiche un rappel des raccourcis claviers
 
 ## Accueil dossier patient
 - Ajout d'icones pour copier automatiquement le NIR dans le presse-papier
