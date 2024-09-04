@@ -729,7 +729,7 @@ addTweak('*', 'WarpButtons', function () {
         function addIdToButton(button) {
             var actions = {
                 'Annuler': ['Continuez sans l\'ordonnance numérique', 'Non', 'NON', 'Annuler'],
-                'Valider': ['Oui', 'OUI', 'Confirmer', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre']
+                'Valider': ['Oui', 'OUI', 'Confirmer', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre', 'Importer']
             };
             if (button) {
                 var action = Object.keys(actions).find(key => actions[key].includes(button.textContent));
@@ -783,6 +783,7 @@ addTweak('*', 'WarpButtons', function () {
     }
 
     lightObserver('.cdk-overlay-container .mat-raised-button', warpButtons)
+    lightObserver('.docImportButtons button', warpButtons)
 });
 
 // Page HRPIM
