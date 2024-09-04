@@ -4,6 +4,9 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 # [2.6.1] - 
 ## fix :
 - [#221](https://github.com/Refhi/Weda-Helper/issues/198) - l'affichage de l'historique à gauche ne fonctionnait plus dans certains cas.
+- [#227](https://github.com/Refhi/Weda-Helper/issues/227) - ajout des indicateurs de raccourcis dans Echanges Sécurisés
+- [#232](https://github.com/Refhi/Weda-Helper/issues/232) - correction de la détection des types de prescription d'ordo numérique
+- 
 
 # [2.6] - 
 ## ajouts :
