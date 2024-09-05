@@ -5,6 +5,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 # [2.7] - refactory
 ## refactory :
 - deplacement de l'impression dans un fichier à part
+- suppression de lightObserver au profit de waitForElement
 
 # [2.6.1] - 
 ## fix :

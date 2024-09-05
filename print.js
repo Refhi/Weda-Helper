@@ -112,16 +112,16 @@ function startPrinting(handlingType, modelNumber = null) {
                 return;
             }
 
-            
-waitForElement({
-    selector: selector,
-    justOnce: true,
-    callback: (newElements) => {
-                // Assuming the first new element is the iframe we're interested in
-                let iframe = newElements[0];
-                resolve(iframe);
-            },
-});
+
+            waitForElement({
+                selector: selector,
+                justOnce: true,
+                callback: (newElements) => {
+                    // Assuming the first new element is the iframe we're interested in
+                    let iframe = newElements[0];
+                    resolve(iframe);
+                },
+            });
 
         });
     }
@@ -181,54 +181,54 @@ waitForElement({
     }
 
 
-// TODO : évaluer :
-// async function processPrintSequence(handlingType, modelNumber, courbe) {
-//     // vérification du type de demande
-//     const handlingTypes = ['print', 'download', 'companion'];
-//     if (!handlingTypes.includes(handlingType)) {
-//         console.error('[processPrintSequence] Type non reconnu :', handlingType);
-//         return;
-//     }
+    // TODO : évaluer :
+    // async function processPrintSequence(handlingType, modelNumber, courbe) {
+    //     // vérification du type de demande
+    //     const handlingTypes = ['print', 'download', 'companion'];
+    //     if (!handlingTypes.includes(handlingType)) {
+    //         console.error('[processPrintSequence] Type non reconnu :', handlingType);
+    //         return;
+    //     }
 
-//     recordMetrics({ clicks: 3, drags: 4 });
+    //     recordMetrics({ clicks: 3, drags: 4 });
 
-//     // deux grands cas de figure : impression d'une courbe ou d'un document
-//     if (courbe) {
-//         let url = urlFromImage();
-//         if (!url) {
-//             console.log('[processPrintSequence] URL non trouvée');
-//             return;
-//         }
-//         if (handlingType === 'print') {
-//             let iframe = makeIframe();
-//             loadAndPrintIframe(iframe, url);
-//         } else if (handlingType === 'companion') {
-//             downloadBlob(url)
-//                 .then(blob => { sendToCompanion('print', blob); });
-//         } else if (handlingType === 'download') {
-//             download(url);
-//         }
-//     } else { // cas d'un document
-//         // il faut d'abord cliquer sur le modèle d'impression pertinent
-//         clickPrinterNumber(modelNumber);
-//         // ensuite attendre que l'iframe soit chargé
-//         iframe = await grabIframeWhenLoaded();
-//         // On se contente de lancer l'impression si on a demandé l'impression
-//         if (handlingType === 'print') {
-//             iframe.contentWindow.print();
-//             return;
-//         } 
-//         // sinon on récupère l'URL du document (ce qui prend parfois quelques centaines de ms)
-//         url = await grabUrlFromIframe(iframe);
-//         if (handlingType === 'companion') {
-//             const blob = await downloadBlob(url);
-//             sendToCompanion('print', blob, postPrintAction);
-//         } else if (handlingType === 'download') {
-//             download(url);
-//             postPrintAction();
-//         }
-//     }
-// }
+    //     // deux grands cas de figure : impression d'une courbe ou d'un document
+    //     if (courbe) {
+    //         let url = urlFromImage();
+    //         if (!url) {
+    //             console.log('[processPrintSequence] URL non trouvée');
+    //             return;
+    //         }
+    //         if (handlingType === 'print') {
+    //             let iframe = makeIframe();
+    //             loadAndPrintIframe(iframe, url);
+    //         } else if (handlingType === 'companion') {
+    //             downloadBlob(url)
+    //                 .then(blob => { sendToCompanion('print', blob); });
+    //         } else if (handlingType === 'download') {
+    //             download(url);
+    //         }
+    //     } else { // cas d'un document
+    //         // il faut d'abord cliquer sur le modèle d'impression pertinent
+    //         clickPrinterNumber(modelNumber);
+    //         // ensuite attendre que l'iframe soit chargé
+    //         iframe = await grabIframeWhenLoaded();
+    //         // On se contente de lancer l'impression si on a demandé l'impression
+    //         if (handlingType === 'print') {
+    //             iframe.contentWindow.print();
+    //             return;
+    //         } 
+    //         // sinon on récupère l'URL du document (ce qui prend parfois quelques centaines de ms)
+    //         url = await grabUrlFromIframe(iframe);
+    //         if (handlingType === 'companion') {
+    //             const blob = await downloadBlob(url);
+    //             sendToCompanion('print', blob, postPrintAction);
+    //         } else if (handlingType === 'download') {
+    //             download(url);
+    //             postPrintAction();
+    //         }
+    //     }
+    // }
 
     function processPrintSequence(handlingType, whatToPrint) {
         // vérification du type de demande
@@ -282,7 +282,7 @@ waitForElement({
                         }
                     });
                 }
-            
+
                 checkConditionAndRetry(); // Appel initial pour démarrer la vérification
             }
             waitForFSEPrintGreenLight();
@@ -317,7 +317,7 @@ waitForElement({
                         .then(blob => {
                             sendToCompanion('print', blob,
                                 postPrintAction);
-                            });
+                        });
                 } else if (handlingType === 'download') {
                     download(url);
                     postPrintAction();

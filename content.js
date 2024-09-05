@@ -2,7 +2,11 @@
 // // Ne justifiant pas la création d'un fichier séparé
 
 
-// TODO : à supprimer une fois waitForElement bien en place
+/**
+ * @deprecated Utilisez `waitForElement` à la place.
+ * @see waitForElement
+ * laissé en place pour une disparition progressive
+ */
 function waitLegacyForElement(selector, text = null, timeout, callback) {
     var checkInterval = setInterval(function () {
         var elements = document.querySelectorAll(selector);
@@ -50,7 +54,6 @@ function afterMutations({ delay, callback, callBackId = "callback id undefined",
 };
 
 
-// TODO : à vérifier + à remplacer partout
 /**
  * Observe l'apparition d'un élément dans le DOM et exécute une fonction de rappel.
  * Remplace lightObserver
