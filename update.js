@@ -8,9 +8,7 @@ function htmlMaker(text) {
 var nouveautes = `
 <h3>fix :</h3>
 <ul>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/221">#221</a> - l'affichage de l'historique à gauche ne fonctionnait plus dans certains cas.</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/227">#227</a> - ajout des indicateurs de raccourcis dans Echanges Sécurisés</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/232">#232</a> - correction de la détection des types de prescription d'ordo numérique en ce format</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/241">#241</a> - correction de la détection des types de prescription d'ordo numérique</li>
 </ul>
 `
 

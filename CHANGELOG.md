@@ -1,7 +1,7 @@
 # Changelog
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
-# [2.6.2] - 
+# [2.6.2] - 15/09/2024
 ## fix :
 - [#241](https://github.com/Refhi/Weda-Helper/issues/241) - correction de la détection des types de prescription d'ordo numérique
 
