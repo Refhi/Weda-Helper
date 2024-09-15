@@ -409,7 +409,19 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
 
     function clickOnProperDropDownOption(demandeContent, callback) {
         let choixPossibles = document.querySelectorAll('.mat-option-text');
-        let type = determinerTypeSoin(demandeContent);
+        var type = null;
+        let isLab = isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILAnalyses');
+        let isImagerie = isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio');
+
+        if (isImagerie) {
+            console.log("Imagerie: Ordonnance numérique non réalisable");
+            return;
+        }
+        else if (isLab)
+            type = 0;
+        else
+            type = determinerTypeSoin(demandeContent);
+
         if (type === null) {
             console.log("Type de soin non détecté, je laisse l'utilisateur sélectionner le bon");
         }

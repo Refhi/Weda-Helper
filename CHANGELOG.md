@@ -7,6 +7,10 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - deplacement de l'impression dans un fichier à part
 - suppression de lightObserver au profit de waitForElement
 
+# [2.6.2] - 
+## fix :
+- [#241](https://github.com/Refhi/Weda-Helper/issues/241) - correction de la détection des types de prescription d'ordo numérique
+
 # [2.6.1] - 
 ## fix :
 - [#221](https://github.com/Refhi/Weda-Helper/issues/198) - l'affichage de l'historique à gauche ne fonctionnait plus dans certains cas.
