@@ -1,6 +1,12 @@
 # Changelog
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
+
+# [2.7] - refactory
+## refactory :
+- deplacement de l'impression dans un fichier à part
+- suppression de lightObserver au profit de waitForElement
+
 # [2.6.2] - 
 ## fix :
 - [#241](https://github.com/Refhi/Weda-Helper/issues/241) - correction de la détection des types de prescription d'ordo numérique

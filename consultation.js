@@ -73,19 +73,26 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTab
         }
     }
 
-    lightObserver('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]', function (elements) {
-        changeTabOrder(elements)
-        console.log('ConsultationFormTabOrderer started');
-        // ici aussi les métriques sont difficiles à évaluer. Si on considère environs
-        // 2 éléments par consultation, on peut estimer en gros à 1 clic + 1 drag par consultation
-        recordMetrics({ clicks: 1, drags: 1 });
+
+    waitForElement({
+        selector: '[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]',
+        callback: function (elements) {
+            changeTabOrder(elements)
+            console.log('ConsultationFormTabOrderer started');
+            // ici aussi les métriques sont difficiles à évaluer. Si on considère environs
+            // 2 éléments par consultation, on peut estimer en gros à 1 clic + 1 drag par consultation
+            recordMetrics({ clicks: 1, drags: 1 });
+        }
     });
 });
 
 addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'FocusOnTitleInConsultation', function () {
     let titleElement = document.querySelector('#TextBoxEvenementTitre');
-    afterMutations(300, () => {
-        titleElement.focus();
+    afterMutations({
+        delay: 300, callBackId: 'FocusOnTitleInConsultation',
+        callback: function () {
+            titleElement.focus();
+        }
     });
     recordMetrics({ clicks: 1, drags: 1 });
 });
@@ -267,7 +274,12 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*Courbes
         });
     }
 
-    lightObserver('#ContentPlaceHolder1_SuivisGrid_LabelGridSuiviQuestion_0', addOverIcon);
+
+    waitForElement({
+        selector: '#ContentPlaceHolder1_SuivisGrid_LabelGridSuiviQuestion_0',
+        callback: addOverIcon
+    });
+
 
 
     // Ajouter les unités pour les valeurs de suivi
@@ -428,7 +440,7 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*ZScoreI
         return ValueElement;
     }
 
-    if(!textAreaOfTitleSuiviVariable("IMC")) {
+    if (!textAreaOfTitleSuiviVariable("IMC")) {
         console.log('Le champ IMC n\'existe pas');
         return;
     }
@@ -626,24 +638,36 @@ function historyToLeft() {
 }
 
 historyToLeft();
-lightObserver('#ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonDemandeRadioType', historyToLeft, document, false); // nécessaire pour les pages de demande
+
+waitForElement({
+    selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonDemandeRadioType',
+    callback: historyToLeft
+});
+// nécessaire pour les pages de demande
 
 
 // // Afficher les antécédents automatiquement sur les pages où Historique peut être déplacé à gauche (la cible devra peut-être être ajustée)
 pagesToLeftPannel_.forEach((page) => {
     addTweak(page.url, 'autoATCD', function () {
         // Automatiquement afficher l'ATCD
-        lightObserver('#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent', () => {
-            console.log('[autoATCD] bouton atcd détecté');
-            lightObserver('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame', () => {
-                console.log('[autoATCD] iframe chargé');
-                let atcdElement = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelAntecedent');
-                let buttonAtcd = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent');
-                if (!atcdElement && buttonAtcd) {
-                    buttonAtcd.click();
-                    recordMetrics({ clicks: 1, drags: 1 });
-                }
-            });
-        }, document, true);
+        waitForElement({
+            selector: '#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent',
+            justOnce: true,
+            callback: () => {
+                console.log('[autoATCD] bouton atcd détecté');
+                waitForElement({
+                    selector: '#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame',
+                    callback: () => {
+                        console.log('[autoATCD] iframe chargé');
+                        let atcdElement = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelAntecedent');
+                        let buttonAtcd = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent');
+                        if (!atcdElement && buttonAtcd) {
+                            buttonAtcd.click();
+                            recordMetrics({ clicks: 1, drags: 1 });
+                        }
+                    }
+                });
+            }
+        });
     });
 });
