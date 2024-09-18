@@ -3,8 +3,9 @@
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
 # [2.7] - refactory
-## refactory :
+## refactory : (c'est à dire maintenance et amélioration du code sans ajout de fonctionnalités)
 - deplacement de l'impression dans un fichier à part
+- réorganisation, simplification et amélioration de la lisibilité de print.js, ajout de jsdoc
 - suppression de lightObserver au profit de waitForElement
 
 # [2.6.2] - 
