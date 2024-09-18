@@ -131,8 +131,25 @@ function observeDiseapearance(element, callback, justOnce = false) {
     observer.observe(document, config);
 }
 
-// // Fonctions de contrôle de l'url et de l'option pour lancer une fonction
-// récupération de la valeur de l'option (donc soit la valeur sauvegardée, soit la valeur par défaut)
+/**
+ * Récupère la valeur d'une ou plusieurs options depuis le stockage local de Chrome.
+ * Si une option n'est pas trouvée, elle utilise la valeur par défaut des paramètres.
+ *
+ * @param {string|string[]} optionNames - Le nom de l'option ou un tableau de noms d'options à récupérer.
+ * @param {function} callback - La fonction de rappel à exécuter avec les valeurs des options récupérées.
+ *
+ * @example <caption>Récupération d'une seule option</caption>
+ * getOption('trimCIM10', function (trimCIM10) {
+ *     console.log('Valeur de trimCIM10:', trimCIM10);
+ * });
+ *
+ * @example <caption>Récupération de plusieurs options</caption>
+ * getOption(['RemoveLocalCompanionPrint', 'postPrintBehavior'], function ([RemoveLocalCompanionPrint, postPrintBehavior]) {
+ *     console.log('Valeur de RemoveLocalCompanionPrint:', RemoveLocalCompanionPrint);
+ *     console.log('Valeur de postPrintBehavior:', postPrintBehavior);
+ * });
+ * 
+ */
 function getOption(optionNames, callback) {
     let isInputArray = Array.isArray(optionNames);
 
@@ -146,10 +163,15 @@ function getOption(optionNames, callback) {
     });
 }
 
-// Permet de simplifier le code et de ne pas avoir à écrire la même condition à chaque fois
-// Si l'url et/ou les options sont multiples, on peut passer un tableau
-// Pour simplifier le code : on fait un appel à addTweak après chaque tableau d'url/option
-// Une option précédée de '!' sera considérée comme négative
+/**
+ * Ajoute une modification (tweak) en fonction de l'URL et des options spécifiées.
+ *
+ * @param {string|string[]} url - L'URL ou les URLs auxquelles la modification doit s'appliquer. Peut être une chaîne ou un tableau de chaînes.
+ * @param {string|Array<{option: string, callback: function}>} option - 
+ * L'option ou les options à vérifier. Peut être une chaîne ou un tableau d'objets contenant une option et un callback.
+ * Si l'option commence par '!', elle est considérée comme négative. Si elle commence par '*', le callback est toujours exécuté.
+ * @param {function} callback - La fonction à exécuter si l'option est activée. Ignorée si l'option est un array contenant des options/callback .
+ */
 function addTweak(url, option, callback) {
     function executeOption(option, callback, invert = false) {
         if (option.startsWith('*')) {
@@ -977,7 +999,7 @@ addTweak('https://secure.weda.fr/FolderTools/BiblioForm.aspx', '*addPrintIcon', 
 
             // Ajouter un gestionnaire d'événements de clic sur l'icône d'imprimante
             printIcon.addEventListener('click', function () {
-                printIfOption()
+                handlePrint('print')
             });
 
             element.appendChild(printIcon);
