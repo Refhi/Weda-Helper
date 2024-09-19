@@ -149,7 +149,7 @@ addTweak(urlAATI, 'autoAATI', function () {
 
 
     // Envoi du document à l'assistant
-    addTweak('https://secure.weda.fr/BinaryData.aspx', "*sendDocToCompanion", function () {
+    addTweak(['https://secure.weda.fr/BinaryData.aspx','blob:https://secure.weda.fr/'], "*sendDocToCompanion", function () {
         chrome.storage.local.get(['autoAATIexit'], function (result) {
             getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
                 if (Date.now() - result.autoAATIexit < 10000 && RemoveLocalCompanionPrint === false) {
