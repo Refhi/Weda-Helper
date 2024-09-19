@@ -243,7 +243,7 @@ function awaitIframeUrl(iframe) {
  * @param {string} postPrintBehavior - Le comportement à adopter après l'impression. 
  * Peut être 'doNothing', 'closePreview', ou 'returnToPatient'.
  */
-function postPrintAction(postPrintBehavior) {
+function postPrintAction(postPrintBehavior, whatToPrint) {
     console.log('postPrintAction activé');
 
     /**
@@ -305,11 +305,11 @@ function printIframeWhenAvailable(selector, handlingType, whatToPrint, postPrint
                 fetchBlobFromUrl(url)
                     .then(blob => {
                         sendToCompanion('print', blob,
-                            () => postPrintAction(postPrintBehavior));
+                            () => postPrintAction(postPrintBehavior, whatToPrint));
                     });
             } else if (handlingType === 'download') {
                 triggerDirectDownload(url);
-                postPrintAction(postPrintBehavior);
+                postPrintAction(postPrintBehavior, whatToPrint);
             }
         });
 }
