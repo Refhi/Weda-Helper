@@ -1,6 +1,15 @@
 // // Différentes petites fonctions ajoutées ou supprimées de Weda
 // // Ne justifiant pas la création d'un fichier séparé
 
+// Récupère l'url de base définie dans le manifest.json
+const manifest = chrome.runtime.getManifest();
+const url_star = manifest.content_scripts.flatMap(script => script.matches)[0]; // *://secure.weda.fr/*
+const baseUrl = url_star.replace('*', 'https').replace('/*', '');
+
+// Afficher la nouvelle URL
+console.log("[WH] baseUrl = ", baseUrl); // https://secure.weda.fr en général
+
+
 
 /**
  * @deprecated Utilisez `waitForElement` à la place.
@@ -166,13 +175,13 @@ function getOption(optionNames, callback) {
 /**
  * Ajoute une modification (tweak) en fonction de l'URL et des options spécifiées.
  *
- * @param {string|string[]} url - L'URL ou les URLs auxquelles la modification doit s'appliquer. Peut être une chaîne ou un tableau de chaînes.
+ * @param {string|string[]} path - Le chemin ou les chemins auxquels la modification doit s'appliquer. Peut être une chaîne ou un tableau de chaînes.
  * @param {string|Array<{option: string, callback: function}>} option - 
  * L'option ou les options à vérifier. Peut être une chaîne ou un tableau d'objets contenant une option et un callback.
  * Si l'option commence par '!', elle est considérée comme négative. Si elle commence par '*', le callback est toujours exécuté.
  * @param {function} callback - La fonction à exécuter si l'option est activée. Ignorée si l'option est un array contenant des options/callback .
  */
-function addTweak(url, option, callback) {
+function addTweak(path, option, callback) {
     function executeOption(option, callback, invert = false) {
         if (option.startsWith('*')) {
             callback();
@@ -184,14 +193,18 @@ function addTweak(url, option, callback) {
             });
         }
     }
+
+    // Construire l'URL complète en utilisant baseUrl
+    const fullUrl = (path) => `${baseUrl}${path}`;
+
     // on vérifie que l'url correspond à une de celles passées en paramètre
     let urlMatches;
-    if (url === '*') {
+    if (path === '*') {
         urlMatches = true; // Si l'URL est '*', on considère que ça correspond toujours
     } else {
-        urlMatches = Array.isArray(url)
-            ? url.some(u => window.location.href.startsWith(u))
-            : window.location.href.startsWith(url);
+        urlMatches = Array.isArray(path)
+            ? path.some(p => window.location.href.startsWith(fullUrl(p)))
+            : window.location.href.startsWith(fullUrl(path));
     }
 
     if (urlMatches) {
@@ -203,7 +216,6 @@ function addTweak(url, option, callback) {
         }
         if (typeof option === 'string' && typeof callback === 'function') {
             // Si une seule option et un seul callback sont passés, on les utilise directement
-            // ça fait un appel à la fonction plus court
             console.log(`[addTweak] ${option} activé`);
             executeOption(option, callback, invert);
         } else if (Array.isArray(option) && option.length > 0) {
@@ -549,9 +561,9 @@ addTweak('*', '*Tooltip', function () {
 
 // // Change certains éléments selon l'URL les options
 // [page de recettes] Appuie automatiquement sur le bouton "rechercher" après avoir sélectionné la page des recettes
-// seulement si la page est https://secure.weda.fr/FolderGestion/RecetteForm.aspx, appuis sur id="ContentPlaceHolder1_ButtonFind"
+// seulement si la page est /FolderGestion/RecetteForm.aspx, appuis sur id="ContentPlaceHolder1_ButtonFind"
 // Utilisation des nouvelles fonctions pour simplifier le code
-addTweak('https://secure.weda.fr/FolderGestion/RecetteForm.aspx', 'TweakRecetteForm', function () {
+addTweak('/FolderGestion/RecetteForm.aspx', 'TweakRecetteForm', function () {
     var button = document.getElementById('ContentPlaceHolder1_ButtonFind');
     if (button) {
         button.click();
@@ -562,7 +574,7 @@ addTweak('https://secure.weda.fr/FolderGestion/RecetteForm.aspx', 'TweakRecetteF
 
 
 // [page de recettes manuelles] Envoie automatiquement au TPE si on clique sur #ContentPlaceHolder1_ButtonValid
-addTweak('https://secure.weda.fr/FolderGestion/ReglementForm.aspx', '!RemoveLocalCompanionTPE', function () {
+addTweak('/FolderGestion/ReglementForm.aspx', '!RemoveLocalCompanionTPE', function () {
     function sendToTPE() {
         console.log('sendToTPE');
         let menuDeroulant = document.getElementById('ContentPlaceHolder1_DropDownListRecetteLabelMode');
@@ -598,8 +610,8 @@ addTweak('https://secure.weda.fr/FolderGestion/ReglementForm.aspx', '!RemoveLoca
 
 // // [page d'accueil]
 let homePageUrls = [
-    'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx',
-    'https://secure.weda.fr/FolderMedical/PatientViewForm.aspx'
+    '/FolderMedical/FindPatientForm.aspx',
+    '/FolderMedical/PatientViewForm.aspx'
 ];
 
 let homePageFunctions = [
@@ -745,7 +757,7 @@ addTweak(homePageUrls, homePageFunctions);
 
 
 // [page de gestion des feuilles de soins]
-addTweak('https://secure.weda.fr/vitalzen/gestion.aspx', 'TweakFSEGestion', function () {
+addTweak('/vitalzen/gestion.aspx', 'TweakFSEGestion', function () {
     waitForElement({
         selector: '.mat-icon.notranslate.material-icons.mat-icon-no-color', textContent: 'search', timeout: 5000, justOnce: true,
         callback: elements => {
@@ -761,13 +773,13 @@ addTweak('https://secure.weda.fr/vitalzen/gestion.aspx', 'TweakFSEGestion', func
 
 // // Retrait des suggestions de titre
 let titleSuggestionsUrls = [
-    'https://secure.weda.fr/FolderMedical/ConsultationForm.aspx',
-    'https://secure.weda.fr/FolderMedical/CertificatForm.aspx',
-    'https://secure.weda.fr/FolderMedical/DemandeForm.aspx',
-    'https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx',
-    'https://secure.weda.fr/FolderMedical/FormulaireForm.aspx',
-    'https://secure.weda.fr/FolderMedical/ResultatExamenForm.aspx',
-    'https://secure.weda.fr/FolderMedical/CourrierForm.aspx',
+    '/FolderMedical/ConsultationForm.aspx',
+    '/FolderMedical/CertificatForm.aspx',
+    '/FolderMedical/DemandeForm.aspx',
+    '/FolderMedical/PrescriptionForm.aspx',
+    '/FolderMedical/FormulaireForm.aspx',
+    '/FolderMedical/ResultatExamenForm.aspx',
+    '/FolderMedical/CourrierForm.aspx',
 ];
 
 addTweak(titleSuggestionsUrls, 'RemoveTitleSuggestions', function () {
@@ -858,7 +870,7 @@ addTweak('*', 'WarpButtons', function () {
 });
 
 // Page HRPIM
-addTweak('https://secure.weda.fr/FolderMedical/HprimForm.aspx', '*HPRIMtweak', function () {
+addTweak('/FolderMedical/HprimForm.aspx', '*HPRIMtweak', function () {
     function makeHPRIMListSticky() {
         let element = document.querySelector("#ContentPlaceHolder1_UpdatePanelHprimsGrid");
         element.style.position = "sticky";
@@ -872,7 +884,7 @@ addTweak('https://secure.weda.fr/FolderMedical/HprimForm.aspx', '*HPRIMtweak', f
 
 
 // Page Messagerie sécurisée
-addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeAutoRefresh', function () {
+addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeAutoRefresh', function () {
     if (result.secureExchangeAutoRefresh !== false) {
         // clique sur reçu pour rafraichir la liste des messages à intervalle régulier
         function clickOnInbox() {
@@ -888,7 +900,7 @@ addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeAu
         }, 30000);
     }
 });
-addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeUncheckIHEMessage', function () {
+addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeUncheckIHEMessage', function () {
     waitForElement({
         selector: 'we-doc-import',
         callback: function (elements) {
@@ -918,7 +930,7 @@ addTweak('https://secure.weda.fr/FolderMedical/WedaEchanges/', 'secureExchangeUn
 
 // // Sélection automatique du type de document pour les courriers envoyés au DMP
 // Au moment de l'impression des courriers
-addTweak('https://secure.weda.fr/FolderMedical/CourrierForm.aspx', '*autoDocTypeSelection', function () {
+addTweak('/FolderMedical/CourrierForm.aspx', '*autoDocTypeSelection', function () {
     let dropDownMenu = document.querySelector('#ContentPlaceHolder1_DropDownListDocumentTypes');
     function watchDocumentTypeCourrierDMP() {
         dropDownMenu.addEventListener('change', function () {
@@ -940,7 +952,7 @@ addTweak('https://secure.weda.fr/FolderMedical/CourrierForm.aspx', '*autoDocType
 });
 
 // Si on envoie un pdf considéré comme un courrier dans Weda :
-addTweak('https://secure.weda.fr/FolderMedical/DMP/view', '*autoDocTypeSelectionPDFUpload', function () {
+addTweak('/FolderMedical/DMP/view', '*autoDocTypeSelectionPDFUpload', function () {
     // fonction permettant de surveiller un éventuel changement de choix dans le menu déroulant
     function watchDocumentTypeCourrierPDFDMP(menuASurveiller) {
         menuASurveiller.addEventListener('change', function () {
@@ -966,7 +978,7 @@ addTweak('https://secure.weda.fr/FolderMedical/DMP/view', '*autoDocTypeSelection
 });
 
 // Sélection automatique du champ "titre" lors de la création d'un antécédent.
-addTweak('https://secure.weda.fr/FolderMedical/AntecedentForm.aspx', '*autoSelectTitleField', function () {
+addTweak('/FolderMedical/AntecedentForm.aspx', '*autoSelectTitleField', function () {
     waitForElement({
         selector: '#ContentPlaceHolder1_TextBoxAntecedentNom',
         callback: function (elements) {
@@ -978,7 +990,7 @@ addTweak('https://secure.weda.fr/FolderMedical/AntecedentForm.aspx', '*autoSelec
 
 
 // Ajout d'une icone d'imprimante dans les "Documents du cabinet"
-addTweak('https://secure.weda.fr/FolderTools/BiblioForm.aspx', '*addPrintIcon', function () {
+addTweak('/FolderTools/BiblioForm.aspx', '*addPrintIcon', function () {
     function addPrintIcon() {
         let allElements = document.querySelectorAll('[id^="ContentPlaceHolder1_TreeViewBibliot"]');
         let allElementsEndingWithI = Array.from(allElements).filter(element => element.id.endsWith('i'));
@@ -1013,9 +1025,9 @@ addTweak('https://secure.weda.fr/FolderTools/BiblioForm.aspx', '*addPrintIcon', 
 
 });
 
-// Lien avec l'API de Weda (https://secure.weda.fr/api/patients/[numeropatient])
+// Lien avec l'API de Weda (/api/patients/[numeropatient])
 // Exemple pour Mme DESMAUX (un dossier de démonstration) :
-// https://secure.weda.fr/api/patients/65407357 qui retourne un objet JSON
+// /api/patients/65407357 qui retourne un objet JSON
 // par exemple :
 // getPatientInfo(65407357)
 //     .then(data => {
@@ -1079,7 +1091,7 @@ addTweak('https://secure.weda.fr/FolderTools/BiblioForm.aspx', '*addPrintIcon', 
 
 // Fonction pour récupérer les informations du patient
 async function getPatientInfo(patientId) {
-    return fetch('https://secure.weda.fr/api/patients/' + patientId)
+    return fetch(`${baseUrl}/api/patients/${patientId}`)
         .then(response => {
             if (!response.ok) {
                 throw new Error('Network response was not ok');
@@ -1094,10 +1106,10 @@ async function getPatientInfo(patientId) {
 // quelle page affichant une liste de patient après recherche
 // Ainsi que dans les pages de biologie où 
 let urls = [
-    'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx',
-    'https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx',
-    'https://secure.weda.fr/FolderMedical/WedaEchanges/',
-    'https://secure.weda.fr/FolderMedical/HprimForm.aspx'
+    '/FolderMedical/FindPatientForm.aspx',
+    '/FolderMedical/UpLoaderForm.aspx',
+    '/FolderMedical/WedaEchanges/',
+    '/FolderMedical/HprimForm.aspx'
 ];
 
 addTweak(urls, '*addATCDShortcut', function () {
@@ -1118,17 +1130,17 @@ addTweak(urls, '*addATCDShortcut', function () {
     }
 
     function openPatientNotes(element) {
-        const baseUrl = 'https://secure.weda.fr/FolderMedical/PopUpRappel.aspx?';
+        const baseUrlNote = `${baseUrl}/FolderMedical/PopUpRappel.aspx?`;
         let patientFileUrlParams = element.UrlParams;
-        let url = baseUrl + patientFileUrlParams;
+        let url = baseUrlNote + patientFileUrlParams;
         recordMetrics({ clicks: 2, drags: 2 });
         window.open(url, '_blank');
     }
 
     function openPatientATCD(element) {
-        const baseUrl = 'https://secure.weda.fr/FolderMedical/AntecedentForm.aspx?';
+        const baseUrlATCD = `${baseUrl}/FolderMedical/AntecedentForm.aspx?`;
         let patientFileUrlParams = element.UrlParams;
-        let url = baseUrl + patientFileUrlParams;
+        let url = baseUrlATCD + patientFileUrlParams;
         recordMetrics({ clicks: 2, drags: 2 });
         window.open(url, '_blank');
     }
@@ -1158,7 +1170,7 @@ addTweak(urls, '*addATCDShortcut', function () {
     function addATCDShortcut(element) {
         // Trouver l'élément parent pour les pages HPRIM, sinon l'élément lui-même
         let target
-        if (window.location.href.startsWith('https://secure.weda.fr/FolderMedical/HprimForm.aspx')) {
+        if (window.location.href.startsWith(`${baseUrl}/FolderMedical/HprimForm.aspx`)) {
             target = element.parentElement.parentElement;
         } else {
             target = element;
@@ -1217,8 +1229,8 @@ addTweak(urls, '*addATCDShortcut', function () {
 
 });
 
-// Set the focus in the text fied https://secure.weda.fr/FolderMedical/PopUpRappel.aspx
-addTweak('https://secure.weda.fr/FolderMedical/PopUpRappel.aspx', '*focusOnTextArea', function () {
+// Set the focus in the text fied /FolderMedical/PopUpRappel.aspx
+addTweak('/FolderMedical/PopUpRappel.aspx', '*focusOnTextArea', function () {
     let textAreaSelector = '#TextBoxCabinetPatientRappel';
     let textArea = document.querySelector(textAreaSelector);
     textArea.focus();
@@ -1227,7 +1239,7 @@ addTweak('https://secure.weda.fr/FolderMedical/PopUpRappel.aspx', '*focusOnTextA
 
 
 // Retirer le caractère "gras" du prénom du patient dans la page d'accueil pour plus facilement distinguer le nom du prénom
-addTweak('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx', 'removeBoldPatientFirstName', function () {
+addTweak('/FolderMedical/PatientViewForm.aspx', 'removeBoldPatientFirstName', function () {
     let elementPrenom1 = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_LabelPatientPrenom');
     let elementPrenom2 = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_LabelPatientJeuneFille');
     if (elementPrenom1) {

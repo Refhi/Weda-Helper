@@ -409,7 +409,7 @@ function tweakFSECreation() {
 
 // Création du tableau de tweak
 
-let fseUrl = 'https://secure.weda.fr/vitalzen/fse.aspx';
+let fseUrl = '/vitalzen/fse.aspx';
 let fseTable =
     [
         {
@@ -473,7 +473,7 @@ fseTable.forEach(tweak => {
     addTweak(fseUrl, tweak.option, tweak.callBack);
 });
 
-addTweak('https://secure.weda.fr/vitalzen/gestion.aspx', 'TweakSCORDegradee', function () {
+addTweak('/vitalzen/gestion.aspx', 'TweakSCORDegradee', function () {
     waitForElement({
         selector: 'mat-select[name=selectedType]',
         callback: function (element) {
@@ -494,7 +494,7 @@ addTweak('https://secure.weda.fr/vitalzen/gestion.aspx', 'TweakSCORDegradee', fu
 });
 
 
-addTweak('https://secure.weda.fr/vitalzen/fse.aspx', '*keepPrintDegradeeParameters', function () {
+addTweak('/vitalzen/fse.aspx', '*keepPrintDegradeeParameters', function () {
     waitForElement({
         selector: '.mat-slide-toggle-label span',
         textContent: "le patient peut signer",

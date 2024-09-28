@@ -1,6 +1,6 @@
 // Arrêts de travail automatisés
 // Ajout d'un 2e bouton à côté de AT nommé "AT sans CV" pour shunter la lecture automatique de la carte vitale
-addTweak('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx', 'autoAATI', function () {
+addTweak('/FolderMedical/PatientViewForm.aspx', 'autoAATI', function () {
     let selecteurBoutonAT = '[title="Transmettre un avis d\'arrêt de travail via le téléservice AATi"]';
     function processButton(elements) {
         // remplace le texte "AT" par "AT avec CV | AT sans CV"
@@ -28,8 +28,8 @@ addTweak('https://secure.weda.fr/FolderMedical/PatientViewForm.aspx', 'autoAATI'
 
 
 urlAATI = [
-    'https://secure.weda.fr/FolderMedical/Aati.aspx',
-    'https://secure.weda.fr/BinaryData.aspx'
+    '/FolderMedical/Aati.aspx',
+    '/BinaryData.aspx'
 ]
 
 addTweak(urlAATI, 'autoAATI', function () {
@@ -149,7 +149,7 @@ addTweak(urlAATI, 'autoAATI', function () {
 
 
     // Envoi du document à l'assistant
-    addTweak(['https://secure.weda.fr/BinaryData.aspx','blob:https://secure.weda.fr/'], "*sendDocToCompanion", function () {
+    addTweak('/BinaryData.aspx', "*sendDocToCompanion", function () {
         chrome.storage.local.get(['autoAATIexit'], function (result) {
             getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
                 if (Date.now() - result.autoAATIexit < 10000 && RemoveLocalCompanionPrint === false) {

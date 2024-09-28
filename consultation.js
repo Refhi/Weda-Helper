@@ -2,7 +2,7 @@
 // addTabsToIframe est appelé depuis keyCommands.js au moment où on injecte les raccourcis clavier via addShortcutsToIframe
 
 function removeHistoryIframe(iframes) {
-    iframes = Array.from(iframes).filter(iframe => !iframe.src.startsWith('https://secure.weda.fr/FolderMedical/FrameHistoriqueForm.aspx'));
+    iframes = Array.from(iframes).filter(iframe => !iframe.src.startsWith(`${baseUrl}/FolderMedical/FrameHistoriqueForm.aspx`));
     return iframes;
 }
 
@@ -50,7 +50,7 @@ function addTabsToIframe(scopeName, iframe, index, iframes) {
     });
 }
 
-addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', function () {
+addTweak('/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', function () {
     let titleElement = document.querySelector('#TextBoxEvenementTitre');
     titleElement.tabIndex = 1;
     let subTitleElement = document.querySelector('#TextBoxDocumentTitre');
@@ -86,7 +86,7 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTab
     });
 });
 
-addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'FocusOnTitleInConsultation', function () {
+addTweak('/FolderMedical/ConsultationForm.aspx', 'FocusOnTitleInConsultation', function () {
     let titleElement = document.querySelector('#TextBoxEvenementTitre');
     afterMutations({
         delay: 300, callBackId: 'FocusOnTitleInConsultation',
@@ -114,7 +114,7 @@ function genderCalculated() {
 }
 
 
-addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*CourbesPediatriques', function () {
+addTweak('/FolderMedical/ConsultationForm.aspx', '*CourbesPediatriques', function () {
     // Afficher en overlay une image issue d'une URL en cas de survol de certains éléments
     // Récupérer la liste des éléments présents dans le suivi
     let courbesPossibles = {
@@ -258,7 +258,7 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*Courbes
             let tc = courbesPossiblesFiltered[key].TC;
             // pour la métrique je considère que dès que l'url est appelée c'est une action
             recordMetrics({ clicks: 4, drags: 4 });
-            return `https://secure.weda.fr/CourbeWEDA.aspx?PatDk=${patDk}&TC=${tc}`;
+            return `${baseUrl}/CourbeWEDA.aspx?PatDk=${patDk}&TC=${tc}`;
         }
 
         console.log('addOverIcon started with', courbesPossiblesFiltered);
@@ -310,7 +310,7 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*Courbes
 
 });
 
-addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*ZScoreIMC', function () {
+addTweak('/FolderMedical/ConsultationForm.aspx', '*ZScoreIMC', function () {
     // Calcul automatique du Z-score pour l'IMC
     // 1 - tableau du Z-score selon les références Françaises (source : https://banco.podia.com/calculette-imc-z-score)
     // L, S et M sont les paramètres de la courbe de référence utilisés dans le calcul du Z-score
@@ -482,31 +482,31 @@ addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*ZScoreI
 // Définir les pages pour lesquelles l'historique doit être déplacé à gauche et leur cible
 let pagesToLeftPannel_ = [
     {
-        url: 'https://secure.weda.fr/FolderMedical/ConsultationForm.aspx',
+        url: '/FolderMedical/ConsultationForm.aspx',
         targetElementSelector: '#form1 > div:nth-child(14) > div > table > tbody > tr > td:nth-child(1) > table',
         option: 'MoveHistoriqueToLeft_Consultation',
         pageType: 'Consultation'
     },
     {
-        url: 'https://secure.weda.fr/FolderMedical/CertificatForm.aspx',
+        url: '/FolderMedical/CertificatForm.aspx',
         targetElementSelector: '#form1 > div:nth-child(15) > table > tbody > tr > td:nth-child(1) > table > tbody > tr',
         option: 'MoveHistoriqueToLeft_Certificat',
         pageType: 'Certificat'
     },
     {
-        url: 'https://secure.weda.fr/FolderMedical/DemandeForm.aspx',
+        url: '/FolderMedical/DemandeForm.aspx',
         targetElementSelector: '#ContentPlaceHolder1_UpdatePanelAll',
         option: 'MoveHistoriqueToLeft_Demande',
         pageType: 'Demande'
     },
     {
-        url: 'https://secure.weda.fr/FolderMedical/FormulaireForm.aspx',
+        url: '/FolderMedical/FormulaireForm.aspx',
         targetElementSelector: '#form1 > div:nth-child(14) > table > tbody > tr > td > table',
         option: 'MoveHistoriqueToLeft_Formulaire',
         pageType: 'Formulaire'
     },
     {
-        url: 'https://secure.weda.fr/FolderMedical/CourrierForm.aspx',
+        url: '/FolderMedical/CourrierForm.aspx',
         targetElementSelector: '#form1 > div:nth-child(15) > table > tbody > tr > td:nth-child(1) > table',
         option: 'MoveHistoriqueToLeft_Courrier',
         pageType: 'Courrier'
@@ -528,7 +528,7 @@ const HISTORY_PROPORTION = 0.29;
 function getUrlHistory() {
     const url = window.location.href;
     const params = url.split('?')[1];
-    return `https://secure.weda.fr/FolderMedical/FrameHistoriqueForm.aspx?${params}`;
+    return `${baseUrl}/FolderMedical/FrameHistoriqueForm.aspx?${params}`;
 }
 
 function createIframe(targetElement) {

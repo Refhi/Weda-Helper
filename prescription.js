@@ -1,6 +1,6 @@
 // // Page de prescription
-let demandeUrl = 'https://secure.weda.fr/FolderMedical/DemandeForm.aspx'
-let prescriptionUrl = 'https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx'
+let demandeUrl = `${baseUrl}/FolderMedical/DemandeForm.aspx`
+let prescriptionUrl = `${baseUrl}/FolderMedical/PrescriptionForm.aspx`
 let DemandeForm = window.location.href.startsWith(demandeUrl);
 let PrescriptionForm = window.location.href.startsWith(prescriptionUrl);
 if (PrescriptionForm) {
