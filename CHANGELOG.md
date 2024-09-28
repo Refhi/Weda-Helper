@@ -7,6 +7,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - deplacement de l'impression dans un fichier à part
 - réorganisation, simplification et amélioration de la lisibilité de print.js, ajout de jsdoc
 - suppression de lightObserver au profit de waitForElement
+- l'url de base est désormais extraite du manifest.json (permet de faciliter les tests et de nettoyer un peu le code)
 
 # [2.6.2] - 
 ## fix :
