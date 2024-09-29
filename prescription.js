@@ -1,8 +1,8 @@
 // // Page de prescription
-let demandeUrl = `${baseUrl}/FolderMedical/DemandeForm.aspx`
-let prescriptionUrl = `${baseUrl}/FolderMedical/PrescriptionForm.aspx`
-let DemandeForm = window.location.href.startsWith(demandeUrl);
-let PrescriptionForm = window.location.href.startsWith(prescriptionUrl);
+let demandeUrl = '/FolderMedical/DemandeForm.aspx'
+let prescriptionUrl = '/FolderMedical/PrescriptionForm.aspx'
+let DemandeForm = window.location.href.startsWith(`${baseUrl}${demandeUrl}`);
+let PrescriptionForm = window.location.href.startsWith(`${baseUrl}${prescriptionUrl}`);
 if (PrescriptionForm) {
     var isFirstCall = true;
     var firstCallTimeStamp = Date.now();
