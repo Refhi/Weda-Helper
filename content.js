@@ -265,3 +265,16 @@ addTweak('/FolderMedical/PopUpRappel.aspx', '*focusOnTextArea', function () {
 });
 
 
+
+
+/* === test d'implementation ... === */
+chrome.runtime.onMessage.addListener(
+    function(request, sender, sendResponse) {
+        if (request.action === "sendNotif") {
+            let script = document.createElement('script');
+            script.src = chrome.runtime.getURL('FW_scripts/FWNotifv2.js?test=true');
+            console.log(script)
+            (document.head || document.documentElement).appendChild(script);
+        }
+    }
+);

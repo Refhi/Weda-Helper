@@ -3,8 +3,12 @@
   "name": "Weda Helper",
   "version": "2.6.9.4",
   "options_page": "options.html",
-  "permissions": ["storage"],
-  "host_permissions": ["http://localhost/"],
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "http://localhost/"
+  ],
   "action": {
     "default_popup": "popup.html"
   },
@@ -14,30 +18,31 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://secure.weda.fr/*"],
+      "matches": [
+        "*://secure.weda.fr/*"
+      ],
       "js": [
-          "metrics.js",
-          "lib/hotkeys.js",
-          "utils.js",
-          "content.js",
-          "tooltip.js",
-          "popupFunctions.js",
-          "patientLink.js",
-          "accueil.js",
-          "consultation.js",
-          "fse.js",
-          "keyCommands.js",
-          "searchUpload.js",
-          "companionLink.js",
-          "prescription.js",
-          "update.js",
-          "aati.js",
-          "upload.js",
-          "agenda.js",
-          "antecedent.js",
-          "print.js"]
+        "metrics.js",
+        "lib/hotkeys.js",
+        "utils.js",
+        "content.js",
+        "tooltip.js",
+        "popupFunctions.js",
+        "patientLink.js",
+        "accueil.js",
+        "consultation.js",
+        "fse.js",
+        "keyCommands.js",
+        "searchUpload.js",
+        "companionLink.js",
+        "prescription.js",
+        "update.js",
+        "aati.js",
+        "upload.js",
+        "agenda.js",
+        "antecedent.js",
+        "print.js"
+      ]
     }
   ]
 }
-
-
