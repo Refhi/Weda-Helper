@@ -9,7 +9,8 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - suppression de lightObserver au profit de waitForElement
 - l'url de base est désormais extraite du manifest.json (permet de faciliter les tests et de nettoyer un peu le code)
 - séparation du code en plus de fichiers pour plus de lisibilité
-
+## fix :
+- [#242](https://github.com/Refhi/Weda-Helper/issues/242) - lors de l'utilisation de raccourcis claviers, plusieurs consultations pouvaient être créées en même temps. Ajout d'un délais réfractaire pour éviter cela.
 
 # [2.6.2] - 
 ## fix :

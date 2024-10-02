@@ -351,7 +351,7 @@ function submenuW(description) {
         });
         console.log('level3Element', level3Element);
         if (level3Element) {
-            level3Element.click();
+            clickWithRefractoryPeriod(level3Element);
             recordMetrics({ clicks: 1, drags: 3 });
             console.log('Element clicked:', level3Element);
             return true;
@@ -361,7 +361,7 @@ function submenuW(description) {
             });
             console.log('level2Element', level2Element);
             if (level2Element) {
-                level2Element.click();
+                clickWithRefractoryPeriod(level2Element);
                 recordMetrics({ clicks: 1, drags: 2 });
                 console.log('Element clicked:', level2Element);
                 return true;
