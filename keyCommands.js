@@ -129,7 +129,7 @@ function addShortcutsToIframe() {
             hotkeys.setScope(scopeName);
             // console.log('iframe' + (index + 1), iframe);
             addShortcuts(keyCommands, iframe.contentDocument, scopeName);
-            addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', function () {
+            addTweak('/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', function () {
                 addTabsToIframe(scopeName, iframe, index, iframes); // est géré dans Constation.js dans la section TweakTabConsultation
             });
         });
@@ -239,7 +239,7 @@ function push_annuler() {
 //Fonction appellée par un bouton ou un raccourci clavier pour uploader le dernier fichier d'un dossier dans le dossier patient actuel
 function uploadLatest() {
     chrome.storage.local.set({ 'automaticUpload': true }, function () { //On met un flag qui informe que l'upload sera automatique
-        let uploadURL = "https://secure.weda.fr/FolderMedical/PopUpUploader.aspx" + window.location.search
+        let uploadURL = `${baseUrl}/FolderMedical/PopUpUploader.aspx${window.location.search}`; //On récupère l'url de l'upload
         console.log(uploadURL);
         var uploadWindow = window.open(uploadURL, "Upload", "width=700,height=600"); //On ouvre la fenetre d'upload dans un popup
     });
@@ -351,7 +351,7 @@ function submenuW(description) {
         });
         console.log('level3Element', level3Element);
         if (level3Element) {
-            level3Element.click();
+            clickWithRefractoryPeriod(level3Element);
             recordMetrics({ clicks: 1, drags: 3 });
             console.log('Element clicked:', level3Element);
             return true;
@@ -361,7 +361,7 @@ function submenuW(description) {
             });
             console.log('level2Element', level2Element);
             if (level2Element) {
-                level2Element.click();
+                clickWithRefractoryPeriod(level2Element);
                 recordMetrics({ clicks: 1, drags: 2 });
                 console.log('Element clicked:', level2Element);
                 return true;
@@ -411,7 +411,7 @@ function openSearch() {
     // permet d'ouvrir la recherche de patient sans avoir à demander les droits 'tabs' à l'extension
     console.log('openSearch activé');
     var link = document.createElement('a');
-    link.href = 'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx';
+    link.href = `${baseUrl}/FolderMedical/FindPatientForm.aspx`;
     link.click();
     recordMetrics({ clicks: 1, drags: 3 });
 }

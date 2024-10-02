@@ -1,4 +1,4 @@
-addTweak('https://secure.weda.fr/FolderAgenda/AgendaForm.aspx', '*RightClickAgenda', function () {
+addTweak('/FolderAgenda/AgendaForm.aspx', '*RightClickAgenda', function () {
 	function openPatient(rdvElement) {
 		rdvElement.click(); // Clic sur l'élement
 		waitForElement({

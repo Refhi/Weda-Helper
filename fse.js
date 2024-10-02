@@ -1,4 +1,31 @@
 // Tweak the FSE page (Add a button in the FSE page to send the amount to the TPE, implement shortcuts)
+// Vérifie la présence de l'élément avec title="Prénom du patient"
+function checkPatientName() {
+    waitForElement({
+        selector: '[title="Prénom du patient"]', timeout: 5000,
+        callback: patientNameElements => {
+            var patientNameElement = patientNameElements[0];
+            var patientName = patientNameElement.value;
+            waitForElement({
+                selector: 'vz-lecture-cv-widget', timeout: 5000,
+                callback: widgetElements => {
+                    var widgetElement = widgetElements[0];
+                    var spans = widgetElement.getElementsByTagName('span');
+                    for (var i = 0; i < spans.length; i++) {
+                        if (spans[i].textContent.includes(patientName)) {
+                            console.log('Patient name found');
+                            spans[i].click();
+                            recordMetrics({ clicks: 1, drags: 1 });
+                            return true;
+                        }
+                    }
+                    console.log('Patient name not found');
+                    return false;
+                }
+            });
+        }
+    });
+}
 
 // Définition de la fonction principale
 // (tableau et bouche après)
@@ -278,7 +305,16 @@ function tweakFSECreation() {
                     let teleconsultationElement = document.querySelector('option[value="VI"]');
                     let menu = teleconsultationElement.parentElement;
                     menu.value = 'VI';
-                    teleconsultationElement.click();
+
+                    // Créez et déclenchez un événement 'change' sur le menu
+                    let changeEvent = new Event('change', { bubbles: true });
+                    menu.dispatchEvent(changeEvent);
+
+                    // Créez et déclenchez un événement 'input' sur le menu
+                    let inputEvent = new Event('input', { bubbles: true });
+                    menu.dispatchEvent(inputEvent);
+
+                    console.log('Teleconsultation sélectionnée');
                 }
             },
             {
@@ -409,7 +445,7 @@ function tweakFSECreation() {
 
 // Création du tableau de tweak
 
-let fseUrl = 'https://secure.weda.fr/vitalzen/fse.aspx';
+let fseUrl = '/vitalzen/fse.aspx';
 let fseTable =
     [
         {
@@ -473,7 +509,7 @@ fseTable.forEach(tweak => {
     addTweak(fseUrl, tweak.option, tweak.callBack);
 });
 
-addTweak('https://secure.weda.fr/vitalzen/gestion.aspx', 'TweakSCORDegradee', function () {
+addTweak('/vitalzen/gestion.aspx', 'TweakSCORDegradee', function () {
     waitForElement({
         selector: 'mat-select[name=selectedType]',
         callback: function (element) {
@@ -494,7 +530,7 @@ addTweak('https://secure.weda.fr/vitalzen/gestion.aspx', 'TweakSCORDegradee', fu
 });
 
 
-addTweak('https://secure.weda.fr/vitalzen/fse.aspx', '*keepPrintDegradeeParameters', function () {
+addTweak('/vitalzen/fse.aspx', '*keepPrintDegradeeParameters', function () {
     waitForElement({
         selector: '.mat-slide-toggle-label span',
         textContent: "le patient peut signer",

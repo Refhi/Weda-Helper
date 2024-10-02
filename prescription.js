@@ -1,8 +1,8 @@
 // // Page de prescription
-let demandeUrl = 'https://secure.weda.fr/FolderMedical/DemandeForm.aspx'
-let prescriptionUrl = 'https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx'
-let DemandeForm = window.location.href.startsWith(demandeUrl);
-let PrescriptionForm = window.location.href.startsWith(prescriptionUrl);
+let demandeUrl = '/FolderMedical/DemandeForm.aspx'
+let prescriptionUrl = '/FolderMedical/PrescriptionForm.aspx'
+let DemandeForm = window.location.href.startsWith(`${baseUrl}${demandeUrl}`);
+let PrescriptionForm = window.location.href.startsWith(`${baseUrl}${prescriptionUrl}`);
 if (PrescriptionForm) {
     var isFirstCall = true;
     var firstCallTimeStamp = Date.now();
@@ -468,14 +468,22 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
 
 // Automatiquement basculer le contenu de l'ordonnance entre les zones ALD et hors ALD
 addTweak(demandeUrl, '*autoSwitchALD', function () {
-
     waitForElement({
-        selector: '#ContentPlaceHolder1_ButtonInversion',
-        justOnce: true,
+        selector: '#ContentPlaceHolder1_ButtonBizone',
+        justOnce: false,
         callback: function (elements) {
-            console.log('autoSwitchALD déclenché', elements);
-            elements[0].click();
-            recordMetrics({ clicks: 1, drags: 1 });
+            console.log('Listener ajouté sur #ContentPlaceHolder1_ButtonBizone', elements);
+            elements[0].addEventListener('click', function () {
+                console.log('autoSwitchALD déclenché');
+                waitForElement({
+                    selector: '#ContentPlaceHolder1_ButtonInversion',
+                    justOnce: true,
+                    callback: function (elements) {
+                        elements[0].click();
+                        recordMetrics({ clicks: 1, drags: 1 });
+                    }
+                });
+            });
         }
     });
 });

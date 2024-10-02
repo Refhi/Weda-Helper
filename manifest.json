@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper",
-  "version": "2.6.9.3",
+  "version": "2.6.9.4",
   "options_page": "options.html",
   "permissions": [
     "storage"
@@ -24,7 +24,12 @@
       "js": [
         "metrics.js",
         "lib/hotkeys.js",
+        "utils.js",
         "content.js",
+        "tooltip.js",
+        "popupFunctions.js",
+        "patientLink.js",
+        "accueil.js",
         "consultation.js",
         "fse.js",
         "keyCommands.js",
@@ -37,16 +42,6 @@
         "agenda.js",
         "antecedent.js",
         "print.js"
-      ]
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "FW_scripts/*"
-      ],
-      "matches": [
-        "<all_urls>"
       ]
     }
   ]

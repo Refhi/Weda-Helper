@@ -50,8 +50,8 @@ function deduceHandlingType(printType, RemoveLocalCompanionPrint) {
 function deduceWhatToPrint() {
     // Dictionnaire des scénarios
     const scenarios = {
-        'courbe': () => window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx'),
-        'fse': () => window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx'),
+        'courbe': () => window.location.href.startsWith(`${baseUrl}/FolderMedical/ConsultationForm.aspx`),
+        'fse': () => window.location.href.startsWith(`${baseUrl}/vitalzen/fse.aspx`),
         'model': () => true // Par défaut, si aucun autre scénario ne correspond
     };
 
@@ -135,7 +135,7 @@ function loadUrlAndShowPrintDialog(iframe, url) {
 
     // Vérifie l'origine de l'URL
     let urlObject = new URL(url);
-    if (urlObject.origin === 'https://secure.weda.fr') {
+    if (urlObject.origin === baseUrl) {
         console.log('url origin ok', urlObject.origin);
         iframe.src = url; // C'est ici que l'URL est chargée
     } else {

@@ -110,7 +110,7 @@ function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = fals
 
 // // Tab and search tweaks
 // [Page d'upload] Tweak the uploader page
-addTweak('https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx', 'TweakImports', function () {
+addTweak('/FolderMedical/UpLoaderForm.aspx', 'TweakImports', function () {
     // Modifie la taille de la fenêtre de prévisualisation du PDF
     function uploaderformResizeElements() {
         const newsize = '600px';
@@ -263,14 +263,14 @@ addTweak('https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx', 'TweakImports
 
 // [Page de prescriptions] Tweaks the prescription page to select the first medicine after a search
 // TODO : à réparer
-addTweak('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx', '*TweakPrescription', function () {
+addTweak('/FolderMedical/PrescriptionForm.aspx', '*TweakPrescription', function () {
     var idsSearchBox = 'ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack';
     var validTarget = 'ContentPlaceHolder1_BaseVidalUcForm1_VidalPacksGrid_LinkButtonVidalPacksGridName_0';
     SearchBoxEntryListener(idsSearchBox, validTarget);
 });
 
 // [Page de recherche patient] Tweaks the search patient page to select the first patient after a search
-addTweak('https://secure.weda.fr/FolderMedical/FindPatientForm.aspx', 'TweakTabSearchPatient', function () {
+addTweak('/FolderMedical/FindPatientForm.aspx', 'TweakTabSearchPatient', function () {
     chrome.storage.local.get('searchTime', function (result) {
         var currentTime = Date.now();
         var timeDifference = currentTime - result.searchTime;

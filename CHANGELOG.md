@@ -7,8 +7,14 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - deplacement de l'impression dans un fichier à part
 - réorganisation, simplification et amélioration de la lisibilité de print.js, ajout de jsdoc
 - suppression de lightObserver au profit de waitForElement
+- l'url de base est désormais extraite du manifest.json (permet de faciliter les tests et de nettoyer un peu le code)
+- séparation du code en plus de fichiers pour plus de lisibilité
+## fix :
+- [#242](https://github.com/Refhi/Weda-Helper/issues/242) - lors de l'utilisation de raccourcis claviers, plusieurs consultations pouvaient être créées en même temps. Ajout d'un délais réfractaire pour éviter cela.
+- [#231](https://github.com/Refhi/Weda-Helper/issues/231) - l'inversion automatique des champs ALD se déclenchait trop facilement
+- [#228](https://github.com/Refhi/Weda-Helper/issues/228) - tentative de fix de la mauvaise selection du règlement "Virement" lors des téléconsultations
 
-# [2.6.2] - 
+# [2.6.2] - 15/09/2024
 ## fix :
 - [#241](https://github.com/Refhi/Weda-Helper/issues/241) - correction de la détection des types de prescription d'ordo numérique
 
