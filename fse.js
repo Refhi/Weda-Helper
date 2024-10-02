@@ -305,7 +305,16 @@ function tweakFSECreation() {
                     let teleconsultationElement = document.querySelector('option[value="VI"]');
                     let menu = teleconsultationElement.parentElement;
                     menu.value = 'VI';
-                    teleconsultationElement.click();
+
+                    // Créez et déclenchez un événement 'change' sur le menu
+                    let changeEvent = new Event('change', { bubbles: true });
+                    menu.dispatchEvent(changeEvent);
+
+                    // Créez et déclenchez un événement 'input' sur le menu
+                    let inputEvent = new Event('input', { bubbles: true });
+                    menu.dispatchEvent(inputEvent);
+
+                    console.log('Teleconsultation sélectionnée');
                 }
             },
             {
