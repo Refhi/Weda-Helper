@@ -312,7 +312,10 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*CourbesPediatriques', functio
 
 addTweak('/FolderMedical/ConsultationForm.aspx', '*ZScoreIMC', function () {
     // Calcul automatique du Z-score pour l'IMC
-    // 1 - tableau du Z-score selon les références Françaises (source : https://banco.podia.com/calculette-imc-z-score)
+    // 1 - tableau du Z-score selon les références Françaises
+    // => source : https://banco.podia.com/calculette-imc-z-score
+    // => Conceptrice - Caroline CARRIERE-JULIA qui a donné son accord de principe pour la diffusion (merci à elle)
+    // => Propriétaire - APOP - représentée par Dr Véronique Nègre qui a donné son accord pour la diffusion (merci à elle également)
     // L, S et M sont les paramètres de la courbe de référence utilisés dans le calcul du Z-score
     // m et f pour masculin et féminin
     const zscoreData = [
