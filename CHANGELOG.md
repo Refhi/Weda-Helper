@@ -11,6 +11,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - séparation du code en plus de fichiers pour plus de lisibilité
 ## fix :
 - [#242](https://github.com/Refhi/Weda-Helper/issues/242) - lors de l'utilisation de raccourcis claviers, plusieurs consultations pouvaient être créées en même temps. Ajout d'un délais réfractaire pour éviter cela.
+- [#231](https://github.com/Refhi/Weda-Helper/issues/231) - l'inversion automatique des champs ALD se déclenchait trop facilement
 
 # [2.6.2] - 
 ## fix :
