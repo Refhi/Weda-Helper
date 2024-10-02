@@ -2,7 +2,8 @@
 
 // ce fichier doit être static car le navigateur
 // ne veut pas utiliser des fichiers en one-line
-let weda = window.weda || {};
+
+// let weda = window.weda || {}; => neutralisé car déjà défini dans FWData.js
 
 weda.actions.showNotification({
     message: "Notification de test", // message displayed

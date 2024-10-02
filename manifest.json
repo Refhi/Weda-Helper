@@ -44,5 +44,15 @@
         "print.js"
       ]
     }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "FW_scripts/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
   ]
 }

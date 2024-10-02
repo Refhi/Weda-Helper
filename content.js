@@ -272,8 +272,8 @@ chrome.runtime.onMessage.addListener(
     function(request, sender, sendResponse) {
         if (request.action === "sendNotif") {
             let script = document.createElement('script');
-            script.src = chrome.runtime.getURL('FW_scripts/FWNotifv2.js?test=true');
-            console.log(script)
+            script.src = chrome.runtime.getURL('FW_scripts/FWNotif.js?test=true');
+            // console.log(script) // Error in event handler: TypeError: console.log(...) is not a function
             (document.head || document.documentElement).appendChild(script);
         }
     }
