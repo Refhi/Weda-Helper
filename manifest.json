@@ -18,7 +18,12 @@
       "js": [
           "metrics.js",
           "lib/hotkeys.js",
+          "utils.js",
           "content.js",
+          "tooltip.js",
+          "popupFunctions.js",
+          "patientLink.js",
+          "accueil.js",
           "consultation.js",
           "fse.js",
           "keyCommands.js",

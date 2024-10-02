@@ -1,4 +1,31 @@
 // Tweak the FSE page (Add a button in the FSE page to send the amount to the TPE, implement shortcuts)
+// Vérifie la présence de l'élément avec title="Prénom du patient"
+function checkPatientName() {
+    waitForElement({
+        selector: '[title="Prénom du patient"]', timeout: 5000,
+        callback: patientNameElements => {
+            var patientNameElement = patientNameElements[0];
+            var patientName = patientNameElement.value;
+            waitForElement({
+                selector: 'vz-lecture-cv-widget', timeout: 5000,
+                callback: widgetElements => {
+                    var widgetElement = widgetElements[0];
+                    var spans = widgetElement.getElementsByTagName('span');
+                    for (var i = 0; i < spans.length; i++) {
+                        if (spans[i].textContent.includes(patientName)) {
+                            console.log('Patient name found');
+                            spans[i].click();
+                            recordMetrics({ clicks: 1, drags: 1 });
+                            return true;
+                        }
+                    }
+                    console.log('Patient name not found');
+                    return false;
+                }
+            });
+        }
+    });
+}
 
 // Définition de la fonction principale
 // (tableau et bouche après)
