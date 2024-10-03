@@ -7,74 +7,73 @@
 
 
 
-
 const keyCommands = {
-    'push_valider':  push_valider,
+    'push_valider': push_valider,
     'push_annuler': push_annuler,
     'print_meds': function () {
-            printIfOption(0);
-        },    
+        handlePrint('print', 0);
+    },
     'print_meds_bis': function () {
-            printIfOption(1);
-        },
+        handlePrint('print', 1);
+    },
     'download_document': function () {
-            startPrinting('download', 0);
-        },
+        handlePrint('download', 0);
+    },
     'download_document_bis': function () {
-            startPrinting('download', 1);
-        },
+        handlePrint('download', 1);
+    },
     'upload_latest_file': uploadLatest,
     'insert_date': insertDate,
     'push_enregistrer': function () {
-            console.log('push_enregistrer activé');
-            clickElementById('ButtonSave');
-        },
+        console.log('push_enregistrer activé');
+        clickElementById('ButtonSave');
+    },
     'push_delete': function () {
-            console.log('push_delete activé');
-            clickElementByClass('button delete');
-        },
+        console.log('push_delete activé');
+        clickElementByClass('button delete');
+    },
     'shortcut_w': function () {
-            console.log('shortcut_w activé');
-            if (!clickElementByOnclick("ctl00$ContentPlaceHolder1$EvenementUcForm1$MenuNavigate")) {
-                clickElementByOnclick('ctl00$ContentPlaceHolder1$MenuNavigate');
-            }
-        },
+        console.log('shortcut_w activé');
+        if (!clickElementByOnclick("ctl00$ContentPlaceHolder1$EvenementUcForm1$MenuNavigate")) {
+            clickElementByOnclick('ctl00$ContentPlaceHolder1$MenuNavigate');
+        }
+    },
     'shortcut_consult': function () {
-            console.log('shortcut_consult activé');
-            submenuW(' Consultation');
-        },
+        console.log('shortcut_consult activé');
+        submenuW(' Consultation');
+    },
     'shortcut_certif': function () {
-            console.log('shortcut_certif activé');
-            submenuW(' Certificat');
-        },
+        console.log('shortcut_certif activé');
+        submenuW(' Certificat');
+    },
     'shortcut_demande': function () {
-            console.log('shortcut_demande activé');
-            submenuW(' Demande');
-        },
+        console.log('shortcut_demande activé');
+        submenuW(' Demande');
+    },
     'shortcut_prescription': function () {
-            console.log('shortcut_prescription activé');
-            submenuW(' Prescription');
-        },
+        console.log('shortcut_prescription activé');
+        submenuW(' Prescription');
+    },
     'shortcut_formulaire': function () {
-            console.log('shortcut_formulaire activé');
-            submenuW(' Formulaire');
-        },
+        console.log('shortcut_formulaire activé');
+        submenuW(' Formulaire');
+    },
     'shortcut_courrier': function () {
-            console.log('shortcut_courrier activé');
-            submenuW(' Courrier');
-        },
+        console.log('shortcut_courrier activé');
+        submenuW(' Courrier');
+    },
     'shortcut_fse': function () {
-            console.log('shortcut_fse activé');
-            submenuW(' FSE');
-        },
+        console.log('shortcut_fse activé');
+        submenuW(' FSE');
+    },
     'shortcut_carte_vitale': function () {
-            console.log('shortcut_carte_vitale activé');
-            clickCarteVitale();
-        },
+        console.log('shortcut_carte_vitale activé');
+        clickCarteVitale();
+    },
     'shortcut_search': function () {
-            console.log('shortcut_search activé');
-            openSearch();            
-        },
+        console.log('shortcut_search activé');
+        openSearch();
+    },
     'shortcut_atcd': toggleAtcd
 };
 
@@ -107,8 +106,8 @@ function shortcutDefaut(shortcuts, defaultShortcuts, key) {
 }
 
 function addShortcuts(keyCommands, scope, scopeName) {
-    chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function(result) {
-        hotkeys.filter = function(event){
+    chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function (result) {
+        hotkeys.filter = function (event) {
             return true; // Permet d'utiliser les raccourcis depuis un input ou un textarea
         }
         // console.log('[addShortcuts] ajout des raccourcis sur element', scope, 'avec scopeName', scopeName, 'et result', result);
@@ -125,12 +124,12 @@ function addShortcuts(keyCommands, scope, scopeName) {
 function addShortcutsToIframe() {
     var iframes = document.querySelectorAll('iframe');
     if (iframes.length !== 0) {
-        iframes.forEach(function(iframe, index) {
+        iframes.forEach(function (iframe, index) {
             let scopeName = 'iframe' + (index + 1);
-            hotkeys.setScope(scopeName);    
+            hotkeys.setScope(scopeName);
             // console.log('iframe' + (index + 1), iframe);
             addShortcuts(keyCommands, iframe.contentDocument, scopeName);
-            addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', function() {                
+            addTweak('/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', function () {
                 addTabsToIframe(scopeName, iframe, index, iframes); // est géré dans Constation.js dans la section TweakTabConsultation
             });
         });
@@ -145,12 +144,12 @@ function addAllShortcuts() {
 }
 
 // Ajout des raccourcis claviers sur le document racine
-setTimeout(function() {
+setTimeout(function () {
     addAllShortcuts();
 }, 20);
-afterMutations(300, addAllShortcuts, "ajout raccourcis aux iframes"); // ajoute les raccourcis à toutes les iframes après chaque mutation du document
+afterMutations({ delay: 300, callback: addAllShortcuts, callBackId: 'ajout raccourcis aux iframes' }); // ajoute les raccourcis à toutes les iframes après chaque mutation du document
 // ne pas mettre moins de 300ms sinon les raccourcis s'ajoutent quand même de façon cumulative
-afterMutations(1000, addAllShortcuts, "ajout raccourcis aux iframes"); // 2e ajout car parfois fonctionne mal
+afterMutations({ delay: 1000, callback: addAllShortcuts, callBackId: 'ajout raccourcis aux iframes' });; // 2e ajout car parfois fonctionne mal
 
 
 
@@ -236,282 +235,11 @@ function push_annuler() {
     actions.some(action => action() !== false);
 }
 
-// Fonction permettant d'imprimer selon les options choisies
-function printIfOption(modelNumber = 0) {
-    getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
-        if (!RemoveLocalCompanionPrint) {
-            startPrinting('companion', modelNumber);
-        } else {
-            startPrinting('print', modelNumber);
-        }
-    });
-}
 
-// Définition de la fonction startPrinting
-function startPrinting(handlingType, modelNumber = null) {
-    // handlingType = 'print' ou 'download' ou 'companion'
-    // whatToPrint = 0 ou 1, correspondant à la place dans la liste des modèles. Sinon
-    // whatToPrint = 'courbe' si c'est une courbe ou 'fse' si c'est une FSE
-    // modelNumber = integer, correspondant à la place dans la liste des modèles. Commence à 0.
-    console.log('startPrinting activé');
-    let courbe = window.location.href.startsWith('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx');
-    let isFSE = window.location.href.startsWith('https://secure.weda.fr/vitalzen/fse.aspx');
-    let whatToPrint = courbe ? 'courbe' : (isFSE ? 'fse' : modelNumber);
-    processPrintSequence(handlingType, whatToPrint);
-
-    function urlFromImage() {
-        var pdfUrl = document.querySelector('img[data-pdf-url]');
-        if (pdfUrl) {
-            console.log('[urlFromImage] pdf Url détecté :', pdfUrl);
-            let url = pdfUrl.getAttribute('data-pdf-url');
-            return url;
-        } else {
-            console.log('[urlFromImage] pdfUrl non détecté');
-            return null;
-        }
-    }
-
-    function makeIframe() {
-        // Crée un nouvel élément iframe pour l'impression
-        let printFrame = document.createElement('iframe');
-        printFrame.name = 'print_frame';
-        printFrame.width = '0';
-        printFrame.height = '0';
-        printFrame.style.display = 'none';
-        document.body.appendChild(printFrame);
-        return printFrame;
-    }
-
-    async function downloadBlob(url) {
-        console.log('fetchPDF', url);
-        try {
-            const response = await fetch(url);
-            const blob = await response.blob();
-            return blob;
-        } catch (error) {
-            console.error('Error:', error);
-        }
-    }
-
-
-    function loadAndPrintIframe(printIframe, url) {
-        // Définit une fonction à exécuter lorsque l'iframe est chargée
-        printIframe.onload = function () {
-            let win = window.frames['print_frame'];
-            win.focus();
-            win.print();
-        };
-
-        // Vérifie l'origine de l'URL
-        let urlObject = new URL(url);
-        if (urlObject.origin === 'https://secure.weda.fr') {
-            console.log('url origin ok', urlObject.origin);
-            printIframe.src = url;
-        } else {
-            // Log en cas d'URL non fiable
-            console.error('Untrusted URL:', url);
-        }
-    }
-
-    function download(url) {
-        // On va contourner les restrictions de téléchargement en créant un élément 'a' caché
-        // Ce dernier, quand cliqué, va déclencher le téléchargement du fichier via son attribut 'download'
-        // Cela permet de télécharger le fichier sans modifier le manifest
-        var link = document.createElement('a');
-        link.href = url;
-        link.download = 'nom_du_fichier.pdf'; // pas certain que ça soit nécessaire mais ça ne coûte rien
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click(); // Cela déclenche le téléchargement
-        document.body.removeChild(link); // Suppression de l'élément 'a' après le téléchargement
-    }
-
-    function clickPrinterNumber(modelNumber = 0) {
-        var elements = document.querySelectorAll('[onclick*="ctl00$ContentPlaceHolder1$MenuPrint"][class*="popout-dynamic level2"]');
-        console.log('Voici les modeles d impression trouvés', elements);
-        if (elements[modelNumber]) {
-            console.log('clicking on model number', modelNumber, elements[modelNumber]);
-            elements[modelNumber].click();
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    async function grabIframeWhenLoaded(selector) {
-        return new Promise((resolve, reject) => {
-            // Dans le cas d'une FSE, l'iframe est déjà présent dans le DOM car
-            // on appelle cette fonction alors que l'iframe est déjà chargée
-            if (isFSE) {
-                let iframe = document.querySelector(selector);
-                resolve(iframe);
-                return;
-            }
-
-            lightObserver(selector, (newElements) => {
-                // Assuming the first new element is the iframe we're interested in
-                let iframe = newElements[0];
-                resolve(iframe);
-            }, document, true);
-        });
-    }
-
-    function grabUrlFromIframe(iframe) {
-        return new Promise((resolve, reject) => {
-            let intervalId = setInterval(() => {
-                let url = iframe.contentWindow.location.href;
-                console.log('url', url);
-
-                if (url !== 'about:blank') {
-                    clearInterval(intervalId);
-                    resolve(url);
-                }
-            }, 100);
-
-            setTimeout(() => {
-                clearInterval(intervalId);
-                reject(new Error('Timeout while waiting for iframe URL'));
-            }, 5000);
-        });
-    }
-
-
-    function postPrintAction() {
-        console.log('postPrintAction activé');
-        function closeFSEPrintWindow() {
-            // Puis fermer la fenêtre
-            boutons = document.querySelectorAll('span.mat-button-wrapper');
-            let boutonFermer = Array.from(boutons).find(bouton => bouton.innerText === 'Fermer');
-            if (boutonFermer) {
-                console.log('boutonFermer', boutonFermer);
-                boutonFermer.click();
-            }
-        }
-
-        // cas d'une FSE
-        if (isFSE) {
-            console.log('FSE detected, je tente de fermer la fenêtre');
-            closeFSEPrintWindow();
-        } else {
-            let closebutton = {
-                'doNothing': null,
-                'closePreview': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay',
-                'returnToPatient': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
-            }
-            getOption('postPrintBehavior', function (postPrintBehavior) {
-                console.log('postPrintBehavior is ', postPrintBehavior, 'id to look for ', closebutton[postPrintBehavior])
-                let buttonToClick = document.getElementById(closebutton[postPrintBehavior]);
-                if (buttonToClick) {
-                    console.log('clicking on', buttonToClick)
-                    buttonToClick.click();
-                    recordMetrics({ clicks: 1, drags: 1 });
-                }
-            });
-        }
-    }
-
-
-
-
-    function processPrintSequence(handlingType, whatToPrint) {
-        // vérification du type de demande
-        const handlingTypes = ['print', 'download', 'companion'];
-        if (!handlingTypes.includes(handlingType)) {
-            console.error('[processPrintSequence] Type non reconnu :', handlingType);
-            return;
-        }
-
-        recordMetrics({ clicks: 3, drags: 4 });
-
-        // deux grands cas de figure : impression d'une courbe ou d'un document
-        if (whatToPrint === 'courbe') {
-            let url = urlFromImage();
-            if (!url) {
-                console.log('[processPrintSequence] URL non trouvée');
-                return;
-            }
-            if (handlingType === 'print') {
-                let iframe = makeIframe();
-                loadAndPrintIframe(iframe, url);
-            } else if (handlingType === 'companion') {
-                downloadBlob(url)
-                    .then(blob => { sendToCompanion('print', blob); });
-            } else if (handlingType === 'download') {
-                download(url);
-            }
-        } else if (whatToPrint === 'fse') {
-            console.log('printing FSE');
-            // Cherche l'élément avec class 'mat-button-wrapper' et texte 'Imprimer'
-            let boutons = document.querySelectorAll('span.mat-button-wrapper');
-            let boutonImprimer = Array.from(boutons).find(bouton => bouton.innerText === 'Imprimer');
-            boutonImprimer.click();
-
-            // D'abord attendre le feu vert pour l'impression. On doit attendre que le timestamp contenu dans le storage FSEPrintGreenLightTimestamp date de moins de 10 secondes
-            function waitForFSEPrintGreenLight() {
-                const startTime = Date.now(); // Enregistre le moment du début            
-                function checkConditionAndRetry() {
-                    chrome.storage.local.get('FSEPrintGreenLightTimestamp', function (result) {
-                        console.log('FSEPrintGreenLightTimestamp', result.FSEPrintGreenLightTimestamp);
-                        if (Date.now() - result.FSEPrintGreenLightTimestamp < 10000) {
-                            console.log('FSEPrintGreenLightTimestamp is less than 10 seconds ago, je lance l\'impression');
-                            // Quand l'iframe est chargée, lancer l'impression
-                            printIframeWhenAvailable("iframe");
-                        } else if (Date.now() - startTime > 10000) {
-                            console.log('Timeout while waiting for FSEPrintGreenLightTimestamp');
-                            return
-                        } else {
-                            console.log('FSEPrintGreenLightTimestamp is more than 10 seconds ago, je réessaie dans 100ms');
-                            setTimeout(checkConditionAndRetry, 100); // Rappelle checkConditionAndRetry après 100 ms
-                        }
-                    });
-                }
-            
-                checkConditionAndRetry(); // Appel initial pour démarrer la vérification
-            }
-            waitForFSEPrintGreenLight();
-
-
-        } else {
-            let modelNumber = whatToPrint // cas d'un document
-            // il faut d'abord cliquer sur le modèle d'impression pertinent
-            clickPrinterNumber(modelNumber);
-            // ensuite attendre que l'iframe soit chargé
-            printIframeWhenAvailable("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile");
-        }
-    }
-
-    function printIframeWhenAvailable(selector) {
-        grabIframeWhenLoaded(selector)
-            .then(iframe => {
-                console.log('iframe trouvée :', iframe);
-                // On se contente de lancer l'impression si on a demandé l'impression
-                if (handlingType === 'print') {
-                    iframe.contentWindow.print();
-                    return;
-                } else {
-                    // sinon on récupère l'URL du document (ce qui prend parfois quelques centaines de ms)
-                    return grabUrlFromIframe(iframe);
-                }
-            })
-            .then(url => {
-                if (handlingType === 'companion') {
-                    downloadBlob(url)
-                        .then(blob => {
-                            sendToCompanion('print', blob,
-                                postPrintAction);
-                            });
-                } else if (handlingType === 'download') {
-                    download(url);
-                    postPrintAction();
-                }
-            });
-    }
-}
-        
 //Fonction appellée par un bouton ou un raccourci clavier pour uploader le dernier fichier d'un dossier dans le dossier patient actuel
 function uploadLatest() {
     chrome.storage.local.set({ 'automaticUpload': true }, function () { //On met un flag qui informe que l'upload sera automatique
-        let uploadURL = "https://secure.weda.fr/FolderMedical/PopUpUploader.aspx"+window.location.search 
+        let uploadURL = `${baseUrl}/FolderMedical/PopUpUploader.aspx${window.location.search}`; //On récupère l'url de l'upload
         console.log(uploadURL);
         var uploadWindow = window.open(uploadURL, "Upload", "width=700,height=600"); //On ouvre la fenetre d'upload dans un popup
     });
@@ -520,11 +248,11 @@ function uploadLatest() {
 
 function insertDate() {
     let date = new Date();
-    let currentDate = String(date.getDate()).padStart(2, '0') + "/" + String(date.getMonth()+ 1).padStart(2, '0') + "/" + String(date.getFullYear());
+    let currentDate = String(date.getDate()).padStart(2, '0') + "/" + String(date.getMonth() + 1).padStart(2, '0') + "/" + String(date.getFullYear());
     let activeElement = document.activeElement;
     if (!activeElement)
         return;
-    
+
     var tagName = activeElement.tagName.toLowerCase();
     if (tagName == 'iframe') {
         activeElement = activeElement.contentWindow.document.activeElement; //On récupère l'activeElement dans l'iframe
@@ -584,7 +312,7 @@ function clickWithRefractoryPeriod(element) {
         lastClickTime = currentTime;
     } else {
         console.log('Clicking too fast, waiting', 200 - timeSinceLastClick, 'ms');
-        setTimeout(function() {
+        setTimeout(function () {
             lastClickTime = new Date().getTime();
         }, 200 - timeSinceLastClick);
     }
@@ -623,7 +351,7 @@ function submenuW(description) {
         });
         console.log('level3Element', level3Element);
         if (level3Element) {
-            level3Element.click();
+            clickWithRefractoryPeriod(level3Element);
             recordMetrics({ clicks: 1, drags: 3 });
             console.log('Element clicked:', level3Element);
             return true;
@@ -633,7 +361,7 @@ function submenuW(description) {
             });
             console.log('level2Element', level2Element);
             if (level2Element) {
-                level2Element.click();
+                clickWithRefractoryPeriod(level2Element);
                 recordMetrics({ clicks: 1, drags: 2 });
                 console.log('Element clicked:', level2Element);
                 return true;
@@ -683,7 +411,7 @@ function openSearch() {
     // permet d'ouvrir la recherche de patient sans avoir à demander les droits 'tabs' à l'extension
     console.log('openSearch activé');
     var link = document.createElement('a');
-    link.href = 'https://secure.weda.fr/FolderMedical/FindPatientForm.aspx';
+    link.href = `${baseUrl}/FolderMedical/FindPatientForm.aspx`;
     link.click();
     recordMetrics({ clicks: 1, drags: 3 });
 }
