@@ -77,6 +77,42 @@ const keyCommands = {
     'shortcut_atcd': toggleAtcd
 };
 
+// Fonction throttle avec persistance via chrome.storage.local
+function throttleWithPersistence(func, limit) {
+    let lastFunc;
+    let lastRan;
+
+    // Charger la valeur de lastRan depuis chrome.storage.local
+    chrome.storage.local.get(['lastRan'], function(result) {
+        lastRan = result.lastRan || 0;  // Si lastRan n'existe pas, initialisez-le à 0
+    });
+ 
+    return function(...args) {
+        const context = this;
+ 
+        // Vérifier si suffisamment de temps s'est écoulé depuis la dernière exécution
+        if (!lastRan || Date.now() - lastRan >= limit) {
+            // Exécuter la fonction et mettre à jour lastRan
+            func.apply(context, args);
+            lastRan = Date.now();
+ 
+            // Sauvegarder la nouvelle valeur de lastRan dans chrome.storage.local
+            chrome.storage.local.set({ lastRan: lastRan });
+        } else {
+            // Si la fonction est appelée trop vite, utiliser un timeout
+            clearTimeout(lastFunc);
+            lastFunc = setTimeout(function() {
+                if ((Date.now() - lastRan) >= limit) {
+                    func.apply(context, args);
+                    lastRan = Date.now();
+ 
+                    // Sauvegarder la nouvelle valeur de lastRan
+                    chrome.storage.local.set({ lastRan: lastRan });
+                }
+            }, limit - (Date.now() - lastRan));
+        }
+    }
+}
 
 // // Gestion des raccourcis claviers via hotkeys.js
 // Pour ajouter les raccourcis sur un élément spécifique
@@ -86,11 +122,10 @@ function addHotkeyToDocument(scope, element, shortcut, action) {
         hotkeys(shortcut, {
             scope: scope,
             element: element
-        }, function (event, handler) {
-            event.preventDefault();
-
-            action();
-        });
+        }, throttleWithPersistence(function (event, handler) {
+            event.preventDefault();  // Empêche le comportement par défaut
+            action();  // Exécute l'action associée au raccourci
+        }, 300));
 }
 
 function shortcutDefaut(shortcuts, defaultShortcuts, key) {
