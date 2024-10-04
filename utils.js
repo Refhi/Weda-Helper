@@ -10,6 +10,7 @@ const manifest = chrome.runtime.getManifest();
 const url_star = manifest.content_scripts.flatMap(script => script.matches)[0]; // *://secure.weda.fr/*
 const baseUrl = url_star.replace('*', 'https').replace('/*', '');
 let WedaOverloadOptions = {};
+let gotDataFromWeda = false;
 
 
 // initialise les options provenant de Weda
@@ -17,9 +18,11 @@ var script = document.createElement('script');
 script.src = chrome.runtime.getURL('FW_scripts/FWData.js');
 (document.head || document.documentElement).appendChild(script);
 
-window.addEventListener("message", function(event) {
+window.addEventListener("message", function (event) {
     if (event.source === window && event.data.type === "FROM_PAGE") {
         WedaOverloadOptions = event.data.payload.wedaHelper;
+        gotDataFromWeda = true;
+        console.log('WedahelperOverload', WedaOverloadOptions);
     }
 });
 
@@ -157,6 +160,16 @@ function observeDiseapearance(element, callback, justOnce = false) {
     observer.observe(document, config);
 }
 
+function waitForWeda(logWait, callback) {
+    if (gotDataFromWeda === false) {
+        console.log('[waitForWeda] pas encore de données de Weda', logWait);
+        setTimeout(waitForWeda, 10, logWait, callback); // Vérifie toutes les 100ms
+        return;
+    } else {
+        callback();
+    }
+}
+
 /**
  * Récupère la valeur d'une ou plusieurs options depuis le stockage local de Chrome.
  * Si une option n'est pas trouvée, elle utilise la valeur par défaut des paramètres.
@@ -179,17 +192,33 @@ function observeDiseapearance(element, callback, justOnce = false) {
 function getOption(optionNames, callback) {
     let isInputArray = Array.isArray(optionNames);
 
-    console.log(WedaOverloadOptions['MoveHistoriqueToLeft_Consultation'], optionNames);
-
     if (!isInputArray) {
         optionNames = [optionNames];
     }
 
-    chrome.storage.local.get([...optionNames, 'defaultSettings'], function (result) {
-        let options = optionNames.map(optionName => 
-            WedaOverloadOptions[optionName] ?? result[optionName] ?? result.defaultSettings[optionName]
-        );
-        callback(isInputArray ? options : options[0]);
+    waitForWeda(optionNames, () => {
+        chrome.storage.local.get([...optionNames, 'defaultSettings'], function (result) {
+            let options = [];
+            for (let optionName of optionNames) {
+                let optionValue;
+                if (WedaOverloadOptions) {
+                    console.log('[getOption] WedaOverloadOptions est vide, et de valeur ', WedaOverloadOptions);
+                    console.log('[getOption] mais capa est ', testCapa);
+                }
+                if (WedaOverloadOptions && Object.keys(WedaOverloadOptions).length > 0 && WedaOverloadOptions[optionName] !== undefined) {
+                    console.log('[getOption] WedaOverloadOptions[', optionName, '] est ', WedaOverloadOptions[optionName]);
+                    optionValue = WedaOverloadOptions[optionName];
+                } else if (result[optionName] !== undefined) {
+                    console.log('[getOption] result[', optionName, '] est ', result[optionName]);
+                    optionValue = result[optionName];
+                } else {
+                    console.log('[getOption] result.defaultSettings[', optionName, '] est ', result.defaultSettings[optionName]);
+                    optionValue = result.defaultSettings[optionName];
+                }
+                options.push(optionValue);
+            }
+            callback(isInputArray ? options : options[0]);
+        });
     });
 }
 
@@ -205,7 +234,10 @@ function getOption(optionNames, callback) {
 function addTweak(path, option, callback) {
     function executeOption(option, callback, invert = false, mandatory = false) {
         if (mandatory) {
-            callback();
+            waitForWeda(option, () => {
+                console.log(`[addTweak] ${option} activé`);
+                callback();
+            });
         } else {
             getOption(option, function (optionValue) {
                 if ((optionValue === true && !invert) || (optionValue === false && invert)) {
@@ -244,13 +276,11 @@ function addTweak(path, option, callback) {
 
         if (typeof option === 'string' && typeof callback === 'function') {
             // Si une seule option et un seul callback sont passés, on les utilise directement
-            console.log(`[addTweak] ${option} activé`);
             executeOption(option, callback, invert, mandatory);
         } else if (Array.isArray(option) && option.length > 0) {
             // Si un tableau d'options et de callbacks est passé, on les utilise tous
             // permet de ne pas avoir à écrire plusieurs fois la même condition
             option.forEach(({ option, callback }) => {
-                console.log(`[addTweaks] ${option} activé`);
                 executeOption(option, callback, invert, mandatory);
             });
         }
