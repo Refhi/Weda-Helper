@@ -9,6 +9,19 @@
 const manifest = chrome.runtime.getManifest();
 const url_star = manifest.content_scripts.flatMap(script => script.matches)[0]; // *://secure.weda.fr/*
 const baseUrl = url_star.replace('*', 'https').replace('/*', '');
+let WedaOverloadOptions = {};
+
+
+// initialise les options provenant de Weda
+var script = document.createElement('script');
+script.src = chrome.runtime.getURL('FW_scripts/FWData.js');
+(document.head || document.documentElement).appendChild(script);
+
+window.addEventListener("message", function(event) {
+    if (event.source === window && event.data.type === "FROM_PAGE") {
+        WedaOverloadOptions = event.data.payload.wedaHelper;
+    }
+});
 
 // Afficher la nouvelle URL
 console.log("[WH] baseUrl = ", baseUrl); // https://secure.weda.fr en général
@@ -166,12 +179,16 @@ function observeDiseapearance(element, callback, justOnce = false) {
 function getOption(optionNames, callback) {
     let isInputArray = Array.isArray(optionNames);
 
+    console.log(WedaOverloadOptions['MoveHistoriqueToLeft_Consultation'], optionNames);
+
     if (!isInputArray) {
         optionNames = [optionNames];
     }
 
     chrome.storage.local.get([...optionNames, 'defaultSettings'], function (result) {
-        let options = optionNames.map(optionName => result[optionName] ?? result.defaultSettings[optionName]);
+        let options = optionNames.map(optionName => 
+            WedaOverloadOptions[optionName] ?? result[optionName] ?? result.defaultSettings[optionName]
+        );
         callback(isInputArray ? options : options[0]);
     });
 }
@@ -186,8 +203,8 @@ function getOption(optionNames, callback) {
  * @param {function} callback - La fonction à exécuter si l'option est activée. Ignorée si l'option est un array contenant des options/callback .
  */
 function addTweak(path, option, callback) {
-    function executeOption(option, callback, invert = false) {
-        if (option.startsWith('*')) {
+    function executeOption(option, callback, invert = false, mandatory = false) {
+        if (mandatory) {
             callback();
         } else {
             getOption(option, function (optionValue) {
@@ -218,16 +235,23 @@ function addTweak(path, option, callback) {
             option = option.slice(1);
             invert = true;
         }
+
+        let mandatory = false;
+        if (typeof option === 'string' && option.startsWith('*')) {
+            option = option.slice(1);
+            mandatory = true;
+        }
+
         if (typeof option === 'string' && typeof callback === 'function') {
             // Si une seule option et un seul callback sont passés, on les utilise directement
             console.log(`[addTweak] ${option} activé`);
-            executeOption(option, callback, invert);
+            executeOption(option, callback, invert, mandatory);
         } else if (Array.isArray(option) && option.length > 0) {
             // Si un tableau d'options et de callbacks est passé, on les utilise tous
             // permet de ne pas avoir à écrire plusieurs fois la même condition
             option.forEach(({ option, callback }) => {
                 console.log(`[addTweaks] ${option} activé`);
-                executeOption(option, callback, invert);
+                executeOption(option, callback, invert, mandatory);
             });
         }
     }
@@ -338,3 +362,4 @@ addTweak('*', 'WarpButtons', function () {
         callback: warpButtons
     });
 });
+
