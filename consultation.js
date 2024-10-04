@@ -2,7 +2,7 @@
 // addTabsToIframe est appelé depuis keyCommands.js au moment où on injecte les raccourcis clavier via addShortcutsToIframe
 
 function removeHistoryIframe(iframes) {
-    iframes = Array.from(iframes).filter(iframe => !iframe.src.startsWith(`${baseUrl}/FolderMedical/FrameHistoriqueForm.aspx`));
+    iframes = Array.from(iframes).filter(iframe => !iframe.src.startsWith('https://secure.weda.fr/FolderMedical/FrameHistoriqueForm.aspx'));
     return iframes;
 }
 
@@ -50,7 +50,7 @@ function addTabsToIframe(scopeName, iframe, index, iframes) {
     });
 }
 
-addTweak('/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', function () {
+addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', function () {
     let titleElement = document.querySelector('#TextBoxEvenementTitre');
     titleElement.tabIndex = 1;
     let subTitleElement = document.querySelector('#TextBoxDocumentTitre');
@@ -73,26 +73,19 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', functio
         }
     }
 
-
-    waitForElement({
-        selector: '[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]',
-        callback: function (elements) {
-            changeTabOrder(elements)
-            console.log('ConsultationFormTabOrderer started');
-            // ici aussi les métriques sont difficiles à évaluer. Si on considère environs
-            // 2 éléments par consultation, on peut estimer en gros à 1 clic + 1 drag par consultation
-            recordMetrics({ clicks: 1, drags: 1 });
-        }
+    lightObserver('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]', function (elements) {
+        changeTabOrder(elements)
+        console.log('ConsultationFormTabOrderer started');
+        // ici aussi les métriques sont difficiles à évaluer. Si on considère environs
+        // 2 éléments par consultation, on peut estimer en gros à 1 clic + 1 drag par consultation
+        recordMetrics({ clicks: 1, drags: 1 });
     });
 });
 
-addTweak('/FolderMedical/ConsultationForm.aspx', 'FocusOnTitleInConsultation', function () {
+addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'FocusOnTitleInConsultation', function () {
     let titleElement = document.querySelector('#TextBoxEvenementTitre');
-    afterMutations({
-        delay: 300, callBackId: 'FocusOnTitleInConsultation',
-        callback: function () {
-            titleElement.focus();
-        }
+    afterMutations(300, () => {
+        titleElement.focus();
     });
     recordMetrics({ clicks: 1, drags: 1 });
 });
@@ -114,7 +107,7 @@ function genderCalculated() {
 }
 
 
-addTweak('/FolderMedical/ConsultationForm.aspx', '*CourbesPediatriques', function () {
+addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*CourbesPediatriques', function () {
     // Afficher en overlay une image issue d'une URL en cas de survol de certains éléments
     // Récupérer la liste des éléments présents dans le suivi
     let courbesPossibles = {
@@ -258,7 +251,7 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*CourbesPediatriques', functio
             let tc = courbesPossiblesFiltered[key].TC;
             // pour la métrique je considère que dès que l'url est appelée c'est une action
             recordMetrics({ clicks: 4, drags: 4 });
-            return `${baseUrl}/CourbeWEDA.aspx?PatDk=${patDk}&TC=${tc}`;
+            return `https://secure.weda.fr/CourbeWEDA.aspx?PatDk=${patDk}&TC=${tc}`;
         }
 
         console.log('addOverIcon started with', courbesPossiblesFiltered);
@@ -274,12 +267,7 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*CourbesPediatriques', functio
         });
     }
 
-
-    waitForElement({
-        selector: '#ContentPlaceHolder1_SuivisGrid_LabelGridSuiviQuestion_0',
-        callback: addOverIcon
-    });
-
+    lightObserver('#ContentPlaceHolder1_SuivisGrid_LabelGridSuiviQuestion_0', addOverIcon);
 
 
     // Ajouter les unités pour les valeurs de suivi
@@ -310,12 +298,9 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*CourbesPediatriques', functio
 
 });
 
-addTweak('/FolderMedical/ConsultationForm.aspx', '*ZScoreIMC', function () {
+addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', '*ZScoreIMC', function () {
     // Calcul automatique du Z-score pour l'IMC
-    // 1 - tableau du Z-score selon les références Françaises
-    // => source : https://banco.podia.com/calculette-imc-z-score
-    // => Conceptrice - Caroline CARRIERE-JULIA qui a donné son accord de principe pour la diffusion (merci à elle)
-    // => Propriétaire - APOP - représentée par Dr Véronique Nègre qui a donné son accord pour la diffusion (merci à elle également)
+    // 1 - tableau du Z-score selon les références Françaises (source : https://banco.podia.com/calculette-imc-z-score)
     // L, S et M sont les paramètres de la courbe de référence utilisés dans le calcul du Z-score
     // m et f pour masculin et féminin
     const zscoreData = [
@@ -443,7 +428,7 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*ZScoreIMC', function () {
         return ValueElement;
     }
 
-    if (!textAreaOfTitleSuiviVariable("IMC")) {
+    if(!textAreaOfTitleSuiviVariable("IMC")) {
         console.log('Le champ IMC n\'existe pas');
         return;
     }
@@ -485,31 +470,31 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*ZScoreIMC', function () {
 // Définir les pages pour lesquelles l'historique doit être déplacé à gauche et leur cible
 let pagesToLeftPannel_ = [
     {
-        url: '/FolderMedical/ConsultationForm.aspx',
+        url: 'https://secure.weda.fr/FolderMedical/ConsultationForm.aspx',
         targetElementSelector: '#form1 > div:nth-child(14) > div > table > tbody > tr > td:nth-child(1) > table',
         option: 'MoveHistoriqueToLeft_Consultation',
         pageType: 'Consultation'
     },
     {
-        url: '/FolderMedical/CertificatForm.aspx',
+        url: 'https://secure.weda.fr/FolderMedical/CertificatForm.aspx',
         targetElementSelector: '#form1 > div:nth-child(15) > table > tbody > tr > td:nth-child(1) > table > tbody > tr',
         option: 'MoveHistoriqueToLeft_Certificat',
         pageType: 'Certificat'
     },
     {
-        url: '/FolderMedical/DemandeForm.aspx',
+        url: 'https://secure.weda.fr/FolderMedical/DemandeForm.aspx',
         targetElementSelector: '#ContentPlaceHolder1_UpdatePanelAll',
         option: 'MoveHistoriqueToLeft_Demande',
         pageType: 'Demande'
     },
     {
-        url: '/FolderMedical/FormulaireForm.aspx',
+        url: 'https://secure.weda.fr/FolderMedical/FormulaireForm.aspx',
         targetElementSelector: '#form1 > div:nth-child(14) > table > tbody > tr > td > table',
         option: 'MoveHistoriqueToLeft_Formulaire',
         pageType: 'Formulaire'
     },
     {
-        url: '/FolderMedical/CourrierForm.aspx',
+        url: 'https://secure.weda.fr/FolderMedical/CourrierForm.aspx',
         targetElementSelector: '#form1 > div:nth-child(15) > table > tbody > tr > td:nth-child(1) > table',
         option: 'MoveHistoriqueToLeft_Courrier',
         pageType: 'Courrier'
@@ -531,7 +516,7 @@ const HISTORY_PROPORTION = 0.29;
 function getUrlHistory() {
     const url = window.location.href;
     const params = url.split('?')[1];
-    return `${baseUrl}/FolderMedical/FrameHistoriqueForm.aspx?${params}`;
+    return `https://secure.weda.fr/FolderMedical/FrameHistoriqueForm.aspx?${params}`;
 }
 
 function createIframe(targetElement) {
@@ -641,36 +626,24 @@ function historyToLeft() {
 }
 
 historyToLeft();
-
-waitForElement({
-    selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonDemandeRadioType',
-    callback: historyToLeft
-});
-// nécessaire pour les pages de demande
+lightObserver('#ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonDemandeRadioType', historyToLeft, document, false); // nécessaire pour les pages de demande
 
 
 // // Afficher les antécédents automatiquement sur les pages où Historique peut être déplacé à gauche (la cible devra peut-être être ajustée)
 pagesToLeftPannel_.forEach((page) => {
     addTweak(page.url, 'autoATCD', function () {
         // Automatiquement afficher l'ATCD
-        waitForElement({
-            selector: '#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent',
-            justOnce: true,
-            callback: () => {
-                console.log('[autoATCD] bouton atcd détecté');
-                waitForElement({
-                    selector: '#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame',
-                    callback: () => {
-                        console.log('[autoATCD] iframe chargé');
-                        let atcdElement = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelAntecedent');
-                        let buttonAtcd = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent');
-                        if (!atcdElement && buttonAtcd) {
-                            buttonAtcd.click();
-                            recordMetrics({ clicks: 1, drags: 1 });
-                        }
-                    }
-                });
-            }
-        });
+        lightObserver('#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent', () => {
+            console.log('[autoATCD] bouton atcd détecté');
+            lightObserver('#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame', () => {
+                console.log('[autoATCD] iframe chargé');
+                let atcdElement = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_PanelAntecedent');
+                let buttonAtcd = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent');
+                if (!atcdElement && buttonAtcd) {
+                    buttonAtcd.click();
+                    recordMetrics({ clicks: 1, drags: 1 });
+                }
+            });
+        }, document, true);
     });
 });

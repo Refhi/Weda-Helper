@@ -2,8 +2,7 @@ const buttons = {
   'allConsultation': 'allConsultation',
   'tpebis': 'tpebis',
   // Ajoutez d'autres boutons ici
-  'sendNotif': 'sendNotif',
-  'sendCustomAmount': 'sendCustomAmount',
+  'sendCustomAmount': 'sendCustomAmount'
 };
 
 for (let id in buttons) {
@@ -16,10 +15,6 @@ for (let id in buttons) {
                   chrome.tabs.sendMessage(tabs[0].id, {action: buttons[id], amount: customAmount});
               });
               console.log(buttons[id] + " message sent with amount: " + customAmount);
-          } else if (id === 'sendNotif') {
-            chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-                chrome.tabs.sendMessage(tabs[0].id, {action: buttons[id]});
-            });
           } else {
               console.log("No amount entered");
           }
@@ -31,4 +26,3 @@ for (let id in buttons) {
       }
   });
 }
-

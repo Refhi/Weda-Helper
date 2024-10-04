@@ -96,7 +96,7 @@ function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = fals
             if (event.key === 'Enter') {
                 console.log('Enter pressed in search box');
                 elementToLookFor = '[id^="' + validTarget + '"]';
-                waitLegacyForElement(elementToLookFor, null, 1000, function () {
+                waitForElement(elementToLookFor, null, 1000, function () {
                     console.log('element found');
                     setupUIInteractions();
                     watchForEarlyDOMChanges();
@@ -110,7 +110,7 @@ function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = fals
 
 // // Tab and search tweaks
 // [Page d'upload] Tweak the uploader page
-addTweak('/FolderMedical/UpLoaderForm.aspx', 'TweakImports', function () {
+addTweak('https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx', 'TweakImports', function () {
     // Modifie la taille de la fenêtre de prévisualisation du PDF
     function uploaderformResizeElements() {
         const newsize = '600px';
@@ -263,14 +263,14 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'TweakImports', function () {
 
 // [Page de prescriptions] Tweaks the prescription page to select the first medicine after a search
 // TODO : à réparer
-addTweak('/FolderMedical/PrescriptionForm.aspx', '*TweakPrescription', function () {
+addTweak('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx', '*TweakPrescription', function () {
     var idsSearchBox = 'ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack';
     var validTarget = 'ContentPlaceHolder1_BaseVidalUcForm1_VidalPacksGrid_LinkButtonVidalPacksGridName_0';
     SearchBoxEntryListener(idsSearchBox, validTarget);
 });
 
 // [Page de recherche patient] Tweaks the search patient page to select the first patient after a search
-addTweak('/FolderMedical/FindPatientForm.aspx', 'TweakTabSearchPatient', function () {
+addTweak('https://secure.weda.fr/FolderMedical/FindPatientForm.aspx', 'TweakTabSearchPatient', function () {
     chrome.storage.local.get('searchTime', function (result) {
         var currentTime = Date.now();
         var timeDifference = currentTime - result.searchTime;

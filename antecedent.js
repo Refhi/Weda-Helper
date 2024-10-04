@@ -1,5 +1,5 @@
 // Ajoute des cases pour trier les atcds CIM-10 par ordre alphabétique et pour masquer les CIM-10 secondaires
-addTweak('/FolderMedical/AntecedentForm.aspx', '*trimCIM10', function () {
+addTweak('https://secure.weda.fr/FolderMedical/AntecedentForm.aspx', '*trimCIM10', function () {
     function addCheckBox() {
         let checkbox = document.querySelector('#trim');
         if (!checkbox) {
@@ -139,9 +139,8 @@ addTweak('/FolderMedical/AntecedentForm.aspx', '*trimCIM10', function () {
     shrinkFavText();
     // Ajoute la checkbox à chaque fois que l'arbre CIM10 est mis à jour
     let refractory = false;
-    afterMutations({delay: 30,callBackId: 'adding checkbox',preventMultiple: true,
-        callback: function() {
-            if (refractory) {
+    afterMutations(30, function () {
+        if (refractory) {
             return;
         }
         if (!refractory) {
@@ -155,6 +154,5 @@ addTweak('/FolderMedical/AntecedentForm.aspx', '*trimCIM10', function () {
                 refractory = false;
             }, 30);
         }
-        }
-    });
+    }, 'adding checkbox', true);
 });
