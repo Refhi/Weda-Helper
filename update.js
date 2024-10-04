@@ -8,7 +8,7 @@ function htmlMaker(text) {
 var nouveautes = `
 <h3>fix :</h3>
 <ul>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/241">#241</a> - correction de la détection des types de prescription d'ordo numérique</li>
+  <li>ajout d'un mécanisme anti-throttle (limite les requêtes multiples lors de l'usage des raccourcis clavier)</li>
 </ul>
 `
 

@@ -5,78 +5,113 @@
  * @property {Function} action - La fonction exécutée lorsque la commande clé est activée.
  */
 
-
-
-
 const keyCommands = {
-    'push_valider':  push_valider,
+    'push_valider': push_valider,
     'push_annuler': push_annuler,
     'print_meds': function () {
-            printIfOption(0);
-        },    
+        printIfOption(0);
+    },
     'print_meds_bis': function () {
-            printIfOption(1);
-        },
+        printIfOption(1);
+    },
     'download_document': function () {
-            startPrinting('download', 0);
-        },
+        startPrinting('download', 0);
+    },
     'download_document_bis': function () {
-            startPrinting('download', 1);
-        },
+        startPrinting('download', 1);
+    },
     'upload_latest_file': uploadLatest,
     'insert_date': insertDate,
     'push_enregistrer': function () {
-            console.log('push_enregistrer activé');
-            clickElementById('ButtonSave');
-        },
+        console.log('push_enregistrer activé');
+        clickElementById('ButtonSave');
+    },
     'push_delete': function () {
-            console.log('push_delete activé');
-            clickElementByClass('button delete');
-        },
+        console.log('push_delete activé');
+        clickElementByClass('button delete');
+    },
     'shortcut_w': function () {
-            console.log('shortcut_w activé');
-            if (!clickElementByOnclick("ctl00$ContentPlaceHolder1$EvenementUcForm1$MenuNavigate")) {
-                clickElementByOnclick('ctl00$ContentPlaceHolder1$MenuNavigate');
-            }
-        },
+        console.log('shortcut_w activé');
+        if (!clickElementByOnclick("ctl00$ContentPlaceHolder1$EvenementUcForm1$MenuNavigate")) {
+            clickElementByOnclick('ctl00$ContentPlaceHolder1$MenuNavigate');
+        }
+    },
     'shortcut_consult': function () {
-            console.log('shortcut_consult activé');
-            submenuW(' Consultation');
-        },
+        console.log('shortcut_consult activé');
+        submenuW(' Consultation');
+    },
     'shortcut_certif': function () {
-            console.log('shortcut_certif activé');
-            submenuW(' Certificat');
-        },
+        console.log('shortcut_certif activé');
+        submenuW(' Certificat');
+    },
     'shortcut_demande': function () {
-            console.log('shortcut_demande activé');
-            submenuW(' Demande');
-        },
+        console.log('shortcut_demande activé');
+        submenuW(' Demande');
+    },
     'shortcut_prescription': function () {
-            console.log('shortcut_prescription activé');
-            submenuW(' Prescription');
-        },
+        console.log('shortcut_prescription activé');
+        submenuW(' Prescription');
+    },
     'shortcut_formulaire': function () {
-            console.log('shortcut_formulaire activé');
-            submenuW(' Formulaire');
-        },
+        console.log('shortcut_formulaire activé');
+        submenuW(' Formulaire');
+    },
     'shortcut_courrier': function () {
-            console.log('shortcut_courrier activé');
-            submenuW(' Courrier');
-        },
+        console.log('shortcut_courrier activé');
+        submenuW(' Courrier');
+    },
     'shortcut_fse': function () {
-            console.log('shortcut_fse activé');
-            submenuW(' FSE');
-        },
+        console.log('shortcut_fse activé');
+        submenuW(' FSE');
+    },
     'shortcut_carte_vitale': function () {
-            console.log('shortcut_carte_vitale activé');
-            clickCarteVitale();
-        },
+        console.log('shortcut_carte_vitale activé');
+        clickCarteVitale();
+    },
     'shortcut_search': function () {
-            console.log('shortcut_search activé');
-            openSearch();            
-        },
+        console.log('shortcut_search activé');
+        openSearch();
+    },
     'shortcut_atcd': toggleAtcd
 };
+
+
+// Fonction throttle avec persistance via chrome.storage.local
+function throttleWithPersistence(func, limit) {
+    let lastFunc;
+    let lastRan;
+
+    // Charger la valeur de lastRan depuis chrome.storage.local
+    chrome.storage.local.get(['lastRan'], function (result) {
+        lastRan = result.lastRan || 0;  // Si lastRan n'existe pas, initialisez-le à 0
+    });
+
+    return function (...args) {
+        const context = this;
+
+        // Vérifier si suffisamment de temps s'est écoulé depuis la dernière exécution
+        if (!lastRan || Date.now() - lastRan >= limit) {
+            // Exécuter la fonction et mettre à jour lastRan
+            func.apply(context, args);
+            lastRan = Date.now();
+
+            // Sauvegarder la nouvelle valeur de lastRan dans chrome.storage.local
+            chrome.storage.local.set({ lastRan: lastRan });
+        } else {
+            // Si la fonction est appelée trop vite, utiliser un timeout
+            clearTimeout(lastFunc);
+            lastFunc = setTimeout(function () {
+                if ((Date.now() - lastRan) >= limit) {
+                    func.apply(context, args);
+                    lastRan = Date.now();
+
+                    // Sauvegarder la nouvelle valeur de lastRan
+                    chrome.storage.local.set({ lastRan: lastRan });
+                }
+            }, limit - (Date.now() - lastRan));
+        }
+    }
+}
 
 
 // // Gestion des raccourcis claviers via hotkeys.js
@@ -87,11 +122,10 @@ function addHotkeyToDocument(scope, element, shortcut, action) {
         hotkeys(shortcut, {
             scope: scope,
             element: element
-        }, function (event, handler) {
-            event.preventDefault();
-
-            action();
-        });
+        }, throttleWithPersistence(function (event, handler) {
+            event.preventDefault();  // Empêche le comportement par défaut
+            action();  // Exécute l'action associée au raccourci
+        }, 300));
 }
 
 function shortcutDefaut(shortcuts, defaultShortcuts, key) {
@@ -107,8 +141,8 @@ function shortcutDefaut(shortcuts, defaultShortcuts, key) {
 }
 
 function addShortcuts(keyCommands, scope, scopeName) {
-    chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function(result) {
-        hotkeys.filter = function(event){
+    chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function (result) {
+        hotkeys.filter = function (event) {
             return true; // Permet d'utiliser les raccourcis depuis un input ou un textarea
         }
         // console.log('[addShortcuts] ajout des raccourcis sur element', scope, 'avec scopeName', scopeName, 'et result', result);
@@ -125,12 +159,12 @@ function addShortcuts(keyCommands, scope, scopeName) {
 function addShortcutsToIframe() {
     var iframes = document.querySelectorAll('iframe');
     if (iframes.length !== 0) {
-        iframes.forEach(function(iframe, index) {
+        iframes.forEach(function (iframe, index) {
             let scopeName = 'iframe' + (index + 1);
-            hotkeys.setScope(scopeName);    
+            hotkeys.setScope(scopeName);
             // console.log('iframe' + (index + 1), iframe);
             addShortcuts(keyCommands, iframe.contentDocument, scopeName);
-            addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', function() {                
+            addTweak('https://secure.weda.fr/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', function () {
                 addTabsToIframe(scopeName, iframe, index, iframes); // est géré dans Constation.js dans la section TweakTabConsultation
             });
         });
@@ -145,7 +179,7 @@ function addAllShortcuts() {
 }
 
 // Ajout des raccourcis claviers sur le document racine
-setTimeout(function() {
+setTimeout(function () {
     addAllShortcuts();
 }, 20);
 afterMutations(300, addAllShortcuts, "ajout raccourcis aux iframes"); // ajoute les raccourcis à toutes les iframes après chaque mutation du document
@@ -465,7 +499,7 @@ function startPrinting(handlingType, modelNumber = null) {
                         }
                     });
                 }
-            
+
                 checkConditionAndRetry(); // Appel initial pour démarrer la vérification
             }
             waitForFSEPrintGreenLight();
@@ -499,7 +533,7 @@ function startPrinting(handlingType, modelNumber = null) {
                         .then(blob => {
                             sendToCompanion('print', blob,
                                 postPrintAction);
-                            });
+                        });
                 } else if (handlingType === 'download') {
                     download(url);
                     postPrintAction();
@@ -507,11 +541,11 @@ function startPrinting(handlingType, modelNumber = null) {
             });
     }
 }
-        
+
 //Fonction appellée par un bouton ou un raccourci clavier pour uploader le dernier fichier d'un dossier dans le dossier patient actuel
 function uploadLatest() {
     chrome.storage.local.set({ 'automaticUpload': true }, function () { //On met un flag qui informe que l'upload sera automatique
-        let uploadURL = "https://secure.weda.fr/FolderMedical/PopUpUploader.aspx"+window.location.search 
+        let uploadURL = "https://secure.weda.fr/FolderMedical/PopUpUploader.aspx" + window.location.search
         console.log(uploadURL);
         var uploadWindow = window.open(uploadURL, "Upload", "width=700,height=600"); //On ouvre la fenetre d'upload dans un popup
     });
@@ -520,11 +554,11 @@ function uploadLatest() {
 
 function insertDate() {
     let date = new Date();
-    let currentDate = String(date.getDate()).padStart(2, '0') + "/" + String(date.getMonth()+ 1).padStart(2, '0') + "/" + String(date.getFullYear());
+    let currentDate = String(date.getDate()).padStart(2, '0') + "/" + String(date.getMonth() + 1).padStart(2, '0') + "/" + String(date.getFullYear());
     let activeElement = document.activeElement;
     if (!activeElement)
         return;
-    
+
     var tagName = activeElement.tagName.toLowerCase();
     if (tagName == 'iframe') {
         activeElement = activeElement.contentWindow.document.activeElement; //On récupère l'activeElement dans l'iframe
@@ -584,7 +618,7 @@ function clickWithRefractoryPeriod(element) {
         lastClickTime = currentTime;
     } else {
         console.log('Clicking too fast, waiting', 200 - timeSinceLastClick, 'ms');
-        setTimeout(function() {
+        setTimeout(function () {
             lastClickTime = new Date().getTime();
         }, 200 - timeSinceLastClick);
     }
