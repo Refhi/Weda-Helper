@@ -13,6 +13,9 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#242](https://github.com/Refhi/Weda-Helper/issues/242) - lors de l'utilisation de raccourcis claviers, plusieurs consultations pouvaient être créées en même temps. Ajout d'un délais réfractaire pour éviter cela.
 - [#231](https://github.com/Refhi/Weda-Helper/issues/231) - l'inversion automatique des champs ALD se déclenchait trop facilement
 - [#228](https://github.com/Refhi/Weda-Helper/issues/228) - tentative de fix de la mauvaise selection du règlement "Virement" lors des téléconsultations
+  
+## ajouts :
+- ajout d'un lien avec Weda pour la désactivation des options de Weda Helper déjà implémentées dans Weda.
 
 # [2.6.2] - 15/09/2024
 ## fix :
