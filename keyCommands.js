@@ -334,31 +334,31 @@ function GenericClicker(valueName, value) {
     }
 }
 
-// Clique sur un bouton et inhibe les clics trop rapides
-var lastClickTime = 0;
-function clickWithRefractoryPeriod(element) {
-    var currentTime = new Date().getTime();
-    var timeSinceLastClick = currentTime - lastClickTime;
+// // Clique sur un bouton et inhibe les clics trop rapides
+// var lastClickTime = 0;
+// function clickWithRefractoryPeriod(element) {
+//     var currentTime = new Date().getTime();
+//     var timeSinceLastClick = currentTime - lastClickTime;
 
-    if (timeSinceLastClick >= 200) {
-        element.click();
-        recordMetrics({ clicks: 1, drags: 1 });
-        console.log('Element clicked:', element);
-        lastClickTime = currentTime;
-    } else {
-        console.log('Clicking too fast, waiting', 200 - timeSinceLastClick, 'ms');
-        setTimeout(function () {
-            lastClickTime = new Date().getTime();
-        }, 200 - timeSinceLastClick);
-    }
-}
+//     if (timeSinceLastClick >= 200) {
+//         element.click();
+//         recordMetrics({ clicks: 1, drags: 1 });
+//         console.log('Element clicked:', element);
+//         lastClickTime = currentTime;
+//     } else {
+//         console.log('Clicking too fast, waiting', 200 - timeSinceLastClick, 'ms');
+//         setTimeout(function () {
+//             lastClickTime = new Date().getTime();
+//         }, 200 - timeSinceLastClick);
+//     }
+// }
 
 
 // Clique sur un bouton selon son Id
 function clickElementById(elementId) {
     var element = document.getElementById(elementId);
     if (element) {
-        clickWithRefractoryPeriod(element); // Utilise une période réfractaire pour éviter les clics trop rapides
+        element.click();
         return true;
     } else {
         console.log('Element not found:', elementId);
@@ -386,7 +386,7 @@ function submenuW(description) {
         });
         console.log('level3Element', level3Element);
         if (level3Element) {
-            clickWithRefractoryPeriod(level3Element);
+            level3Element.click();
             recordMetrics({ clicks: 1, drags: 3 });
             console.log('Element clicked:', level3Element);
             return true;
@@ -396,7 +396,7 @@ function submenuW(description) {
             });
             console.log('level2Element', level2Element);
             if (level2Element) {
-                clickWithRefractoryPeriod(level2Element);
+                level2Element.click();
                 recordMetrics({ clicks: 1, drags: 2 });
                 console.log('Element clicked:', level2Element);
                 return true;
