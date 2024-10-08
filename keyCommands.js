@@ -92,6 +92,7 @@ function throttleWithPersistence(func, limit) {
  
         // Vérifier si suffisamment de temps s'est écoulé depuis la dernière exécution
         if (!lastRan || Date.now() - lastRan >= limit) {
+            console.log('[Throttle] ok pour relancer: lastRan', lastRan, 'limit', limit);
             // Exécuter la fonction et mettre à jour lastRan
             func.apply(context, args);
             lastRan = Date.now();
@@ -99,11 +100,11 @@ function throttleWithPersistence(func, limit) {
             // Sauvegarder la nouvelle valeur de lastRan dans chrome.storage.local
             chrome.storage.local.set({ lastRan: lastRan });
         } else {
+            console.log('[Throttle] trop rapide : lastRan', lastRan, 'limit', limit);
             // Si la fonction est appelée trop vite, utiliser un timeout
             clearTimeout(lastFunc);
             lastFunc = setTimeout(function() {
                 if ((Date.now() - lastRan) >= limit) {
-                    func.apply(context, args);
                     lastRan = Date.now();
  
                     // Sauvegarder la nouvelle valeur de lastRan
