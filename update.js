@@ -6,11 +6,27 @@ function htmlMaker(text) {
 }
 
 var nouveautes = `
-<h3>fix :</h3>
+<h3>[2.7] - refactory</h3>
+<h4>refactory : (c'est à dire maintenance et amélioration du code sans ajout de fonctionnalités)</h4>
 <ul>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/241">#241</a> - correction de la détection des types de prescription d'ordo numérique</li>
+  <li>deplacement de l'impression dans un fichier à part</li>
+  <li>réorganisation, simplification et amélioration de la lisibilité de print.js, ajout de jsdoc</li>
+  <li>suppression de lightObserver au profit de waitForElement</li>
+  <li>l'url de base est désormais extraite du manifest.json (permet de faciliter les tests et de nettoyer un peu le code)</li>
+  <li>séparation du code en plus de fichiers pour plus de lisibilité</li>
 </ul>
-`
+<h4>fix :</h4>
+<ul>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/242">#242</a> - lors de l'utilisation de raccourcis claviers, plusieurs consultations pouvaient être créées en même temps. Ajout d'un délais réfractaire pour éviter cela.</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/231">#231</a> - l'inversion automatique des champs ALD se déclenchait trop facilement</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/228">#228</a> - tentative de fix de la mauvaise selection du règlement "Virement" lors des téléconsultations</li>
+  <li>suppression de l'ancienne méthode d'anti-throttle</li>
+</ul>
+<h4>ajouts :</h4>
+<ul>
+  <li>ajout d'un lien avec Weda pour la désactivation des options de Weda Helper déjà implémentées dans Weda.</li>
+</ul>
+`;
 
 nouveautes = htmlMaker(nouveautes)
 

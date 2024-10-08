@@ -94,13 +94,11 @@ function throttleWithPersistence(func, limit) {
 
         // Vérifier si la page a débuté son chargement depuis au moins 500ms
         if (Date.now() - pageLoadStartTime < 500) {
-            console.log('[Throttle] Page chargée depuis moins de 500ms');
             lastRan = Date.now();
             return;
         }
         // Vérifier si suffisamment de temps s'est écoulé depuis la dernière exécution
         if (!lastRan || Date.now() - lastRan >= limit) {
-            console.log('[Throttle] ok pour relancer: lastRan', lastRan, 'limit', limit);
             // Exécuter la fonction et mettre à jour lastRan
             func.apply(context, args);
             lastRan = Date.now();
@@ -108,7 +106,6 @@ function throttleWithPersistence(func, limit) {
             // Sauvegarder la nouvelle valeur de lastRan dans chrome.storage.local
             chrome.storage.local.set({ lastRan: lastRan });
         } else {
-            console.log('[Throttle] trop rapide : lastRan', lastRan, 'limit', limit);
             // Si la fonction est appelée trop vite, utiliser un timeout
             clearTimeout(lastFunc);
             lastFunc = setTimeout(function() {
@@ -127,7 +124,6 @@ function throttleWithPersistence(func, limit) {
 // Pour ajouter les raccourcis sur un élément spécifique
 function addHotkeyToDocument(scope, element, shortcut, action) {
     if (shortcut != undefined)
-        // console.log('Ajout du raccourci', shortcut, 'avec la fonction', action, 'dans le scope', scope, 'et l\'élément', element);
         hotkeys(shortcut, {
             scope: scope,
             element: element
@@ -343,24 +339,7 @@ function GenericClicker(valueName, value) {
     }
 }
 
-// // Clique sur un bouton et inhibe les clics trop rapides
-// var lastClickTime = 0;
-// function clickWithRefractoryPeriod(element) {
-//     var currentTime = new Date().getTime();
-//     var timeSinceLastClick = currentTime - lastClickTime;
 
-//     if (timeSinceLastClick >= 200) {
-//         element.click();
-//         recordMetrics({ clicks: 1, drags: 1 });
-//         console.log('Element clicked:', element);
-//         lastClickTime = currentTime;
-//     } else {
-//         console.log('Clicking too fast, waiting', 200 - timeSinceLastClick, 'ms');
-//         setTimeout(function () {
-//             lastClickTime = new Date().getTime();
-//         }, 200 - timeSinceLastClick);
-//     }
-// }
 
 
 // Clique sur un bouton selon son Id
