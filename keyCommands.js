@@ -78,6 +78,8 @@ const keyCommands = {
 };
 
 // Fonction throttle avec persistance via chrome.storage.local
+// Enregistrer le temps de début du chargement de la page
+const pageLoadStartTime = Date.now();
 function throttleWithPersistence(func, limit) {
     let lastFunc;
     let lastRan;
@@ -89,7 +91,13 @@ function throttleWithPersistence(func, limit) {
  
     return function(...args) {
         const context = this;
- 
+
+        // Vérifier si la page a débuté son chargement depuis au moins 500ms
+        if (Date.now() - pageLoadStartTime < 500) {
+            console.log('[Throttle] Page chargée depuis moins de 500ms');
+            lastRan = Date.now();
+            return;
+        }
         // Vérifier si suffisamment de temps s'est écoulé depuis la dernière exécution
         if (!lastRan || Date.now() - lastRan >= limit) {
             console.log('[Throttle] ok pour relancer: lastRan', lastRan, 'limit', limit);
