@@ -94,12 +94,14 @@ function throttleWithPersistence(func, limit) {
 
         // Vérifier si la page a débuté son chargement depuis au moins 500ms
         if (Date.now() - pageLoadStartTime < 500) {
+            console.log('[throttleWithPersistence] La page a commencé à charger il y a moins de 500ms, ne pas exécuter la fonction');
             lastRan = Date.now();
             return;
         }
         // Vérifier si suffisamment de temps s'est écoulé depuis la dernière exécution
         if (!lastRan || Date.now() - lastRan >= limit) {
             // Exécuter la fonction et mettre à jour lastRan
+            console.log('[throttleWithPersistence] Exécution de la fonction');
             func.apply(context, args);
             lastRan = Date.now();
  
@@ -107,6 +109,7 @@ function throttleWithPersistence(func, limit) {
             chrome.storage.local.set({ lastRan: lastRan });
         } else {
             // Si la fonction est appelée trop vite, utiliser un timeout
+            console.log('[throttleWithPersistence] La fonction a été appelée trop vite, inhibiteur de délai');
             clearTimeout(lastFunc);
             lastFunc = setTimeout(function() {
                 if ((Date.now() - lastRan) >= limit) {
