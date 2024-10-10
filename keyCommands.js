@@ -93,7 +93,7 @@ function throttleWithPersistence(func, limit) {
         const context = this;
 
         // Vérifier si la page a débuté son chargement depuis au moins 500ms
-        if (Date.now() - pageLoadStartTime < 500) {
+        if (Date.now() - pageLoadStartTime < 1000) {
             console.log('[throttleWithPersistence] La page a commencé à charger il y a moins de 500ms, ne pas exécuter la fonction');
             lastRan = Date.now();
             return;
@@ -133,7 +133,7 @@ function addHotkeyToDocument(scope, element, shortcut, action) {
         }, throttleWithPersistence(function (event, handler) {
             event.preventDefault();  // Empêche le comportement par défaut
             action();  // Exécute l'action associée au raccourci
-        }, 300));
+        }, 1000));
 }
 
 function shortcutDefaut(shortcuts, defaultShortcuts, key) {
