@@ -9,6 +9,12 @@
 const manifest = chrome.runtime.getManifest();
 const url_star = manifest.content_scripts.flatMap(script => script.matches)[0]; // *://secure.weda.fr/*
 const baseUrl = url_star.replace('*', 'https').replace('/*', '');
+
+
+// WedaOverloadOptions est un objet qui contient les options de Weda. Il contient les mêmes clés que les différentes options de l'extension.
+// La valeur de ces clés écrase l'option du même nom dans l'extension.
+// Weda peut donc, à dessein, forcer l'activation ou la neutralisation d'une option.
+// C'est plutôt pensé pour neutraliser une option qui vient d'être implémentée par Weda.
 let WedaOverloadOptions = {};
 let gotDataFromWeda = false;
 
@@ -22,6 +28,13 @@ window.addEventListener("message", function (event) {
     if (event.source === window && event.data.type === "FROM_PAGE") {
         WedaOverloadOptions = event.data.payload.wedaHelper;
         gotDataFromWeda = true;
+        if (WedaOverloadOptions == undefined) {
+            WedaOverloadOptions = false;
+        }
+
+        // Modification de la clé MoveHistoriqueToLeft_Consultation  à true pour les tests
+        // WedaOverloadOptions.MoveHistoriqueToLeft_Consultation = true;
+            
         console.log('WedahelperOverload', WedaOverloadOptions);
     }
 });
@@ -201,9 +214,8 @@ function getOption(optionNames, callback) {
             let options = [];
             for (let optionName of optionNames) {
                 let optionValue;
-                if (WedaOverloadOptions) {
+                if (!WedaOverloadOptions) { // Si WedaOverloadOptions est false car non rempli par Weda, on le signale
                     console.log('[getOption] WedaOverloadOptions est vide, et de valeur ', WedaOverloadOptions);
-                    console.log('[getOption] mais capa est ', testCapa);
                 }
                 if (WedaOverloadOptions && Object.keys(WedaOverloadOptions).length > 0 && WedaOverloadOptions[optionName] !== undefined) {
                     console.log('[getOption] WedaOverloadOptions[', optionName, '] est ', WedaOverloadOptions[optionName]);
