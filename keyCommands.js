@@ -80,20 +80,19 @@ const keyCommands = {
 // Fonction throttle avec persistance via chrome.storage.local
 // Enregistrer le temps de début du chargement de la page
 const pageLoadStartTime = Date.now();
+let lastRan;
 function throttleWithPersistence(func, limit) {
     let lastFunc;
-    let lastRan;
-
-    // Charger la valeur de lastRan depuis chrome.storage.local
-    chrome.storage.local.get(['lastRan'], function(result) {
-        lastRan = result.lastRan || 0;  // Si lastRan n'existe pas, initialisez-le à 0
-    });
+    // // Charger la valeur de lastRan depuis chrome.storage.local
+    // chrome.storage.local.get(['lastRan'], function(result) {
+    //     lastRan = result.lastRan || 0;  // Si lastRan n'existe pas, initialisez-le à 0
+    // });
  
     return function(...args) {
         const context = this;
 
         // Vérifier si la page a débuté son chargement depuis au moins 500ms
-        if (Date.now() - pageLoadStartTime < 1000) {
+        if (Date.now() - pageLoadStartTime < 300) {
             console.log('[throttleWithPersistence] La page a commencé à charger il y a moins de 500ms, ne pas exécuter la fonction');
             lastRan = Date.now();
             return;
@@ -101,7 +100,7 @@ function throttleWithPersistence(func, limit) {
         // Vérifier si suffisamment de temps s'est écoulé depuis la dernière exécution
         if (!lastRan || Date.now() - lastRan >= limit) {
             // Exécuter la fonction et mettre à jour lastRan
-            console.log('[throttleWithPersistence] Exécution de la fonction');
+            console.log('[throttleWithPersistence] Exécution de la fonction car lastRan est', lastRan, 'et Date.now() est', Date.now());
             func.apply(context, args);
             lastRan = Date.now();
  
@@ -133,7 +132,7 @@ function addHotkeyToDocument(scope, element, shortcut, action) {
         }, throttleWithPersistence(function (event, handler) {
             event.preventDefault();  // Empêche le comportement par défaut
             action();  // Exécute l'action associée au raccourci
-        }, 1000));
+        }, 300));
 }
 
 function shortcutDefaut(shortcuts, defaultShortcuts, key) {
