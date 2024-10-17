@@ -2,6 +2,10 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+# [2.7.1] - hotfix
+- l'historique à gauche s'affiche de nouveau automatiquement dans les pages de consultation, demande et courrier
+
+
 # [2.7] - refactory
 ## refactory : (c'est à dire maintenance et amélioration du code sans ajout de fonctionnalités)
 - deplacement de l'impression dans un fichier à part

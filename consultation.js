@@ -481,8 +481,35 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*ZScoreIMC', function () {
 
 
 
-// // Historique à gauche
-// Définir les pages pour lesquelles l'historique doit être déplacé à gauche et leur cible
+// // // Historique à gauche
+
+// // Clic automatique sur le bouton d'historique
+// Nécessaire depusi env. le 15 octobre 2024 et la 2.7.1 car l'historique à gauche
+// dans les pages de consultation est repris par Weda et plus ouvert automatiquement
+addTweak('/FolderMedical/ConsultationForm.aspx', 'AutoOpenHistory_Consultation', function () {
+    waitForElement({
+        selector:'#ContentPlaceHolder1_EvenementUcForm1_LinkButtonShowHistoriqueFrame',
+        justOnce: true,
+        callback: function (elements) {
+            elements[0].click();
+        }
+    });
+
+    // Suppression d'un élément de l'historique pour gagner un peu de place
+    waitForElement({
+        debug: true,
+        selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame > iframe',
+        callback: function (elements) {
+                let contentDocElement = elements[0].contentDocument;
+                let elementToRemove = contentDocElement.querySelector('.fondcoordination');
+                if (elementToRemove) {
+                    elementToRemove.remove();
+                }
+        }
+    });
+});
+
+// // Définir les pages pour lesquelles l'historique doit être déplacé à gauche et leur cible
 let pagesToLeftPannel_ = [
     {
         url: '/FolderMedical/ConsultationForm.aspx',
@@ -492,7 +519,7 @@ let pagesToLeftPannel_ = [
     },
     {
         url: '/FolderMedical/CertificatForm.aspx',
-        targetElementSelector: '#form1 > div:nth-child(15) > table > tbody > tr > td:nth-child(1) > table > tbody > tr',
+        targetElementSelector: 'table[onmouseover="ForceCloseListBoxGlossaire();"] > tbody > tr',
         option: 'MoveHistoriqueToLeft_Certificat',
         pageType: 'Certificat'
     },
@@ -510,7 +537,7 @@ let pagesToLeftPannel_ = [
     },
     {
         url: '/FolderMedical/CourrierForm.aspx',
-        targetElementSelector: '#form1 > div:nth-child(15) > table > tbody > tr > td:nth-child(1) > table',
+        targetElementSelector: 'table[onmouseover="ForceCloseListBoxGlossaire();"] > tbody > tr',
         option: 'MoveHistoriqueToLeft_Courrier',
         pageType: 'Courrier'
     }
@@ -535,6 +562,7 @@ function getUrlHistory() {
 }
 
 function createIframe(targetElement) {
+    console.log('Création de l\'iframe', targetElement);
     const iframe = document.createElement('iframe');
     iframe.style.width = `${window.innerWidth * HISTORY_PROPORTION}px`;
     iframe.style.height = `${window.innerHeight - 175}px`;

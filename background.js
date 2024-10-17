@@ -48,11 +48,12 @@ var defaultSettings = {
   'uncheckDMPIfImagerie': true,
   'postPrintBehavior': 'closePreview', // boutons radio
   'MoveHistoriqueToLeft': true,
-  'MoveHistoriqueToLeft_Consultation': true,
+  'MoveHistoriqueToLeft_Consultation': true, // Depreciated depuis 2.7.1 (reprise de cette partie par Weda)
   'MoveHistoriqueToLeft_Certificat': true,
   'MoveHistoriqueToLeft_Demande': true,
   'MoveHistoriqueToLeft_Courrier': false,
   'MoveHistoriqueToLeft_Formulaire': false,
+  'AutoOpenHistory_Consultation': true, // introduit depuis 2.7.1
   'ShowExplanatoryText': true,
   'autoOpenOrdoType': false,
   'AlertOnMedicationInteraction': true,
