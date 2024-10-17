@@ -497,7 +497,6 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'AutoOpenHistory_Consultation',
 
     // Suppression d'un élément de l'historique pour gagner un peu de place
     waitForElement({
-        debug: true,
         selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame > iframe',
         callback: function (elements) {
                 let contentDocElement = elements[0].contentDocument;
