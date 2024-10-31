@@ -366,23 +366,28 @@ addTweak('*', 'WarpButtons', function () {
                 console.log('ajout de raccourcis au button', button);
                 var raccourci = raccourcis[button.id];
                 if (raccourci) {
-                    button.textContent += raccourci;
-                }
-                if (button.textContent.includes('Désactiver aujourd\'hui')) { // certains boutons nécessitent d'étendre la taille de la fenêtre
-                    resizeTextBox();
+                    // Créer un conteneur pour le bouton et le texte
+                    var container = document.createElement('div');
+                    container.style.position = 'relative';
+                    button.parentNode.insertBefore(container, button);
+                    container.appendChild(button);
+            
+                    // Créer l'élément span pour le raccourci
+                    var span = document.createElement('span');
+                    span.textContent = raccourci;
+                    span.style.position = 'absolute';
+                    span.style.bottom = '-10px'; // Placer le texte un peu plus bas
+                    span.style.right = '5px';
+                    span.style.color = 'grey';
+                    span.style.fontSize = '0.8em';
+                    span.style.backgroundColor = '#F0F0F0'; // Ajouter un fond blanc
+                    span.style.padding = '2px'; // Ajouter un peu de padding pour le texte
+                    span.style.borderRadius = '10px'; // Ajouter des angles arrondis
+                    container.appendChild(span);
                 }
             }
         }
 
-        function resizeTextBox() {
-            let textbox = document.querySelector('.mat-dialog-container');
-            let currentHeight = parseInt(window.getComputedStyle(textbox).height, 10);
-            if (textbox && currentHeight < 440) {
-                textbox.style.height = '440px';
-            } else {
-                console.log('textBox not found :-/ can\'t resize it');
-            }
-        }
 
 
         buttons.forEach(function (button) {

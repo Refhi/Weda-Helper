@@ -2,6 +2,10 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+# [2.7.2] - fix
+- [#260](https://github.com/Refhi/Weda-Helper/issues/260) - ajout d'une discrète bulle info grisée en bas à droite des boutons éligibles 
+
+
 # [2.7.1] - hotfix
 - l'historique à gauche s'affiche de nouveau automatiquement dans les pages de consultation, demande et courrier
 
