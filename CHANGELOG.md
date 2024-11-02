@@ -5,7 +5,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 # [2.7.2] - fix
 - [#260](https://github.com/Refhi/Weda-Helper/issues/260) - ajout d'une discrète bulle info grisée en bas à droite des boutons éligibles
 - [#264](https://github.com/Refhi/Weda-Helper/issues/264) - ouverture automatique de l'historique et retrait des éléments surnuméraires
-- [#246](https://github.com/Refhi/Weda-Helper/issues/246) - tentative de fix de l'impression des AM
+- [#246](https://github.com/Refhi/Weda-Helper/issues/246) - tentative de fix de l'impression des AM - ajout d'une lib pour la manipulation des pdf
 
 
 # [2.7.1] - hotfix

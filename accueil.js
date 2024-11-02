@@ -10,8 +10,7 @@ let homePageFunctions = [
         callback: function () {
             console.log('je tente de clicker sur le dernier pdf');
             chrome.storage.local.get(['autoAATIexit'], function (result) {
-                //if (Date.now() - result.autoAATIexit < 10000 && RemoveLocalCompanionPrint === false) {
-                if (true) { // TODO: remove this line
+                if (Date.now() - result.autoAATIexit < 10000 && RemoveLocalCompanionPrint === false) {
                     console.log('autoAATIexit', result.autoAATIexit, 'is less than 10s old, donc je tente d\'ouvrir le pdf du dernier arrêt de travail');
                     // Ouvre le dernier arrêt de travail
                     // class = sc et le titre débute par "Dernier A.T."

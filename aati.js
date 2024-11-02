@@ -168,6 +168,7 @@ addTweak(urlAATI, 'autoAATI', function () {
                     console.log('url', url);
                     fetch(url)
                         .then(response => response.blob())
+                        .then(getLastPageFromBlob)
                         .then(blob => {
                             console.log('blob', blob);
                             return sendToCompanion(`print`, blob);

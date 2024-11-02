@@ -411,3 +411,17 @@ addTweak('*', 'WarpButtons', function () {
     });
 });
 
+// Renvoie uniquement la dernière page d'un pdf présent dans un blob
+async function getLastPageFromBlob(blob) {
+    const pdfBytes = await blob.arrayBuffer();
+    const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+    const totalPages = pdfDoc.getPageCount();
+
+    const newPdfDoc = await PDFLib.PDFDocument.create();
+    const [copiedPage] = await newPdfDoc.copyPages(pdfDoc, [totalPages - 1]);
+    newPdfDoc.addPage(copiedPage);
+
+    const newPdfBytes = await newPdfDoc.save();
+    const newBlob = new Blob([newPdfBytes], { type: 'application/pdf' });
+    return newBlob;
+}

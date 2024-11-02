@@ -25,6 +25,7 @@
       "js": [
         "metrics.js",
         "lib/hotkeys.js",
+        "lib/pdf-lib.js",
         "utils.js",
         "content.js",
         "tooltip.js",
