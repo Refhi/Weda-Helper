@@ -1,10 +1,7 @@
 // [Page de Consultation]
 // addTabsToIframe est appelé depuis keyCommands.js au moment où on injecte les raccourcis clavier via addShortcutsToIframe
 
-function removeHistoryIframe(iframes) {
-    iframes = Array.from(iframes).filter(iframe => !iframe.src.startsWith(`${baseUrl}/FolderMedical/FrameHistoriqueForm.aspx`));
-    return iframes;
-}
+
 
 function removeExceedingSpaces(iframe) {
     function removeSpacesFromElement(element) {
@@ -20,7 +17,7 @@ function removeExceedingSpaces(iframe) {
     removeSpacesFromElement(iframe.contentDocument.body);
 }
 
-function addTabsToIframe(scopeName, iframe, index, iframes) {
+function addTabsToIframe(scopeName, iframe, index, iframes) { // est appelé depuis keyCommands.js
     iframes = removeHistoryIframe(iframes);
     addHotkeyToDocument(scopeName, iframe.contentDocument, 'tab', function () {
         console.log('tab activé');
@@ -58,10 +55,11 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', functio
 
     var iframes = document.querySelectorAll('iframe');
     iframes = removeHistoryIframe(iframes); // retirer les iframes d'historique qui n'on pas besoin de navigation par tabulation
+    let iframeTextNumber = iframes.length;
     let firstIframe = iframes[0];
     firstIframe.tabIndex = 3;
     let lastIframe = iframes[iframes.length - 1];
-    lastIframe.tabIndex = 4;
+    lastIframe.tabIndex = 4; // TODO : ça sert à quoi ça ??? Normalement on devrait mettre le tabindex à 3 + le nombre d'iframes ???
 
 
 
