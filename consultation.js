@@ -499,11 +499,7 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'AutoOpenHistory_Consultation',
     waitForElement({
         selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame > iframe',
         callback: function (elements) {
-                let contentDocElement = elements[0].contentDocument;
-                let elementToRemove = contentDocElement.querySelector('.fondcoordination');
-                if (elementToRemove) {
-                    elementToRemove.remove();
-                }
+            removeElements(elements[0].contentDocument);
         }
     });
 });
