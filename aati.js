@@ -186,9 +186,6 @@ addTweak(urlAATI, 'autoAATI', function () {
                                 alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
                             }
                         });
-                } else {
-                    // en cas de Companion désactivé
-                    window.print();
                 }
             });
         });
