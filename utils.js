@@ -34,7 +34,7 @@ window.addEventListener("message", function (event) {
 
         // Modification de la clé MoveHistoriqueToLeft_Consultation  à true pour les tests
         // WedaOverloadOptions.MoveHistoriqueToLeft_Consultation = true;
-            
+
         console.log('WedahelperOverload', WedaOverloadOptions);
     }
 });
@@ -215,16 +215,16 @@ function getOption(optionNames, callback) {
             for (let optionName of optionNames) {
                 let optionValue;
                 if (!WedaOverloadOptions) { // Si WedaOverloadOptions est false car non rempli par Weda, on le signale
-                    // console.log('[getOption] WedaOverloadOptions est vide, et de valeur ', WedaOverloadOptions);
+                    console.log('[getOption] WedaOverloadOptions est vide, et de valeur ', WedaOverloadOptions);
                 }
                 if (WedaOverloadOptions && Object.keys(WedaOverloadOptions).length > 0 && WedaOverloadOptions[optionName] !== undefined) {
-                    // console.log('[getOption] WedaOverloadOptions[', optionName, '] est ', WedaOverloadOptions[optionName]);
+                    console.log('[getOption] WedaOverloadOptions[', optionName, '] est ', WedaOverloadOptions[optionName]);
                     optionValue = WedaOverloadOptions[optionName];
                 } else if (result[optionName] !== undefined) {
-                    // console.log('[getOption] result[', optionName, '] est ', result[optionName]);
+                    console.log('[getOption] result[', optionName, '] est ', result[optionName]);
                     optionValue = result[optionName];
                 } else {
-                    // console.log('[getOption] result.defaultSettings[', optionName, '] est ', result.defaultSettings[optionName]);
+                    console.log('[getOption] result.defaultSettings[', optionName, '] est ', result.defaultSettings[optionName]);
                     optionValue = result.defaultSettings[optionName];
                 }
                 options.push(optionValue);
@@ -252,7 +252,9 @@ function addTweak(path, option, callback) {
             });
         } else {
             getOption(option, function (optionValue) {
+                console.log('[addTweak] optionValue de', option, optionValue);
                 if ((optionValue === true && !invert) || (optionValue === false && invert)) {
+                    console.log(`[addTweak] ${option} activé`);
                     callback();
                 }
             });
@@ -273,26 +275,26 @@ function addTweak(path, option, callback) {
     }
 
     if (urlMatches) {
-        // permet de gérer les options en négatif
-        let invert = false;
-        if (typeof option === 'string' && option.startsWith('!')) {
-            option = option.slice(1);
-            invert = true;
+        // Convertir l'option en tableau si ce n'est pas déjà le cas
+        if (!Array.isArray(option)) {
+            option = [{ option, callback }];
         }
-
-        let mandatory = false;
-        if (typeof option === 'string' && option.startsWith('*')) {
-            option = option.slice(1);
-            mandatory = true;
-        }
-
-        if (typeof option === 'string' && typeof callback === 'function') {
-            // Si une seule option et un seul callback sont passés, on les utilise directement
-            executeOption(option, callback, invert, mandatory);
-        } else if (Array.isArray(option) && option.length > 0) {
+        if (Array.isArray(option) && option.length > 0) {
             // Si un tableau d'options et de callbacks est passé, on les utilise tous
             // permet de ne pas avoir à écrire plusieurs fois la même condition
             option.forEach(({ option, callback }) => {
+                // permet de gérer les options en négatif
+                let invert = false;
+                if (option.startsWith('!')) {
+                    option = option.slice(1);
+                    invert = true;
+                }
+
+                let mandatory = false;
+                if (option.startsWith('*')) {
+                    option = option.slice(1);
+                    mandatory = true;
+                }
                 executeOption(option, callback, invert, mandatory);
             });
         }
@@ -371,7 +373,7 @@ addTweak('*', 'WarpButtons', function () {
                     container.style.position = 'relative';
                     button.parentNode.insertBefore(container, button);
                     container.appendChild(button);
-            
+
                     // Créer l'élément span pour le raccourci
                     var span = document.createElement('span');
                     span.textContent = raccourci;

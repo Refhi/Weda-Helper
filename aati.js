@@ -29,7 +29,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoAATI', function () {
 
 urlAATI = [
     '/FolderMedical/Aati.aspx',
-    '/BinaryData.aspx'
+    '/FolderMedical/PopUpViewBinaryForm.aspx'
 ]
 
 addTweak(urlAATI, 'autoAATI', function () {
@@ -126,7 +126,13 @@ addTweak(urlAATI, 'autoAATI', function () {
         justOnce: true
     });
 
-    waitLegacyForElement('[title="Déclarer l\'AT pour ce bénéficiaire."]', null, 50000, clickPremierPatientCV); // assez long car sinon la demande CPS peux bloquer le processus
+    // waitLegacyForElement('[title="Déclarer l\'AT pour ce bénéficiaire."]', null, 50000, clickPremierPatientCV); // assez long car sinon la demande CPS peux bloquer le processus
+    waitForElement({
+        selector: '[title="Déclarer l\'AT pour ce bénéficiaire."]',
+        callback: clickPremierPatientCV,
+        justOnce: true
+    });
+
 
     waitForElement({
         selector: selecteurSortieNonLimites,
@@ -137,11 +143,13 @@ addTweak(urlAATI, 'autoAATI', function () {
 
     waitForElement({
         selector: selectorExitButton,
-        callback: function (elements) {
+        callback: function (elements) {            
+            // 2.7.2 La nouvelle méthode est d'aller ensuite récupérer le pdf depuis la page de résumé
             setTimeOfSending('autoAATIexit');
             console.log('clicking on the exit button + timestamp');
-            intervalId = setInterval(() => checkAutoAATIexit(elements), 100); // Vérifier toutes les 100ms
-            setTimeout(() => clearInterval(intervalId), 20000); // Arrêter après 20 secondes
+            // intervalId = setInterval(() => checkAutoAATIexit(elements), 100); // Vérifier toutes les 100ms
+            elements[0].click(); // Finalement on quitte direct sans attendre
+            // setTimeout(() => clearInterval(intervalId), 20000); // Arrêter après 20 secondes
             recordMetrics({ clicks: 1, drags: 1 });
         }
     });
@@ -149,13 +157,14 @@ addTweak(urlAATI, 'autoAATI', function () {
 
 
     // Envoi du document à l'assistant
-    addTweak('/BinaryData.aspx', "*sendDocToCompanion", function () {
+    addTweak('/FolderMedical/PopUpViewBinaryForm.aspx', "*sendDocToCompanion", function () {
         chrome.storage.local.get(['autoAATIexit'], function (result) {
             getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
                 if (Date.now() - result.autoAATIexit < 10000 && RemoveLocalCompanionPrint === false) {
                     console.log('autoAATIexit', result.autoAATIexit, 'is less than 10 seconds ago');
                     chrome.storage.local.set({ autoAATIexit: 0 });
-                    let url = window.location.href;
+                    let iframeElement = document.querySelector('iframe');
+                    let url = iframeElement.src;
                     console.log('url', url);
                     fetch(url)
                         .then(response => response.blob())
