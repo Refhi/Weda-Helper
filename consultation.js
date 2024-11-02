@@ -56,10 +56,12 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', functio
     var iframes = document.querySelectorAll('iframe');
     iframes = removeHistoryIframe(iframes); // retirer les iframes d'historique qui n'on pas besoin de navigation par tabulation
     let iframeTextNumber = iframes.length;
+    // On va attribuer un tabIndex aux iframes de début et de fin seulement
+    // puisque les autres sont naviguées via un système custom d'écoute des tab et shift+tab
     let firstIframe = iframes[0];
     firstIframe.tabIndex = 3;
     let lastIframe = iframes[iframes.length - 1];
-    lastIframe.tabIndex = 4; // TODO : ça sert à quoi ça ??? Normalement on devrait mettre le tabindex à 3 + le nombre d'iframes ???
+    lastIframe.tabIndex = 4; 
 
 
 

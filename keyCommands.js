@@ -164,7 +164,6 @@ function addShortcuts(keyCommands, scope, scopeName) {
 
 function removeHistoryIframe(iframes) {
     iframes = Array.from(iframes).filter(iframe => !iframe.src.startsWith(`${baseUrl}/FolderMedical/FrameHistoriqueForm.aspx`));
-    console.log('iframes filtrées', iframes);
     return iframes;
 }
 
@@ -175,7 +174,7 @@ function addShortcutsToIframe() {
         iframes.forEach(function (iframe, index) {
             let scopeName = 'iframe' + (index + 1);
             hotkeys.setScope(scopeName);
-            console.log('iframe' + (index + 1), iframe);
+            // console.log('iframe' + (index + 1), iframe);
             addShortcuts(keyCommands, iframe.contentDocument, scopeName);
             addTweak('/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', function () {
                 addTabsToIframe(scopeName, iframe, index, iframes); // est géré dans Constation.js dans la section TweakTabConsultation

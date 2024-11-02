@@ -215,16 +215,16 @@ function getOption(optionNames, callback) {
             for (let optionName of optionNames) {
                 let optionValue;
                 if (!WedaOverloadOptions) { // Si WedaOverloadOptions est false car non rempli par Weda, on le signale
-                    console.log('[getOption] WedaOverloadOptions est vide, et de valeur ', WedaOverloadOptions);
+                    // console.log('[getOption] WedaOverloadOptions est vide, et de valeur ', WedaOverloadOptions);
                 }
                 if (WedaOverloadOptions && Object.keys(WedaOverloadOptions).length > 0 && WedaOverloadOptions[optionName] !== undefined) {
-                    console.log('[getOption] WedaOverloadOptions[', optionName, '] est ', WedaOverloadOptions[optionName]);
+                    // console.log('[getOption] WedaOverloadOptions[', optionName, '] est ', WedaOverloadOptions[optionName]);
                     optionValue = WedaOverloadOptions[optionName];
                 } else if (result[optionName] !== undefined) {
-                    console.log('[getOption] result[', optionName, '] est ', result[optionName]);
+                    // console.log('[getOption] result[', optionName, '] est ', result[optionName]);
                     optionValue = result[optionName];
                 } else {
-                    console.log('[getOption] result.defaultSettings[', optionName, '] est ', result.defaultSettings[optionName]);
+                    // console.log('[getOption] result.defaultSettings[', optionName, '] est ', result.defaultSettings[optionName]);
                     optionValue = result.defaultSettings[optionName];
                 }
                 options.push(optionValue);
