@@ -8,6 +8,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#246](https://github.com/Refhi/Weda-Helper/issues/246) - tentative de fix de l'impression des AM - ajout d'une lib pour la manipulation des pdf
 
 
+
 # [2.7.1] - hotfix
 - l'historique à gauche s'affiche de nouveau automatiquement dans les pages de consultation, demande et courrier
 
