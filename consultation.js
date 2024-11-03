@@ -61,7 +61,7 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', functio
     let firstIframe = iframes[0];
     firstIframe.tabIndex = 3;
     let lastIframe = iframes[iframes.length - 1];
-    lastIframe.tabIndex = 4; 
+    lastIframe.tabIndex = 4;
 
 
 
@@ -488,7 +488,7 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*ZScoreIMC', function () {
 // dans les pages de consultation est repris par Weda et plus ouvert automatiquement
 addTweak('/FolderMedical/ConsultationForm.aspx', 'AutoOpenHistory_Consultation', function () {
     waitForElement({
-        selector:'#ContentPlaceHolder1_EvenementUcForm1_LinkButtonShowHistoriqueFrame',
+        selector: '#ContentPlaceHolder1_EvenementUcForm1_LinkButtonShowHistoriqueFrame',
         justOnce: true,
         callback: function (elements) {
             elements[0].click();
@@ -693,6 +693,37 @@ pagesToLeftPannel_.forEach((page) => {
                         }
                     }
                 });
+            }
+        });
+    });
+
+    // Introduction d'un déplacement des éléments atcd à la place de l'historique gauche TODO
+    addTweak(page.url, '*autoATCDLeft', function () {
+        // Déplacer les ATCD à la place de l'historique
+        waitForElement({
+            selector: '#ContentPlaceHolder1_EvenementUcForm1_PanelAntecedent',
+            justOnce: false,
+            callback: (elements) => {
+                let atcdElement = elements[0];
+                console.log('[autoATCDLeft] élément atcd détecté');
+                let targetElement = document.querySelector(page.targetElementSelector);
+                if (atcdElement && targetElement) {
+                    console.log('[autoATCDLeft] déplacement des ATCD');
+
+                    // Obtenir la position exacte de targetElement
+                    let targetRect = targetElement.getBoundingClientRect();
+
+                    // Déplacer l'élément ATCD de façon absolue
+                    atcdElement.style.position = 'absolute';
+                    atcdElement.style.top = `${targetRect.top}px`;
+                    atcdElement.style.left = `${targetRect.left}px`;
+
+                    // Redimensionner l'élément ATCD pour lui retirer 75% de taille
+                    atcdElement.style.width = `${targetRect.width / 4}px`;
+                    atcdElement.style.height = `${targetRect.height / 5}px`;
+
+                    recordMetrics({ clicks: 1, drags: 1 });
+                }
             }
         });
     });

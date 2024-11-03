@@ -2,6 +2,8 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+# [2.8] - 
+
 # [2.7.2] - fix
 - [#260](https://github.com/Refhi/Weda-Helper/issues/260) - ajout d'une discrète bulle info grisée en bas à droite des boutons éligibles
 - [#264](https://github.com/Refhi/Weda-Helper/issues/264) - ouverture automatique de l'historique et retrait des éléments surnuméraires
