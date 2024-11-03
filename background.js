@@ -53,6 +53,7 @@ var defaultSettings = {
   'MoveHistoriqueToLeft_Demande': true,
   'MoveHistoriqueToLeft_Courrier': false,
   'MoveHistoriqueToLeft_Formulaire': false,
+  'ATCDLeft': false,
   'AutoOpenHistory_Consultation': true, // introduit depuis 2.7.1
   'ShowExplanatoryText': true,
   'autoOpenOrdoType': false,

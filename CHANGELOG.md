@@ -3,6 +3,7 @@
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
 # [2.8] - 
+- [#262](https://github.com/Refhi/Weda-Helper/issues/262) - Affichage des Antécédents dans un volet latéral - désactivé par défaut, à activer dans les optionsœ
 
 # [2.7.2] - fix
 - [#260](https://github.com/Refhi/Weda-Helper/issues/260) - ajout d'une discrète bulle info grisée en bas à droite des boutons éligibles

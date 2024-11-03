@@ -698,29 +698,34 @@ pagesToLeftPannel_.forEach((page) => {
     });
 
     // Introduction d'un déplacement des éléments atcd à la place de l'historique gauche TODO
-    addTweak(page.url, '*autoATCDLeft', function () {
+    addTweak(page.url, 'ATCDLeft', function () {
         // Déplacer les ATCD à la place de l'historique
         waitForElement({
             selector: '#ContentPlaceHolder1_EvenementUcForm1_PanelAntecedent',
             justOnce: false,
             callback: (elements) => {
                 let atcdElement = elements[0];
-                console.log('[autoATCDLeft] élément atcd détecté');
-                let targetElement = document.querySelector(page.targetElementSelector);
-                if (atcdElement && targetElement) {
-                    console.log('[autoATCDLeft] déplacement des ATCD');
+                console.log('[ATCDLeft] élément atcd détecté');
+                let bandeauSup = document.querySelector("#ContentPlaceHolder1_EvenementUcForm1_DivCadreEvenement");
+                if (atcdElement && bandeauSup) {
+                    console.log('[ATCDLeft] déplacement des ATCD');
 
                     // Obtenir la position exacte de targetElement
-                    let targetRect = targetElement.getBoundingClientRect();
+                    let targetRect = bandeauSup.getBoundingClientRect();
 
                     // Déplacer l'élément ATCD de façon absolue
                     atcdElement.style.position = 'absolute';
-                    atcdElement.style.top = `${targetRect.top}px`;
+                    atcdElement.style.top = `${targetRect.top} + 110 px`;
                     atcdElement.style.left = `${targetRect.left}px`;
 
                     // Redimensionner l'élément ATCD pour lui retirer 75% de taille
-                    atcdElement.style.width = `${targetRect.width / 4}px`;
-                    atcdElement.style.height = `${targetRect.height / 5}px`;
+
+                    atcdElement.style.width = `${targetRect.width / 3}px`;
+                    // atcdElement.style.height = `${targetRect.height / 5}px`;
+
+                    // Ajouter un z-index élevé pour superposer l'élément ATCD
+                    atcdElement.style.zIndex = '1000';
+
 
                     recordMetrics({ clicks: 1, drags: 1 });
                 }
