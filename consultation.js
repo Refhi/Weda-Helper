@@ -575,6 +575,14 @@ function createIframe(targetElement) {
 }
 
 function removeElements(iframeDocument) {
+    // D'abord on déplace #PanelFiltre .titlefixe (le 5e élément) en frère de .frameupleft
+    const panelFiltre = iframeDocument.querySelector('#PanelFiltre');
+    const titleFixe = panelFiltre.querySelectorAll('.titlefixe')[4];
+    const frameUpLeft = iframeDocument.querySelector('.frameupleft');
+    if (panelFiltre && titleFixe && frameUpLeft) {
+        frameUpLeft.parentNode.insertBefore(titleFixe, frameUpLeft.nextSibling);
+    }
+
     SELECTORS_TO_REMOVE.forEach(selector => {
         const elements = iframeDocument.querySelectorAll(selector);
         elements.forEach(element => element.remove());
