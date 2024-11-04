@@ -42,6 +42,7 @@ var defaultSettings = {
   'WarpButtons': true,
   'autoSelectTypeOrdoNum': true,
   'autoConsentNumPres': false,
+  'autoConsentNumPres_Oui': false,
   'autoValidateOrdoNum': false,
   'NumPresPrescription': false,
   'NumPresDemande': false,

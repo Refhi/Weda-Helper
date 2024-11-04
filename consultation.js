@@ -697,7 +697,7 @@ pagesToLeftPannel_.forEach((page) => {
         });
     });
 
-    // Introduction d'un déplacement des éléments atcd à la place de l'historique gauche TODO
+    // Introduction d'un déplacement des éléments atcd à la place de l'historique gauche
     addTweak(page.url, 'ATCDLeft', function () {
         // Déplacer les ATCD à la place de l'historique
         waitForElement({

@@ -252,6 +252,7 @@ function validateOrdoNumIfOptionActivated() {
 }
 
 // autoclique le bouton de consentement de l'ordonnance numérique
+// TODO : ajouter la gestion de autoConsentNumPres_Oui
 addTweak([demandeUrl, prescriptionUrl], 'autoConsentNumPres', function () {
     waitForElement({
         selector: '.cdk-overlay-container .mat-radio-label',
