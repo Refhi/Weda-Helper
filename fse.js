@@ -27,6 +27,10 @@ function checkPatientName() {
     });
 }
 
+
+
+    
+
 // Définition de la fonction principale
 // (tableau et bouche après)
 function tweakFSECreation() {
@@ -248,6 +252,15 @@ function tweakFSECreation() {
         let conditionalCotations = [
             {
                 condition: function () {
+                    let ageOK = patientAgeInFSE() >= 80;
+                    let isMT = estMTdeclareOuReferent(loggedInUser());
+                    return ageOK && !isMT
+                },
+                action: 'DéfautMOP'
+
+            },
+            {
+                condition: function () {
                     let isALD = document.querySelector('#mat-radio-2-input').checked;
                     return isALD;
                 },
@@ -269,29 +282,7 @@ function tweakFSECreation() {
                 action: 'DéfautALD'
             },
             {
-                condition: function () {
-                    // Étape 1: Sélectionner le span et extraire la date de naissance du title
-                    let spanWithTitle = document.querySelector('#LabelInfoPatientNom > span > span:last-child');
-                    let title = spanWithTitle.getAttribute('title');
-                    let birthDateString = title.match(/(\d{2}\/\d{2}\/\d{4})/)[0];
-
-                    // Étape 2: Convertir la chaîne de date en un objet Date
-                    let birthDateParts = birthDateString.split('/');
-                    let birthDate = new Date(birthDateParts[2], birthDateParts[1] - 1, birthDateParts[0]);
-
-                    // Étape 3: Calculer l'âge
-                    let today = new Date();
-                    let age = today.getFullYear() - birthDate.getFullYear();
-                    let m = today.getMonth() - birthDate.getMonth();
-                    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-                        age--;
-                    }
-
-                    console.log('Age du patient :', age, 'ans');
-
-                    // Étape 4: Retourner true si l'âge est inférieur à 6 ans
-                    return age < 6;
-                },
+                condition: () => patientAgeInFSE() < 6,
                 action: 'DéfautPédia'
             },
             {
@@ -333,9 +324,11 @@ function tweakFSECreation() {
             for (let i = 0; i < conditionalCotations.length; i++) { // Loop dans le dico des cotations conditionnelles
                 if (conditionalCotations[i].condition()) {// Si la condition est remplie
                     let action = conditionalCotations[i].action; // L'action c'est le nom du favori à appliquer
-                    let secondaryAction = conditionalCotations[i].secondaryAction; // L'action secondaire est une fonction à exécuter après avoir cliqué sur le favori
-                    let targetElement = Array.from(elements).find(el => el.textContent.trim() === 'keyboard_arrow_right' + action);
+                    // L'action secondaire est une fonction à exécuter après avoir cliqué sur le favori.
+                    // Par exemple, pour sélectionner le type de paiement "VI" pour les téléconsultations
+                    let secondaryAction = conditionalCotations[i].secondaryAction;
                     // keyboard_arrow_right est nécessaire pour matcher le texte complet du favori qui contient ">" devant le nom
+                    let targetElement = Array.from(elements).find(el => el.textContent.trim() === 'keyboard_arrow_right' + action);
                     if (targetElement) {
                         targetElement.click();
                         if (secondaryAction) {
@@ -454,10 +447,9 @@ let fseTable =
                 waitForElement({
                     selector: 'vz-medecin-traitant-weda div.mt10.ng-star-inserted',
                     callback: function (element) {
-                        let MTDeclare = element[0].innerText;
-                        console.log('found MT: ' + MTDeclare);
-                        var loggedInUser = document.getElementById('LabelUserLog').innerText;
-                        if (MTDeclare.includes(loggedInUser)) {
+                        let userName = loggedInUser();
+                        let isMT = estMTdeclareOuReferent(userName);
+                        if (isMT) {
                             console.log('MT déclaré = utilisateur en cours => je coche MT déclaré');
                             let select = document.querySelector('vz-orientation select');
                             select.value = '03'; // Je suis le médecin traitant
@@ -603,3 +595,46 @@ addTweak('/vitalzen/fse.aspx', '*keepPrintDegradeeParameters', function () {
         }
     });
 });
+
+// Utilitaires pour la FSE
+
+function patientAgeInFSE() {
+    // Étape 1: Sélectionner le span et extraire la date de naissance du title
+    let spanWithTitle = document.querySelector('#LabelInfoPatientNom > span > span:last-child');
+    let title = spanWithTitle.getAttribute('title');
+    let birthDateString = title.match(/(\d{2}\/\d{2}\/\d{4})/)[0];
+
+    // Étape 2: Convertir la chaîne de date en un objet Date
+    let birthDateParts = birthDateString.split('/');
+    let birthDate = new Date(birthDateParts[2], birthDateParts[1] - 1, birthDateParts[0]);
+
+    // Étape 3: Calculer l'âge
+    let today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    let m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+
+    console.log('Age du patient :', age, 'ans');
+
+    // Étape 4: Retourner l'âge
+    return age;
+}
+
+function estMTdeclareOuReferent(userName) {
+    // Recherche dans les éléments .ng-star-inserted si le nom du MT est présent en text
+    let elements = document.querySelectorAll('.ng-star-inserted');
+    for (let i = 0; i < elements.length; i++) {
+        if (elements[i].textContent.includes(userName)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function loggedInUser() {
+    // Récupère le nom de l'utilisateur connecté
+    let userName = document.getElementById('LabelUserLog').innerText;
+    return userName;
+}

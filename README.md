@@ -106,7 +106,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Options d'ordonnance numérique
 - Permet d’activer automatiquement par défaut les ordonnances numériques pour les médicaments mais aussi pour les autres prescriptions.
-- Permet aussi de cocher automatiquement le consentement des patients. Attention vous êtes toujours tenu de demander l'autorisation au patient systématiquement.
+- Permet aussi de cocher automatiquement le consentement des patients ("Oui" ou "Non"). Attention vous êtes toujours tenu de demander l'autorisation au patient systématiquement.
 - le type "Biologie" se sélectionne automatiquement lors d'une prescription numérique type "Demande"
 - Sélection automatique du type d'ordonnance numérique quand il s'agit d'une Demande, et qu'un mot-clé est détecté (cf. https://github.com/Refhi/Weda-Helper/blob/main/CHANGELOG.md pour le détail des mots-clés)
 - "Ordonnance numérique" se décoche automatiquement si on sélection une Demande d'Imagerie.
@@ -120,6 +120,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
   - la cotation "DéfautPédia" pour les 0-6 ans
   - la cotation "DéfautALD" pour les ALD et les Accidents de travail
   - la cotation "DéfautTC" pour les téléconsultations
+  - la cotation "DéfautMOP" pour les patients de 80+ ans dont vous n'êtes pas le MT
   - la cotation "Défaut" pour les autres
 - Lecture automatique de la carte vitale si elle est non lue
 - Affichage de boutons directs pour la réalisation de FDS dégradées et téléconsultation
