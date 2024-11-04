@@ -68,6 +68,7 @@ var defaultSettings = {
   'sortCIM10': true,
   'removeBoldPatientFirstName': false,
   'preAlertATCD': 6,
+  'autoFilterLeftHistory': false,
 };
 
 var defaultShortcuts = {

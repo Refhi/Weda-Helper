@@ -500,6 +500,7 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'AutoOpenHistory_Consultation',
         selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame > iframe',
         callback: function (elements) {
             removeElements(elements[0].contentDocument);
+            actionFilter(elements[0].contentDocument);
         }
     });
 });
@@ -663,6 +664,8 @@ function historyToLeft() {
                 const iframe = createIframe(targetElement); // ici targetElement est nécessaire comme référence pour l'insertion de l'iframe
                 iframe.addEventListener('load', () => {
                     removeElements(iframe.contentDocument);
+                    // Ici on ajoute l'appuis automatique de filtre (en url libre car ne sera appelée que si l'histoire est à gauche)
+                    actionFilter(iframe.contentDocument);
                 });
                 adjustLayout(page.pageType, iframe, targetElement);
                 recordMetrics({ clicks: 1, drags: 1 });
@@ -670,6 +673,49 @@ function historyToLeft() {
         });
     }
 }
+
+
+
+/**
+ * Applique un filtre spécifique sur le document cible.
+ * Utilise addTweak() pour garantir que le code n'est executé que si l'option est valide.
+ * @param {Document} targetDocument - Le document sur lequel appliquer le filtre.
+ * @param {string} [filter="Tout filtrer"] - Le filtre à appliquer. Les valeurs possibles sont :
+ *   - "Annuler tous les filtres"
+ *   - "Tout filtrer"
+ *   - "Filtrer les consultations"
+ *   - "Filtrer les certificats"
+ *   - "Filtrer les demandes"
+ *   - "Filtrer les prescriptions"
+ *   - "Filtrer les formulaires"
+ *   - "Filtrer les documents joints"
+ *   - "Filtrer les recettes"
+ */
+function actionFilter(targetDocument, filter = "Tout filtrer") {
+    addTweak('*', 'autoFilterLeftHistory', () => {
+        // Je crée cette variable pour faciliter la lecture du code et de futurs changements
+        let filters = {
+            "Annuler tous les filtres": "img[title='Annuler tous les filtres']",
+            "Tout filtrer": "#imgf-1",
+            "Filtrer les consultations": "#imgf1",
+            "Filtrer les certificats": "#imgf2",
+            "Filtrer les demandes": "#imgf3",
+            "Filtrer les prescriptions": "#imgf4",
+            "Filtrer les formulaires": "#imgf5",
+            "Filtrer les documents joints": "#imgf10",
+            "Filtrer les recettes": "#imgf9"
+        };
+
+        let filterButton = targetDocument.querySelector(filters[filter]);
+        if (filterButton) {
+            filterButton.click();
+        }
+    });
+}
+
+
+
+
 
 historyToLeft();
 

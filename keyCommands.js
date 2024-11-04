@@ -169,7 +169,7 @@ function removeHistoryIframe(iframes) {
 
 function addShortcutsToIframe() {
     var iframes = document.querySelectorAll('iframe');
-    iframes = removeHistoryIframe(iframes);
+    // iframes = removeHistoryIframe(iframes); // Retiré car pas utile et gène le bon fonctionnement des raccourcis clavier
     if (iframes.length !== 0) {
         iframes.forEach(function (iframe, index) {
             let scopeName = 'iframe' + (index + 1);

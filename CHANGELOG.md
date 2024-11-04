@@ -2,11 +2,12 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
-# [2.8] - 
+# [2.8] - ajouts
 - [#262](https://github.com/Refhi/Weda-Helper/issues/262) - Affichage des Antécédents dans un volet latéral - désactivé par défaut, à activer dans les options
 - [#267](https://github.com/Refhi/Weda-Helper/issues/267) - Possibilité (cf. Options) de cocher "Non" automatiquement pour les ordonances numériques
 - [#250](https://github.com/Refhi/Weda-Helper/issues/250) - Cotation automatique : MOP ("DéfautMOP" à mettre dans les cotations favorites)
 - [#261](https://github.com/Refhi/Weda-Helper/issues/261) - Ajout d'une pré-alerte dans les antécédents : si la date de l'alerte est dans moins de 6 mois (paramétrable), la date s'affiche en orange + gras au lieu de magenta.
+- [#268](https://github.com/Refhi/Weda-Helper/issues/268) - Filtre automatiquement l'historique pour n'afficher que date et titre(désactivé par défaut)
 
 # [2.7.2] - fix
 - [#260](https://github.com/Refhi/Weda-Helper/issues/260) - ajout d'une discrète bulle info grisée en bas à droite des boutons éligibles
