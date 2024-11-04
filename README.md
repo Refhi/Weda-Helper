@@ -157,6 +157,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Antécédents :
 - ajout d'options pour limiter le nombre d'atcd affichés en CIM 10 et de les trier par ordre alphabétique
+- implémentation d'une pré-alerte : si la date de l'alerte est dans moins de 6 mois (paramétrable), l'alerte est affichée en orange
 
 
 
