@@ -254,17 +254,22 @@ function validateOrdoNumIfOptionActivated() {
 // autoclique le bouton de consentement de l'ordonnance numérique
 // TODO : ajouter la gestion de autoConsentNumPres_Oui
 addTweak([demandeUrl, prescriptionUrl], 'autoConsentNumPres', function () {
-    waitForElement({
-        selector: '.cdk-overlay-container .mat-radio-label',
-        callback: function (elements) {
-            // console.log('[debug].cdk-overlay-container .mat-radio-label', elements);
-            elements[0].click();
-            recordMetrics({ clicks: 1, drags: 1 });
+    getOption('autoConsentNumPres_Oui', function (autoConsentNumPres_Oui) {
+        waitForElement({
+            selector: '.cdk-overlay-container .mat-radio-label',
+            callback: function (elements) {
+                if (autoConsentNumPres_Oui) {
+                    elements[0].click();
+                } else {
+                    elements[1].click();
+                }
+                recordMetrics({ clicks: 1, drags: 1 });
 
-            if (PrescriptionForm) { //Pas de selection du type de l'ordonnance donc on valide une fois le consentement coché
-                validateOrdoNumIfOptionActivated();
+                if (PrescriptionForm) { //Pas de selection du type de l'ordonnance donc on valide une fois le consentement coché
+                    validateOrdoNumIfOptionActivated();
+                }
             }
-        }
+        });
     });
 });
 
