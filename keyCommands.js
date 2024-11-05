@@ -167,18 +167,25 @@ function removeHistoryIframe(iframes) {
     return iframes;
 }
 
+function isHistoriqueIframe(iframe) {
+    let isHistoriqueIframe_bol = iframe.src.startsWith(`${baseUrl}/FolderMedical/FrameHistoriqueForm.aspx`);
+    return isHistoriqueIframe_bol;
+}
+
 function addShortcutsToIframe() {
     var iframes = document.querySelectorAll('iframe');
-    // iframes = removeHistoryIframe(iframes); // Retiré car pas utile et gène le bon fonctionnement des raccourcis clavier
     if (iframes.length !== 0) {
         iframes.forEach(function (iframe, index) {
             let scopeName = 'iframe' + (index + 1);
             hotkeys.setScope(scopeName);
             // console.log('iframe' + (index + 1), iframe);
             addShortcuts(keyCommands, iframe.contentDocument, scopeName);
-            addTweak('/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', function () {
-                addTabsToIframe(scopeName, iframe, index, iframes); // est géré dans Constation.js dans la section TweakTabConsultation
-            });
+            if (!isHistoriqueIframe(iframe)) { // Pas besoin des tabulations sur l'historique
+                iframes = removeHistoryIframe(iframes);
+                addTweak('/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', function () {
+                    addTabsToIframe(scopeName, iframe, iframes); // est géré dans Constation.js dans la section TweakTabConsultation
+                });
+            }
         });
     }
 }
