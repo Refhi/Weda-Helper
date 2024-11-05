@@ -425,3 +425,62 @@ async function getLastPageFromBlob(blob) {
     const newBlob = new Blob([newPdfBytes], { type: 'application/pdf' });
     return newBlob;
 }
+
+
+// Lien avec les notifications de Weda
+let notifToSend = {
+    message: "Notification de test 2", // message displayed
+    icon: "home", // mat icon used for the notification
+    type: "success", // color (success / fail / undefined)
+    extra: "{}", // extra data (json)
+    duration: 5000 // duration of the notification
+};
+
+function startNotifScript() {
+    let script = document.createElement('script');
+    script.src = chrome.runtime.getURL('FW_scripts/FWNotif.js?test=true');
+    // console.log(script) // Error in event handler: TypeError: console.log(...) is not a function
+    (document.head || document.documentElement).appendChild(script);
+}
+
+startNotifScript();
+
+
+/**
+ * Envoie une notification Weda.
+ * 
+ * @param {Object} options - Options de la notification.
+ * @param {string} options.message - Message affiché dans la notification.
+ * @param {string} options.icon - Icône utilisée pour la notification (mat icon).
+ * @param {string} options.type - Type de notification (success / fail / undefined).
+ * @param {string} options.extra - Données supplémentaires (JSON).
+ * @param {number} options.duration - Durée de la notification en millisecondes.
+ */
+function sendWedaNotif({
+    message = "Notification de test",
+    icon = "home",
+    type = "success",
+    extra = "{}",
+    duration = 5000
+} = {}) {
+    const notifToSend = {
+        message,
+        icon,
+        type,
+        extra,
+        duration
+    };
+
+    const event = new CustomEvent('showNotification', { detail: notifToSend });
+    document.dispatchEvent(event);
+}
+
+
+/* === test d'implementation ... === */
+chrome.runtime.onMessage.addListener(
+    function (request, sender, sendResponse) {
+        if (request.action === "sendNotif") {
+            sendWedaNotif();
+        }
+    }
+);

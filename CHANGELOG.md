@@ -10,6 +10,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#261](https://github.com/Refhi/Weda-Helper/issues/261) - Ajout d'une pré-alerte dans les antécédents : si la date de l'alerte est dans moins de 6 mois (paramétrable), la date s'affiche en orange + gras au lieu de magenta.
 - [#268](https://github.com/Refhi/Weda-Helper/issues/268) - Filtre automatiquement l'historique pour n'afficher que date et titre(désactivé par défaut)
 - [#263](https://github.com/Refhi/Weda-Helper/issues/263) - impression instantanée ! (ouvre un nouvel onglet au lancement de l'impression, qui se termine tranquilement dans l'onglet initial, avant d'être fermé après confirmation de l'impression). A n'utiliser que conjointement avec le Companion.
+- [#269](https://github.com/Refhi/Weda-Helper/issues/269) - Implémente une fonction pour le développeur de Weda-Helper pour envoyer des notifications via le système de notification de Weda
 
 ## Fix :
 - [#265](https://github.com/Refhi/Weda-Helper/issues/265) - tentative de fix des problèmes de navigation par tabulation
