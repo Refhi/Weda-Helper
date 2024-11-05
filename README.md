@@ -179,7 +179,7 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 ## Weda-Helper-Companion
 *Autant pousser l'économie de mouvements jusqu'au bout*
 Installez et laisser tourner ce logiciel sur votre ordinateur pour avoir des fonctionnalités supplémentaires :
-- impression directe automatique complète
+- impression directe automatique complète et instantanée (grace à l'option "Impression Instantanée" dans les options de l'extension)
 - Envoie le montant à régler à votre TPE (quand on valide une FSE - via alt+v - ou un règlement manuel)
 
 => Procédures d'installation et de paramétrage sur [le readme du Companion](https://github.com/Refhi/Weda-Helper-Companion)

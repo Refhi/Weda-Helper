@@ -3,11 +3,12 @@
 // Donc le montant tpe et l'impression.
 // Vérifie également la présence du Companion et propose de l'activer si les options sont désactivées.
 function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithData = null, testing = false) {
+    let isSuccess = true;
     getOption(['portCompanion', 'apiKey'], function ([portCompanion, apiKey]) {
         let versionToCheck = "1.2";
         let urlWithParam = `http://localhost:${portCompanion}/${urlCommand}` +
-                    `?apiKey=${apiKey}` +
-                    `&versioncheck=${versionToCheck}`;
+            `?apiKey=${apiKey}` +
+            `&versioncheck=${versionToCheck}`;
         let fetchOptions = blob ? {
             method: 'POST',
             headers: {
@@ -50,6 +51,7 @@ function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithD
                 if (!errortype.includes('[focus]') && !errortype.includes('tpe')) {
                     alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
                 }
+                isSuccess = false;
             })
             .finally(() => {
                 if (!testing) {
@@ -59,7 +61,16 @@ function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithD
                     if (callback) {
                         callback();
                     }
-                    console.log('Impression via companion terminée');
+
+                    console.log('Impression réussie avec le companion = ', isSuccess);
+                    if (isSuccess) {
+                        
+                        // Inscrire dans le stockage local la date de la dernière impression
+                        const date = new Date();
+                        chrome.storage.local.set({ 'lastPrintDate': date.toISOString() }, function () {
+                            console.log('Dernière date d\'impression enregistrée :', date);
+                        });
+                    }
                 }
             });
     });
@@ -71,7 +82,7 @@ function sendtpeinstruction(amount) {
     chrome.storage.local.set({ 'lastTPEamount': amount }, function () {
         console.log('lastTPEamount', amount, 'sauvegardé avec succès');
     });
-    
+
     // Ici c'est pas vraiment l'ajout d'un tweak, mais on l'utilise par simplicité
     addTweak('*', '!RemoveLocalCompanionTPE', function () {
         if (!(/^\d+$/.test(amount))) {
@@ -123,7 +134,7 @@ function watchForFocusLoss() {
             }, 2000); // 2 sec paraît le bon compromis
         }
     });
-}       
+}
 
 // // vérification de la présence du Companion
 function testCompanion() {

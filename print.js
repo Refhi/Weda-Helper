@@ -404,4 +404,60 @@ function startPrinting(handlingType, whatToPrint, postPrintBehavior, modelNumber
         // ensuite attendre que l'iframe soit chargé
         printIframeWhenAvailable("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", handlingType, whatToPrint, postPrintBehavior);
     }
+
+    // Seulement si on utilise le Companion
+    getOption('!RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
+        instantPrint();
+    });
+}
+
+
+// **
+// * Gestion de l'impression instantanée : Ouvre un nouvel onglet sur l'url de base dès l'impression.
+// * Ensuite, une fois l'impression terminée avec succès, on ferme l'onglet originel via un window.close()
+// * Le succès de l'impression est déterminé par la mise à jour de la clé 'lastPrintDate' dans le local storage.
+// */
+function instantPrint() {
+    function closeWindow() {
+        // Crée un bouton caché pour fermer la fenêtre
+        let closeButton = document.createElement('button');
+        closeButton.style.display = 'none';
+        closeButton.onclick = function () {
+            window.close();
+        };
+        document.body.appendChild(closeButton);
+
+        // Simule un clic sur le bouton pour fermer la fenêtre
+        closeButton.click();
+    }
+
+    function companionPrintDone(callback, delay = 20000) {
+        let startTime = Date.now();
+        let interval = setInterval(function () {
+            chrome.storage.local.get('lastPrintDate', function (result) {
+                console.log('lastPrintDate', result.lastPrintDate);
+                if (result.lastPrintDate) {
+                    let printTime = Date.parse(result.lastPrintDate);
+                    if (Date.now() - printTime < 5000) {
+                        clearInterval(interval);
+                        callback();
+                    }
+                }
+            });
+
+            if (Date.now() - startTime > delay) {
+                clearInterval(interval);
+                // Met une popup à l'utilisateur
+                alert('Weda Helper : L\'impression Instantanée a échoué.');
+            }
+        }, 100);
+    }
+
+
+    addTweak('*', 'instantPrint', function () {
+        console.log('instantPrint activé');
+        // Ouvre un nouvel onglet avec l'URL de base
+        window.open(baseUrl);
+        companionPrintDone(closeWindow);
+    });
 }

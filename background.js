@@ -69,6 +69,7 @@ var defaultSettings = {
   'removeBoldPatientFirstName': false,
   'preAlertATCD': 6,
   'autoFilterLeftHistory': false,
+  'instantPrint': false,
 };
 
 var defaultShortcuts = {
