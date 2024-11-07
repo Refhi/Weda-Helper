@@ -25,9 +25,15 @@ function handlePrint(printType, modelNumber = 0) {
         const handlingType = deduceHandlingType(printType, RemoveLocalCompanionPrint);
         // Qu'imprime-t-on ? (courbe, FSE ou modèle)
         const whatToPrint = deduceWhatToPrint();
+        // Si instantPrint est actif, passer le postPrintBehavior à 'doNothing'
+        getOption('instantPrint', function (instantPrint) {
+            if (instantPrint) {
+                postPrintBehavior = 'doNothing';
+            }
+            // On lance le processus d'impression
+            startPrinting(handlingType, whatToPrint, postPrintBehavior, modelNumber);
+        });
 
-        // On lance le processus d'impression
-        startPrinting(handlingType, whatToPrint, postPrintBehavior, modelNumber);
     });
 }
 
