@@ -489,7 +489,7 @@ chrome.runtime.onMessage.addListener(
 // ** set lastPrintDate
 // * permet de définir la date de la dernière impression et donc de permettre ensuite la fermeture de l'onglet appelant
 // * dans le cadre de la fonction instantPrint
-function setLastPrintDate() {
+function setLastPrintDate() { // TODO : ajouter un "tri" de l'origine de la demande d'impression, l'idée étant d'éviter que l'impression de 2 docs simultanément ne ferme les deux onglets induement
     const date = new Date();
     chrome.storage.local.set({ 'lastPrintDate': date.toISOString() }, function () {
         console.log('Dernière date d\'impression enregistrée :', date);

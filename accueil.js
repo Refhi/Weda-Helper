@@ -6,7 +6,7 @@ let homePageUrls = [
 
 let homePageFunctions = [
     {
-        option: '*preAlertATCD',
+        option: '*preAlertATCD', // TODO : à mettre en option ? et à corriger
         callback: function () {
             waitForElement({
                 selector: '[title="Date d\'alerte"]',
@@ -35,7 +35,9 @@ let homePageFunctions = [
                         }
                         let today = new Date();
                         let fiveMonthsLater = new Date();
+                        console.log('alertDate', alertDate, 'today', today);
                         getOption('preAlertATCD', function (preAlertATCD) {
+                            preAlertATCD = parseInt(preAlertATCD);
                             fiveMonthsLater.setMonth(today.getMonth() + preAlertATCD);
                             if (alertDate <= fiveMonthsLater && alertDate > today) {
                                 // Mettre l'élément en orange et en gras
@@ -51,15 +53,23 @@ let homePageFunctions = [
     },
     {
         option: '!RemoveLocalCompanionPrint',
-        callback: function () {
+        callback: function () { // TODO : le lien vers le PDF ne fonctionne pas si on shunte la prévisu ?
+            function returnAATIElement() {
+                // Le selecteur est .sc et le titre débute par "Dernier A.T."
+                let aatiElement = document.querySelector('.sc[title^="Dernier A.T."]');
+                console.log('aatiElement', aatiElement);
+                return aatiElement;
+            }
             console.log('je tente de clicker sur le dernier pdf');
             chrome.storage.local.get(['autoAATIexit', 'RemoveLocalCompanionPrint'], function (result) {
                 if (Date.now() - result.autoAATIexit < 10000 && result.RemoveLocalCompanionPrint === false) {
                     console.log('autoAATIexit', result.autoAATIexit, 'is less than 10s old, donc je tente d\'ouvrir le pdf du dernier arrêt de travail');
                     // Ouvre le dernier arrêt de travail
-                    // class = sc et le titre débute par "Dernier A.T."
-                    let element = document.querySelector('.sc');
+                    let element = returnAATIElement();
                     element.click();
+                } else {
+                    // let element = returnAATIElement();
+                    // element.click();
                 }
             });
         },

@@ -144,7 +144,7 @@ addTweak(urlAATI, 'autoAATI', function () {
     waitForElement({
         selector: selectorExitButton,
         callback: function (elements) {            
-            // 2.7.2 La nouvelle méthode est d'aller ensuite récupérer le pdf depuis la page de résumé
+            // 2.7.2 La nouvelle méthode est d'aller ensuite récupérer le pdf depuis la page d'accueil du dossier patient
             setTimeOfSending('autoAATIexit');
             console.log('clicking on the exit button + timestamp');
             // intervalId = setInterval(() => checkAutoAATIexit(elements), 100); // Vérifier toutes les 100ms
