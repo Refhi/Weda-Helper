@@ -64,12 +64,7 @@ function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithD
 
                     console.log('Impression réussie avec le companion = ', isSuccess);
                     if (isSuccess) {
-                        
-                        // Inscrire dans le stockage local la date de la dernière impression
-                        const date = new Date();
-                        chrome.storage.local.set({ 'lastPrintDate': date.toISOString() }, function () {
-                            console.log('Dernière date d\'impression enregistrée :', date);
-                        });
+                        setLastPrintDate(); // utilisé dans le cadre d'instantPrint
                     }
                 }
             });

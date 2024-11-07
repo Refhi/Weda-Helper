@@ -484,3 +484,14 @@ chrome.runtime.onMessage.addListener(
         }
     }
 );
+
+
+// ** set lastPrintDate
+// * permet de définir la date de la dernière impression et donc de permettre ensuite la fermeture de l'onglet appelant
+// * dans le cadre de la fonction instantPrint
+function setLastPrintDate() {
+    const date = new Date();
+    chrome.storage.local.set({ 'lastPrintDate': date.toISOString() }, function () {
+        console.log('Dernière date d\'impression enregistrée :', date);
+    });
+}

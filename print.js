@@ -315,6 +315,7 @@ function printIframeWhenAvailable(selector, handlingType, whatToPrint, postPrint
                     });
             } else if (handlingType === 'download') {
                 triggerDirectDownload(url);
+                setLastPrintDate(); // Utilisé dans le cadre d'instantPrint
                 postPrintAction(postPrintBehavior, whatToPrint);
             }
         });
