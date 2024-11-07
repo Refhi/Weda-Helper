@@ -412,7 +412,7 @@ function startPrinting(handlingType, whatToPrint, postPrintBehavior, modelNumber
         printIframeWhenAvailable("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", handlingType, whatToPrint, postPrintBehavior);
     }
 
-    // Seulement si on utilise le Companion
+    // Seulement si on utilise le Companion //TODO : où gère-t-on ça pour les downloads ?
     getOption('!RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
         instantPrint();
     });
@@ -468,3 +468,17 @@ function instantPrint() {
         companionPrintDone(closeWindow);
     });
 }
+// TODO : l'ouverture d'un nouvel onglet doit se faire vers l'url du patient en cours, et non vers urlBase
+// Sinon en cas d'onglets multiples ouverts ça fait nawaq
+
+// TODO : toujours cocher "joindre PJ score ?"
+
+
+// TODO : rajouter des notifications Weda pour informer du status
+// (genre la cloture de l'onglet qui ne fonctionne pas la première fois)
+
+// TODO : 1 seul loupé jusqu'alors sur l'instantPrint avec une fermture avant impression : Problème de timing ?
+// Ajouter quelques secondes de délai avant la fermeture de la fenêtre pour être sûr que l'impression ait bien été lancée ?
+
+// TODO : retravailler sur le système de perte de focus : quand on utilise les onglets multiples, ça ne fonctionne pas correctement
+// => passer ça vers une simple réduction de la fenêtre adobe reader ?
