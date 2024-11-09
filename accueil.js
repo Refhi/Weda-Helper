@@ -6,7 +6,7 @@ let homePageUrls = [
 
 let homePageFunctions = [
     {
-        option: '*preAlertATCD', // TODO : à mettre en option ? et à corriger
+        option: '*preAlertATCD',
         callback: function () {
             waitForElement({
                 selector: '[title="Date d\'alerte"]',
