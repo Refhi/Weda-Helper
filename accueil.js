@@ -53,7 +53,7 @@ let homePageFunctions = [
     },
     {
         option: '!RemoveLocalCompanionPrint',
-        callback: function () { // TODO : le lien vers le PDF ne fonctionne pas si on shunte la prévisu ?
+        callback: function () {
             function returnAATIElement() {
                 // Le selecteur est .sc et le titre débute par "Dernier A.T."
                 let aatiElement = document.querySelector('.sc[title^="Dernier A.T."]');
