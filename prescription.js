@@ -252,7 +252,6 @@ function validateOrdoNumIfOptionActivated() {
 }
 
 // autoclique le bouton de consentement de l'ordonnance numérique
-// TODO : ajouter la gestion de autoConsentNumPres_Oui
 addTweak([demandeUrl, prescriptionUrl], 'autoConsentNumPres', function () {
     getOption('autoConsentNumPres_Oui', function (autoConsentNumPres_Oui) {
         waitForElement({
