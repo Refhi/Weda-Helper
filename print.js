@@ -463,7 +463,9 @@ function instantPrint() {
 
     addTweak('*', 'instantPrint', async function () {
         console.log('instantPrint activé');
-        // Ouvre un nouvel onglet avec l'URL de base
+        // Ouvre un nouvel onglet avec le patient en cours dans l'onglet actuel
+        // C'est nécessaire passer par l'API car en cas d'onglets multiples ouverts sur des
+        // patients différents, le nouvel onglet ouvert peut être celui d'un autre patient
         let patientInfo = await getPatientInfo(getCurrentPatientId());
         let urlPatient = patientInfo['patientFileUrl'];
         window.open(urlPatient);
@@ -471,8 +473,6 @@ function instantPrint() {
     });
 }
 
-// TODO : l'ouverture d'un nouvel onglet doit se faire vers l'url du patient en cours, et non vers urlBase
-// Sinon en cas d'onglets multiples ouverts ça fait nawaq
 
 // TODO : toujours cocher "joindre PJ score ?"
 
