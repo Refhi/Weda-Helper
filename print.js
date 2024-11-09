@@ -357,7 +357,7 @@ function startPrinting(handlingType, whatToPrint, postPrintBehavior, modelNumber
 
     recordMetrics({ clicks: 3, drags: 4 });
 
-    // deux grands cas de figure : impression d'une courbe ou d'un document
+    // trois grands cas de figure : impression d'une courbe, d'une fse ou d'un document
     if (whatToPrint === 'courbe') {
         let url = fetchPdfUrlFromImageData();
         if (!url) {
@@ -406,16 +406,16 @@ function startPrinting(handlingType, whatToPrint, postPrintBehavior, modelNumber
 
 
     } else { // sinon, c'est un modèle d'impression
+        // On déclenche l'instantPrint seulement si l'impression via le Companion est activée
+        getOption('!RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
+            instantPrint(); // Va ouvrir un nouvel onglet avec l'url de base du patient
+        });
+
         // il faut d'abord cliquer sur le modèle d'impression pertinent
         clickPrintModelNumber(modelNumber);
         // ensuite attendre que l'iframe soit chargé
         printIframeWhenAvailable("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", handlingType, whatToPrint, postPrintBehavior);
     }
-
-    // Seulement si on utilise le Companion //TODO : où gère-t-on ça pour les downloads ?
-    getOption('!RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
-        instantPrint();
-    });
 }
 
 
@@ -461,13 +461,16 @@ function instantPrint() {
     }
 
 
-    addTweak('*', 'instantPrint', function () {
+    addTweak('*', 'instantPrint', async function () {
         console.log('instantPrint activé');
         // Ouvre un nouvel onglet avec l'URL de base
-        window.open(baseUrl);
+        let patientInfo = await getPatientInfo(getCurrentPatientId());
+        let urlPatient = patientInfo['patientFileUrl'];
+        window.open(urlPatient);
         companionPrintDone(closeWindow);
     });
 }
+
 // TODO : l'ouverture d'un nouvel onglet doit se faire vers l'url du patient en cours, et non vers urlBase
 // Sinon en cas d'onglets multiples ouverts ça fait nawaq
 
