@@ -436,6 +436,17 @@ function instantPrint() {
 
         // Simule un clic sur le bouton pour fermer la fenêtre
         closeButton.click();
+
+        // Normalement la fenêtre est fermée. Mais si jamais elle ne l'est pas, on le signale
+        setTimeout(() => {
+            if (!window.closed) {
+                sendWedaNotifAllTabs({
+                    message: 'l\'onglet initiateur de l\'impression instantanée n\'a pas pu être fermé automatiquement. Veuillez le fermer manuellement. Cela arrive si l\onglet initiateur n\'a pas été ouvert par Weda Helper.',
+                    type: 'undefined',
+                    icon: 'print'
+                });
+            }
+        }, 1000);
     }
 
     function companionPrintDone(callback, delay = 20000) {
@@ -447,6 +458,12 @@ function instantPrint() {
                 let printTime = Date.parse(lastPrintDate);
                 if (Date.now() - printTime < 5000) {
                     clearInterval(interval);
+                    sendWedaNotifAllTabs({
+                        message: 'L\'impression Instantanée terminée avec succès.',
+                        type: 'success',
+                        icon: 'print',
+                        duration: 2000
+                    });
                     callback();
                 }
             }

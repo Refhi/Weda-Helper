@@ -518,16 +518,16 @@ chrome.storage.onChanged.addListener(function(changes, namespace) {
 });
 
 
-// envoi une notif après 5 secondes
-setTimeout(() => {
-    sendWedaNotifAllTabs({
-        message: 'Notification de test custom2',
-//        icon: 'home',
-        type: 'fail',
-//        extra: '{}',
-//        duration: 5000
-    });
-}, 5000);
+// // envoi une notif après 5 secondes
+// setTimeout(() => {
+//     sendWedaNotifAllTabs({
+//         message: 'Notification de test custom2',
+// //        icon: 'home',
+//         type: 'fail',
+// //        extra: '{}',
+// //        duration: 5000
+//     });
+// }, 5000);
 
 
 
