@@ -441,21 +441,23 @@ function instantPrint() {
     function companionPrintDone(callback, delay = 20000) {
         let startTime = Date.now();
         let interval = setInterval(function () {
-            chrome.storage.local.get('lastPrintDate', function (result) {
-                console.log('lastPrintDate', result.lastPrintDate);
-                if (result.lastPrintDate) {
-                    let printTime = Date.parse(result.lastPrintDate);
-                    if (Date.now() - printTime < 5000) {
-                        clearInterval(interval);
-                        callback();
-                    }
+            let lastPrintDate = sessionStorage.getItem('lastPrintDate');
+            console.log('lastPrintDate', lastPrintDate);
+            if (lastPrintDate) {
+                let printTime = Date.parse(lastPrintDate);
+                if (Date.now() - printTime < 5000) {
+                    clearInterval(interval);
+                    callback();
                 }
-            });
-
+            }
+    
             if (Date.now() - startTime > delay) {
                 clearInterval(interval);
-                // Met une popup à l'utilisateur
-                alert('Weda Helper : L\'impression Instantanée a échoué.');
+                sendWedaNotifAllTabs({
+                    message: 'L\'impression Instantanée a échoué. Allez dans l\'onglet ayant lancé l\'impression pour vérifier.',
+                    type: 'undefined',
+                    icon: 'print'
+                });
             }
         }, 100);
     }
@@ -473,15 +475,3 @@ function instantPrint() {
     });
 }
 
-
-// TODO : toujours cocher "joindre PJ score ?"
-
-
-// TODO : rajouter des notifications Weda pour informer du status
-// (genre la cloture de l'onglet qui ne fonctionne pas la première fois)
-
-// TODO : 1 seul loupé jusqu'alors sur l'instantPrint avec une fermture avant impression : Problème de timing ?
-// Ajouter quelques secondes de délai avant la fermeture de la fenêtre pour être sûr que l'impression ait bien été lancée ?
-
-// TODO : retravailler sur le système de perte de focus : quand on utilise les onglets multiples, ça ne fonctionne pas correctement
-// => passer ça vers une simple réduction de la fenêtre adobe reader ?
