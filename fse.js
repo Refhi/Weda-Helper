@@ -521,6 +521,19 @@ addTweak('/vitalzen/gestion.aspx', 'TweakSCORDegradee', function () {
     });
 });
 
+addTweak('/vitalzen/fse.aspx', 'SCORAutoSelectPJ', function () {
+    waitForElement({
+        selector: 'TODO', // TODO: Trouver le sélecteur pour le bouton de sélection des PJ SCOR
+        callback: function (element) {
+            console.log('Case SCOR PJ trouvée, je clique dessus si pas déjà cochée', element);
+            if (!element[0].checked) {
+                element[0].click();
+                recordMetrics({ clicks: 1, drags: 1 });
+            }
+        }
+    });
+});
+
 
 addTweak('/vitalzen/fse.aspx', '*keepPrintDegradeeParameters', function () {
     waitForElement({
