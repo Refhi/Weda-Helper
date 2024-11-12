@@ -143,14 +143,17 @@ addTweak(urlAATI, 'autoAATI', function () {
 
     waitForElement({
         selector: selectorExitButton,
-        callback: function (elements) {            
+        callback: function (elements) {
             // 2.7.2 La nouvelle méthode est d'aller ensuite récupérer le pdf depuis la page d'accueil du dossier patient
-            setTimeOfSending('autoAATIexit');
-            console.log('clicking on the exit button + timestamp');
-            // intervalId = setInterval(() => checkAutoAATIexit(elements), 100); // Vérifier toutes les 100ms
-            setTimeout(() => elements[0].click(), 10000); // Finalement on quitte direct sans attendre
-            // setTimeout(() => clearInterval(intervalId), 20000); // Arrêter après 20 secondes
-            recordMetrics({ clicks: 1, drags: 1 });
+            setTimeOfSending('autoAATIexit'); // A l'ouverure de la page d'accueil on n'ouvrira le pdf seulement si < 10 secondes
+            // Ici on essai de laisser le temps au pdf d'être généré avant de cliquer sur quitter.
+            // Mais on ne pourra pas empêcher la popup de prévisu de s'afficher
+            console.log('autoAATIexit', Date.now(), 'attente de 3 secondes avant de cliquer sur le bouton de sortie');
+            setTimeout(() => {
+                console.log('clicking on the exit button + timestamp');
+                elements[0].click(); // Finalement on quitte direct sans attendre
+                recordMetrics({ clicks: 1, drags: 1 });
+            }, 3000);
         }
     });
 
