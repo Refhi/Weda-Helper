@@ -14,7 +14,8 @@ Merci de décrire succinctement le bug ex. "les tabulations en consultation ne f
 Décrivez-moi les étapes pour reproduire le bug
 
 **au besoin une capture d'écran (Maj+Win+S)**
+Pensez à masquer les noms/prénom
 
-**votre système ! (IMPORTANT)**
+**votre système**
  - OS: [e.g. iOS, mac, windows 11, etc.]
  - Navigateur web [e.g. chrome, safari, firefox]
