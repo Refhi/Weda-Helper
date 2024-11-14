@@ -159,7 +159,10 @@ addTweak(urlAATI, 'autoAATI', function () {
 
 
 
-    // Envoi du document à l'assistant
+    /** Envoi du document à l'assistant
+    * @Deprecated
+    * Avant on pouvait lancer l'impression depuis une fenêtre de prévisu.
+    */
     addTweak('/FolderMedical/PopUpViewBinaryForm.aspx', "*sendDocToCompanion", function () {
         chrome.storage.local.get(['autoAATIexit'], function (result) {
             getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
@@ -182,7 +185,7 @@ addTweak(urlAATI, 'autoAATI', function () {
                             recordMetrics({ clicks: 3, drags: 3 });
                             setTimeout(function () {
                                 window.close();
-                            }, 1000); // essai avec un délai de 1s
+                            }, 10000); // essai avec un délai de 1s
                         })
                         .catch(error => {
                             console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
