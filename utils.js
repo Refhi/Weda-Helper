@@ -427,7 +427,8 @@ async function getLastPageFromBlob(blob) {
 }
 
 
-// Lien avec les notifications de Weda
+// // Lien avec les notifications de Weda
+// Exemple de load de notification
 let notifToSend = {
     message: "Notification de test 2", // message displayed
     icon: "home", // mat icon used for the notification
@@ -436,6 +437,8 @@ let notifToSend = {
     duration: 5000 // duration of the notification
 };
 
+// On démarre le script d'écoute, qui doit tourner à part dans FWNotif.js
+// Il écoutera les évènements pour afficher les notifications
 function startNotifScript() {
     let script = document.createElement('script');
     script.src = chrome.runtime.getURL('FW_scripts/FWNotif.js?test=true');
@@ -447,14 +450,17 @@ startNotifScript();
 
 
 /**
- * Envoie une notification Weda.
+ * Envoi simplifié d'une notification Weda.
+ * Appelé via la fonction ou l'envoi d'un onMessage.
+ * 
+ * Il est en général préférable d'utiliser la fonction sendWedaNotif() qui est plus simple à utiliser.
  * 
  * @param {Object} options - Options de la notification.
- * @param {string} options.message - Message affiché dans la notification.
- * @param {string} options.icon - Icône utilisée pour la notification (mat icon).
- * @param {string} options.type - Type de notification (success / fail / undefined).
- * @param {string} options.extra - Données supplémentaires (JSON).
- * @param {number} options.duration - Durée de la notification en millisecondes.
+ * @param {string} [options.message="Notification de test"] - Message affiché dans la notification.
+ * @param {string} [options.icon="home"] - Icône utilisée pour la notification (mat icon).
+ * @param {string} [options.type="success"] - Type de notification (success / fail / undefined). /!\ en date du 10/11/24, 'fail' entraîne une notification qui ne tient pas compte de 'duration'.
+ * @param {string} [options.extra="{}"] - Données supplémentaires (JSON).
+ * @param {number} [options.duration=5000] - Durée de la notification en millisecondes.
  */
 function sendWedaNotif({
     message = "Notification de test",
@@ -463,35 +469,73 @@ function sendWedaNotif({
     extra = "{}",
     duration = 5000
 } = {}) {
+    // Vérifie si chaque option est vide et assigne la valeur par défaut si nécessaire
+    message = message || "Notification de test";
+    icon = icon || "home";
+    type = type || "success";
+    extra = extra || "{}";
+    duration = duration || 5000;
+
     const notifToSend = {
-        message,
+        message: `[Weda-Helper] ${message}`,
         icon,
         type,
         extra,
         duration
     };
 
+    console.log('Notification envoyée :', notifToSend);
+
     const event = new CustomEvent('showNotification', { detail: notifToSend });
     document.dispatchEvent(event);
 }
 
 
-/* === test d'implementation ... === */
+/* === implementation de la fonction sendWedaNotif === */
+// utilisé pour l'envoi depuis le popup
 chrome.runtime.onMessage.addListener(
     function (request, sender, sendResponse) {
-        if (request.action === "sendNotif") {
-            sendWedaNotif();
+        if (request.action === "sendWedaNotif") {
+            sendWedaNotif(request.options);
+            sendResponse({ message: "Notification envoyée !" });
         }
     }
 );
+
+function sendWedaNotifAllTabs(options) {
+    // Ajoute un identifiant unique basé sur l'horodatage actuel
+    options.id = Date.now();
+    chrome.storage.local.set({ 'wedaNotifOptions': options }, function() {
+        console.log('Options de notification stockées avec ID:', options.id);
+    });
+}
+
+chrome.storage.onChanged.addListener(function(changes, namespace) {
+    if (namespace === 'local' && changes.wedaNotifOptions) {
+        const options = changes.wedaNotifOptions.newValue;
+        sendWedaNotif(options);
+    }
+});
+
+
+// // envoi une notif après 5 secondes
+// setTimeout(() => {
+//     sendWedaNotifAllTabs({
+//         message: 'Notification de test custom2',
+// //        icon: 'home',
+//         type: 'fail',
+// //        extra: '{}',
+// //        duration: 5000
+//     });
+// }, 5000);
+
 
 
 // ** set lastPrintDate
 // * permet de définir la date de la dernière impression et donc de permettre ensuite la fermeture de l'onglet appelant
 // * dans le cadre de la fonction instantPrint
-function setLastPrintDate() { // TODO : ajouter un "tri" de l'origine de la demande d'impression, l'idée étant d'éviter que l'impression de 2 docs simultanément ne ferme les deux onglets induement
+function setLastPrintDate() { 
     const date = new Date();
-    chrome.storage.local.set({ 'lastPrintDate': date.toISOString() }, function () {
-        console.log('Dernière date d\'impression enregistrée :', date);
-    });
+    sessionStorage.setItem('lastPrintDate', date.toISOString());
+    console.log('Dernière date d\'impression enregistrée :', date);
 }
