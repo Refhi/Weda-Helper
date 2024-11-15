@@ -28,7 +28,7 @@ function handlePrint(printType, modelNumber = 0) {
         // Si instantPrint est actif, passer le postPrintBehavior à 'doNothing'
         getOption('instantPrint', function (instantPrint) {
             if (instantPrint) {
-                postPrintBehavior = 'doNothing';
+                postPrintBehavior = 'returnToPatient'; // On doit mettre 'returnToPatient' pour que l'envoi au DMP soit fait
             }
             // On lance le processus d'impression
             startPrinting(handlingType, whatToPrint, postPrintBehavior, modelNumber);
@@ -426,27 +426,38 @@ function startPrinting(handlingType, whatToPrint, postPrintBehavior, modelNumber
 // */
 function instantPrint() {
     function closeWindow() {
-        // Crée un bouton caché pour fermer la fenêtre
-        let closeButton = document.createElement('button');
-        closeButton.style.display = 'none';
-        closeButton.onclick = function () {
-            window.close();
-        };
-        document.body.appendChild(closeButton);
-
-        // Simule un clic sur le bouton pour fermer la fenêtre
-        closeButton.click();
-
-        // Normalement la fenêtre est fermée. Mais si jamais elle ne l'est pas, on le signale
-        setTimeout(() => {
-            if (!window.closed) {
-                sendWedaNotifAllTabs({
-                    message: 'l\'onglet initiateur de l\'impression instantanée n\'a pas pu être fermé automatiquement. Veuillez le fermer manuellement. Cela arrive si l\onglet initiateur n\'a pas été ouvert par Weda Helper.',
-                    type: 'undefined',
-                    icon: 'print'
-                });
+        // D'abord attendre l'apparition de l'élément avec role="progressbar"
+        waitForElement({ // TODO : quid si pas de DMP ?
+            selector: '[role="progressbar"]',
+            justOnce: true,
+            callback: function () {
+                console.log('[InstantPrint] progress bar detected, attente de sa disparition');
+                let startTime = Date.now();
+                let interval = setInterval(function () {
+                    let progressBarElement = document.querySelector('[role="progressbar"]');
+                    if (!progressBarElement) {
+                        console.log('[InstantPrint] progress bar disparu, je ferme la fenêtre');
+                        clearInterval(interval);
+                        window.close();
+                        // Normalement la fenêtre est fermée. Mais si jamais elle ne l'est pas, on le signale
+                        setTimeout(() => {
+                            sendWedaNotifAllTabs({
+                                message: 'l\'onglet initiateur de l\'impression instantanée n\'a pas pu être fermé automatiquement. Veuillez le fermer manuellement. Cela arrive si l\'onglet initiateur n\'a pas été ouvert par Weda Helper.',
+                                type: 'undefined',
+                                icon: 'print'
+                            });
+                        }, 1000);
+                    } else if (Date.now() - startTime > 40000) {
+                        clearInterval(interval);
+                        sendWedaNotifAllTabs({
+                            message: 'Erreur DMP: La barre de progression n\'a pas disparu après 40 secondes.',
+                            type: 'fail',
+                            icon: 'print'
+                        });
+                    }
+                }, 50);
             }
-        }, 1000);
+        });
     }
 
     function companionPrintDone(callback, delay = 20000) {
