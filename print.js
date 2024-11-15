@@ -442,7 +442,7 @@ function instantPrint() {
                         // Normalement la fenêtre est fermée. Mais si jamais elle ne l'est pas, on le signale
                         setTimeout(() => {
                             sendWedaNotifAllTabs({
-                                message: 'l\'onglet initiateur de l\'impression instantanée n\'a pas pu être fermé automatiquement. Veuillez le fermer manuellement. Cela arrive si l\'onglet initiateur n\'a pas été ouvert par Weda Helper.',
+                                message: '[Weda-Helper] l\'onglet initiateur de l\'impression instantanée n\'a pas pu être fermé automatiquement. Veuillez le fermer manuellement. Cela arrive si l\'onglet initiateur n\'a pas été ouvert par Weda Helper.',
                                 type: 'undefined',
                                 icon: 'print'
                             });
@@ -450,7 +450,7 @@ function instantPrint() {
                     } else if (Date.now() - startTime > 40000) {
                         clearInterval(interval);
                         sendWedaNotifAllTabs({
-                            message: 'Erreur DMP: La barre de progression n\'a pas disparu après 40 secondes.',
+                            message: '[Weda-Helper] Erreur DMP: La barre de progression n\'a pas disparu après 40 secondes. Merci de vérifier l\'onglet qui a initié l\'impression instantanée.',
                             type: 'fail',
                             icon: 'print'
                         });
