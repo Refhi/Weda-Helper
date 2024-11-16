@@ -435,6 +435,15 @@ function instantPrint() {
                 let startTime = Date.now();
                 let interval = setInterval(function () {
                     let progressBarElement = document.querySelector('[role="progressbar"]');
+                    console.log('[InstantPrint] progressBarElement', progressBarElement);
+                    // Ajout d'une valeur dans la session de la date de dernière présence de la barre de progression
+                    if (progressBarElement) {
+                        sessionStorage.setItem('lastProgressBarDate', new Date().toISOString());
+                    }
+                    // DEBUG : je suppose que dans certains cas, la progressBarElement persiste jusqu'au changement de page
+                    // et sa disparition ne permet pas de détecter la fin de l'impression.
+                    // Solution : ajouter une condition au chargement d'une nouvelle page dans la même session en
+                    // vérifiant la date de la dernière impression ?
                     if (!progressBarElement) {
                         console.log('[InstantPrint] progress bar disparu, je ferme la fenêtre');
                         clearInterval(interval);
@@ -503,3 +512,23 @@ function instantPrint() {
     });
 }
 
+addTweak('/FolderMedical/PatientViewForm.aspx', 'instantPrint', function () {
+    // Vérifie si une impression ne vient pas de se finir en vérifiant
+    // lastPrintDate et lastProgressBarDate dans la session
+    let lastPrintDate = sessionStorage.getItem('lastPrintDate');
+    let lastProgressBarDate = sessionStorage.getItem('lastProgressBarDate');
+    let currentTime = Date.now();
+    // Si la date de la dernière impression est inférieure à 5 secondes
+    // et que la barre de progression a disparu il y a moins de 5 secondes
+    if (lastPrintDate && lastProgressBarDate &&
+        currentTime - Date.parse(lastPrintDate) < 5000 &&
+        currentTime - Date.parse(lastProgressBarDate) < 5000) {
+        console.log('[InstantPrint] impression récente détectée, je ferme la fenêtre');
+        sendWedaNotifAllTabs({
+            message: '[Weda-Helper] Debug: impression récente détectée, je ferme la fenêtre',
+            type: 'success',
+            icon: 'bug_report'
+        });
+        window.close();
+    }
+});
