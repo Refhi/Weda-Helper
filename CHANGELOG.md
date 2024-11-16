@@ -14,6 +14,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 
 ## Fix :
 - [#265](https://github.com/Refhi/Weda-Helper/issues/265) - tentative de fix des problèmes de navigation par tabulation
+- [#276](https://github.com/Refhi/Weda-Helper/issues/276) - les raccourcis n'étaient plus modifiable dans les options
 
 
 # [2.7.2] - fix
