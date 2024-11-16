@@ -11,6 +11,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#268](https://github.com/Refhi/Weda-Helper/issues/268) - Filtre automatiquement l'historique pour n'afficher que date et titre(désactivé par défaut)
 - [#263](https://github.com/Refhi/Weda-Helper/issues/263) - impression instantanée ! (ouvre un nouvel onglet au lancement de l'impression, qui se termine tranquilement dans l'onglet initial, avant d'être fermé après confirmation de l'impression). A n'utiliser que conjointement avec le Companion.
 - [#269](https://github.com/Refhi/Weda-Helper/issues/269) - Implémente une fonction pour le développeur de Weda-Helper pour envoyer des notifications via le système de notification de Weda
+- [#225](https://github.com/Refhi/Weda-Helper/issues/225) - Sauvegarde automatique de la dernière sélection du choix d'AMC dans les FSE
 
 ## Fix :
 - [#265](https://github.com/Refhi/Weda-Helper/issues/265) - tentative de fix des problèmes de navigation par tabulation

@@ -651,3 +651,48 @@ function loggedInUser() {
     let userName = document.getElementById('LabelUserLog').innerText;
     return userName;
 }
+
+// Maintient de la sélection de la formule pour les AMC
+addTweak('/vitalzen/fse.aspx', '*TweakAMCFormule', function () {
+    console.log('[TweakAMCFormule] Démarrage');
+    // D'abord on attends l'élément encadrant le menu déroulant
+    waitForElement({
+        selector: '.mat-card-subtitle',
+        textContent: 'Formule',
+        // justOnce: false,
+        callback: function (elements) {
+            console.log('[TweakAMCFormule] élément trouvé', elements);
+            // on sélection le frère suivant du parent
+            let menuDeroulant = elements[0].parentElement.nextElementSibling;
+            console.log('[TweakAMCFormule] menuDeroulant trouvé', menuDeroulant);
+            // On vérifie si un des éléments est déjà sélectionné
+            let currentOption = menuDeroulant.value;
+            if (!currentOption) {
+                console.log('[TweakAMCFormule] pas d\'option sélectionnée');
+                // On récupère la valeur stockée
+                chrome.storage.local.get(['AMCFormule'], function (result) {
+                    console.log('[TweakAMCFormule] AMCFormule récupérée', result.AMCFormule);
+                    if (result.AMCFormule) {
+                        // Trouver l'option correspondante dans le menu déroulant
+                        let optionToSelect = Array.from(menuDeroulant.options).find(option => option.value === result.AMCFormule);
+                        if (optionToSelect) {
+                            optionToSelect.selected = true; // Sélectionner l'option
+                            optionToSelect.click(); // Cliquer sur l'option
+                        }
+                    }
+                });
+            }
+
+            // On surveille le clic sur un des éléments du menu déroulant (les options)
+            menuDeroulant.addEventListener('click', function (event) {
+                console.log('[TweakAMCFormule] clic détecté sur le menu déroulant');
+                // On stocke la valeur du menu déroulant
+                let saveObj = {};
+                saveObj['AMCFormule'] = menuDeroulant.value;
+                chrome.storage.local.set(saveObj, function () {
+                    console.log(`[TweakAMCFormule] AMCFormule saved`, menuDeroulant.value);
+                });
+            });
+        }
+    });
+});
