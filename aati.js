@@ -159,42 +159,39 @@ addTweak(urlAATI, 'autoAATI', function () {
 
 
 
-    // /** Envoi du document à l'assistant
-    // * @Deprecated
-    // * Avant on pouvait lancer l'impression depuis une fenêtre de prévisu.
-    // */
-    // addTweak('/FolderMedical/PopUpViewBinaryForm.aspx', "*sendDocToCompanion", function () {
-    //     chrome.storage.local.get(['autoAATIexit'], function (result) {
-    //         getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
-    //             if (Date.now() - result.autoAATIexit < 10000 && RemoveLocalCompanionPrint === false) {
-    //                 console.log('autoAATIexit', result.autoAATIexit, 'is less than 10 seconds ago');
-    //                 chrome.storage.local.set({ autoAATIexit: 0 });
-    //                 let iframeElement = document.querySelector('iframe');
-    //                 let url = iframeElement.src;
-    //                 console.log('url', url);
-    //                 fetch(url)
-    //                     .then(response => response.blob())
-    //                     .then(getLastPageFromBlob)
-    //                     .then(blob => {
-    //                         console.log('blob', blob);
-    //                         return sendToCompanion(`print`, blob);
-    //                     })
-    //                     .then(() => {
-    //                         // The blob has been successfully transferred
-    //                         console.log('The blob has been successfully transferred.');
-    //                         recordMetrics({ clicks: 3, drags: 3 });
-    //                         setTimeout(function () {
-    //                             window.close();
-    //                         }, 1000); // essai avec un délai de 1s
-    //                     })
-    //                     .catch(error => {
-    //                         console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
-    //                         if (!errortype.includes('[focus]')) {
-    //                             alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
-    //                         }
-    //                     });
-    //             }
-    //         });
-    //     });
-    // });
+    // Cette partie gère la fermeture de la prévisu de l'AT au moment où on récupère le pdf depuis la page d'accueil du patient    
+    addTweak('/FolderMedical/PopUpViewBinaryForm.aspx', "*sendDocToCompanion", function () {
+        chrome.storage.local.get(['autoAATIexit'], function (result) {
+            getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
+                if (Date.now() - result.autoAATIexit < 10000 && RemoveLocalCompanionPrint === false) {
+                    console.log('autoAATIexit', result.autoAATIexit, 'is less than 10 seconds ago');
+                    chrome.storage.local.set({ autoAATIexit: 0 });
+                    let iframeElement = document.querySelector('iframe');
+                    let url = iframeElement.src;
+                    console.log('url', url);
+                    fetch(url)
+                        .then(response => response.blob())
+                        .then(getLastPageFromBlob)
+                        .then(blob => {
+                            console.log('blob', blob);
+                            return sendToCompanion(`print`, blob);
+                        })
+                        .then(() => {
+                            // The blob has been successfully transferred
+                            console.log('The blob has been successfully transferred.');
+                            recordMetrics({ clicks: 3, drags: 3 });
+                            setTimeout(function () {
+                                window.close();
+                            }, 1000); // essai avec un délai de 1s
+                        })
+                        .catch(error => {
+                            console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
+                            if (!errortype.includes('[focus]')) {
+                                alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
+                            }
+                        });
+                }
+            });
+        });
+    });
 });
