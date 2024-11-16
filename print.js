@@ -427,7 +427,7 @@ function startPrinting(handlingType, whatToPrint, postPrintBehavior, modelNumber
 function instantPrint() {
     function closeWindow() {
         // D'abord attendre l'apparition de l'élément avec role="progressbar"
-        waitForElement({ // TODO : quid si pas de DMP ?
+        waitForElement({
             selector: '[role="progressbar"]',
             justOnce: true,
             callback: function () {
@@ -440,10 +440,10 @@ function instantPrint() {
                     if (progressBarElement) {
                         sessionStorage.setItem('lastProgressBarDate', new Date().toISOString());
                     }
-                    // DEBUG : je suppose que dans certains cas, la progressBarElement persiste jusqu'au changement de page
+                    // je suppose que dans certains cas, la progressBarElement persiste jusqu'au changement de page
                     // et sa disparition ne permet pas de détecter la fin de l'impression.
                     // Solution : ajouter une condition au chargement d'une nouvelle page dans la même session en
-                    // vérifiant la date de la dernière impression ?
+                    // vérifiant la date de la dernière impression => cf. plus bas
                     if (!progressBarElement) {
                         console.log('[InstantPrint] progress bar disparu, je ferme la fenêtre');
                         clearInterval(interval);
@@ -512,23 +512,25 @@ function instantPrint() {
     });
 }
 
+// Parfois la progressBar reste affichée après l'impression, ce qui empêche la fermeture de la fenêtre
+// On doit donc se rattraper après le chargement d'une nouvelle page dans la même session
 addTweak('/FolderMedical/PatientViewForm.aspx', 'instantPrint', function () {
-    // Vérifie si une impression ne vient pas de se finir en vérifiant
-    // lastPrintDate et lastProgressBarDate dans la session
+    console.log('[InstantPrint] debug démarré suite retour à dossier patient');
+    // Vérifie si une impression ne vient pas de se finir en vérifiant lastProgressBarDate et lastPrintDate
     let lastPrintDate = sessionStorage.getItem('lastPrintDate');
     let lastProgressBarDate = sessionStorage.getItem('lastProgressBarDate');
     let currentTime = Date.now();
-    // Si la date de la dernière impression est inférieure à 5 secondes
-    // et que la barre de progression a disparu il y a moins de 5 secondes
-    if (lastPrintDate && lastProgressBarDate &&
-        currentTime - Date.parse(lastPrintDate) < 5000 &&
-        currentTime - Date.parse(lastProgressBarDate) < 5000) {
-        console.log('[InstantPrint] impression récente détectée, je ferme la fenêtre');
-        sendWedaNotifAllTabs({
-            message: '[Weda-Helper] Debug: impression récente détectée, je ferme la fenêtre',
-            type: 'success',
-            icon: 'bug_report'
-        });
+    let isRecentProgressBar = lastProgressBarDate && currentTime - Date.parse(lastProgressBarDate) < 5000;
+    let isRecentPrint = lastPrintDate && currentTime - Date.parse(lastPrintDate) < 5000;
+    console.log('[InstantPrint] debug : isRecentProgressBar', isRecentProgressBar, 'isRecentPrint', isRecentPrint);
+    // Si la barre de progression a disparu il y a moins de 5 secondes
+    if (isRecentProgressBar || isRecentPrint) {
+        // console.log('[InstantPrint] impression récente détectée, je ferme la fenêtre');
+        // sendWedaNotifAllTabs({
+        //     message: '[Weda-Helper] Debug: impression récente détectée, je ferme la fenêtre',
+        //     type: 'success',
+        //     icon: 'bug_report'
+        // });
         window.close();
     }
 });
