@@ -253,15 +253,128 @@ function validateOrdoNumIfOptionActivated() {
 
 // autoclique le bouton de consentement de l'ordonnance numérique
 addTweak([demandeUrl, prescriptionUrl], 'autoConsentNumPres', function () {
+    function addYesNoChoiceBox(consent) {
+        let optionOrdoNumElement = document.getElementById('ContentPlaceHolder1_EvenementUcForm1_CheckBoxEPrescription');
+        console.log('autoConsentNumPres started');
+        let checkbox = optionOrdoNumElement;
+        console.log('checkbox', checkbox);
+    
+        let radioOui = document.createElement('input');
+        radioOui.type = 'radio';
+        radioOui.name = 'autoConsentNumPres';
+        radioOui.value = 'true';
+        radioOui.id = 'autoConsentNumPres_Oui';
+    
+        let labelOui = document.createElement('label');
+        labelOui.htmlFor = 'autoConsentNumPres_Oui';
+        labelOui.textContent = 'Oui';
+    
+        let radioNon = document.createElement('input');
+        radioNon.type = 'radio';
+        radioNon.name = 'autoConsentNumPres';
+        radioNon.value = 'false';
+        radioNon.id = 'autoConsentNumPres_Non';
+    
+        let labelNon = document.createElement('label');
+        labelNon.htmlFor = 'autoConsentNumPres_Non';
+        labelNon.textContent = 'Non';
+
+        // Set default checked value based on consent
+        if (consent === true) {
+            radioOui.checked = true;
+        } else if (consent === false) {
+            radioNon.checked = true;
+        }
+        
+    
+        let box = document.createElement('div');
+        box.style.display = 'none';
+        box.style.position = 'absolute';
+        box.style.backgroundColor = 'white';
+        box.style.border = '1px solid black';
+        box.style.padding = '5px';
+    
+        let title = document.createElement('h3');
+        title.textContent = 'Consentement à consulter ce qui a été délivré/fait ?';
+        box.appendChild(title);
+    
+        box.appendChild(radioOui);
+        box.appendChild(labelOui);
+        box.appendChild(radioNon);
+        box.appendChild(labelNon);
+    
+        checkbox.parentElement.appendChild(box);
+    
+        checkbox.addEventListener('mouseover', function () {
+            let rect = checkbox.getBoundingClientRect();
+            box.style.left = `${rect.left + window.scrollX + rect.width / 2}px`;
+            box.style.top = `${rect.top + window.scrollY + rect.height}px`;
+            box.style.transform = 'translate(-50%, 0)';
+            box.style.display = 'block';
+        });
+    
+        checkbox.addEventListener('mouseout', function () {
+            if (!box.matches(':hover')) {
+                box.style.display = 'none';
+            }
+        });
+    
+        box.addEventListener('mouseover', function () {
+            box.style.display = 'block';
+        });
+    
+        box.addEventListener('mouseout', function () {
+            box.style.display = 'none';
+        });
+
+        // Add event listeners to update consent value
+        radioOui.addEventListener('change', function () {
+            if (radioOui.checked) {
+                consent = true;
+                sessionStorage.setItem('consent', 'true');
+            }
+        });
+
+        radioNon.addEventListener('change', function () {
+            if (radioNon.checked) {
+                consent = false;
+                sessionStorage.setItem('consent', 'false');
+            }
+        });
+
+    }
+    
+
     getOption('autoConsentNumPres_Oui', function (autoConsentNumPres_Oui) {
+        // Si on appelle addYesNoChoiceBox, il faut soit utiliser le sessionConsent s'il existe, soit l'option choisie dans WH
+        // On crée donc une fonction qui renvoie le consentement à utiliser (le sessionConsent étant prioritaire)
+        function getConsent() {
+            let sessionConsent = sessionStorage.getItem('consent');
+            if (sessionConsent) {
+                return sessionConsent === 'true';
+            }
+            return autoConsentNumPres_Oui;
+        }
+        addYesNoChoiceBox(getConsent());
+
+        waitForElement({
+            selector: '#ContentPlaceHolder1_EvenementUcForm1_CheckBoxEPrescription',
+            callback: function () {
+                addYesNoChoiceBox(getConsent());
+            }
+        });
+
+
         waitForElement({
             selector: '.cdk-overlay-container .mat-radio-label',
             callback: function (elements) {
-                if (autoConsentNumPres_Oui) {
+                
+                if (getConsent()) {
                     elements[0].click();
                 } else {
                     elements[1].click();
                 }
+                
                 recordMetrics({ clicks: 1, drags: 1 });
 
                 if (PrescriptionForm) { //Pas de selection du type de l'ordonnance donc on valide une fois le consentement coché
@@ -305,9 +418,6 @@ addTweak([demandeUrl, prescriptionUrl], '*NumPres', function () {
             ordoNumeriquePreCoche = true; // quand on a une des optiosn activées, ça signifie que de base on veut que ça soit coché
             if (DemandeForm) {
                 changeCheckBoxViaClick(NumPresDemande);
-                // if (NumPresDemande) {
-                //     uncheckSiImagerie();
-                // }
             } else if (PrescriptionForm) {
                 changeCheckBoxViaClick(NumPresPrescription);
             }
