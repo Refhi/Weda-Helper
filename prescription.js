@@ -300,39 +300,6 @@ addTweak([demandeUrl, prescriptionUrl], '*NumPres', function () {
             }
         }
 
-        // n'est plus nécessaire depuis début novembre 2024, merci @Weda :)
-        // function uncheckSiImagerie() { // n'est appelé que si l'ordo numérique est demandée ou déjà cochée
-        //     addTweak('*', 'uncheckDMPIfImagerie', function () {
-        //         waitForElement({
-        //             selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio',
-        //             callback: function () {
-        //                 if (isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio')) {
-        //                     changeCheckBoxViaClick(false);
-        //                 } else {
-        //                     // seulement si ordoNumeriquePreCoche est vrai
-        //                     if (ordoNumeriquePreCoche) {
-        //                         changeCheckBoxViaClick(true);
-        //                     }
-        //                 }
-        //                 observeCheckbox();
-        //             }
-        //         });
-        //     });
-        // }
-
-        function observeCheckbox() {
-            // Sélection de l'élément cible
-            let checkbox = document.getElementById('ContentPlaceHolder1_EvenementUcForm1_CheckBoxEPrescription');
-
-            // Vérification si l'élément checkbox existe
-            if (checkbox) {
-                // Ajout d'un écouteur d'événements pour détecter les changements
-                checkbox.addEventListener('change', function () {
-                    // Enregistrement du statut de la case à cocher
-                    ordoNumeriquePreCoche = checkbox.checked;
-                });
-            }
-        }
 
         if (NumPresDemande || NumPresPrescription) {
             ordoNumeriquePreCoche = true; // quand on a une des optiosn activées, ça signifie que de base on veut que ça soit coché
@@ -344,8 +311,6 @@ addTweak([demandeUrl, prescriptionUrl], '*NumPres', function () {
             } else if (PrescriptionForm) {
                 changeCheckBoxViaClick(NumPresPrescription);
             }
-        // } else if (ordoNumeriquePreCoche && DemandeForm) {
-        //     uncheckSiImagerie();
         }
     });
 });
