@@ -16,7 +16,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 ## Fix :
 - [#265](https://github.com/Refhi/Weda-Helper/issues/265) - tentative de fix des problèmes de navigation par tabulation
 - [#276](https://github.com/Refhi/Weda-Helper/issues/276) - les raccourcis n'étaient plus modifiable dans les options
-
+- [#278](https://github.com/Refhi/Weda-Helper/issues/278) - DéfautTC est désormais testé en priorité
 
 # [2.7.2] - fix
 - [#260](https://github.com/Refhi/Weda-Helper/issues/260) - ajout d'une discrète bulle info grisée en bas à droite des boutons éligibles

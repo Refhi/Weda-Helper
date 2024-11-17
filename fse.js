@@ -252,6 +252,29 @@ function tweakFSECreation() {
         let conditionalCotations = [
             {
                 condition: function () {
+                    let fseTypeElement = document.querySelector('#form1 > div:nth-child(14) > div > div:nth-child(2) > vz-feuille-de-soin > div.fseContainer > div > div.toolbarContainer.thinCards.flexRow > mat-card.mat-card.mat-focus-indicator.cvContainer > vz-lecture-cv-widget > div > vz-mode-teletrans > div')
+                    let isTeleconsultation = fseTypeElement.textContent === 'SV';
+                    return isTeleconsultation;
+                },
+                action: 'DéfautTC',
+                secondaryAction: function () {
+                    let teleconsultationElement = document.querySelector('option[value="VI"]');
+                    let menu = teleconsultationElement.parentElement;
+                    menu.value = 'VI';
+
+                    // Créez et déclenchez un événement 'change' sur le menu
+                    let changeEvent = new Event('change', { bubbles: true });
+                    menu.dispatchEvent(changeEvent);
+
+                    // Créez et déclenchez un événement 'input' sur le menu
+                    let inputEvent = new Event('input', { bubbles: true });
+                    menu.dispatchEvent(inputEvent);
+
+                    console.log('Teleconsultation sélectionnée');
+                }
+            },
+            {
+                condition: function () {
                     let ageOK = patientAgeInFSE() >= 80;
                     let isMT = estMTdeclareOuReferent(loggedInUser());
                     return ageOK && !isMT
@@ -284,29 +307,6 @@ function tweakFSECreation() {
             {
                 condition: () => patientAgeInFSE() < 6,
                 action: 'DéfautPédia'
-            },
-            {
-                condition: function () {
-                    let fseTypeElement = document.querySelector('#form1 > div:nth-child(14) > div > div:nth-child(2) > vz-feuille-de-soin > div.fseContainer > div > div.toolbarContainer.thinCards.flexRow > mat-card.mat-card.mat-focus-indicator.cvContainer > vz-lecture-cv-widget > div > vz-mode-teletrans > div')
-                    let isTeleconsultation = fseTypeElement.textContent === 'SV';
-                    return isTeleconsultation;
-                },
-                action: 'DéfautTC',
-                secondaryAction: function () {
-                    let teleconsultationElement = document.querySelector('option[value="VI"]');
-                    let menu = teleconsultationElement.parentElement;
-                    menu.value = 'VI';
-
-                    // Créez et déclenchez un événement 'change' sur le menu
-                    let changeEvent = new Event('change', { bubbles: true });
-                    menu.dispatchEvent(changeEvent);
-
-                    // Créez et déclenchez un événement 'input' sur le menu
-                    let inputEvent = new Event('input', { bubbles: true });
-                    menu.dispatchEvent(inputEvent);
-
-                    console.log('Teleconsultation sélectionnée');
-                }
             },
             {
                 condition: function () {
@@ -521,6 +521,7 @@ addTweak('/vitalzen/gestion.aspx', 'TweakSCORDegradee', function () {
     });
 });
 
+// TODO à évaluer. Peut-être pas besoin au final.
 addTweak('/vitalzen/fse.aspx', 'SCORAutoSelectPJ', function () {
     waitForElement({
         selector: 'TODO', // TODO: Trouver le sélecteur pour le bouton de sélection des PJ SCOR
