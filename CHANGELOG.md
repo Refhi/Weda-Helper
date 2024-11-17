@@ -20,6 +20,9 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#276](https://github.com/Refhi/Weda-Helper/issues/276) - les raccourcis n'étaient plus modifiable dans les options
 - [#278](https://github.com/Refhi/Weda-Helper/issues/278) - DéfautTC est désormais testé en priorité
 
+## Deprecated :
+- uncheckSiImagerie est désormais obsolète, et a été supprimé, merci @Weda :)
+
 # [2.7.2] - fix
 - [#260](https://github.com/Refhi/Weda-Helper/issues/260) - ajout d'une discrète bulle info grisée en bas à droite des boutons éligibles
 - [#264](https://github.com/Refhi/Weda-Helper/issues/264) - ouverture automatique de l'historique et retrait des éléments surnuméraires
