@@ -38,6 +38,7 @@ var defaultSettings = {
   'TweakFSEGestionUnique': false,
   'TweakFSEAccident': false,
   'TweakSCORDegradee': false,
+  'SCORAutoSelectPJ' : true,
   'autoSelectPatientCV': true,
   'WarpButtons': true,
   'autoSelectTypeOrdoNum': true,

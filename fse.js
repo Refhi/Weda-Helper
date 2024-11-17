@@ -521,15 +521,21 @@ addTweak('/vitalzen/gestion.aspx', 'TweakSCORDegradee', function () {
     });
 });
 
-// TODO à évaluer. Peut-être pas besoin au final.
+// Coche automatiquement la case "Inclure la FSP en SCOR" dans la FSE
 addTweak('/vitalzen/fse.aspx', 'SCORAutoSelectPJ', function () {
     waitForElement({
-        selector: 'TODO', // TODO: Trouver le sélecteur pour le bouton de sélection des PJ SCOR
-        callback: function (element) {
-            console.log('Case SCOR PJ trouvée, je clique dessus si pas déjà cochée', element);
-            if (!element[0].checked) {
-                element[0].click();
+        selector: 'span',
+        textContent: 'Inclure la FSP en SCOR',
+        callback: function (elements) {
+            console.log('[SCORAutoSelectPJ] Case SCOR PJ trouvée, je clique dessus si pas déjà cochée', elements[0]);
+            // On cherche l'élément qui est coché ou non : c'est le fils 'input' de l'ainé du parent
+            let checkbox = elements[0].parentElement.parentElement.querySelector('input');
+            if (!checkbox.checked) {
+                console.log('[SCORAutoSelectPJ] Case SCOR PJ non cochée, je clique dessus');
+                elements[0].click();
                 recordMetrics({ clicks: 1, drags: 1 });
+            } else {
+                console.log('[SCORAutoSelectPJ] Case SCOR PJ déjà cochée');
             }
         }
     });
