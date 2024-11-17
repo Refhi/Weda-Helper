@@ -110,7 +110,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - Permet aussi de cocher automatiquement le consentement des patients ("Oui" ou "Non"). Attention vous êtes toujours tenu de demander l'autorisation au patient systématiquement.
 - le type "Biologie" se sélectionne automatiquement lors d'une prescription numérique type "Demande"
 - Sélection automatique du type d'ordonnance numérique quand il s'agit d'une Demande, et qu'un mot-clé est détecté (cf. https://github.com/Refhi/Weda-Helper/blob/main/CHANGELOG.md pour le détail des mots-clés)
-
+- mettre la souris sur "Ordonnance numérique" dans les prescriptions affiche un choix Oui/Non pour sélectionner le "consentement à la consultation de l'ordonnance numérique". Utile dans le cadre de l'impression automatisée.
 
 ## Feuilles de soin
 *Toute la FSE : [alt+6], [n], [n], [alt+v]*

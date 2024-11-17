@@ -254,100 +254,75 @@ function validateOrdoNumIfOptionActivated() {
 // autoclique le bouton de consentement de l'ordonnance numérique
 addTweak([demandeUrl, prescriptionUrl], 'autoConsentNumPres', function () {
     function addYesNoChoiceBox(consent) {
-        let optionOrdoNumElement = document.getElementById('ContentPlaceHolder1_EvenementUcForm1_CheckBoxEPrescription');
+        var optionOrdoNumElement = document.getElementById('ContentPlaceHolder1_EvenementUcForm1_CheckBoxEPrescription');
         console.log('autoConsentNumPres started');
-        let checkbox = optionOrdoNumElement;
+        var checkbox = optionOrdoNumElement;
         console.log('checkbox', checkbox);
-    
-        let radioOui = document.createElement('input');
-        radioOui.type = 'radio';
-        radioOui.name = 'autoConsentNumPres';
-        radioOui.value = 'true';
-        radioOui.id = 'autoConsentNumPres_Oui';
-    
-        let labelOui = document.createElement('label');
-        labelOui.htmlFor = 'autoConsentNumPres_Oui';
-        labelOui.textContent = 'Oui';
-    
-        let radioNon = document.createElement('input');
-        radioNon.type = 'radio';
-        radioNon.name = 'autoConsentNumPres';
-        radioNon.value = 'false';
-        radioNon.id = 'autoConsentNumPres_Non';
-    
-        let labelNon = document.createElement('label');
-        labelNon.htmlFor = 'autoConsentNumPres_Non';
-        labelNon.textContent = 'Non';
-
-        // Set default checked value based on consent
-        if (consent === true) {
-            radioOui.checked = true;
-        } else if (consent === false) {
-            radioNon.checked = true;
-        }
         
+        // Si les boutons radio existent déjà, on ne les recrée pas
+        if (document.getElementById('autoConsentNumPres_Oui') || document.getElementById('autoConsentNumPres_Non')) {
+            return;
+        }
     
-        let box = document.createElement('div');
-        box.style.display = 'none';
-        box.style.position = 'absolute';
-        box.style.backgroundColor = 'white';
-        box.style.border = '1px solid black';
-        box.style.padding = '5px';
+        function createRadioButton(id, value, labelText) {
+            var radio = document.createElement('input');
+            radio.type = 'radio';
+            radio.name = 'autoConsentNumPres';
+            radio.value = value;
+            radio.id = id;
+            radio.title = 'Mon patient ou et le ou les titulaire(s) de l\'autorité parentale a (ont) accepté que je puisse consulter ce qui a été délivré ou exécuté sur la présente prescription';
     
-        let title = document.createElement('h3');
-        title.textContent = 'Consentement à consulter ce qui a été délivré/fait ?';
-        box.appendChild(title);
+            var label = document.createElement('label');
+            label.htmlFor = id;
+            label.textContent = labelText;
     
-        box.appendChild(radioOui);
-        box.appendChild(labelOui);
-        box.appendChild(radioNon);
-        box.appendChild(labelNon);
+            return { radio: radio, label: label };
+        }
     
-        checkbox.parentElement.appendChild(box);
+        var radioOuiObj = createRadioButton('autoConsentNumPres_Oui', 'true', 'Oui');
+        var radioNonObj = createRadioButton('autoConsentNumPres_Non', 'false', 'Non');
     
-        checkbox.addEventListener('mouseover', function () {
-            let rect = checkbox.getBoundingClientRect();
-            box.style.left = `${rect.left + window.scrollX + rect.width / 2}px`;
-            box.style.top = `${rect.top + window.scrollY + rect.height}px`;
-            box.style.transform = 'translate(-50%, 0)';
-            box.style.display = 'block';
-        });
+        if (consent === true) {
+            radioOuiObj.radio.checked = true;
+        } else if (consent === false) {
+            radioNonObj.radio.checked = true;
+        }
     
-        checkbox.addEventListener('mouseout', function () {
-            if (!box.matches(':hover')) {
-                box.style.display = 'none';
-            }
-        });
-    
-        box.addEventListener('mouseover', function () {
-            box.style.display = 'block';
-        });
-    
-        box.addEventListener('mouseout', function () {
-            box.style.display = 'none';
-        });
-
-        // Add event listeners to update consent value
-        radioOui.addEventListener('change', function () {
-            if (radioOui.checked) {
+        radioOuiObj.radio.addEventListener('change', function () {
+            if (radioOuiObj.radio.checked) {
                 consent = true;
                 sessionStorage.setItem('consent', 'true');
             }
         });
-
-        radioNon.addEventListener('change', function () {
-            if (radioNon.checked) {
+    
+        radioNonObj.radio.addEventListener('change', function () {
+            if (radioNonObj.radio.checked) {
                 consent = false;
                 sessionStorage.setItem('consent', 'false');
             }
         });
+    
+        var container = document.createElement('div');
+        container.style.display = 'none'; // Initialement caché
+        container.appendChild(radioOuiObj.radio);
+        container.appendChild(radioOuiObj.label);
+        container.appendChild(radioNonObj.radio);
+        container.appendChild(radioNonObj.label);
+    
+        checkbox.parentElement.insertBefore(container, checkbox);
 
+        function addMouseOuverListener(element) {
+            element.addEventListener('mouseover', function () {
+                container.style.display = 'block';
+            });
+        }
+        addMouseOuverListener(checkbox);
+        addMouseOuverListener(checkbox.nextElementSibling);
     }
     
 
     getOption('autoConsentNumPres_Oui', function (autoConsentNumPres_Oui) {
-        // Si on appelle addYesNoChoiceBox, il faut soit utiliser le sessionConsent s'il existe, soit l'option choisie dans WH
-        // On crée donc une fonction qui renvoie le consentement à utiliser (le sessionConsent étant prioritaire)
+        // Renvoie le consentement à utiliser (le sessionConsent étant prioritaire)
         function getConsent() {
             let sessionConsent = sessionStorage.getItem('consent');
             if (sessionConsent) {
