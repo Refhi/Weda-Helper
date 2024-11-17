@@ -697,3 +697,18 @@ addTweak('/vitalzen/fse.aspx', '*TweakAMCFormule', function () {
         }
     });
 });
+
+
+// Coche automatiquement "Présentation d'un feuillet AT" pour les FSE en accident de travail
+addTweak('/vitalzen/fse.aspx', '*autoCheckFeuilletAT', function () {
+    waitForElement({
+        selector: 'span',
+        textContent: "Présentation d'un feuillet AT",
+        justOnce: true,
+        callback: function (element) {
+            console.log('[autoCheckFeuilletAT] élément trouvé je le click', element);
+            element[0].click();
+            recordMetrics({ clicks: 1, drags: 1 });
+        }
+    });
+});

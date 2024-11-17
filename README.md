@@ -129,6 +129,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - Sélection automatique de "je suis le médecin traitant" quand c'est le cas et qu'un autre cas de figure est sélectionné
 - Ctrl+P imprime la FDS dans le cas des FSE dégradées
 - Mémorisation des derniers choix ("ne peux signer" et "Retirer le fond")
+- Coche automatiquement "Présentation d'un feuillet AT" si l'assurance "Accident du travail" est sélectionnée
 
 
 ## Divers
