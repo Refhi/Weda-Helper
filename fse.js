@@ -718,3 +718,34 @@ addTweak('/vitalzen/fse.aspx', '*autoCheckFeuilletAT', function () {
         }
     });
 });
+
+// Sélectionne automatiquement "Rien" dans "Pièce justificative AMO" si le texte d'erreur
+// "Champ de donnée Actes - Pièce Justificative AMO invalide : Erreur de saisie Nature" apparaît
+addTweak('/vitalzen/fse.aspx', '*autoSelectRienAMO', function () {
+    waitForElement({
+        selector: 'div',
+        textContent: "Champ de donnée Actes - Pièce Justificative AMO invalide : Erreur de saisie Nature",
+        callback: function () {
+            console.log('[autoSelectRienAMO] erreur détectée');
+            // Trouve le grand-père de l'élément span contenant le text "Nature de la pièce"
+            let spans = document.querySelectorAll('span .ng-star-inserted');
+            console.log('[autoSelectRienAMO] spans trouvés', spans);
+            let ElementWithNature;
+            for (let span of spans) {
+                if (span.textContent.includes("Nature de la pièce")) {
+                    console.log('[autoSelectRienAMO] élément Nature de la pièce trouvé', span);
+                    ElementWithNature = span;
+                    break; // Arrête la boucle dès que l'élément est trouvé
+                }
+            }
+            let dropDownMenu = ElementWithNature.parentElement.parentElement;
+            console.log('[autoSelectRienAMO] dropDownMenu trouvé', dropDownMenu);
+            dropDownMenu.click();
+            setTimeout(function () {
+                let RienElement = document.querySelector('.mat-option-text');
+                RienElement.click();
+                recordMetrics({ clicks: 1, drags: 1 });
+            }, 10); // Semble suffisant pour que le menu se soit ouvert
+        }
+    });
+});

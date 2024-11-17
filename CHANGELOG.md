@@ -13,6 +13,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#269](https://github.com/Refhi/Weda-Helper/issues/269) - Implémente une fonction pour le développeur de Weda-Helper pour envoyer des notifications via le système de notification de Weda
 - [#225](https://github.com/Refhi/Weda-Helper/issues/225) - Sauvegarde automatique de la dernière sélection du choix d'AMC dans les FSE
 - [#281](https://github.com/Refhi/Weda-Helper/issues/281) - Coche automatiquement "Présentation d'un feuillet AT" lors de la création d'une FSE si l'assurance "Accident du travail" est sélectionnée
+- sélectionne automatiquement "Rien" dans les Pièces justificatives AMO si "Champ de donnée Actes - Pièce Justificative AMO invalide : Erreur de saisie Nature" est détecté
 
 ## Fix :
 - [#265](https://github.com/Refhi/Weda-Helper/issues/265) - tentative de fix des problèmes de navigation par tabulation

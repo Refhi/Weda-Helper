@@ -131,6 +131,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - Mémorisation des derniers choix ("ne peux signer" et "Retirer le fond")
 - Coche automatiquement "Présentation d'un feuillet AT" si l'assurance "Accident du travail" est sélectionnée
 - option pour automatiquement cocher "Inclure la FSP en SCOR" si la FSE est dégradée (activée par défaut)
+- sélectionne automatiquement "Rien" dans les Pièces justificatives AMO si "Champ de donnée Actes - Pièce Justificative AMO invalide : Erreur de saisie Nature" est détecté
 
 
 ## Divers
