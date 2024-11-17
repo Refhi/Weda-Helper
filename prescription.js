@@ -300,24 +300,25 @@ addTweak([demandeUrl, prescriptionUrl], '*NumPres', function () {
             }
         }
 
-        function uncheckSiImagerie() { // n'est appelé que si l'ordo numérique est demandée ou déjà cochée
-            addTweak('*', 'uncheckDMPIfImagerie', function () {
-                waitForElement({
-                    selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio',
-                    callback: function () {
-                        if (isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio')) {
-                            changeCheckBoxViaClick(false);
-                        } else {
-                            // seulement si ordoNumeriquePreCoche est vrai
-                            if (ordoNumeriquePreCoche) {
-                                changeCheckBoxViaClick(true);
-                            }
-                        }
-                        observeCheckbox();
-                    }
-                });
-            });
-        }
+        // n'est plus nécessaire depuis début novembre 2024, merci @Weda :)
+        // function uncheckSiImagerie() { // n'est appelé que si l'ordo numérique est demandée ou déjà cochée
+        //     addTweak('*', 'uncheckDMPIfImagerie', function () {
+        //         waitForElement({
+        //             selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio',
+        //             callback: function () {
+        //                 if (isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio')) {
+        //                     changeCheckBoxViaClick(false);
+        //                 } else {
+        //                     // seulement si ordoNumeriquePreCoche est vrai
+        //                     if (ordoNumeriquePreCoche) {
+        //                         changeCheckBoxViaClick(true);
+        //                     }
+        //                 }
+        //                 observeCheckbox();
+        //             }
+        //         });
+        //     });
+        // }
 
         function observeCheckbox() {
             // Sélection de l'élément cible
@@ -337,14 +338,14 @@ addTweak([demandeUrl, prescriptionUrl], '*NumPres', function () {
             ordoNumeriquePreCoche = true; // quand on a une des optiosn activées, ça signifie que de base on veut que ça soit coché
             if (DemandeForm) {
                 changeCheckBoxViaClick(NumPresDemande);
-                if (NumPresDemande) {
-                    uncheckSiImagerie();
-                }
+                // if (NumPresDemande) {
+                //     uncheckSiImagerie();
+                // }
             } else if (PrescriptionForm) {
                 changeCheckBoxViaClick(NumPresPrescription);
             }
-        } else if (ordoNumeriquePreCoche && DemandeForm) {
-            uncheckSiImagerie();
+        // } else if (ordoNumeriquePreCoche && DemandeForm) {
+        //     uncheckSiImagerie();
         }
     });
 });
