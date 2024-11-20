@@ -424,7 +424,18 @@ function startPrinting(handlingType, whatToPrint, postPrintBehavior, modelNumber
 // * Ensuite, une fois l'impression terminée avec succès, on ferme l'onglet originel via un window.close()
 // * Le succès de l'impression est déterminé par la mise à jour de la clé 'lastPrintDate' dans le local storage.
 // */
-function instantPrint() {
+
+function watchForClose() {
+    setTimeout(() => {
+        sendWedaNotifAllTabs({
+            message: '[Weda-Helper] l\'onglet initiateur de l\'impression instantanée n\'a pas pu être fermé automatiquement. Veuillez le fermer manuellement. Cela arrive si l\'onglet initiateur n\'a pas été ouvert par Weda Helper.',
+            type: 'undefined',
+            icon: 'print'
+        });
+    }, 1000);
+}
+
+function instantPrint() {        
     function closeWindow() {
         // D'abord attendre l'apparition de l'élément avec role="progressbar"
         waitForElement({
@@ -432,6 +443,8 @@ function instantPrint() {
             justOnce: true,
             callback: function () {
                 console.log('[InstantPrint] progress bar detected, attente de sa disparition');
+                // Inhibition du lastPrintDate pour limiter les risques de fermeture d'un autre onglet
+                sessionStorage.removeItem('lastPrintDate');
                 let startTime = Date.now();
                 let interval = setInterval(function () {
                     let progressBarElement = document.querySelector('[role="progressbar"]');
@@ -449,13 +462,7 @@ function instantPrint() {
                         clearInterval(interval);
                         window.close();
                         // Normalement la fenêtre est fermée. Mais si jamais elle ne l'est pas, on le signale
-                        setTimeout(() => {
-                            sendWedaNotifAllTabs({
-                                message: '[Weda-Helper] l\'onglet initiateur de l\'impression instantanée n\'a pas pu être fermé automatiquement. Veuillez le fermer manuellement. Cela arrive si l\'onglet initiateur n\'a pas été ouvert par Weda Helper.',
-                                type: 'undefined',
-                                icon: 'print'
-                            });
-                        }, 1000);
+                        watchForClose();
                     } else if (Date.now() - startTime > 40000) {
                         clearInterval(interval);
                         sendWedaNotifAllTabs({
@@ -527,10 +534,18 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'instantPrint', function () {
     if (isRecentProgressBar || isRecentPrint) {
         // console.log('[InstantPrint] impression récente détectée, je ferme la fenêtre');
         // sendWedaNotifAllTabs({
-        //     message: '[Weda-Helper] Debug: impression récente détectée, je ferme la fenêtre',
+        //     message: 'Debug: impression récente détectée, je ferme la fenêtre',
         //     type: 'success',
         //     icon: 'bug_report'
         // });
-        window.close();
+        // Réinitialise les valeurs de session pour limiter le risque qu'un autre onglet ne soit induement fermé
+        sessionStorage.removeItem('lastPrintDate');
+        sessionStorage.removeItem('lastProgressBarDate');
+        if (!document.hasFocus()) {
+            window.close();
+            watchForClose();
+        } else {
+            console.log('[InstantPrint] window has focus, je ne ferme pas');
+        }
     }
 });
