@@ -15,6 +15,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#281](https://github.com/Refhi/Weda-Helper/issues/281) - Coche automatiquement "Présentation d'un feuillet AT" lors de la création d'une FSE si l'assurance "Accident du travail" est sélectionnée
 - sélectionne automatiquement "Rien" dans les Pièces justificatives AMO si "Champ de donnée Actes - Pièce Justificative AMO invalide : Erreur de saisie Nature" est détecté
 - [#282](https://github.com/Refhi/Weda-Helper/issues/282) - mettre la souris sur "Ordonnance numérique" dans les prescriptions affiche un choix Oui/Non pour sélectionner le "consentement à la consultation de l'ordonnance numérique".
+- [#29](https://github.com/Refhi/Weda-Helper-Companion/issues/29) - ajout d'un bouton pour archiver les fichiers envoyés via ctrl+U
 
 ## Fix :
 - [#265](https://github.com/Refhi/Weda-Helper/issues/265) - tentative de fix des problèmes de navigation par tabulation

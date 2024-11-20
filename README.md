@@ -174,7 +174,7 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 - Complétion automatique des dates partielles
 - En cliquant sur l'icône de l'extension, le bouton "Tout mettre en consultation" permet de sélectionner d'un coup "Consultation" pour l'ensemble des documents en attente d'importation.
 
-- On peut désormais utiliser Ctrl+U pour uploader directement dans Weda le document le plus récent présent dans un dossier pré-sélectionné dans le Companion.
+- On peut désormais utiliser Ctrl+U pour uploader directement dans Weda le document le plus récent présent dans un dossier pré-sélectionné dans le Companion. Un nouveau bouton permet d'archiver si souhaité le document après l'upload.
 - Option pour décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée
 
 
