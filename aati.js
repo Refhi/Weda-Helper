@@ -171,8 +171,7 @@ addTweak(urlAATI, 'autoAATI', function () {
     addTweak('/FolderMedical/PopUpViewBinaryForm.aspx', "*sendDocToCompanion", function () {
         chrome.storage.local.get(['autoAATIexit'], function (result) {
             getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
-                // if (Date.now() - result.autoAATIexit < 10000 && RemoveLocalCompanionPrint === false) {
-                if (true) { // TODO: à revoir
+                if (Date.now() - result.autoAATIexit < 10000 && RemoveLocalCompanionPrint === false) {
                     console.log('autoAATIexit', result.autoAATIexit, 'is less than 10 seconds ago');
                     chrome.storage.local.set({ autoAATIexit: 0 });
                     let iframeElement = document.querySelector('iframe');
