@@ -157,13 +157,22 @@ addTweak(urlAATI, 'autoAATI', function () {
         }
     });
 
-
+    function observeLastPrintDateChange(callback) {
+        const originalSetItem = sessionStorage.setItem;
+        sessionStorage.setItem = function(key, value) {
+            originalSetItem.apply(this, arguments);
+            if (key === 'lastPrintDate') {
+                callback(value);
+            }
+        };
+    }
 
     // Cette partie gère la fermeture de la prévisu de l'AT au moment où on récupère le pdf depuis la page d'accueil du patient    
     addTweak('/FolderMedical/PopUpViewBinaryForm.aspx', "*sendDocToCompanion", function () {
         chrome.storage.local.get(['autoAATIexit'], function (result) {
             getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
-                if (Date.now() - result.autoAATIexit < 10000 && RemoveLocalCompanionPrint === false) {
+                // if (Date.now() - result.autoAATIexit < 10000 && RemoveLocalCompanionPrint === false) {
+                if (true) { // TODO: à revoir
                     console.log('autoAATIexit', result.autoAATIexit, 'is less than 10 seconds ago');
                     chrome.storage.local.set({ autoAATIexit: 0 });
                     let iframeElement = document.querySelector('iframe');
@@ -180,9 +189,17 @@ addTweak(urlAATI, 'autoAATI', function () {
                             // The blob has been successfully transferred
                             console.log('The blob has been successfully transferred.');
                             recordMetrics({ clicks: 3, drags: 3 });
-                            setTimeout(function () {
-                                window.close();
-                            }, 1000); // essai avec un délai de 1s
+                            observeLastPrintDateChange((newValue) => {
+                                let printTime = Date.parse(newValue);
+                                if (Date.now() - printTime < 10000) {
+                                    sendWedaNotifAllTabs({
+                                        message: 'Page 3 de l\'arrêt de travail imprimé avec succès.',
+                                        type: 'success',
+                                        icon: 'print'
+                                    });
+                                    window.close();
+                                }
+                            });
                         })
                         .catch(error => {
                             console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);

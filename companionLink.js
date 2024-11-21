@@ -74,7 +74,7 @@ function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithD
 
                     console.log('Impression réussie avec le companion = ', isSuccess);
                     if (isSuccess) {
-                        setLastPrintDate(); // utilisé dans le cadre d'instantPrint
+                        setLastPrintDate(); // utilisé dans le cadre d'instantPrint et l'impression des AATI
                     }
                 }
             });
