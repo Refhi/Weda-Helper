@@ -187,7 +187,12 @@ addTweak(urlAATI, 'autoAATI', function () {
                         .catch(error => {
                             console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
                             if (!errortype.includes('[focus]')) {
-                                alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
+                                sendWedaNotifAllTabs({
+                                    message: 'Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error,
+                                    type: 'fail',
+                                    icon: 'print'
+                                })
+                                // alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
                             }
                         });
                 }

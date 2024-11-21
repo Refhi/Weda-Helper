@@ -24,7 +24,12 @@ function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithD
             .then(data => {
                 if (data.error) {
                     console.warn(errortype + ' Error:', data.error);
-                    alert(errortype + ' Erreur : ' + data.error);
+                    // alert(errortype + ' Erreur : ' + data.error);
+                    sendWedaNotifAllTabs({
+                        message: 'Erreur générique Companion : ' + error,
+                        type: 'fail',
+                        icon: 'bug_report'
+                    })
                 } else {
                     if (callbackWithData) {
                         callbackWithData(data);
@@ -49,7 +54,12 @@ function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithD
                 }
                 console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
                 if (!errortype.includes('[focus]') && !errortype.includes('tpe')) {
-                    alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
+                    // alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
+                    sendWedaNotifAllTabs({
+                        message: 'Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error,
+                        type: 'fail',
+                        icon: 'bug_report'
+                    })
                 }
                 isSuccess = false;
             })
@@ -142,7 +152,12 @@ function testCompanion() {
                 if (choixUtilisateur) {
                     // Si l'utilisateur confirme, activer RemoveLocalCompanionPrint
                     chrome.storage.local.set({ 'RemoveLocalCompanionPrint': false });
-                    alert("Le lien avec l'imprimate a été activé. Pensez à définir acrobat reader ou équivalent comme lecteur par défaut. Vous pouvez désactiver cette fonctionnalité dans les options de Weda Helper");
+                    // alert("Le lien avec l'imprimate a été activé. Pensez à définir acrobat reader ou équivalent comme lecteur par défaut. Vous pouvez désactiver cette fonctionnalité dans les options de Weda Helper");
+                    sendWedaNotifAllTabs({
+                        message: "Le lien avec l'imprimante a été activé. Pensez à installer SumatraPDF ou à définir acrobat reader comme lecteur par défaut. Vous pouvez gérer cette fonctionnalité dans les options de Weda Helper",
+                        type: 'success',
+                        icon: 'print'
+                    })
                 } else {
                     // Si l'utilisateur refuse, ne rien faire ou afficher un message
                     console.log("L'utilisateur a choisi de ne pas activer RemoveLocalCompanionPrint.");
