@@ -519,6 +519,29 @@ function instantPrint() {
     });
 }
 
+
+function closeIfNoFSE() {
+    const interval = setInterval(() => {
+        // Vérifiez si la FSE est fermée
+        chrome.storage.local.get('FSEActiveTimestamp', function(result) {
+            let lastActiveTimestamp = result.FSEActiveTimestamp;
+            let currentTime = Date.now();
+            console.log('[closeIfNoFSE] currentTime', currentTime, 'lastActiveTimestamp', lastActiveTimestamp);
+            // Si le timestamp de la FSE n'a pas été mis à jour depuis plus de 5 secondes, considérez-la comme fermée
+            let difference = currentTime - lastActiveTimestamp;
+            console.log('[closeIfNoFSE] difference', difference);
+            if (difference > 2000) {
+                console.log('[closeIfNoFSE] FSE inactive, ok pour fermer');
+                clearInterval(interval);
+                window.close();
+                watchForClose();
+            } else {
+                console.log('[closeIfNoFSE] FSE active');
+            }
+        });
+    }, 1000); // Vérifiez toutes les secondes
+}
+
 // Parfois la progressBar reste affichée après l'impression, ce qui empêche la fermeture de la fenêtre
 // On doit donc se rattraper après le chargement d'une nouvelle page dans la même session
 addTweak('/FolderMedical/PatientViewForm.aspx', 'instantPrint', function () {
@@ -542,8 +565,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'instantPrint', function () {
         sessionStorage.removeItem('lastPrintDate');
         sessionStorage.removeItem('lastProgressBarDate');
         if (!document.hasFocus()) {
-            window.close();
-            watchForClose();
+            closeIfNoFSE();
         } else {
             console.log('[InstantPrint] window has focus, je ne ferme pas');
         }
