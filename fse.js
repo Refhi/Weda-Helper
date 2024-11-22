@@ -149,7 +149,7 @@ function tweakFSECreation() {
                     console.log('Détecté : pression sur bouton ', type, '. Je clique sur le bouton degradé');
                     degradeeButton.click();
                     recordMetrics({ clicks: 1, drags: 1 });
-                }, 100); // un clic trop précoce semble avoir des effets de bord
+                }, 200); // un clic trop précoce semble avoir des effets de bord
                 // Puis clique sur le bouton "Adri"
                 setTimeout(function () {
                     console.log('Détecté : pression sur bouton ', type, '. Je clique sur le bouton de lecture adri');
@@ -158,7 +158,7 @@ function tweakFSECreation() {
                         adriElement.click();
                         recordMetrics({ clicks: 1, drags: 1 });
                     }
-                }, 500);
+                }, 3000);
             });
         }
         // Attendre que l'élément "Lire la carte vitale" existe
