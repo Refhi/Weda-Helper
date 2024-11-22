@@ -526,17 +526,15 @@ function closeIfNoFSE() {
         chrome.storage.local.get('FSEActiveTimestamp', function(result) {
             let lastActiveTimestamp = result.FSEActiveTimestamp;
             let currentTime = Date.now();
-            console.log('[closeIfNoFSE] currentTime', currentTime, 'lastActiveTimestamp', lastActiveTimestamp);
             // Si le timestamp de la FSE n'a pas été mis à jour depuis plus de 5 secondes, considérez-la comme fermée
             let difference = currentTime - lastActiveTimestamp;
-            console.log('[closeIfNoFSE] difference', difference);
             if (difference > 2000) {
                 console.log('[closeIfNoFSE] FSE inactive, ok pour fermer');
                 clearInterval(interval);
                 window.close();
                 watchForClose();
             } else {
-                console.log('[closeIfNoFSE] FSE active');
+                console.log('[closeIfNoFSE] FSE active, j\attends qu\'aucune FSE ne soit active avant de fermer');
             }
         });
     }, 1000); // Vérifiez toutes les secondes
