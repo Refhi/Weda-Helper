@@ -3,11 +3,12 @@
 // Donc le montant tpe et l'impression.
 // Vérifie également la présence du Companion et propose de l'activer si les options sont désactivées.
 function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithData = null, testing = false) {
+    let isSuccess = true;
     getOption(['portCompanion', 'apiKey'], function ([portCompanion, apiKey]) {
         let versionToCheck = "1.2";
         let urlWithParam = `http://localhost:${portCompanion}/${urlCommand}` +
-                    `?apiKey=${apiKey}` +
-                    `&versioncheck=${versionToCheck}`;
+            `?apiKey=${apiKey}` +
+            `&versioncheck=${versionToCheck}`;
         let fetchOptions = blob ? {
             method: 'POST',
             headers: {
@@ -23,7 +24,12 @@ function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithD
             .then(data => {
                 if (data.error) {
                     console.warn(errortype + ' Error:', data.error);
-                    alert(errortype + ' Erreur : ' + data.error);
+                    // alert(errortype + ' Erreur : ' + data.error);
+                    sendWedaNotifAllTabs({
+                        message: 'Erreur générique Companion : ' + error,
+                        type: 'fail',
+                        icon: 'bug_report'
+                    })
                 } else {
                     if (callbackWithData) {
                         callbackWithData(data);
@@ -48,8 +54,14 @@ function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithD
                 }
                 console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
                 if (!errortype.includes('[focus]') && !errortype.includes('tpe')) {
-                    alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
+                    // alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
+                    sendWedaNotifAllTabs({
+                        message: 'Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error,
+                        type: 'fail',
+                        icon: 'bug_report'
+                    })
                 }
+                isSuccess = false;
             })
             .finally(() => {
                 if (!testing) {
@@ -59,7 +71,11 @@ function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithD
                     if (callback) {
                         callback();
                     }
-                    console.log('Impression via companion terminée');
+
+                    console.log('Impression réussie avec le companion = ', isSuccess);
+                    if (isSuccess) {
+                        setLastPrintDate(); // utilisé dans le cadre d'instantPrint et l'impression des AATI
+                    }
                 }
             });
     });
@@ -71,7 +87,7 @@ function sendtpeinstruction(amount) {
     chrome.storage.local.set({ 'lastTPEamount': amount }, function () {
         console.log('lastTPEamount', amount, 'sauvegardé avec succès');
     });
-    
+
     // Ici c'est pas vraiment l'ajout d'un tweak, mais on l'utilise par simplicité
     addTweak('*', '!RemoveLocalCompanionTPE', function () {
         if (!(/^\d+$/.test(amount))) {
@@ -123,7 +139,7 @@ function watchForFocusLoss() {
             }, 2000); // 2 sec paraît le bon compromis
         }
     });
-}       
+}
 
 // // vérification de la présence du Companion
 function testCompanion() {
@@ -136,7 +152,12 @@ function testCompanion() {
                 if (choixUtilisateur) {
                     // Si l'utilisateur confirme, activer RemoveLocalCompanionPrint
                     chrome.storage.local.set({ 'RemoveLocalCompanionPrint': false });
-                    alert("Le lien avec l'imprimate a été activé. Pensez à définir acrobat reader ou équivalent comme lecteur par défaut. Vous pouvez désactiver cette fonctionnalité dans les options de Weda Helper");
+                    // alert("Le lien avec l'imprimate a été activé. Pensez à définir acrobat reader ou équivalent comme lecteur par défaut. Vous pouvez désactiver cette fonctionnalité dans les options de Weda Helper");
+                    sendWedaNotifAllTabs({
+                        message: "Le lien avec l'imprimante a été activé. Pensez à installer SumatraPDF ou à définir acrobat reader comme lecteur par défaut. Vous pouvez gérer cette fonctionnalité dans les options de Weda Helper",
+                        type: 'success',
+                        icon: 'print'
+                    })
                 } else {
                     // Si l'utilisateur refuse, ne rien faire ou afficher un message
                     console.log("L'utilisateur a choisi de ne pas activer RemoveLocalCompanionPrint.");

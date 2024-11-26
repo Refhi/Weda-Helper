@@ -34,7 +34,7 @@ window.addEventListener("message", function (event) {
 
         // Modification de la clé MoveHistoriqueToLeft_Consultation  à true pour les tests
         // WedaOverloadOptions.MoveHistoriqueToLeft_Consultation = true;
-            
+
         console.log('WedahelperOverload', WedaOverloadOptions);
     }
 });
@@ -175,7 +175,7 @@ function observeDiseapearance(element, callback, justOnce = false) {
 
 function waitForWeda(logWait, callback) {
     if (gotDataFromWeda === false) {
-        console.log('[waitForWeda] pas encore de données de Weda', logWait);
+        // console.log('[waitForWeda] pas encore de données de Weda', logWait);
         setTimeout(waitForWeda, 10, logWait, callback); // Vérifie toutes les 100ms
         return;
     } else {
@@ -215,16 +215,16 @@ function getOption(optionNames, callback) {
             for (let optionName of optionNames) {
                 let optionValue;
                 if (!WedaOverloadOptions) { // Si WedaOverloadOptions est false car non rempli par Weda, on le signale
-                    console.log('[getOption] WedaOverloadOptions est vide, et de valeur ', WedaOverloadOptions);
+                    // console.log('[getOption] WedaOverloadOptions est vide, et de valeur ', WedaOverloadOptions);
                 }
                 if (WedaOverloadOptions && Object.keys(WedaOverloadOptions).length > 0 && WedaOverloadOptions[optionName] !== undefined) {
-                    console.log('[getOption] WedaOverloadOptions[', optionName, '] est ', WedaOverloadOptions[optionName]);
+                    // console.log('[getOption] WedaOverloadOptions[', optionName, '] est ', WedaOverloadOptions[optionName]);
                     optionValue = WedaOverloadOptions[optionName];
                 } else if (result[optionName] !== undefined) {
-                    console.log('[getOption] result[', optionName, '] est ', result[optionName]);
+                    // console.log('[getOption] result[', optionName, '] est ', result[optionName]);
                     optionValue = result[optionName];
                 } else {
-                    console.log('[getOption] result.defaultSettings[', optionName, '] est ', result.defaultSettings[optionName]);
+                    // console.log('[getOption] result.defaultSettings[', optionName, '] est ', result.defaultSettings[optionName]);
                     optionValue = result.defaultSettings[optionName];
                 }
                 options.push(optionValue);
@@ -253,6 +253,7 @@ function addTweak(path, option, callback) {
         } else {
             getOption(option, function (optionValue) {
                 if ((optionValue === true && !invert) || (optionValue === false && invert)) {
+                    console.log(`[addTweak] ${option} activé`);
                     callback();
                 }
             });
@@ -273,26 +274,26 @@ function addTweak(path, option, callback) {
     }
 
     if (urlMatches) {
-        // permet de gérer les options en négatif
-        let invert = false;
-        if (typeof option === 'string' && option.startsWith('!')) {
-            option = option.slice(1);
-            invert = true;
+        // Convertir l'option en tableau si ce n'est pas déjà le cas
+        if (!Array.isArray(option)) {
+            option = [{ option, callback }];
         }
-
-        let mandatory = false;
-        if (typeof option === 'string' && option.startsWith('*')) {
-            option = option.slice(1);
-            mandatory = true;
-        }
-
-        if (typeof option === 'string' && typeof callback === 'function') {
-            // Si une seule option et un seul callback sont passés, on les utilise directement
-            executeOption(option, callback, invert, mandatory);
-        } else if (Array.isArray(option) && option.length > 0) {
+        if (Array.isArray(option) && option.length > 0) {
             // Si un tableau d'options et de callbacks est passé, on les utilise tous
             // permet de ne pas avoir à écrire plusieurs fois la même condition
             option.forEach(({ option, callback }) => {
+                // permet de gérer les options en négatif
+                let invert = false;
+                if (option.startsWith('!')) {
+                    option = option.slice(1);
+                    invert = true;
+                }
+
+                let mandatory = false;
+                if (option.startsWith('*')) {
+                    option = option.slice(1);
+                    mandatory = true;
+                }
                 executeOption(option, callback, invert, mandatory);
             });
         }
@@ -340,8 +341,8 @@ addTweak('*', 'WarpButtons', function () {
     function warpButtons(buttons) {
         function addIdToButton(button) {
             var actions = {
-                'Annuler': ['Continuez sans l\'ordonnance numérique', 'Non', 'NON', 'Annuler'],
-                'Valider': ['Oui', 'OUI', 'Confirmer', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre', 'Importer']
+                'Annuler': ['Continuez sans l\'ordonnance numérique', 'Non', 'NON', 'Annuler', 'Ne pas inclure'],
+                'Valider': ['Oui', 'OUI', 'Confirmer', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre', 'Importer', 'Inclure']
             };
             if (button) {
                 var action = Object.keys(actions).find(key => actions[key].includes(button.textContent));
@@ -366,23 +367,28 @@ addTweak('*', 'WarpButtons', function () {
                 console.log('ajout de raccourcis au button', button);
                 var raccourci = raccourcis[button.id];
                 if (raccourci) {
-                    button.textContent += raccourci;
-                }
-                if (button.textContent.includes('Désactiver aujourd\'hui')) { // certains boutons nécessitent d'étendre la taille de la fenêtre
-                    resizeTextBox();
+                    // Créer un conteneur pour le bouton et le texte
+                    var container = document.createElement('div');
+                    container.style.position = 'relative';
+                    button.parentNode.insertBefore(container, button);
+                    container.appendChild(button);
+
+                    // Créer l'élément span pour le raccourci
+                    var span = document.createElement('span');
+                    span.textContent = raccourci;
+                    span.style.position = 'absolute';
+                    span.style.bottom = '-10px'; // Placer le texte un peu plus bas
+                    span.style.right = '5px';
+                    span.style.color = 'grey';
+                    span.style.fontSize = '0.8em';
+                    span.style.backgroundColor = '#F0F0F0'; // Ajouter un fond blanc
+                    span.style.padding = '2px'; // Ajouter un peu de padding pour le texte
+                    span.style.borderRadius = '10px'; // Ajouter des angles arrondis
+                    container.appendChild(span);
                 }
             }
         }
 
-        function resizeTextBox() {
-            let textbox = document.querySelector('.mat-dialog-container');
-            let currentHeight = parseInt(window.getComputedStyle(textbox).height, 10);
-            if (textbox && currentHeight < 440) {
-                textbox.style.height = '440px';
-            } else {
-                console.log('textBox not found :-/ can\'t resize it');
-            }
-        }
 
 
         buttons.forEach(function (button) {
@@ -405,3 +411,131 @@ addTweak('*', 'WarpButtons', function () {
     });
 });
 
+// Renvoie uniquement la dernière page d'un pdf présent dans un blob
+async function getLastPageFromBlob(blob) {
+    const pdfBytes = await blob.arrayBuffer();
+    const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+    const totalPages = pdfDoc.getPageCount();
+
+    const newPdfDoc = await PDFLib.PDFDocument.create();
+    const [copiedPage] = await newPdfDoc.copyPages(pdfDoc, [totalPages - 1]);
+    newPdfDoc.addPage(copiedPage);
+
+    const newPdfBytes = await newPdfDoc.save();
+    const newBlob = new Blob([newPdfBytes], { type: 'application/pdf' });
+    return newBlob;
+}
+
+
+// // Lien avec les notifications de Weda
+// Exemple de load de notification
+let notifToSend = {
+    message: "Notification de test 2", // message displayed
+    icon: "home", // mat icon used for the notification
+    type: "success", // color (success / fail / undefined)
+    extra: "{}", // extra data (json)
+    duration: 5000 // duration of the notification
+};
+
+// On démarre le script d'écoute, qui doit tourner à part dans FWNotif.js
+// Il écoutera les évènements pour afficher les notifications
+function startNotifScript() {
+    let script = document.createElement('script');
+    script.src = chrome.runtime.getURL('FW_scripts/FWNotif.js?test=true');
+    // console.log(script) // Error in event handler: TypeError: console.log(...) is not a function
+    (document.head || document.documentElement).appendChild(script);
+}
+
+startNotifScript();
+
+
+/**
+ * Envoi simplifié d'une notification Weda.
+ * Appelé via la fonction ou l'envoi d'un onMessage.
+ * 
+ * Il est en général préférable d'utiliser la fonction sendWedaNotif() qui est plus simple à utiliser.
+ * 
+ * @param {Object} options - Options de la notification.
+ * @param {string} [options.message="Notification de test"] - Message affiché dans la notification.
+ * @param {string} [options.icon="home"] - Icône utilisée pour la notification (mat icon).
+ * @param {string} [options.type="success"] - Type de notification (success / fail / undefined). /!\ en date du 10/11/24, 'fail' entraîne une notification qui ne tient pas compte de 'duration'.
+ * @param {string} [options.extra="{}"] - Données supplémentaires (JSON).
+ * @param {number} [options.duration=5000] - Durée de la notification en millisecondes.
+ */
+function sendWedaNotif({
+    message = "Notification de test",
+    icon = "home",
+    type = "success",
+    extra = "{}",
+    duration = 5000
+} = {}) {
+    // Vérifie si chaque option est vide et assigne la valeur par défaut si nécessaire
+    message = message || "Notification de test";
+    icon = icon || "home";
+    type = type || "success";
+    extra = extra || "{}";
+    duration = duration || 5000;
+
+    const notifToSend = {
+        message: `[Weda-Helper] ${message}`,
+        icon,
+        type,
+        extra,
+        duration
+    };
+
+    console.log('Notification envoyée :', notifToSend);
+
+    const event = new CustomEvent('showNotification', { detail: notifToSend });
+    document.dispatchEvent(event);
+}
+
+
+/* === implementation de la fonction sendWedaNotif === */
+// utilisé pour l'envoi depuis le popup
+chrome.runtime.onMessage.addListener(
+    function (request, sender, sendResponse) {
+        if (request.action === "sendWedaNotif") {
+            sendWedaNotif(request.options);
+            sendResponse({ message: "Notification envoyée !" });
+        }
+    }
+);
+
+function sendWedaNotifAllTabs(options) {
+    // Ajoute un identifiant unique basé sur l'horodatage actuel
+    options.id = Date.now();
+    chrome.storage.local.set({ 'wedaNotifOptions': options }, function() {
+        console.log('Options de notification stockées avec ID:', options.id);
+    });
+}
+
+chrome.storage.onChanged.addListener(function(changes, namespace) {
+    if (namespace === 'local' && changes.wedaNotifOptions) {
+        const options = changes.wedaNotifOptions.newValue;
+        sendWedaNotif(options);
+    }
+});
+
+
+// // envoi une notif après 5 secondes
+// setTimeout(() => {
+//     sendWedaNotifAllTabs({
+//         message: 'Notification de test custom2',
+// //        icon: 'home',
+//         type: 'fail',
+// //        extra: '{}',
+// //        duration: 5000
+//     });
+// }, 5000);
+
+
+
+// ** set lastPrintDate
+// * permet de définir la date de la dernière impression et donc de permettre ensuite la fermeture de l'onglet appelant
+// * dans le cadre de la fonction instantPrint
+function setLastPrintDate() { 
+    const date = new Date();
+    sessionStorage.setItem('lastPrintDate', date.toISOString());
+    console.log('Dernière date d\'impression enregistrée :', date);
+}

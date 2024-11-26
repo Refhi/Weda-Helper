@@ -1,6 +1,6 @@
 // Récupérer les valeurs par défaut du stockage
 chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function(result) {
-  // Les valeurs par défaut sont stockées (v >= 2.2)dans manifest.json pour être utilisées dans les options et éviter de dupliquer le code
+  // Les valeurs par défaut sont stockées background.js pour être utilisées dans les options et éviter de dupliquer le code
 
   let defaultSettings = result.defaultSettings;
   let defaultShortcuts = result.defaultShortcuts;
@@ -12,7 +12,6 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function(resul
     let node = document.getElementById('shortcuts');
     Object.entries(defaultShortcuts).forEach(([key, shortcut]) => {
     // D'abord récupérer les valeurs stockées ou utiliser les valeurs par défaut
-
       var savedShortcut;
       if(result["shortcuts"]) {
         savedShortcut = result["shortcuts"][key];
@@ -48,14 +47,22 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function(resul
 }
 
 function shortcutClicked(buttonEvent) {
+  // Désactiver la classe 'modifying' sur tous les autres boutons
+  document.querySelectorAll('button.modifying').forEach(button => {
+    button.classList.remove('modifying');
+  });
+
+  // Désactiver tous les écouteurs de touches existants
+  hotkeys.unbind('*');
+
   buttonEvent.target.classList.add('modifying');
   hotkeys('*', function(event, handler) { // On écoute toutes les pressions de touche
     function saveShortcut(keys) {
       var shortcut = "";
       for (var i = 0; i < keys.length; i++) {
-        var separator="+";
-        if (i==0) {
-          separator="";
+        var separator = "+";
+        if (i == 0) {
+          separator = "";
         }
         shortcut = shortcut + separator + keyToWord(keys[i]);
       }
@@ -63,8 +70,8 @@ function shortcutClicked(buttonEvent) {
       buttonEvent.target.classList.remove('modifying');
       chrome.storage.local.get("shortcuts", function(result) {
         var shortcuts = result["shortcuts"];
-        shortcuts[buttonEvent.target.id]=shortcut;
-        chrome.storage.local.set({"shortcuts":shortcuts});
+        shortcuts[buttonEvent.target.id] = shortcut;
+        chrome.storage.local.set({ "shortcuts": shortcuts });
       });
       hotkeys.unbind('*');
     }
@@ -73,20 +80,18 @@ function shortcutClicked(buttonEvent) {
       return element.match(/\w{1}/);
     }
 
-    function isfunctionKey(element) 
-    {
+    function isfunctionKey(element) {
       return element.match(/f\w{1,2}/);
     }
 
     event.preventDefault();
     var keys = hotkeys.getPressedKeyString();
     console.log(keys);
-    if(keys.length <= 1) { //Une seule touche, on accepte F1 à F19
+    if (keys.length <= 1) { // Une seule touche, on accepte F1 à F19
       if (isfunctionKey(keys[0])) {
         saveShortcut(keys);
       }
-    }
-    else  { //Si l'on a plus de 2 touches, il faut au moins une lettre ou un chiffre
+    } else { // Si l'on a plus de 2 touches, il faut au moins une lettre ou un chiffre
       if (keys.some(isLetterOrNumber)) {
         saveShortcut(keys);
       }

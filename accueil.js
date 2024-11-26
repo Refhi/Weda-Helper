@@ -6,6 +6,75 @@ let homePageUrls = [
 
 let homePageFunctions = [
     {
+        option: '*preAlertATCD',
+        callback: function () {
+            waitForElement({
+                selector: '[title="Date d\'alerte"]',
+                callback: function (elements) {
+                    elements.forEach(alertElement => {
+                        // ici le texte est au format Alerte : 01/01/2011.
+                        // Donc d'abord retirer le point final
+                        alertElement.textContent = alertElement.textContent.replace('.', '');
+                        let alertDateText = alertElement.textContent.split(' : ')[1];
+                        if (!alertDateText) {
+                            return;
+                        }
+
+                        // Vérifier que alertDateText est bien au format xx/xx/xxxx
+                        const datePattern = /^\d{2}\/\d{2}\/\d{4}$/;
+                        if (!datePattern.test(alertDateText)) {
+                            return;
+                        }
+                        // Conversion manuelle de la date
+                        let [day, month, year] = alertDateText.split('/');
+                        let alertDate = new Date(`${year}-${month}-${day}`);
+
+                        // Ne continuer que si la date est valide
+                        if (isNaN(alertDate)) {
+                            return;
+                        }
+                        let today = new Date();
+                        let fiveMonthsLater = new Date();
+                        console.log('alertDate', alertDate, 'today', today);
+                        getOption('preAlertATCD', function (preAlertATCD) {
+                            preAlertATCD = parseInt(preAlertATCD);
+                            fiveMonthsLater.setMonth(today.getMonth() + preAlertATCD);
+                            if (alertDate <= fiveMonthsLater && alertDate > today) {
+                                // Mettre l'élément en orange et en gras
+                                alertElement.style.color = 'orange';
+                                alertElement.style.fontWeight = 'bold';
+
+                            }
+                        });
+                    });
+                }
+            });
+        }
+    },
+    {
+        option: '!RemoveLocalCompanionPrint',
+        callback: function () {
+            function returnAATIElement() {
+                // Le selecteur est .sc et le titre débute par "Dernier A.T."
+                let aatiElement = document.querySelector('.sc[title^="Dernier A.T."]');
+                console.log('aatiElement', aatiElement);
+                return aatiElement;
+            }
+            console.log('je tente de clicker sur le dernier pdf');
+            chrome.storage.local.get(['autoAATIexit', 'RemoveLocalCompanionPrint'], function (result) {
+                if (Date.now() - result.autoAATIexit < 10000 && result.RemoveLocalCompanionPrint === false) {
+                    console.log('autoAATIexit', result.autoAATIexit, 'is less than 10s old, donc je tente d\'ouvrir le pdf du dernier arrêt de travail');
+                    // Ouvre le dernier arrêt de travail
+                    let element = returnAATIElement();
+                    element.click();
+                } else {
+                    // let element = returnAATIElement();
+                    // element.click();
+                }
+            });
+        },
+    },
+    {
         option: 'autoSelectPatientCV',
         callback: function () {
             // lit automatiquement la carte vitale elle est insérée

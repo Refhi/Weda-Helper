@@ -27,6 +27,10 @@ function checkPatientName() {
     });
 }
 
+
+
+    
+
 // Définition de la fonction principale
 // (tableau et bouche après)
 function tweakFSECreation() {
@@ -145,7 +149,7 @@ function tweakFSECreation() {
                     console.log('Détecté : pression sur bouton ', type, '. Je clique sur le bouton degradé');
                     degradeeButton.click();
                     recordMetrics({ clicks: 1, drags: 1 });
-                }, 100); // un clic trop précoce semble avoir des effets de bord
+                }, 200); // un clic trop précoce semble avoir des effets de bord
                 // Puis clique sur le bouton "Adri"
                 setTimeout(function () {
                     console.log('Détecté : pression sur bouton ', type, '. Je clique sur le bouton de lecture adri');
@@ -154,7 +158,7 @@ function tweakFSECreation() {
                         adriElement.click();
                         recordMetrics({ clicks: 1, drags: 1 });
                     }
-                }, 500);
+                }, 3000);
             });
         }
         // Attendre que l'élément "Lire la carte vitale" existe
@@ -248,54 +252,6 @@ function tweakFSECreation() {
         let conditionalCotations = [
             {
                 condition: function () {
-                    let isALD = document.querySelector('#mat-radio-2-input').checked;
-                    return isALD;
-                },
-                action: 'DéfautALD'
-            },
-            {
-                condition: function () {
-                    // accident de travail
-                    // Chercher le menu contenant les choix possibles de type d'assurance
-                    // C'est le parent de l'élément contenant le texte "Accident du travail / Maladie professionnelle"
-                    let textToSearch = 'Accident du travail / Maladie professionnelle';
-                    let elements = document.querySelectorAll('.ng-star-inserted');
-                    let elementOptionAT = Array.from(elements).find(el => el.textContent === textToSearch);
-                    if (elementOptionAT) {
-                        let menu = elementOptionAT.parentElement;
-                        return menu.value === '41';
-                    }
-                },
-                action: 'DéfautALD'
-            },
-            {
-                condition: function () {
-                    // Étape 1: Sélectionner le span et extraire la date de naissance du title
-                    let spanWithTitle = document.querySelector('#LabelInfoPatientNom > span > span:last-child');
-                    let title = spanWithTitle.getAttribute('title');
-                    let birthDateString = title.match(/(\d{2}\/\d{2}\/\d{4})/)[0];
-
-                    // Étape 2: Convertir la chaîne de date en un objet Date
-                    let birthDateParts = birthDateString.split('/');
-                    let birthDate = new Date(birthDateParts[2], birthDateParts[1] - 1, birthDateParts[0]);
-
-                    // Étape 3: Calculer l'âge
-                    let today = new Date();
-                    let age = today.getFullYear() - birthDate.getFullYear();
-                    let m = today.getMonth() - birthDate.getMonth();
-                    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-                        age--;
-                    }
-
-                    console.log('Age du patient :', age, 'ans');
-
-                    // Étape 4: Retourner true si l'âge est inférieur à 6 ans
-                    return age < 6;
-                },
-                action: 'DéfautPédia'
-            },
-            {
-                condition: function () {
                     let fseTypeElement = document.querySelector('#form1 > div:nth-child(14) > div > div:nth-child(2) > vz-feuille-de-soin > div.fseContainer > div > div.toolbarContainer.thinCards.flexRow > mat-card.mat-card.mat-focus-indicator.cvContainer > vz-lecture-cv-widget > div > vz-mode-teletrans > div')
                     let isTeleconsultation = fseTypeElement.textContent === 'SV';
                     return isTeleconsultation;
@@ -319,6 +275,41 @@ function tweakFSECreation() {
             },
             {
                 condition: function () {
+                    let ageOK = patientAgeInFSE() >= 80;
+                    let isMT = estMTdeclareOuReferent(loggedInUser());
+                    return ageOK && !isMT
+                },
+                action: 'DéfautMOP'
+
+            },
+            {
+                condition: function () {
+                    let isALD = document.querySelector('#mat-radio-2-input').checked;
+                    return isALD;
+                },
+                action: 'DéfautALD'
+            },
+            {
+                condition: function () {
+                    // accident de travail
+                    // Chercher le menu contenant les choix possibles de type d'assurance
+                    // C'est le parent de l'élément contenant le texte "Accident du travail / Maladie professionnelle"
+                    let textToSearch = 'Accident du travail / Maladie professionnelle';
+                    let elements = document.querySelectorAll('.ng-star-inserted');
+                    let elementOptionAT = Array.from(elements).find(el => el.textContent === textToSearch);
+                    if (elementOptionAT) {
+                        let menu = elementOptionAT.parentElement;
+                        return menu.value === '41';
+                    }
+                },
+                action: 'DéfautALD'
+            },
+            {
+                condition: () => patientAgeInFSE() < 6,
+                action: 'DéfautPédia'
+            },
+            {
+                condition: function () {
                     return true; // Cette condition sera toujours vraie pour la cotation "Défaut"
                 },
                 action: 'Défaut'
@@ -333,9 +324,11 @@ function tweakFSECreation() {
             for (let i = 0; i < conditionalCotations.length; i++) { // Loop dans le dico des cotations conditionnelles
                 if (conditionalCotations[i].condition()) {// Si la condition est remplie
                     let action = conditionalCotations[i].action; // L'action c'est le nom du favori à appliquer
-                    let secondaryAction = conditionalCotations[i].secondaryAction; // L'action secondaire est une fonction à exécuter après avoir cliqué sur le favori
-                    let targetElement = Array.from(elements).find(el => el.textContent.trim() === 'keyboard_arrow_right' + action);
+                    // L'action secondaire est une fonction à exécuter après avoir cliqué sur le favori.
+                    // Par exemple, pour sélectionner le type de paiement "VI" pour les téléconsultations
+                    let secondaryAction = conditionalCotations[i].secondaryAction;
                     // keyboard_arrow_right est nécessaire pour matcher le texte complet du favori qui contient ">" devant le nom
+                    let targetElement = Array.from(elements).find(el => el.textContent.trim() === 'keyboard_arrow_right' + action);
                     if (targetElement) {
                         targetElement.click();
                         if (secondaryAction) {
@@ -347,7 +340,12 @@ function tweakFSECreation() {
                         return; // Arrête la fonction après avoir appliqué une cotation
                     } else if (action === 'Défaut') {
                         console.log('Action "Défaut" spécifiée mais non trouvée parmi les éléments.');
-                        alert('Weda-Helper : "cotation par défaut" n\'est pas désactivé dans les options, mais aucune cotation favorite nommée "Défaut" n\'a été trouvé. Vous devez soit ajouter un favori nommé exactement "Défaut", soit désactiver l\'option "cotation par défaut" dans les options de Weda-Helper. Vous pouvez également définir DéfautPédia et DéfautALD.');
+                        // alert('Weda-Helper : "cotation par défaut" n\'est pas désactivé dans les options, mais aucune cotation favorite nommée "Défaut" n\'a été trouvé. Vous devez soit ajouter un favori nommé exactement "Défaut", soit désactiver l\'option "cotation par défaut" dans les options de Weda-Helper. Vous pouvez également définir DéfautPédia et DéfautALD.');
+                        sendWedaNotifAllTabs({
+                            message: "\"cotation par défaut\" n\'est pas désactivé dans les options, mais aucune cotation favorite nommée \"Défaut\" n\'a été trouvé. Vous devez soit ajouter un favori nommé exactement \"Défaut\", soit désactiver l\'option `\"cotation par défaut\" dans les options de Weda-Helper. Vous pouvez également définir DéfautPédia et DéfautALD.",
+                            type: 'undefined',
+                            icon: 'error_outline'
+                        })
                         return; // Arrête la fonction si "Défaut" est spécifié mais non trouvé
                     }
                 }
@@ -454,10 +452,9 @@ let fseTable =
                 waitForElement({
                     selector: 'vz-medecin-traitant-weda div.mt10.ng-star-inserted',
                     callback: function (element) {
-                        let MTDeclare = element[0].innerText;
-                        console.log('found MT: ' + MTDeclare);
-                        var loggedInUser = document.getElementById('LabelUserLog').innerText;
-                        if (MTDeclare.includes(loggedInUser)) {
+                        let userName = loggedInUser();
+                        let isMT = estMTdeclareOuReferent(userName);
+                        if (isMT) {
                             console.log('MT déclaré = utilisateur en cours => je coche MT déclaré');
                             let select = document.querySelector('vz-orientation select');
                             select.value = '03'; // Je suis le médecin traitant
@@ -525,6 +522,26 @@ addTweak('/vitalzen/gestion.aspx', 'TweakSCORDegradee', function () {
             console.log('options trouvées', elements);
             elements[1].click();
             recordMetrics({ clicks: 1, drags: 1 });
+        }
+    });
+});
+
+// Coche automatiquement la case "Inclure la FSP en SCOR" dans la FSE
+addTweak('/vitalzen/fse.aspx', 'SCORAutoSelectPJ', function () {
+    waitForElement({
+        selector: 'span',
+        textContent: 'Inclure la FSP en SCOR',
+        callback: function (elements) {
+            console.log('[SCORAutoSelectPJ] Case SCOR PJ trouvée, je clique dessus si pas déjà cochée', elements[0]);
+            // On cherche l'élément qui est coché ou non : c'est le fils 'input' de l'ainé du parent
+            let checkbox = elements[0].parentElement.parentElement.querySelector('input');
+            if (!checkbox.checked) {
+                console.log('[SCORAutoSelectPJ] Case SCOR PJ non cochée, je clique dessus');
+                elements[0].click();
+                recordMetrics({ clicks: 1, drags: 1 });
+            } else {
+                console.log('[SCORAutoSelectPJ] Case SCOR PJ déjà cochée');
+            }
         }
     });
 });
@@ -602,4 +619,154 @@ addTweak('/vitalzen/fse.aspx', '*keepPrintDegradeeParameters', function () {
             });
         }
     });
+});
+
+// Utilitaires pour la FSE
+
+function patientAgeInFSE() {
+    // Étape 1: Sélectionner le span et extraire la date de naissance du title
+    let spanWithTitle = document.querySelector('#LabelInfoPatientNom > span > span:last-child');
+    let title = spanWithTitle.getAttribute('title');
+    let birthDateString = title.match(/(\d{2}\/\d{2}\/\d{4})/)[0];
+
+    // Étape 2: Convertir la chaîne de date en un objet Date
+    let birthDateParts = birthDateString.split('/');
+    let birthDate = new Date(birthDateParts[2], birthDateParts[1] - 1, birthDateParts[0]);
+
+    // Étape 3: Calculer l'âge
+    let today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    let m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+
+    console.log('Age du patient :', age, 'ans');
+
+    // Étape 4: Retourner l'âge
+    return age;
+}
+
+function estMTdeclareOuReferent(userName) {
+    // Recherche dans les éléments .ng-star-inserted si le nom du MT est présent en text
+    let elements = document.querySelectorAll('.ng-star-inserted');
+    for (let i = 0; i < elements.length; i++) {
+        if (elements[i].textContent.includes(userName)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function loggedInUser() {
+    // Récupère le nom de l'utilisateur connecté
+    let userName = document.getElementById('LabelUserLog').innerText;
+    return userName;
+}
+
+// Maintient de la sélection de la formule pour les AMC
+addTweak('/vitalzen/fse.aspx', '*TweakAMCFormule', function () {
+    console.log('[TweakAMCFormule] Démarrage');
+    // D'abord on attends l'élément encadrant le menu déroulant
+    waitForElement({
+        selector: '.mat-card-subtitle',
+        textContent: 'Formule',
+        // justOnce: false,
+        callback: function (elements) {
+            console.log('[TweakAMCFormule] élément trouvé', elements);
+            // on sélection le frère suivant du parent
+            let menuDeroulant = elements[0].parentElement.nextElementSibling;
+            console.log('[TweakAMCFormule] menuDeroulant trouvé', menuDeroulant);
+            // On vérifie si un des éléments est déjà sélectionné
+            let currentOption = menuDeroulant.value;
+            if (!currentOption) {
+                console.log('[TweakAMCFormule] pas d\'option sélectionnée');
+                // On récupère la valeur stockée
+                chrome.storage.local.get(['AMCFormule'], function (result) {
+                    console.log('[TweakAMCFormule] AMCFormule récupérée', result.AMCFormule);
+                    if (result.AMCFormule) {
+                        // Trouver l'option correspondante dans le menu déroulant
+                        let optionToSelect = Array.from(menuDeroulant.options).find(option => option.value === result.AMCFormule);
+                        if (optionToSelect) {
+                            optionToSelect.selected = true; // Sélectionner l'option
+                            optionToSelect.click(); // Cliquer sur l'option
+                        }
+                    }
+                });
+            }
+
+            // On surveille le clic sur un des éléments du menu déroulant (les options)
+            menuDeroulant.addEventListener('click', function (event) {
+                console.log('[TweakAMCFormule] clic détecté sur le menu déroulant');
+                // On stocke la valeur du menu déroulant
+                let saveObj = {};
+                saveObj['AMCFormule'] = menuDeroulant.value;
+                chrome.storage.local.set(saveObj, function () {
+                    console.log(`[TweakAMCFormule] AMCFormule saved`, menuDeroulant.value);
+                });
+            });
+        }
+    });
+});
+
+
+// Coche automatiquement "Présentation d'un feuillet AT" pour les FSE en accident de travail
+addTweak('/vitalzen/fse.aspx', '*autoCheckFeuilletAT', function () {
+    waitForElement({
+        selector: 'span',
+        textContent: "Présentation d'un feuillet AT",
+        justOnce: true,
+        callback: function (element) {
+            console.log('[autoCheckFeuilletAT] élément trouvé je le click', element);
+            element[0].click();
+            recordMetrics({ clicks: 1, drags: 1 });
+        }
+    });
+});
+
+// Sélectionne automatiquement "Rien" dans "Pièce justificative AMO" si le texte d'erreur
+// "Champ de donnée Actes - Pièce Justificative AMO invalide : Erreur de saisie Nature" apparaît
+addTweak('/vitalzen/fse.aspx', '*autoSelectRienAMO', function () {
+    waitForElement({
+        selector: 'div',
+        textContent: "Champ de donnée Actes - Pièce Justificative AMO invalide : Erreur de saisie Nature",
+        callback: function () {
+            console.log('[autoSelectRienAMO] erreur détectée');
+            // Trouve le grand-père de l'élément span contenant le text "Nature de la pièce"
+            let spans = document.querySelectorAll('span .ng-star-inserted');
+            console.log('[autoSelectRienAMO] spans trouvés', spans);
+            let ElementWithNature;
+            for (let span of spans) {
+                if (span.textContent.includes("Nature de la pièce")) {
+                    console.log('[autoSelectRienAMO] élément Nature de la pièce trouvé', span);
+                    ElementWithNature = span;
+                    break; // Arrête la boucle dès que l'élément est trouvé
+                }
+            }
+            let dropDownMenu = ElementWithNature.parentElement.parentElement;
+            console.log('[autoSelectRienAMO] dropDownMenu trouvé', dropDownMenu);
+            dropDownMenu.click();
+            setTimeout(function () {
+                let RienElement = document.querySelector('.mat-option-text');
+                RienElement.click();
+                recordMetrics({ clicks: 1, drags: 1 });
+            }, 10); // Semble suffisant pour que le menu se soit ouvert
+        }
+    });
+});
+
+// Ajout d'un timestamp toutes les secondes pour acter qu'une FSE est bien en usage actif
+addTweak('/vitalzen/fse.aspx', '*FSEActive', function () {
+    function saveTimestamp() {
+        let timestamp = Date.now();
+        chrome.storage.local.set({ FSEActiveTimestamp: timestamp }, function () {
+            console.log('[FSEActive] FSE en cours, actualisation du timestamp');
+            // Est utilisé pour vérifier si la FSE est active afin d'éviter la fermeture
+            // d'un onglet post-impression pendant ce temps, ce qui coupe 
+            // parfois la connexion avec vitalZen (rare, mais TRES pénible)
+        });
+    }
+
+    saveTimestamp(); // Sauvegarde initiale
+    setInterval(saveTimestamp, 1000); // Sauvegarde toutes les secondes
 });

@@ -29,7 +29,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoAATI', function () {
 
 urlAATI = [
     '/FolderMedical/Aati.aspx',
-    '/BinaryData.aspx'
+    '/FolderMedical/PopUpViewBinaryForm.aspx'
 ]
 
 addTweak(urlAATI, 'autoAATI', function () {
@@ -126,7 +126,13 @@ addTweak(urlAATI, 'autoAATI', function () {
         justOnce: true
     });
 
-    waitLegacyForElement('[title="Déclarer l\'AT pour ce bénéficiaire."]', null, 50000, clickPremierPatientCV); // assez long car sinon la demande CPS peux bloquer le processus
+    // waitLegacyForElement('[title="Déclarer l\'AT pour ce bénéficiaire."]', null, 50000, clickPremierPatientCV); // assez long car sinon la demande CPS peux bloquer le processus
+    waitForElement({
+        selector: '[title="Déclarer l\'AT pour ce bénéficiaire."]',
+        callback: clickPremierPatientCV,
+        justOnce: true
+    });
+
 
     waitForElement({
         selector: selecteurSortieNonLimites,
@@ -138,27 +144,42 @@ addTweak(urlAATI, 'autoAATI', function () {
     waitForElement({
         selector: selectorExitButton,
         callback: function (elements) {
-            setTimeOfSending('autoAATIexit');
-            console.log('clicking on the exit button + timestamp');
-            intervalId = setInterval(() => checkAutoAATIexit(elements), 100); // Vérifier toutes les 100ms
-            setTimeout(() => clearInterval(intervalId), 20000); // Arrêter après 20 secondes
-            recordMetrics({ clicks: 1, drags: 1 });
+            // 2.7.2 La nouvelle méthode est d'aller ensuite récupérer le pdf depuis la page d'accueil du dossier patient
+            setTimeOfSending('autoAATIexit'); // A l'ouverure de la page d'accueil on n'ouvrira le pdf seulement si < 10 secondes
+            // Ici on essai de laisser le temps au pdf d'être généré avant de cliquer sur quitter.
+            // Mais on ne pourra pas empêcher la popup de prévisu de s'afficher
+            console.log('autoAATIexit', Date.now(), 'attente de 3 secondes avant de cliquer sur le bouton de sortie');
+            setTimeout(() => {
+                console.log('clicking on the exit button + timestamp');
+                elements[0].click(); // Finalement on quitte direct sans attendre
+                recordMetrics({ clicks: 1, drags: 1 });
+            }, 3000);
         }
     });
 
+    function observeLastPrintDateChange(callback) {
+        const originalSetItem = sessionStorage.setItem;
+        sessionStorage.setItem = function(key, value) {
+            originalSetItem.apply(this, arguments);
+            if (key === 'lastPrintDate') {
+                callback(value);
+            }
+        };
+    }
 
-
-    // Envoi du document à l'assistant
-    addTweak('/BinaryData.aspx', "*sendDocToCompanion", function () {
+    // Cette partie gère la fermeture de la prévisu de l'AT au moment où on récupère le pdf depuis la page d'accueil du patient    
+    addTweak('/FolderMedical/PopUpViewBinaryForm.aspx', "*sendDocToCompanion", function () {
         chrome.storage.local.get(['autoAATIexit'], function (result) {
             getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
                 if (Date.now() - result.autoAATIexit < 10000 && RemoveLocalCompanionPrint === false) {
                     console.log('autoAATIexit', result.autoAATIexit, 'is less than 10 seconds ago');
                     chrome.storage.local.set({ autoAATIexit: 0 });
-                    let url = window.location.href;
+                    let iframeElement = document.querySelector('iframe');
+                    let url = iframeElement.src;
                     console.log('url', url);
                     fetch(url)
                         .then(response => response.blob())
+                        .then(getLastPageFromBlob)
                         .then(blob => {
                             console.log('blob', blob);
                             return sendToCompanion(`print`, blob);
@@ -167,19 +188,29 @@ addTweak(urlAATI, 'autoAATI', function () {
                             // The blob has been successfully transferred
                             console.log('The blob has been successfully transferred.');
                             recordMetrics({ clicks: 3, drags: 3 });
-                            setTimeout(function () {
-                                window.close();
-                            }, 1000); // essai avec un délai de 1s
+                            observeLastPrintDateChange((newValue) => {
+                                let printTime = Date.parse(newValue);
+                                if (Date.now() - printTime < 10000) {
+                                    sendWedaNotifAllTabs({
+                                        message: 'Page 3 de l\'arrêt de travail imprimé avec succès.',
+                                        type: 'success',
+                                        icon: 'print'
+                                    });
+                                    window.close();
+                                }
+                            });
                         })
                         .catch(error => {
                             console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
                             if (!errortype.includes('[focus]')) {
-                                alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
+                                sendWedaNotifAllTabs({
+                                    message: 'Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error,
+                                    type: 'fail',
+                                    icon: 'print'
+                                })
+                                // alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
                             }
                         });
-                } else {
-                    // en cas de Companion désactivé
-                    window.print();
                 }
             });
         });

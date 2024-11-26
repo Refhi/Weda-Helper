@@ -84,6 +84,15 @@ async function getPatientInfo(patientId) {
         .catch(error => console.error('There has been a problem with your fetch operation:', error));
 }
 
+// Fonction pour récupérer l'Id du patient en cours depuis l'url de la page en cours
+function getCurrentPatientId() {
+    let patientId = window.location.search.match(/PatDk=(\d+)/);
+    if (patientId) {
+        return patientId[1];
+    }
+    return null;
+}
+
 
 // // Ajout d'un accès simplifié dans un onglet dédié aux antécédents, depuis n'importe
 // quelle page affichant une liste de patient après recherche

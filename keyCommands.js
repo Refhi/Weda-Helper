@@ -162,6 +162,15 @@ function addShortcuts(keyCommands, scope, scopeName) {
 }
 
 
+function removeHistoryIframe(iframes) {
+    iframes = Array.from(iframes).filter(iframe => !iframe.src.startsWith(`${baseUrl}/FolderMedical/FrameHistoriqueForm.aspx`));
+    return iframes;
+}
+
+function isHistoriqueIframe(iframe) {
+    let isHistoriqueIframe_bol = iframe.src.startsWith(`${baseUrl}/FolderMedical/FrameHistoriqueForm.aspx`);
+    return isHistoriqueIframe_bol;
+}
 
 function addShortcutsToIframe() {
     var iframes = document.querySelectorAll('iframe');
@@ -171,9 +180,12 @@ function addShortcutsToIframe() {
             hotkeys.setScope(scopeName);
             // console.log('iframe' + (index + 1), iframe);
             addShortcuts(keyCommands, iframe.contentDocument, scopeName);
-            addTweak('/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', function () {
-                addTabsToIframe(scopeName, iframe, index, iframes); // est géré dans Constation.js dans la section TweakTabConsultation
-            });
+            if (!isHistoriqueIframe(iframe)) { // Pas besoin des tabulations sur l'historique
+                iframes = removeHistoryIframe(iframes);
+                addTweak('/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', function () {
+                    addTabsToIframe(scopeName, iframe, iframes); // est géré dans Constation.js dans la section TweakTabConsultation
+                });
+            }
         });
     }
 }

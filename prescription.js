@@ -253,17 +253,110 @@ function validateOrdoNumIfOptionActivated() {
 
 // autoclique le bouton de consentement de l'ordonnance numérique
 addTweak([demandeUrl, prescriptionUrl], 'autoConsentNumPres', function () {
-    waitForElement({
-        selector: '.cdk-overlay-container .mat-radio-label',
-        callback: function (elements) {
-            // console.log('[debug].cdk-overlay-container .mat-radio-label', elements);
-            elements[0].click();
-            recordMetrics({ clicks: 1, drags: 1 });
-
-            if (PrescriptionForm) { //Pas de selection du type de l'ordonnance donc on valide une fois le consentement coché
-                validateOrdoNumIfOptionActivated();
-            }
+    function addYesNoChoiceBox(consent) {
+        var optionOrdoNumElement = document.getElementById('ContentPlaceHolder1_EvenementUcForm1_CheckBoxEPrescription');
+        console.log('autoConsentNumPres started');
+        var checkbox = optionOrdoNumElement;
+        console.log('checkbox', checkbox);
+        
+        // Si les boutons radio existent déjà, on ne les recrée pas
+        if (document.getElementById('autoConsentNumPres_Oui') || document.getElementById('autoConsentNumPres_Non')) {
+            return;
         }
+    
+        function createRadioButton(id, value, labelText) {
+            var radio = document.createElement('input');
+            radio.type = 'radio';
+            radio.name = 'autoConsentNumPres';
+            radio.value = value;
+            radio.id = id;
+            radio.title = 'Mon patient ou et le ou les titulaire(s) de l\'autorité parentale a (ont) accepté que je puisse consulter ce qui a été délivré ou exécuté sur la présente prescription';
+    
+            var label = document.createElement('label');
+            label.htmlFor = id;
+            label.textContent = labelText;
+    
+            return { radio: radio, label: label };
+        }
+    
+        var radioOuiObj = createRadioButton('autoConsentNumPres_Oui', 'true', 'Oui');
+        var radioNonObj = createRadioButton('autoConsentNumPres_Non', 'false', 'Non');
+    
+        if (consent === true) {
+            radioOuiObj.radio.checked = true;
+        } else if (consent === false) {
+            radioNonObj.radio.checked = true;
+        }
+    
+        radioOuiObj.radio.addEventListener('change', function () {
+            if (radioOuiObj.radio.checked) {
+                consent = true;
+                sessionStorage.setItem('consent', 'true');
+            }
+        });
+    
+        radioNonObj.radio.addEventListener('change', function () {
+            if (radioNonObj.radio.checked) {
+                consent = false;
+                sessionStorage.setItem('consent', 'false');
+            }
+        });
+    
+        var container = document.createElement('div');
+        container.style.display = 'none'; // Initialement caché
+        container.appendChild(radioOuiObj.radio);
+        container.appendChild(radioOuiObj.label);
+        container.appendChild(radioNonObj.radio);
+        container.appendChild(radioNonObj.label);
+    
+        checkbox.parentElement.insertBefore(container, checkbox);
+
+        function addMouseOuverListener(element) {
+            element.addEventListener('mouseover', function () {
+                container.style.display = 'block';
+            });
+        }
+        addMouseOuverListener(checkbox);
+        addMouseOuverListener(checkbox.nextElementSibling);
+    }
+    
+
+    getOption('autoConsentNumPres_Oui', function (autoConsentNumPres_Oui) {
+        // Renvoie le consentement à utiliser (le sessionConsent étant prioritaire)
+        function getConsent() {
+            let sessionConsent = sessionStorage.getItem('consent');
+            if (sessionConsent) {
+                return sessionConsent === 'true';
+            }
+            return autoConsentNumPres_Oui;
+        }
+        addYesNoChoiceBox(getConsent());
+
+        waitForElement({
+            selector: '#ContentPlaceHolder1_EvenementUcForm1_CheckBoxEPrescription',
+            callback: function () {
+                addYesNoChoiceBox(getConsent());
+            }
+        });
+
+
+        waitForElement({
+            selector: '.cdk-overlay-container .mat-radio-label',
+            callback: function (elements) {
+                
+                if (getConsent()) {
+                    elements[0].click();
+                } else {
+                    elements[1].click();
+                }
+                
+                recordMetrics({ clicks: 1, drags: 1 });
+
+                if (PrescriptionForm) { //Pas de selection du type de l'ordonnance donc on valide une fois le consentement coché
+                    validateOrdoNumIfOptionActivated();
+                }
+            }
+        });
     });
 });
 
@@ -295,51 +388,14 @@ addTweak([demandeUrl, prescriptionUrl], '*NumPres', function () {
             }
         }
 
-        function uncheckSiImagerie() { // n'est appelé que si l'ordo numérique est demandée ou déjà cochée
-            addTweak('*', 'uncheckDMPIfImagerie', function () {
-                waitForElement({
-                    selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio',
-                    callback: function () {
-                        if (isElementSelected('ContentPlaceHolder1_BaseGlossaireUCForm1_LabelILRadio')) {
-                            changeCheckBoxViaClick(false);
-                        } else {
-                            // seulement si ordoNumeriquePreCoche est vrai
-                            if (ordoNumeriquePreCoche) {
-                                changeCheckBoxViaClick(true);
-                            }
-                        }
-                        observeCheckbox();
-                    }
-                });
-            });
-        }
-
-        function observeCheckbox() {
-            // Sélection de l'élément cible
-            let checkbox = document.getElementById('ContentPlaceHolder1_EvenementUcForm1_CheckBoxEPrescription');
-
-            // Vérification si l'élément checkbox existe
-            if (checkbox) {
-                // Ajout d'un écouteur d'événements pour détecter les changements
-                checkbox.addEventListener('change', function () {
-                    // Enregistrement du statut de la case à cocher
-                    ordoNumeriquePreCoche = checkbox.checked;
-                });
-            }
-        }
 
         if (NumPresDemande || NumPresPrescription) {
             ordoNumeriquePreCoche = true; // quand on a une des optiosn activées, ça signifie que de base on veut que ça soit coché
             if (DemandeForm) {
                 changeCheckBoxViaClick(NumPresDemande);
-                if (NumPresDemande) {
-                    uncheckSiImagerie();
-                }
             } else if (PrescriptionForm) {
                 changeCheckBoxViaClick(NumPresPrescription);
             }
-        } else if (ordoNumeriquePreCoche && DemandeForm) {
-            uncheckSiImagerie();
         }
     });
 });

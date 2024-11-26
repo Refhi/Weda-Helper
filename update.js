@@ -6,25 +6,40 @@ function htmlMaker(text) {
 }
 
 var nouveautes = `
-<h3>[2.7] - refactory</h3>
-<h4>refactory : (c'est à dire maintenance et amélioration du code sans ajout de fonctionnalités)</h4>
+<h3>Version 2.8 - Impression instantanée</h3>
+<h4>Ajouts :</h4>
 <ul>
-  <li>deplacement de l'impression dans un fichier à part</li>
-  <li>réorganisation, simplification et amélioration de la lisibilité de print.js, ajout de jsdoc</li>
-  <li>suppression de lightObserver au profit de waitForElement</li>
-  <li>l'url de base est désormais extraite du manifest.json (permet de faciliter les tests et de nettoyer un peu le code)</li>
-  <li>séparation du code en plus de fichiers pour plus de lisibilité</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/262">#262</a> - Affichage des Antécédents dans un volet latéral - désactivé par défaut, à activer dans les options</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/267">#267</a> - Possibilité (cf. Options) de cocher "Non" automatiquement pour les ordonnances numériques</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/250">#250</a> - Cotation automatique : MOP ("DéfautMOP" à mettre dans les cotations favorites)</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/261">#261</a> - Ajout d'une pré-alerte dans les antécédents : si la date de l'alerte est dans moins de 6 mois (paramétrable), la date s'affiche en orange + gras au lieu de magenta.</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/268">#268</a> - Filtre automatiquement l'historique pour n'afficher que date et titre (désactivé par défaut)</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/263">#263</a> - Impression instantanée ! (ouvre un nouvel onglet au lancement de l'impression, qui se termine tranquillement dans l'onglet initial, avant d'être fermé après confirmation de l'impression). À utiliser conjointement avec le Companion.</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/269">#269</a> - Implémente une fonction pour le développeur de Weda-Helper pour envoyer des notifications via le système de notification de Weda</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/225">#225</a> - Sauvegarde automatique de la dernière sélection du choix d'AMC dans les FSE</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/281">#281</a> - Coche automatiquement "Présentation d'un feuillet AT" lors de la création d'une FSE si l'assurance "Accident du travail" est sélectionnée</li>
+  <li>Sélectionne automatiquement "Rien" dans les Pièces justificatives AMO si "Champ de donnée Actes - Pièce Justificative AMO invalide : Erreur de saisie Nature" est détecté</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/282">#282</a> - Mettre la souris sur "Ordonnance numérique" dans les prescriptions affiche un choix Oui/Non pour sélectionner le "consentement à la consultation de l'ordonnance numérique".</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper-Companion/issues/29">#29</a> - Ajout d'un bouton pour archiver les fichiers envoyés via Ctrl+U</li>
 </ul>
-<h4>fix :</h4>
+
+<h4>Fix :</h4>
 <ul>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/242">#242</a> - lors de l'utilisation de raccourcis claviers, plusieurs consultations pouvaient être créées en même temps. Ajout d'un délais réfractaire pour éviter cela.</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/231">#231</a> - l'inversion automatique des champs ALD se déclenchait trop facilement</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/228">#228</a> - tentative de fix de la mauvaise selection du règlement "Virement" lors des téléconsultations</li>
-  <li>suppression de l'ancienne méthode d'anti-throttle</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/265">#265</a> - Tentative de correction des problèmes de navigation par tabulation</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/276">#276</a> - Les raccourcis n'étaient plus modifiables dans les options</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/278">#278</a> - DéfautTC est désormais testé en priorité</li>
 </ul>
-<h4>ajouts :</h4>
+
+<h4>Deprecated :</h4>
 <ul>
-  <li>ajout d'un lien avec Weda pour la désactivation des options de Weda Helper déjà implémentées dans Weda.</li>
+  <li>uncheckSiImagerie est désormais obsolète, et a été supprimé, merci @Weda :)</li>
+</ul>
+
+<h3>Version 2.7.2 - Fix</h3>
+<ul>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/260">#260</a> - Ajout d'une discrète bulle info grisée en bas à droite des boutons éligibles</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/264">#264</a> - Ouverture automatique de l'historique et retrait des éléments surnuméraires</li>
+  <li><a href="https://github.com/Refhi/Weda-Helper/issues/246">#246</a> - Tentative de correction de l'impression des AM - ajout d'une lib pour la manipulation des PDF</li>
 </ul>
 `;
 

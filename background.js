@@ -38,10 +38,12 @@ var defaultSettings = {
   'TweakFSEGestionUnique': false,
   'TweakFSEAccident': false,
   'TweakSCORDegradee': false,
+  'SCORAutoSelectPJ' : true,
   'autoSelectPatientCV': true,
   'WarpButtons': true,
   'autoSelectTypeOrdoNum': true,
   'autoConsentNumPres': false,
+  'autoConsentNumPres_Oui': true,
   'autoValidateOrdoNum': false,
   'NumPresPrescription': false,
   'NumPresDemande': false,
@@ -53,6 +55,7 @@ var defaultSettings = {
   'MoveHistoriqueToLeft_Demande': true,
   'MoveHistoriqueToLeft_Courrier': false,
   'MoveHistoriqueToLeft_Formulaire': false,
+  'ATCDLeft': false,
   'AutoOpenHistory_Consultation': true, // introduit depuis 2.7.1
   'ShowExplanatoryText': true,
   'autoOpenOrdoType': false,
@@ -65,6 +68,9 @@ var defaultSettings = {
   'trimCIM10': true,
   'sortCIM10': true,
   'removeBoldPatientFirstName': false,
+  'preAlertATCD': 6,
+  'autoFilterLeftHistory': false,
+  'instantPrint': false,
 };
 
 var defaultShortcuts = {

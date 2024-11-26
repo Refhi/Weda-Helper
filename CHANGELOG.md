@@ -2,6 +2,36 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+# [2.8] - Impression instantanée
+## Ajouts :
+- [#262](https://github.com/Refhi/Weda-Helper/issues/262) - Affichage des Antécédents dans un volet latéral - désactivé par défaut, à activer dans les options
+- [#267](https://github.com/Refhi/Weda-Helper/issues/267) - Possibilité (cf. Options) de cocher "Non" automatiquement pour les ordonances numériques
+- [#250](https://github.com/Refhi/Weda-Helper/issues/250) - Cotation automatique : MOP ("DéfautMOP" à mettre dans les cotations favorites)
+- [#261](https://github.com/Refhi/Weda-Helper/issues/261) - Ajout d'une pré-alerte dans les antécédents : si la date de l'alerte est dans moins de 6 mois (paramétrable), la date s'affiche en orange + gras au lieu de magenta.
+- [#268](https://github.com/Refhi/Weda-Helper/issues/268) - Filtre automatiquement l'historique pour n'afficher que date et titre(désactivé par défaut)
+- [#263](https://github.com/Refhi/Weda-Helper/issues/263) - impression instantanée ! (ouvre un nouvel onglet au lancement de l'impression, qui se termine tranquilement dans l'onglet initial, avant d'être fermé après confirmation de l'impression). A n'utiliser que conjointement avec le Companion.
+- [#269](https://github.com/Refhi/Weda-Helper/issues/269) - Implémente une fonction pour le développeur de Weda-Helper pour envoyer des notifications via le système de notification de Weda
+- [#225](https://github.com/Refhi/Weda-Helper/issues/225) - Sauvegarde automatique de la dernière sélection du choix d'AMC dans les FSE
+- [#281](https://github.com/Refhi/Weda-Helper/issues/281) - Coche automatiquement "Présentation d'un feuillet AT" lors de la création d'une FSE si l'assurance "Accident du travail" est sélectionnée
+- sélectionne automatiquement "Rien" dans les Pièces justificatives AMO si "Champ de donnée Actes - Pièce Justificative AMO invalide : Erreur de saisie Nature" est détecté
+- [#282](https://github.com/Refhi/Weda-Helper/issues/282) - mettre la souris sur "Ordonnance numérique" dans les prescriptions affiche un choix Oui/Non pour sélectionner le "consentement à la consultation de l'ordonnance numérique".
+- [#29](https://github.com/Refhi/Weda-Helper-Companion/issues/29) - ajout d'un bouton pour archiver les fichiers envoyés via ctrl+U
+
+## Fix :
+- [#265](https://github.com/Refhi/Weda-Helper/issues/265) - tentative de fix des problèmes de navigation par tabulation
+- [#276](https://github.com/Refhi/Weda-Helper/issues/276) - les raccourcis n'étaient plus modifiable dans les options
+- [#278](https://github.com/Refhi/Weda-Helper/issues/278) - DéfautTC est désormais testé en priorité
+
+## Deprecated :
+- uncheckSiImagerie est désormais obsolète, et a été supprimé, merci @Weda :)
+
+# [2.7.2] - fix
+- [#260](https://github.com/Refhi/Weda-Helper/issues/260) - ajout d'une discrète bulle info grisée en bas à droite des boutons éligibles
+- [#264](https://github.com/Refhi/Weda-Helper/issues/264) - ouverture automatique de l'historique et retrait des éléments surnuméraires
+- [#246](https://github.com/Refhi/Weda-Helper/issues/246) - tentative de fix de l'impression des AM - ajout d'une lib pour la manipulation des pdf
+
+
+
 # [2.7.1] - hotfix
 - l'historique à gauche s'affiche de nouveau automatiquement dans les pages de consultation, demande et courrier
 

@@ -25,9 +25,15 @@ function handlePrint(printType, modelNumber = 0) {
         const handlingType = deduceHandlingType(printType, RemoveLocalCompanionPrint);
         // Qu'imprime-t-on ? (courbe, FSE ou modèle)
         const whatToPrint = deduceWhatToPrint();
+        // Si instantPrint est actif, passer le postPrintBehavior à 'doNothing'
+        getOption('instantPrint', function (instantPrint) {
+            if (instantPrint) {
+                postPrintBehavior = 'returnToPatient'; // On doit mettre 'returnToPatient' pour que l'envoi au DMP soit fait
+            }
+            // On lance le processus d'impression
+            startPrinting(handlingType, whatToPrint, postPrintBehavior, modelNumber);
+        });
 
-        // On lance le processus d'impression
-        startPrinting(handlingType, whatToPrint, postPrintBehavior, modelNumber);
     });
 }
 
@@ -309,6 +315,7 @@ function printIframeWhenAvailable(selector, handlingType, whatToPrint, postPrint
                     });
             } else if (handlingType === 'download') {
                 triggerDirectDownload(url);
+                setLastPrintDate(); // Utilisé dans le cadre d'instantPrint
                 postPrintAction(postPrintBehavior, whatToPrint);
             }
         });
@@ -350,7 +357,7 @@ function startPrinting(handlingType, whatToPrint, postPrintBehavior, modelNumber
 
     recordMetrics({ clicks: 3, drags: 4 });
 
-    // deux grands cas de figure : impression d'une courbe ou d'un document
+    // trois grands cas de figure : impression d'une courbe, d'une fse ou d'un document
     if (whatToPrint === 'courbe') {
         let url = fetchPdfUrlFromImageData();
         if (!url) {
@@ -399,9 +406,166 @@ function startPrinting(handlingType, whatToPrint, postPrintBehavior, modelNumber
 
 
     } else { // sinon, c'est un modèle d'impression
+        // On déclenche l'instantPrint seulement si l'impression via le Companion est activée
+        getOption('!RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
+            instantPrint(); // Va ouvrir un nouvel onglet avec l'url de base du patient
+        });
+
         // il faut d'abord cliquer sur le modèle d'impression pertinent
         clickPrintModelNumber(modelNumber);
         // ensuite attendre que l'iframe soit chargé
         printIframeWhenAvailable("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", handlingType, whatToPrint, postPrintBehavior);
     }
 }
+
+
+// **
+// * Gestion de l'impression instantanée : Ouvre un nouvel onglet sur l'url de base dès l'impression.
+// * Ensuite, une fois l'impression terminée avec succès, on ferme l'onglet originel via un window.close()
+// * Le succès de l'impression est déterminé par la mise à jour de la clé 'lastPrintDate' dans le local storage.
+// */
+
+function watchForClose() {
+    setTimeout(() => {
+        sendWedaNotifAllTabs({
+            message: '[Weda-Helper] l\'onglet initiateur de l\'impression instantanée n\'a pas pu être fermé automatiquement. Veuillez le fermer manuellement. Cela arrive si l\'onglet initiateur n\'a pas été ouvert par Weda Helper.',
+            type: 'undefined',
+            icon: 'print'
+        });
+    }, 1000);
+}
+
+function instantPrint() {        
+    function closeWindow() {
+        // D'abord attendre l'apparition de l'élément avec role="progressbar"
+        waitForElement({
+            selector: '[role="progressbar"]',
+            justOnce: true,
+            callback: function () {
+                console.log('[InstantPrint] progress bar detected, attente de sa disparition');
+                // Inhibition du lastPrintDate pour limiter les risques de fermeture d'un autre onglet
+                sessionStorage.removeItem('lastPrintDate');
+                let startTime = Date.now();
+                let interval = setInterval(function () {
+                    let progressBarElement = document.querySelector('[role="progressbar"]');
+                    console.log('[InstantPrint] progressBarElement', progressBarElement);
+                    // Ajout d'une valeur dans la session de la date de dernière présence de la barre de progression
+                    if (progressBarElement) {
+                        sessionStorage.setItem('lastProgressBarDate', new Date().toISOString());
+                    }
+                    // je suppose que dans certains cas, la progressBarElement persiste jusqu'au changement de page
+                    // et sa disparition ne permet pas de détecter la fin de l'impression.
+                    // Solution : ajouter une condition au chargement d'une nouvelle page dans la même session en
+                    // vérifiant la date de la dernière impression => cf. plus bas
+                    if (!progressBarElement) {
+                        console.log('[InstantPrint] progress bar disparu, je ferme la fenêtre');
+                        clearInterval(interval);
+                        window.close();
+                        // Normalement la fenêtre est fermée. Mais si jamais elle ne l'est pas, on le signale
+                        watchForClose();
+                    } else if (Date.now() - startTime > 40000) {
+                        clearInterval(interval);
+                        sendWedaNotifAllTabs({
+                            message: '[Weda-Helper] Erreur DMP: La barre de progression n\'a pas disparu après 40 secondes. Merci de vérifier l\'onglet qui a initié l\'impression instantanée.',
+                            type: 'fail',
+                            icon: 'print'
+                        });
+                    }
+                }, 50);
+            }
+        });
+    }
+
+    function companionPrintDone(callback, delay = 20000) {
+        let startTime = Date.now();
+        let interval = setInterval(function () {
+            let lastPrintDate = sessionStorage.getItem('lastPrintDate');
+            console.log('lastPrintDate', lastPrintDate);
+            if (lastPrintDate) {
+                let printTime = Date.parse(lastPrintDate);
+                if (Date.now() - printTime < 5000) {
+                    clearInterval(interval);
+                    sendWedaNotifAllTabs({
+                        message: 'L\'impression Instantanée terminée avec succès.',
+                        type: 'success',
+                        icon: 'print',
+                        duration: 2000
+                    });
+                    callback();
+                }
+            }
+    
+            if (Date.now() - startTime > delay) {
+                clearInterval(interval);
+                sendWedaNotifAllTabs({
+                    message: 'L\'impression Instantanée a échoué. Allez dans l\'onglet ayant lancé l\'impression pour vérifier.',
+                    type: 'undefined',
+                    icon: 'print'
+                });
+            }
+        }, 100);
+    }
+
+
+    addTweak('*', 'instantPrint', async function () {
+        console.log('instantPrint activé');
+        // Ouvre un nouvel onglet avec le patient en cours dans l'onglet actuel
+        // C'est nécessaire passer par l'API car en cas d'onglets multiples ouverts sur des
+        // patients différents, le nouvel onglet ouvert peut être celui d'un autre patient
+        let patientInfo = await getPatientInfo(getCurrentPatientId());
+        let urlPatient = patientInfo['patientFileUrl'];
+        window.open(urlPatient);
+        companionPrintDone(closeWindow);
+    });
+}
+
+
+function closeIfNoFSE() {
+    const interval = setInterval(() => {
+        // Vérifiez si la FSE est fermée
+        chrome.storage.local.get('FSEActiveTimestamp', function(result) {
+            let lastActiveTimestamp = result.FSEActiveTimestamp;
+            let currentTime = Date.now();
+            // Si le timestamp de la FSE n'a pas été mis à jour depuis plus de 5 secondes, considérez-la comme fermée
+            let difference = currentTime - lastActiveTimestamp;
+            if (difference > 2000) {
+                console.log('[closeIfNoFSE] FSE inactive, ok pour fermer');
+                clearInterval(interval);
+                window.close();
+                watchForClose();
+            } else {
+                console.log('[closeIfNoFSE] FSE active, j\attends qu\'aucune FSE ne soit active avant de fermer');
+            }
+        });
+    }, 1000); // Vérifiez toutes les secondes
+}
+
+// Parfois la progressBar reste affichée après l'impression, ce qui empêche la fermeture de la fenêtre
+// On doit donc se rattraper après le chargement d'une nouvelle page dans la même session
+addTweak('/FolderMedical/PatientViewForm.aspx', 'instantPrint', function () {
+    console.log('[InstantPrint] debug démarré suite retour à dossier patient');
+    // Vérifie si une impression ne vient pas de se finir en vérifiant lastProgressBarDate et lastPrintDate
+    let lastPrintDate = sessionStorage.getItem('lastPrintDate');
+    let lastProgressBarDate = sessionStorage.getItem('lastProgressBarDate');
+    let currentTime = Date.now();
+    let isRecentProgressBar = lastProgressBarDate && currentTime - Date.parse(lastProgressBarDate) < 5000;
+    let isRecentPrint = lastPrintDate && currentTime - Date.parse(lastPrintDate) < 5000;
+    console.log('[InstantPrint] debug : isRecentProgressBar', isRecentProgressBar, 'isRecentPrint', isRecentPrint);
+    // Si la barre de progression a disparu il y a moins de 5 secondes
+    if (isRecentProgressBar || isRecentPrint) {
+        // console.log('[InstantPrint] impression récente détectée, je ferme la fenêtre');
+        // sendWedaNotifAllTabs({
+        //     message: 'Debug: impression récente détectée, je ferme la fenêtre',
+        //     type: 'success',
+        //     icon: 'bug_report'
+        // });
+        // Réinitialise les valeurs de session pour limiter le risque qu'un autre onglet ne soit induement fermé
+        sessionStorage.removeItem('lastPrintDate');
+        sessionStorage.removeItem('lastProgressBarDate');
+        if (!document.hasFocus()) {
+            closeIfNoFSE();
+        } else {
+            console.log('[InstantPrint] window has focus, je ne ferme pas');
+        }
+    }
+});

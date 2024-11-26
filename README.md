@@ -73,6 +73,7 @@ Ctrl+U	Upload le dernier fichier du dossier envoyé par le Companion
 ## Consultations
 - Affichage automatique de l'historique dans une colonne à gauche : ouvre automatiquement un historique simplifié (pas de recettes notamment) dans une colonne à gauche de l'écran, uniquement dans les pages de Consultation, de Courrier, de Certificat, de Formulaire et Demandes.
 - Ouverture automatique des antécédents (désactivé par défaut)
+- Filtre automatiquement l'historique pour n'afficher que date et titre (désactivé par défaut)
 - Affichage simplifié des courbes de pédiatrie : dans les pages de consultation, il suffit de survoler "📈" devant "Poids", "Taille", "Pc" ou "IMC" pour afficher les courbes correspondantes (ne s'affiche que pour les âges et genres pertinents). Un clic permet de maintenir la courbe affichée. Un autre clic sur 📈 ou sur la courbe permet de la fermer. Ctrl+P permet de l'imprimer.
 - Le Z-score de l'IMC est automatiquement calculé si un IMC est présent. Nécessite un champ "Z-IMC" dans les questions de suivi.
 => pour les courbes pédiatriques et le Z-score vous devez cliquer sur "Enregistrer" (Ctrl+S) pour que les valeurs du jour soient prises en compte.
@@ -106,11 +107,10 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Options d'ordonnance numérique
 - Permet d’activer automatiquement par défaut les ordonnances numériques pour les médicaments mais aussi pour les autres prescriptions.
-- Permet aussi de cocher automatiquement le consentement des patients. Attention vous êtes toujours tenu de demander l'autorisation au patient systématiquement.
+- Permet aussi de cocher automatiquement le consentement des patients ("Oui" ou "Non"). Attention vous êtes toujours tenu de demander l'autorisation au patient systématiquement.
 - le type "Biologie" se sélectionne automatiquement lors d'une prescription numérique type "Demande"
 - Sélection automatique du type d'ordonnance numérique quand il s'agit d'une Demande, et qu'un mot-clé est détecté (cf. https://github.com/Refhi/Weda-Helper/blob/main/CHANGELOG.md pour le détail des mots-clés)
-- "Ordonnance numérique" se décoche automatiquement si on sélection une Demande d'Imagerie.
-
+- mettre la souris sur "Ordonnance numérique" dans les prescriptions affiche un choix Oui/Non pour sélectionner le "consentement à la consultation de l'ordonnance numérique". Utile dans le cadre de l'impression automatisée.
 
 ## Feuilles de soin
 *Toute la FSE : [alt+6], [n], [n], [alt+v]*
@@ -120,6 +120,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
   - la cotation "DéfautPédia" pour les 0-6 ans
   - la cotation "DéfautALD" pour les ALD et les Accidents de travail
   - la cotation "DéfautTC" pour les téléconsultations
+  - la cotation "DéfautMOP" pour les patients de 80+ ans dont vous n'êtes pas le MT
   - la cotation "Défaut" pour les autres
 - Lecture automatique de la carte vitale si elle est non lue
 - Affichage de boutons directs pour la réalisation de FDS dégradées et téléconsultation
@@ -127,6 +128,10 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - Sélection automatique de "je suis le médecin traitant" quand c'est le cas et qu'un autre cas de figure est sélectionné
 - Ctrl+P imprime la FDS dans le cas des FSE dégradées
 - Mémorisation des derniers choix ("ne peux signer" et "Retirer le fond")
+- Coche automatiquement "Présentation d'un feuillet AT" si l'assurance "Accident du travail" est sélectionnée
+- option pour automatiquement cocher "Inclure la FSP en SCOR" si la FSE est dégradée (activée par défaut)
+- sélectionne automatiquement "Rien" dans les Pièces justificatives AMO si "Champ de donnée Actes - Pièce Justificative AMO invalide : Erreur de saisie Nature" est détecté
+- maintient le choix du mode de prise en charge AMC
 
 
 ## Divers
@@ -156,6 +161,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Antécédents :
 - ajout d'options pour limiter le nombre d'atcd affichés en CIM 10 et de les trier par ordre alphabétique
+- implémentation d'une pré-alerte : si la date de l'alerte est dans moins de 6 mois (paramétrable), l'alerte est affichée en orange
 
 
 
@@ -169,14 +175,14 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 - Complétion automatique des dates partielles
 - En cliquant sur l'icône de l'extension, le bouton "Tout mettre en consultation" permet de sélectionner d'un coup "Consultation" pour l'ensemble des documents en attente d'importation.
 
-- On peut désormais utiliser Ctrl+U pour uploader directement dans Weda le document le plus récent présent dans un dossier pré-sélectionné dans le Companion.
+- On peut désormais utiliser Ctrl+U pour uploader directement dans Weda le document le plus récent présent dans un dossier pré-sélectionné dans le Companion. Un nouveau bouton permet d'archiver si souhaité le document après l'upload.
 - Option pour décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée
 
 
 ## Weda-Helper-Companion
 *Autant pousser l'économie de mouvements jusqu'au bout*
 Installez et laisser tourner ce logiciel sur votre ordinateur pour avoir des fonctionnalités supplémentaires :
-- impression directe automatique complète
+- impression directe automatique complète et instantanée (grace à l'option "Impression Instantanée" dans les options de l'extension)
 - Envoie le montant à régler à votre TPE (quand on valide une FSE - via alt+v - ou un règlement manuel)
 
 => Procédures d'installation et de paramétrage sur [le readme du Companion](https://github.com/Refhi/Weda-Helper-Companion)
