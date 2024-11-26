@@ -341,8 +341,8 @@ addTweak('*', 'WarpButtons', function () {
     function warpButtons(buttons) {
         function addIdToButton(button) {
             var actions = {
-                'Annuler': ['Continuez sans l\'ordonnance numérique', 'Non', 'NON', 'Annuler'],
-                'Valider': ['Oui', 'OUI', 'Confirmer', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre', 'Importer']
+                'Annuler': ['Continuez sans l\'ordonnance numérique', 'Non', 'NON', 'Annuler', 'Ne pas inclure'],
+                'Valider': ['Oui', 'OUI', 'Confirmer', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre', 'Importer', 'Inclure']
             };
             if (button) {
                 var action = Object.keys(actions).find(key => actions[key].includes(button.textContent));
