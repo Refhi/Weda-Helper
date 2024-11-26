@@ -2,7 +2,7 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
-# [2.8] - 
+# [2.8] - Impression instantanée
 ## Ajouts :
 - [#262](https://github.com/Refhi/Weda-Helper/issues/262) - Affichage des Antécédents dans un volet latéral - désactivé par défaut, à activer dans les options
 - [#267](https://github.com/Refhi/Weda-Helper/issues/267) - Possibilité (cf. Options) de cocher "Non" automatiquement pour les ordonances numériques
