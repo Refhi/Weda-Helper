@@ -43,7 +43,8 @@
         "upload.js",
         "agenda.js",
         "antecedent.js",
-        "print.js"
+        "print.js",
+        "pdfParser.js"
       ]
     }
   ],
