@@ -72,6 +72,7 @@ var defaultSettings = {
     'autoFilterLeftHistory': false,
     'instantPrint': false,
     'autoContinueWithoutNumPres': false,
+    'autoSelectMT': false,
 };
 
 var defaultShortcuts = {

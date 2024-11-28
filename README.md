@@ -152,6 +152,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Courriers
 - le type de document pour l'envoi au DMP est automatiquemnt sauvegardé d'une fois sur l'autre.
+- Permet de sélectionner automatiquement le(s) médecin(s)traitant(s) comme destinataire(s) lors de l'envoi d'un courrier (désactivé par défaut)
 
 ### Documents du cabinet
 - ajout d'un bouton permettant l'impression directe d'un PDF
