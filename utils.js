@@ -357,7 +357,7 @@ addTweak('*', 'WarpButtons', async function () {
         function addIdToButton(button) {
             var actions = {
                 'Annuler': ['Continuez sans l\'ordonnance numérique', 'Non', 'NON', 'Annuler', 'Ne pas inclure'],
-                'Valider': ['Oui', 'OUI', 'Confirmer', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre', 'Importer', 'Inclure']
+                'Valider': ['Oui', 'OUI', 'Confirmer', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre', 'Importer', 'Inclure', 'Sécuriser']
             };
             if (button) {
                 var action = Object.keys(actions).find(key => actions[key].includes(button.textContent));
@@ -516,12 +516,12 @@ chrome.runtime.onMessage.addListener(
 function sendWedaNotifAllTabs(options) {
     // Ajoute un identifiant unique basé sur l'horodatage actuel
     options.id = Date.now();
-    chrome.storage.local.set({ 'wedaNotifOptions': options }, function() {
+    chrome.storage.local.set({ 'wedaNotifOptions': options }, function () {
         console.log('Options de notification stockées avec ID:', options.id);
     });
 }
 
-chrome.storage.onChanged.addListener(function(changes, namespace) {
+chrome.storage.onChanged.addListener(function (changes, namespace) {
     if (namespace === 'local' && changes.wedaNotifOptions) {
         const options = changes.wedaNotifOptions.newValue;
         sendWedaNotif(options);
@@ -545,7 +545,7 @@ chrome.storage.onChanged.addListener(function(changes, namespace) {
 // ** set lastPrintDate
 // * permet de définir la date de la dernière impression et donc de permettre ensuite la fermeture de l'onglet appelant
 // * dans le cadre de la fonction instantPrint
-function setLastPrintDate() { 
+function setLastPrintDate() {
     const date = new Date();
     sessionStorage.setItem('lastPrintDate', date.toISOString());
     console.log('Dernière date d\'impression enregistrée :', date);
