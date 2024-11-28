@@ -26,6 +26,7 @@
         "metrics.js",
         "lib/hotkeys.js",
         "lib/pdf-lib.js",
+        "lib/moment.js",
         "utils.js",
         "content.js",
         "tooltip.js",
@@ -51,11 +52,16 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "FW_scripts/*"
+        "FW_scripts/*",
+        "lib/*"
       ],
       "matches": [
         "<all_urls>"
       ]
-    }
+    },
+    {
+     "matches": ["<all_urls>"],
+     "resources": ["lib/pdf.mjs"]
+   }
   ]
 }

@@ -1,12 +1,12 @@
 (async () => { //Méthode détournée pour importer le module pdf.js https://stackoverflow.com/questions/48104433/how-to-import-es6-modules-in-content-script-for-chrome-extension
-    const pdfjsLib = await import(chrome.runtime.getURL("pdf.mjs"));
-    pdfjsLib.GlobalWorkerOptions.workerSrc = chrome.runtime.getURL("pdf.worker.mjs");
+    const pdfjsLib = await import(chrome.runtime.getURL("lib/pdf.mjs"));
+    pdfjsLib.GlobalWorkerOptions.workerSrc = chrome.runtime.getURL("lib/pdf.worker.mjs");
 })();
 
 
-lightObserver("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", foundPDF, parentElement = document);
+waitForElement({selector:"#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", callback:findPDF});
 
-function foundPDF(elements) {
+function findPDF(elements) {
 
     let iframe = elements[0];
 
@@ -89,19 +89,19 @@ function parsePDF(url) {
           searchField = document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche");
         }
 
-        if(searchField.value != dateOfBirth.format("DD/MM/YYYY")){
-          searchField.value = dateOfBirth.format("DD/MM/YYYY");
-          searchButton.click();
-        }
-        else {
-          //On vérifie qu'il n'y a bien qu'un seul patient avec cette DDN
-          let secondPatient = document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_1") //Lien n°2 dans la liste de patient, s'il n'existe pas, il n'y a qu'un patient dans la liste de recherche
-          if (!secondPatient)
-          {
-            let firstPatient = document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0");
-            firstPatient.focus();
-          }
-        }
+        // if(searchField.value != dateOfBirth.format("DD/MM/YYYY")){
+        //   searchField.value = dateOfBirth.format("DD/MM/YYYY");
+        //   searchButton.click();
+        // }
+        // else {
+        //   //On vérifie qu'il n'y a bien qu'un seul patient avec cette DDN
+        //   let secondPatient = document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_1") //Lien n°2 dans la liste de patient, s'il n'existe pas, il n'y a qu'un patient dans la liste de recherche
+        //   if (!secondPatient)
+        //   {
+        //     let firstPatient = document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0");
+        //     firstPatient.focus();
+        //   }
+        // }
 
     });
 }
