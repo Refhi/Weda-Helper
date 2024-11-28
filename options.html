@@ -125,6 +125,7 @@
     <input type="checkbox" id="autoConsentNumPres_Oui" style="margin-left: 40px;"> Sélectionne "non" (si décocoché), "oui" si coché.<br>
   <input type="checkbox" id="autoValidateOrdoNum"> Valider automatiquement une ordonnance numérique de médicaments lors de l'impression (nécessite d'activer l'option "Coche automatiquement la case de consentement" ci dessus).<br>
   <input type="checkbox" id="uncheckDMPIfImagerie"> Décoche automatiquement l'ordonnance numérique si "Imagerie" est sélectionné dans une Demande.<br>
+  <input type="checkbox" id="autoContinueWithoutNumPres"> Clique automatiquement "Continuer automatiquement sans ordonnance numérique" si le message d'erreur s'affiche<br>
   <h3>Options de cochage/décochage automatique (pour que le décochage fonctionne, au moins une des deux options doit être activée. Cf. https://secure.weda.fr/FolderSetting/PreferenceForm.aspx pour activer/désactiver l'ensemble):</h3>
   <input type="checkbox" id="NumPresPrescription"> Cocher/Décocher automatiquement la case « ordonnance numérique » pour les prescriptions de médicaments.<br>
   <input type="checkbox" id="NumPresDemande"> Cocher/Décocher automatiquement la case « ordonnance numérique » pour les ordonnances de demandes numériques (labo/imagerie/paramédical)<br>
@@ -168,7 +169,6 @@
   <h2>Options d'impression automatique :</h2>
   <input type="checkbox" id="RemoveLocalCompanionPrint" style="margin-right: 1em;"> <em><strong>Désactiver</strong></em> l'impression automatique complète via le companion <strong>(décocher pour l'activer)</strong><br>
     <input type="checkbox" id="instantPrint" style="margin-left: 40px;"> Impression instantanée : dès l'envoi de l'impression via le Companion, ouvre un nouvel onglet. Ferme ensuite l'onglet originel quand l'impression est terminée. Utile pour faire DMP et ordonnances numériques sans ralentir le flux de la consultation. Attention les pdfs des impressions ne seront pas immédiatement visible car pas encore terminé au moment du retour vers le dossier patient.<br>
-       <input type="checkbox" id="autoContinueWithoutNumPres" style="margin-left: 80px;"> Clique automatiquement "Continuer automatiquement sans ordonnance numérique" si le message d'erreur s'affiche<br>
   <input type="checkbox" id="KeepFocus" style="margin-right: 1em;">Active la récupération du focus en cas de vol par l'application d'impression.<br>
   <h3>Après une impression automatique par le Companion :</h3>
   <div style="display: flex; flex-direction: column;">
