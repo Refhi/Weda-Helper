@@ -480,7 +480,7 @@ function instantPrint() {
         let startTime = Date.now();
         let interval = setInterval(function () {
             let lastPrintDate = sessionStorage.getItem('lastPrintDate');
-            console.log('lastPrintDate', lastPrintDate);
+            // console.log('lastPrintDate', lastPrintDate);
             if (lastPrintDate) {
                 let printTime = Date.parse(lastPrintDate);
                 if (Date.now() - printTime < 5000) {

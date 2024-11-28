@@ -336,8 +336,23 @@ document.addEventListener('visibilitychange', function () {
 
 
 
-// // Travail sur les boutons des interfaces secu (IMTI, DMP etc.)
-addTweak('*', 'WarpButtons', function () {
+// Travail sur les boutons des interfaces secu (IMTI, DMP etc.)
+addTweak('*', 'WarpButtons', async function () {
+    async function getShortcuts() {
+        return new Promise((resolve) => {
+            chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function (result) {
+                const raccourcis = {
+                    'targetAnnuler': shortcutDefaut(result.shortcuts, result.defaultShortcuts, 'push_annuler'),
+                    'targetValider': shortcutDefaut(result.shortcuts, result.defaultShortcuts, 'push_valider')
+                };
+                resolve(raccourcis);
+            });
+        });
+    }
+
+    const raccourcis = await getShortcuts();
+    console.log('[WarpButtons] Raccourcis', raccourcis);
+
     function warpButtons(buttons) {
         function addIdToButton(button) {
             var actions = {
@@ -359,10 +374,6 @@ addTweak('*', 'WarpButtons', function () {
         }
 
         function addShortcutsToButton(button) {
-            var raccourcis = {
-                'targetAnnuler': ' (alt+A)',
-                'targetValider': ' (alt+V)'
-            };
             if (button) {
                 console.log('ajout de raccourcis au button', button);
                 var raccourci = raccourcis[button.id];
@@ -458,7 +469,7 @@ startNotifScript();
  * @param {Object} options - Options de la notification.
  * @param {string} [options.message="Notification de test"] - Message affiché dans la notification.
  * @param {string} [options.icon="home"] - Icône utilisée pour la notification (mat icon).
- * @param {string} [options.type="success"] - Type de notification (success / fail / undefined). /!\ en date du 10/11/24, 'fail' entraîne une notification qui ne tient pas compte de 'duration'.
+ * @param {string} [options.type="success"] - Type de notification (success / fail / undefined). /!\ 'fail' entraîne une notification qui ne tient pas compte de 'duration'. C'est volontaire (confirmé par Weda le 28/11/24, pour faciliter les captures d'écran)
  * @param {string} [options.extra="{}"] - Données supplémentaires (JSON).
  * @param {number} [options.duration=5000] - Durée de la notification en millisecondes.
  */
