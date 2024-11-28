@@ -357,10 +357,14 @@ addTweak('*', 'WarpButtons', async function () {
         function addIdToButton(button) {
             var actions = {
                 'Annuler': ['Continuez sans l\'ordonnance numérique', 'Non', 'NON', 'Annuler', 'Ne pas inclure'],
-                'Valider': ['Oui', 'OUI', 'Confirmer', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre', 'Importer', 'Inclure', 'Sécuriser']
+                'Valider': ['Oui', 'OUI', 'Confirmer', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre', 'Importer', 'Inclure', 'Sécuriser','Affecter ce résultat']
             };
             if (button) {
-                var action = Object.keys(actions).find(key => actions[key].includes(button.textContent));
+                var buttonText = button.textContent;
+                if (buttonText.length == 0){
+                    buttonText = button.value; //Bypass pour les boutons non Angular qui ont un textContent vide
+                }
+                var action = Object.keys(actions).find(key => actions[key].includes(buttonText));
                 // vérifie que l'id n'est pas déjà présent. Utile quand plusieurs boutons sont éligible.
                 if (document.getElementById('target' + action)) {
                     console.log(action, 'id already exist !');
@@ -418,6 +422,10 @@ addTweak('*', 'WarpButtons', async function () {
     });
     waitForElement({
         selector: '.docImportButtons button',
+        callback: warpButtons
+    });
+    waitForElement({
+        selector: '#ContentPlaceHolder1_PatientsGrid_ButtonAffecteResultat_0',
         callback: warpButtons
     });
 });
