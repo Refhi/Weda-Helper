@@ -543,3 +543,17 @@ addTweak(demandeUrl, '*autoSwitchALD', function () {
         }
     });
 });
+
+// Appuie automatiquement sur "Continuer sans l'ordonnance numérique" si l'option est activée
+addTweak(prescriptionUrl, 'autoContinueWithoutNumPres', function () {
+    waitForElement({
+        selector: 'button > span',
+        justOnce: true,
+        textContent: 'Continuez sans l\'ordonnance numérique',
+        callback: function (elements) {
+            console.log('autoContinueWithoutNumPres déclenché');
+            elements[0].click();
+            recordMetrics({ clicks: 1, drags: 1 });
+        }
+    });
+});

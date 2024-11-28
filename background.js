@@ -71,6 +71,7 @@ var defaultSettings = {
   'preAlertATCD': 6,
   'autoFilterLeftHistory': false,
   'instantPrint': false,
+  'autoContinueWithoutNumPres': false,
 };
 
 var defaultShortcuts = {
