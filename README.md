@@ -47,6 +47,8 @@ Ctrl+D	Télécharge le PDF du document en cours (1er modèle)
 Ctrl+Shift+D	Télécharge le PDF du document en cours (2e modèle)
 Ctrl+P	Imprime le document en cours (1er modèle). Nécessite un module complémentaire pour que l'impression soit entièrement automatique. Sinon affiche directement le PDF.
 Ctrl+Shift+P	Imprime le document en cours (2e modèle)
+Ctrl+E Envoie le courrier en cours (1er modèle)
+Ctrl+Shift+E	Envoie le courrier en cours (2e modèle)
 Alt+A	Appuie Annuler
 Alt+S	Appuie Supprimer
 Alt+D	Insère la date du jour

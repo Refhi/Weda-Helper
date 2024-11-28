@@ -22,6 +22,12 @@ const keyCommands = {
     'download_document_bis': function () {
         handlePrint('download', 1);
     },
+    'send_document': function () {
+        clickPrintModelNumber(0, true); //TODO à faire autrement, handlePrint n'est pas adapté
+    },
+    'send_document_bis': function () {
+        clickPrintModelNumber(0, true); 
+    },
     'upload_latest_file': uploadLatest,
     'insert_date': insertDate,
     'push_enregistrer': function () {

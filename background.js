@@ -100,6 +100,14 @@ var defaultShortcuts = {
         "default": "Ctrl+Shift+D",
         "description": "Télécharge le PDF du document en cours (2e modèle)"
     },
+    "send_document": {
+        "default": "Ctrl+E",
+        "description": "Envoie le document en cours par MSSanté (1er modèle)"
+    },
+    "send_document_bis": {
+        "default": "Ctrl+Shift+E",
+        "description": "Envoie le document en cours par MSSanté (2e modèle)"
+    },
     "upload_latest_file": {
         "default": "Ctrl+U",
         "description": "Upload le dernier fichier du dossier envoyé par le Companion",

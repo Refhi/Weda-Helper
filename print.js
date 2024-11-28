@@ -175,12 +175,29 @@ function triggerDirectDownload(url) {
  * @param {number} [modelNumber=0] - Le numéro du modèle d'impression à cliquer. Par défaut, 0.
  * @returns {boolean} - Retourne true si le modèle d'impression a été trouvé et cliqué, sinon false.
  */
-function clickPrintModelNumber(modelNumber = 0) {
+function clickPrintModelNumber(modelNumber = 0, send = false) {
     var elements = document.querySelectorAll('[onclick*="ctl00$ContentPlaceHolder1$MenuPrint"][class*="popout-dynamic level2"]');
     console.log('Voici les modeles d impression trouvés', elements);
     if (elements[modelNumber]) {
         console.log('clicking on model number', modelNumber, elements[modelNumber]);
-        elements[modelNumber].click();
+        
+
+        if (send) {
+            setTimeout(function() {
+                var childElements = document.querySelectorAll('.level3');
+                console.log('Voici les éléments enfants trouvés', childElements);
+                var sendElement = Array.from(childElements).find(function(el) {
+                    return el.innerText.trim() === "Envoyer";
+                });
+                if (sendElement) {
+                    console.log('clicking on send element', sendElement);
+                    sendElement.click();
+                }
+            }, 500); // Attendre un peu pour que les éléments enfants soient chargés
+        } else {
+            elements[modelNumber].click();
+        }
+
         return true;
     } else {
         return false;

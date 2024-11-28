@@ -5,6 +5,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 # [2.9]
 ## Ajouts :
 - [#275](https://github.com/Refhi/Weda-Helper/issues/275) - Permet de sélectionner automatiquement le(s) médecin(s)traitant(s) comme destinataire(s) lors de l'envoi d'un courrier (désactivé par défaut)
+- [#274](https://github.com/Refhi/Weda-Helper/issues/274) - Ajout de raccourcis pour l'envoi des courrrier : Ctrl+E et Ctrl+Shift+E par défaut
 
 ## Fix :
 - [#293](https://github.com/Refhi/Weda-Helper/issues/293) - Clique automatiquement sur "Continuer sans l'ordonnance numérique" si le message d'erreur est détecté (désactivé par défaut).
