@@ -120,38 +120,27 @@ function mouseoutW() {
 }
 
 
-$addTweak('*', '*Tooltip', function () {
-    let altKeyPressCount = 0;
-    let resetTimeout = null;
+addTweak('*', '*Tooltip', function () {
 
-    // Show tooltip logic
-    function showTooltip() {
-        if (altKeyPressCount > 1) {
-            tooltipshower();
-        }
-    }
+    let lastAltPressTime = 0;
 
-    // Keydown listener
-    document.addEventListener('keydown', function (event) {
-        if (event.key === 'Alt') {
-            if (!resetTimeout) {
-                altKeyPressCount = 0; // Reset count for a fresh sequence
+    document.addEventListener('keydown', function(event) {
+        if (event.altKey) { //Permet détection de Alt sur Windows et sur Mac, parfois renvoyé comme ⌥ par le clavier
+            const currentTime = new Date().getTime();
+        
+            if (currentTime - lastAltPressTime < 1000) {
+                lastAltPressTime = 0; // Reset after detecting double press
+                if (document.querySelectorAll('div.tooltip').length == 0)
+                {
+                    tooltipshower();
+                }
+                else {
+                    mouseoutW();
+                }
+                
+            } else {
+                lastAltPressTime = currentTime; // Update last press time
             }
-            altKeyPressCount++;
-            clearTimeout(resetTimeout); // Reset timeout to avoid premature reset
-            resetTimeout = setTimeout(() => {
-                altKeyPressCount = 0; // Reset counter after 1 second of inactivity
-            }, 1000);
-            showTooltip(); // Check if tooltip should be shown
-        }
-    });
-
-    // Keyup listener
-    document.addEventListener('keyup', function (event) {
-        if (event.key === 'Alt') {
-            altKeyPressCount = 0; // Reset on release
-            clearTimeout(resetTimeout); // Clear timeout
-            mouseoutW(); // Call release function
         }
     });
 });
