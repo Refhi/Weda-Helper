@@ -2,6 +2,8 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+# [2.8.0.1] - ajout du message video
+
 # [2.8] - Impression instantanée
 ## Ajouts :
 - [#262](https://github.com/Refhi/Weda-Helper/issues/262) - Affichage des Antécédents dans un volet latéral - désactivé par défaut, à activer dans les options
