@@ -122,25 +122,25 @@ function mouseoutW() {
 
 addTweak('*', '*Tooltip', function () {
 
+    var lastAltPressTime = 0; // Temps du dernier appui sur Alt
+    var checkAltReleaseInterval = null; // Intervalle pour vérifier la libération d'Alt
     let lastAltPressTime = 0;
 
-    document.addEventListener('keydown', function(event) {
-        if (event.altKey) { //Permet détection de Alt sur Windows et sur Mac, parfois renvoyé comme ⌥ par le clavier
-            const currentTime = new Date().getTime();
-        
-            if (currentTime - lastAltPressTime < 1000) {
-                lastAltPressTime = 0; // Reset after detecting double press
-                if (document.querySelectorAll('div.tooltip').length == 0)
-                {
-                    tooltipshower();
-                }
-                else {
-                    mouseoutW();
-                }
-                
-            } else {
-                lastAltPressTime = currentTime; // Update last press time
-            }
+    document.addEventListener('keydown', function (event) {
+        // Vérifier si Alt (Option sur Mac) et A sont pressés en même temps
+        if (event.key.toLowerCase() === 'a' && event.altKey) {
+            event.preventDefault(); // Empêcher tout comportement par défaut lié à Alt + A
+            console.log('Alt + A pressé'); 
+            tooltipshower(); 
+        }
+    });
+
+
+    document.addEventListener('keyup', function (event) {
+        // Vérifier si Alt (Option sur Mac) est relâché
+        if (event.key === 'Alt') {
+            console.log('Alt relâché'); 
+            mouseoutW();
         }
     });
 });
