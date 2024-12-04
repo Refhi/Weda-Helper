@@ -764,9 +764,33 @@ addTweak('/vitalzen/fse.aspx', '*FSEActive', function () {
             // Est utilisé pour vérifier si la FSE est active afin d'éviter la fermeture
             // d'un onglet post-impression pendant ce temps, ce qui coupe 
             // parfois la connexion avec vitalZen (rare, mais TRES pénible)
+            // Fix seulement partiel hélas
         });
     }
 
     saveTimestamp(); // Sauvegarde initiale
     setInterval(saveTimestamp, 1000); // Sauvegarde toutes les secondes
+});
+
+// Ajout d'un écouteur de click sur le bouton "Sécuriser" pour déclencher tpesender
+function tpesender() {
+    console.log('tpe_sender activé');
+    var montantElement = document.querySelector('input[placeholder="Montant"]');
+    // extraire le montant de l'élément
+    var amount = montantElement.value;
+    // retirer la virgule de amount
+    amount = amount.replace(/\./g, '');
+    console.log('amount', amount);
+    sendtpeinstruction(amount);
+}
+
+addTweak('/vitalzen/fse.aspx', '!RemoveLocalCompanionTPE', function () {
+    waitForElement({
+        selector: 'button',
+        textContent: 'Sécuriser',
+        callback: function (element) {
+            console.log('bouton Sécuriser trouvé, je lui ajoute un écouteur de click');
+            element[0].addEventListener('click', tpesender);
+        }
+    });
 });

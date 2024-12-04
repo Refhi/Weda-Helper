@@ -22,6 +22,12 @@ const keyCommands = {
     'download_document_bis': function () {
         handlePrint('download', 1);
     },
+    'send_document': function () {
+        clickPrintModelNumber(0, true); //TODO à faire autrement, handlePrint n'est pas adapté
+    },
+    'send_document_bis': function () {
+        clickPrintModelNumber(0, true); 
+    },
     'upload_latest_file': uploadLatest,
     'insert_date': insertDate,
     'push_enregistrer': function () {
@@ -233,29 +239,6 @@ function push_valider() {
         return false
     }
 
-    function clicSecure() {
-        function tpesender() {
-            console.log('tpe_sender activé');
-            var montantElement = document.querySelector('input[placeholder="Montant"]');
-            // extraire le montant de l'élément
-            var amount = montantElement.value;
-            // retirer la virgule de amount
-            amount = amount.replace(/\./g, '');
-            console.log('amount', amount);
-            sendtpeinstruction(amount);
-        }
-
-        var targetElement = document.querySelector('.mat-focus-indicator.bold.mat-raised-button.mat-button-base.mat-accent');
-        console.log('Clicking on target element', targetElement);
-        if (targetElement) {
-            targetElement.click();
-            recordMetrics({ clicks: 1, drags: 1 });
-            tpesender();
-            return true;
-        } else {
-            return false;
-        }
-    }
     // click other elements, one after the other, until one of them works
     const actions = [
         () => clickElementById('ButtonValidFileStream'),
@@ -268,7 +251,7 @@ function push_valider() {
         () => GenericClicker("title", "Valider"),
         () => clickElementByChildtextContent("VALIDER"),
         () => clickElementById('ContentPlaceHolder1_ButtonQuitter2'),
-        () => clicSecure(),
+        // () => clicSecure(), => on passe à la gestion par targetValider
         () => clickElementById('ButtonFermerRappel')
     ];
 
@@ -361,6 +344,7 @@ function clickElementById(elementId) {
     var element = document.getElementById(elementId);
     if (element) {
         element.click();
+        recordMetrics({ clicks: 1, drags: 1 });
         return true;
     } else {
         console.log('Element not found:', elementId);

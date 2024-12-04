@@ -336,16 +336,35 @@ document.addEventListener('visibilitychange', function () {
 
 
 
-// // Travail sur les boutons des interfaces secu (IMTI, DMP etc.)
-addTweak('*', 'WarpButtons', function () {
+// Travail sur les boutons des interfaces secu (IMTI, DMP etc.)
+addTweak('*', 'WarpButtons', async function () {
+    async function getShortcuts() {
+        return new Promise((resolve) => {
+            chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function (result) {
+                const raccourcis = {
+                    'targetAnnuler': shortcutDefaut(result.shortcuts, result.defaultShortcuts, 'push_annuler'),
+                    'targetValider': shortcutDefaut(result.shortcuts, result.defaultShortcuts, 'push_valider')
+                };
+                resolve(raccourcis);
+            });
+        });
+    }
+
+    const raccourcis = await getShortcuts();
+    console.log('[WarpButtons] Raccourcis', raccourcis);
+
     function warpButtons(buttons) {
         function addIdToButton(button) {
             var actions = {
                 'Annuler': ['Continuez sans l\'ordonnance numérique', 'Non', 'NON', 'Annuler', 'Ne pas inclure'],
-                'Valider': ['Oui', 'OUI', 'Confirmer', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre', 'Importer', 'Inclure']
+                'Valider': ['Oui', 'OUI', 'Confirmer', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre', 'Importer', 'Inclure', 'Sécuriser','Affecter ce résultat']
             };
             if (button) {
-                var action = Object.keys(actions).find(key => actions[key].includes(button.textContent));
+                var buttonText = button.textContent;
+                if (buttonText.length == 0){
+                    buttonText = button.value; //Bypass pour les boutons non Angular qui ont un textContent vide
+                }
+                var action = Object.keys(actions).find(key => actions[key].includes(buttonText));
                 // vérifie que l'id n'est pas déjà présent. Utile quand plusieurs boutons sont éligible.
                 if (document.getElementById('target' + action)) {
                     console.log(action, 'id already exist !');
@@ -359,10 +378,6 @@ addTweak('*', 'WarpButtons', function () {
         }
 
         function addShortcutsToButton(button) {
-            var raccourcis = {
-                'targetAnnuler': ' (alt+A)',
-                'targetValider': ' (alt+V)'
-            };
             if (button) {
                 console.log('ajout de raccourcis au button', button);
                 var raccourci = raccourcis[button.id];
@@ -407,6 +422,10 @@ addTweak('*', 'WarpButtons', function () {
     });
     waitForElement({
         selector: '.docImportButtons button',
+        callback: warpButtons
+    });
+    waitForElement({
+        selector: '#ContentPlaceHolder1_PatientsGrid_ButtonAffecteResultat_0',
         callback: warpButtons
     });
 });
@@ -458,7 +477,7 @@ startNotifScript();
  * @param {Object} options - Options de la notification.
  * @param {string} [options.message="Notification de test"] - Message affiché dans la notification.
  * @param {string} [options.icon="home"] - Icône utilisée pour la notification (mat icon).
- * @param {string} [options.type="success"] - Type de notification (success / fail / undefined). /!\ en date du 10/11/24, 'fail' entraîne une notification qui ne tient pas compte de 'duration'.
+ * @param {string} [options.type="success"] - Type de notification (success / fail / undefined). /!\ 'fail' entraîne une notification qui ne tient pas compte de 'duration'. C'est volontaire (confirmé par Weda le 28/11/24, pour faciliter les captures d'écran)
  * @param {string} [options.extra="{}"] - Données supplémentaires (JSON).
  * @param {number} [options.duration=5000] - Durée de la notification en millisecondes.
  */
@@ -505,12 +524,12 @@ chrome.runtime.onMessage.addListener(
 function sendWedaNotifAllTabs(options) {
     // Ajoute un identifiant unique basé sur l'horodatage actuel
     options.id = Date.now();
-    chrome.storage.local.set({ 'wedaNotifOptions': options }, function() {
+    chrome.storage.local.set({ 'wedaNotifOptions': options }, function () {
         console.log('Options de notification stockées avec ID:', options.id);
     });
 }
 
-chrome.storage.onChanged.addListener(function(changes, namespace) {
+chrome.storage.onChanged.addListener(function (changes, namespace) {
     if (namespace === 'local' && changes.wedaNotifOptions) {
         const options = changes.wedaNotifOptions.newValue;
         sendWedaNotif(options);
@@ -534,7 +553,7 @@ chrome.storage.onChanged.addListener(function(changes, namespace) {
 // ** set lastPrintDate
 // * permet de définir la date de la dernière impression et donc de permettre ensuite la fermeture de l'onglet appelant
 // * dans le cadre de la fonction instantPrint
-function setLastPrintDate() { 
+function setLastPrintDate() {
     const date = new Date();
     sessionStorage.setItem('lastPrintDate', date.toISOString());
     console.log('Dernière date d\'impression enregistrée :', date);

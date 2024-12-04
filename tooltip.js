@@ -121,9 +121,10 @@ function mouseoutW() {
 
 
 addTweak('*', '*Tooltip', function () {
+
     var lastAltPressTime = 0; // Temps du dernier appui sur Alt
     var checkAltReleaseInterval = null; // Intervalle pour vérifier la libération d'Alt
-
+    let lastAltPressTime = 0;
 
     document.addEventListener('keydown', function (event) {
         // Vérifier si Alt (Option sur Mac) et A sont pressés en même temps
