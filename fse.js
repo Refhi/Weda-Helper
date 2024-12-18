@@ -28,8 +28,16 @@ function checkPatientName() {
 }
 
 
+function selectLastCotationSpace() {
+    let acteCellsElements = document.querySelectorAll('.acteCell');
+    // On doit sélectionner le dernier élément de la liste
+    let lastActeCellElement = acteCellsElements[acteCellsElements.length - 1];
+    let elementToFocus = lastActeCellElement.querySelector('input');
+    console.log('elementToFocus', elementToFocus);
+    elementToFocus.focus();
+    recordMetrics({ clicks: 1, drags: 1 });
+}
 
-    
 
 // Définition de la fonction principale
 // (tableau et bouche après)
@@ -337,6 +345,7 @@ function tweakFSECreation() {
 
                         recordMetrics({ clicks: 1, drags: 1 });
                         console.log('Cotation appliquée:', action);
+                        selectLastCotationSpace();
                         return; // Arrête la fonction après avoir appliqué une cotation
                     } else if (action === 'Défaut') {
                         console.log('Action "Défaut" spécifiée mais non trouvée parmi les éléments.');
