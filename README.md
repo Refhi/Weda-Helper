@@ -42,7 +42,7 @@ Cf. ci-dessous pour les retours et les contributions.
 ## Raccourcis claviers
 *Toutes vos tâches quotidiennes à portée de clavier*
 => Un appui sur la touche Alt prolongé (> 1 seconde) affiche un rappel des raccourcis claviers
-[Fiche Mémo des raccourcis à imprimer](https://github.com/Refhi/Weda-Helper/blob/main/FicheMemo.pdf)
+[Fiche Mémo des raccourcis à imprimer](https://github.com/Refhi/Weda-Helper/blob/main/docs/FicheMemo.pdf)
 Ctrl+D	Télécharge le PDF du document en cours (1er modèle)
 Ctrl+Shift+D	Télécharge le PDF du document en cours (2e modèle)
 Ctrl+P	Imprime le document en cours (1er modèle). Nécessite un module complémentaire pour que l'impression soit entièrement automatique. Sinon affiche directement le PDF.

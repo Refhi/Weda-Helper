@@ -6,44 +6,14 @@ function htmlMaker(text) {
 }
 
 var nouveautes = `
-<h3>Version 2.8 - Impression instantanée</h3>
-<h4>Ajouts :</h4>
-<ul>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/262">#262</a> - Affichage des Antécédents dans un volet latéral - désactivé par défaut, à activer dans les options</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/267">#267</a> - Possibilité (cf. Options) de cocher "Non" automatiquement pour les ordonnances numériques</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/250">#250</a> - Cotation automatique : MOP ("DéfautMOP" à mettre dans les cotations favorites)</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/261">#261</a> - Ajout d'une pré-alerte dans les antécédents : si la date de l'alerte est dans moins de 6 mois (paramétrable), la date s'affiche en orange + gras au lieu de magenta.</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/268">#268</a> - Filtre automatiquement l'historique pour n'afficher que date et titre (désactivé par défaut)</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/263">#263</a> - Impression instantanée ! (ouvre un nouvel onglet au lancement de l'impression, qui se termine tranquillement dans l'onglet initial, avant d'être fermé après confirmation de l'impression). À utiliser conjointement avec le Companion.</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/269">#269</a> - Implémente une fonction pour le développeur de Weda-Helper pour envoyer des notifications via le système de notification de Weda</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/225">#225</a> - Sauvegarde automatique de la dernière sélection du choix d'AMC dans les FSE</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/281">#281</a> - Coche automatiquement "Présentation d'un feuillet AT" lors de la création d'une FSE si l'assurance "Accident du travail" est sélectionnée</li>
-  <li>Sélectionne automatiquement "Rien" dans les Pièces justificatives AMO si "Champ de donnée Actes - Pièce Justificative AMO invalide : Erreur de saisie Nature" est détecté</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/282">#282</a> - Mettre la souris sur "Ordonnance numérique" dans les prescriptions affiche un choix Oui/Non pour sélectionner le "consentement à la consultation de l'ordonnance numérique".</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper-Companion/issues/29">#29</a> - Ajout d'un bouton pour archiver les fichiers envoyés via Ctrl+U</li>
-</ul>
-
-<h4>Fix :</h4>
-<ul>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/265">#265</a> - Tentative de correction des problèmes de navigation par tabulation</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/276">#276</a> - Les raccourcis n'étaient plus modifiables dans les options</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/278">#278</a> - DéfautTC est désormais testé en priorité</li>
-</ul>
-
-<h4>Deprecated :</h4>
-<ul>
-  <li>uncheckSiImagerie est désormais obsolète, et a été supprimé, merci @Weda :)</li>
-</ul>
-
-<h3>Version 2.7.2 - Fix</h3>
-<ul>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/260">#260</a> - Ajout d'une discrète bulle info grisée en bas à droite des boutons éligibles</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/264">#264</a> - Ouverture automatique de l'historique et retrait des éléments surnuméraires</li>
-  <li><a href="https://github.com/Refhi/Weda-Helper/issues/246">#246</a> - Tentative de correction de l'impression des AM - ajout d'une lib pour la manipulation des PDF</li>
-</ul>
+<h3>Video de présentation de Weda-Helper 2.8 - Impression instantanée</h3>
+<p>Les nouveautés en vidéo : <a href="https://www.youtube.com/watch?v=wDDN18AbgUk" target="_blank">Ouvrir dans un autre onglet pour regarder plus tard</a> ajoutez-la à votre liste de lecture YouTube : <a href="https://www.youtube.com/watch?v=wDDN18AbgUk&list=WL" target="_blank">Ajouter à ma liste de lecture</a></p>
+<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; height: auto;">
+    <iframe style="position: absolute; top: 0; left: 0; width: 80%; height: 80%;" src="https://www.youtube.com/embed/wDDN18AbgUk" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+</div>
 `;
 
-nouveautes = htmlMaker(nouveautes)
+nouveautes = htmlMaker(nouveautes);
 
 
 
