@@ -47,6 +47,8 @@ Ctrl+D	Télécharge le PDF du document en cours (1er modèle)
 Ctrl+Shift+D	Télécharge le PDF du document en cours (2e modèle)
 Ctrl+P	Imprime le document en cours (1er modèle). Nécessite un module complémentaire pour que l'impression soit entièrement automatique. Sinon affiche directement le PDF.
 Ctrl+Shift+P	Imprime le document en cours (2e modèle)
+Ctrl+E Envoie le courrier en cours (1er modèle)
+Ctrl+Shift+E	Envoie le courrier en cours (2e modèle)
 Alt+A	Appuie Annuler
 Alt+S	Appuie Supprimer
 Alt+D	Insère la date du jour
@@ -111,6 +113,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - le type "Biologie" se sélectionne automatiquement lors d'une prescription numérique type "Demande"
 - Sélection automatique du type d'ordonnance numérique quand il s'agit d'une Demande, et qu'un mot-clé est détecté (cf. https://github.com/Refhi/Weda-Helper/blob/main/CHANGELOG.md pour le détail des mots-clés)
 - mettre la souris sur "Ordonnance numérique" dans les prescriptions affiche un choix Oui/Non pour sélectionner le "consentement à la consultation de l'ordonnance numérique". Utile dans le cadre de l'impression automatisée.
+- Clique automatiquement sur "Continuer sans l'ordonnance numérique" si le message d'erreur est détecté (désactivé par défaut).
 
 ## Feuilles de soin
 *Toute la FSE : [alt+6], [n], [n], [alt+v]*
@@ -143,12 +146,15 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### AT
 - simplification de la réalisation des arrêts de travail intégrés à Weda (lecture auto CV, selection auto de l'assuré, impression automatique, autofill de la date en cas de sorties libres, fermeture automatique)
+- Limitation : la fenêtre de prévisualisation dont l'adresse est blob:xxxx ne peut être fermée automatiquement. Il faut la fermer manuellement.
+
 
 ### Métrique
 - une estimation du nombre d'action est désormais présente dans les options ! (Attention, c'est très approximatif)
 
 ### Courriers
 - le type de document pour l'envoi au DMP est automatiquemnt sauvegardé d'une fois sur l'autre.
+- Permet de sélectionner automatiquement le(s) médecin(s)traitant(s) comme destinataire(s) lors de l'envoi d'un courrier (désactivé par défaut)
 
 ### Documents du cabinet
 - ajout d'un bouton permettant l'impression directe d'un PDF

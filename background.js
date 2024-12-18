@@ -1,80 +1,82 @@
 // Définir les options par défaut. Définie ici pour être accessible de façon globale
 var defaultSettings = {
-  'TweakImports': true,
-  'TweakTabConsultation': true,
-  'FocusOnTitleInConsultation': false,
-  'RemoveTitleSuggestions': true,
-  'EnableHelp': true,
-  'TweakTabSearchPatient': true,
-  'TweakTabPrescription': true,
-  'RemoveLocalCompanionPrint': true,
-  'RemoveLocalCompanionTPE': true,
-  'KeepFocus': true,
-  'portCompanion': '4821',
-  'defaultCotation': true,
-  'apiKey': 'votre clé API par défaut',
-  'keepMedSearch': true,
-  'addMedSearchButtons': true,
-  'boutonRecherche-1': true,
-  'boutonRecherche-2': true,
-  'boutonRecherche-3': false,
-  'boutonRecherche-4': false,
-  'boutonRecherche-5': false,
-  'boutonRecherche-6': false,
-  'boutonRecherche-7': false,
-  'boutonRecherche-8': true,
-  'boutonRecherche-9': false,
-  'boutonRecherche-10': false,
-  // "boutonRecherche-11", // n'existe pas !
-  // "boutonRecherche-12", // n'existe pas !
-  'boutonRecherche-13': false,
-  'boutonRecherche-14': false,
-  'TweakRecetteForm': true,
-  'TweakNIR': true,
-  'KeyPadPrescription': true,
-  'TweakFSEGestion': true,
-  'TweakFSECreation': true,
-  'TweakFSEDetectMT' : false,
-  'TweakFSEGestionUnique': false,
-  'TweakFSEAccident': false,
-  'TweakSCORDegradee': false,
-  'SCORAutoSelectPJ' : true,
-  'autoSelectPatientCV': true,
-  'WarpButtons': true,
-  'autoSelectTypeOrdoNum': true,
-  'autoConsentNumPres': false,
-  'autoConsentNumPres_Oui': true,
-  'autoValidateOrdoNum': false,
-  'NumPresPrescription': false,
-  'NumPresDemande': false,
-  'uncheckDMPIfImagerie': true,
-  'postPrintBehavior': 'closePreview', // boutons radio
-  'MoveHistoriqueToLeft': true,
-  'MoveHistoriqueToLeft_Consultation': true, // Depreciated depuis 2.7.1 (reprise de cette partie par Weda)
-  'MoveHistoriqueToLeft_Certificat': true,
-  'MoveHistoriqueToLeft_Demande': true,
-  'MoveHistoriqueToLeft_Courrier': false,
-  'MoveHistoriqueToLeft_Formulaire': false,
-  'ATCDLeft': false,
-  'AutoOpenHistory_Consultation': true, // introduit depuis 2.7.1
-  'ShowExplanatoryText': true,
-  'autoOpenOrdoType': false,
-  'AlertOnMedicationInteraction': true,
-  'defautDataType': 'TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%, Z-IMC:ds',
-  'autoATCD': false,
-  'secureExchangeAutoRefresh': true,
-  'secureExchangeUncheckIHEMessage': false,
-  'autoAATI': true,
-  'trimCIM10': true,
-  'sortCIM10': true,
-  'removeBoldPatientFirstName': false,
-  'preAlertATCD': 6,
-  'autoFilterLeftHistory': false,
-  'instantPrint': false,
+    'TweakImports': true,
+    'TweakTabConsultation': true,
+    'FocusOnTitleInConsultation': false,
+    'RemoveTitleSuggestions': true,
+    'EnableHelp': true,
+    'TweakTabSearchPatient': true,
+    'TweakTabPrescription': true,
+    'RemoveLocalCompanionPrint': true,
+    'RemoveLocalCompanionTPE': true,
+    'KeepFocus': true,
+    'portCompanion': '4821',
+    'defaultCotation': true,
+    'apiKey': 'votre clé API par défaut',
+    'keepMedSearch': true,
+    'addMedSearchButtons': true,
+    'boutonRecherche-1': true,
+    'boutonRecherche-2': true,
+    'boutonRecherche-3': false,
+    'boutonRecherche-4': false,
+    'boutonRecherche-5': false,
+    'boutonRecherche-6': false,
+    'boutonRecherche-7': false,
+    'boutonRecherche-8': true,
+    'boutonRecherche-9': false,
+    'boutonRecherche-10': false,
+    // "boutonRecherche-11", // n'existe pas !
+    // "boutonRecherche-12", // n'existe pas !
+    'boutonRecherche-13': false,
+    'boutonRecherche-14': false,
+    'TweakRecetteForm': true,
+    'TweakNIR': true,
+    'KeyPadPrescription': true,
+    'TweakFSEGestion': true,
+    'TweakFSECreation': true,
+    'TweakFSEDetectMT': false,
+    'TweakFSEGestionUnique': false,
+    'TweakFSEAccident': false,
+    'TweakSCORDegradee': false,
+    'SCORAutoSelectPJ': true,
+    'autoSelectPatientCV': true,
+    'WarpButtons': true,
+    'autoSelectTypeOrdoNum': true,
+    'autoConsentNumPres': false,
+    'autoConsentNumPres_Oui': true,
+    'autoValidateOrdoNum': false,
+    'NumPresPrescription': false,
+    'NumPresDemande': false,
+    'uncheckDMPIfImagerie': true,
+    'postPrintBehavior': 'closePreview', // boutons radio
+    'MoveHistoriqueToLeft': true,
+    'MoveHistoriqueToLeft_Consultation': true, // Depreciated depuis 2.7.1 (reprise de cette partie par Weda)
+    'MoveHistoriqueToLeft_Certificat': true,
+    'MoveHistoriqueToLeft_Demande': true,
+    'MoveHistoriqueToLeft_Courrier': false,
+    'MoveHistoriqueToLeft_Formulaire': false,
+    'ATCDLeft': false,
+    'AutoOpenHistory_Consultation': true, // introduit depuis 2.7.1
+    'ShowExplanatoryText': true,
+    'autoOpenOrdoType': false,
+    'AlertOnMedicationInteraction': true,
+    'defautDataType': 'TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%, Z-IMC:ds',
+    'autoATCD': false,
+    'secureExchangeAutoRefresh': true,
+    'secureExchangeUncheckIHEMessage': false,
+    'autoAATI': true,
+    'trimCIM10': true,
+    'sortCIM10': true,
+    'removeBoldPatientFirstName': false,
+    'preAlertATCD': 6,
+    'autoFilterLeftHistory': false,
+    'instantPrint': false,
+    'autoContinueWithoutNumPres': false,
+    'autoSelectMT': false,
 };
 
 var defaultShortcuts = {
-  "push_valider": {
+    "push_valider": {
         "default": "Alt+V",
         "description": "Appuie Valider"
     },
@@ -98,11 +100,19 @@ var defaultShortcuts = {
         "default": "Ctrl+Shift+D",
         "description": "Télécharge le PDF du document en cours (2e modèle)"
     },
-    "upload_latest_file":{
+    "send_document": {
+        "default": "Ctrl+E",
+        "description": "Envoie le document en cours par MSSanté (1er modèle)"
+    },
+    "send_document_bis": {
+        "default": "Ctrl+Shift+E",
+        "description": "Envoie le document en cours par MSSanté (2e modèle)"
+    },
+    "upload_latest_file": {
         "default": "Ctrl+U",
         "description": "Upload le dernier fichier du dossier envoyé par le Companion",
     },
-    "insert_date":{
+    "insert_date": {
         "default": "Alt+D",
         "description": "Insère la date du jour dans le champ de texte en cours d'édition",
     },
@@ -161,6 +171,6 @@ var defaultShortcuts = {
 };
 
 // retour à un chargement systématique, a priori sans impact évident sur le temps de chargement
-chrome.storage.local.set({defaultSettings: defaultSettings, defaultShortcuts: defaultShortcuts}, function() {
+chrome.storage.local.set({ defaultSettings: defaultSettings, defaultShortcuts: defaultShortcuts }, function () {
     console.log('[background.js] Les valeurs et raccourcis par défaut ont été enregistrées');
 });
