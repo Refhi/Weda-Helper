@@ -10,6 +10,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 ## Fix :
 - [#293](https://github.com/Refhi/Weda-Helper/issues/293) - Clique automatiquement sur "Continuer sans l'ordonnance numérique" si le message d'erreur est détecté (désactivé par défaut).
 
+# [2.8.0.1] - ajout du message video
 
 
 # [2.8] - Impression instantanée
