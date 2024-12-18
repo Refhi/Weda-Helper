@@ -364,3 +364,16 @@ var options = Object.keys(defaultSettings);
     }
   });
 });
+
+
+function updateCompanionLogLink() {
+  chrome.storage.local.get(['apiKey', 'portCompanion', 'version'], function(result) {
+    const apiKey = result.apiKey || '';
+    const port = result.portCompanion || '';
+    const version = result.version || '';
+    const logLink = `http://localhost:${port}/log?apiKey=${encodeURIComponent(apiKey)}&versioncheck=${version}`;
+    document.getElementById('companionLogLing').href = logLink;
+  });
+}
+
+updateCompanionLogLink();
