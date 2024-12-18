@@ -38,6 +38,42 @@ function selectLastCotationSpace() {
     recordMetrics({ clicks: 1, drags: 1 });
 }
 
+function handleTabPress(event) {
+    if (event.key === 'Tab') {
+        // console.log('Tab pressed');
+        let inputs = Array.from(document.querySelectorAll('.acteCell input'));
+        let currentIndex = inputs.indexOf(event.target);
+        setTimeout(() => {
+            // actualiser la liste des inputs
+            inputs = Array.from(document.querySelectorAll('.acteCell input'));
+            let nextIndex = event.shiftKey ? currentIndex - 1 : currentIndex + 1;
+
+            // Boucler vers l'autre extrémité si nécessaire
+            if (nextIndex < 0) {
+                nextIndex = inputs.length - 1;
+            } else if (nextIndex >= inputs.length) {
+                nextIndex = 0;
+            }
+            if (nextIndex >= 0 && nextIndex < inputs.length) {
+                inputs[nextIndex].focus();
+            }
+        }, 10);
+    }
+}
+
+function addTabEventListeners() {
+    let inputs = document.querySelectorAll('.acteCell input');
+    inputs.forEach(input => {
+        input.addEventListener('keydown', handleTabPress);
+    });
+}
+
+waitForElement({
+    selector: '.acteCell',
+    callback: function (acteCellsElements) {
+        addTabEventListeners();
+    }
+});
 
 // Définition de la fonction principale
 // (tableau et bouche après)
