@@ -387,7 +387,7 @@ addTweak('*', 'WarpButtons', async function () {
                     container.style.position = 'relative';
                     button.parentNode.insertBefore(container, button);
                     container.appendChild(button);
-
+        
                     // Créer l'élément span pour le raccourci
                     var span = document.createElement('span');
                     span.textContent = raccourci;
@@ -399,6 +399,9 @@ addTweak('*', 'WarpButtons', async function () {
                     span.style.backgroundColor = '#F0F0F0'; // Ajouter un fond blanc
                     span.style.padding = '2px'; // Ajouter un peu de padding pour le texte
                     span.style.borderRadius = '10px'; // Ajouter des angles arrondis
+                    span.style.height = 'auto'; // Fixer la hauteur
+                    span.style.lineHeight = 'normal'; // Fixer la hauteur de ligne
+                    span.style.display = 'inline-block'; // S'assurer que le span ne prenne pas plus de hauteur que nécessaire
                     container.appendChild(span);
                 }
             }
@@ -426,6 +429,10 @@ addTweak('*', 'WarpButtons', async function () {
     });
     waitForElement({
         selector: '#ContentPlaceHolder1_PatientsGrid_ButtonAffecteResultat_0',
+        callback: warpButtons
+    });
+    waitForElement({
+        selector: '.mat-button-wrapper',
         callback: warpButtons
     });
 });
