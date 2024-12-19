@@ -468,7 +468,7 @@ function watchForClose() {
             type: 'undefined',
             icon: 'print'
         });
-    }, 1000);
+    }, 10000);
 }
 
 function waitForNoFSE(callback) {
