@@ -119,28 +119,28 @@ function mouseoutW() {
 
 }
 
+// TODO à séparer la logique IOS et Windows
+// addTweak('*', '*Tooltip', function () {
 
-addTweak('*', '*Tooltip', function () {
+//     let lastAltPressTime = 0;
 
-    let lastAltPressTime = 0;
-
-    document.addEventListener('keydown', function(event) {
-        if (event.altKey) { //Permet détection de Alt sur Windows et sur Mac, parfois renvoyé comme ⌥ par le clavier
-            const currentTime = new Date().getTime();
+//     document.addEventListener('keydown', function(event) {
+//         if (event.altKey) { //Permet détection de Alt sur Windows et sur Mac, parfois renvoyé comme ⌥ par le clavier
+//             const currentTime = new Date().getTime();
         
-            if (currentTime - lastAltPressTime < 1000) {
-                lastAltPressTime = 0; // Reset after detecting double press
-                if (document.querySelectorAll('div.tooltip').length == 0)
-                {
-                    tooltipshower();
-                }
-                else {
-                    mouseoutW();
-                }
+//             if (currentTime - lastAltPressTime < 1000) {
+//                 lastAltPressTime = 0; // Reset after detecting double press
+//                 if (document.querySelectorAll('div.tooltip').length == 0)
+//                 {
+//                     tooltipshower();
+//                 }
+//                 else {
+//                     mouseoutW();
+//                 }
                 
-            } else {
-                lastAltPressTime = currentTime; // Update last press time
-            }
-        }
-    });
-});
+//             } else {
+//                 lastAltPressTime = currentTime; // Update last press time
+//             }
+//         }
+//     });
+// });
