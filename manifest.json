@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Weda Helper",
   "version": "2.9",
-  "version_name": "2.9-alpha-1",
+  "version_name": "2.9-alpha-2",
   "options_page": "options.html",
   "permissions": [
     "storage"
@@ -44,7 +44,8 @@
         "agenda.js",
         "antecedent.js",
         "print.js",
-        "courrier.js"
+        "courrier.js",
+        "imti.js"
       ]
     }
   ],
