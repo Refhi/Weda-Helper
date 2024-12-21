@@ -436,3 +436,104 @@ function openSearch() {
     link.click();
     recordMetrics({ clicks: 1, drags: 3 });
 }
+
+
+// Ajout des info-bulles sur les boutons + les "sensibilise" aux raccourcis claviers en ajoutant des targets
+addTweak('*', 'WarpButtons', async function () {
+    async function getShortcuts() {
+        return new Promise((resolve) => {
+            chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function (result) {
+                const raccourcis = {
+                    'targetAnnuler': shortcutDefaut(result.shortcuts, result.defaultShortcuts, 'push_annuler'),
+                    'targetValider': shortcutDefaut(result.shortcuts, result.defaultShortcuts, 'push_valider')
+                };
+                resolve(raccourcis);
+            });
+        });
+    }
+
+    const raccourcis = await getShortcuts();
+    console.log('[WarpButtons] Raccourcis', raccourcis);
+
+    function warpButtons(buttons) {
+        function addIdToButton(button) {
+            var actions = {
+                'Annuler': ['Continuez sans l\'ordonnance numérique', 'Non', 'NON', 'Annuler', 'Ne pas inclure'],
+                'Valider': ['Oui', 'OUI', 'Confirmer', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre', 'Importer', 'Inclure', 'Sécuriser','Affecter ce résultat']
+            };
+            if (button) {
+                var buttonText = button.textContent;
+                if (buttonText.length == 0){
+                    buttonText = button.value; //Bypass pour les boutons non Angular qui ont un textContent vide
+                }
+                var action = Object.keys(actions).find(key => actions[key].includes(buttonText));
+                // vérifie que l'id n'est pas déjà présent. Utile quand plusieurs boutons sont éligible.
+                if (document.getElementById('target' + action)) {
+                    console.log(action, 'id already exist !');
+                    return false;
+                }
+                if (action) {
+                    button.id = 'target' + action;
+                }
+            }
+            return true;
+        }
+
+        function addShortcutsToButton(button) {
+            if (button) {
+                console.log('ajout de raccourcis au button', button);
+                var raccourci = raccourcis[button.id];
+                if (raccourci) {
+                    // Créer un conteneur pour le bouton et le texte
+                    var container = document.createElement('div');
+                    container.style.position = 'relative';
+                    button.parentNode.insertBefore(container, button);
+                    container.appendChild(button);
+        
+                    // Créer l'élément span pour le raccourci
+                    var span = document.createElement('span');
+                    span.textContent = raccourci;
+                    span.style.position = 'absolute';
+                    span.style.bottom = '-10px'; // Placer le texte un peu plus bas
+                    span.style.right = '5px';
+                    span.style.color = 'grey';
+                    span.style.fontSize = '0.8em';
+                    span.style.backgroundColor = '#F0F0F0'; // Ajouter un fond blanc
+                    span.style.padding = '2px'; // Ajouter un peu de padding pour le texte
+                    span.style.borderRadius = '10px'; // Ajouter des angles arrondis
+                    span.style.height = 'auto'; // Fixer la hauteur
+                    span.style.lineHeight = 'normal'; // Fixer la hauteur de ligne
+                    span.style.display = 'inline-block'; // S'assurer que le span ne prenne pas plus de hauteur que nécessaire
+                    container.appendChild(span);
+                }
+            }
+        }
+
+
+
+        buttons.forEach(function (button) {
+            console.log('Bouton trouvé ! Je le redimentionne, lui ajoute un id et note le raccourcis clavier par défaut', button);
+            button.style.width = 'auto';
+            if (addIdToButton(button)) {
+                addShortcutsToButton(button);
+            }
+        });
+    }
+
+    // Les sélecteurs des boutons à "sensibiliser"
+    // Dès qu'ils sont détectés, on appelle warpButtons
+    const selectors = [
+        '.cdk-overlay-container .mat-raised-button',
+        '.docImportButtons button',
+        '#ContentPlaceHolder1_PatientsGrid_ButtonAffecteResultat_0',
+        '.mat-button-wrapper',
+        '.tab_valid_cancel .button' // Notamment dans la déclaration de MT
+    ];
+    
+    selectors.forEach(selector => {
+        waitForElement({
+            selector: selector,
+            callback: warpButtons
+        });
+    });
+});
