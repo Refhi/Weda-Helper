@@ -69,6 +69,7 @@ var defaultSettings = {
     'sortCIM10': true,
     'removeBoldPatientFirstName': false,
     'preAlertATCD': 6,
+    'autoControlMT': true,
     'autoFilterLeftHistory': false,
     'instantPrint': false,
     'autoContinueWithoutNumPres': false,

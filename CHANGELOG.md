@@ -9,6 +9,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#308](https://github.com/Refhi/Weda-Helper/issues/308) - Ajout d'un lien vers le log du Companion dans la page des options
 - [#306](https://github.com/Refhi/Weda-Helper/issues/306) - On peut désormais naviguer entre les champs de cotation d'un simple Tab ou Shift+Tab.
 - [#301](https://github.com/Refhi/Weda-Helper/issues/301) - Un clic du milieu sur le W du Menu W ouvre un nouvel onglet vers l'accueil du dossier patient, et non le module en cours.
+- Automatisation du contrôle du MT + ouvre un nouvel onglet pour ne pas avoir à patienter. Un message vous indique si cela a fonctionné ou non. Vous pourrez retourner dans le premier onglet si vous souhaitez enregistrer le MT.
 
 ## Fix :
 - [#293](https://github.com/Refhi/Weda-Helper/issues/293) - Clique automatiquement sur "Continuer sans l'ordonnance numérique" si le message d'erreur est détecté (désactivé par défaut).

@@ -571,11 +571,8 @@ function closeWindow() {
  */
 async function tabAndPrintHandler() { 
     console.log('newTabPrintAndCloseOriginal activé');
-    // C'est nécessaire de passer par l'API car en cas d'onglets multiples ouverts sur des
-    // patients différents, le nouvel onglet ouvert peut être celui d'un autre patient
-    let patientInfo = await getPatientInfo(getCurrentPatientId());
-    let urlPatient = patientInfo['patientFileUrl'];
-    window.open(urlPatient);
+    // Ouvre un nouvel onglet avec l'URL du dossier du patient actuel
+    await newPatientTab();
     companionPrintDone(closeWindow);
 }
 

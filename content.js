@@ -278,11 +278,7 @@ addTweak('*', '*middleClickW', function () {
             element.addEventListener('auxclick', async function(event) {
                 if (event.button === 1) { // Vérifie si c'est un clic du milieu
                     event.preventDefault(); // Inhibe le comportement par défaut
-                    let patientInfo = await getPatientInfo(getCurrentPatientId());
-                    let urlPatient = patientInfo['patientFileUrl'];
-                    element.href = urlPatient;
-                    element.target = '_blank';
-                    window.open(urlPatient, '_blank');
+                    newPatientTab(); // Ouvre le dossier patient dans un nouvel onglet
                 }
             });
         }
