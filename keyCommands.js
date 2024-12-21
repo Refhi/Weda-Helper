@@ -480,6 +480,20 @@ addTweak('*', 'WarpButtons', async function () {
         }
 
         function addShortcutsToButton(button) {
+            function applyStylesToSpan(span) {
+                span.style.position = 'absolute';
+                span.style.bottom = '-10px'; // Placer le texte un peu plus bas
+                span.style.right = '5px';
+                span.style.color = 'grey';
+                span.style.fontSize = '0.8em';
+                span.style.backgroundColor = '#F0F0F0'; // Ajouter un fond blanc
+                span.style.padding = '2px'; // Ajouter un peu de padding pour le texte
+                span.style.borderRadius = '10px'; // Ajouter des angles arrondis
+                span.style.height = 'auto'; // Fixer la hauteur
+                span.style.lineHeight = 'normal'; // Fixer la hauteur de ligne
+                span.style.display = 'inline-block'; // S'assurer que le span ne prenne pas plus de hauteur que nécessaire
+            }
+            
             if (button) {
                 console.log('ajout de raccourcis au button', button);
                 var raccourci = raccourcis[button.id];
@@ -493,21 +507,12 @@ addTweak('*', 'WarpButtons', async function () {
                     // Créer l'élément span pour le raccourci
                     var span = document.createElement('span');
                     span.textContent = raccourci;
-                    span.style.position = 'absolute';
-                    span.style.bottom = '-10px'; // Placer le texte un peu plus bas
-                    span.style.right = '5px';
-                    span.style.color = 'grey';
-                    span.style.fontSize = '0.8em';
-                    span.style.backgroundColor = '#F0F0F0'; // Ajouter un fond blanc
-                    span.style.padding = '2px'; // Ajouter un peu de padding pour le texte
-                    span.style.borderRadius = '10px'; // Ajouter des angles arrondis
-                    span.style.height = 'auto'; // Fixer la hauteur
-                    span.style.lineHeight = 'normal'; // Fixer la hauteur de ligne
-                    span.style.display = 'inline-block'; // S'assurer que le span ne prenne pas plus de hauteur que nécessaire
+                    applyStylesToSpan(span);
                     container.appendChild(span);
                 }
             }
         }
+        
 
 
 
