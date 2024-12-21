@@ -263,3 +263,22 @@ addTweak('/FolderMedical/PopUpRappel.aspx', '*focusOnTextArea', function () {
     textArea.focus();
     recordMetrics({ clicks: 1, drags: 1 });
 });
+
+
+
+// Modifier le comportement d'un clic-milieu sur l'élément "W" pour ouvrir le dossier patient dans un nouvel onglet
+addTweak('*', '*middleClickW', async function () {
+    let patientInfo = await getPatientInfo(getCurrentPatientId());
+    let urlPatient = patientInfo['patientFileUrl'];
+    waitForElement({
+        selector: '.level1.static',
+        callback: function (elements) {
+            let element = elements[1];
+            console.log('[middleClickW] element', element);
+            if (element) {
+                element.href = urlPatient;
+                element.target = '_blank';
+            }
+        }
+    });
+});
