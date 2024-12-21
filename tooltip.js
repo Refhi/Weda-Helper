@@ -119,28 +119,61 @@ function mouseoutW() {
 
 }
 
-// TODO à séparer la logique IOS et Windows
-// addTweak('*', '*Tooltip', function () {
+addTweak('*', '*Tooltip', function () {
 
-//     let lastAltPressTime = 0;
+    let lastAltPressTime = 0;
+    const isWindows = navigator.platform.indexOf('Win') > -1;
+    let altKeyPressCount = 0; // Compteur d'appuis sur la touche Alt
+    let checkAltReleaseInterval = null;
+    let resetAltKeyPressCountInterval = null;
 
-//     document.addEventListener('keydown', function(event) {
-//         if (event.altKey) { //Permet détection de Alt sur Windows et sur Mac, parfois renvoyé comme ⌥ par le clavier
-//             const currentTime = new Date().getTime();
-        
-//             if (currentTime - lastAltPressTime < 1000) {
-//                 lastAltPressTime = 0; // Reset after detecting double press
-//                 if (document.querySelectorAll('div.tooltip').length == 0)
-//                 {
-//                     tooltipshower();
-//                 }
-//                 else {
-//                     mouseoutW();
-//                 }
-                
-//             } else {
-//                 lastAltPressTime = currentTime; // Update last press time
-//             }
-//         }
-//     });
-// });
+    function handleAltPress() {
+        lastAltPressTime = Date.now();
+        altKeyPressCount++; // Incrémenter le compteur à chaque appui sur Alt
+        clearTimeout(resetAltKeyPressCountInterval);
+        resetAltKeyPressCountInterval = setTimeout(function () {
+            altKeyPressCount = 0; // Réinitialiser altKeyPressCount après 1 seconde sans appui sur Alt
+        }, 1000); // Délai de 1 seconde
+
+        // Ignorer le premier appui sur Alt
+        if (altKeyPressCount > 1) {
+            if (altKeyPressCount === 2) {
+                tooltipshower();
+            }
+            // Si l'intervalle n'est pas déjà en cours, le démarrer
+            if (!checkAltReleaseInterval) {
+                checkAltReleaseInterval = setInterval(function () {
+                    // Si plus de 100ms se sont écoulées depuis la dernière pression
+                    if (Date.now() - lastAltPressTime > 100) {
+                        clearInterval(checkAltReleaseInterval);
+                        checkAltReleaseInterval = null; // Réinitialiser l'intervalle
+                        mouseoutW(); // Appeler la fonction de relâchement
+                        altKeyPressCount = 0; // Réinitialiser le compteur pour permettre la détection lors de la prochaine série d'appuis
+                    }
+                }, 100); // Vérifier toutes les 100ms
+            }
+        }
+    }
+
+    function handleAltPressMac() {
+        const currentTime = new Date().getTime();
+        if (currentTime - lastAltPressTime < 1000) {
+            lastAltPressTime = 0; // Reset after detecting double press
+            if (document.querySelectorAll('div.tooltip').length == 0) {
+                tooltipshower();
+            } else {
+                mouseoutW();
+            }
+        } else {
+            lastAltPressTime = currentTime; // Update last press time
+        }
+    }
+
+    document.addEventListener('keydown', function (event) {
+        if (isWindows && event.altKey) {
+            handleAltPress();
+        } else if (!isWindows && event.altKey) {
+            handleAltPressMac(event);
+        }
+    });
+});
