@@ -249,7 +249,7 @@ function push_valider() {
         () => clickClassExceptIf('button valid', 'Chercher', 'ContentPlaceHolder1_btnScanDatamatrix'),
         () => GenericClicker("title", "Enregistrer et quitter"),
         () => GenericClicker("title", "Valider"),
-        () => clickElementByChildtextContent("VALIDER"),
+        // () => clickElementByChildtextContent("VALIDER"), => on passe à la gestion par targetValider
         () => clickElementById('ContentPlaceHolder1_ButtonQuitter2'),
         // () => clicSecure(), => on passe à la gestion par targetValider
         () => clickElementById('ButtonFermerRappel')
@@ -266,7 +266,7 @@ function push_annuler() {
         () => clickElementByClass('button cancel'),
         () => GenericClicker("title", "Annuler"),
         () => GenericClicker("title", "Quitter"),
-        () => clickElementByChildtextContent("ANNULER")
+        // () => clickElementByChildtextContent("ANNULER") => on passe à la gestion par targetAnnuler
     ];
 
     actions.some(action => action() !== false);
@@ -458,8 +458,28 @@ addTweak('*', 'WarpButtons', async function () {
     function warpButtons(buttons) {
         function addIdToButton(button) {
             var actions = {
-                'Annuler': ['Continuez sans l\'ordonnance numérique', 'Non', 'NON', 'Annuler', 'Ne pas inclure'],
-                'Valider': ['Oui', 'OUI', 'Confirmer', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre', 'Importer', 'Inclure', 'Sécuriser','Affecter ce résultat']
+                'Annuler': [
+                    'Annuler', 
+                    'ANNULER',
+                    'Continuez sans l\'ordonnance numérique', 
+                    'Non', 
+                    'NON', 
+                    'Ne pas inclure'
+                ],
+                'Valider': [
+                    'Oui', 
+                    'OUI', 
+                    'Confirmer', 
+                    'Valider', 
+                    'VALIDER',
+                    'Réessayer', 
+                    'Désactiver aujourd\'hui', 
+                    'Transmettre', 
+                    'Importer', 
+                    'Inclure', 
+                    'Sécuriser', 
+                    'Affecter ce résultat'
+                ]
             };
             if (button) {
                 var buttonText = button.textContent;
@@ -486,29 +506,25 @@ addTweak('*', 'WarpButtons', async function () {
                 span.style.right = '5px';
                 span.style.color = 'grey';
                 span.style.fontSize = '0.8em';
-                span.style.backgroundColor = '#F0F0F0'; // Ajouter un fond blanc
+                span.style.backgroundColor = 'rgba(240, 240, 240, 0.6)'; // Ajouter un fond semi-transparent
                 span.style.padding = '2px'; // Ajouter un peu de padding pour le texte
                 span.style.borderRadius = '10px'; // Ajouter des angles arrondis
                 span.style.height = 'auto'; // Fixer la hauteur
                 span.style.lineHeight = 'normal'; // Fixer la hauteur de ligne
                 span.style.display = 'inline-block'; // S'assurer que le span ne prenne pas plus de hauteur que nécessaire
+                span.style.pointerEvents = 'none'; // Empêcher les événements de pointer sur le span
             }
-            
+        
             if (button) {
                 console.log('ajout de raccourcis au button', button);
                 var raccourci = raccourcis[button.id];
                 if (raccourci) {
-                    // Créer un conteneur pour le bouton et le texte
-                    var container = document.createElement('div');
-                    container.style.position = 'relative';
-                    button.parentNode.insertBefore(container, button);
-                    container.appendChild(button);
-        
                     // Créer l'élément span pour le raccourci
                     var span = document.createElement('span');
                     span.textContent = raccourci;
                     applyStylesToSpan(span);
-                    container.appendChild(span);
+                    button.style.position = 'relative'; // S'assurer que le bouton a une position relative
+                    button.appendChild(span);
                 }
             }
         }
