@@ -266,19 +266,30 @@ addTweak('/FolderMedical/PopUpRappel.aspx', '*focusOnTextArea', function () {
 
 
 
+
 // Modifier le comportement d'un clic-milieu sur l'élément "W" pour ouvrir le dossier patient dans un nouvel onglet
-addTweak('*', '*middleClickW', async function () {
-    let patientInfo = await getPatientInfo(getCurrentPatientId());
-    let urlPatient = patientInfo['patientFileUrl'];
+addTweak('*', '*middleClickW', function () {
+    // Fonction pour ajouter l'événement de clic-milieu
+    function addMiddleClickEvent() {
+        let elements = document.querySelectorAll('.level1.static');
+        let element = elements[1];
+        console.log('[middleClickW] element', element);
+        if (element) {
+            element.addEventListener('auxclick', async function(event) {
+                if (event.button === 1) { // Vérifie si c'est un clic du milieu
+                    event.preventDefault(); // Inhibe le comportement par défaut
+                    let patientInfo = await getPatientInfo(getCurrentPatientId());
+                    let urlPatient = patientInfo['patientFileUrl'];
+                    element.href = urlPatient;
+                    element.target = '_blank';
+                    window.open(urlPatient, '_blank');
+                }
+            });
+        }
+    }
+
     waitForElement({
         selector: '.level1.static',
-        callback: function (elements) {
-            let element = elements[1];
-            console.log('[middleClickW] element', element);
-            if (element) {
-                element.href = urlPatient;
-                element.target = '_blank';
-            }
-        }
+        callback: addMiddleClickEvent
     });
 });
