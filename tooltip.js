@@ -136,8 +136,8 @@ addTweak('*', '*Tooltip', function () {
         }, 1000); // Délai de 1 seconde
 
         // Ignorer le premier appui sur Alt
-        if (altKeyPressCount > 1) {
-            if (altKeyPressCount === 2) {
+        if (altKeyPressCount > 2) {
+            if (altKeyPressCount === 3) {
                 tooltipshower();
             }
             // Si l'intervalle n'est pas déjà en cours, le démarrer
