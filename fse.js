@@ -63,7 +63,7 @@ function getLastIndex() {
 
 function focusInputAtIndex(targetIndex) {
     console.log('[TweakTabCotations] focusInputAtIndex', targetIndex);
-    if (targetIndex === null || targetIndex === undefined || targetIndex === "inhiber") {
+    if (targetIndex === null || targetIndex === undefined) {
         console.log('[TweakTabCotations] focusInputAtIndex targetIndex is null, undefined or "inhiber", returning');
         return
     };
@@ -107,10 +107,23 @@ function handleTabPress(event) {
         }
         
         saveLastIndex(nextIndex);
+        // Sauvegarde un timestamp pour la dernière tabulation
+        setTabTimeStamp();
         setTimeout(() => {
             focusInputAtIndex(nextIndex);
         }, 10);
     }
+}
+function setTabTimeStamp() {
+    let date = new Date();
+    let tabTimeStamp = date.getTime();
+    sessionStorage.setItem('tabTimeStamp', tabTimeStamp);
+}
+
+function setLoadTimeStamp() {
+    let date = new Date();
+    let loadTimeStamp = date.getTime();
+    sessionStorage.setItem('loadTimeStamp', loadTimeStamp);
 }
 
 function addTabEventListeners() {
@@ -120,23 +133,11 @@ function addTabEventListeners() {
     });
 }
 
-function handleDocumentClick(event) {
-    // Si le clic est dans un champ de cotation
-    if (event.target.matches('.acteCell input')) {
-        const inputs = Array.from(document.querySelectorAll('.acteCell input'));
-        const clickedIndex = inputs.indexOf(event.target);
-        saveLastIndex(clickedIndex);
-    }
-    // Si le clic est en dehors, supprimer l'index
-    else if (!event.target.closest('.acteCell')) {  // Utilise closest pour éviter les clics sur le conteneur
-        saveLastIndex("inhiber");
-    }
-}
 
 addTweak('/vitalzen/fse.aspx', '*TweakTabCotations', function () {
-    // Ajouter l'écouteur de clic sur le document
-    document.addEventListener('click', handleDocumentClick);
-
+    removeLastIndex();
+    setLoadTimeStamp();
+    
     // Ajouter un écouteur d'événements pour les touches tab
     waitForElement({
         selector: '.acteCell',
@@ -153,7 +154,18 @@ addTweak('/vitalzen/fse.aspx', '*TweakTabCotations', function () {
             if (getLastIndex() === null) {
                 selectLastCotationSpace();
             }
-            focusInputAtIndex(getLastIndex());
+            let tabTimeStamp = sessionStorage.getItem('tabTimeStamp');
+            if (tabTimeStamp) {
+                let date = new Date();
+                let now = date.getTime();
+                let diff = now - tabTimeStamp;
+                let loadTimeStamp = sessionStorage.getItem('loadTimeStamp');
+                let uptime = now - loadTimeStamp;
+                console.log('[TweakTabCotations] Time since last tabulation', diff);
+                if (diff < 1000 || uptime < 7000) {
+                    focusInputAtIndex(getLastIndex());
+                }
+            }
         }
     });
 });
