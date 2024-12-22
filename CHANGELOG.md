@@ -11,6 +11,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#301](https://github.com/Refhi/Weda-Helper/issues/301) - Un clic du milieu sur le W du Menu W ouvre un nouvel onglet vers l'accueil du dossier patient, et non le module en cours.
 - Automatisation du contrôle du MT + ouvre un nouvel onglet pour ne pas avoir à patienter. Un message vous indique si cela a fonctionné ou non. Vous pourrez retourner dans le premier onglet si vous souhaitez enregistrer le MT.
 - Automatisation partielle de la déclaration de MT : sélectionne automatiquement le patient en cours, pré-coche les cases de consentement. Vous n'avez plus qu'à cliquer sur "Transmettre" pour valider.
+- [#273](https://github.com/Refhi/Weda-Helper/issues/273) - Automatisation de la récupération du MT et de sa mise à jour avec l'annuaire des professionnels de santé. (désactivé par défaut)
 
 ## Fix :
 - [#293](https://github.com/Refhi/Weda-Helper/issues/293) - Clique automatiquement sur "Continuer sans l'ordonnance numérique" si le message d'erreur est détecté (désactivé par défaut).
