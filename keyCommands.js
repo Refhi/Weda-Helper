@@ -279,6 +279,15 @@ function uploadLatest() {
         let uploadURL = `${baseUrl}/FolderMedical/PopUpUploader.aspx${window.location.search}`; //On récupère l'url de l'upload
         console.log(uploadURL);
         var uploadWindow = window.open(uploadURL, "Upload", "width=700,height=600"); //On ouvre la fenetre d'upload dans un popup
+        // Si elle est appelée depuis la page d'accueil, on envoi un message d'avertissement
+        if (window.location.pathname.startsWith('/FolderMedical/PatientViewForm.aspx')) {
+            sendWedaNotif({
+                message: "Upload automatique appelé depuis la page d'accueil. Risque de ne pas fonctionner correctement. Privilégiez pour l'instant un appel depuis une page de consultation.",
+                type: 'undefined',
+                icon: 'warning',
+                duration: 15000
+            })
+        }
     });
 }
 
