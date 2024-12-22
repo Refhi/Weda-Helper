@@ -473,7 +473,8 @@ addTweak('*', 'WarpButtons', async function () {
                     'Continuez sans l\'ordonnance numérique', 
                     'Non', 
                     'NON', 
-                    'Ne pas inclure'
+                    'Ne pas inclure',
+                    'FSE dégradée'
                 ],
                 'Valider': [
                     'Oui', 
@@ -487,7 +488,8 @@ addTweak('*', 'WarpButtons', async function () {
                     'Importer', 
                     'Inclure', 
                     'Sécuriser', 
-                    'Affecter ce résultat'
+                    'Affecter ce résultat',
+                    'FSE Teleconsultation'
                 ]
             };
             if (button) {
@@ -557,7 +559,8 @@ addTweak('*', 'WarpButtons', async function () {
         '.docImportButtons button',
         '#ContentPlaceHolder1_PatientsGrid_ButtonAffecteResultat_0',
         '.mat-button-wrapper',
-        '.tab_valid_cancel .button' // Notamment dans la déclaration de MT
+        '.tab_valid_cancel .button', // Notamment dans la déclaration de MT
+        '.boutonCustonWH'
     ];
     
     selectors.forEach(selector => {

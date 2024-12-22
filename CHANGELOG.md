@@ -18,6 +18,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#309](https://github.com/Refhi/Weda-Helper/issues/309) - Correction du plantage des FSE lors de l'impression instantanée lorsque le DMP est solllicité en même temps (fonctionne en inhibant l'envoi au DMP le temps de la réalisation de la FSE)
 - [#303](https://github.com/Refhi/Weda-Helper/issues/303) - Correction d'un problème d'affichage des raccourcis claviers lors de l'appuis de Alt prolongé sous MAC. Sous MAC il faut désormais appuyer deux fois de suite sur Alt pour afficher les raccourcis claviers.
 - [#295](https://github.com/Refhi/Weda-Helper/issues/295) - l'affichage automatique des atcd fonctionnent à nouveau
+- [#315](https://github.com/Refhi/Weda-Helper/issues/315) - Amélioration des boutons FSE dégradée et Téléconsultation dans la FSE + ajout de raccourcis claviers
 
 # [2.8.0.1] - ajout du message video
 
