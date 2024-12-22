@@ -66,6 +66,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*oneClickMT', function () {
             let checkBoxes = elements[0].parentElement.querySelectorAll('input[type="checkbox"]');
             checkBoxes.forEach(checkBox => {
                 checkBox.click();
+                recordMetrics({ clicks: 1, drags: 1 });
             });
         }
     });
@@ -89,6 +90,7 @@ function addMtToContacts() {
         selector: '#ContentPlaceHolder1_imtiContainer a.ml5',
         callback: function (elements) {
             console.log('[addMtToContacts] bouton cliqué', elements[0]);
+            recordMetrics({ clicks: 1, drags: 1 });
             elements[0].click();
         }
     });
@@ -99,6 +101,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoMTIncludeAndCheckContact', 
     function openContactPage() {
         let elementToClick = document.querySelector('div[title="Cliquez ici pour renseigner les contacts du patient"]')
         if (elementToClick) {
+            recordMetrics({ clicks: 1, drags: 1 });
             elementToClick.click();
         }
     }
@@ -107,7 +110,8 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoMTIncludeAndCheckContact', 
         let timestamp = parseInt(sessionStorage.getItem('autoMTIncludeAndCheckContact'));
         if (Date.now() - timestamp < 5000) {
             // mettre à jour le timestamp
-            sessionStorage.setItem('autoMTIncludeAndCheckContact', Date.now());            
+            sessionStorage.setItem('autoMTIncludeAndCheckContact', Date.now());
+            recordMetrics({ clicks: 1, drags: 1 });          
             openContactPage();
         }
     }
@@ -225,18 +229,21 @@ addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', functi
             }
 
             const mtInfo = extractMTInfo(contacts); // Récupération nom/prénom du MT
+            recordMetrics({ clicks: 1, drags: 1 });
             if (!mtInfo) {
                 nettoyerTimestamp();
                 return;
             }
 
             // Mise à jour de la spécialité - arrêt si échec
+            recordMetrics({ clicks: 1, drags: 1 });
             if (!updateSpeciality()) {
                 nettoyerTimestamp();
                 return;
             }
 
             // Mise à jour du champ de recherche avec le nom du MT
+            recordMetrics({ clicks: 1, drags: 1 });
             if (!updateSearchField(mtInfo.nom)) {
                 nettoyerTimestamp();
                 return;
@@ -244,6 +251,7 @@ addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', functi
 
             // Sélection du contact du MT pour édition
             timeStampUpdate();
+            recordMetrics({ clicks: 1, drags: 1 });
             selectMTContact(mtInfo.prenom);
         }
     });
@@ -270,6 +278,7 @@ addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', functi
         callback: function(elements) {
             if (verifierTimestamp()) {
                 sessionStorage.setItem(GREENLIGHT_MT, GREENLIGHT_STATES.READY_FOR_CONTACT_SELECTION);
+                recordMetrics({ clicks: 1, drags: 1 });
                 elements[0].click();
             }
         }
@@ -283,6 +292,7 @@ addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', functi
                 sessionStorage.getItem(GREENLIGHT_MT) === GREENLIGHT_STATES.READY_FOR_CONTACT_SELECTION && 
                 verifierTimestamp()) {
                 sessionStorage.setItem(GREENLIGHT_MT, GREENLIGHT_STATES.READY_FOR_REPLACEMENT_VALIDATION);
+                recordMetrics({ clicks: 1, drags: 1 });
                 elements[0].click();
             }
         }
@@ -295,6 +305,7 @@ addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', functi
             if (sessionStorage.getItem(GREENLIGHT_MT) === GREENLIGHT_STATES.READY_FOR_REPLACEMENT_VALIDATION && 
                 verifierTimestamp()) {
                 sessionStorage.setItem(GREENLIGHT_MT, GREENLIGHT_STATES.READY_FOR_FINAL_VALIDATION);
+                recordMetrics({ clicks: 1, drags: 1 });
                 elements[0].click();
             }
         }
@@ -308,6 +319,7 @@ addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', functi
                 verifierTimestamp()) {
                 sessionStorage.removeItem(GREENLIGHT_MT);
                 elements[0].click();
+                recordMetrics({ clicks: 1, drags: 1 });
                 nettoyerTimestamp();
             }
         }

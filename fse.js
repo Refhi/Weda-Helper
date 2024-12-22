@@ -28,35 +28,87 @@ function checkPatientName() {
 }
 
 
+/**
+ * Gestion de la tabulation des cotations
+ */
+
+
+// Supprimer selectLastCotationSpace() et la remplacer par:
 function selectLastCotationSpace() {
-    let acteCellsElements = document.querySelectorAll('.acteCell');
-    // On doit sélectionner le dernier élément de la liste
-    let lastActeCellElement = acteCellsElements[acteCellsElements.length - 1];
-    let elementToFocus = lastActeCellElement.querySelector('input');
-    console.log('elementToFocus', elementToFocus);
-    elementToFocus.focus();
-    recordMetrics({ clicks: 1, drags: 1 });
+    const inputs = Array.from(document.querySelectorAll('.acteCell input'));
+    if (inputs.length > 0) {
+        recordMetrics({ clicks: 1, drags: 1 });
+        saveLastIndex(inputs.length - 1);
+        focusInputAtIndex(inputs.length - 1);
+    }
 }
+
+// Store current index in sessionStorage
+function saveLastIndex(index) {
+    console.log('[TweakTabCotations] saveLastIndex', index);
+    sessionStorage.setItem('lastTabIndex', index.toString());
+}
+
+// Remove last index from sessionStorage
+function removeLastIndex() {
+    sessionStorage.removeItem('lastTabIndex');
+}
+
+// Get last index from sessionStorage
+function getLastIndex() {
+    let saved = sessionStorage.getItem('lastTabIndex');
+    console.log('[TweakTabCotations] getLastIndex', saved);
+    return saved;
+}
+
+function focusInputAtIndex(targetIndex) {
+    console.log('[TweakTabCotations] focusInputAtIndex', targetIndex);
+    if (targetIndex === null || targetIndex === undefined || targetIndex === "inhiber") {
+        console.log('[TweakTabCotations] focusInputAtIndex targetIndex is null, undefined or "inhiber", returning');
+        return
+    };
+    
+    const inputs = Array.from(document.querySelectorAll('.acteCell input'));
+    console.log('[TweakTabCotations] focusInputAtIndex inputs', inputs);
+    
+    if (inputs.length === 0){
+        console.log('[TweakTabCotations] focusInputAtIndex no input found, returning');
+        return
+    }
+
+    // Normalize index within bounds
+    let normalizedIndex = targetIndex;
+    if (normalizedIndex < 0) {
+        normalizedIndex = inputs.length - 1;
+    } else if (normalizedIndex >= inputs.length) {
+        normalizedIndex = 0;
+    }
+
+    const input = inputs[normalizedIndex];
+    input.focus();
+    input.select(); // Sélectionne tout le texte de l'input
+    return normalizedIndex;
+}
+
 
 function handleTabPress(event) {
     if (event.key === 'Tab') {
-        // console.log('Tab pressed');
+        event.preventDefault();
         let inputs = Array.from(document.querySelectorAll('.acteCell input'));
         let currentIndex = inputs.indexOf(event.target);
+        console.log('[TweakTabCotations] handleTabPress currentIndex', currentIndex);
+        
+        // Calcul du nextIndex avec gestion circulaire
+        let nextIndex;
+        if (event.shiftKey) {
+            nextIndex = currentIndex <= 0 ? inputs.length - 1 : currentIndex - 1;
+        } else {
+            nextIndex = currentIndex >= inputs.length - 1 ? 0 : currentIndex + 1;
+        }
+        
+        saveLastIndex(nextIndex);
         setTimeout(() => {
-            // actualiser la liste des inputs
-            inputs = Array.from(document.querySelectorAll('.acteCell input'));
-            let nextIndex = event.shiftKey ? currentIndex - 1 : currentIndex + 1;
-
-            // Boucler vers l'autre extrémité si nécessaire
-            if (nextIndex < 0) {
-                nextIndex = inputs.length - 1;
-            } else if (nextIndex >= inputs.length) {
-                nextIndex = 0;
-            }
-            if (nextIndex >= 0 && nextIndex < inputs.length) {
-                inputs[nextIndex].focus();
-            }
+            focusInputAtIndex(nextIndex);
         }, 10);
     }
 }
@@ -68,12 +120,44 @@ function addTabEventListeners() {
     });
 }
 
-waitForElement({
-    selector: '.acteCell',
-    callback: function (acteCellsElements) {
-        addTabEventListeners();
+function handleDocumentClick(event) {
+    // Si le clic est dans un champ de cotation
+    if (event.target.matches('.acteCell input')) {
+        const inputs = Array.from(document.querySelectorAll('.acteCell input'));
+        const clickedIndex = inputs.indexOf(event.target);
+        saveLastIndex(clickedIndex);
     }
+    // Si le clic est en dehors, supprimer l'index
+    else if (!event.target.closest('.acteCell')) {  // Utilise closest pour éviter les clics sur le conteneur
+        saveLastIndex("inhiber");
+    }
+}
+
+addTweak('/vitalzen/fse.aspx', '*TweakTabCotations', function () {
+    // Ajouter l'écouteur de clic sur le document
+    document.addEventListener('click', handleDocumentClick);
+
+    // Ajouter un écouteur d'événements pour les touches tab
+    waitForElement({
+        selector: '.acteCell',
+        callback: function (acteCellsElements) {
+            addTabEventListeners();
+        }
+    });
+    // restaure le dernier index de tabulation
+    waitForElement({
+        selector: '.mat-button-wrapper',
+        textContent: 'Sécuriser',
+        callback: function (element) {
+            console.log('[TweakTabCotations] Bouton Sécurisé trouvé, je restaure le dernier index de tabulation');
+            if (getLastIndex() === null) {
+                selectLastCotationSpace();
+            }
+            focusInputAtIndex(getLastIndex());
+        }
+    });
 });
+
 
 // Définition de la fonction principale
 // (tableau et bouche après)
