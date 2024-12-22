@@ -147,7 +147,7 @@ addTweak('/vitalzen/fse.aspx', '*TweakTabCotations', function () {
     // restaure le dernier index de tabulation
     waitForElement({
         selector: '.mat-button-wrapper',
-        textContent: 'Sécuriser',
+        textContent: 'Sécuriser, suspendre',
         callback: function (element) {
             console.log('[TweakTabCotations] Bouton Sécurisé trouvé, je restaure le dernier index de tabulation');
             if (getLastIndex() === null) {
