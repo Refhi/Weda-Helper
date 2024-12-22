@@ -2,12 +2,16 @@
 
 // Contrôle automatique du MT :
 addTweak('/FolderMedical/PatientViewForm.aspx', 'autoControlMT', function () {
-    waitForElement({
-        selector: 'a[title="Récupère l\'identité du médecin traitant en interrogeant le téléservice IMTi"]',
-        callback: function (elements) {
-            // On ajoute un event listener pour attendre le clic
-            elements[0].addEventListener('click', function () {
-                newPatientTab();
+    getOption('autoMTnewTab', function(autoMTnewTab) {
+        if (autoMTnewTab === 'true') {
+            waitForElement({
+                selector: 'a[title="Récupère l\'identité du médecin traitant en interrogeant le téléservice IMTi"]',
+                callback: function (elements) {
+                    // On ajoute un event listener pour attendre le clic
+                    elements[0].addEventListener('click', function () {
+                        newPatientTab();
+                    });
+                }
             });
         }
     });

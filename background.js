@@ -70,6 +70,8 @@ var defaultSettings = {
     'removeBoldPatientFirstName': false,
     'preAlertATCD': 6,
     'autoControlMT': true,
+    'autoMTnewTab': true,
+    'autoMTIncludeAndCheckContact': false,
     'autoFilterLeftHistory': false,
     'instantPrint': false,
     'autoContinueWithoutNumPres': false,
