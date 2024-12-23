@@ -1,35 +1,54 @@
+// Function to check telemetry consent and show popup if needed
+async function checkTelemetryConsent() {
+    const result = await chrome.storage.local.get('telemetryConsent');
+    
+    // If 'telemetryConsent' doesn't exist (i.e., no decision made yet), show the popup
+    if (!result.telemetryConsent) {
+        showTelemetryPopup();  // Show the popup
+    } else {
+        console.log('Telemetry consent already given:', result.telemetryConsent);
+        if (result.telemetryConsent) {
+            initAnalytics();  // Initialize analytics if consent is given
+        }
+    }
+}
+
 // Function to show the telemetry consent popup
 function showTelemetryPopup() {
     const popup = document.getElementById('telemetry-popup');
     popup.style.display = 'flex';  // Show the popup
+
+    // Log when the popup is shown (for debugging purposes)
+    console.log("Telemetry consent popup shown.");
 }
 
-// Function to handle telemetry consent
-async function handleTelemetryConsent(consent) {
-    // Store the user's choice in local storage
-    await chrome.storage.local.set({ telemetryConsent: consent });
+// Function to handle user consent choice
+function handleTelemetryConsent(choice) {
+    // Save the user's decision in local storage
+    chrome.storage.local.set({ telemetryConsent: choice });
 
     // Initialize analytics if consent is given
-    if (consent) {
-        initAnalytics();  // Initialize Google Analytics (or other analytics platforms)
+    if (choice) {
+        initAnalytics();
     }
 
-    // Hide the popup after the decision
+    // Hide the popup after the choice is made
+    hideTelemetryPopup();
+}
+
+// Function to hide the popup
+function hideTelemetryPopup() {
     const popup = document.getElementById('telemetry-popup');
-    popup.style.display = 'none';
+    popup.style.display = 'none';  // Hide the popup
 }
 
 // Function to get or create a unique ClientID
 async function getOrCreateClientID() {
-    // Get the stored ClientID from Chrome's local storage
     const result = await chrome.storage.local.get('ClientID');
     let ClientID = result.ClientID;
-    
-    // If ClientID doesn't exist, create one and store it
+
     if (!ClientID) {
-        // Generate a new ClientID using crypto.randomUUID
         ClientID = crypto.randomUUID();
-        // Store the new ClientID in Chrome's local storage
         await chrome.storage.local.set({ ClientID });
     }
     return ClientID;
@@ -56,40 +75,23 @@ function trackEvent(eventCategory, eventLabel, value) {
 
 // Function to track the state of all checkboxes
 function trackCheckboxStates() {
-    // Select all checkbox inputs
     const checkboxes = document.querySelectorAll('input[type="checkbox"]');
 
-    // Iterate through each checkbox and track its state
     checkboxes.forEach(checkbox => {
         checkbox.addEventListener('change', function() {
-            const checkboxId = checkbox.id;  // Get the checkbox ID
-            const checkboxState = checkbox.checked ? 'ON' : 'OFF'; // State of the checkbox
+            const checkboxId = checkbox.id;
+            const checkboxState = checkbox.checked ? 'ON' : 'OFF';
 
-            // Log the state (you can replace this with your actual analytics call)
             console.log(`Checkbox ${checkboxId} is ${checkboxState}`);
-
-            // Track the checkbox toggle event
             trackEvent('Weda-Helper Options', checkboxId, checkboxState === 'ON' ? 1 : 0);
         });
     });
 }
 
-// Call the function to initialize checkbox tracking when the page is loaded
+// Wait for the page to load, then check telemetry consent
 document.addEventListener('DOMContentLoaded', function() {
-    trackCheckboxStates();
-
-    // Check if telemetry consent is already set
-    chrome.storage.local.get('telemetryConsent', (result) => {
-        if (result.telemetryConsent === undefined) {
-            // Show the popup if consent hasn't been given yet
-            showTelemetryPopup();
-        } else {
-            // Initialize analytics if consent was already given
-            if (result.telemetryConsent) {
-                initAnalytics();
-            }
-        }
-    });
+    checkTelemetryConsent();  // Check telemetry consent and show popup if needed
+    trackCheckboxStates();    // Initialize checkbox tracking
 
     // Add event listeners to buttons in the popup
     document.getElementById('allow-telemetry').addEventListener('click', () => handleTelemetryConsent(true));
