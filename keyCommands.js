@@ -544,7 +544,7 @@ addTweak('*', 'WarpButtons', async function () {
 
 
         buttons.forEach(function (button) {
-            console.log('Bouton trouvé ! Je le redimentionne, lui ajoute un id et note le raccourcis clavier par défaut', button);
+            // console.log('Bouton trouvé ! Je le redimentionne, lui ajoute un id et note le raccourcis clavier par défaut', button);
             button.style.width = 'auto';
             if (addIdToButton(button)) {
                 addShortcutsToButton(button);

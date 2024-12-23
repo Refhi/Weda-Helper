@@ -33,19 +33,20 @@ function checkPatientName() {
  */
 
 
-// Supprimer selectLastCotationSpace() et la remplacer par:
+// Sélectionne le dernier espace de cotation. Démarre la surveillance des Tab.
 function selectLastCotationSpace() {
     const inputs = Array.from(document.querySelectorAll('.acteCell input'));
     if (inputs.length > 0) {
         recordMetrics({ clicks: 1, drags: 1 });
         saveLastIndex(inputs.length - 1);
+        sessionStorage.setItem('lastCotationSpaceStarted', 'true');
         focusInputAtIndex(inputs.length - 1);
     }
 }
 
 // Store current index in sessionStorage
 function saveLastIndex(index) {
-    console.log('[TweakTabCotations] saveLastIndex', index);
+    // console.log('[TweakTabCotations] saveLastIndex', index);
     sessionStorage.setItem('lastTabIndex', index.toString());
 }
 
@@ -57,22 +58,22 @@ function removeLastIndex() {
 // Get last index from sessionStorage
 function getLastIndex() {
     let saved = sessionStorage.getItem('lastTabIndex');
-    console.log('[TweakTabCotations] getLastIndex', saved);
+    // console.log('[TweakTabCotations] getLastIndex', saved);
     return saved;
 }
 
 function focusInputAtIndex(targetIndex) {
-    console.log('[TweakTabCotations] focusInputAtIndex', targetIndex);
+    // console.log('[TweakTabCotations] focusInputAtIndex', targetIndex);
     if (targetIndex === null || targetIndex === undefined) {
         console.log('[TweakTabCotations] focusInputAtIndex targetIndex is null, undefined or "inhiber", returning');
         return
     };
     
     const inputs = Array.from(document.querySelectorAll('.acteCell input'));
-    console.log('[TweakTabCotations] focusInputAtIndex inputs', inputs);
+    // console.log('[TweakTabCotations] focusInputAtIndex inputs', inputs);
     
     if (inputs.length === 0){
-        console.log('[TweakTabCotations] focusInputAtIndex no input found, returning');
+        // console.log('[TweakTabCotations] focusInputAtIndex no input found, returning');
         return
     }
 
@@ -85,6 +86,8 @@ function focusInputAtIndex(targetIndex) {
     }
 
     const input = inputs[normalizedIndex];
+    // console.log('[TweakTabCotations] je dois faire le focus sur', input);
+    setTabTimeStamp();
     input.focus();
     input.select(); // Sélectionne tout le texte de l'input
     return normalizedIndex;
@@ -96,7 +99,7 @@ function handleTabPress(event) {
         event.preventDefault();
         let inputs = Array.from(document.querySelectorAll('.acteCell input'));
         let currentIndex = inputs.indexOf(event.target);
-        console.log('[TweakTabCotations] handleTabPress currentIndex', currentIndex);
+        // console.log('[TweakTabCotations] handleTabPress currentIndex', currentIndex);
         
         // Calcul du nextIndex avec gestion circulaire
         let nextIndex;
@@ -120,11 +123,6 @@ function setTabTimeStamp() {
     sessionStorage.setItem('tabTimeStamp', tabTimeStamp);
 }
 
-function setLoadTimeStamp() {
-    let date = new Date();
-    let loadTimeStamp = date.getTime();
-    sessionStorage.setItem('loadTimeStamp', loadTimeStamp);
-}
 
 function addTabEventListeners() {
     let inputs = document.querySelectorAll('.acteCell input');
@@ -133,10 +131,52 @@ function addTabEventListeners() {
     });
 }
 
+function addClickEventListeners() {
+    function handleClick(event) {
+        // console.log('[TweakTabCotations] handleClick event.target', event.target);
+        
+        // First check excluded dialog
+        const matchingParagraph = Array.from(document.querySelectorAll('p.ng-star-inserted'))
+            .find(p => p.textContent.trim() === 'Pièce justificative AMO');
+        const excludedElement = matchingParagraph?.parentElement?.parentElement;
+        if (excludedElement && excludedElement.contains(event.target)) {
+            return;
+        }
+
+        // Then check if in acteCell
+        const acteCellElement = event.target.closest('.acteCell');
+        if (acteCellElement) {
+            // console.log('[TweakTabCotations] Click in acteCell');
+            // Normalement il y a un nombre de .acteCell limité.
+            // Il faut trouver sur le combientième on a cliqué
+            let acteCells = Array.from(document.querySelectorAll('.acteCell'));
+            let targetIndex = acteCells.indexOf(acteCellElement);
+            // console.log('[TweakTabCotations] Click in acteCell targetIndex', targetIndex);
+            saveLastIndex(targetIndex);
+            return;
+        }
+
+        // Otherwise clear timestamps
+        // console.log('[TweakTabCotations] Click outside - clearing timestamps');
+        sessionStorage.setItem('tabTimeStamp', 1);
+        sessionStorage.setItem('loadTimeStamp', 1);
+    }
+
+    document.addEventListener('click', handleClick);
+}
 
 addTweak('/vitalzen/fse.aspx', '*TweakTabCotations', function () {
+    // supprime lastCotationSpaceStarted dans le sessionStorage
+    sessionStorage.removeItem('lastCotationSpaceStarted');
     removeLastIndex();
-    setLoadTimeStamp();
+        // Ajouter un écouteur d'événements pour les clics
+        afterMutations({
+            delay: 100,
+            selector: '.acteCell',
+            callback: function (acteCellsElements) {
+                addClickEventListeners();
+            },
+        })
     
     // Ajouter un écouteur d'événements pour les touches tab
     waitForElement({
@@ -146,25 +186,25 @@ addTweak('/vitalzen/fse.aspx', '*TweakTabCotations', function () {
         }
     });
     // restaure le dernier index de tabulation
-    waitForElement({
-        selector: '.mat-button-wrapper',
-        textContent: 'Sécuriser, suspendre',
-        callback: function (element) {
-            console.log('[TweakTabCotations] Bouton Sécurisé trouvé, je restaure le dernier index de tabulation');
-            if (getLastIndex() === null) {
+    afterMutations({
+        delay: 100,
+        callBackId: 'restoreLastIndex',
+        callback: function () {
+            // console.log('[TweakTabCotations] Debug : tentative de restauration du dernier index');
+            let tabTimeStamp = sessionStorage.getItem('tabTimeStamp');
+            let lastTabTimeStamp = new Date().getTime() - tabTimeStamp;
+            let lastTabIndex = getLastIndex();
+            // console.log('[TweakTabCotations] Debug : tabTimeStamp', tabTimeStamp);
+            // console.log('[TweakTabCotations] Debug : lastTabTimeStamp', lastTabTimeStamp, 'lastTabIndex', lastTabIndex);
+            let lastCotationSpaceStarted = sessionStorage.getItem('lastCotationSpaceStarted') === 'true';
+            console.log('[TweakTabCotations] Debug : lastCotationSpaceStarted', lastCotationSpaceStarted);
+
+            if (getLastIndex() === null && lastCotationSpaceStarted) {
+                // console.log('[TweakTabCotations] Pas d\'index de tabulation sauvegardé');
                 selectLastCotationSpace();
             }
-            let tabTimeStamp = sessionStorage.getItem('tabTimeStamp');
-            if (tabTimeStamp) {
-                let date = new Date();
-                let now = date.getTime();
-                let diff = now - tabTimeStamp;
-                let loadTimeStamp = sessionStorage.getItem('loadTimeStamp');
-                let uptime = now - loadTimeStamp;
-                console.log('[TweakTabCotations] Time since last tabulation', diff);
-                if (diff < 1000 || uptime < 7000) {
-                    focusInputAtIndex(getLastIndex());
-                }
+            if (lastTabTimeStamp < 1000 && lastCotationSpaceStarted) {
+                focusInputAtIndex(getLastIndex());
             }
         }
     });
