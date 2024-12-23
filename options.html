@@ -67,9 +67,59 @@
         font-size: 15px;
         margin: 5px;
       }
+    <style>
+    /* Style for popup */
+    .popup {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        justify-content: center;
+        align-items: center;
+    }
+
+    .popup-content {
+        background-color: white;
+        padding: 20px;
+        border-radius: 5px;
+        text-align: center;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .popup-btn {
+        padding: 10px 20px;
+        margin: 10px;
+        font-size: 16px;
+        cursor: pointer;
+        border: none;
+        border-radius: 5px;
+    }
+
+    #allow-telemetry {
+        background-color: #4CAF50;
+        color: white;
+    }
+
+    #deny-telemetry {
+        background-color: #f44336;
+        color: white;
+    }
+</style>
   </style>
 </head>
 <body>
+  <div id="telemetry-popup" class="popup">
+    <div class="popup-content">
+        <h2>Autorisation de télémétrie</h2>
+        <p>Voulez-vous autoriser la collection de données relative à l'utilisation de Weda Helper pour nous aider ?</p>
+         <button class="popup-btn" onclick="handleTelemetryConsent(true)">Autoriser</button>
+         <button class="popup-btn" onclick="handleTelemetryConsent(false)">Refuser</button>
+    </div>
+    <script src="telemetry.js"></script>
+</div>
   <h1 id="MainTitle">Options de Weda-Helper</h1>
   <p>Bienvenue dans les options de Weda-Helper !</p>
   <p> Weda-Helper et son companion sont entièrement gratuits et open-source. Ils sont développés par <a href="https://github.com/Refhi" target="_blank">Refhi</a>, un médecin Euroi, et <a href="https://github.com/Abeldvlpr" target="_blank">Abeldvlpr</a>, un médecin Toulousain</p>
