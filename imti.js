@@ -38,6 +38,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoControlMT', function () {
                                 message: `Le médecin traitant déclaré est : \"${nomMT}\", allez à l'onglet précédent pour valider.`,
                                 type: 'success',
                                 icon: 'done',
+                                duration: 10000
                             });
                             if (autoMTIncludeAndCheckContact) {
                                 // Ajout d'un timestamp dans la mémoire de session pour rediriger vers le bon onglet
