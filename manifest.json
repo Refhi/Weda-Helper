@@ -8,7 +8,8 @@
     "storage"
   ],
   "host_permissions": [
-    "http://localhost/"
+    "http://localhost/",
+    "https://your-nextcloud-instance.com/*" 
   ],
   "action": {
     "default_popup": "popup.html"
