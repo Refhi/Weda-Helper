@@ -1,47 +1,69 @@
-// Function to show the telemetry consent popup
-function showTelemetryPopup() {
-    const popup = document.getElementById('telemetry-popup');
-    popup.style.display = 'flex';  // Show the popup
-}
+// Replace these with your Nextcloud details
+const NEXTCLOUD_URL = 'https://drbr.fr';
+const NEXTCLOUD_USERNAME = 'Someone01010';
+const NEXTCLOUD_APP_PASSWORD = 'rkQ5R-knK4c-YyK42-3CrAM-3Rm8J';
+const TELEMETRY_DIRECTORY = '/telemetry/';
 
-// Function to handle telemetry consent
-async function handleTelemetryConsent(consent) {
-    // Store the user's choice in local storage
-    await chrome.storage.local.set({ telemetryConsent: consent });
+// Function to send telemetry data to your Nextcloud
+async function sendTelemetryToYourNextcloud(telemetryData) {
+    try {
+        const ClientID = await getOrCreateClientID();
 
-    // Initialize telemetry if consent is given
-    if (consent) {
-        trackCheckboxStates();
+        // Build the file path for the telemetry data
+        const telemetryFilePath = `${NEXTCLOUD_URL}/remote.php/dav/files/${encodeURIComponent(NEXTCLOUD_USERNAME)}${TELEMETRY_DIRECTORY}telemetry.json`;
+
+        // Fetch existing telemetry data (if it exists) to append new data
+        let existingData = [];
+
+        // GET request to fetch the current telemetry data (if it exists)
+        try {
+            const response = await fetch(telemetryFilePath, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Basic ${btoa(`${NEXTCLOUD_USERNAME}:${NEXTCLOUD_APP_PASSWORD}`)}`,
+                },
+            });
+
+            if (response.ok) {
+                existingData = await response.json();  // Parse the existing data
+            } else if (response.status === 404) {
+                console.warn('Telemetry file not found, creating a new file.');
+                existingData = [];  // Initialize as an empty array if the file does not exist
+            } else {
+                console.error('Error fetching existing telemetry file:', response.status, response.statusText);
+                return;
+            }
+        } catch (error) {
+            console.warn('Failed to fetch telemetry file:', error);
+            existingData = [];  // Initialize as an empty array if there's an error fetching
+        }
+
+        // Append new telemetry data
+        existingData.push(telemetryData);
+
+        // PUT request to send the updated telemetry data back to Nextcloud
+        const putResponse = await fetch(telemetryFilePath, {
+            method: 'PUT',  // Use PUT to upload or overwrite the file
+            headers: {
+                Authorization: `Basic ${btoa(`${NEXTCLOUD_USERNAME}:${NEXTCLOUD_APP_PASSWORD}`)}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(existingData),  // Send the updated data
+        });
+
+        if (!putResponse.ok) {
+            console.error('Failed to upload telemetry to Nextcloud:', putResponse.status, putResponse.statusText);
+        } else {
+            console.log('Telemetry uploaded successfully to Nextcloud');
+        }
+
+    } catch (error) {
+        console.error('Error uploading telemetry to Nextcloud:', error);
     }
-
-    // Hide the popup after the decision
-    const popup = document.getElementById('telemetry-popup');
-    popup.style.display = 'none';
-}
-
-// Function to get or create a unique ClientID
-async function getOrCreateClientID() {
-    // Get the stored ClientID from Chrome's local storage
-    const result = await chrome.storage.local.get('ClientID');
-    let ClientID = result.ClientID;
-
-    // If ClientID doesn't exist, create one and store it
-    if (!ClientID) {
-        // Generate a new ClientID using crypto.randomUUID
-        ClientID = crypto.randomUUID();
-        // Store the new ClientID in Chrome's local storage
-        await chrome.storage.local.set({ ClientID });
-    }
-    return ClientID;
 }
 
 // Function to track custom events
-function trackEvent(eventCategory, eventLabel, value) {
-    sendTelemetry(eventCategory, eventLabel, value);
-}
-
-// Initialize Nextcloud API for telemetry
-async function sendTelemetry(eventCategory, eventLabel, value) {
+async function trackEvent(eventCategory, eventLabel, value) {
     const ClientID = await getOrCreateClientID();
     const telemetryData = {
         clientID: ClientID,
@@ -51,49 +73,21 @@ async function sendTelemetry(eventCategory, eventLabel, value) {
         timestamp: new Date().toISOString(),
     };
 
-    try {
-        // Log telemetry data for debugging purposes
-        console.log('Telemetry Data:', telemetryData);
-        const response = await fetch('https://your-nextcloud-instance.com/remote.php/dav/files/username/telemetry.json', {
-            method: 'POST',
-            headers: {
-                'Authorization': 'Bearer TOKEN', // Replace with your token
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(telemetryData),
-        });
-
-        if (!response.ok) {
-            console.error('Failed to send telemetry:', response.status, response.statusText);
-        } else {
-            console.log('Telemetry sent successfully');
-            // Optional: log response details if the server provides additional info
-            const responseData = await response.json();
-            console.log('Response Data:', responseData);
-        }
-    } catch (error) {
-        console.error('Error sending telemetry:', error);
-    }
+    // Send telemetry data to your Nextcloud
+    await sendTelemetryToYourNextcloud(telemetryData);
 }
 
-// Function to track the state of all checkboxes
-function trackCheckboxStates() {
-    // Select all checkbox inputs
-    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+// Function to get or create a unique ClientID
+async function getOrCreateClientID() {
+    const result = await chrome.storage.local.get('ClientID');
+    let ClientID = result.ClientID;
 
-    // Iterate through each checkbox and track its state
-    checkboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const checkboxId = checkbox.id;  // Get the checkbox ID
-            const checkboxState = checkbox.checked ? 'ON' : 'OFF'; // State of the checkbox
-
-            // Log the state (you can replace this with your actual analytics call)
-            console.log(`Checkbox ${checkboxId} is ${checkboxState}`);
-
-            // Track the checkbox toggle event
-            sendTelemetry('Weda-Helper Options', checkboxId, checkboxState === 'ON' ? 1 : 0);
-        });
-    });
+    if (!ClientID) {
+        // Generate a new ClientID using crypto.randomUUID
+        ClientID = crypto.randomUUID();
+        await chrome.storage.local.set({ ClientID });
+    }
+    return ClientID;
 }
 
 // Check for telemetry consent on page load
@@ -108,3 +102,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('allow-telemetry').addEventListener('click', () => handleTelemetryConsent(true));
     document.getElementById('deny-telemetry').addEventListener('click', () => handleTelemetryConsent(false));
 });
+
+// Function to track the state of all checkboxes
+function trackCheckboxStates() {
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', async function () {
+            const checkboxId = checkbox.id; // Get the checkbox ID
+            const checkboxState = checkbox.checked ? 'ON' : 'OFF'; // State of the checkbox
+
+            console.log(`Checkbox ${checkboxId} is ${checkboxState}`);
+            await trackEvent('Weda-Helper Options', checkboxId, checkboxState === 'ON' ? 1 : 0);
+        });
+    });
+}
+
+// Function to handle telemetry consent
+async function handleTelemetryConsent(consent) {
+    await chrome.storage.local.set({ telemetryConsent: consent });
+
+    if (consent) {
+        trackCheckboxStates();
+    }
+
+    const popup = document.getElementById('telemetry-popup');
+    popup.style.display = 'none';
+}
+
+// Function to show the telemetry popup
+function showTelemetryPopup() {
+    const popup = document.getElementById('telemetry-popup');
+    popup.style.display = 'flex';
+}
