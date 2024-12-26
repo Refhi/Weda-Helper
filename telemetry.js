@@ -1,7 +1,7 @@
 // Replace these with your Nextcloud details
 const NEXTCLOUD_URL = 'https://drbr.fr';
-const NEXTCLOUD_USERNAME = 'Someone01010';
-const NEXTCLOUD_APP_PASSWORD = 'rkQ5R-knK4c-YyK42-3CrAM-3Rm8J';
+const NEXTCLOUD_USERNAME = '';
+const NEXTCLOUD_APP_PASSWORD = '';
 const TELEMETRY_DIRECTORY = '/telemetry/';
 
 // Function to send telemetry data to your Nextcloud
