@@ -79,8 +79,24 @@ var defaultSettings = {
 };
 
 /**
- * Nouvelle structures d'options (v2.9+)
- * Cette variable est chargée à chaque nouvelle page, mais cela prend < 1ms (0,1ms sur mon poste) donc négligeable.
+ * Configuration des paramètres avancés (v2.9+)
+ * Cette variable contient les options de Weda-Helper.
+ * Elle est lue pour connaitre les options par défaut, et générer automatiquement options.html
+ * 
+ * 
+ * Structure:
+ * - name: Nom de la catégorie d'options
+ * - description: Description de la catégorie d'options
+ * - options: Liste des options de la catégorie
+ *   - name: Nom de l'option
+ *   - type: Type de l'option (bool, text, html, radio)
+ *   - description: Description de l'option
+ *   - default: Valeur par défaut de l'option
+ *   - subOptions: (optionnel) Liste des sous-options
+ *     - name: Nom de la sous-option
+ *     - type: Type de la sous-option
+ *     - description: Description de la sous-option
+ *     - default: Valeur par défaut de la sous-option
  */
 
 // var settings = [{
@@ -95,125 +111,129 @@ var defaultSettings = {
 //     "sections": []  // d'éventuelles sous-sections, avec la même structure
 // }]
 
-var startTime = performance.now();
+const TYPE_BOOL = "bool";
+const TYPE_TEXT = "text";
+const TYPE_HTML = "html";
+const TYPE_RADIO = "radio";
+
 
 var advancedDefaultSettings = [{
     "name": "Options générales",
     "description": "Des options générales valables partout",
     "options": [{
         "name": "TweakImports",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Activer les modifications pour la fenêtre d'importations (page télécharger des documents).",
         "default": true
     }, {
         "name": "EnableHelp",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Affiche l'aide en appuyant sur Alt de manière prolongée.",
         "default": true
     }, {
         "name": "TweakTabSearchPatient",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Activer les modifications de la fenêtre recherche patient (navigation facilitée avec la touche Tab).",
         "default": true
     }, {
         "name": "autoSelectPatientCV",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Lit automatiquement la carte vitale après insertion (nécessite Weda Connect 3) et sélectionne automatiquement le patient s'il est seul.",
         "default": true
     }, {
         "name": "WarpButtons",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Activer les raccourcis claviers sur les popups type DMP/IMTI/ordo numérique etc.",
         "default": true
     }, {
         "name": "MoveHistoriqueToLeft",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Ouvrir automatiquement l'historique dans les pages sélectionnées ci-dessous et l'afficher dans une colonne à gauche.",
         "default": true,
         "subOptions": [{
             "name": "AutoOpenHistory_Consultation",
-            "type": "bool",
+            "type": TYPE_BOOL,
             "description": "Consultation",
             "default": true
         }, {
             "name": "MoveHistoriqueToLeft_Certificat",
-            "type": "bool",
+            "type": TYPE_BOOL,
             "description": "Certificat",
             "default": true
         }, {
             "name": "MoveHistoriqueToLeft_Demande",
-            "type": "bool",
+            "type": TYPE_BOOL,
             "description": "Demande",
             "default": true
         }, {
             "name": "MoveHistoriqueToLeft_Courrier",
-            "type": "bool",
+            "type": TYPE_BOOL,
             "description": "Courrier (beta)",
             "default": false
         }, {
             "name": "MoveHistoriqueToLeft_Formulaire",
-            "type": "bool",
+            "type": TYPE_BOOL,
             "description": "Formulaire",
             "default": false
         }]
     }, {
         "name": "autoFilterLeftHistory",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Filtre automatiquement l'historique gauche pour n'afficher que date et titre.",
         "default": true
     }, {
         "name": "autoATCD",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Ouvre automatiquement les ATCD.",
         "default": true
     }, {
         "name": "ATCDLeft",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Ouvre les ATCD sur la partie gauche de l'écran quand possible (attention l'affichage est un peu approximatif).",
         "default": true
     }, {
         "name": "secureExchangeAutoRefresh",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Rafraîchis automatiquement la messagerie sécurisée (vous devez laisser un onglet ouvert).",
         "default": true
     }, {
         "name": "secureExchangeUncheckIHEMessage",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée.",
         "default": true
     }, {
         "name": "autoAATI",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Automatise la réalisation des arrêts de travail (lecture CV auto, sélection patient auto, impression auto etc. Nécessite le Companion pour fonctionner totalement).",
         "default": true
     }, {
         "name": "trimCIM10",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Nettoie l'arbre des ATCD CIM-10 pour ne garder que les ATCD principaux (on peut toujours les déployer pour les sous-ATCD).",
         "default": true
     }, {
         "name": "removeBoldPatientFirstName",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Met le prénom du patient en non-gras pour plus facilement distinguer le nom de famille.",
         "default": true
     }, {
         "name": "preAlertATCD",
-        "type": "text",
+        "type": TYPE_TEXT,
         "description": "Affiche la date d'alerte de l'antécédent en orange si la date est dans moins de x mois (6 par défaut, 0 pour désactiver).",
         "default": 6
     }, {
         "name": "autoControlMT",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Automatise le procédé de vérification du MT.",
         "default": true,
         "subOptions": [{
             "name": "autoMTnewTab",
-            "type": "bool",
+            "type": TYPE_BOOL,
             "description": "Ouvre un nouvel onglet pour éviter de patienter pendant la récupération des informations.",
             "default": true
         }, {
             "name": "autoMTIncludeAndCheckContact",
-            "type": "bool",
+            "type": TYPE_BOOL,
             "description": "Intègre automatiquement le MT récupéré dans les contacts et initie la récupération de l'adresse sécurisée. Compatible avec l'option précédente.",
             "default": true
         }]
@@ -223,27 +243,27 @@ var advancedDefaultSettings = [{
     "description": "Des options spécifiques aux consultations",
     "options": [{
         "name": "TweakTabConsultation",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Activer la navigation entre les champs de texte dans les consultations via Tab et Shift+Tab.",
         "default": true
     }, {
         "name": "FocusOnTitleInConsultation",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Mettre le focus dans le champ de titre à l'ouverture d'une nouvelle consultation.",
         "default": false
     }, {
         "name": "ShowExplanatoryText",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Affiche le texte d'explication à droite des courbes pédiatriques dans la page des consultations.",
         "default": true
     }, {
         "name": "RemoveTitleSuggestions",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Retire le panneau de suggestion dans les Titres (ex. de Consultation).",
         "default": true
     }, {
         "name": "defautDataType",
-        "type": "text",
+        "type": TYPE_TEXT,
         "description": "Types de données automatique (vider pour désactiver. Pas d'espaces. Sensible à la Case.) Défaut = TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%",
         "default": "TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%"
     }]
@@ -252,22 +272,22 @@ var advancedDefaultSettings = [{
     "description": "Des options spécifiques aux prescriptions",
     "options": [{
         "name": "TweakTabPrescription",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Activer les modifications de la fenêtre recherche médicaments (navigation facilitée avec la touche Tab).",
         "default": true
     }, {
         "name": "KeyPadPrescription",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Activer l'utilisation du clavier numérique lors de prescription d'un médicament.",
         "default": true
     }, {
         "name": "autoOpenOrdoType",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Ouvre automatiquement la fenêtre des ordonnances-types lors des prescriptions médicamenteuses.",
         "default": true
     }, {
         "name": "AlertOnMedicationInteraction",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Affiche un message d'alerte lorsqu'une prescription de médicaments présente une contre-indication absolue.",
         "default": true
     }]
@@ -276,33 +296,33 @@ var advancedDefaultSettings = [{
     "description": "Des options spécifiques aux ordonnances numériques",
     "options": [{
         "name": "autoSelectTypeOrdoNum",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Sélectionner automatiquement le type d'ordonnance numérique selon le contenu de la prescription (biologie, kinésithérapie, infirmier, pédicure, orthoptie, orthophonie, etc.).",
         "default": true
     }, {
         "name": "autoConsentNumPres",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Coche automatiquement une case de consentement de l'ordonnance numérique. Attention vous êtes toujours tenu de demander l'autorisation au patient systématiquement.",
         "default": true,
         "subOptions": [{
             "name": "autoConsentNumPres_Oui",
-            "type": "bool",
+            "type": TYPE_BOOL,
             "description": "Sélectionne \"non\" (si décocoché), \"oui\" si coché.",
             "default": true
         }]
     }, {
         "name": "autoValidateOrdoNum",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Valider automatiquement une ordonnance numérique de médicaments lors de l'impression (nécessite d'activer l'option \"Coche automatiquement la case de consentement\" ci-dessus).",
         "default": true
     }, {
         "name": "uncheckDMPIfImagerie",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Décoche automatiquement l'ordonnance numérique si \"Imagerie\" est sélectionné dans une Demande.",
         "default": true
     }, {
         "name": "autoContinueWithoutNumPres",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Clique automatiquement \"Continuer automatiquement sans ordonnance numérique\" si le message d'erreur s'affiche.",
         "default": true
     }]
@@ -311,12 +331,12 @@ var advancedDefaultSettings = [{
     "description": "Pour que le décochage fonctionne, au moins une des deux options doit être activée. Cf. https://secure.weda.fr/FolderSetting/PreferenceForm.aspx pour activer/désactiver l'ensemble",
     "options": [{
         "name": "NumPresPrescription",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Cocher/Décocher automatiquement la case « ordonnance numérique » pour les prescriptions de médicaments.",
         "default": false
     }, {
         "name": "NumPresDemande",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Cocher/Décocher automatiquement la case « ordonnance numérique » pour les ordonnances de demandes numériques (labo/imagerie/paramédical)",
         "default": false
     }]
@@ -325,83 +345,83 @@ var advancedDefaultSettings = [{
     "description": "Des options spécifiques à la recherche médicale",
     "options": [{
         "name": "keepMedSearch",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Garder la recherche médicale.",
         "default": true
     }, {
         "name": "addMedSearchButtons",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Ajouter des boutons de raccourcis pour la recherche de médicaments.",
         "default": true,
         "subOptions": [{
             "name": "boutonRecherche-1",
-            "type": "bool",
+            "type": TYPE_BOOL,
             "description": "Médicaments",
             "default": true
         }, {
             "name": "boutonRecherche-14",
-            "type": "bool",
+            "type": TYPE_BOOL,
             "description": "Recherche par produits",
             "default": true
         }, {
             "name": "boutonRecherche-8",
-            "type": "bool",
+            "type": TYPE_BOOL,
             "description": "Dénomination commune (DCI)",
             "default": true
         }, {
             "name": "boutonRecherche-2",
-            "type": "bool",
+            "type": TYPE_BOOL,
             "description": "Molécules (principes actifs)",
             "default": true
         }, {
             "name": "boutonRecherche-10",
-            "type": "bool",
+            "type": TYPE_BOOL,
             "description": "Recherche par U.C.D.",
             "default": true
         }, {
             "name": "boutonRecherche-3",
-            "type": "bool",
+            "type": TYPE_BOOL,
             "description": "Recherche par A.T.C.",
             "default": true
         }, {
             "name": "boutonRecherche-13",
-            "type": "bool",
+            "type": TYPE_BOOL,
             "description": "Recherche par Vidal",
             "default": true
         }, {
             "name": "boutonRecherche-4",
-            "type": "bool",
+            "type": TYPE_BOOL,
             "description": "Indications",
             "default": true
         }, {
             "name": "boutonRecherche-5",
-            "type": "bool",
+            "type": TYPE_BOOL,
             "description": "Groupe d'indications",
             "default": true
         }, {
             "name": "boutonRecherche-6",
-            "type": "bool",
+            "type": TYPE_BOOL,
             "description": "Laboratoires",
             "default": true
         }, {
             "name": "boutonRecherche-7",
-            "type": "bool",
+            "type": TYPE_BOOL,
             "description": "Vos favoris et perso.",
             "default": true
         }, {
             "name": "boutonRecherche-9",
-            "type": "bool",
+            "type": TYPE_BOOL,
             "description": "Le Top 50",
             "default": true
         }]
     }, {
         "name": "TweakRecetteForm",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Appuie automatiquement sur le bouton \"rechercher\" après avoir sélectionné la page des recettes (permet d’afficher les recettes du jour directement en arrivant sur la page).",
         "default": false
     }, {
         "name": "TweakNIR",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Ajoute la possibilité de copier le NIR en cliquant dessus sur la page d'accueil.",
         "default": true
     }]
@@ -410,7 +430,7 @@ var advancedDefaultSettings = [{
     "description": "Des options spécifiques aux courriers",
     "options": [{
         "name": "autoSelectMT",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Sélectionne automatiquement les médecins traitants comme destinataires.",
         "default": true
     }]
@@ -419,42 +439,42 @@ var advancedDefaultSettings = [{
     "description": "Des options spécifiques aux FSE",
     "options": [{
         "name": "defaultCotation",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Activer la cotation par défaut dans la FDS. (Nécessite de mettre une cotation favorite nommée \"Défaut\", et de valider la feuille de soin avec les touches o/n).",
         "default": true
     }, {
         "name": "TweakFSEGestion",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Activer le rafraichissement automatique des FSE dans la page de télétransmission. (fonctionnalité en beta).",
         "default": true
     }, {
         "name": "TweakFSECreation",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Active les raccourcis clavier de la création de FSE ainsi que la lecture automatique de la carte vitale.",
         "default": true
     }, {
         "name": "TweakFSEDetectMT",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Sélectionne automatiquement l'option \"Je suis le médecin traitant\" si vous êtes le médecin traitant du patient.",
         "default": false
     }, {
         "name": "TweakFSEGestionUnique",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Cocher automatiquement la case \"Réaliser une FSE en gestion unique\" pour les patients C2S.",
         "default": false
     }, {
         "name": "TweakFSEAccident",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Coche automatiquement la case \"Non\" pour un accident de droit commun.",
         "default": false
     }, {
         "name": "TweakSCORDegradee",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Sélectionne automatiquement \"Feuille de soins dégradée\" lors de l'importation d'une pièce jointe SCOR.",
         "default": false
     }, {
         "name": "SCORAutoSelectPJ",
-        "type": "bool",
+        "type": TYPE_BOOL,
         "description": "Sélectionne automatiquement \"Inclure la FSP en SCOR\".",
         "default": true
     }]
@@ -463,46 +483,56 @@ var advancedDefaultSettings = [{
     "description": "Options de connexion et d'impression automatique via le Companion",
     "options": [{
         "name": "log vers le companion",
-        "type": "html",
+        "type": TYPE_HTML,
         "description": '<a href="URL_DU_LOG_DU_COMPANION" id="companionLogLing" target="_blank">Voir le log du Companion</a>'
-    }, {
-        "name": "portCompanion",
-        "type": "text",
-        "description": "Port Weda-Helper-Companion (default 4821) cf. https://github.com/Refhi/Weda-Helper-Companion doit être le même ici et dans le Companion.",
-        "default": "4821"
-    }, {
-        "name": "apiKey",
-        "type": "text",
-        "description": "Clé API. Doit être identique à celle du Companion (normalement fait automatiquement lors de la première requête au Companion).",
-        "default": "votre clé API par défaut"
-    }, {
-        "name": "RemoveLocalCompanionPrint",
-        "type": "bool",
-        "description": "<em><strong>Désactiver</strong></em> l'impression automatique complète via le companion <strong>(décocher pour l'activer)</strong>.",
-        "default": true,
-        "subOptions": [{
-            "name": "instantPrint",
-            "type": "bool",
-            "description": "Impression instantanée : dès l'envoi de l'impression via le Companion, ouvre un nouvel onglet. Ferme ensuite l'onglet originel quand l'impression est terminée. Utile pour faire DMP et ordonnances numériques sans ralentir le flux de la consultation. Attention les pdfs des impressions ne seront pas immédiatement visible car pas encore terminé au moment du retour vers le dossier patient.",
-            "default": false
-        }]
-    }, {
-        "name": "KeepFocus",
-        "type": "bool",
-        "description": "Active la récupération du focus en cas de vol par l'application d'impression.",
-        "default": true
-    }, {
-        "name": "postPrintBehavior",
-        "type": "radio",
-        "description": "Comportement après une impression automatique par le Companion.",
-        "default": "closePreview",
-        "options": ["Ne rien faire", "Fermer la fenêtre de prévisualisation", "Retourner au dossier"]
-    }, {
-        "name": "RemoveLocalCompanionTPE",
-        "type": "bool",
-        "description": "<em><strong>Désactiver</strong></em> la communication avec le TPE et l'option TPE dans les fse <strong>(décocher pour l'activer)</strong>.",
-        "default": true
     }],
+    "sections": [{
+        "name": "Options de connexion",
+        "options": [{
+            "name": "portCompanion",
+            "type": TYPE_TEXT,
+            "description": "Port Weda-Helper-Companion (default 4821) cf. https://github.com/Refhi/Weda-Helper-Companion doit être le même ici et dans le Companion.",
+            "default": "4821"
+        }, {
+            "name": "apiKey",
+            "type": TYPE_TEXT,
+            "description": "Clé API. Doit être identique à celle du Companion (normalement fait automatiquement lors de la première requête au Companion).",
+            "default": "votre clé API par défaut"
+        }],
+    },{
+        "name": "Options d'impression automatique",
+        "options": [{
+            "name": "RemoveLocalCompanionPrint",
+            "type": TYPE_BOOL,
+            "description": "<em><strong>Désactiver</strong></em> l'impression automatique complète via le companion <strong>(décocher pour l'activer)</strong>.",
+            "default": true,
+            "subOptions": [{
+                "name": "instantPrint",
+                "type": TYPE_BOOL,
+                "description": "Impression instantanée : dès l'envoi de l'impression via le Companion, ouvre un nouvel onglet. Ferme ensuite l'onglet originel quand l'impression est terminée. Utile pour faire DMP et ordonnances numériques sans ralentir le flux de la consultation. Attention les pdfs des impressions ne seront pas immédiatement visible car pas encore terminé au moment du retour vers le dossier patient.",
+                "default": false
+            }]
+        }, {
+            "name": "KeepFocus",
+            "type": TYPE_BOOL,
+            "description": "Active la récupération du focus en cas de vol par l'application d'impression.",
+            "default": true
+        }, {
+            "name": "postPrintBehavior",
+            "type": TYPE_RADIO,
+            "description": "Comportement après une impression automatique par le Companion.",
+            "default": "closePreview",
+            "options": ["Ne rien faire", "Fermer la fenêtre de prévisualisation", "Retourner au dossier"]
+        }],
+    }, {
+        "name": "Lien avec le TPE",
+        "options": [{
+            "name": "RemoveLocalCompanionTPE",
+            "type": TYPE_BOOL,
+            "description": "<em><strong>Désactiver</strong></em> la communication avec le TPE et l'option TPE dans les fse <strong>(décocher pour l'activer)</strong>.",
+            "default": true
+        }],
+    }]
 }];
 
 
