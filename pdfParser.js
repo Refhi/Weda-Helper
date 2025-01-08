@@ -41,13 +41,23 @@ function parsePDF(url) {
         // console.log(dateMatch);
         if (dateMatch) {
             for (var i = 0; i < dateMatch.length; i++) {
+                if (!dateOfBirth) {
+                    dateOfBirth = moment(dateMatch[i], "DD/MM/YYYY");
+                }
                 if (!documentDate) {
                     documentDate = moment(dateMatch[i], "DD/MM/YYYY");
                 }
                 if (documentDate < moment(dateMatch[i], "DD/MM/YYYY")) { // On choisit la date la plus grande car c'est la date de l'examen (date de prescription et DDN sont inférieures)
                     documentDate = moment(dateMatch[i], "DD/MM/YYYY");
                 }
+                if (dateOfBirth > moment(dateMatch[i], "DD/MM/YYYY")) {
+                    dateOfBirth = moment(dateMatch[i], "DD/MM/YYYY");
+                }
 
+            }
+
+            if (dateOfBirth == documentDate){
+                dateOfBirth == null;
             }
 
             console.log("Found date: " + documentDate.format("DD/MM/YYYY"));
@@ -80,30 +90,46 @@ function parsePDF(url) {
         console.log("Found name: " + nameMatches);
         // var firstName = nameMatches[0].match(/\b[A-Z][A-Z]+/g)[0]; //Isole le nom de famille
         // console.log(firstName);
-        document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_DropDownListRechechePatient").value = "Naissance" //On cherche par DDN
-
-        let searchButton = document.getElementById('ContentPlaceHolder1_FindPatientUcForm1_ButtonRecherchePatient');
-        var searchField = document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherchePatientByDate");
-        if(!searchField)
-        {
-          searchField = document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche");
+        let div = document.getElementById("extractedData");
+        if (div) {
+            document.remove(div);
         }
 
-        // if(searchField.value != dateOfBirth.format("DD/MM/YYYY")){
-        //   searchField.value = dateOfBirth.format("DD/MM/YYYY");
-        //   searchButton.click();
-        // }
-        // else {
-        //   //On vérifie qu'il n'y a bien qu'un seul patient avec cette DDN
-        //   let secondPatient = document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_1") //Lien n°2 dans la liste de patient, s'il n'existe pas, il n'y a qu'un patient dans la liste de recherche
-        //   if (!secondPatient)
-        //   {
-        //     let firstPatient = document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0");
-        //     firstPatient.focus();
-        //   }
-        // }
+        var extractedDataDiv = document.createElement("div");
+        extractetDataDive.setAttribute("id", "extracteddata")
 
+        let content = document.createTextNode(`Date du document: ${documentDate.format("DD/MM/YYYY")} Date de naissance: ${dateOfBirth.format("DD/MM/YYYY")}`);
+        extractedDataDiv.appendChild(content);
+        let tableDiv = document.getElementById("ContentPlaceHolder1_UpdatePanelClassementGrid");
+        tableDiv.parentNode.insertBefore(extractedDataDiv, tableDiv);
     });
+}
+
+function searchForDDN(date) {
+
+    document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_DropDownListRechechePatient").value = "Naissance" //On cherche par DDN
+
+    let searchButton = document.getElementById('ContentPlaceHolder1_FindPatientUcForm1_ButtonRecherchePatient');
+    var searchField = document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherchePatientByDate");
+    if(!searchField)
+    {
+      searchField = document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche");
+    }
+
+    if(searchField.value != dateOfBirth.format("DD/MM/YYYY")){
+      searchField.value = dateOfBirth.format("DD/MM/YYYY");
+      searchButton.click();
+    }
+    else {
+      //On vérifie qu'il n'y a bien qu'un seul patient avec cette DDN
+      let secondPatient = document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_1") //Lien n°2 dans la liste de patient, s'il n'existe pas, il n'y a qu'un patient dans la liste de recherche
+      if (!secondPatient)
+      {
+        let firstPatient = document.getElementById("ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0");
+        firstPatient.focus();
+      }
+    }
+
 }
 
 async function extractTextFromPDF(pdfUrl) {
