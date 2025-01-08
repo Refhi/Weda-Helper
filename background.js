@@ -535,10 +535,66 @@ var advancedDefaultSettings = [{
     }]
 }];
 
+function validateSettings(settings) {
+    const errors = [];
 
-// TODO : ajouter un système de contrôle automatique pour vérifier les doublons et les erreurs de syntaxe dans les clés
+    settings.forEach((category) => {
+        if (!category.name || typeof category.name !== 'string') {
+            errors.push(`Erreur dans la catégorie: 'name' est manquant ou n'est pas une chaîne de caractères.`);
+        }
+        if (!category.description || typeof category.description !== 'string') {
+            errors.push(`Erreur dans la catégorie '${category.name}': 'description' est manquant ou n'est pas une chaîne de caractères.`);
+        }
+        if (!Array.isArray(category.options)) {
+            errors.push(`Erreur dans la catégorie '${category.name}': 'options' doit être un tableau.`);
+        } else {
+            category.options.forEach((option) => {
+                if (!option.name || typeof option.name !== 'string') {
+                    errors.push(`Erreur dans l'option de la catégorie '${category.name}': 'name' est manquant ou n'est pas une chaîne de caractères.`);
+                }
+                if (!option.type || ![TYPE_BOOL, TYPE_TEXT, TYPE_HTML, TYPE_RADIO].includes(option.type)) {
+                    errors.push(`Erreur dans l'option '${option.name}' de la catégorie '${category.name}': 'type' est manquant ou invalide.`);
+                }
+                if (!option.description || typeof option.description !== 'string') {
+                    errors.push(`Erreur dans l'option '${option.name}' de la catégorie '${category.name}': 'description' est manquant ou n'est pas une chaîne de caractères.`);
+                }
+                if (option.type !== TYPE_HTML && option.default === undefined) {
+                    errors.push(`Erreur dans l'option '${option.name}' de la catégorie '${category.name}': 'default' est manquant.`);
+                }
+                if (option.subOptions && !Array.isArray(option.subOptions)) {
+                    errors.push(`Erreur dans l'option '${option.name}' de la catégorie '${category.name}': 'subOptions' doit être un tableau.`);
+                } else if (option.subOptions) {
+                    option.subOptions.forEach((subOption) => {
+                        if (!subOption.name || typeof subOption.name !== 'string') {
+                            errors.push(`Erreur dans la sous-option de l'option '${option.name}' de la catégorie '${category.name}': 'name' est manquant ou n'est pas une chaîne de caractères.`);
+                        }
+                        if (!subOption.type || ![TYPE_BOOL, TYPE_TEXT, TYPE_HTML, TYPE_RADIO].includes(subOption.type)) {
+                            errors.push(`Erreur dans la sous-option '${subOption.name}' de l'option '${option.name}' de la catégorie '${category.name}': 'type' est manquant ou invalide.`);
+                        }
+                        if (!subOption.description || typeof subOption.description !== 'string') {
+                            errors.push(`Erreur dans la sous-option '${subOption.name}' de l'option '${option.name}' de la catégorie '${category.name}': 'description' est manquant ou n'est pas une chaîne de caractères.`);
+                        }
+                        if (subOption.type !== TYPE_HTML && subOption.default === undefined) {
+                            errors.push(`Erreur dans la sous-option '${subOption.name}' de l'option '${option.name}' de la catégorie '${category.name}': 'default' est manquant.`);
+                        }
+                    });
+                }
+            });
+        }
+    });
+
+    return errors;
+}
+
+const validationErrors = validateSettings(advancedDefaultSettings);
+if (validationErrors.length > 0) {
+    console.error("Erreurs de validation des paramètres:", validationErrors);
+} else {
+    console.log("Tous les paramètres sont valides.");
+}
+
+
 // TODO : vérifier que advancedDefaultSettings est bien utilisé dans les options et peut remplacer defaultSettings
-// TODO : vérifier qu'on a bien toutes les clés de defaultSettings dans advancedDefaultSettings
 
 var defaultShortcuts = {
     "push_valider": {
