@@ -1,82 +1,4 @@
 // Définir les options par défaut. Définie ici pour être accessible de façon globale
-var defaultSettings = {
-    'TweakImports': true,
-    'TweakTabConsultation': true,
-    'FocusOnTitleInConsultation': false,
-    'RemoveTitleSuggestions': true,
-    'EnableHelp': true,
-    'TweakTabSearchPatient': true,
-    'TweakTabPrescription': true,
-    'RemoveLocalCompanionPrint': true,
-    'RemoveLocalCompanionTPE': true,
-    'KeepFocus': true,
-    'portCompanion': '4821',
-    'defaultCotation': true,
-    'apiKey': 'votre clé API par défaut',
-    'keepMedSearch': true,
-    'addMedSearchButtons': true,
-    'boutonRecherche-1': true,
-    'boutonRecherche-2': true,
-    'boutonRecherche-3': false,
-    'boutonRecherche-4': false,
-    'boutonRecherche-5': false,
-    'boutonRecherche-6': false,
-    'boutonRecherche-7': false,
-    'boutonRecherche-8': true,
-    'boutonRecherche-9': false,
-    'boutonRecherche-10': false,
-    // "boutonRecherche-11", // n'existe pas !
-    // "boutonRecherche-12", // n'existe pas !
-    'boutonRecherche-13': false,
-    'boutonRecherche-14': false,
-    'TweakRecetteForm': true,
-    'TweakNIR': true,
-    'KeyPadPrescription': true,
-    'TweakFSEGestion': true,
-    'TweakFSECreation': true,
-    'TweakFSEDetectMT': false,
-    'TweakFSEGestionUnique': false,
-    'TweakFSEAccident': false,
-    'TweakSCORDegradee': false,
-    'SCORAutoSelectPJ': true,
-    'autoSelectPatientCV': true,
-    'WarpButtons': true,
-    'autoSelectTypeOrdoNum': true,
-    'autoConsentNumPres': false,
-    'autoConsentNumPres_Oui': true,
-    'autoValidateOrdoNum': false,
-    'NumPresPrescription': false,
-    'NumPresDemande': false,
-    'uncheckDMPIfImagerie': true,
-    'postPrintBehavior': 'closePreview', // boutons radio
-    'MoveHistoriqueToLeft': true,
-    'MoveHistoriqueToLeft_Consultation': true, // Depreciated depuis 2.7.1 (reprise de cette partie par Weda)
-    'MoveHistoriqueToLeft_Certificat': true,
-    'MoveHistoriqueToLeft_Demande': true,
-    'MoveHistoriqueToLeft_Courrier': false,
-    'MoveHistoriqueToLeft_Formulaire': false,
-    'ATCDLeft': false,
-    'AutoOpenHistory_Consultation': true, // introduit depuis 2.7.1
-    'ShowExplanatoryText': true,
-    'autoOpenOrdoType': false,
-    'AlertOnMedicationInteraction': true,
-    'defautDataType': 'TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%, Z-IMC:ds',
-    'autoATCD': false,
-    'secureExchangeAutoRefresh': true,
-    'secureExchangeUncheckIHEMessage': false,
-    'autoAATI': true,
-    'trimCIM10': true,
-    'sortCIM10': true,
-    'removeBoldPatientFirstName': false,
-    'preAlertATCD': 6,
-    'autoControlMT': true,
-    'autoMTnewTab': true,
-    'autoMTIncludeAndCheckContact': false,
-    'autoFilterLeftHistory': false,
-    'instantPrint': false,
-    'autoContinueWithoutNumPres': false,
-    'autoSelectMT': false,
-};
 
 /**
  * Configuration des paramètres avancés (v2.9+)
@@ -156,6 +78,11 @@ var advancedDefaultSettings = [{
             "description": "Consultation",
             "default": true
         }, {
+            "name": "MoveHistoriqueToLeft_Consultation",
+            "type": TYPE_BOOL,
+            "description": "Consultation",
+            "default": true
+        }, {
             "name": "MoveHistoriqueToLeft_Certificat",
             "type": TYPE_BOOL,
             "description": "Certificat",
@@ -180,17 +107,17 @@ var advancedDefaultSettings = [{
         "name": "autoFilterLeftHistory",
         "type": TYPE_BOOL,
         "description": "Filtre automatiquement l'historique gauche pour n'afficher que date et titre.",
-        "default": true
+        "default": false
     }, {
         "name": "autoATCD",
         "type": TYPE_BOOL,
         "description": "Ouvre automatiquement les ATCD.",
-        "default": true
+        "default": false
     }, {
         "name": "ATCDLeft",
         "type": TYPE_BOOL,
         "description": "Ouvre les ATCD sur la partie gauche de l'écran quand possible (attention l'affichage est un peu approximatif).",
-        "default": true
+        "default": false
     }, {
         "name": "secureExchangeAutoRefresh",
         "type": TYPE_BOOL,
@@ -200,7 +127,7 @@ var advancedDefaultSettings = [{
         "name": "secureExchangeUncheckIHEMessage",
         "type": TYPE_BOOL,
         "description": "Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée.",
-        "default": true
+        "default": false
     }, {
         "name": "autoAATI",
         "type": TYPE_BOOL,
@@ -212,10 +139,15 @@ var advancedDefaultSettings = [{
         "description": "Nettoie l'arbre des ATCD CIM-10 pour ne garder que les ATCD principaux (on peut toujours les déployer pour les sous-ATCD).",
         "default": true
     }, {
+        "name": "sortCIM10",
+        "type": TYPE_BOOL,
+        "description": "Trie les ATCD CIM-10 par ordre alphabétique.",
+        "default": true
+    }, {
         "name": "removeBoldPatientFirstName",
         "type": TYPE_BOOL,
         "description": "Met le prénom du patient en non-gras pour plus facilement distinguer le nom de famille.",
-        "default": true
+        "default": false
     }, {
         "name": "preAlertATCD",
         "type": TYPE_TEXT,
@@ -235,7 +167,7 @@ var advancedDefaultSettings = [{
             "name": "autoMTIncludeAndCheckContact",
             "type": TYPE_BOOL,
             "description": "Intègre automatiquement le MT récupéré dans les contacts et initie la récupération de l'adresse sécurisée. Compatible avec l'option précédente.",
-            "default": true
+            "default": false
         }]
     }]
 }, {
@@ -265,7 +197,7 @@ var advancedDefaultSettings = [{
         "name": "defautDataType",
         "type": TYPE_TEXT,
         "description": "Types de données automatique (vider pour désactiver. Pas d'espaces. Sensible à la Case.) Défaut = TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%",
-        "default": "TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%"
+        "default": "TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%,Z-IMC:ds"
     }]
 }, {
     "name": "Options de prescription",
@@ -284,7 +216,7 @@ var advancedDefaultSettings = [{
         "name": "autoOpenOrdoType",
         "type": TYPE_BOOL,
         "description": "Ouvre automatiquement la fenêtre des ordonnances-types lors des prescriptions médicamenteuses.",
-        "default": true
+        "default": false
     }, {
         "name": "AlertOnMedicationInteraction",
         "type": TYPE_BOOL,
@@ -303,7 +235,7 @@ var advancedDefaultSettings = [{
         "name": "autoConsentNumPres",
         "type": TYPE_BOOL,
         "description": "Coche automatiquement une case de consentement de l'ordonnance numérique. Attention vous êtes toujours tenu de demander l'autorisation au patient systématiquement.",
-        "default": true,
+        "default": false,
         "subOptions": [{
             "name": "autoConsentNumPres_Oui",
             "type": TYPE_BOOL,
@@ -314,7 +246,7 @@ var advancedDefaultSettings = [{
         "name": "autoValidateOrdoNum",
         "type": TYPE_BOOL,
         "description": "Valider automatiquement une ordonnance numérique de médicaments lors de l'impression (nécessite d'activer l'option \"Coche automatiquement la case de consentement\" ci-dessus).",
-        "default": true
+        "default": false
     }, {
         "name": "uncheckDMPIfImagerie",
         "type": TYPE_BOOL,
@@ -324,7 +256,7 @@ var advancedDefaultSettings = [{
         "name": "autoContinueWithoutNumPres",
         "type": TYPE_BOOL,
         "description": "Clique automatiquement \"Continuer automatiquement sans ordonnance numérique\" si le message d'erreur s'affiche.",
-        "default": true
+        "default": false
     }]
 }, {
     "name": "Options de cochage/décochage automatique",
@@ -362,7 +294,7 @@ var advancedDefaultSettings = [{
             "name": "boutonRecherche-14",
             "type": TYPE_BOOL,
             "description": "Recherche par produits",
-            "default": true
+            "default": false
         }, {
             "name": "boutonRecherche-8",
             "type": TYPE_BOOL,
@@ -377,48 +309,48 @@ var advancedDefaultSettings = [{
             "name": "boutonRecherche-10",
             "type": TYPE_BOOL,
             "description": "Recherche par U.C.D.",
-            "default": true
+            "default": false
         }, {
             "name": "boutonRecherche-3",
             "type": TYPE_BOOL,
             "description": "Recherche par A.T.C.",
-            "default": true
+            "default": false
         }, {
             "name": "boutonRecherche-13",
             "type": TYPE_BOOL,
             "description": "Recherche par Vidal",
-            "default": true
+            "default": false
         }, {
             "name": "boutonRecherche-4",
             "type": TYPE_BOOL,
             "description": "Indications",
-            "default": true
+            "default": false
         }, {
             "name": "boutonRecherche-5",
             "type": TYPE_BOOL,
             "description": "Groupe d'indications",
-            "default": true
+            "default": false
         }, {
             "name": "boutonRecherche-6",
             "type": TYPE_BOOL,
             "description": "Laboratoires",
-            "default": true
+            "default": false
         }, {
             "name": "boutonRecherche-7",
             "type": TYPE_BOOL,
             "description": "Vos favoris et perso.",
-            "default": true
+            "default": false
         }, {
             "name": "boutonRecherche-9",
             "type": TYPE_BOOL,
             "description": "Le Top 50",
-            "default": true
+            "default": false
         }]
     }, {
         "name": "TweakRecetteForm",
         "type": TYPE_BOOL,
         "description": "Appuie automatiquement sur le bouton \"rechercher\" après avoir sélectionné la page des recettes (permet d’afficher les recettes du jour directement en arrivant sur la page).",
-        "default": false
+        "default": true
     }, {
         "name": "TweakNIR",
         "type": TYPE_BOOL,
@@ -432,7 +364,7 @@ var advancedDefaultSettings = [{
         "name": "autoSelectMT",
         "type": TYPE_BOOL,
         "description": "Sélectionne automatiquement les médecins traitants comme destinataires.",
-        "default": true
+        "default": false
     }]
 }, {
     "name": "Options de FSE",
@@ -499,7 +431,7 @@ var advancedDefaultSettings = [{
             "description": "Clé API. Doit être identique à celle du Companion (normalement fait automatiquement lors de la première requête au Companion).",
             "default": "votre clé API par défaut"
         }],
-    },{
+    }, {
         "name": "Options d'impression automatique",
         "options": [{
             "name": "RemoveLocalCompanionPrint",
@@ -535,51 +467,62 @@ var advancedDefaultSettings = [{
     }]
 }];
 
+/**
+ * Traverse les options, sous-options et sous-sections d'un ensemble de paramètres et applique une fonction de rappel à chaque option.
+ * @param {Array} settings - La liste des catégories de paramètres.
+ * @param {Function} callback - La fonction de rappel à appliquer à chaque option.
+ */
+function traverseOptions(settings, callback) {
+    function traverse(options) {
+        options.forEach(option => {
+            callback(option);
+            if (option.subOptions) {
+                traverse(option.subOptions);
+            }
+        });
+    }
+
+    function traverseSections(sections) {
+        sections.forEach(section => {
+            if (section.options) {
+                traverse(section.options);
+            }
+            if (section.sections) {
+                traverseSections(section.sections);
+            }
+        });
+    }
+
+    settings.forEach(category => {
+        if (category.options) {
+            traverse(category.options);
+        }
+        if (category.sections) {
+            traverseSections(category.sections);
+        }
+    });
+}
+
+/**
+ * Valide les paramètres avancés en vérifiant que chaque option a les propriétés requises.
+ * @param {Array} settings - La liste des catégories de paramètres à valider.
+ * @returns {Array} - Une liste des erreurs de validation.
+ */
 function validateSettings(settings) {
     const errors = [];
 
-    settings.forEach((category) => {
-        if (!category.name || typeof category.name !== 'string') {
-            errors.push(`Erreur dans la catégorie: 'name' est manquant ou n'est pas une chaîne de caractères.`);
+    traverseOptions(settings, (option) => {
+        if (!option.name || typeof option.name !== 'string') {
+            errors.push(`Erreur dans l'option: 'name' est manquant ou n'est pas une chaîne de caractères.`);
         }
-        if (!category.description || typeof category.description !== 'string') {
-            errors.push(`Erreur dans la catégorie '${category.name}': 'description' est manquant ou n'est pas une chaîne de caractères.`);
+        if (!option.type || ![TYPE_BOOL, TYPE_TEXT, TYPE_HTML, TYPE_RADIO].includes(option.type)) {
+            errors.push(`Erreur dans l'option '${option.name}': 'type' est manquant ou invalide.`);
         }
-        if (!Array.isArray(category.options)) {
-            errors.push(`Erreur dans la catégorie '${category.name}': 'options' doit être un tableau.`);
-        } else {
-            category.options.forEach((option) => {
-                if (!option.name || typeof option.name !== 'string') {
-                    errors.push(`Erreur dans l'option de la catégorie '${category.name}': 'name' est manquant ou n'est pas une chaîne de caractères.`);
-                }
-                if (!option.type || ![TYPE_BOOL, TYPE_TEXT, TYPE_HTML, TYPE_RADIO].includes(option.type)) {
-                    errors.push(`Erreur dans l'option '${option.name}' de la catégorie '${category.name}': 'type' est manquant ou invalide.`);
-                }
-                if (!option.description || typeof option.description !== 'string') {
-                    errors.push(`Erreur dans l'option '${option.name}' de la catégorie '${category.name}': 'description' est manquant ou n'est pas une chaîne de caractères.`);
-                }
-                if (option.type !== TYPE_HTML && option.default === undefined) {
-                    errors.push(`Erreur dans l'option '${option.name}' de la catégorie '${category.name}': 'default' est manquant.`);
-                }
-                if (option.subOptions && !Array.isArray(option.subOptions)) {
-                    errors.push(`Erreur dans l'option '${option.name}' de la catégorie '${category.name}': 'subOptions' doit être un tableau.`);
-                } else if (option.subOptions) {
-                    option.subOptions.forEach((subOption) => {
-                        if (!subOption.name || typeof subOption.name !== 'string') {
-                            errors.push(`Erreur dans la sous-option de l'option '${option.name}' de la catégorie '${category.name}': 'name' est manquant ou n'est pas une chaîne de caractères.`);
-                        }
-                        if (!subOption.type || ![TYPE_BOOL, TYPE_TEXT, TYPE_HTML, TYPE_RADIO].includes(subOption.type)) {
-                            errors.push(`Erreur dans la sous-option '${subOption.name}' de l'option '${option.name}' de la catégorie '${category.name}': 'type' est manquant ou invalide.`);
-                        }
-                        if (!subOption.description || typeof subOption.description !== 'string') {
-                            errors.push(`Erreur dans la sous-option '${subOption.name}' de l'option '${option.name}' de la catégorie '${category.name}': 'description' est manquant ou n'est pas une chaîne de caractères.`);
-                        }
-                        if (subOption.type !== TYPE_HTML && subOption.default === undefined) {
-                            errors.push(`Erreur dans la sous-option '${subOption.name}' de l'option '${option.name}' de la catégorie '${category.name}': 'default' est manquant.`);
-                        }
-                    });
-                }
-            });
+        if (!option.description || typeof option.description !== 'string') {
+            errors.push(`Erreur dans l'option '${option.name}': 'description' est manquant ou n'est pas une chaîne de caractères.`);
+        }
+        if (option.type !== TYPE_HTML && option.default === undefined) {
+            errors.push(`Erreur dans l'option '${option.name}': 'default' est manquant.`);
         }
     });
 
@@ -592,6 +535,26 @@ if (validationErrors.length > 0) {
 } else {
     console.log("Tous les paramètres sont valides.");
 }
+
+
+/**
+ * Génère les paramètres par défaut à partir des paramètres avancés. (v2.9+, pour des raisons de compatibilité rétroactive)
+ * @param {Array} advancedSettings - La liste des catégories de paramètres avancés.
+ * @returns {Object} - Un objet contenant les paramètres par défaut.
+ */
+function generateDefaultSettings(advancedSettings) {
+    const defaultSettings = {};
+
+    traverseOptions(advancedSettings, (option) => {
+        defaultSettings[option.name] = option.default;
+    });
+
+    return defaultSettings;
+}
+
+const defaultSettings = generateDefaultSettings(advancedDefaultSettings);
+console.log(defaultSettings);
+
 
 
 // TODO : vérifier que advancedDefaultSettings est bien utilisé dans les options et peut remplacer defaultSettings
