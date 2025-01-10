@@ -1,4 +1,142 @@
-// Récupérer les valeurs par défaut du stockage
+// // --------- Page de gestion des options de l'extension----------
+
+/**
+ * Traverse les options, sous-options et sous-sections d'un ensemble de paramètres et applique une fonction de rappel à chaque option.
+ * @param {Array} settings - La liste des catégories de paramètres.
+ * @param {Function} callback - La fonction de rappel à appliquer à chaque option.
+ * /!\ cette fonction est en doublon : elle est aussi présente dans background.js
+ */
+function traverseOptions(settings, callback) {
+  function traverse(options) {
+      options.forEach(option => {
+          callback(option);
+          if (option.subOptions) {
+              traverse(option.subOptions);
+          }
+      });
+  }
+
+  function traverseSections(sections) {
+      sections.forEach(section => {
+          if (section.options) {
+              traverse(section.options);
+          }
+          if (section.sections) {
+              traverseSections(section.sections);
+          }
+      });
+  }
+
+  settings.forEach(category => {
+      if (category.options) {
+          traverse(category.options);
+      }
+      if (category.sections) {
+          traverseSections(category.sections);
+      }
+  });
+}
+
+// // Options hors raccourcis
+// 1 - génération de la liste d'option à partir de advancedSettings
+chrome.storage.local.get('advancedDefaultSettings', function (data) {
+    if (data.advancedDefaultSettings) {
+        generateOptionsHTML(data.advancedDefaultSettings);
+    }
+});
+
+function createInput(option) {
+  let input;
+  switch (option.type) {
+      case 'bool':
+          input = document.createElement('input');
+          input.type = 'checkbox';
+          input.id = option.name;
+          input.checked = option.default;
+          break;
+      case 'text':
+          input = document.createElement('input');
+          input.type = 'text';
+          input.id = option.name;
+          input.value = option.default;
+          break;
+      case 'radio':
+          input = document.createElement('input');
+          input.type = 'radio';
+          input.id = option.name;
+          input.value = option.default;
+          break;
+      case 'html':
+          input = document.createElement('div');
+          input.innerHTML = option.description;
+          break;
+  }
+  return input;
+}
+
+function createOptionElement(option) {
+  const optionDiv = document.createElement('div');
+  optionDiv.classList.add('option');
+
+  const label = document.createElement('label');
+  label.innerHTML = option.description; // Utilisez innerHTML pour insérer du HTML
+  label.setAttribute('for', option.name);
+  optionDiv.appendChild(label);
+
+  const input = createInput(option);
+  optionDiv.appendChild(input);
+
+  if (option.subOptions) {
+      const subOptionsDiv = document.createElement('div');
+      subOptionsDiv.classList.add('sub-options');
+
+      option.subOptions.forEach(subOption => {
+          const subOptionDiv = document.createElement('div');
+          subOptionDiv.classList.add('sub-option');
+
+          const subLabel = document.createElement('label');
+          subLabel.innerHTML = subOption.description; // Utilisez innerHTML pour insérer du HTML
+          subLabel.setAttribute('for', subOption.name);
+          subOptionDiv.appendChild(subLabel);
+
+          const subInput = createInput(subOption);
+          subOptionDiv.appendChild(subInput);
+
+          subOptionsDiv.appendChild(subOptionDiv);
+      });
+
+      optionDiv.appendChild(subOptionsDiv);
+  }
+
+  return optionDiv;
+}
+
+function generateOptionsHTML(settings) {
+  const container = document.getElementById('advanced-options'); // Assurez-vous d'avoir un conteneur pour insérer les options
+
+  settings.forEach(category => {
+      const categoryDiv = document.createElement('div');
+      categoryDiv.classList.add('category');
+
+      const categoryTitle = document.createElement('h2');
+      categoryTitle.textContent = category.name;
+      categoryDiv.appendChild(categoryTitle);
+
+      const categoryDescription = document.createElement('p');
+      categoryDescription.textContent = category.description;
+      categoryDiv.appendChild(categoryDescription);
+
+      traverseOptions([category], option => {
+          const optionElement = createOptionElement(option);
+          categoryDiv.appendChild(optionElement);
+      });
+
+      container.appendChild(categoryDiv);
+  });
+}
+
+
+// 2 - Récupérer les valeurs par défaut du stockage et mettre à jour les éléments de la page
 chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function(result) {
   // Les valeurs par défaut sont stockées background.js pour être utilisées dans les options et éviter de dupliquer le code
 

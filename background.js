@@ -471,6 +471,7 @@ var advancedDefaultSettings = [{
  * Traverse les options, sous-options et sous-sections d'un ensemble de paramètres et applique une fonction de rappel à chaque option.
  * @param {Array} settings - La liste des catégories de paramètres.
  * @param {Function} callback - La fonction de rappel à appliquer à chaque option.
+ * /!\ cette fonction est en doublon : elle est aussi présente dans options.js
  */
 function traverseOptions(settings, callback) {
     function traverse(options) {
@@ -655,6 +656,6 @@ var defaultShortcuts = {
 };
 
 // retour à un chargement systématique, a priori sans impact évident sur le temps de chargement
-chrome.storage.local.set({ defaultSettings: defaultSettings, defaultShortcuts: defaultShortcuts }, function () {
+chrome.storage.local.set({ defaultSettings: defaultSettings, defaultShortcuts: defaultShortcuts, advancedDefaultSettings: advancedDefaultSettings}, function () {
     console.log('[background.js] Les valeurs et raccourcis par défaut ont été enregistrées');
 });
