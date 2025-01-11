@@ -78,11 +78,12 @@ var advancedDefaultSettings = [{
             "description": "Consultation",
             "default": true
         }, {
-            "name": "MoveHistoriqueToLeft_Consultation",
-            "type": TYPE_BOOL,
-            "description": "Consultation",
-            "default": true
-        }, {
+        // Deprecated, remplacé par l'option de Weda
+        //     "name": "MoveHistoriqueToLeft_Consultation",
+        //     "type": TYPE_BOOL,
+        //     "description": "Consultation",
+        //     "default": true
+        // }, {
             "name": "MoveHistoriqueToLeft_Certificat",
             "type": TYPE_BOOL,
             "description": "Certificat",
@@ -471,7 +472,6 @@ var advancedDefaultSettings = [{
  * Traverse les options, sous-options et sous-sections d'un ensemble de paramètres et applique une fonction de rappel à chaque option.
  * @param {Array} settings - La liste des catégories de paramètres.
  * @param {Function} callback - La fonction de rappel à appliquer à chaque option.
- * /!\ cette fonction est en doublon : elle est aussi présente dans options.js
  */
 function traverseOptions(settings, callback) {
     function traverse(options) {

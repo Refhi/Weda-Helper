@@ -4,136 +4,122 @@
  * Traverse les options, sous-options et sous-sections d'un ensemble de paramètres et applique une fonction de rappel à chaque option.
  * @param {Array} settings - La liste des catégories de paramètres.
  * @param {Function} callback - La fonction de rappel à appliquer à chaque option.
- * /!\ cette fonction est en doublon : elle est aussi présente dans background.js
+ * Utilise la variable advancedDefaultSettings présente dans le fichier background.js
  */
-function traverseOptions(settings, callback) {
-  function traverse(options) {
-      options.forEach(option => {
-          callback(option);
-          if (option.subOptions) {
-              traverse(option.subOptions);
-          }
-      });
+function parseOptions(settings, callback) {
+  function traverse(options, level, isSubOption = false) {
+    options.forEach(option => {
+      option.level = level;
+      option.isSubOption = isSubOption;
+      // console.log(`Option: ${option.name}, Niveau: ${option.level}, Sous-option: ${option.isSubOption}`);
+      callback(option);
+      if (option.subOptions) {
+        traverse(option.subOptions, level, true);
+      }
+    });
   }
 
-  function traverseSections(sections) {
-      sections.forEach(section => {
-          if (section.options) {
-              traverse(section.options);
-          }
-          if (section.sections) {
-              traverseSections(section.sections);
-          }
-      });
+  function traverseSections(sections, level) {
+    sections.forEach(section => {
+      if (section.options) {
+        traverse(section.options, level + 1);
+      }
+      if (section.sections) {
+        traverseSections(section.sections, level + 1);
+      }
+    });
   }
 
   settings.forEach(category => {
-      if (category.options) {
-          traverse(category.options);
-      }
-      if (category.sections) {
-          traverseSections(category.sections);
-      }
+    if (category.options) {
+      traverse(category.options, 0);
+    }
+    if (category.sections) {
+      traverseSections(category.sections, 0);
+    }
   });
 }
 
 // // Options hors raccourcis
 // 1 - génération de la liste d'option à partir de advancedSettings
 chrome.storage.local.get('advancedDefaultSettings', function (data) {
-    if (data.advancedDefaultSettings) {
-        generateOptionsHTML(data.advancedDefaultSettings);
-    }
+  if (data.advancedDefaultSettings) {
+    generateOptionsHTML(data.advancedDefaultSettings);
+  }
 });
 
 function createInput(option) {
-  let input;
+  const input = document.createElement(option.type === 'html' ? 'div' : 'input');
+  input.id = option.name;
+
   switch (option.type) {
-      case 'bool':
-          input = document.createElement('input');
-          input.type = 'checkbox';
-          input.id = option.name;
-          input.checked = option.default;
-          break;
-      case 'text':
-          input = document.createElement('input');
-          input.type = 'text';
-          input.id = option.name;
-          input.value = option.default;
-          break;
-      case 'radio':
-          input = document.createElement('input');
-          input.type = 'radio';
-          input.id = option.name;
-          input.value = option.default;
-          break;
-      case 'html':
-          input = document.createElement('div');
-          input.innerHTML = option.description;
-          break;
+    case 'bool':
+      input.type = 'checkbox';
+      input.checked = option.default;
+      break;
+    case 'text':
+      input.type = 'text';
+      input.value = option.default;
+      break;
+    case 'radio':
+      input.type = 'radio';
+      input.value = option.default;
+      break;
+    case 'html':
+      input.innerHTML = option.description;
+      break;
   }
+
   return input;
+}
+
+function createLabel(option) {
+  const label = document.createElement('span');
+  label.innerHTML = option.description; // Utilisez innerHTML pour insérer du HTML
+  label.setAttribute('for', option.name);
+  return label;
 }
 
 function createOptionElement(option) {
   const optionDiv = document.createElement('div');
   optionDiv.classList.add('option');
 
-  const label = createLabel(option);
-  optionDiv.appendChild(label);
-
   const input = createInput(option);
   optionDiv.appendChild(input);
 
+  const label = createLabel(option);
+  optionDiv.appendChild(label);
+
   if (option.subOptions) {
-      const subOptionsDiv = document.createElement('div');
-      subOptionsDiv.classList.add('sub-options');
+    const subOptionsDiv = document.createElement('div');
+    subOptionsDiv.classList.add('sub-options');
 
-      option.subOptions.forEach(subOption => {
-          const subOptionDiv = createOptionElement(subOption);
-          subOptionDiv.classList.add('sub-option');
-          subOptionsDiv.appendChild(subOptionDiv);
-      });
+    option.subOptions.forEach(subOption => {
+      const subOptionDiv = createOptionElement(subOption);
+      subOptionDiv.classList.add('sub-option');
+      subOptionsDiv.appendChild(subOptionDiv);
+    });
 
-      optionDiv.appendChild(subOptionsDiv);
+    optionDiv.appendChild(subOptionsDiv);
   }
 
   return optionDiv;
 }
 
-function createLabel(option) {
-  const label = document.createElement('label');
-  label.innerHTML = option.description; // Utilisez innerHTML pour insérer du HTML
-  label.setAttribute('for', option.name);
-  return label;
-}
-
 function generateOptionsHTML(settings) {
   const container = document.getElementById('advanced-options'); // Assurez-vous d'avoir un conteneur pour insérer les options
+  container.innerHTML = ''; // Réinitialisez le conteneur avant d'ajouter de nouveaux éléments
 
-  settings.forEach(category => {
-      const categoryDiv = document.createElement('div');
-      categoryDiv.classList.add('category');
-
-      const categoryTitle = document.createElement('h2');
-      categoryTitle.textContent = category.name;
-      categoryDiv.appendChild(categoryTitle);
-
-      const categoryDescription = document.createElement('p');
-      categoryDescription.textContent = category.description;
-      categoryDiv.appendChild(categoryDescription);
-
-      traverseOptions([category], option => {
-          const optionElement = createOptionElement(option);
-          categoryDiv.appendChild(optionElement);
-      });
-
-      container.appendChild(categoryDiv);
+  parseOptions(settings, option => {
+    console.log("j'ajoute l'option nommée : ", option.name, "de niveau : ", option.level, "est une sous-option ? : ", option.isSubOption);
+    const optionElement = createOptionElement(option);
+    container.appendChild(optionElement);
   });
 }
 
 
 // 2 - Récupérer les valeurs par défaut du stockage et mettre à jour les éléments de la page
-chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function(result) {
+chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (result) {
   // Les valeurs par défaut sont stockées background.js pour être utilisées dans les options et éviter de dupliquer le code
 
   let defaultSettings = result.defaultSettings;
@@ -141,13 +127,13 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function(resul
   console.log("[option.js] valeurs par défaut chargées : ", defaultSettings); // Affiche les valeurs par défaut
   var options = Object.keys(defaultSettings);
 
-  chrome.storage.local.get("shortcuts", function(result) {
+  chrome.storage.local.get("shortcuts", function (result) {
     var table = document.createElement('table');
     let node = document.getElementById('shortcuts');
     Object.entries(defaultShortcuts).forEach(([key, shortcut]) => {
-    // D'abord récupérer les valeurs stockées ou utiliser les valeurs par défaut
+      // D'abord récupérer les valeurs stockées ou utiliser les valeurs par défaut
       var savedShortcut;
-      if(result["shortcuts"]) {
+      if (result["shortcuts"]) {
         savedShortcut = result["shortcuts"][key];
       }
       let defaultShortcutValue = shortcut["default"];
@@ -157,7 +143,7 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function(resul
       description.innerHTML = " " + shortcut["description"];
       var buttonContainer = document.createElement('td');
       var button = document.createElement('button');
-      button.innerHTML = savedShortcut ? savedShortcut:defaultShortcutValue;
+      button.innerHTML = savedShortcut ? savedShortcut : defaultShortcutValue;
       button.onclick = shortcutClicked;
       button.id = key;
       buttonContainer.appendChild(button);
@@ -170,70 +156,70 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function(resul
     node.appendChild(table);
   });
 
- function keyToWord(key) // Fonction pour afficher les symboles de key sous une forme plus simple
- {
-  if (key == "⌃")
-    return "Ctrl";
-  else if (key == "⌥")
-    return "Alt";
-  else
-    return key;
-}
+  function keyToWord(key) // Fonction pour afficher les symboles de key sous une forme plus simple
+  {
+    if (key == "⌃")
+      return "Ctrl";
+    else if (key == "⌥")
+      return "Alt";
+    else
+      return key;
+  }
 
-function shortcutClicked(buttonEvent) {
-  // Désactiver la classe 'modifying' sur tous les autres boutons
-  document.querySelectorAll('button.modifying').forEach(button => {
-    button.classList.remove('modifying');
-  });
+  function shortcutClicked(buttonEvent) {
+    // Désactiver la classe 'modifying' sur tous les autres boutons
+    document.querySelectorAll('button.modifying').forEach(button => {
+      button.classList.remove('modifying');
+    });
 
-  // Désactiver tous les écouteurs de touches existants
-  hotkeys.unbind('*');
+    // Désactiver tous les écouteurs de touches existants
+    hotkeys.unbind('*');
 
-  buttonEvent.target.classList.add('modifying');
-  hotkeys('*', function(event, handler) { // On écoute toutes les pressions de touche
-    function saveShortcut(keys) {
-      var shortcut = "";
-      for (var i = 0; i < keys.length; i++) {
-        var separator = "+";
-        if (i == 0) {
-          separator = "";
+    buttonEvent.target.classList.add('modifying');
+    hotkeys('*', function (event, handler) { // On écoute toutes les pressions de touche
+      function saveShortcut(keys) {
+        var shortcut = "";
+        for (var i = 0; i < keys.length; i++) {
+          var separator = "+";
+          if (i == 0) {
+            separator = "";
+          }
+          shortcut = shortcut + separator + keyToWord(keys[i]);
         }
-        shortcut = shortcut + separator + keyToWord(keys[i]);
+        buttonEvent.target.innerHTML = shortcut;
+        buttonEvent.target.classList.remove('modifying');
+        chrome.storage.local.get("shortcuts", function (result) {
+          var shortcuts = result["shortcuts"];
+          shortcuts[buttonEvent.target.id] = shortcut;
+          chrome.storage.local.set({ "shortcuts": shortcuts });
+        });
+        hotkeys.unbind('*');
       }
-      buttonEvent.target.innerHTML = shortcut;
-      buttonEvent.target.classList.remove('modifying');
-      chrome.storage.local.get("shortcuts", function(result) {
-        var shortcuts = result["shortcuts"];
-        shortcuts[buttonEvent.target.id] = shortcut;
-        chrome.storage.local.set({ "shortcuts": shortcuts });
-      });
-      hotkeys.unbind('*');
-    }
 
-    function isLetterOrNumber(element) {
-      return element.match(/\w{1}/);
-    }
-
-    function isfunctionKey(element) {
-      return element.match(/f\w{1,2}/);
-    }
-
-    event.preventDefault();
-    var keys = hotkeys.getPressedKeyString();
-    console.log(keys);
-    if (keys.length <= 1) { // Une seule touche, on accepte F1 à F19
-      if (isfunctionKey(keys[0])) {
-        saveShortcut(keys);
+      function isLetterOrNumber(element) {
+        return element.match(/\w{1}/);
       }
-    } else { // Si l'on a plus de 2 touches, il faut au moins une lettre ou un chiffre
-      if (keys.some(isLetterOrNumber)) {
-        saveShortcut(keys);
-      }
-    }
-  });
-}
 
-var options = Object.keys(defaultSettings);
+      function isfunctionKey(element) {
+        return element.match(/f\w{1,2}/);
+      }
+
+      event.preventDefault();
+      var keys = hotkeys.getPressedKeyString();
+      console.log(keys);
+      if (keys.length <= 1) { // Une seule touche, on accepte F1 à F19
+        if (isfunctionKey(keys[0])) {
+          saveShortcut(keys);
+        }
+      } else { // Si l'on a plus de 2 touches, il faut au moins une lettre ou un chiffre
+        if (keys.some(isLetterOrNumber)) {
+          saveShortcut(keys);
+        }
+      }
+    });
+  }
+
+  var options = Object.keys(defaultSettings);
   options.forEach(function (option) {
     // // D'abord récupérer les valeurs stockées ou utiliser les valeurs par défaut
     chrome.storage.local.get(option, function (result) {
@@ -263,7 +249,7 @@ var options = Object.keys(defaultSettings);
         } else if (element.type === 'text') {
           if (option === 'apiKey') {
             // Get the current value of the API key
-            chrome.storage.local.get([option], function(result) {
+            chrome.storage.local.get([option], function (result) {
               // If the API key is not already defined
               if (!savedOptionValue) {
                 // Generate a random API key
@@ -280,8 +266,8 @@ var options = Object.keys(defaultSettings);
               }
             });
           } else {
-          // Utiliser la valeur sauvegardée si elle existe, sinon utiliser la valeur par défaut
-          element.value = savedOptionValue !== undefined ? savedOptionValue : defautOptionValue;
+            // Utiliser la valeur sauvegardée si elle existe, sinon utiliser la valeur par défaut
+            element.value = savedOptionValue !== undefined ? savedOptionValue : defautOptionValue;
           }
         }
       }
@@ -310,20 +296,20 @@ var options = Object.keys(defaultSettings);
       } else {
         console.log('Aucun élément trouvé avec l\'ID', option);
       }
-      
+
     });
 
-  var shortcuts={};
-  Object.entries(defaultShortcuts).forEach(([key, shortcut]) => {
-    let element = document.getElementById(key);
-    if (element) {
-      shortcuts[key] = element.innerHTML;
-    }
-    else {
-      console.log('Aucun élément avec l\'ID', key);
-    }
-  });
-  valuesToSave["shortcuts"] = shortcuts;
+    var shortcuts = {};
+    Object.entries(defaultShortcuts).forEach(([key, shortcut]) => {
+      let element = document.getElementById(key);
+      if (element) {
+        shortcuts[key] = element.innerHTML;
+      }
+      else {
+        console.log('Aucun élément avec l\'ID', key);
+      }
+    });
+    valuesToSave["shortcuts"] = shortcuts;
 
     chrome.storage.local.set(valuesToSave, function () {
       console.log('Sauvegardé avec succès');
@@ -347,9 +333,9 @@ var options = Object.keys(defaultSettings);
   // ajoute un bouton pour effacer les valeurs des textes de bienvenue
   var clearButton = document.createElement('button');
   clearButton.textContent = 'Raz textes de bienvenue';
-  clearButton.addEventListener('click', function() {
+  clearButton.addEventListener('click', function () {
     // Effacez les valeurs lorsque le bouton est cliqué
-    chrome.storage.local.remove(['lastExtensionVersion', 'firstStart', 'aprilFool', 'promptCompanionMessage'], function() {
+    chrome.storage.local.remove(['lastExtensionVersion', 'firstStart', 'aprilFool', 'promptCompanionMessage'], function () {
       console.log('Les valeurs ont été effacées avec succès');
     });
   });
@@ -381,7 +367,7 @@ var options = Object.keys(defaultSettings);
     let startDateStr = 'metrics-' + startDate.toISOString().split('T')[0];
 
     return new Promise((resolve, reject) => {
-      chrome.storage.local.get(null, function(items) {
+      chrome.storage.local.get(null, function (items) {
         let periodMetrics = { clicks: 0, drags: 0, keyStrokes: 0 };
         for (let key in items) {
           if (key.startsWith('metrics-') && key >= startDateStr && key !== 'metrics-globalMetrics') {
@@ -404,7 +390,7 @@ var options = Object.keys(defaultSettings);
     getMetricsForPeriod(30), // Last 30 days
     getMetricsForPeriod(365), // Last 365 days
     new Promise((resolve, reject) => { // Since installation
-      chrome.storage.local.get(['globalMetrics'], function(result) {
+      chrome.storage.local.get(['globalMetrics'], function (result) {
         resolve(result.globalMetrics || { clicks: 0, drags: 0, keyStrokes: 0 });
       });
     })
@@ -451,7 +437,7 @@ var options = Object.keys(defaultSettings);
     // prompt all metrics stored : add a button which calls getMetricsForPeriod("All")
     let allMetricsButton = document.createElement('button');
     allMetricsButton.textContent = 'Voir toutes les métriques dans la console';
-    allMetricsButton.addEventListener('click', function() {
+    allMetricsButton.addEventListener('click', function () {
       getMetricsForPeriod(400).then(allMetrics => {
         console.log('All Time metrics:', allMetrics);
       });
@@ -460,7 +446,7 @@ var options = Object.keys(defaultSettings);
 
 
 
-    
+
 
     document.body.appendChild(metricsElement);
   });
@@ -470,8 +456,8 @@ var options = Object.keys(defaultSettings);
 
 
   // affiche l'easter egg du 1er avril
-  chrome.storage.local.get(['aprilFool'], function(result) {
-    let aprilFoolDays = [1,2,3];
+  chrome.storage.local.get(['aprilFool'], function (result) {
+    let aprilFoolDays = [1, 2, 3];
     let aprilFoolMonth = 3;
     let currentDay = new Date().getDate();
     let currentMonth = new Date().getMonth();
@@ -489,9 +475,9 @@ var options = Object.keys(defaultSettings);
       aprilFoolButton.style.border = "none";
       aprilFoolButton.style.borderRadius = "4px";
       aprilFoolButton.style.cursor = "pointer";
-      aprilFoolButton.onclick = function() {
-          window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '_blank');
-          chrome.storage.local.set({aprilFool: true});
+      aprilFoolButton.onclick = function () {
+        window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '_blank');
+        chrome.storage.local.set({ aprilFool: true });
       };
       // Ajout du bouton à la page
       document.body.appendChild(aprilFoolButton);
@@ -501,7 +487,7 @@ var options = Object.keys(defaultSettings);
 
 
 function updateCompanionLogLink() {
-  chrome.storage.local.get(['apiKey', 'portCompanion', 'version'], function(result) {
+  chrome.storage.local.get(['apiKey', 'portCompanion', 'version'], function (result) {
     const apiKey = result.apiKey || '';
     const port = result.portCompanion || '';
     const version = result.version || '';
