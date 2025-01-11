@@ -11,7 +11,7 @@ function parseSettings(settings, callback) {
     options.forEach(option => {
       option.level = level;
       option.isSubOption = isSubOption;
-      console.log(`Option: ${option.name}, Niveau: ${option.level}, Sous-option: ${option.isSubOption}`);
+      // console.log(`Option: ${option.name}, Niveau: ${option.level}, Sous-option: ${option.isSubOption}`);
       callback(option);
       if (option.subOptions) {
         traverse(option.subOptions, level, true);
@@ -23,7 +23,7 @@ function parseSettings(settings, callback) {
     sections.forEach(section => {
       section.level = level;
       section.isSubOption = false;
-      console.log(`Section: ${section.name}, Niveau: ${section.level}`);
+      // console.log(`Section: ${section.name}, Niveau: ${section.level}`);
       callback(section);
       if (section.options) {
         traverse(section.options, level + 1);
@@ -37,7 +37,7 @@ function parseSettings(settings, callback) {
   settings.forEach(category => {
     category.level = 0;
     category.isSubOption = false;
-    console.log(`Catégorie: ${category.name}, Niveau: ${category.level}`);
+    // console.log(`Catégorie: ${category.name}, Niveau: ${category.level}`);
     callback(category);
     if (category.options) {
       traverse(category.options, 1);
@@ -57,7 +57,7 @@ chrome.storage.local.get('advancedDefaultSettings', function (data) {
 });
 
 function createInput(option) { // gestion des différents types d'input
-  // Par défaut, l'élément d'entrée est un "input"
+  // Crée un élément d'entrée en fonction du type d'option
   let inputType = 'input';
   if (['html', 'radio'].includes(option.type)) {
     inputType = 'div';
@@ -65,45 +65,64 @@ function createInput(option) { // gestion des différents types d'input
   const input = document.createElement(inputType);
   input.id = option.name;
 
-  switch (option.type) {
-    case 'bool':
-      input.type = 'checkbox';
-      input.checked = option.default;
-      break;
-    case 'text':
-      input.type = 'text';
-      input.value = option.default;
-      break;
-    case 'smalltext':
-      input.type = 'text';
-      input.size = 20;
-      input.style.width = 'auto';
-      input.value = option.default;
-      break;
-    case 'radio':
-      option.radioOptions.forEach(radioOption => {
-        const radioInput = document.createElement('input');
-        radioInput.type = 'radio';
-        radioInput.name = option.name;
-        radioInput.value = radioOption.value;
-        radioInput.checked = radioOption.value === option.default;
+  // Récupération de la valeur de l'option (sauvegardée ou par défaut)
+  getOptionValue(option).then(optionValue => {
+    switch (option.type) {
+      case 'bool':
+        input.type = 'checkbox';
+        input.checked = optionValue;
+        break;
+      case 'text':
+        input.type = 'text';
+        input.value = optionValue;
+        break;
+      case 'smalltext':
+        input.type = 'text';
+        input.size = 20;
+        input.style.width = 'auto';
+        input.value = optionValue;
+        break;
+      case 'radio':
+        input.classList.add('radio-group');
+        option.radioOptions.forEach(radioOption => {
+          const radioInput = document.createElement('input');
+          radioInput.type = 'radio';
+          radioInput.name = option.name;
+          radioInput.value = radioOption.value;
+          radioInput.checked = radioOption.value === optionValue;
+          // console.log("je check le bouton radio : ", radioOption.value, "avec la valeur par défaut : ", radioInput.checked);
 
-        const radioLabel = document.createElement('label');
-        radioLabel.innerHTML = radioOption.description;
-        radioLabel.setAttribute('for', radioOption.value);
+          const radioLabel = document.createElement('label');
+          radioLabel.innerHTML = radioOption.description;
+          radioLabel.setAttribute('for', radioOption.value);
 
-        input.appendChild(radioInput);
-        input.appendChild(radioLabel);
-        input.appendChild(document.createElement('br')); // Ajoute une nouvelle ligne après chaque option
-      });
-      break;
-    case 'html':
-      // c'est createLabel qui s'occupe de l'ajout de l'html
-      break;
-  }
+          input.appendChild(radioInput);
+          input.appendChild(radioLabel);
+          input.appendChild(document.createElement('br')); // Ajoute une nouvelle ligne après chaque option
+        });
+        break;
+      case 'html':
+        // c'est createLabel qui s'occupe de l'ajout de l'html
+        break;
+    }
+  });
 
   return input;
 }
+
+async function getOptionValue(option) {
+  const defautOptionValue = option.default;
+  const optionKey = option.name;
+
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(optionKey, (result) => {
+      const savedOptionValue = result[optionKey];
+      const valueToReturn = (savedOptionValue !== undefined) ? savedOptionValue : defautOptionValue;
+      resolve(valueToReturn);
+    });
+  });
+}
+
 
 function createLabel(option) {
   const label = document.createElement('span');
@@ -157,7 +176,6 @@ function generateOptionsHTML(settings) {
   let lastParentOption = null;
 
   parseSettings(settings, option => {
-    console.log("j'ajoute l'option nommée : ", option.name, "de niveau : ", option.level, "est une sous-option ? : ", option.isSubOption, "de type : ", option.type);
     const optionElement = createOptionElement(option);
     if (option.isSubOption) {
       lastParentOption.appendChild(optionElement);
@@ -172,11 +190,7 @@ function generateOptionsHTML(settings) {
 // 2 - Récupérer les valeurs par défaut du stockage et mettre à jour les éléments de la page
 chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (result) {
   // Les valeurs par défaut sont stockées background.js pour être utilisées dans les options et éviter de dupliquer le code
-
-  let defaultSettings = result.defaultSettings;
   let defaultShortcuts = result.defaultShortcuts;
-  console.log("[option.js] valeurs par défaut chargées : ", defaultSettings); // Affiche les valeurs par défaut
-  var options = Object.keys(defaultSettings);
 
   chrome.storage.local.get("shortcuts", function (result) {
     var table = document.createElement('table');
@@ -270,78 +284,30 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
     });
   }
 
-  var options = Object.keys(defaultSettings);
-  options.forEach(function (option) {
-    // // D'abord récupérer les valeurs stockées ou utiliser les valeurs par défaut
-    chrome.storage.local.get(option, function (result) {
-      let savedOptionValue = result[option];
-      let defautOptionValue = defaultSettings[option];
 
 
-      // ici on gère les boutons radio
-      var elements = document.querySelectorAll('input[name="' + option + '"]');
-      if (elements) {
-        elements.forEach(element => {
-          if (savedOptionValue === undefined && defautOptionValue === element.id) {
-            element.checked = true;
-          } else if (savedOptionValue === element.id) {
-            element.checked = savedOptionValue === element.id;
-          }
-        });
-      }
-
-
-
-      var element = document.getElementById(option);
-      if (element) {
-        if (element.type === 'checkbox') {
-          // Utiliser la valeur sauvegardée si elle existe, sinon utiliser la valeur par défaut
-          element.checked = savedOptionValue !== undefined ? savedOptionValue : defautOptionValue;
-        } else if (element.type === 'text') {
-          if (option === 'apiKey') {
-            // Get the current value of the API key
-            chrome.storage.local.get([option], function (result) {
-              // If the API key is not already defined
-              if (!savedOptionValue) {
-                // Generate a random API key
-                var apiKey = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-                element.value = apiKey;
-
-                // Save the new API key
-                chrome.storage.local.set({ [option]: apiKey }, function () {
-                  console.log(option, 'successfully saved with a random value', apiKey);
-                });
-              } else {
-                // Use the saved value if it exists, otherwise use the default value
-                element.value = savedOptionValue
-              }
-            });
-          } else {
-            // Utiliser la valeur sauvegardée si elle existe, sinon utiliser la valeur par défaut
-            element.value = savedOptionValue !== undefined ? savedOptionValue : defautOptionValue;
-          }
+  function getSelectedRadioValue(groupId) {
+    const radioGroup = document.getElementById(groupId);
+    if (radioGroup) {
+      const radios = radioGroup.querySelectorAll('input[type="radio"]');
+      for (const radio of radios) {
+        if (radio.checked) {
+          return radio.value;
         }
       }
-    });
-  });
-
-
+    }
+    return null; // Aucun bouton radio sélectionné
+  }
 
   // Enregistrement des valeurs dans le stockage local lors du click sur id=save
   document.getElementById('save').addEventListener('click', function () {
+    var options = Object.keys(result.defaultSettings);
     var valuesToSave = {};
     options.forEach(function (option) {
-      // d'abord les boutons radio
-      let radioStatusElement = document.querySelector('input[name="' + option + '"]:checked');
-      if (radioStatusElement) {
-        valuesToSave[option] = radioStatusElement.id;
-      }
-
-
-
-      // puis le reste
       let element = document.getElementById(option);
-      if (element) { // Vérifiez si l'élément existe
+      if (element.classList.contains('radio-group')) {
+        valuesToSave[option] = getSelectedRadioValue(option);
+      } else if (element) { // Vérifiez si l'élément existe
         var value = element.type === 'checkbox' ? element.checked : element.value;
         valuesToSave[option] = value;
       } else {
@@ -393,24 +359,6 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
 
   // Ajoutez le bouton à la page
   document.body.appendChild(clearButton);
-
-  // // affiche une info en fin de page avec les métriques utilisateur stockées
-  // fonctions suivantes désactivées car elles sont présentes à des fins de test uniquement
-  // // effacer les métriques
-  // function clearMetrics() {
-  //   // Clear all existing metrics
-  //   chrome.storage.local.clear(() => {
-  //     console.log('All existing metrics cleared');
-  //   });
-  // }
-
-  // // Add a button for clearing metrics
-  // let clearMetricsButton = document.createElement('button');
-  // clearMetricsButton.textContent = 'Effacer toutes les métriques';
-  // clearMetricsButton.addEventListener('click', clearMetrics);
-  // document.body.appendChild(clearMetricsButton);
-
-
 
   function getMetricsForPeriod(periodDays) {
     let startDate = new Date();
@@ -485,50 +433,6 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
         <td>${totalMetrics.keyStrokes}</td>
       </tr>
     `;
-    // // prompt all metrics stored : add a button which calls getMetricsForPeriod("All")
-    // let allMetricsButton = document.createElement('button');
-    // allMetricsButton.textContent = 'Voir toutes les métriques dans la console';
-    // allMetricsButton.addEventListener('click', function () {
-    //   getMetricsForPeriod(400).then(allMetrics => {
-    //     console.log('All Time metrics:', allMetrics);
-    //   });
-    // });
-    // metricsElement.appendChild(allMetricsButton);
-
-    // document.body.appendChild(metricsElement);
-  });
-
-
-
-
-
-  // affiche l'easter egg du 1er avril
-  chrome.storage.local.get(['aprilFool'], function (result) {
-    let aprilFoolDays = [1, 2, 3];
-    let aprilFoolMonth = 3;
-    let currentDay = new Date().getDate();
-    let currentMonth = new Date().getMonth();
-
-
-    // Easter egg pour le premier avril :) A usage unique.
-    if (!result.aprilFool && currentMonth === aprilFoolMonth && aprilFoolDays.includes(currentDay)) {
-      console.log('April fool');
-      // Création du bouton
-      let aprilFoolButton = document.createElement('button');
-      aprilFoolButton.innerHTML = "Vous avez trouvé l'🥚 !";
-      aprilFoolButton.style.backgroundColor = "#4CAF50";
-      aprilFoolButton.style.color = "white";
-      aprilFoolButton.style.padding = "0.5em 1em";
-      aprilFoolButton.style.border = "none";
-      aprilFoolButton.style.borderRadius = "4px";
-      aprilFoolButton.style.cursor = "pointer";
-      aprilFoolButton.onclick = function () {
-        window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '_blank');
-        chrome.storage.local.set({ aprilFool: true });
-      };
-      // Ajout du bouton à la page
-      document.body.appendChild(aprilFoolButton);
-    }
   });
 });
 

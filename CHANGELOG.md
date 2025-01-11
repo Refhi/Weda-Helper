@@ -20,6 +20,10 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#295](https://github.com/Refhi/Weda-Helper/issues/295) - l'affichage automatique des atcd fonctionnent à nouveau
 - [#315](https://github.com/Refhi/Weda-Helper/issues/315) - Amélioration des boutons FSE dégradée et Téléconsultation dans la FSE + ajout de raccourcis claviers
 
+## Refactory :
+- [#325](https://github.com/Refhi/Weda-Helper/issues/325) - Amélioration de la gestion des options
+
+
 # [2.8.0.1] - ajout du message video
 
 
