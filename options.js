@@ -208,6 +208,7 @@ chrome.storage.local.get('defaultShortcuts', function (result) {
       var buttonContainer = document.createElement('td');
       var button = document.createElement('button');
       button.innerHTML = savedShortcut ? savedShortcut : defaultShortcutValue;
+      button.setAttribute('data-initial-text', button.innerHTML); // Stocker le texte initial
       button.onclick = shortcutClicked;
       button.id = key;
       buttonContainer.appendChild(button);
@@ -231,15 +232,18 @@ chrome.storage.local.get('defaultShortcuts', function (result) {
   }
 
   function shortcutClicked(buttonEvent) {
-    // Désactiver la classe 'modifying' sur tous les autres boutons
+    // Désactiver la classe 'modifying' sur tous les autres boutons et restaurer leur texte initial
     document.querySelectorAll('button.modifying').forEach(button => {
       button.classList.remove('modifying');
+      button.innerHTML = button.getAttribute('data-initial-text'); // Restaurer le texte initial
     });
 
     // Désactiver tous les écouteurs de touches existants
     hotkeys.unbind('*');
-    buttonEvent.target.innerHTML = "Appuyez sur une touche de fonction ou une combinaison de touches";
+
+    buttonEvent.target.innerHTML = 'Appuyez sur une touche de fonction ou une combinaison de touches';
     buttonEvent.target.classList.add('modifying');
+    
     hotkeys('*', function (event, handler) { // On écoute toutes les pressions de touche
       function saveShortcut(keys) {
         var shortcut = "";
