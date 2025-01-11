@@ -187,7 +187,7 @@ function generateOptionsHTML(settings) {
 }
 
 
-// 2 - Récupérer les valeurs par défaut des raccourcis
+// 2 - Récupérer les valeurs par défaut des raccourcis + gestion des modifications des raccourcis
 chrome.storage.local.get('defaultShortcuts', function (result) {
   let defaultShortcuts = result.defaultShortcuts;
   // Les valeurs par défaut sont stockées background.js pour être utilisées dans les options et éviter de dupliquer le code
@@ -238,7 +238,7 @@ chrome.storage.local.get('defaultShortcuts', function (result) {
 
     // Désactiver tous les écouteurs de touches existants
     hotkeys.unbind('*');
-
+    buttonEvent.target.innerHTML = "Appuyez sur une touche de fonction ou une combinaison de touches";
     buttonEvent.target.classList.add('modifying');
     hotkeys('*', function (event, handler) { // On écoute toutes les pressions de touche
       function saveShortcut(keys) {
@@ -300,7 +300,6 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
       } else {
         console.log('Aucun élément trouvé avec l\'ID', option);
       }
-
     });
 
     let defaultShortcuts = result.defaultShortcuts;
@@ -321,9 +320,10 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
       alert('Les options ont été sauvegardées avec succès');
       console.log(valuesToSave);
     });
-
   });
 });
+
+
 function getSelectedRadioValue(groupId) {
   const radioGroup = document.getElementById(groupId);
   if (radioGroup) {
@@ -351,7 +351,7 @@ changeTitle();
 
 
 
-// 5 - ajoute un bouton pour effacer les valeurs des textes de bienvenue
+// 5 - ajoute un bouton pour effacer les valeurs des textes de bienvenue et raz les paramètres
 var clearButton = document.createElement('button');
 clearButton.textContent = 'Raz textes de bienvenue';
 clearButton.addEventListener('click', function () {
@@ -386,6 +386,65 @@ function getMetricsForPeriod(periodDays) {
     });
   });
 }
+
+// Ajout d'un bouton pour effacer les raccourcis clavier et donc les remettre par défaut
+var clearShortcutsButton = document.createElement('button');
+clearShortcutsButton.textContent = 'Raz raccourcis clavier';
+clearShortcutsButton.addEventListener('click', function () {
+  if (!confirm('Êtes-vous sûr de vouloir réinitialiser les raccourcis clavier ?')) {
+    return;
+  }
+  // Effacez les valeurs lorsque le bouton est cliqué
+  chrome.storage.local.get('defaultShortcuts', function (result) {
+    let defaultShortcuts = result.defaultShortcuts;
+    let shortcutsToReset = {};
+
+    // Remplacer les raccourcis actuels par les valeurs par défaut
+    Object.keys(defaultShortcuts).forEach(function (key) {
+      shortcutsToReset[key] = defaultShortcuts[key].default;
+    });
+
+    // Enregistrer les valeurs mises à jour dans le stockage local de Chrome
+    chrome.storage.local.set({ "shortcuts": shortcutsToReset }, function () {
+      console.log('Les raccourcis ont été réinitialisés avec succès');
+      alert('Les raccourcis ont été réinitialisés avec succès');
+      // recharge la page
+      location.reload();
+    });
+  });
+});
+
+// Ajout du bouton à l'interface utilisateur
+document.body.appendChild(clearShortcutsButton);
+
+// Ajout d'un bouton pour effacer les settings et donc les remettre par défaut
+var clearSettingsButton = document.createElement('button');
+clearSettingsButton.textContent = 'Raz paramètres';
+clearSettingsButton.addEventListener('click', function () {
+  // demander confirmation
+  if (!confirm('Êtes-vous sûr de vouloir réinitialiser les paramètres ?')) {
+    return;
+  }
+  // Effacez les valeurs lorsque le bouton est cliqué
+  chrome.storage.local.get('defaultSettings', function (result) {
+    let defaultSettings = result.defaultSettings;
+
+    // Remplacer les settings actuels par les valeurs par défaut
+    Object.keys(defaultSettings).forEach(function (key) {
+      console.log('Je travaille sur la clé : ', key);
+      chrome.storage.local.remove(key, function () {
+        console.log('Clé supprimée : ', key);
+      });
+    });
+
+    alert('Les paramètres ont été réinitialisés avec succès');
+    location.reload();
+  });
+});
+
+// Ajout du bouton à l'interface utilisateur
+document.body.appendChild(clearSettingsButton);
+
 
 // 6 - Affichage des métriques
 Promise.all([
