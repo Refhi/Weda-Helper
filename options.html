@@ -1,94 +1,127 @@
 <!-- Description: Page d'options de Weda-Helper -->
 <!DOCTYPE html>
 <html>
+
 <head>
-  <meta charset="UTF-8">
-  <style>
-      body {
-          font-family: Arial, sans-serif;
-          margin-bottom: 70px;
-      }
-      .form-group {
-          margin-bottom: 1em;
-      }
-      table {
-        border-collapse: collapse;
-      }
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin-bottom: 70px;
+        }
 
-      td, th {
-        border: 1px solid #dddddd;
-        text-align: left;
-        padding: 8px;
-      }
+        .form-group {
+            margin-bottom: 1em;
+        }
 
-      label {
-          display: block;
-          margin-bottom: 0.5em;
-      }
-      input[type="text"], input[type="checkbox"] {
-          margin-bottom: 0.5em;
-      }
-      input[type="text"] {
-          width: 100%;
-          padding: 0.5em;
-          border: 1px solid #ccc;
-          border-radius: 4px;
-      }
-      button {
-          background-color: #4CAF50;
-          color: white;
-          padding: 0.5em 1em;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-      }
-      button:hover {
-          background-color: #45a049;
-      }
-      button.modifying {
-          background-color: #007bff;
-      }
-      button.modifying:hover {
-          background-color: #0069d9;
-      }
-      input[type="radio"] {
-          display: inline-block;
-          margin-right: 10px;
-      }
+        .sub-options {
+            margin-left: 20px;
+        }
 
-      div[style*="display: flex; align-items: center;"] label {
-          display: inline;
-          margin-bottom: -0.5em;
-      }
-      #save {
-        position: fixed;
-        bottom: 5px; /* Ajustez cette valeur pour tenir compte de la marge */
-        left: 5px; /* Ajustez cette valeur pour tenir compte de la marge */
-        padding: 15px;
-        font-size: 15px;
-        margin: 5px;
-      }
-  </style>
+        table {
+            border-collapse: collapse;
+        }
+
+        td,
+        th {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 8px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5em;
+        }
+
+        input[type="text"],
+        input[type="checkbox"] {
+            margin-bottom: 0.5em;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 0.5em;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 0.5em 1em;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button.modifying {
+            background-color: #007bff;
+        }
+
+        button.modifying:hover {
+            background-color: #0069d9;
+        }
+
+        input[type="radio"] {
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        div[style*="display: flex; align-items: center;"] label {
+            display: inline;
+            margin-bottom: -0.5em;
+        }
+
+        #save {
+            position: fixed;
+            bottom: 5px;
+            /* Ajustez cette valeur pour tenir compte de la marge */
+            left: 5px;
+            /* Ajustez cette valeur pour tenir compte de la marge */
+            padding: 15px;
+            font-size: 15px;
+            margin: 5px;
+        }
+    </style>
 </head>
+
 <body>
-  <!-- Titre de la page et numéro de version -->
-  <h1 id="MainTitle">Options de Weda-Helper</h1>
-  <p>Bienvenue dans les options de Weda-Helper !</p>
-  <p> Weda-Helper et son companion sont entièrement gratuits et open-source. Ils sont développés par <a href="https://github.com/Refhi" target="_blank">Refhi</a>, un médecin Euroi, et <a href="https://github.com/Abeldvlpr" target="_blank">Abeldvlpr</a>, un médecin Toulousain</p>
-  <p>Vous pouvez ici activer ou désactiver les fonctionnalités de Weda-Helper selon vos besoins.</p>
-  <p>Pour accéder au code source de Weda-Helper, suggérer des fonctionnalités ou signaler des bugs, c'est par ici : <a href="https://github.com/Refhi/Weda-Helper" target="_blank">https://github.com/Refhi/Weda-Helper</a> et <a href="https://github.com/Refhi/Weda-Helper-Companion" target="_blank">https://github.com/Refhi/Weda-Helper-Companion</a></p>
-  <p>Si vous souhaitez faire des remarques plus générales ou simplement exprimer votre soutien, c'est par là : <a href="https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/td-p/2791" target="_blank">https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/td-p/2791</a></p>
-  <p>Et enfin si vous souhaitez soutenir le développement de Weda-Helper, vous pouvez également faire un don via PayPal : <a href="https://www.paypal.com/paypalme/refhi" target="_blank">https://www.paypal.com/paypalme/refhi</a> (Pour un encouragement à l'attention d'Abel, le <a href="https://communaute.weda.fr/t5/user/viewprofilepage/user-id/186" target="_blank">contacter directement sur le site de la communauté</a>)</p>
-  <!-- Point d'insertion pour les options avancées, généré automatiquement depuis advancedDefaultSettings de background.js -->
-  <!-- cf. options.js -->
-  <div id="advanced-options"></div>
-  <!-- Point d'insertion pour les racourcis clavier, généré automatiquement depuis defaultShortcuts de background.js -->
-  <!-- cf. options.js -->
-  <h2>Raccourcis</h2>
-  <div id="shortcuts"></div>
-  </br>
-  <button id="save">Enregistrer</button>
-  <script src="options.js"></script>
-  <script src="lib/hotkeys.js"></script>
+    <!-- Titre de la page et numéro de version -->
+    <h1 id="MainTitle">Options de Weda-Helper</h1>
+    <p>Bienvenue dans les options de Weda-Helper !</p>
+    <p> Weda-Helper et son companion sont entièrement gratuits et open-source. Ils sont développés par <a
+            href="https://github.com/Refhi" target="_blank">Refhi</a>, un médecin Euroi, et <a
+            href="https://github.com/Abeldvlpr" target="_blank">Abeldvlpr</a>, un médecin Toulousain</p>
+    <p>Vous pouvez ici activer ou désactiver les fonctionnalités de Weda-Helper selon vos besoins.</p>
+    <p>Pour accéder au code source de Weda-Helper, suggérer des fonctionnalités ou signaler des bugs, c'est par ici : <a
+            href="https://github.com/Refhi/Weda-Helper" target="_blank">https://github.com/Refhi/Weda-Helper</a> et <a
+            href="https://github.com/Refhi/Weda-Helper-Companion"
+            target="_blank">https://github.com/Refhi/Weda-Helper-Companion</a></p>
+    <p>Si vous souhaitez faire des remarques plus générales ou simplement exprimer votre soutien, c'est par là : <a
+            href="https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/td-p/2791"
+            target="_blank">https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/td-p/2791</a>
+    </p>
+    <p>Et enfin si vous souhaitez soutenir le développement de Weda-Helper, vous pouvez également faire un don via
+        PayPal : <a href="https://www.paypal.com/paypalme/refhi"
+            target="_blank">https://www.paypal.com/paypalme/refhi</a> (Pour un encouragement à l'attention d'Abel, le <a
+            href="https://communaute.weda.fr/t5/user/viewprofilepage/user-id/186" target="_blank">contacter directement
+            sur le site de la communauté</a>)</p>
+    <!-- Point d'insertion pour les options avancées, généré automatiquement depuis advancedDefaultSettings de background.js -->
+    <!-- cf. options.js -->
+    <div id="advanced-options"></div>
+    <!-- Point d'insertion pour les racourcis clavier, généré automatiquement depuis defaultShortcuts de background.js -->
+    <!-- cf. options.js -->
+    <h2>Raccourcis</h2>
+    <div id="shortcuts"></div>
+    </br>
+    <button id="save">Enregistrer</button>
+    <script src="options.js"></script>
+    <script src="lib/hotkeys.js"></script>
 </body>
+
 </html>

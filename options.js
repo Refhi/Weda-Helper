@@ -78,9 +78,7 @@ function createOptionElement(option) {
   const optionDiv = document.createElement('div');
   optionDiv.classList.add('option');
 
-  const label = document.createElement('label');
-  label.innerHTML = option.description; // Utilisez innerHTML pour insérer du HTML
-  label.setAttribute('for', option.name);
+  const label = createLabel(option);
   optionDiv.appendChild(label);
 
   const input = createInput(option);
@@ -91,17 +89,8 @@ function createOptionElement(option) {
       subOptionsDiv.classList.add('sub-options');
 
       option.subOptions.forEach(subOption => {
-          const subOptionDiv = document.createElement('div');
+          const subOptionDiv = createOptionElement(subOption);
           subOptionDiv.classList.add('sub-option');
-
-          const subLabel = document.createElement('label');
-          subLabel.innerHTML = subOption.description; // Utilisez innerHTML pour insérer du HTML
-          subLabel.setAttribute('for', subOption.name);
-          subOptionDiv.appendChild(subLabel);
-
-          const subInput = createInput(subOption);
-          subOptionDiv.appendChild(subInput);
-
           subOptionsDiv.appendChild(subOptionDiv);
       });
 
@@ -109,6 +98,13 @@ function createOptionElement(option) {
   }
 
   return optionDiv;
+}
+
+function createLabel(option) {
+  const label = document.createElement('label');
+  label.innerHTML = option.description; // Utilisez innerHTML pour insérer du HTML
+  label.setAttribute('for', option.name);
+  return label;
 }
 
 function generateOptionsHTML(settings) {
