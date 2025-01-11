@@ -9,16 +9,14 @@
  * Structure:
  * - name: Nom de la catégorie d'options
  * - description: Description de la catégorie d'options
+ * - type: Type de la catégorie (title)
+ * - sections: Liste des sections de la catégorie
  * - options: Liste des options de la catégorie
  *   - name: Nom de l'option
- *   - type: Type de l'option (bool, text, html, radio)
+ *   - type: Type de l'option (bool, text, smalltext, html, radio)
  *   - description: Description de l'option
  *   - default: Valeur par défaut de l'option
- *   - subOptions: (optionnel) Liste des sous-options
- *     - name: Nom de la sous-option
- *     - type: Type de la sous-option
- *     - description: Description de la sous-option
- *     - default: Valeur par défaut de la sous-option
+ *   - subOptions: (optionnel) Liste des sous-options au même format
  */
 
 // var settings = [{
@@ -35,13 +33,16 @@
 
 const TYPE_BOOL = "bool";
 const TYPE_TEXT = "text";
+const TYPE_SMALLTEXT = "smalltext";
 const TYPE_HTML = "html";
 const TYPE_RADIO = "radio";
+const TYPE_TITLE = "title";
 
 
 var advancedDefaultSettings = [{
     "name": "Options générales",
     "description": "Des options générales valables partout",
+    "type": TYPE_TITLE,
     "options": [{
         "name": "TweakImports",
         "type": TYPE_BOOL,
@@ -151,7 +152,7 @@ var advancedDefaultSettings = [{
         "default": false
     }, {
         "name": "preAlertATCD",
-        "type": TYPE_TEXT,
+        "type": TYPE_SMALLTEXT,
         "description": "Affiche la date d'alerte de l'antécédent en orange si la date est dans moins de x mois (6 par défaut, 0 pour désactiver).",
         "default": 6
     }, {
@@ -174,6 +175,7 @@ var advancedDefaultSettings = [{
 }, {
     "name": "Options de consultation",
     "description": "Des options spécifiques aux consultations",
+    "type": TYPE_TITLE,
     "options": [{
         "name": "TweakTabConsultation",
         "type": TYPE_BOOL,
@@ -203,6 +205,7 @@ var advancedDefaultSettings = [{
 }, {
     "name": "Options de prescription",
     "description": "Des options spécifiques aux prescriptions",
+    "type": TYPE_TITLE,
     "options": [{
         "name": "TweakTabPrescription",
         "type": TYPE_BOOL,
@@ -227,6 +230,7 @@ var advancedDefaultSettings = [{
 }, {
     "name": "Options d'ordonnance numérique",
     "description": "Des options spécifiques aux ordonnances numériques",
+    "type": TYPE_TITLE,
     "options": [{
         "name": "autoSelectTypeOrdoNum",
         "type": TYPE_BOOL,
@@ -262,6 +266,7 @@ var advancedDefaultSettings = [{
 }, {
     "name": "Options de cochage/décochage automatique",
     "description": "Pour que le décochage fonctionne, au moins une des deux options doit être activée. Cf. https://secure.weda.fr/FolderSetting/PreferenceForm.aspx pour activer/désactiver l'ensemble",
+    "type": TYPE_TITLE,
     "options": [{
         "name": "NumPresPrescription",
         "type": TYPE_BOOL,
@@ -276,6 +281,7 @@ var advancedDefaultSettings = [{
 }, {
     "name": "Options de recherche médicale",
     "description": "Des options spécifiques à la recherche médicale",
+    "type": TYPE_TITLE,
     "options": [{
         "name": "keepMedSearch",
         "type": TYPE_BOOL,
@@ -361,6 +367,7 @@ var advancedDefaultSettings = [{
 }, {
     "name": "Options de Courrier",
     "description": "Des options spécifiques aux courriers",
+    "type": TYPE_TITLE,
     "options": [{
         "name": "autoSelectMT",
         "type": TYPE_BOOL,
@@ -370,6 +377,7 @@ var advancedDefaultSettings = [{
 }, {
     "name": "Options de FSE",
     "description": "Des options spécifiques aux FSE",
+    "type": TYPE_TITLE,
     "options": [{
         "name": "defaultCotation",
         "type": TYPE_BOOL,
@@ -414,6 +422,7 @@ var advancedDefaultSettings = [{
 }, {
     "name": "Lien avec Weda-Helper-Companion",
     "description": "Options de connexion et d'impression automatique via le Companion",
+    "type": TYPE_TITLE,
     "options": [{
         "name": "log vers le companion",
         "type": TYPE_HTML,
@@ -421,19 +430,21 @@ var advancedDefaultSettings = [{
     }],
     "sections": [{
         "name": "Options de connexion",
+        "type": TYPE_TITLE,
         "options": [{
             "name": "portCompanion",
-            "type": TYPE_TEXT,
+            "type": TYPE_SMALLTEXT,
             "description": "Port Weda-Helper-Companion (default 4821) cf. https://github.com/Refhi/Weda-Helper-Companion doit être le même ici et dans le Companion.",
             "default": "4821"
         }, {
             "name": "apiKey",
-            "type": TYPE_TEXT,
+            "type": TYPE_SMALLTEXT,
             "description": "Clé API. Doit être identique à celle du Companion (normalement fait automatiquement lors de la première requête au Companion).",
             "default": "votre clé API par défaut"
         }],
     }, {
         "name": "Options d'impression automatique",
+        "type": TYPE_TITLE,
         "options": [{
             "name": "RemoveLocalCompanionPrint",
             "type": TYPE_BOOL,
@@ -455,10 +466,22 @@ var advancedDefaultSettings = [{
             "type": TYPE_RADIO,
             "description": "Comportement après une impression automatique par le Companion.",
             "default": "closePreview",
-            "options": ["Ne rien faire", "Fermer la fenêtre de prévisualisation", "Retourner au dossier"]
+            // Ici on devrait avoir 'closePreview', 'returnToPatient' et 'doNothing' avec les descriptions associées :
+            // "Fermer la fenêtre de prévisualisation", "Retourner au dossier", "Ne rien faire"
+            "radioOptions": [{
+                "value": "closePreview",
+                "description": "Fermer la fenêtre de prévisualisation"
+            }, {
+                "value": "returnToPatient",
+                "description": "Retourner au dossier"
+            }, {
+                "value": "doNothing",
+                "description": "Ne rien faire"
+            }]
         }],
     }, {
         "name": "Lien avec le TPE",
+        "type": TYPE_TITLE,
         "options": [{
             "name": "RemoveLocalCompanionTPE",
             "type": TYPE_BOOL,
@@ -516,7 +539,7 @@ function validateSettings(settings) {
         if (!option.name || typeof option.name !== 'string') {
             errors.push(`Erreur dans l'option: 'name' est manquant ou n'est pas une chaîne de caractères.`);
         }
-        if (!option.type || ![TYPE_BOOL, TYPE_TEXT, TYPE_HTML, TYPE_RADIO].includes(option.type)) {
+        if (!option.type || ![TYPE_BOOL, TYPE_TEXT, TYPE_HTML, TYPE_RADIO, TYPE_SMALLTEXT].includes(option.type)) {
             errors.push(`Erreur dans l'option '${option.name}': 'type' est manquant ou invalide.`);
         }
         if (!option.description || typeof option.description !== 'string') {

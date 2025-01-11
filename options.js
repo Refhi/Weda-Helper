@@ -6,12 +6,12 @@
  * @param {Function} callback - La fonction de rappel à appliquer à chaque option.
  * Utilise la variable advancedDefaultSettings présente dans le fichier background.js
  */
-function parseOptions(settings, callback) {
+function parseSettings(settings, callback) {
   function traverse(options, level, isSubOption = false) {
     options.forEach(option => {
       option.level = level;
       option.isSubOption = isSubOption;
-      // console.log(`Option: ${option.name}, Niveau: ${option.level}, Sous-option: ${option.isSubOption}`);
+      console.log(`Option: ${option.name}, Niveau: ${option.level}, Sous-option: ${option.isSubOption}`);
       callback(option);
       if (option.subOptions) {
         traverse(option.subOptions, level, true);
@@ -21,6 +21,10 @@ function parseOptions(settings, callback) {
 
   function traverseSections(sections, level) {
     sections.forEach(section => {
+      section.level = level;
+      section.isSubOption = false;
+      console.log(`Section: ${section.name}, Niveau: ${section.level}`);
+      callback(section);
       if (section.options) {
         traverse(section.options, level + 1);
       }
@@ -31,11 +35,15 @@ function parseOptions(settings, callback) {
   }
 
   settings.forEach(category => {
+    category.level = 0;
+    category.isSubOption = false;
+    console.log(`Catégorie: ${category.name}, Niveau: ${category.level}`);
+    callback(category);
     if (category.options) {
-      traverse(category.options, 0);
+      traverse(category.options, 1);
     }
     if (category.sections) {
-      traverseSections(category.sections, 0);
+      traverseSections(category.sections, 1);
     }
   });
 }
@@ -49,7 +57,11 @@ chrome.storage.local.get('advancedDefaultSettings', function (data) {
 });
 
 function createInput(option) {
-  const input = document.createElement(option.type === 'html' ? 'div' : 'input');
+  let inputType = 'input';
+  if (['html', 'radio'].includes(option.type)) {
+    inputType = 'div';
+  }
+  const input = document.createElement(inputType);
   input.id = option.name;
 
   switch (option.type) {
@@ -61,9 +73,28 @@ function createInput(option) {
       input.type = 'text';
       input.value = option.default;
       break;
-    case 'radio':
-      input.type = 'radio';
+    case 'smalltext':
+      input.type = 'text';
+      input.size = 20;
+      input.style.width = 'auto';
       input.value = option.default;
+      break;
+    case 'radio':
+      option.radioOptions.forEach(radioOption => {
+        const radioInput = document.createElement('input');
+        radioInput.type = 'radio';
+        radioInput.name = option.name;
+        radioInput.value = radioOption.value;
+        radioInput.checked = radioOption.value === option.default;
+
+        const radioLabel = document.createElement('label');
+        radioLabel.innerHTML = radioOption.description;
+        radioLabel.setAttribute('for', radioOption.value);
+
+        input.appendChild(radioInput);
+        input.appendChild(radioLabel);
+        input.appendChild(document.createElement('br')); // Ajoute une nouvelle ligne après chaque option
+      });
       break;
     case 'html':
       input.innerHTML = option.description;
@@ -84,15 +115,29 @@ function createOptionElement(option) {
   const optionDiv = document.createElement('div');
   optionDiv.classList.add('option');
 
-  const input = createInput(option);
-  optionDiv.appendChild(input);
+  if (option.type === 'title') {
+    const title = document.createElement(`h${Math.min(6, 1 + option.level)}`);
+    title.textContent = option.name;
+    optionDiv.appendChild(title);
 
-  const label = createLabel(option);
-  optionDiv.appendChild(label);
+    if (option.description) {
+      const subtitle = document.createElement('p');
+      subtitle.textContent = option.description;
+      subtitle.classList.add('subtitle');
+      optionDiv.appendChild(subtitle);
+    }
+  } else {
+    const input = createInput(option);
+    optionDiv.appendChild(input);
 
-  if (option.isSubOption) {
-    optionDiv.classList.add('sub-option');
+    const label = createLabel(option);
+    optionDiv.appendChild(label);
+
+    if (option.isSubOption) {
+      optionDiv.classList.add('sub-option');
+    }
   }
+
   return optionDiv;
 }
 
@@ -102,8 +147,8 @@ function generateOptionsHTML(settings) {
 
   let lastParentOption = null;
 
-  parseOptions(settings, option => {
-    console.log("j'ajoute l'option nommée : ", option.name, "de niveau : ", option.level, "est une sous-option ? : ", option.isSubOption);
+  parseSettings(settings, option => {
+    console.log("j'ajoute l'option nommée : ", option.name, "de niveau : ", option.level, "est une sous-option ? : ", option.isSubOption, "de type : ", option.type);
     const optionElement = createOptionElement(option);
     if (option.isSubOption) {
       lastParentOption.appendChild(optionElement);
