@@ -485,21 +485,17 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
         <td>${totalMetrics.keyStrokes}</td>
       </tr>
     `;
-    // prompt all metrics stored : add a button which calls getMetricsForPeriod("All")
-    let allMetricsButton = document.createElement('button');
-    allMetricsButton.textContent = 'Voir toutes les métriques dans la console';
-    allMetricsButton.addEventListener('click', function () {
-      getMetricsForPeriod(400).then(allMetrics => {
-        console.log('All Time metrics:', allMetrics);
-      });
-    });
-    metricsElement.appendChild(allMetricsButton);
+    // // prompt all metrics stored : add a button which calls getMetricsForPeriod("All")
+    // let allMetricsButton = document.createElement('button');
+    // allMetricsButton.textContent = 'Voir toutes les métriques dans la console';
+    // allMetricsButton.addEventListener('click', function () {
+    //   getMetricsForPeriod(400).then(allMetrics => {
+    //     console.log('All Time metrics:', allMetrics);
+    //   });
+    // });
+    // metricsElement.appendChild(allMetricsButton);
 
-
-
-
-
-    document.body.appendChild(metricsElement);
+    // document.body.appendChild(metricsElement);
   });
 
 
