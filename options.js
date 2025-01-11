@@ -187,11 +187,10 @@ function generateOptionsHTML(settings) {
 }
 
 
-// 2 - Récupérer les valeurs par défaut du stockage et mettre à jour les éléments de la page
-chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (result) {
-  // Les valeurs par défaut sont stockées background.js pour être utilisées dans les options et éviter de dupliquer le code
+// 2 - Récupérer les valeurs par défaut des raccourcis
+chrome.storage.local.get('defaultShortcuts', function (result) {
   let defaultShortcuts = result.defaultShortcuts;
-
+  // Les valeurs par défaut sont stockées background.js pour être utilisées dans les options et éviter de dupliquer le code
   chrome.storage.local.get("shortcuts", function (result) {
     var table = document.createElement('table');
     let node = document.getElementById('shortcuts');
@@ -283,25 +282,13 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
       }
     });
   }
+});
 
-
-
-  function getSelectedRadioValue(groupId) {
-    const radioGroup = document.getElementById(groupId);
-    if (radioGroup) {
-      const radios = radioGroup.querySelectorAll('input[type="radio"]');
-      for (const radio of radios) {
-        if (radio.checked) {
-          return radio.value;
-        }
-      }
-    }
-    return null; // Aucun bouton radio sélectionné
-  }
-
-  // Enregistrement des valeurs dans le stockage local lors du click sur id=save
+// 3 - Enregistrement des valeurs dans le stockage local lors du click sur id=save
+chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (result) {
+  var defaultSettings = result.defaultSettings;
   document.getElementById('save').addEventListener('click', function () {
-    var options = Object.keys(result.defaultSettings);
+    var options = Object.keys(defaultSettings);
     var valuesToSave = {};
     options.forEach(function (option) {
       let element = document.getElementById(option);
@@ -316,6 +303,7 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
 
     });
 
+    let defaultShortcuts = result.defaultShortcuts;
     var shortcuts = {};
     Object.entries(defaultShortcuts).forEach(([key, shortcut]) => {
       let element = document.getElementById(key);
@@ -335,108 +323,125 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
     });
 
   });
-
-
-  function changeTitle() {
-    let manifest = chrome.runtime.getManifest();
-    let version = manifest.version;
-    console.log(version);
-    let explanationText = document.getElementById('MainTitle');
-    explanationText.textContent = `Weda-Helper version ${version}`;
+});
+function getSelectedRadioValue(groupId) {
+  const radioGroup = document.getElementById(groupId);
+  if (radioGroup) {
+    const radios = radioGroup.querySelectorAll('input[type="radio"]');
+    for (const radio of radios) {
+      if (radio.checked) {
+        return radio.value;
+      }
+    }
   }
+  return null; // Aucun bouton radio sélectionné
+}
 
-  changeTitle();
 
-  // ajoute un bouton pour effacer les valeurs des textes de bienvenue
-  var clearButton = document.createElement('button');
-  clearButton.textContent = 'Raz textes de bienvenue';
-  clearButton.addEventListener('click', function () {
-    // Effacez les valeurs lorsque le bouton est cliqué
-    chrome.storage.local.remove(['lastExtensionVersion', 'firstStart', 'aprilFool', 'promptCompanionMessage'], function () {
-      console.log('Les valeurs ont été effacées avec succès');
-    });
-  });
+// 4 - Récupération du numéro de version de l'extension et affichage dans le titre
+function changeTitle() {
+  let manifest = chrome.runtime.getManifest();
+  let version = manifest.version;
+  console.log(version);
+  let explanationText = document.getElementById('MainTitle');
+  explanationText.textContent = `Weda-Helper version ${version}`;
+}
 
-  // Ajoutez le bouton à la page
-  document.body.appendChild(clearButton);
+changeTitle();
 
-  function getMetricsForPeriod(periodDays) {
-    let startDate = new Date();
-    startDate.setDate(startDate.getDate() - periodDays);
-    let startDateStr = 'metrics-' + startDate.toISOString().split('T')[0];
 
-    return new Promise((resolve, reject) => {
-      chrome.storage.local.get(null, function (items) {
-        let periodMetrics = { clicks: 0, drags: 0, keyStrokes: 0 };
-        for (let key in items) {
-          if (key.startsWith('metrics-') && key >= startDateStr && key !== 'metrics-globalMetrics') {
-            if (periodDays > 365) {
-              console.log(key, items[key]);
-            }
-            periodMetrics.clicks += items[key].clicks || 0;
-            periodMetrics.drags += items[key].drags || 0;
-            periodMetrics.keyStrokes += items[key].keyStrokes || 0;
-          }
-        }
-        resolve(periodMetrics);
-      });
-    });
-  }
 
-  Promise.all([
-    getMetricsForPeriod(1), // Today
-    getMetricsForPeriod(7), // Last 7 days
-    getMetricsForPeriod(30), // Last 30 days
-    getMetricsForPeriod(365), // Last 365 days
-    new Promise((resolve, reject) => { // Since installation
-      chrome.storage.local.get(['globalMetrics'], function (result) {
-        resolve(result.globalMetrics || { clicks: 0, drags: 0, keyStrokes: 0 });
-      });
-    })
-  ]).then(([todayMetrics, weekMetrics, monthMetrics, yearMetrics, totalMetrics]) => {
-    let metricsElement = document.createElement('table');
-    metricsElement.innerHTML = `
-      <tr>
-        <th></th>
-        <th>Clics de souris évités</th>
-        <th>Mouvements de souris évités</th>
-        <th>Frappes de clavier évitées</th>
-      </tr>
-      <tr>
-        <td>Aujourd'hui</td>
-        <td>${todayMetrics.clicks}</td>
-        <td>${todayMetrics.drags}</td>
-        <td>${todayMetrics.keyStrokes}</td>
-      </tr>
-      <tr>
-        <td>Cette semaine</td>
-        <td>${weekMetrics.clicks}</td>
-        <td>${weekMetrics.drags}</td>
-        <td>${weekMetrics.keyStrokes}</td>
-      </tr>
-      <tr>
-        <td>Ce mois</td>
-        <td>${monthMetrics.clicks}</td>
-        <td>${monthMetrics.drags}</td>
-        <td>${monthMetrics.keyStrokes}</td>
-      </tr>
-      <tr>
-        <td>Cette année</td>
-        <td>${yearMetrics.clicks}</td>
-        <td>${yearMetrics.drags}</td>
-        <td>${yearMetrics.keyStrokes}</td>
-      </tr>
-      <tr>
-        <td>Depuis l'installation</td>
-        <td>${totalMetrics.clicks}</td>
-        <td>${totalMetrics.drags}</td>
-        <td>${totalMetrics.keyStrokes}</td>
-      </tr>
-    `;
+// 5 - ajoute un bouton pour effacer les valeurs des textes de bienvenue
+var clearButton = document.createElement('button');
+clearButton.textContent = 'Raz textes de bienvenue';
+clearButton.addEventListener('click', function () {
+  // Effacez les valeurs lorsque le bouton est cliqué
+  chrome.storage.local.remove(['lastExtensionVersion', 'firstStart', 'aprilFool', 'promptCompanionMessage'], function () {
+    console.log('Les valeurs ont été effacées avec succès');
   });
 });
 
+// Ajoutez le bouton à la page
+document.body.appendChild(clearButton);
 
+function getMetricsForPeriod(periodDays) {
+  let startDate = new Date();
+  startDate.setDate(startDate.getDate() - periodDays);
+  let startDateStr = 'metrics-' + startDate.toISOString().split('T')[0];
+
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(null, function (items) {
+      let periodMetrics = { clicks: 0, drags: 0, keyStrokes: 0 };
+      for (let key in items) {
+        if (key.startsWith('metrics-') && key >= startDateStr && key !== 'metrics-globalMetrics') {
+          if (periodDays > 365) {
+            console.log(key, items[key]);
+          }
+          periodMetrics.clicks += items[key].clicks || 0;
+          periodMetrics.drags += items[key].drags || 0;
+          periodMetrics.keyStrokes += items[key].keyStrokes || 0;
+        }
+      }
+      resolve(periodMetrics);
+    });
+  });
+}
+
+// 6 - Affichage des métriques
+Promise.all([
+  getMetricsForPeriod(1), // Today
+  getMetricsForPeriod(7), // Last 7 days
+  getMetricsForPeriod(30), // Last 30 days
+  getMetricsForPeriod(365), // Last 365 days
+  new Promise((resolve, reject) => { // Since installation
+    chrome.storage.local.get(['globalMetrics'], function (result) {
+      resolve(result.globalMetrics || { clicks: 0, drags: 0, keyStrokes: 0 });
+    });
+  })
+]).then(([todayMetrics, weekMetrics, monthMetrics, yearMetrics, totalMetrics]) => {
+  let metricsElement = document.createElement('table');
+  metricsElement.innerHTML = `
+    <tr>
+      <th></th>
+      <th>Clics de souris évités</th>
+      <th>Mouvements de souris évités</th>
+      <th>Frappes de clavier évitées</th>
+    </tr>
+    <tr>
+      <td>Aujourd'hui</td>
+      <td>${todayMetrics.clicks}</td>
+      <td>${todayMetrics.drags}</td>
+      <td>${todayMetrics.keyStrokes}</td>
+    </tr>
+    <tr>
+      <td>Cette semaine</td>
+      <td>${weekMetrics.clicks}</td>
+      <td>${weekMetrics.drags}</td>
+      <td>${weekMetrics.keyStrokes}</td>
+    </tr>
+    <tr>
+      <td>Ce mois</td>
+      <td>${monthMetrics.clicks}</td>
+      <td>${monthMetrics.drags}</td>
+      <td>${monthMetrics.keyStrokes}</td>
+    </tr>
+    <tr>
+      <td>Cette année</td>
+      <td>${yearMetrics.clicks}</td>
+      <td>${yearMetrics.drags}</td>
+      <td>${yearMetrics.keyStrokes}</td>
+    </tr>
+    <tr>
+      <td>Depuis l'installation</td>
+      <td>${totalMetrics.clicks}</td>
+      <td>${totalMetrics.drags}</td>
+      <td>${totalMetrics.keyStrokes}</td>
+    </tr>
+  `;
+});
+
+
+// 7 - Lien vers le log du compagnon
 function updateCompanionLogLink() {
   chrome.storage.local.get(['apiKey', 'portCompanion', 'version'], function (result) {
     const apiKey = result.apiKey || '';
