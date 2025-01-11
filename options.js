@@ -56,7 +56,8 @@ chrome.storage.local.get('advancedDefaultSettings', function (data) {
   }
 });
 
-function createInput(option) {
+function createInput(option) { // gestion des différents types d'input
+  // Par défaut, l'élément d'entrée est un "input"
   let inputType = 'input';
   if (['html', 'radio'].includes(option.type)) {
     inputType = 'div';
@@ -97,7 +98,7 @@ function createInput(option) {
       });
       break;
     case 'html':
-      input.innerHTML = option.description;
+      // c'est createLabel qui s'occupe de l'ajout de l'html
       break;
   }
 
@@ -111,7 +112,7 @@ function createLabel(option) {
   return label;
 }
 
-function createOptionElement(option) {
+function createOptionElement(option) { // Création des éléments de l'option
   const optionDiv = document.createElement('div');
   optionDiv.classList.add('option');
 
@@ -126,6 +127,14 @@ function createOptionElement(option) {
       subtitle.classList.add('subtitle');
       optionDiv.appendChild(subtitle);
     }
+  } else if (option.type === 'radio') {
+    const title = document.createElement(`h${Math.min(6, 1 + option.level)}`);
+    title.textContent = option.description;
+    title.classList.add('radio-title'); // Applique la classe CSS pour limiter la marge en dessous
+    optionDiv.appendChild(title);
+
+    const radioInput = createInput(option);
+    optionDiv.appendChild(radioInput);
   } else {
     const input = createInput(option);
     optionDiv.appendChild(input);
