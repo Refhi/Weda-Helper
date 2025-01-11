@@ -90,19 +90,9 @@ function createOptionElement(option) {
   const label = createLabel(option);
   optionDiv.appendChild(label);
 
-  if (option.subOptions) {
-    const subOptionsDiv = document.createElement('div');
-    subOptionsDiv.classList.add('sub-options');
-
-    option.subOptions.forEach(subOption => {
-      const subOptionDiv = createOptionElement(subOption);
-      subOptionDiv.classList.add('sub-option');
-      subOptionsDiv.appendChild(subOptionDiv);
-    });
-
-    optionDiv.appendChild(subOptionsDiv);
+  if (option.isSubOption) {
+    optionDiv.classList.add('sub-option');
   }
-
   return optionDiv;
 }
 
@@ -110,10 +100,17 @@ function generateOptionsHTML(settings) {
   const container = document.getElementById('advanced-options'); // Assurez-vous d'avoir un conteneur pour insérer les options
   container.innerHTML = ''; // Réinitialisez le conteneur avant d'ajouter de nouveaux éléments
 
+  let lastParentOption = null;
+
   parseOptions(settings, option => {
     console.log("j'ajoute l'option nommée : ", option.name, "de niveau : ", option.level, "est une sous-option ? : ", option.isSubOption);
     const optionElement = createOptionElement(option);
-    container.appendChild(optionElement);
+    if (option.isSubOption) {
+      lastParentOption.appendChild(optionElement);
+    } else {
+      container.appendChild(optionElement);
+      lastParentOption = optionElement;
+    }
   });
 }
 
