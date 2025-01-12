@@ -2,7 +2,7 @@
 
 // Contrôle automatique du MT :
 addTweak('/FolderMedical/PatientViewForm.aspx', 'autoControlMT', function () {
-    getOption(['autoMTnewTab', 'autoMTIncludeAndCheckContact'], function ([autoMTnewTab, autoMTIncludeAndCheckContact]) {
+    getOption(['autoMTnewTab'], function ([autoMTnewTab]) {
         if (autoMTnewTab) {
             waitForElement({
                 selector: 'a[title="Récupère l\'identité du médecin traitant en interrogeant le téléservice IMTi"]',
@@ -16,7 +16,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoControlMT', function () {
                 }
             });
         }
-    
+
         waitForElement({
             selector: '.dmpVitaleTable',
             callback: async function (elements) {
@@ -40,11 +40,6 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoControlMT', function () {
                                 icon: 'done',
                                 duration: 10000
                             });
-                            if (autoMTIncludeAndCheckContact) {
-                                // Ajout d'un timestamp dans la mémoire de session pour rediriger vers le bon onglet
-                                sessionStorage.setItem('autoMTIncludeAndCheckContact', Date.now());
-                                addMtToContacts();
-                            }
                         }
                     });
                 } else {
@@ -84,18 +79,29 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*oneClickMT', function () {
 
 
 // I. Fonction d'entrée !
-// Appelée par le clic sur le bouton "médecin traitant : vérifier", attends ensuite l'apparition de la réponse pour l'intégrer.
-function addMtToContacts() {
+addTweak('/FolderMedical/PatientViewForm.aspx', 'autoMTIncludeAndCheckContact', function () {
     console.log('[addMtToContacts] débuté');
     waitForElement({
-        selector: '#ContentPlaceHolder1_imtiContainer a.ml5',
+        selector: '#ContentPlaceHolder1_imtiContainer a.ml5', // Correspond au bouton "Ajouter aux contacts du patient"
         callback: function (elements) {
-            console.log('[addMtToContacts] bouton cliqué', elements[0]);
-            recordMetrics({ clicks: 1, drags: 1 });
-            elements[0].click();
+            // Ajouter à sa droite un lien "WH : + adr. MSsante"
+            let link = document.createElement('a');
+            link.innerText = ' /+ avec son addresse MSsante (WH)';
+            link.href = '#'; // Vous pouvez définir une URL si nécessaire
+            elements[0].parentElement.appendChild(link);
+            link.addEventListener('click', function (event) {
+                event.preventDefault(); // Empêche le comportement par défaut du lien
+                recordMetrics({ clicks: 1, drags: 1 });
+                // Clic sur le bouton "Ajouter aux contacts du patient"
+                console.log('[addMtToContacts] lien cliqué', elements[0]);
+                // Ajout d'un timestamp dans la mémoire de session pour rediriger vers le bon onglet
+                sessionStorage.setItem('autoMTIncludeAndCheckContact', Date.now());
+                elements[0].click();
+                recordMetrics({ clicks: 1, drags: 1 });
+            });
         }
     });
-}
+});
 
 // II. Renvoi vers la page de contact si la récupération du MT a été faite récemment
 addTweak('/FolderMedical/PatientViewForm.aspx', 'autoMTIncludeAndCheckContact', function () {
@@ -112,7 +118,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoMTIncludeAndCheckContact', 
         if (Date.now() - timestamp < 5000) {
             // mettre à jour le timestamp
             sessionStorage.setItem('autoMTIncludeAndCheckContact', Date.now());
-            recordMetrics({ clicks: 1, drags: 1 });          
+            recordMetrics({ clicks: 1, drags: 1 });
             openContactPage();
         }
     }
@@ -156,7 +162,7 @@ function extractMTInfo(contacts) {
 function updateSpeciality() {
     const dropDown = document.querySelector('#ContentPlaceHolder1_DropDownListUserSpecialiteSVFind');
     if (dropDown.value === '01') return true;
-    
+
     dropDown.value = '01';
     dropDown.dispatchEvent(new Event('change'));
     return false;
@@ -165,7 +171,7 @@ function updateSpeciality() {
 function updateSearchField(nom) {
     const input = document.querySelector('#ContentPlaceHolder1_TextBoxRecherche');
     if (input.value === nom) return true;
-    
+
     input.value = nom;
     input.dispatchEvent(new Event('change'));
     return false;
@@ -191,7 +197,7 @@ function selectMTContact(prenom) {
  * Cherche le contact du médecin traitant et le sélectionne pour édition
  * S'arrête si plus de 5 secondes se sont écoulées
  */
-addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', function() {
+addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', function () {
     // III.b.1. Fonctions de support à nouveau
     function timeStampUpdate() {
         console.log("[autoMTIncludeAndCheckContact] Mise à jour du timestamp");
@@ -221,10 +227,10 @@ addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', functi
         nettoyerTimestamp();
         return;
     }
-// III.c. Flux principal
+    // III.c. Flux principal
     waitForElement({
         selector: '[id^="ContentPlaceHolder1_PatientContactsGrid_LabelIsContactWeda_"]',
-        callback: function(contacts) {
+        callback: function (contacts) {
             if (!verifierTimestamp()) {
                 return;
             }
@@ -257,7 +263,7 @@ addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', functi
         }
     });
 
-// III.d. Intégration du MT
+    // III.d. Intégration du MT
     /**
      * Intégration automatique des informations du MT depuis le carnet d'addresses
      * 
@@ -272,11 +278,11 @@ addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', functi
         READY_FOR_REPLACEMENT_VALIDATION: 'READY_FOR_REPLACEMENT_VALIDATION',
         READY_FOR_FINAL_VALIDATION: 'READY_FOR_FINAL_VALIDATION'
     };
-    
+
     // III.d.1 - ASIP Update Button
     waitForElement({
         selector: '#ContentPlaceHolder1_ButtonMiseAJourAsip',
-        callback: function(elements) {
+        callback: function (elements) {
             if (verifierTimestamp()) {
                 sessionStorage.setItem(GREENLIGHT_MT, GREENLIGHT_STATES.READY_FOR_CONTACT_SELECTION);
                 recordMetrics({ clicks: 1, drags: 1 });
@@ -284,13 +290,13 @@ addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', functi
             }
         }
     });
-    
+
     // III.d.2 - Contact Selection
     waitForElement({
         selector: '[id^="ContentPlaceHolder1_NewUserAsipUCForm1_AsipCAT18ToutePopulationsGrid_AsipCAT18ToutePopulationShowID_"]',
-        callback: function(elements) {
-            if (elements.length === 1 && 
-                sessionStorage.getItem(GREENLIGHT_MT) === GREENLIGHT_STATES.READY_FOR_CONTACT_SELECTION && 
+        callback: function (elements) {
+            if (elements.length === 1 &&
+                sessionStorage.getItem(GREENLIGHT_MT) === GREENLIGHT_STATES.READY_FOR_CONTACT_SELECTION &&
                 verifierTimestamp()) {
                 sessionStorage.setItem(GREENLIGHT_MT, GREENLIGHT_STATES.READY_FOR_REPLACEMENT_VALIDATION);
                 recordMetrics({ clicks: 1, drags: 1 });
@@ -298,12 +304,12 @@ addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', functi
             }
         }
     });
-    
+
     // III.d.3 - Replacement Validation
     waitForElement({
         selector: '#ContentPlaceHolder1_ButtonValidRemplacement',
-        callback: function(elements) {
-            if (sessionStorage.getItem(GREENLIGHT_MT) === GREENLIGHT_STATES.READY_FOR_REPLACEMENT_VALIDATION && 
+        callback: function (elements) {
+            if (sessionStorage.getItem(GREENLIGHT_MT) === GREENLIGHT_STATES.READY_FOR_REPLACEMENT_VALIDATION &&
                 verifierTimestamp()) {
                 sessionStorage.setItem(GREENLIGHT_MT, GREENLIGHT_STATES.READY_FOR_FINAL_VALIDATION);
                 recordMetrics({ clicks: 1, drags: 1 });
@@ -311,12 +317,12 @@ addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', functi
             }
         }
     });
-    
+
     // III.d.4 - Final Validation
     waitForElement({
         selector: '#ContentPlaceHolder1_ButtonValid',
-        callback: function(elements) {
-            if (sessionStorage.getItem(GREENLIGHT_MT) === GREENLIGHT_STATES.READY_FOR_FINAL_VALIDATION && 
+        callback: function (elements) {
+            if (sessionStorage.getItem(GREENLIGHT_MT) === GREENLIGHT_STATES.READY_FOR_FINAL_VALIDATION &&
                 verifierTimestamp()) {
                 sessionStorage.removeItem(GREENLIGHT_MT);
                 elements[0].click();
