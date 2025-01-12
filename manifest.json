@@ -45,7 +45,8 @@
         "antecedent.js",
         "print.js",
         "courrier.js",
-        "imti.js"
+        "imti.js",
+        "wedaEchanges.js"
       ]
     }
   ],

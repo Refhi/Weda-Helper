@@ -21,6 +21,7 @@ function parseSettings(settings, callback) {
   }
 
   function traverseSections(sections, level) {
+    console.log('traverseSections', sections, level);
     sections.forEach(section => {
       section.level = level;
       section.isSubOption = false;

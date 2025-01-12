@@ -121,16 +121,6 @@ var advancedDefaultSettings = [{
         "description": "Ouvre les ATCD sur la partie gauche de l'écran quand possible (attention l'affichage est un peu approximatif).",
         "default": false
     }, {
-        "name": "secureExchangeAutoRefresh",
-        "type": TYPE_BOOL,
-        "description": "Rafraîchis automatiquement la messagerie sécurisée (vous devez laisser un onglet ouvert).",
-        "default": true
-    }, {
-        "name": "secureExchangeUncheckIHEMessage",
-        "type": TYPE_BOOL,
-        "description": "Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée.",
-        "default": false
-    }, {
         "name": "autoAATI",
         "type": TYPE_BOOL,
         "description": "Automatise la réalisation des arrêts de travail (lecture CV auto, sélection patient auto, impression auto etc. Nécessite le Companion pour fonctionner totalement).",
@@ -176,6 +166,25 @@ var advancedDefaultSettings = [{
                 "description": "Ajoute un lien pour qu'ajouter le MT récupéré initie la récupération de l'adresse sécurisée. Compatible avec l'option précédente.",
                 "default": false
             }]
+        }],
+    }, {
+        "name": "Weda Echanges",
+        "type": TYPE_TITLE,
+        "options": [{
+            "name": "secureExchangeAutoRefresh",
+            "type": TYPE_BOOL,
+            "description": "Rafraîchis automatiquement la messagerie sécurisée (vous devez laisser un onglet ouvert).",
+            "default": true
+        }, {
+            "name": "secureExchangeUncheckIHEMessage",
+            "type": TYPE_BOOL,
+            "description": "Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée.",
+            "default": false
+        }, {
+            "name": "swapTitrePJetCorpsMessage",
+            "type": TYPE_BOOL,
+            "description": "Permuter le titre du corps du message et de la pièce jointe dans la messagerie sécurisée.",
+            "default": false
         }]
     }]
 }, {
