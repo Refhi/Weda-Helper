@@ -581,7 +581,15 @@ console.log(defaultSettings);
 
 
 
-// TODO : vérifier que advancedDefaultSettings est bien utilisé dans les options et peut remplacer defaultSettings
+/** Raccourcis claviers par défaut **
+ * Une fois appelés, ils sont interprétés dans keyCommands.js
+ * via lib/hotkeys.js
+ * Ils sont modifiables par l'utilisateurs dans les options, cf. options.js
+ * structure:
+ * - clé racine = nom du raccourci appelé dans keyCommands.js
+ * -> raccourci par défaut
+ * -> description
+ */ 
 
 var defaultShortcuts = {
     "push_valider": {

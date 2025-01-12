@@ -1,5 +1,6 @@
 // // --------- Page de gestion des options de l'extension----------
-
+// L'ajout et la modification d'options existantes se fait dans le fichier background.js
+// => variables advancedDefaultSettings et defaultShortcuts
 /**
  * Traverse les options, sous-options et sous-sections d'un ensemble de paramètres et applique une fonction de rappel à chaque option.
  * @param {Array} settings - La liste des catégories de paramètres.
