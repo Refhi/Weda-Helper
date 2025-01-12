@@ -7,7 +7,6 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#275](https://github.com/Refhi/Weda-Helper/issues/275) - Permet de sélectionner automatiquement le(s) médecin(s)traitant(s) comme destinataire(s) lors de l'envoi d'un courrier (désactivé par défaut)
 - [#274](https://github.com/Refhi/Weda-Helper/issues/274) - Ajout de raccourcis pour l'envoi des courrrier : Ctrl+E et Ctrl+Shift+E par défaut
 - [#308](https://github.com/Refhi/Weda-Helper/issues/308) - Ajout d'un lien vers le log du Companion dans la page des options
-- [#306](https://github.com/Refhi/Weda-Helper/issues/306) - On peut désormais naviguer entre les champs de cotation d'un simple Tab ou Shift+Tab.
 - [#301](https://github.com/Refhi/Weda-Helper/issues/301) - Un clic du milieu sur le W du Menu W ouvre un nouvel onglet vers l'accueil du dossier patient, et non le module en cours.
 - Automatisation du contrôle du MT + ouvre un nouvel onglet pour ne pas avoir à patienter. Un message vous indique si cela a fonctionné ou non. Vous pourrez retourner dans le premier onglet si vous souhaitez enregistrer le MT.
 - Automatisation partielle de la déclaration de MT : sélectionne automatiquement le patient en cours, pré-coche les cases de consentement. Vous n'avez plus qu'à cliquer sur "Transmettre" pour valider.
