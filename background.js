@@ -79,12 +79,12 @@ var advancedDefaultSettings = [{
             "description": "Consultation",
             "default": true
         }, {
-        // Deprecated, remplacé par l'option de Weda
-        //     "name": "MoveHistoriqueToLeft_Consultation",
-        //     "type": TYPE_BOOL,
-        //     "description": "Consultation",
-        //     "default": true
-        // }, {
+            // Deprecated, remplacé par l'option de Weda
+            //     "name": "MoveHistoriqueToLeft_Consultation",
+            //     "type": TYPE_BOOL,
+            //     "description": "Consultation",
+            //     "default": true
+            // }, {
             "name": "MoveHistoriqueToLeft_Certificat",
             "type": TYPE_BOOL,
             "description": "Certificat",
@@ -155,21 +155,27 @@ var advancedDefaultSettings = [{
         "type": TYPE_SMALLTEXT,
         "description": "Affiche la date d'alerte de l'antécédent en orange si la date est dans moins de x mois (6 par défaut, 0 pour désactiver).",
         "default": 6
-    }, {
-        "name": "autoControlMT",
-        "type": TYPE_BOOL,
-        "description": "Automatise le procédé de vérification du MT.",
-        "default": true,
-        "subOptions": [{
-            "name": "autoMTnewTab",
+    }],
+    "sections": [{
+        "name": "Médecin Traitant",
+        "description": "Permet d'automatiser certaines tâches liées au médecin traitant.",
+        "type": TYPE_TITLE,
+        "options": [{
+            "name": "autoControlMT",
             "type": TYPE_BOOL,
-            "description": "Ouvre un nouvel onglet pour éviter de patienter pendant la récupération des informations.",
-            "default": true
-        }, {
-            "name": "autoMTIncludeAndCheckContact",
-            "type": TYPE_BOOL,
-            "description": "Intègre automatiquement le MT récupéré dans les contacts et initie la récupération de l'adresse sécurisée. Compatible avec l'option précédente.",
-            "default": false
+            "description": "Automatise le procédé de vérification du MT.",
+            "default": true,
+            "subOptions": [{
+                "name": "autoMTnewTab",
+                "type": TYPE_BOOL,
+                "description": "Ouvre un nouvel onglet pour éviter de patienter pendant la récupération des informations.",
+                "default": true
+            }, {
+                "name": "autoMTIncludeAndCheckContact",
+                "type": TYPE_BOOL,
+                "description": "Ajoute un lien pour qu'ajouter le MT récupéré initie la récupération de l'adresse sécurisée. Compatible avec l'option précédente.",
+                "default": false
+            }]
         }]
     }]
 }, {
@@ -589,7 +595,7 @@ console.log(defaultSettings);
  * - clé racine = nom du raccourci appelé dans keyCommands.js
  * -> raccourci par défaut
  * -> description
- */ 
+ */
 
 var defaultShortcuts = {
     "push_valider": {
@@ -687,6 +693,6 @@ var defaultShortcuts = {
 };
 
 // retour à un chargement systématique, a priori sans impact évident sur le temps de chargement
-chrome.storage.local.set({ defaultSettings: defaultSettings, defaultShortcuts: defaultShortcuts, advancedDefaultSettings: advancedDefaultSettings}, function () {
+chrome.storage.local.set({ defaultSettings: defaultSettings, defaultShortcuts: defaultShortcuts, advancedDefaultSettings: advancedDefaultSettings }, function () {
     console.log('[background.js] Les valeurs et raccourcis par défaut ont été enregistrées');
 });
