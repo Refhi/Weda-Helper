@@ -112,49 +112,6 @@ addTweak('/FolderMedical/HprimForm.aspx', '*HPRIMtweak', function () {
 });
 
 
-// Page Messagerie sécurisée
-addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeAutoRefresh', function () {
-    if (result.secureExchangeAutoRefresh !== false) {
-        // clique sur reçu pour rafraichir la liste des messages à intervalle régulier
-        function clickOnInbox() {
-            console.log('[clickOnInbox] je clique sur reçu pour rafraichir la liste des messages');
-            var element = document.querySelector('#inboxToolbar > li.inbox.selected > a');
-            if (element) {
-                element.click();
-                recordMetrics({ clicks: 1, drags: 1 });
-            }
-        }
-        setTimeout(function () {
-            setInterval(clickOnInbox, 900000);
-        }, 30000);
-    }
-});
-addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeUncheckIHEMessage', function () {
-    waitForElement({
-        selector: 'we-doc-import',
-        callback: function (elements) {
-            for (const element of elements) {
-                if (!element.className.includes('docImportAttach')) //docImportAttach correspond aux documents joints donc si il n'y a pas cette classe, il s'agit du corps du message
-                {
-                    let checkbox = element.querySelector('input[type=checkbox]')
-                    checkbox.checked = false;
-                    checkbox.dispatchEvent(new Event('change'));
-                    recordMetrics({ clicks: 1, drags: 1 });
-                } else {
-                    let docTitle = element.querySelector('input.docTitle');
-                    if (docTitle.value.toUpperCase() == 'IHE_XDM.ZIP') {
-                        let checkbox = element.querySelector('input[type=checkbox]')
-                        checkbox.checked = false;
-                        checkbox.dispatchEvent(new Event('change'));
-                        recordMetrics({ clicks: 1, drags: 1 });
-                    }
-                }
-            }
-
-        }
-    });
-});
-
 
 
 // // Sélection automatique du type de document pour les courriers envoyés au DMP
@@ -262,4 +219,30 @@ addTweak('/FolderMedical/PopUpRappel.aspx', '*focusOnTextArea', function () {
     let textArea = document.querySelector(textAreaSelector);
     textArea.focus();
     recordMetrics({ clicks: 1, drags: 1 });
+});
+
+
+
+
+// Modifier le comportement d'un clic-milieu sur l'élément "W" pour ouvrir le dossier patient dans un nouvel onglet
+addTweak('*', '*middleClickW', function () {
+    // Fonction pour ajouter l'événement de clic-milieu
+    function addMiddleClickEvent() {
+        let elements = document.querySelectorAll('.level1.static');
+        let element = elements[1];
+        console.log('[middleClickW] element', element);
+        if (element) {
+            element.addEventListener('auxclick', async function(event) {
+                if (event.button === 1) { // Vérifie si c'est un clic du milieu
+                    event.preventDefault(); // Inhibe le comportement par défaut
+                    newPatientTab(); // Ouvre le dossier patient dans un nouvel onglet
+                }
+            });
+        }
+    }
+
+    waitForElement({
+        selector: '.level1.static',
+        callback: addMiddleClickEvent
+    });
 });

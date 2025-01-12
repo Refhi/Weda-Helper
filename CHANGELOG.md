@@ -2,6 +2,32 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+# [2.9]
+## Ajouts :
+- [#275](https://github.com/Refhi/Weda-Helper/issues/275) - Permet de sélectionner automatiquement le(s) médecin(s)traitant(s) comme destinataire(s) lors de l'envoi d'un courrier (désactivé par défaut)
+- [#274](https://github.com/Refhi/Weda-Helper/issues/274) - Ajout de raccourcis pour l'envoi des courrrier : Ctrl+E et Ctrl+Shift+E par défaut
+- [#308](https://github.com/Refhi/Weda-Helper/issues/308) - Ajout d'un lien vers le log du Companion dans la page des options
+- [#301](https://github.com/Refhi/Weda-Helper/issues/301) - Un clic du milieu sur le W du Menu W ouvre un nouvel onglet vers l'accueil du dossier patient, et non le module en cours.
+- Automatisation du contrôle du MT + ouvre un nouvel onglet pour ne pas avoir à patienter. Un message vous indique si cela a fonctionné ou non. Vous pourrez retourner dans le premier onglet si vous souhaitez enregistrer le MT.
+- Automatisation partielle de la déclaration de MT : sélectionne automatiquement le patient en cours, pré-coche les cases de consentement. Vous n'avez plus qu'à cliquer sur "Transmettre" pour valider.
+- [#273](https://github.com/Refhi/Weda-Helper/issues/273) - Automatisation de la récupération du MT et de sa mise à jour avec l'annuaire des professionnels de santé. (désactivé par défaut)
+- [#284](https://github.com/Refhi/Weda-Helper/issues/284) - Possibilité d'inverser automatiquement le titre du corps du message et le titre du message lors de la réception d'un courrier (beta, merci de me faire part de vos retours)
+
+## Fix :
+- [#293](https://github.com/Refhi/Weda-Helper/issues/293) - Clique automatiquement sur "Continuer sans l'ordonnance numérique" si le message d'erreur est détecté (désactivé par défaut).
+- [#309](https://github.com/Refhi/Weda-Helper/issues/309) - Correction du plantage des FSE lors de l'impression instantanée lorsque le DMP est solllicité en même temps (fonctionne en inhibant l'envoi au DMP le temps de la réalisation de la FSE)
+- [#303](https://github.com/Refhi/Weda-Helper/issues/303) - Correction d'un problème d'affichage des raccourcis claviers lors de l'appuis de Alt prolongé sous MAC. Sous MAC il faut désormais appuyer deux fois de suite sur Alt pour afficher les raccourcis claviers.
+- [#295](https://github.com/Refhi/Weda-Helper/issues/295) - l'affichage automatique des atcd fonctionnent à nouveau
+- [#315](https://github.com/Refhi/Weda-Helper/issues/315) - Amélioration des boutons FSE dégradée et Téléconsultation dans la FSE + ajout de raccourcis claviers
+- rétablissement du rafrachissement automatique des messages Mssanté
+
+## Refactory :
+- [#325](https://github.com/Refhi/Weda-Helper/issues/325) - Amélioration de la gestion des options
+
+
+# [2.8.0.1] - ajout du message video
+
+
 # [2.8] - Impression instantanée
 ## Ajouts :
 - [#262](https://github.com/Refhi/Weda-Helper/issues/262) - Affichage des Antécédents dans un volet latéral - désactivé par défaut, à activer dans les options

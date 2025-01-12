@@ -23,13 +23,32 @@ addTweak('/FolderMedical/PopUpUploader.aspx', '*hotkeyUpload', function() {
                 let dataTransfer = new DataTransfer(); //On ne peut pas modifier l'input du file directement donc on simule un drag and drop https://dev.to/code_rabbi/programmatically-setting-file-inputs-in-javascript-2p7i
                 dataTransfer.items.add(file);
 
-                let fileInput = window.document.querySelector('input[type="file"]');
-                fileInput.files = dataTransfer.files;
-                fileInput.dispatchEvent(new Event('change'));
+                waitLegacyForElement("input[type=file]", null, 100, function(element) {
 
-                // Ajout d'un timestamp dans le sessionStorage
-                let timestamp = Date.now();
-                sessionStorage.setItem('lastUpload', timestamp);
+                    let fileInput = element;
+                    fileInput.files = dataTransfer.files;
+                    fileInput.dispatchEvent(new Event('change'));
+                        
+                    // Ajout d'un timestamp dans le sessionStorage
+                    let timestamp = Date.now();
+                    sessionStorage.setItem('lastUpload', timestamp);
+
+                });
+
+                // waitForElement({
+                //     selector: 'input[type=file]',
+                //     callback: function (elements) {
+                //         let fileInput = elements[0];
+                //         fileInput.files = dataTransfer.files;
+                //         fileInput.dispatchEvent(new Event('change'));
+                        
+                //         // Ajout d'un timestamp dans le sessionStorage
+                //         let timestamp = Date.now();
+                //         sessionStorage.setItem('lastUpload', timestamp);
+
+                //     }
+                // });
+                
             });
 
         }

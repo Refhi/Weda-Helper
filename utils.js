@@ -334,83 +334,6 @@ document.addEventListener('visibilitychange', function () {
 });
 
 
-
-
-// // Travail sur les boutons des interfaces secu (IMTI, DMP etc.)
-addTweak('*', 'WarpButtons', function () {
-    function warpButtons(buttons) {
-        function addIdToButton(button) {
-            var actions = {
-                'Annuler': ['Continuez sans l\'ordonnance numérique', 'Non', 'NON', 'Annuler', 'Ne pas inclure'],
-                'Valider': ['Oui', 'OUI', 'Confirmer', 'Valider', 'Réessayer', 'Désactiver aujourd\'hui', 'Transmettre', 'Importer', 'Inclure']
-            };
-            if (button) {
-                var action = Object.keys(actions).find(key => actions[key].includes(button.textContent));
-                // vérifie que l'id n'est pas déjà présent. Utile quand plusieurs boutons sont éligible.
-                if (document.getElementById('target' + action)) {
-                    console.log(action, 'id already exist !');
-                    return false;
-                }
-                if (action) {
-                    button.id = 'target' + action;
-                }
-            }
-            return true;
-        }
-
-        function addShortcutsToButton(button) {
-            var raccourcis = {
-                'targetAnnuler': ' (alt+A)',
-                'targetValider': ' (alt+V)'
-            };
-            if (button) {
-                console.log('ajout de raccourcis au button', button);
-                var raccourci = raccourcis[button.id];
-                if (raccourci) {
-                    // Créer un conteneur pour le bouton et le texte
-                    var container = document.createElement('div');
-                    container.style.position = 'relative';
-                    button.parentNode.insertBefore(container, button);
-                    container.appendChild(button);
-
-                    // Créer l'élément span pour le raccourci
-                    var span = document.createElement('span');
-                    span.textContent = raccourci;
-                    span.style.position = 'absolute';
-                    span.style.bottom = '-10px'; // Placer le texte un peu plus bas
-                    span.style.right = '5px';
-                    span.style.color = 'grey';
-                    span.style.fontSize = '0.8em';
-                    span.style.backgroundColor = '#F0F0F0'; // Ajouter un fond blanc
-                    span.style.padding = '2px'; // Ajouter un peu de padding pour le texte
-                    span.style.borderRadius = '10px'; // Ajouter des angles arrondis
-                    container.appendChild(span);
-                }
-            }
-        }
-
-
-
-        buttons.forEach(function (button) {
-            console.log('Bouton trouvé ! Je le redimentionne, lui ajoute un id et note le raccourcis clavier par défaut', button);
-            button.style.width = 'auto';
-            if (addIdToButton(button)) {
-                addShortcutsToButton(button);
-            }
-        });
-    }
-
-
-    waitForElement({
-        selector: '.cdk-overlay-container .mat-raised-button',
-        callback: warpButtons
-    });
-    waitForElement({
-        selector: '.docImportButtons button',
-        callback: warpButtons
-    });
-});
-
 // Renvoie uniquement la dernière page d'un pdf présent dans un blob
 async function getLastPageFromBlob(blob) {
     const pdfBytes = await blob.arrayBuffer();
@@ -458,7 +381,7 @@ startNotifScript();
  * @param {Object} options - Options de la notification.
  * @param {string} [options.message="Notification de test"] - Message affiché dans la notification.
  * @param {string} [options.icon="home"] - Icône utilisée pour la notification (mat icon).
- * @param {string} [options.type="success"] - Type de notification (success / fail / undefined). /!\ en date du 10/11/24, 'fail' entraîne une notification qui ne tient pas compte de 'duration'.
+ * @param {string} [options.type="success"] - Type de notification (success / fail / undefined). /!\ 'fail' entraîne une notification qui ne tient pas compte de 'duration'. C'est volontaire (confirmé par Weda le 28/11/24, pour faciliter les captures d'écran)
  * @param {string} [options.extra="{}"] - Données supplémentaires (JSON).
  * @param {number} [options.duration=5000] - Durée de la notification en millisecondes.
  */
@@ -505,12 +428,12 @@ chrome.runtime.onMessage.addListener(
 function sendWedaNotifAllTabs(options) {
     // Ajoute un identifiant unique basé sur l'horodatage actuel
     options.id = Date.now();
-    chrome.storage.local.set({ 'wedaNotifOptions': options }, function() {
+    chrome.storage.local.set({ 'wedaNotifOptions': options }, function () {
         console.log('Options de notification stockées avec ID:', options.id);
     });
 }
 
-chrome.storage.onChanged.addListener(function(changes, namespace) {
+chrome.storage.onChanged.addListener(function (changes, namespace) {
     if (namespace === 'local' && changes.wedaNotifOptions) {
         const options = changes.wedaNotifOptions.newValue;
         sendWedaNotif(options);
@@ -534,7 +457,7 @@ chrome.storage.onChanged.addListener(function(changes, namespace) {
 // ** set lastPrintDate
 // * permet de définir la date de la dernière impression et donc de permettre ensuite la fermeture de l'onglet appelant
 // * dans le cadre de la fonction instantPrint
-function setLastPrintDate() { 
+function setLastPrintDate() {
     const date = new Date();
     sessionStorage.setItem('lastPrintDate', date.toISOString());
     console.log('Dernière date d\'impression enregistrée :', date);
