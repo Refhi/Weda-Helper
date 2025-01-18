@@ -164,7 +164,7 @@ var advancedDefaultSettings = [{
                 "name": "autoMTIncludeAndCheckContact",
                 "type": TYPE_BOOL,
                 "description": "Ajoute un lien pour qu'ajouter le MT récupéré initie la récupération de l'adresse sécurisée. Compatible avec l'option précédente.",
-                "default": false
+                "default": true
             }]
         }],
     }, {
