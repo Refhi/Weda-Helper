@@ -370,28 +370,6 @@ clearButton.addEventListener('click', function () {
 // Ajoutez le bouton à la page
 document.body.appendChild(clearButton);
 
-function getMetricsForPeriod(periodDays) {
-  let startDate = new Date();
-  startDate.setDate(startDate.getDate() - periodDays);
-  let startDateStr = 'metrics-' + startDate.toISOString().split('T')[0];
-
-  return new Promise((resolve, reject) => {
-    chrome.storage.local.get(null, function (items) {
-      let periodMetrics = { clicks: 0, drags: 0, keyStrokes: 0 };
-      for (let key in items) {
-        if (key.startsWith('metrics-') && key >= startDateStr && key !== 'metrics-globalMetrics') {
-          if (periodDays > 365) {
-            console.log(key, items[key]);
-          }
-          periodMetrics.clicks += items[key].clicks || 0;
-          periodMetrics.drags += items[key].drags || 0;
-          periodMetrics.keyStrokes += items[key].keyStrokes || 0;
-        }
-      }
-      resolve(periodMetrics);
-    });
-  });
-}
 
 // Ajout d'un bouton pour effacer les raccourcis clavier et donc les remettre par défaut
 var clearShortcutsButton = document.createElement('button');
@@ -453,6 +431,31 @@ document.body.appendChild(clearSettingsButton);
 
 
 // 6 - Affichage des métriques
+
+function getMetricsForPeriod(periodDays) {
+  let startDate = new Date();
+  startDate.setDate(startDate.getDate() - periodDays);
+  let startDateStr = 'metrics-' + startDate.toISOString().split('T')[0];
+
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(null, function (items) {
+      let periodMetrics = { clicks: 0, drags: 0, keyStrokes: 0 };
+      for (let key in items) {
+        if (key.startsWith('metrics-') && key >= startDateStr && key !== 'metrics-globalMetrics') {
+          if (periodDays > 365) {
+            console.log(key, items[key]);
+          }
+          periodMetrics.clicks += items[key].clicks || 0;
+          periodMetrics.drags += items[key].drags || 0;
+          periodMetrics.keyStrokes += items[key].keyStrokes || 0;
+        }
+      }
+      resolve(periodMetrics);
+    });
+  });
+}
+
+
 Promise.all([
   getMetricsForPeriod(1), // Today
   getMetricsForPeriod(7), // Last 7 days
@@ -503,6 +506,10 @@ Promise.all([
       <td>${totalMetrics.keyStrokes}</td>
     </tr>
   `;
+
+  const metricElement = document.getElementById('metrics');
+  metricElement.appendChild(metricsElement);
+  // document.body.appendChild(metricsElement);
 });
 
 
