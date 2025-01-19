@@ -47,7 +47,7 @@
         "print.js",
         "courrier.js",
         "imti.js",
-        "wedaEchanges.js"
+        "wedaEchanges.js",
         "pdfParser.js"
       ]
     }
@@ -61,10 +61,6 @@
       "matches": [
         "<all_urls>"
       ]
-    },
-    {
-     "matches": ["<all_urls>"],
-     "resources": ["lib/pdf.mjs"]
-   }
+    }
   ]
 }
