@@ -26,7 +26,6 @@
         "metrics.js",
         "lib/hotkeys.js",
         "lib/pdf-lib.js",
-        "lib/moment.js",
         "utils.js",
         "content.js",
         "tooltip.js",

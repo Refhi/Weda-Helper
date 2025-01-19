@@ -126,28 +126,29 @@ function extractRelevantData(fullText) {
     const dateMatch = fullText.match(dateRegex);
     if (dateMatch) {
         for (let i = 0; i < dateMatch.length; i++) {
+            const currentDate = parseDate(dateMatch[i]);
             if (!dateOfBirth) {
-                dateOfBirth = moment(dateMatch[i], "DD/MM/YYYY");
+                dateOfBirth = currentDate;
             }
             if (!documentDate) {
-                documentDate = moment(dateMatch[i], "DD/MM/YYYY");
+                documentDate = currentDate;
             }
-            if (documentDate < moment(dateMatch[i], "DD/MM/YYYY")) { // On choisit la date la plus grande car c'est la date de l'examen (date de prescription et DDN sont inférieures)
-                documentDate = moment(dateMatch[i], "DD/MM/YYYY");
+            if (documentDate < currentDate) { // On choisit la date la plus grande car c'est la date de l'examen (date de prescription et DDN sont inférieures)
+                documentDate = currentDate;
             }
-            if (dateOfBirth > moment(dateMatch[i], "DD/MM/YYYY")) {
-                dateOfBirth = moment(dateMatch[i], "DD/MM/YYYY");
+            if (dateOfBirth > currentDate) {
+                dateOfBirth = currentDate;
             }
         }
 
-        if (dateOfBirth == documentDate) {
+        if (dateOfBirth.getTime() === documentDate.getTime()) {
             dateOfBirth = null;
         }
     }
 
     const dateOfBirthMatch = fullText.match(dateOfBirthRegex);
     if (dateOfBirthMatch) {
-        dateOfBirth = moment(dateOfBirthMatch[1], "DD/MM/YYYY"); // On récupère le groupe du Regex
+        dateOfBirth = parseDate(dateOfBirthMatch[1]); // On récupère le groupe du Regex
     }
 
     let nameMatchesIterator = fullText.matchAll(firstNameRegex);
@@ -163,8 +164,8 @@ function extractRelevantData(fullText) {
     }
 
     return {
-        documentDate: documentDate ? documentDate.format("DD/MM/YYYY") : null,
-        dateOfBirth: dateOfBirth ? dateOfBirth.format("DD/MM/YYYY") : null,
+        documentDate: documentDate ? formatDate(documentDate) : null,
+        dateOfBirth: dateOfBirth ? formatDate(dateOfBirth) : null,
         nameMatches: nameMatches
     };
 }
