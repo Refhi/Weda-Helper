@@ -16,6 +16,7 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
     // 2. Attente de l'apparition de l'iframe contenant le PDF
     // Les sélecteurs des pages de UpLoaderForm.aspx peuvent être :
     // ContentPlaceHolder1_ViewPdfDocumentUCForm2_iFrameViewFile ou ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile
+    // TODO : peut-être privilégier un bouton à côté de "Patient à définir" pour lancer le script ?
     waitForElement({
         selector: "[id^='ContentPlaceHolder1_ViewPdfDocumentUCForm'][id$='_iFrameViewFile']",
         callback: processFoundPdfIframe
@@ -36,18 +37,50 @@ async function processFoundPdfIframe(elements) {
     console.log('[pdfParser] fullText', fullText);
     // 4. Analyse du texte pour en extraire les informations pertinentes
     let extractedData = extractRelevantData(fullText);
-    extractedData = JSON.stringify(extractedData);
-    console.log('[pdfParser] parsedData', extractedData);
 
     // 5. Création d'un id unique à partir d'un hash de fullText
     let hashId = customHash(fullText);
     console.log('[pdfParser] hashId', hashId);
 
-    // 6. Stockage des informations dans sessionStorage
-    sessionStorage.setItem(hashId, extractedData);
+    // 6. Stockage des informations pertinentes dans sessionStorage
+    // Ajouter à extractedData l'identifiant de la ligne d'action actuelle
+    extractedData.actionLine = actualActionLine();
+    extractedData.alreadyImported = false;
+    extractedData.isUserRejected = false;
+    let extractedDataStr = JSON.stringify(extractedData);
+    console.log('[pdfParser] extractedData', extractedDataStr);
+    sessionStorage.setItem(hashId, extractedDataStr);
+    // On obtiens un objet du type : {documentDate: "01/01/2021", dateOfBirth: "01/01/2021", nameMatches: ["DUPONT Jean", "DUPONT Jeanne"], actionLine: "0", alreadyImported: false, isUserRejected: false}
 
-    // 7. Intégration des données dans le formulaire d'import, avec possibilité de les corriger par l'utilisateur
+    // 7. Recherche du patient pertinent dans la base de données via la date de naissance si elle est présente
+    // 7.1 On lance la recherche par DDN
+    let properDDNSearched = lookupPatient(extractedData["dateOfBirth"]);
+    if (!properDDNSearched) {
+        console.log("[pdfParser] DDN non trouvée, arrêt pour cette fois.");
+        return;
+    }
+    console.log("[pdfParser] DDN présente, on continue à chercher le patient.");
+    
+    // 7.2. On clique sur le bon patient s'il est présent sans ambiguïté et qu'il n'est pas déjà sélectionné
+    let patientElements = getPatientsList();
+    console.log('[pdfParser] patientElements', patientElements);
+    let nameMatches = extractedData["nameMatches"];
+    let patientToClick = searchProperPatient(patientElements, nameMatches);
+    let patientToClickName = patientToClick.innerText;
+    if (patientToClickName === selectedPatientName()) {
+        console.log("[pdfParser] Patient déjà sélectionné, arrêt de la recherche.");
+        return;
+    } else {
+        let patientToClicSelector = "#" + patientToClick.id;
+        console.log("[pdfParser] Patient à sélectionner :", patientToClickName, patientToClick);
+        // patientToClick.click(); => ne fonctionne pas à cause du CSP en milieu ISOLATED
+        clicCSPLockedElement(patientToClicSelector);
+    }   
+
+
+    // 8. Intégration des données dans le formulaire d'import, avec possibilité de les corriger par l'utilisateur
     useExtractedData(extractedData);
+    
 
     // si besoin sans se faire écraser les données par le script
 }
@@ -55,21 +88,122 @@ async function processFoundPdfIframe(elements) {
 
 
 // // Fonctions utilitaires
-// Application des données extraites dans les zones adaptées, si elle n'ont pas été modifiées par l'utilisateur
-function useExtractedData(extractedData) {
-    // Récupération des données extraites
-    const data = JSON.parse(extractedData);
-    console.log('[pdfParser] data', data);
+// Renvoie la liste des patients trouvés après recherche
+function getPatientsList() {
+    // #ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0
+    const patientListSelector = "[id^='ContentPlaceHolder1_FindPatientUcForm'][id*='_PatientsGrid_LinkButtonPatientGetNomPrenom_']";
+    const patientElements = document.querySelectorAll(patientListSelector);
+    return patientElements;
 }
 
+function searchProperPatient(patientElements, nameMatches) {
+    // Première passe : chercher le nom complet
+    for (let i = 0; i < patientElements.length; i++) {
+        let patientElement = patientElements[i];
+        let patientName = patientElement.innerText;
+        if (nameMatches.includes(patientName)) {
+            return patientElement;
+        }
+    }
+
+    // Deuxième passe : chercher chaque mot indépendamment
+    for (let i = 0; i < patientElements.length; i++) {
+        let patientElement = patientElements[i];
+        let patientName = patientElement.innerText;
+        for (let j = 0; j < nameMatches.length; j++) {
+            let nameParts = nameMatches[j].split(' ');
+            for (let k = 0; k < nameParts.length; k++) {
+                if (patientName.includes(nameParts[k])) {
+                    return patientElement;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+function selectedPatientName() {
+    // On va rechercher si un patient est déjà sélectionné dans l'élément #ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_1
+    let idPatientSelectedBaseId = '#ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_'
+    // On ajoute le niveau de selection actuel au sélecteur
+    let idPatientSelected = idPatientSelectedBaseId + actualActionLine();
+    // On cherche son nom dans l'innerText
+    let patientSelectedElement = document.querySelector(idPatientSelected);
+    let patientSelectedName = patientSelectedElement.innerText;
+    console.log('[pdfParser] patientSelectedName', patientSelectedName);
+    return patientSelectedName;
+}
+
+
+// Recherche du patient dans la base de données via la date de naissance
+function lookupPatient(dateOfBirth) {
+    if (!dateOfBirth) {
+        console.log("[pdfParser] Pas de date de naissance trouvée. Arrêt de la recherche de patient.");
+        return null;
+    }
+    // D'abord il nous faut sélectionner "Naissance" dans le menu déroulant "#ContentPlaceHolder1_FindPatientUcForm2_DropDownListRechechePatient"
+    const dropDownResearch = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_DropDownListRechechePatient']");
+    console.log('[pdfParser] dropDownResearch', dropDownResearch);
+    // Valeur actuelle
+    const currentDropDownValue = dropDownResearch.value;
+    if (currentDropDownValue !== "Naissance") {
+        dropDownResearch.value = "Naissance";
+        dropDownResearch.dispatchEvent(new Event('change'));
+        return null;
+    }
     
+    // On remplit le champ de recherche avec la date de naissance si elle n'est pas déjà renseignée
+    const inputResearch = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherchePatientByDate']");
+    console.log('[pdfParser] inputResearch', inputResearch);
+    const valeurActuelle = inputResearch.value;
+    if (valeurActuelle === dateOfBirth) {
+        return true;
+    } else {
+        inputResearch.value = dateOfBirth;
+        // On clique sur le bouton de recherche ContentPlaceHolder1_FindPatientUcForm2_ButtonRecherchePatient
+        const searchButton = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_ButtonRecherchePatient']");
+        searchButton.click();
+        return false;
+    }    
+}
+
+
+
+// Application des données extraites dans les zones adaptées, si elle n'ont pas été modifiées par l'utilisateur
+function useExtractedData(dataToSend, targetZones) {
+    let dictInputZones = {
+        "documentDate": "ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_",
+        "researchField": "[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherche']",
+        "titleField": "ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_",
+        "classificationTarget": "ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementEvenementType_",
+        "classificationType": "ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_",
+    };
+    // Récupération des données extraites
+    console.log('[pdfParser] placeholder', dataToSend, targetZones);
+}
+
+// Récupérer la meta-ligne d'action actuelle
+function actualActionLine() {
+    const ligneSelectionne = document.querySelector(".grid-selecteditem");
+    // On cherche ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_0 mais le 0 est variable jusqu'à 9
+    let patientADefinirElement = ligneSelectionne.querySelector("[id^='ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_']");
+    // de là on récupère le dernier chiffre de l'id de l'élément
+    let numeroDeLigne = patientADefinirElement.id.match(/\d+$/)[0];
+    return numeroDeLigne;
+}
+
 
 
 
 // Renvoie l'URL du PDF de l'iframe quand elle est chargée 
 async function findPdfUrl(elements) {
     let iframe = elements[0];
-    console.log('[pdfParser] iframe trouvée', iframe);
+    if (!iframe) {
+        console.error("[pdfParser] iframe non trouvée. Arrêt de l'extraction.");
+        return null;
+    }
+
 
     return new Promise((resolve, reject) => {
         let intervalId = setInterval(() => {
@@ -116,14 +250,17 @@ async function extractTextFromPDF(pdfUrl) {
 async function extractLines(textItems) {
     var pageText = "";
     var currentLine = 0;
+    // Tolérance pour détecter une nouvelle ligne (en px)
+    // Facilite l'usage du script lorsqu'une OCR a été utilisée un peu de travers
+    var tolerance = 4; 
 
-    for (var i = 0; i < textItems.length; i++) { //Permet de reconnaitre les lignes dans le PDF
-        if (currentLine != textItems[i].transform[5]) { //Si l'élément transform[5] qui correspond à la ligne dans le PDF a changé alors on retourne à la ligne
+    for (var i = 0; i < textItems.length; i++) { // Permet de reconnaître les lignes dans le PDF
+        if (Math.abs(currentLine - textItems[i].transform[5]) > tolerance) { // Si la différence est supérieure à la tolérance, on considère une nouvelle ligne
             if (currentLine != 0) {
                 pageText += '\n';
             }
 
-            currentLine = textItems[i].transform[5]
+            currentLine = textItems[i].transform[5];
         }
 
         pageText += textItems[i].str;
