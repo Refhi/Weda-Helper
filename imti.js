@@ -86,7 +86,8 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoMTIncludeAndCheckContact', 
         callback: function (elements) {
             // Ajouter à sa droite un lien "WH : + adr. MSsante"
             let link = document.createElement('a');
-            link.innerText = ' /+ avec son addresse MSsante (WH)';
+            link.innerText = ' /+ avec son addresse MSsante';
+            link.title = "Ajoute le médecin traitant aux contacts du patient et tente de récupérer son adresse MSsante via l'annuaire des pro de santé. Affiche une alerte en cas d'échec. (fonction ajoutée par Weda-Helper)";
             link.href = '#'; // Vous pouvez définir une URL si nécessaire
             elements[0].parentElement.appendChild(link);
             link.addEventListener('click', function (event) {

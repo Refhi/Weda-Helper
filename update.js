@@ -6,11 +6,38 @@ function htmlMaker(text) {
 }
 
 var nouveautes = `
-<h3>Video de présentation de Weda-Helper 2.8 - Impression instantanée</h3>
-<p>Les nouveautés en vidéo : <a href="https://www.youtube.com/watch?v=wDDN18AbgUk" target="_blank">Ouvrir dans un autre onglet pour regarder plus tard</a> ajoutez-la à votre liste de lecture YouTube : <a href="https://www.youtube.com/watch?v=wDDN18AbgUk&list=WL" target="_blank">Ajouter à ma liste de lecture</a></p>
+<h3>Video de présentation de Weda-Helper 2.9 - Impression instantanée</h3>
+<p>Les nouveautés en vidéo : <a href="https://youtu.be/OBx-QGw7K_c" target="_blank">Ouvrir dans un autre onglet pour regarder plus tard</a> ajoutez-la à votre liste de lecture YouTube : <a href="https://youtu.be/OBx-QGw7K_c&list=WL" target="_blank">Ajouter à ma liste de lecture</a></p>
 <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; height: auto;">
-    <iframe style="position: absolute; top: 0; left: 0; width: 80%; height: 80%;" src="https://www.youtube.com/embed/wDDN18AbgUk" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <iframe style="position: absolute; top: 0; left: 0; width: 80%; height: 80%;" src="https://www.youtube.com/embed/OBx-QGw7K_c" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 </div>
+
+<h3>Ajouts :</h3>
+<ul>
+    <li><a href="https://github.com/Refhi/Weda-Helper/issues/275" target="_blank">#275</a> - Permet de sélectionner automatiquement le(s) médecin(s)traitant(s) comme destinataire(s) lors de l'envoi d'un courrier (désactivé par défaut)</li>
+    <li><a href="https://github.com/Refhi/Weda-Helper/issues/274" target="_blank">#274</a> - Ajout de raccourcis pour l'envoi des courrrier : Ctrl+E et Ctrl+Shift+E par défaut</li>
+    <li><a href="https://github.com/Refhi/Weda-Helper/issues/308" target="_blank">#308</a> - Ajout d'un lien vers le log du Companion dans la page des options</li>
+    <li><a href="https://github.com/Refhi/Weda-Helper/issues/301" target="_blank">#301</a> - Un clic du milieu sur le W du Menu W ouvre un nouvel onglet vers l'accueil du dossier patient, et non le module en cours.</li>
+    <li>Automatisation du contrôle du MT + ouvre un nouvel onglet pour ne pas avoir à patienter. Un message vous indique si cela a fonctionné ou non. Vous pourrez retourner dans le premier onglet si vous souhaitez enregistrer le MT.</li>
+    <li>Automatisation partielle de la déclaration de MT : sélectionne automatiquement le patient en cours, pré-coche les cases de consentement. Vous n'avez plus qu'à cliquer sur "Transmettre" pour valider.</li>
+    <li><a href="https://github.com/Refhi/Weda-Helper/issues/273" target="_blank">#273</a> - Automatisation de la récupération du MT et de sa mise à jour avec l'annuaire des professionnels de santé. (désactivé par défaut)</li>
+    <li><a href="https://github.com/Refhi/Weda-Helper/issues/284" target="_blank">#284</a> - Possibilité d'inverser automatiquement le titre du corps du message et le titre du message lors de la réception d'un courrier (beta, merci de me faire part de vos retours)</li>
+</ul>
+
+<h3>Fix :</h3>
+<ul>
+    <li><a href="https://github.com/Refhi/Weda-Helper/issues/293" target="_blank">#293</a> - Clique automatiquement sur "Continuer sans l'ordonnance numérique" si le message d'erreur est détecté (désactivé par défaut).</li>
+    <li><a href="https://github.com/Refhi/Weda-Helper/issues/309" target="_blank">#309</a> - Correction du plantage des FSE lors de l'impression instantanée lorsque le DMP est solllicité en même temps (fonctionne en inhibant l'envoi au DMP le temps de la réalisation de la FSE)</li>
+    <li><a href="https://github.com/Refhi/Weda-Helper/issues/303" target="_blank">#303</a> - Correction d'un problème d'affichage des raccourcis claviers lors de l'appuis de Alt prolongé sous MAC. Sous MAC il faut désormais appuyer deux fois de suite sur Alt pour afficher les raccourcis claviers.</li>
+    <li><a href="https://github.com/Refhi/Weda-Helper/issues/295" target="_blank">#295</a> - l'affichage automatique des atcd fonctionnent à nouveau</li>
+    <li><a href="https://github.com/Refhi/Weda-Helper/issues/315" target="_blank">#315</a> - Amélioration des boutons FSE dégradée et Téléconsultation dans la FSE + ajout de raccourcis claviers</li>
+    <li>rétablissement du rafrachissement automatique des messages Mssanté</li>
+</ul>
+
+<h3>Refactory :</h3>
+<ul>
+    <li><a href="https://github.com/Refhi/Weda-Helper/issues/325" target="_blank">#325</a> - Amélioration de la gestion des options</li>
+</ul>
 `;
 
 nouveautes = htmlMaker(nouveautes);
@@ -28,7 +55,7 @@ var firstStartMessage = `
 
 📝 Vous pouvez aussi relire <a href="https://github.com/Refhi/Weda-Helper/" target="_blank">Weda-Helper sur gitHub</a> pour plus de précisions, et y faire des suggestions ou des signalements de bugs. 
 
-<a href="https://github.com/Refhi/Weda-Helper/blob/main/FicheMemo.pdf" target="_blank">📄 Fiche mémo</a> pour les raccourcis clavier.
+📄 Une fois dans Weda, vous pourrez afficher les raccourcis clavier en maintenant Alt (appuyez deux fois rapidement si vous êtes sous MAC).
 
 💖 Et bien sûr m'encourager sur le <a href="https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/m-p/2998" target="_blank">Site de la communauté de weda</a>
 
@@ -57,7 +84,7 @@ var updateMessage = `
 <a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.dmg" target="_blank">ou pour mac</a> 
 <strong>pour profiter de fonctionnalités supplémentaires (Impression totale, lien avec le TPE et upload automatisé).</strong><br><br>
 
-<strong>📄 Vous pouvez maintenir Alt pour afficher la fiche mémo !</strong> <br><br>
+<strong>📄 Maintenez Alt pour afficher la fiche mémo  raccourcis clavier ! (Double appuis rapide sous MAC)</strong> <br><br>
 
 <strong>🌟 Voici les nouveautés et les améliorations :</strong><br>
 ${nouveautes}<br><br>

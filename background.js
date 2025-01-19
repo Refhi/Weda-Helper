@@ -159,12 +159,12 @@ var advancedDefaultSettings = [{
                 "name": "autoMTnewTab",
                 "type": TYPE_BOOL,
                 "description": "Ouvre un nouvel onglet pour éviter de patienter pendant la récupération des informations.",
-                "default": true
+                "default": false
             }, {
                 "name": "autoMTIncludeAndCheckContact",
                 "type": TYPE_BOOL,
                 "description": "Ajoute un lien pour qu'ajouter le MT récupéré initie la récupération de l'adresse sécurisée. Compatible avec l'option précédente.",
-                "default": false
+                "default": true
             }]
         }],
     }, {
