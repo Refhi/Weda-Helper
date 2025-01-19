@@ -26,7 +26,7 @@ function findPDF(elements) {
     }, 5000);
 }
 
-function confirmAndFill(documentDate, dateOfBirth, nameMatches) {
+function confirmAndFill(documentDate, dateOfBirth, nameMatches) { // TODO : non appelée, à évaluer
     // Prend les éléments et fait un log si non trouvé
     function getElement(selector) {
         const element = document.querySelector(selector);
@@ -286,3 +286,4 @@ async function extractLines(textItems) {
         pageText += textItems[i].str;
     }
     return pageText;
+}
