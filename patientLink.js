@@ -220,3 +220,16 @@ addTweak(urls, '*addATCDShortcut', function () {
     });
 
 });
+
+
+/**
+ * Ouvre un nouvel onglet avec l'URL du dossier du patient actuel.
+ * 
+ * @async
+ * @function newPatientTab
+ */
+async function newPatientTab() {
+    let patientInfo = await getPatientInfo(getCurrentPatientId());
+    let urlPatient = patientInfo['patientFileUrl'];
+    window.open(urlPatient);
+}

@@ -29,7 +29,6 @@ function checkPatientName() {
 
 
 
-    
 
 // Définition de la fonction principale
 // (tableau et bouche après)
@@ -161,25 +160,53 @@ function tweakFSECreation() {
                 }, 3000);
             });
         }
-        // Attendre que l'élément "Lire la carte vitale" existe
-        waitLegacyForElement('a[title="Relance une lecture de la carte vitale"]', null, 5000, function (lireCarteVitaleElement) {
-            // Créer le premier bouton
-            var button1 = document.createElement('button');
-            button1.textContent = 'FSE dégradée';
-            button1.onclick = function () {
-                degradeTeleconsult('Dégradé');
-            };
-
-            // Créer le deuxième bouton
-            var button2 = document.createElement('button');
-            button2.textContent = 'FSE Teleconsultation'; // Mettez le texte que vous voulez ici
-            button2.onclick = function () {
-                degradeTeleconsult('Téléconsultation');
-            };
-
-            // Insérer les boutons après l'élément "Lire la carte vitale"
-            lireCarteVitaleElement.parentNode.insertBefore(button1, lireCarteVitaleElement.nextSibling);
-            lireCarteVitaleElement.parentNode.insertBefore(button2, button1.nextSibling);
+        waitForElement({
+            selector: 'a[title="Relance une lecture de la carte vitale"]',
+            justOnce: false,
+            callback: function (elements) {
+                let lireCarteVitaleElement = elements[0];
+                
+                // Vérifier si les boutons existent déjà
+                if (document.getElementById('targetValider') || document.getElementById('targetAnnuler')) {
+                    return;
+                }
+            
+                // Style commun pour les boutons
+                const commonStyle = {
+                    backgroundColor: 'rgba(0, 0, 0, 0.32)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '8px 16px',
+                    margin: '0 4px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.3s ease'
+                };
+            
+                // Créer le premier bouton
+                var button1 = document.createElement('button');
+                // button1.id = 'targetValider';
+                button1.classList.add('boutonCustonWH');
+                button1.textContent = 'FSE dégradée';
+                Object.assign(button1.style, commonStyle);
+                button1.onclick = function () {
+                    degradeTeleconsult('Dégradé');
+                };
+            
+                // Créer le deuxième bouton
+                var button2 = document.createElement('button');
+                // button2.id = 'targetAnnuler';
+                button2.classList.add('boutonCustonWH');
+                button2.textContent = 'FSE Teleconsultation';
+                Object.assign(button2.style, commonStyle);
+                button2.onclick = function () {
+                    degradeTeleconsult('Téléconsultation');
+                };
+            
+                // Insérer les boutons avant l'élément "Lire la carte vitale"
+                lireCarteVitaleElement.parentNode.insertBefore(button2, lireCarteVitaleElement);
+                lireCarteVitaleElement.parentNode.insertBefore(button1, lireCarteVitaleElement);
+            }
         });
     }
 
@@ -337,6 +364,7 @@ function tweakFSECreation() {
 
                         recordMetrics({ clicks: 1, drags: 1 });
                         console.log('Cotation appliquée:', action);
+                        selectLastCotationSpace();
                         return; // Arrête la fonction après avoir appliqué une cotation
                     } else if (action === 'Défaut') {
                         console.log('Action "Défaut" spécifiée mais non trouvée parmi les éléments.');

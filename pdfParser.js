@@ -143,8 +143,6 @@ function confirmAndFill(documentDate, dateOfBirth, nameMatches) {
 }
 
 
-
-
 function parsePDF(url) {
 
     extractTextFromPDF(url).then(fullText => {
@@ -288,4 +286,3 @@ async function extractLines(textItems) {
         pageText += textItems[i].str;
     }
     return pageText;
-}

@@ -2,10 +2,14 @@
 // Cette partie s'occupe d'envoyer les instructions, quelles qu'elles soient, à Weda-Helper-Companion.
 // Donc le montant tpe et l'impression.
 // Vérifie également la présence du Companion et propose de l'activer si les options sont désactivées.
+
+// Défini le numéro de version dans le storage local
+chrome.storage.local.set({ 'version': '1.2' });
+
 function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithData = null, testing = false) {
     let isSuccess = true;
-    getOption(['portCompanion', 'apiKey'], function ([portCompanion, apiKey]) {
-        let versionToCheck = "1.2";
+    getOption(['portCompanion', 'apiKey', 'version'], function ([portCompanion, apiKey, version]) {
+        let versionToCheck = version;
         let urlWithParam = `http://localhost:${portCompanion}/${urlCommand}` +
             `?apiKey=${apiKey}` +
             `&versioncheck=${versionToCheck}`;

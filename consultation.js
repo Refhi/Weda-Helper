@@ -747,8 +747,9 @@ pagesToLeftPannel_.forEach((page) => {
         waitForElement({
             selector: '#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent',
             justOnce: true,
-            callback: () => {
-                console.log('[autoATCD] bouton atcd détecté');
+            callback: (elements) => {
+                console.log('[autoATCD] bouton atcd détecté, je clique dessus');
+                elements[0].click();
                 waitForElement({
                     selector: '#ContentPlaceHolder1_EvenementUcForm1_PanelHistoriqueFrame',
                     callback: () => {

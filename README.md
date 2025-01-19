@@ -71,6 +71,9 @@ Ctrl+U	Upload le dernier fichier du dossier envoyé par le Companion
 - Ajout d'icones pour copier automatiquement le NIR dans le presse-papier
 - Lecture automatique de la carte vitale et accès direct au dossier médical du patient (s’il est seul sur la carte vitale).
 *Cette fonction nécessite le connecteur Weda V3 installé sur votre PC. Demandez son installation à votre technicien.*
+- Automatisation de la récupération du MT et de sa mise à jour avec l'annuaire des professionnels de santé. (désactivé par défaut)
+- Automatisation du contrôle du MT + ouvre un nouvel onglet pour ne pas avoir à patienter. Un message vous indique si cela a fonctionné ou non. Vous pourrez retourner dans le premier onglet si vous souhaitez enregistrer le MT.
+- Automatisation partielle de la déclaration de MT : sélectionne automatiquement le patient en cours, pré-coche les cases de consentement. Vous n'avez plus qu'à cliquer sur "Transmettre" pour valider.
 
 ## Consultations
 - Affichage automatique de l'historique dans une colonne à gauche : ouvre automatiquement un historique simplifié (pas de recettes notamment) dans une colonne à gauche de l'écran, uniquement dans les pages de Consultation, de Courrier, de Certificat, de Formulaire et Demandes.
@@ -169,6 +172,9 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - ajout d'options pour limiter le nombre d'atcd affichés en CIM 10 et de les trier par ordre alphabétique
 - implémentation d'une pré-alerte : si la date de l'alerte est dans moins de 6 mois (paramétrable), l'alerte est affichée en orange
 
+### Navigation :
+- Un clic du milieu sur le W du Menu W ouvre un nouvel onglet vers l'accueil du dossier patient, et non le module en cours.
+
 
 
 
@@ -183,6 +189,7 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 
 - On peut désormais utiliser Ctrl+U pour uploader directement dans Weda le document le plus récent présent dans un dossier pré-sélectionné dans le Companion. Un nouveau bouton permet d'archiver si souhaité le document après l'upload.
 - Option pour décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée
+- Possibilité d'inverser automatiquement le titre du corps du message et le titre du message lors de la réception d'un courrier (beta, merci de me faire part de vos retours)
 
 
 ## Weda-Helper-Companion
@@ -190,7 +197,7 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 Installez et laisser tourner ce logiciel sur votre ordinateur pour avoir des fonctionnalités supplémentaires :
 - impression directe automatique complète et instantanée (grace à l'option "Impression Instantanée" dans les options de l'extension)
 - Envoie le montant à régler à votre TPE (quand on valide une FSE - via alt+v - ou un règlement manuel)
-
+- un lien vers le journal d'activité du Companion est présent dans la page des options de Weda-Helper
 => Procédures d'installation et de paramétrage sur [le readme du Companion](https://github.com/Refhi/Weda-Helper-Companion)
 
 
