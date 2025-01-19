@@ -26,19 +26,140 @@ function findPDF(elements) {
     }, 5000);
 }
 
+function confirmAndFill(documentDate, dateOfBirth, nameMatches) {
+    // Prend les éléments et fait un log si non trouvé
+    function getElement(selector) {
+        const element = document.querySelector(selector);
+        if (!element) {
+            console.error(`Element not found: ${selector}`);
+        }
+        return element;
+    }
+
+    // Vérifie si un élément avec l'ID 'extractedData' existe déjà et le supprime
+    let existingDiv = getElement("#extractedData");
+    if (existingDiv) {
+        existingDiv.remove();
+    }
+
+    // Création de l'interface de confirmation
+    let extractedDataDiv = document.createElement("div");
+    extractedDataDiv.setAttribute("id", "extractedData");
+
+    // Validation des entrées : vérification de la date du document
+    if (!documentDate || !(documentDate instanceof moment)) {
+        console.error("Invalid or missing documentDate");
+        alert("Erreur: La date du document est introuvable ou invalide");
+        return;
+    }
+
+    // Validation des entrées : vérification des noms extraits du document
+    if (!nameMatches || !Array.isArray(nameMatches) || nameMatches.length === 0) {
+        console.error("No name found in the document");
+        alert("Erreur: Aucun nom trouvé dans le document.");
+        return;
+    }
+
+    // Création du contenu HTML pour afficher la confirmation
+    let content = `
+    <label>Date du document:</label> 
+    <input type="text" id="confirmDocumentDate" value="${documentDate.format("DD/MM/YYYY")}" />
+    <br/>
+    <label>Date de naissance:</label> 
+    <input type="text" id="confirmDateOfBirth" value="${dateOfBirth ? dateOfBirth.format("DD/MM/YYYY") : ''}" />
+    <br/>
+    <label>Noms trouvés:</label> 
+    <select id="confirmName">
+        ${nameMatches.map(name => `<option value="${name}">${name}</option>`).join('')}
+    </select>
+    <br/>
+    <button id="confirmButton">Confirmer</button>
+    `;
+    extractedDataDiv.innerHTML = content;
+
+    // Recherche de l'élément où l'interface doit être insérée
+    let tableDiv = getElement("#ContentPlaceHolder1_UpdatePanelClassementGrid");
+    if (!tableDiv) {
+        alert("Erreur: L'élément cible pour insérer les données est introuvable");
+        return;
+    }
+    // Insertion de l'interface de confirmation avant le tableau
+    tableDiv.parentNode.insertBefore(extractedDataDiv, tableDiv);
+    
+
+    // Ajout d'un événement au bouton de confirmation
+    let confirmButton = getElement("#confirmButton");
+    if (confirmButton) {
+        confirmButton.addEventListener("click", () => {
+            try {
+                // Récupération des valeurs confirmées
+                let confirmedDocumentDate = getElement("#confirmDocumentDate").value;
+                let confirmedDateOfBirth = getElement("#confirmDateOfBirth").value;
+                let confirmedName = getElement("#confirmName").value;
+
+                // Validation de la date du document
+                if (!confirmedDocumentDate || !moment(confirmedDocumentDate, "DD/MM/YYYY", true).isValid()) {
+                    alert("Erreur: La date du document confirmée est invalide.");
+                    return;
+                }
+
+                // Validation de la date de naissance si elle est fournie
+                if (confirmedDateOfBirth && !moment(confirmedDateOfBirth, "DD/MM/YYYY", true).isValid()) {
+                    alert("Erreur: La date de naissance confirmée est invalide.");
+                    return;
+                }
+
+                // Validation du nom confirmé
+                if (!confirmedName) {
+                    alert("Erreur: Aucun nom confirmé.");
+                    return;
+                }
+
+                // Mise à jour de la valeur du champ 'Date du document' dans le formulaire
+                let dateElement = getElement('tr.grid-selecteditem input[title="Date du document"]');
+                if (dateElement) {
+                    dateElement.value = confirmedDocumentDate;
+                } else {
+                    console.error("Date element not found in the form.");
+                }
+
+                // Si la date de naissance est confirmée, recherche du patient par DDN
+                if (confirmedDateOfBirth) {
+                    searchForDDN(moment(confirmedDateOfBirth, "DD/MM/YYYY"));
+                }
+
+                // Affichage des valeurs confirmées dans la console pour vérification
+                console.log(`Confirmed Document Date: ${confirmedDocumentDate}`);
+                console.log(`Confirmed Date of Birth: ${confirmedDateOfBirth}`);
+                console.log(`Confirmed Name: ${confirmedName}`);
+            } catch (error) {
+                console.error("An error occurred during the confirmation process", error);
+                alert("Une erreur inattendue s'est produite lors du processus de confirmation");
+            }
+        });
+    } else {
+        console.error("Confirmation button not found.");
+    }
+}
+
+
+
 function parsePDF(url) {
 
     extractTextFromPDF(url).then(fullText => {
-        // console.log(fullText)
-        var firstName;
+        // Declare variables
         var documentDate;
         var dateOfBirth;
-        var dateRegex = /[0-9]{2}[\/|-][0-9]{2}[\/|-][0-9]{4}/g; // Match dates dd/mm/yyyy ou dd-mm-yyyy
-        var dateOfBirthRegex = /(?:né\(e\) le|date de naissance:|date de naissance :|née le)[\s\S]([0-9]{2}[\/|-][0-9]{2}[\/|-][0-9]{4})/i; //Match la date de naissance
-        var firstNameRegex = /(?:Mme|Madame|Monsieur|M\.) (.*?)(?: \(| né| - né)/gi; // Match pour les courriers, typiquement "Mr. XXX né le"
-        var backupFirstNameRegex = /(?:Nom de naissance : |Nom : |Nom de naiss\.: )(.*?)\n/gim; // Match pour les CR d'imagerie, typiquement "Nom : XXX \n"
+        var nameMatches = []; // Initialize nameMatches array
+        
+        // Regular expressions
+        var dateRegex = /[0-9]{2}[\/|-][0-9]{2}[\/|-][0-9]{4}/g; // Match dates dd/mm/yyyy or dd-mm-yyyy
+        var dateOfBirthRegex = /(?:né\(e\) le|date de naissance:|date de naissance :|née le)[\s\S]([0-9]{2}[\/|-][0-9]{2}[\/|-][0-9]{4})/i; // Match date of birth
+        var firstNameRegex = /(?:Mme|Madame|Monsieur|M\.) (.*?)(?: \(| né| - né)/gi; // Match name for correspondence
+        var backupFirstNameRegex = /(?:Nom de naissance : |Nom : |Nom de naiss\.: )(.*?)\n/gim; // Match name for medical records
+
+        // Match dates
         let dateMatch = fullText.match(dateRegex);
-        // console.log(dateMatch);
         if (dateMatch) {
             for (var i = 0; i < dateMatch.length; i++) {
                 if (!dateOfBirth) {
@@ -47,63 +168,49 @@ function parsePDF(url) {
                 if (!documentDate) {
                     documentDate = moment(dateMatch[i], "DD/MM/YYYY");
                 }
-                if (documentDate < moment(dateMatch[i], "DD/MM/YYYY")) { // On choisit la date la plus grande car c'est la date de l'examen (date de prescription et DDN sont inférieures)
+                if (documentDate < moment(dateMatch[i], "DD/MM/YYYY")) { // Use the latest date as documentDate
                     documentDate = moment(dateMatch[i], "DD/MM/YYYY");
                 }
                 if (dateOfBirth > moment(dateMatch[i], "DD/MM/YYYY")) {
                     dateOfBirth = moment(dateMatch[i], "DD/MM/YYYY");
                 }
-
             }
 
-            if (dateOfBirth == documentDate){
-                dateOfBirth == null;
+            if (dateOfBirth.isSame(documentDate)) {
+                dateOfBirth = null; // If the document date and birthdate are the same, nullify dateOfBirth
             }
 
             console.log("Found date: " + documentDate.format("DD/MM/YYYY"));
-            let dateElement = document.querySelector('tr.grid-selecteditem input[title="Date du document"]');
-            dateElement.value = documentDate.format("DD/MM/YYYY");
         }
 
+        // Match date of birth explicitly from regex
         let dateOfBirthMatch = fullText.match(dateOfBirthRegex);
         if (dateOfBirthMatch) {
-          dateOfBirth = moment(dateOfBirthMatch[1], "DD/MM/YYYY"); //On récupére le groupe du Regex
-
-          console.log("Found date of birth: " + dateOfBirth.format("DD/MM/YYYY"));
+            dateOfBirth = moment(dateOfBirthMatch[1], "DD/MM/YYYY"); // Extract birthdate
+            console.log("Found date of birth: " + dateOfBirth.format("DD/MM/YYYY"));
         }
 
-
+        // Match names from the document
         var nameMatchesIterator = fullText.matchAll(firstNameRegex);
-        var nameMatches = Array();
         for (const match of nameMatchesIterator) {
-            // console.log(match);
-            nameMatches.push(match[1]);
+            nameMatches.push(match[1]); // Extract names into nameMatches
         }
 
+        // If no names are found, try backup regex
         if (nameMatches.length == 0) {
             nameMatchesIterator = fullText.matchAll(backupFirstNameRegex);
             for (const match of nameMatchesIterator) {
-                nameMatches.push(match[1]);
+                nameMatches.push(match[1]); // Extract names into nameMatches from backup regex
             }
         }
 
-        console.log("Found name: " + nameMatches);
-        // var firstName = nameMatches[0].match(/\b[A-Z][A-Z]+/g)[0]; //Isole le nom de famille
-        // console.log(firstName);
-        let div = document.getElementById("extractedData");
-        if (div) {
-            document.remove(div);
-        }
+        console.log("Found names: " + nameMatches);
 
-        var extractedDataDiv = document.createElement("div");
-        extractetDataDive.setAttribute("id", "extracteddata")
-
-        let content = document.createTextNode(`Date du document: ${documentDate.format("DD/MM/YYYY")} Date de naissance: ${dateOfBirth.format("DD/MM/YYYY")}`);
-        extractedDataDiv.appendChild(content);
-        let tableDiv = document.getElementById("ContentPlaceHolder1_UpdatePanelClassementGrid");
-        tableDiv.parentNode.insertBefore(extractedDataDiv, tableDiv);
+        // Call confirmAndFill with the extracted data
+        confirmAndFill(documentDate, dateOfBirth, nameMatches);
     });
 }
+
 
 function searchForDDN(date) {
 
