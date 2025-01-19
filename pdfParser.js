@@ -170,14 +170,15 @@ function parsePDF(url) {
                 if (dateOfBirth > moment(dateMatch[i], "DD/MM/YYYY")) {
                     dateOfBirth = moment(dateMatch[i], "DD/MM/YYYY");
                 }
+
             }
 
             if (dateOfBirth.isSame(documentDate)) {
                 dateOfBirth = null; // Si la date de document et la date de naissance sont identiques, on annule la date de naissance
-            }
 
             console.log("Found date: " + documentDate.format("DD/MM/YYYY"));
             let dateElement = document.querySelector('tr.grid-selecteditem input[title="Date du document"]');
+              
             if (dateElement) {
                 dateElement.value = documentDate.format("DD/MM/YYYY");
             } else {
@@ -221,6 +222,8 @@ function parsePDF(url) {
         }
     }).catch(error => {
         console.error("Erreur lors de l'extraction du texte du PDF:", error);
+=======
+         
     });
 }
 
@@ -288,4 +291,4 @@ async function extractLines(textItems) {
         pageText += textItems[i].str;
     }
     return pageText;
-}
+
