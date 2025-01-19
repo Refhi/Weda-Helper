@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper",
-  "version": "2.9",
-  "version_name": "2.9",
+  "version": "2.10",
+  "version_name": "2.10-pdfParser work",
   "options_page": "options.html",
   "permissions": [
     "storage"
@@ -26,6 +26,7 @@
         "metrics.js",
         "lib/hotkeys.js",
         "lib/pdf-lib.js",
+        "lib/moment.js",
         "utils.js",
         "content.js",
         "tooltip.js",
@@ -46,14 +47,16 @@
         "print.js",
         "courrier.js",
         "imti.js",
-        "wedaEchanges.js"
+        "wedaEchanges.js",
+        "pdfParser.js"
       ]
     }
   ],
   "web_accessible_resources": [
     {
       "resources": [
-        "FW_scripts/*"
+        "FW_scripts/*",
+        "lib/*"
       ],
       "matches": [
         "<all_urls>"
