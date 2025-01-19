@@ -19,6 +19,7 @@ Merci de votre intérêt pour contribuer à Weda Helper ! Voici quelques directi
 - **Code** : Assurez-vous que votre code est propre et bien commenté.
 - **Documentation** : Mettez à jour la documentation si nécessaire.
 - **Revue de Code** : Soyez prêt à recevoir des commentaires et à faire des modifications.
+- privilégier les autorisations facultatives dans le manifest.json pour éviter les désactivations de l'extension.
 
 ## Style de Code
 
