@@ -215,7 +215,7 @@ function lookupPatient(dateOfBirth) {
 
 
 
-// Application des données extraites dans les zones adaptées, si elle n'ont pas été modifiées par l'utilisateur
+// Application des données extraites dans les zones adaptées
 function useExtractedData(dataLocation, dataToUse) {
     let dictInputZones = {
         "documentDate": "#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_",
@@ -333,20 +333,24 @@ function extractRelevantData(fullText) {
     const backupFirstNameRegex = /(?:Nom de naissance : |Nom : |Nom de naiss\.: )(.*?)\n/gim; // Match pour les CR d'imagerie, typiquement "Nom : XXX \n"
 
     const dateMatch = fullText.match(dateRegex);
+
+    // 1. D'abord on va parcourir toutes les dates trouvées pour déterminer la plus :
+    // - récente qui est probablement la date de l'examen
+    // - ancienne qui est probablement la date de naissance
     if (dateMatch) {
-        for (let i = 0; i < dateMatch.length; i++) {
-            const currentDate = parseDate(dateMatch[i]);
+        for (let i = 0; i < dateMatch.length; i++) { // Parcourt toutes les dates trouvées
+            const processedDate = parseDate(dateMatch[i]); // On convertit la date en objet Date
             if (!dateOfBirth) {
-                dateOfBirth = currentDate;
+                dateOfBirth = processedDate;
             }
             if (!documentDate) {
-                documentDate = currentDate;
+                documentDate = processedDate;
             }
-            if (documentDate < currentDate) { // On choisit la date la plus grande car c'est la date de l'examen (date de prescription et DDN sont inférieures)
-                documentDate = currentDate;
+            if (documentDate < processedDate) { // On choisit la date la plus grande car c'est la date de l'examen (date de prescription et DDN sont inférieures)
+                documentDate = processedDate;
             }
-            if (dateOfBirth > currentDate) {
-                dateOfBirth = currentDate;
+            if (dateOfBirth > processedDate) {
+                dateOfBirth = processedDate;
             }
         }
 
@@ -355,16 +359,21 @@ function extractRelevantData(fullText) {
         }
     }
 
+    // 2. On cherche la date de naissance avec le Regex, ce qui
+    // peut être plus fiable que la méthode précédente
     const dateOfBirthMatch = fullText.match(dateOfBirthRegex);
     if (dateOfBirthMatch) {
         dateOfBirth = parseDate(dateOfBirthMatch[1]); // On récupère le groupe du Regex
     }
 
+    // 3. On cherche le nom avec le Regex
+    // On commence par chercher le nom complet
     let nameMatchesIterator = fullText.matchAll(firstNameRegex);
     for (const match of nameMatchesIterator) {
         nameMatches.push(match[1]);
     }
 
+    // Si on n'a pas trouvé de nom complet, on cherche avec d'autres Regex
     if (nameMatches.length === 0) {
         nameMatchesIterator = fullText.matchAll(backupFirstNameRegex);
         for (const match of nameMatchesIterator) {
