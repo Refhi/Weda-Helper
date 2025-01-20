@@ -50,7 +50,15 @@ async function processFoundPdfIframe(elements) {
     let extractedDataStr = JSON.stringify(extractedData);
     console.log('[pdfParser] extractedData', extractedDataStr);
     sessionStorage.setItem(hashId, extractedDataStr);
-    // On obtiens un objet du type : {documentDate: "01/01/2021", dateOfBirth: "01/01/2021", nameMatches: ["DUPONT Jean", "DUPONT Jeanne"], actionLine: "0", alreadyImported: false, isUserRejected: false}
+    // On obtiens un objet du type :
+    // {
+    //     documentDate: "01/01/2021",
+    //     dateOfBirth: "01/01/2021",
+    //     nameMatches: ["DUPONT Jean", "DUPONT Jeanne"],
+    //     actionLine: "0",
+    //     alreadyImported: false,
+    //     isUserRejected: false
+    // }
 
     // 7. Recherche du patient pertinent dans la base de données via la date de naissance si elle est présente
     // 7.1 On lance la recherche par DDN
@@ -152,9 +160,19 @@ function lookupPatient(dateOfBirth) {
         dropDownResearch.dispatchEvent(new Event('change'));
         return null;
     }
-    
-    // On remplit le champ de recherche avec la date de naissance si elle n'est pas déjà renseignée
+
+    // On vérifie que le champ de recherche de DDN est bien apparu
     const inputResearch = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherchePatientByDate']");
+    if (!inputResearch) {
+        console.log("[pdfParser] Champ de recherche de date de naissance non trouvé. Arrêt de la recherche de patient.");
+        // On va remettre le menu déroulant à une autre valeur par exemple "Nom"
+        dropDownResearch.value = "Nom";
+        dropDownResearch.dispatchEvent(new Event('change'));
+        // La page est rafraichie par ce changement, on arrête là
+        return null;
+    }
+    // On remplit le champ de recherche avec la date de naissance si elle n'est pas déjà renseignée
+    
     console.log('[pdfParser] inputResearch', inputResearch);
     const valeurActuelle = inputResearch.value;
     if (valeurActuelle === dateOfBirth) {
