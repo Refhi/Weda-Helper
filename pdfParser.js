@@ -328,14 +328,14 @@ function extractRelevantData(fullText) {
             /[0-9]{2}[\/|-][0-9]{2}[\/|-][0-9]{4}/g // Match dates dd/mm/yyyy ou dd-mm-yyyy
         ],
         dateOfBirthRegexes: [
-            /(?:né\(e\) le|date de naissance:|date de naissance :|née le)[\s\S]([0-9]{2}[\/|-][0-9]{2}[\/|-][0-9]{4})/i // Match la date de naissance
+            /(?:né\(e\) le|date de naissance:|date de naissance :|née le)[\s\S]([0-9]{2}[\/|-][0-9]{2}[\/|-][0-9]{4})/gi // Match la date de naissance
         ],
         nameRegexes: [
             /(?:Mme|Madame|Monsieur|M\.) (.*?)(?: \(| né| - né)/gi, // Match pour les courriers, typiquement "Mr. XXX né le"
             /(?:Nom de naissance : |Nom : |Nom de naiss\.: )(.*?)(?:\n|$)/gim // Match pour les CR d'imagerie, typiquement "Nom : XXX \n" ou "Nom : XXX"
         ],
         documentDateRegexes: [
-            /(?:, le|Fait à [^,]*, le) ([0-9]{2}[\/|-][0-9]{2}[\/|-][0-9]{4})/gi // Match pour les dates dans les courriers
+            /, le (\d{2}[\/-]\d{2}[\/-]\d{4})/gi // Match pour les dates dans les courriers
         ]
     };
 
@@ -362,6 +362,22 @@ function extractDates(fullText, dateRegexes) {
     return matches;
 }
 
+// Fonction auxiliaire pour chercher directement la date dans le texte
+function findDateInText(fullText, dateRegexes) {
+    console.log('[pdfParser] fullText', fullText);
+    for (const regex of dateRegexes) {
+        console.log('[pdfParser] regex', regex);
+        const matches = fullText.matchAll(regex);
+        for (const match of matches) {
+            if (match[1]) {
+                console.log('[pdfParser] date trouvée', match[1]);
+                return parseDate(match[1]); // On récupère le groupe du Regex
+            }
+        }
+    }
+    return null;
+}
+
 // Détermination de la date du document
 function determineDocumentDate(fullText, dateMatches, documentDateRegexes) {
     let documentDate = null;
@@ -373,13 +389,12 @@ function determineDocumentDate(fullText, dateMatches, documentDateRegexes) {
         }
     }
     // On peut aussi chercher directement la date du document
-    // qui est souvent plus précise que la date du document la plus récente
-    for (const regex of documentDateRegexes) {
-        const documentDateMatch = fullText.match(regex);
-        if (documentDateMatch) {
-            documentDate = parseDate(documentDateMatch[1]); // On récupère le groupe du Regex
-            break;
-        }
+    const directDate = findDateInText(fullText, documentDateRegexes);
+    if (directDate) {
+        console.log('[pdfParser] directDate trouvée pour la date du document', directDate);
+        documentDate = directDate;
+    } else {
+        console.log('[pdfParser] directDate non trouvée pour la date du document');
     }
 
     return documentDate;
@@ -395,14 +410,11 @@ function determineDateOfBirth(fullText, dateMatches, dateOfBirthRegexes) {
             dateOfBirth = processedDate;
         }
     }
-    // Mais on peut aussi chercher directement la date de naissance,
-    // qui est souvent plus précise que la date de naissance la plus récente
-    for (const regex of dateOfBirthRegexes) {
-        const dateOfBirthMatch = fullText.match(regex);
-        if (dateOfBirthMatch) {
-            dateOfBirth = parseDate(dateOfBirthMatch[1]); // On récupère le groupe du Regex
-            break;
-        }
+    // Mais on peut aussi chercher directement la date de naissance
+    const directDate = findDateInText(fullText, dateOfBirthRegexes);
+    if (directDate) {
+        console.log('[pdfParser] directDate trouvée pour la DDN', directDate);
+        dateOfBirth = directDate;
     }
 
     return dateOfBirth;
