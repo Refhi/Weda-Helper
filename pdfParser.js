@@ -108,8 +108,11 @@ async function processFoundPdfIframe(elements) {
     }   
 
 
-    // 8. Intégration des données dans le formulaire d'import, avec possibilité de les corriger par l'utilisateur
+    // 8. Intégration des données dans le formulaire d'import
     useExtractedData("documentDate", extractedData["documentDate"]);
+    // TODO : Faire la classification et modifier la fonction ci-dessus trop vague
+    // Pour qu'elle ne fasse que l'insertion de la date du document
+
 
     // 9. Marquage des données comme déjà importées
     extractedData.alreadyImported = true;
