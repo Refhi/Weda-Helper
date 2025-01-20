@@ -24,6 +24,13 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
 });
 
 
+// A partir de là la procédure suis un enchainement de "roll-over" :
+// - il regarde a chaque étape si les données sont déjà présentes
+// - si elles ne le sont pas, il effectue l'étape demandée, ce qui déclenche un rafrachissement de la page
+// - sinon elles le sont, il passe donc à l'étape suivante
+// - et ainsi de suite jusqu'à la fin de la procédure
+
+
 // 3. Extraction du texte du PDF
 async function processFoundPdfIframe(elements) {
     let urlPDF = await findPdfUrl(elements);
@@ -41,6 +48,19 @@ async function processFoundPdfIframe(elements) {
     // 5. Création d'un id unique à partir d'un hash de fullText
     let hashId = customHash(fullText);
     console.log('[pdfParser] hashId', hashId);
+
+    // 5.1. On vérifie si des données ont déjà été extraites pour ce PDF
+    const alreadyExtractedData = JSON.parse(sessionStorage.getItem(hashId));
+    console.log('[pdfParser] alreadyExtractedData', alreadyExtractedData);
+    const alreadyImported = alreadyExtractedData ? alreadyExtractedData.alreadyImported : false; 
+    console.log('[pdfParser] alreadyImported', alreadyImported);
+
+    if (alreadyImported) {
+        console.log("[pdfParser] Données déjà extraites pour ce PDF. Arrêt de la procédure.");
+        return;
+    } else {
+        console.log("[pdfParser] Données non extraites pour ce PDF. Poursuite de la procédure.");
+    }
 
     // 6. Stockage des informations pertinentes dans sessionStorage
     // Ajouter à extractedData l'identifiant de la ligne d'action actuelle
@@ -65,7 +85,7 @@ async function processFoundPdfIframe(elements) {
     let properDDNSearched = lookupPatient(extractedData["dateOfBirth"]);
     if (!properDDNSearched) {
         console.log("[pdfParser] DDN non trouvée, arrêt pour cette fois.");
-        return;
+        return; // Ici c'est un échec complet, la procédure s'arrête pour de bon.
     }
     console.log("[pdfParser] DDN présente, on continue à chercher le patient.");
     
@@ -76,6 +96,8 @@ async function processFoundPdfIframe(elements) {
     let patientToClick = searchProperPatient(patientElements, nameMatches);
     let patientToClickName = patientToClick.innerText;
     if (patientToClickName === selectedPatientName()) {
+        // Ici le bon patient est déjà sélectionné.
+        // On en déduis que la procédure a déjà aboutie et qu'il faut s'arrêter.
         console.log("[pdfParser] Patient déjà sélectionné, arrêt de la recherche.");
         return;
     } else {
@@ -87,7 +109,12 @@ async function processFoundPdfIframe(elements) {
 
 
     // 8. Intégration des données dans le formulaire d'import, avec possibilité de les corriger par l'utilisateur
-    useExtractedData(extractedData);
+    useExtractedData("documentDate", extractedData["documentDate"]);
+
+    // 9. Marquage des données comme déjà importées
+    extractedData.alreadyImported = true;
+    extractedDataStr = JSON.stringify(extractedData);
+    sessionStorage.setItem(hashId, extractedDataStr);
     
 
     // si besoin sans se faire écraser les données par le script
@@ -189,16 +216,24 @@ function lookupPatient(dateOfBirth) {
 
 
 // Application des données extraites dans les zones adaptées, si elle n'ont pas été modifiées par l'utilisateur
-function useExtractedData(dataToSend, targetZones) {
+function useExtractedData(dataLocation, dataToUse) {
     let dictInputZones = {
-        "documentDate": "ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_",
+        "documentDate": "#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_",
         "researchField": "[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherche']",
-        "titleField": "ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_",
-        "classificationTarget": "ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementEvenementType_",
-        "classificationType": "ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_",
+        "titleField": "#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_",
+        "classificationTarget": "#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementEvenementType_",
+        "classificationType": "#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_",
     };
-    // Récupération des données extraites
-    console.log('[pdfParser] placeholder', dataToSend, targetZones);
+    const ligneAction = actualActionLine();
+    let inputSelector = dictInputZones[dataLocation] + ligneAction;
+    let inputElement = document.querySelector(inputSelector);
+    let valeurActuelle = inputElement.value;
+    if (valeurActuelle === dataToUse) {
+        return;
+    } else {
+        inputElement.value = dataToUse;
+        inputElement.dispatchEvent(new Event('change'));
+    }
 }
 
 // Récupérer la meta-ligne d'action actuelle
