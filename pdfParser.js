@@ -321,7 +321,7 @@ async function extractLines(textItems) {
     return pageText;
 }
 
-// Extraction des informations pertinentes du texte du PDF
+// // Extraction des informations pertinentes du texte du PDF
 function extractRelevantData(fullText) {
     const regexPatterns = {
         dateRegexes: [
@@ -345,12 +345,49 @@ function extractRelevantData(fullText) {
     const documentDate = determineDocumentDate(fullText, dateMatches, regexPatterns.documentDateRegexes);
     const dateOfBirth = determineDateOfBirth(fullText, dateMatches, regexPatterns.dateOfBirthRegexes);
     const nameMatches = extractNames(fullText, regexPatterns.nameRegexes);
+    const documentType = determineDocumentType(fullText);
+
 
     return {
         documentDate: documentDate ? formatDate(documentDate) : null,
         dateOfBirth: dateOfBirth ? formatDate(dateOfBirth) : null,
-        nameMatches: nameMatches
+        nameMatches: nameMatches,
+        documentType: documentType
     };
+}
+
+// Détermination du type de courrier
+function determineDocumentType(fullText) {
+    const documentTypes = {
+        "Courrier": ["Chère Consœur", "chère consoeur", "Cher confrère", "courrier", "lettre"],
+        "Compte Rendu": ["compte rendu", "rapport"],
+        "IMAGERIE": ["imagerie", "radiographie", "scanner", "IRM"],
+        "CRO/CRH": ["cro", "crh"],
+        "Administratif": [],
+        "Arrêt de travail": ["arrêt de travail", "congé maladie"],
+        "Biologie": ["biologie", "analyse sanguine"],
+        "Bon de transport": ["bon de transport", "transport médical"],
+        "Certificat": ["certificat", "attestation"],
+        "ECG": ["ecg", "électrocardiogramme"],
+        "EFR": ["efr", "exploration fonctionnelle respiratoire"],
+        "LABORATOIRE/BIO": ["laboratoire", "bio"],
+        "MT": ["mt", "médecine du travail"],
+        "Ordonnance": ["ordonnance", "prescription"],
+        "PARAMEDICAL": ["paramédical", "soins"],
+        "SPECIALISTE": ["spécialiste", "consultation spécialisée"],
+        "Consultation": ["consultation", "visite médicale"],
+    };
+
+    for (const [type, keywords] of Object.entries(documentTypes)) {
+        for (const keyword of keywords) {
+            if (fullText.toLowerCase().includes(keyword.toLowerCase())) {
+                console.log('[pdfParser] type de document trouvé', type);
+                return type;
+            }
+        }
+    }
+
+    return null;
 }
 
 // Extraction des dates du texte
