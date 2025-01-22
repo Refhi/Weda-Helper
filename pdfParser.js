@@ -10,6 +10,10 @@
     pdfjsLib.GlobalWorkerOptions.workerSrc = chrome.runtime.getURL("lib/pdf.worker.mjs");
 })();
 
+(async () => { //Méthode détournée pour importer le module pdf.js https://stackoverflow.com/questions/48104433/how-to-import-es6-modules-in-content-script-for-chrome-extension
+    const ZXing = await import(chrome.runtime.getURL('lib/ZXing/index.min.js'));
+    console.log('[pdfParser] ZXing chargé');
+})();
 
 // Structure :
 // 1. Utilisation de l'addTweak pour déclencher l'injection du script
@@ -34,6 +38,7 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
 
 // 3. Extraction du texte du PDF
 async function processFoundPdfIframe(elements) {
+    console.log('[pdfParser] ----------------- Nouvelle boucle --------------------------------');
     let urlPDF = await findPdfUrl(elements);
     console.log('[pdfParser] urlPDF', urlPDF);
     if (!urlPDF) {
@@ -44,7 +49,7 @@ async function processFoundPdfIframe(elements) {
     let fullText = await extractTextFromPDF(urlPDF);
     console.log('[pdfParser] fullText', fullText);
     // 4. Analyse du texte pour en extraire les informations pertinentes
-    let extractedData = extractRelevantData(fullText);
+    let extractedData = await extractRelevantData(fullText, urlPDF);
 
     // 5. Création d'un id unique à partir d'un hash de fullText
     let hashId = customHash(fullText);
@@ -52,12 +57,12 @@ async function processFoundPdfIframe(elements) {
     // 5.1. On vérifie si des données ont déjà été extraites pour ce PDF
     const alreadyExtractedData = JSON.parse(sessionStorage.getItem(hashId));
     console.log('[pdfParser] alreadyExtractedData', alreadyExtractedData);
-    const alreadyImported = alreadyExtractedData ? alreadyExtractedData.alreadyImported : false; 
+    const alreadyImported = alreadyExtractedData ? alreadyExtractedData.alreadyImported : false;
     // console.log('[pdfParser] alreadyImported', alreadyImported);
 
     if (alreadyImported) {
         console.log("[pdfParser] Données déjà extraites pour ce PDF. Arrêt de la procédure.");
-        return;
+        // return; TODO : décommenter pour arrêter la procédure si les données ont déjà été extraites
     } else {
         console.log("[pdfParser] Données non extraites pour ce PDF. Poursuite de la procédure.");
     }
@@ -88,7 +93,7 @@ async function processFoundPdfIframe(elements) {
         return; // Ici c'est un échec complet, la procédure s'arrête pour de bon.
     }
     console.log("[pdfParser] DDN présente, on continue à chercher le patient.");
-    
+
     // 7.2. On clique sur le bon patient s'il est présent sans ambiguïté et qu'il n'est pas déjà sélectionné
     let patientElements = getPatientsList();
     console.log('[pdfParser] patientElements', patientElements);
@@ -105,7 +110,11 @@ async function processFoundPdfIframe(elements) {
         console.log("[pdfParser] Patient à sélectionner :", patientToClickName, patientToClick);
         // patientToClick.click(); => ne fonctionne pas à cause du CSP en milieu ISOLATED
         clicCSPLockedElement(patientToClicSelector);
-    }   
+    }
+
+    // 7.3. En cas d'échec, on cherche le datamatrix
+    let retourDataMatrix = await extractDatamatrixFromPDF(urlPDF);
+    console.log('[pdfParser] retourDataMatrix', retourDataMatrix);
 
 
     // 8. Intégration des données dans le formulaire d'import
@@ -118,7 +127,7 @@ async function processFoundPdfIframe(elements) {
     extractedData.alreadyImported = true;
     extractedDataStr = JSON.stringify(extractedData);
     sessionStorage.setItem(hashId, extractedDataStr);
-    
+
 
     // si besoin sans se faire écraser les données par le script
 }
@@ -218,7 +227,7 @@ function lookupPatient(dateOfBirth) {
         return null;
     }
     // On remplit le champ de recherche avec la date de naissance si elle n'est pas déjà renseignée
-    
+
     console.log('[pdfParser] inputResearch', inputResearch);
     const valeurActuelle = inputResearch.value;
     if (valeurActuelle === dateOfBirth) {
@@ -229,7 +238,7 @@ function lookupPatient(dateOfBirth) {
         const searchButton = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_ButtonRecherchePatient']");
         searchButton.click();
         return false;
-    }    
+    }
 }
 
 
@@ -324,7 +333,7 @@ async function extractLines(textItems) {
     var currentLine = 0;
     // Tolérance pour détecter une nouvelle ligne (en px)
     // Facilite l'usage du script lorsqu'une OCR a été utilisée un peu de travers
-    var tolerance = 4; 
+    var tolerance = 4;
 
     for (var i = 0; i < textItems.length; i++) { // Permet de reconnaître les lignes dans le PDF
         if (Math.abs(currentLine - textItems[i].transform[5]) > tolerance) { // Si la différence est supérieure à la tolérance, on considère une nouvelle ligne
@@ -340,14 +349,14 @@ async function extractLines(textItems) {
     return pageText;
 }
 
-// // Extraction des informations pertinentes du texte du PDF
-function extractRelevantData(fullText) {
+// Extraction des informations pertinentes du texte du PDF
+async function extractRelevantData(fullText, pdfUrl) {
     const regexPatterns = {
         dateRegexes: [
             /[0-9]{2}[\/|-][0-9]{2}[\/|-][0-9]{4}/g // Match dates dd/mm/yyyy ou dd-mm-yyyy
         ],
         dateOfBirthRegexes: [
-            /(?:né\(e\) le|date de naissance:|date de naissance :|née le)[\s\S]([0-9]{2}[\/|-][0-9]{2}[\/|-][0-9]{4})/gi // Match la date de naissance
+            /(?:né\(e\) le|date de naissance:|date de naissance :|née le)[\s\S]([0-9]{2}[\/|-][0-9]{4})/gi // Match la date de naissance
         ],
         nameRegexes: [
             /(?:Mme|Madame|Monsieur|M\.) (.*?)(?: \(| né| - né)/gi, // Match pour les courriers, typiquement "Mr. XXX né le"
@@ -372,13 +381,91 @@ function extractRelevantData(fullText) {
     const nameMatches = extractNames(fullText, regexPatterns.nameRegexes);
     const documentType = determineDocumentType(fullText);
 
+    // Si échec, alors rechercher un datamatrix
+    if (!documentDate || !dateOfBirth || nameMatches.length === 0) {
+        console.log('[pdfParser] Aucune information pertinente trouvée dans le texte. Extraction du datamatrix.');
+        const datamatrixData = await extractDatamatrixFromPDF(pdfUrl);
+        console.log('[pdfParser] Données extraites du datamatrix', datamatrixData);
+        if (datamatrixData) {
+            console.log('[pdfParser] Données extraites du datamatrix', datamatrixData);
+            // TODO : Intégrer les données du datamatrix dans les données extraites
+        }
+    }
 
-    return {
+
+    let extractedData = {
         documentDate: documentDate ? formatDate(documentDate) : null,
         dateOfBirth: dateOfBirth ? formatDate(dateOfBirth) : null,
         nameMatches: nameMatches,
         documentType: documentType
     };
+    return extractedData;
+}
+
+// Extraction du datamatrix des pages du PDF
+async function extractDatamatrixFromPDF(pdfUrl) {
+    const pdf = await pdfjsLib.getDocument(pdfUrl).promise;
+    const firstPage = await pdf.getPage(1);
+    const lastPage = await pdf.getPage(pdf.numPages);
+
+    const firstPageData = await extractDatamatrixFromPage(firstPage);
+    if (firstPageData) {
+        return firstPageData;
+    }
+
+    const lastPageData = await extractDatamatrixFromPage(lastPage);
+    if (lastPageData) {
+        return lastPageData;
+    }
+
+    return null;
+}
+
+async function extractDatamatrixFromPage(page) {
+    const viewport = page.getViewport({ scale: 1 });
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+
+    await page.render({ canvasContext: context, viewport: viewport }).promise;
+
+    const hints = new Map();
+    // const formats = [ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.DATA_MATRIX/*, ...*/]; // TODO : évaluer les types nécessaires
+    const formats = [ZXing.BarcodeFormat.DATA_MATRIX/*, ...*/]; // TODO : évaluer les types nécessaires
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+
+    const reader = new ZXing.MultiFormatReader();
+
+    const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas, false);
+    const hybridBinarizer = new ZXing.HybridBinarizer(luminanceSource);
+
+    const binaryBitmap = new ZXing.BinaryBitmap(hybridBinarizer);
+
+    // Convertir le binaryBitmap en URL de données et l'afficher dans la console
+    const canvasForBitmap = document.createElement('canvas');
+    canvasForBitmap.width = binaryBitmap.getWidth();
+    canvasForBitmap.height = binaryBitmap.getHeight();
+    const contextForBitmap = canvasForBitmap.getContext('2d');
+
+    const imageData = contextForBitmap.createImageData(canvasForBitmap.width, canvasForBitmap.height);
+    const blackMatrix = binaryBitmap.getBlackMatrix();
+    for (let y = 0; y < canvasForBitmap.height; y++) {
+        for (let x = 0; x < canvasForBitmap.width; x++) {
+            const offset = (y * canvasForBitmap.width + x) * 4;
+            const pixelValue = blackMatrix.get(x, y) ? 0 : 255;
+            imageData.data[offset] = pixelValue; // R
+            imageData.data[offset + 1] = pixelValue; // G
+            imageData.data[offset + 2] = pixelValue; // B
+            imageData.data[offset + 3] = 255; // A
+        }
+    }
+    contextForBitmap.putImageData(imageData, 0, 0);
+
+    const dataUrl = canvasForBitmap.toDataURL();
+    console.log(dataUrl);
+    const result = reader.decode(binaryBitmap, hints);
+    return result;
 }
 
 // Détermination du type de courrier
