@@ -10,6 +10,7 @@
     pdfjsLib.GlobalWorkerOptions.workerSrc = chrome.runtime.getURL("lib/pdf.worker.mjs");
 })();
 
+
 // Structure :
 // 1. Utilisation de l'addTweak pour déclencher l'injection du script
 addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
@@ -47,13 +48,12 @@ async function processFoundPdfIframe(elements) {
 
     // 5. Création d'un id unique à partir d'un hash de fullText
     let hashId = customHash(fullText);
-    console.log('[pdfParser] hashId', hashId);
 
     // 5.1. On vérifie si des données ont déjà été extraites pour ce PDF
     const alreadyExtractedData = JSON.parse(sessionStorage.getItem(hashId));
     console.log('[pdfParser] alreadyExtractedData', alreadyExtractedData);
     const alreadyImported = alreadyExtractedData ? alreadyExtractedData.alreadyImported : false; 
-    console.log('[pdfParser] alreadyImported', alreadyImported);
+    // console.log('[pdfParser] alreadyImported', alreadyImported);
 
     if (alreadyImported) {
         console.log("[pdfParser] Données déjà extraites pour ce PDF. Arrêt de la procédure.");
@@ -138,8 +138,8 @@ function searchProperPatient(patientElements, nameMatches) {
     // Première passe : chercher le nom complet
     for (let i = 0; i < patientElements.length; i++) {
         let patientElement = patientElements[i];
-        let patientName = patientElement.innerText;
-        if (nameMatches.includes(patientName)) {
+        let patientName = patientElement.innerText.toLowerCase();
+        if (nameMatches.map(name => name.toLowerCase()).includes(patientName)) {
             return patientElement;
         }
     }
@@ -147,12 +147,28 @@ function searchProperPatient(patientElements, nameMatches) {
     // Deuxième passe : chercher chaque mot indépendamment
     for (let i = 0; i < patientElements.length; i++) {
         let patientElement = patientElements[i];
-        let patientName = patientElement.innerText;
+        let patientName = patientElement.innerText.toLowerCase();
         for (let j = 0; j < nameMatches.length; j++) {
-            let nameParts = nameMatches[j].split(' ');
+            let nameParts = nameMatches[j].toLowerCase().split(' ');
             for (let k = 0; k < nameParts.length; k++) {
                 if (patientName.includes(nameParts[k])) {
                     return patientElement;
+                }
+            }
+        }
+    }
+
+    // Troisième passe : comparaison des parties
+    for (let i = 0; i < patientElements.length; i++) {
+        let patientElement = patientElements[i];
+        let patientNameParts = patientElement.innerText.toLowerCase().split(' ');
+        for (let j = 0; j < nameMatches.length; j++) {
+            let nameParts = nameMatches[j].toLowerCase().split(' ');
+            for (let k = 0; k < nameParts.length; k++) {
+                for (let l = 0; l < patientNameParts.length; l++) {
+                    if (nameParts[k].includes(patientNameParts[l])) {
+                        return patientElement;
+                    }
                 }
             }
         }
@@ -335,7 +351,13 @@ function extractRelevantData(fullText) {
         ],
         nameRegexes: [
             /(?:Mme|Madame|Monsieur|M\.) (.*?)(?: \(| né| - né)/gi, // Match pour les courriers, typiquement "Mr. XXX né le"
-            /(?:Nom de naissance : |Nom : |Nom de naiss\.: )(.*?)(?:\n|$)/gim // Match pour les CR d'imagerie, typiquement "Nom : XXX \n" ou "Nom : XXX"
+            /(?:Nom de naissance : |Nom : |Nom de naiss\.: )(.*?)(?:\n|$)/gim, // Match pour les CR d'imagerie, typiquement "Nom : XXX \n" ou "Nom : XXX"
+            /(?<=(?:MME|Mme)\s+)([A-Z\s]+)(?=\s|$)/g, // Match pour les courriers, typiquement "Mme XXX"
+            /([A-Z]+[a-z]+)(?:\s)?Né(?:e)? le/g,  // Support des deux genres "Né le" et "Née le"
+            /_?Nom\s*d[e']\s*(?:usage|naissance)\s*([A-Z]+)/g, // Nom de naissance ou nom d'usage avec ou sans espace
+            /Enfant ([A-Z\s]+)(?:\s|$)/g,  // Modification pour capturer plusieurs mots majuscules
+            /(?:née|né)\s+([A-Z][A-Za-z]+\s+[A-Z][A-Za-z]+)(?=\s+le)/g, // Match pour les courriers, typiquement "né XXX XXX le"
+            /Nometprénomdenaissance:([A-Z]+[a-z]+)/g, // Match pour les courriers, typiquement "Nometprénomdenaissance: XXX"
         ],
         documentDateRegexes: [
             /, le (\d{2}[\/-]\d{2}[\/-]\d{4})/gi // Match pour les dates dans les courriers
@@ -384,7 +406,7 @@ function determineDocumentType(fullText) {
     for (const [type, keywords] of Object.entries(documentTypes)) {
         for (const keyword of keywords) {
             if (fullText.toLowerCase().includes(keyword.toLowerCase())) {
-                console.log('[pdfParser] type de document trouvé', type);
+                // console.log('[pdfParser] type de document trouvé', type);
                 return type;
             }
         }
@@ -406,11 +428,9 @@ function extractDates(fullText, dateRegexes) {
 function findDateInText(fullText, dateRegexes) {
     console.log('[pdfParser] fullText', fullText);
     for (const regex of dateRegexes) {
-        console.log('[pdfParser] regex', regex);
         const matches = fullText.matchAll(regex);
         for (const match of matches) {
             if (match[1]) {
-                console.log('[pdfParser] date trouvée', match[1]);
                 return parseDate(match[1]); // On récupère le groupe du Regex
             }
         }
@@ -431,10 +451,7 @@ function determineDocumentDate(fullText, dateMatches, documentDateRegexes) {
     // On peut aussi chercher directement la date du document
     const directDate = findDateInText(fullText, documentDateRegexes);
     if (directDate) {
-        console.log('[pdfParser] directDate trouvée pour la date du document', directDate);
         documentDate = directDate;
-    } else {
-        console.log('[pdfParser] directDate non trouvée pour la date du document');
     }
 
     return documentDate;
@@ -453,7 +470,6 @@ function determineDateOfBirth(fullText, dateMatches, dateOfBirthRegexes) {
     // Mais on peut aussi chercher directement la date de naissance
     const directDate = findDateInText(fullText, dateOfBirthRegexes);
     if (directDate) {
-        console.log('[pdfParser] directDate trouvée pour la DDN', directDate);
         dateOfBirth = directDate;
     }
 
