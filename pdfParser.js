@@ -421,33 +421,51 @@ async function extractDatamatrixFromPDF(pdfUrl) {
     return null;
 }
 
-async function extractDatamatrixFromPage(page) {
-    const viewport = page.getViewport({ scale: 1 });
+async function renderPageToCanvas(PDFpage) {
+    const viewport = PDFpage.getViewport({ scale: 1 });
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     canvas.height = viewport.height;
     canvas.width = viewport.width;
 
-    await page.render({ canvasContext: context, viewport: viewport }).promise;
+    await PDFpage.render({ canvasContext: context, viewport: viewport }).promise;
 
-    const hints = new Map();
-    // const formats = [ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.DATA_MATRIX/*, ...*/]; // TODO : évaluer les types nécessaires
-    const formats = [ZXing.BarcodeFormat.DATA_MATRIX/*, ...*/]; // TODO : évaluer les types nécessaires
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+    return canvas;
+}
 
-    const reader = new ZXing.MultiFormatReader();
-
+function generateBinaryBitmap(canvas) {
     const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas, false);
     const hybridBinarizer = new ZXing.HybridBinarizer(luminanceSource);
+    return new ZXing.BinaryBitmap(hybridBinarizer);
+}
 
-    const binaryBitmap = new ZXing.BinaryBitmap(hybridBinarizer);
+function generateHints() {
+    const hints = new Map();
+    // const formats = [ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.DATA_MATRIX/*, ...*/]; // TODO : évaluer les types nécessaires
+    const formats = [ZXing.BarcodeFormat.DATA_MATRIX/*, ...*/]; // Pour l'instant uniquement les datamatrix
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+    return hints;
+}
 
-    // Convertir le binaryBitmap en URL de données et l'afficher dans la console
+async function extractDatamatrixFromPage(PDFpage) {
+    // Rendu de la page du PDF dans un canvas (objet HTML obligatoire pour ZXing)
+    const canvas = await renderPageToCanvas(PDFpage);
+    // Création d'un lecteur de code-barres, nécessite de sélectionner un reader, des hints et un binaryBitmap
+    const hints = generateHints();
+    const reader = new ZXing.MultiFormatReader();
+    const binaryBitmap = generateBinaryBitmap(canvas);
+    // Appeler la fonction pour visualiser le binaryBitmap, aide au débug
+    visualizeBinaryBitmap(binaryBitmap);
+    // Décodage du binaryBitmap
+    const result = reader.decode(binaryBitmap, hints);
+    return result;
+}
+
+function visualizeBinaryBitmap(binaryBitmap) {
     const canvasForBitmap = document.createElement('canvas');
     canvasForBitmap.width = binaryBitmap.getWidth();
     canvasForBitmap.height = binaryBitmap.getHeight();
     const contextForBitmap = canvasForBitmap.getContext('2d');
-
     const imageData = contextForBitmap.createImageData(canvasForBitmap.width, canvasForBitmap.height);
     const blackMatrix = binaryBitmap.getBlackMatrix();
     for (let y = 0; y < canvasForBitmap.height; y++) {
@@ -464,8 +482,6 @@ async function extractDatamatrixFromPage(page) {
 
     const dataUrl = canvasForBitmap.toDataURL();
     console.log(dataUrl);
-    const result = reader.decode(binaryBitmap, hints);
-    return result;
 }
 
 // Détermination du type de courrier
