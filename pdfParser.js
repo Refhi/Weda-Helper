@@ -458,7 +458,43 @@ async function extractDatamatrixFromPage(PDFpage) {
     visualizeBinaryBitmap(binaryBitmap);
     // Décodage du binaryBitmap
     const result = reader.decode(binaryBitmap, hints);
-    return result;
+
+    let formattedResult = null;
+    if (result) {
+        formattedResult = formatDecodeResult(result);
+    }
+
+    console.log('[pdfParser] formattedResult', formattedResult);
+
+    return formattedResult;
+}
+
+function formatDecodeResult(result) { // TODO : reprendre ici pour formater les données du datamatrix
+    // et ne renvoyer que les données pertinentes dans un format plus lisible
+    // Par exemple {"Prénom": "Jean Paul", "Nom": "Dupont", "Date de naissance": "01/01/1970", "NIR": "1234567890123"} etc.
+    const formattedResult = {
+        text: result.getText(),
+        rawBytes: Array.from(result.getRawBytes()),
+        numBits: result.getNumBits(),
+        resultPoints: result.getResultPoints().map(point => ({ x: point.getX(), y: point.getY() })),
+        format: result.getBarcodeFormat(),
+        timestamp: Date.now(),
+        resultMetadata: result.getResultMetadata()
+    };
+
+    // Split the text into relevant parts
+    const textParts = formattedResult.text.split('\u001d');
+    formattedResult.parsedText = {
+        IS: textParts[0],
+        S1: textParts[1],
+        S2: textParts[2],
+        S3: textParts[3],
+        S4: textParts[4],
+        S5: textParts[5],
+        S7: textParts[6]
+    };
+
+    return formattedResult;
 }
 
 function visualizeBinaryBitmap(binaryBitmap) {
