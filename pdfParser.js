@@ -454,7 +454,8 @@ async function extractRelevantData(fullText, pdfUrl) {
 // Extraction du datamatrix des pages du PDF
 async function extractDatamatrixFromPDF(pdfUrl) {
     const pdf = await pdfjsLib.getDocument(pdfUrl).promise;
-    const pagesToCheck = [1, pdf.numPages]; // Vérifie la première et la dernière page
+    const numPages = pdf.numPages;
+    const pagesToCheck = numPages === 1 ? [1] : [1, numPages]; // Vérifie la première et la dernière page, ou juste la première si une seule page
 
     for (const pageNum of pagesToCheck) {
         const page = await pdf.getPage(pageNum);
@@ -468,7 +469,7 @@ async function extractDatamatrixFromPDF(pdfUrl) {
 }
 
 async function renderPageToCanvas(PDFpage) {
-    const viewport = PDFpage.getViewport({ scale: 1 });
+    const viewport = PDFpage.getViewport({ scale: 2 });
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     canvas.height = viewport.height;
@@ -496,8 +497,8 @@ function generateHints() {
 async function extractDatamatrixFromPage(PDFpage) {
     // Rendu de la page du PDF dans un canvas (objet HTML obligatoire pour ZXing)
     const canvas = await renderPageToCanvas(PDFpage);
-    // const subCanvases = generateSubCanvases(canvas);
-    const subCanvases = { '0,0,164': canvas }; // Pour l'instant on ne fait pas de découpage en sous-canvases
+    const subCanvases = generateSubCanvases(canvas);
+    // const subCanvases = { '0,0,164': canvas }; // Pour les tests
 
     // Affichage des subCanvases pour vérification
     displaySubCanvases(subCanvases);
@@ -526,26 +527,9 @@ async function extractDatamatrixFromPage(PDFpage) {
     return null;
 }
 
-function displaySubCanvases(subCanvases) {
-    const newWindow = window.open('', '_blank');
-    newWindow.document.write('<html><head><title>SubCanvases</title></head><body>');
-    newWindow.document.write('<h1>SubCanvases</h1>');
-
-    for (const [coordinates, subCanvas] of Object.entries(subCanvases)) {
-        const binaryBitmap = generateBinaryBitmap(subCanvas);
-        const dataURL = visualizeBinaryBitmap(binaryBitmap);
-        newWindow.document.write(`<div style="display:inline-block; margin:10px;">`);
-        newWindow.document.write(`<p>${coordinates}</p>`);
-        newWindow.document.write(`<img src="${dataURL}" alt="SubCanvas at ${coordinates}"/>`);
-        newWindow.document.write(`</div>`);
-    }
-
-    newWindow.document.write('</body></html>');
-    newWindow.document.close();
-}
 
 function generateSubCanvases(canvas) {
-    const initialSquareSize = 164; // Taille initiale plus grande
+    const initialSquareSize = 360; // Taille initiale plus grande
     const reductionSize = 10; // Réduction de la taille à chaque passe
     const minSquareSize = 72; // Taille minimale des carrés
     const offset = 30;
@@ -580,6 +564,24 @@ function generateSubCanvases(canvas) {
     }
 
     return subCanvases;
+}
+
+function displaySubCanvases(subCanvases) {
+    const newWindow = window.open('', '_blank');
+    newWindow.document.write('<html><head><title>SubCanvases</title></head><body>');
+    newWindow.document.write('<h1>SubCanvases</h1>');
+
+    for (const [coordinates, subCanvas] of Object.entries(subCanvases)) {
+        const binaryBitmap = generateBinaryBitmap(subCanvas);
+        const dataURL = visualizeBinaryBitmap(binaryBitmap);
+        newWindow.document.write(`<div style="display:inline-block; margin:10px;">`);
+        newWindow.document.write(`<p>${coordinates}</p>`);
+        newWindow.document.write(`<img src="${dataURL}" alt="SubCanvas at ${coordinates}"/>`);
+        newWindow.document.write(`</div>`);
+    }
+
+    newWindow.document.write('</body></html>');
+    newWindow.document.close();
 }
 
 
