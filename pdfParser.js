@@ -496,26 +496,125 @@ function generateHints() {
 async function extractDatamatrixFromPage(PDFpage) {
     // Rendu de la page du PDF dans un canvas (objet HTML obligatoire pour ZXing)
     const canvas = await renderPageToCanvas(PDFpage);
-    // Création d'un lecteur de code-barres, nécessite de sélectionner un reader, des hints et un binaryBitmap
+    // const subCanvases = generateSubCanvases(canvas);
+    const subCanvases = { '0,0,164': canvas }; // Pour l'instant on ne fait pas de découpage en sous-canvases
+
+    // Affichage des subCanvases pour vérification
+    displaySubCanvases(subCanvases);
+
     const hints = generateHints();
     const reader = new ZXing.MultiFormatReader();
-    const binaryBitmap = generateBinaryBitmap(canvas);
-    // Appeler la fonction pour visualiser le binaryBitmap, aide au débug
-    visualizeBinaryBitmap(binaryBitmap);
-    // Décodage du binaryBitmap
-    try {
-        const result = reader.decode(binaryBitmap, hints);
-        let formattedResult = null;
-        if (result) {
-            formattedResult = formatDecodeResult(result);
+
+    for (const [coordinates, subCanvas] of Object.entries(subCanvases)) {
+        const binaryBitmap = generateBinaryBitmap(subCanvas);
+        try {
+            const result = reader.decode(binaryBitmap, hints);
+            console.log('[pdfParser] result', result);
+            if (result) {
+                const formattedResult = formatDecodeResult(result);
+                console.log('[pdfParser] formattedResult', formattedResult);
+                console.log(visualizeBinaryBitmap(binaryBitmap));
+                return formattedResult;
+            }
+        } catch (error) {
+            console.error('[pdfParser] Error while decoding datamatrix', error);
+            // Ignorer les erreurs pour continuer l'analyse
         }
-        console.log('[pdfParser] formattedResult', formattedResult);
-        return formattedResult;
-    } catch (error) {
-        console.warn('[pdfParser] Error decoding barcode:', error);
-        return null;
     }
+
+    console.warn('[pdfParser] No datamatrix found');
+    return null;
 }
+
+function displaySubCanvases(subCanvases) {
+    const newWindow = window.open('', '_blank');
+    newWindow.document.write('<html><head><title>SubCanvases</title></head><body>');
+    newWindow.document.write('<h1>SubCanvases</h1>');
+
+    for (const [coordinates, subCanvas] of Object.entries(subCanvases)) {
+        const binaryBitmap = generateBinaryBitmap(subCanvas);
+        const dataURL = visualizeBinaryBitmap(binaryBitmap);
+        newWindow.document.write(`<div style="display:inline-block; margin:10px;">`);
+        newWindow.document.write(`<p>${coordinates}</p>`);
+        newWindow.document.write(`<img src="${dataURL}" alt="SubCanvas at ${coordinates}"/>`);
+        newWindow.document.write(`</div>`);
+    }
+
+    newWindow.document.write('</body></html>');
+    newWindow.document.close();
+}
+
+function generateSubCanvases(canvas) {
+    const initialSquareSize = 164; // Taille initiale plus grande
+    const reductionSize = 10; // Réduction de la taille à chaque passe
+    const minSquareSize = 72; // Taille minimale des carrés
+    const offset = 30;
+    const subCanvases = {};
+    const width = canvas.width;
+    const height = canvas.height;
+
+    for (let squareSize = initialSquareSize; squareSize >= minSquareSize; squareSize -= reductionSize) {
+        // Première passe sans offset
+        for (let y = 0; y < height; y += squareSize) {
+            for (let x = 0; x < width; x += squareSize) {
+                const subCanvas = document.createElement('canvas');
+                subCanvas.width = squareSize;
+                subCanvas.height = squareSize;
+                const subContext = subCanvas.getContext('2d');
+                subContext.drawImage(canvas, x, y, squareSize, squareSize, 0, 0, squareSize, squareSize);
+                subCanvases[`${x},${y},${squareSize}`] = subCanvas;
+            }
+        }
+
+        // Deuxième passe avec offset
+        for (let y = offset; y < height; y += squareSize) {
+            for (let x = offset; x < width; x += squareSize) {
+                const subCanvas = document.createElement('canvas');
+                subCanvas.width = squareSize;
+                subCanvas.height = squareSize;
+                const subContext = subCanvas.getContext('2d');
+                subContext.drawImage(canvas, x, y, squareSize, squareSize, 0, 0, squareSize, squareSize);
+                subCanvases[`${x},${y},${squareSize}`] = subCanvas;
+            }
+        }
+    }
+
+    return subCanvases;
+}
+
+
+function parseTextDataMatrix(text) {
+    const result = {};
+
+    // Regex pour extraire les informations
+    const insRegex = /S1(\d{15})/;
+    const oidRegex = /S2([\d.]+)/;
+    const prenomsRegex = /S3([A-Z\s]+)/;
+    const nomRegex = /S4([A-Z]+)/;
+    const sexeRegex = /S5([A-Z])/;
+    const dateNaissanceRegex = /S6(\d{2}-\d{2}-\d{4})/;
+    const codeLieuNaissanceRegex = /S7(\d{5})/;
+
+    // Extraction des informations
+    const insMatch = text.match(insRegex);
+    const oidMatch = text.match(oidRegex);
+    const prenomsMatch = text.match(prenomsRegex);
+    const nomMatch = text.match(nomRegex);
+    const sexeMatch = text.match(sexeRegex);
+    const dateNaissanceMatch = text.match(dateNaissanceRegex);
+    const codeLieuNaissanceMatch = text.match(codeLieuNaissanceRegex);
+
+    if (insMatch) result.INS = insMatch[1];
+    if (oidMatch) result.OID = oidMatch[1];
+    if (prenomsMatch) result.Prenoms = prenomsMatch[1].trim();
+    if (nomMatch) result.Nom = nomMatch[1];
+    if (sexeMatch) result.Sexe = sexeMatch[1];
+    if (dateNaissanceMatch) result.DateNaissance = dateNaissanceMatch[1];
+    if (codeLieuNaissanceMatch) result.CodeLieuNaissance = codeLieuNaissanceMatch[1];
+
+    return result;
+}
+
 
 /**
  * Formate le résultat décodé du datamatrix et renvoie les données pertinentes dans un format plus lisible.
@@ -536,45 +635,23 @@ async function extractDatamatrixFromPage(PDFpage) {
  * S7 - Code lieu de naissance.
  *      Taille Min.: 5, Taille Max.: 5, Type: Alphanumérique
  */
-function formatDecodeResult(result) { // TODO : reprendre ici pour formater les données du datamatrix
-    // et ne renvoyer que les données pertinentes dans un format plus lisible
-    // Par exemple {"Prénom": "Jean Paul", "Nom": "Dupont", "Date de naissance": "01/01/1970", "NIR": "1234567890123"} etc.
-    const formattedResult = {
-        text: result.getText(),
-        rawBytes: Array.from(result.getRawBytes()),
-        numBits: result.getNumBits(),
-        resultPoints: result.getResultPoints().map(point => ({ x: point.getX(), y: point.getY() })),
-        format: result.getBarcodeFormat(),
-        timestamp: Date.now(),
-        resultMetadata: result.getResultMetadata()
-    };
-
+function formatDecodeResult(result) {
     // Split the text into relevant parts
-    const textParts = formattedResult.text.split('\u001d');
-    formattedResult.parsedText = {
-        INS: textParts[0],
-        OID: textParts[1],
-        Prenoms: textParts[2],
-        Nom: textParts[3],
-        Sexe: textParts[4],
-        DateNaissance: textParts[5],
-        CodeLieuNaissance: textParts[6]
-    };
+    // Exemple : "ISO010000000000000000000000S1123456789012345S21.2.250.1.213.1.4.8S3JOHN DOES4SMITHS5MS601-01-1990S799999"
+    const text = result.getText();
+    const parsedText = parseTextDataMatrix(text);
+    console.log('[pdfParser] parsedText', parsedText);
 
-    // Convertir la date de naissance en objet Date
-    const dateParts = formattedResult.parsedText.DateNaissance.split('-');
-    const dateOfBirth = new Date(dateParts[2], dateParts[1] - 1, dateParts[0]);
-    formattedResult.parsedText.DateNaissance = dateOfBirth;
-
-    return {
-        INS: formattedResult.parsedText.INS,
-        OID: formattedResult.parsedText.OID,
-        Prenoms: formattedResult.parsedText.Prenoms,
-        Nom: formattedResult.parsedText.Nom,
-        Sexe: formattedResult.parsedText.Sexe,
-        DateNaissance: formattedResult.parsedText.DateNaissance,
-        CodeLieuNaissance: formattedResult.parsedText.CodeLieuNaissance
-    };
+    // Convertir la date de naissance en objet Date si elle est présente
+    if (parsedText.DateNaissance) {
+        const dateParts = parsedText.DateNaissance.split('-');
+        if (dateParts.length === 3) {
+            parsedText.DateNaissance = new Date(dateParts[2], dateParts[1] - 1, dateParts[0]);
+        } else {
+            parsedText.DateNaissance = null;
+        }
+    }
+    return parsedText;
 }
 
 function visualizeBinaryBitmap(binaryBitmap) {
@@ -597,7 +674,7 @@ function visualizeBinaryBitmap(binaryBitmap) {
     contextForBitmap.putImageData(imageData, 0, 0);
 
     const dataUrl = canvasForBitmap.toDataURL();
-    console.log(dataUrl);
+    return dataUrl;
 }
 
 // Détermination du type de courrier
