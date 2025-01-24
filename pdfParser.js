@@ -478,16 +478,18 @@ async function extractDatamatrixFromPage(PDFpage) {
     // Appeler la fonction pour visualiser le binaryBitmap, aide au débug
     visualizeBinaryBitmap(binaryBitmap);
     // Décodage du binaryBitmap
-    const result = reader.decode(binaryBitmap, hints);
-
-    let formattedResult = null;
-    if (result) {
-        formattedResult = formatDecodeResult(result);
+    try {
+        const result = reader.decode(binaryBitmap, hints);
+        let formattedResult = null;
+        if (result) {
+            formattedResult = formatDecodeResult(result);
+        }
+        console.log('[pdfParser] formattedResult', formattedResult);
+        return formattedResult;
+    } catch (error) {
+        console.error('[pdfParser] Error decoding barcode:', error);
+        return null;
     }
-
-    console.log('[pdfParser] formattedResult', formattedResult);
-
-    return formattedResult;
 }
 
 function formatDecodeResult(result) { // TODO : reprendre ici pour formater les données du datamatrix
