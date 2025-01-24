@@ -3,41 +3,59 @@
  * 
  */
 
-// On commence par charger la lib pdf.mjs
-// (pdf-lib ne permet pas la lecture du texte présent dans un PDF)
-(async () => { //Méthode détournée pour importer le module pdf.js https://stackoverflow.com/questions/48104433/how-to-import-es6-modules-in-content-script-for-chrome-extension
+
+// IMPORTATION DES MODULES
+// -----------------------
+
+/**
+ * Import des modules es6, on utise une méthode détournée pour les importer dans le contexte de l'extension
+ * (voir https://stackoverflow.com/questions/48104433/how-to-import-es6-modules-in-content-script-for-chrome-extension)
+ */
+
+
+// Import de lib pdf.mjs pour la lecture du texte présent dans un PDF (non permis par pdf-lib)
+(async () => {
     const pdfjsLib = await import(chrome.runtime.getURL("lib/pdf.mjs"));
     pdfjsLib.GlobalWorkerOptions.workerSrc = chrome.runtime.getURL("lib/pdf.worker.mjs");
 })();
 
-(async () => { //Méthode détournée pour importer le module pdf.js https://stackoverflow.com/questions/48104433/how-to-import-es6-modules-in-content-script-for-chrome-extension
+// Imports de lib ZXing pour la lecture des datamatrix
+(async () => {
     const ZXing = await import(chrome.runtime.getURL('lib/ZXing/index.min.js'));
     console.log('[pdfParser] ZXing chargé');
 })();
 
-// Structure :
-// 1. Utilisation de l'addTweak pour déclencher l'injection du script
+
+
+
+
+
+// FLUX PRINCIPAL DU SCRIPT
+// ------------------------
+
+// 1. Injection du script
 addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
     // 2. Attente de l'apparition de l'iframe contenant le PDF
-    // Les sélecteurs des pages de UpLoaderForm.aspx peuvent être :
-    // ContentPlaceHolder1_ViewPdfDocumentUCForm2_iFrameViewFile ou ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile
-    // TODO : peut-être privilégier un bouton à côté de "Patient à définir" pour lancer le script ?
     waitForElement({
+        // l'id est splité car il y a un chiffre variable au milieu (1 ou 2 selon que l'option
+        // "vertical" est cochée ou nondans la fenêtre d'import)
         selector: "[id^='ContentPlaceHolder1_ViewPdfDocumentUCForm'][id$='_iFrameViewFile']",
         callback: processFoundPdfIframe
     });
 });
 
 
-// A partir de là la procédure suis un enchainement de "roll-over" :
-// - il regarde a chaque étape si les données sont déjà présentes
-// - si elles ne le sont pas, il effectue l'étape demandée, ce qui déclenche un rafrachissement de la page
-// - sinon elles le sont, il passe donc à l'étape suivante
-// - et ainsi de suite jusqu'à la fin de la procédure
+/** A partir de là la procédure suis globalement un enchainement de "roll-over" :
+ * - il regarde a chaque étape si les données sont déjà présentes
+ * - si elles ne le sont pas, il effectue l'étape demandée, ce qui déclenche un rafrachissement de la page
+ * - sinon elles le sont, il passe donc à l'étape suivante
+ * - et ainsi de suite jusqu'à la fin de la procédure
+ */
 
 
 // 3. Extraction du texte du PDF
 async function processFoundPdfIframe(elements) {
+    // Préparation de la procédure
     console.log('[pdfParser] ----------------- Nouvelle boucle --------------------------------');
     let urlPDF = await findPdfUrl(elements);
     console.log('[pdfParser] urlPDF', urlPDF);
@@ -46,15 +64,17 @@ async function processFoundPdfIframe(elements) {
         return;
     }
 
+    // Extraction du texte
     let fullText = await extractTextFromPDF(urlPDF);
     console.log('[pdfParser] fullText', fullText);
-    // 4. Analyse du texte pour en extraire les informations pertinentes
+
+    // Extraction des informations pertinentes
     let extractedData = await extractRelevantData(fullText, urlPDF);
 
-    // 5. Création d'un id unique à partir d'un hash de fullText
+    // Création d'un id unique
     let hashId = customHash(fullText);
 
-    // 5.1. On vérifie si des données ont déjà été extraites pour ce PDF
+    // Données déjà extraites pour ce PDF ?
     const alreadyExtractedData = JSON.parse(sessionStorage.getItem(hashId));
     console.log('[pdfParser] alreadyExtractedData', alreadyExtractedData);
     const alreadyImported = alreadyExtractedData ? alreadyExtractedData.alreadyImported : false;
@@ -62,12 +82,13 @@ async function processFoundPdfIframe(elements) {
 
     if (alreadyImported) {
         console.log("[pdfParser] Données déjà extraites pour ce PDF. Arrêt de la procédure.");
-        // return; TODO : décommenter pour arrêter la procédure si les données ont déjà été extraites
+        console.error("[pdfParser] Commentaire à retirer pour la mise en production.");
+        // return; /!\ TODO : décommenter pour arrêter la procédure si les données ont déjà été extraites
     } else {
         console.log("[pdfParser] Données non extraites pour ce PDF. Poursuite de la procédure.");
     }
 
-    // 6. Stockage des informations pertinentes dans sessionStorage
+    // Stockage des informations pertinentes // TODO reprendre la reprise des commentaires ici
     // Ajouter à extractedData l'identifiant de la ligne d'action actuelle
     extractedData.actionLine = actualActionLine();
     extractedData.alreadyImported = false;
