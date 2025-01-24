@@ -52,17 +52,16 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
  * - et ainsi de suite jusqu'à la fin de la procédure
  */
 
-
-// 3. Extraction du texte du PDF
 async function processFoundPdfIframe(elements) {
-    // Préparation de la procédure
+    // Setup de la procédure
+    let dataMatrixReturn = null;
     console.log('[pdfParser] ----------------- Nouvelle boucle --------------------------------');
     let urlPDF = await findPdfUrl(elements);
-    console.log('[pdfParser] urlPDF', urlPDF);
     if (!urlPDF) {
-        console.error("[pdfParser] l'url du PDF n'a pas été trouvée. Arrêt de l'extraction.");
+        console.log("[pdfParser] l'url du PDF n'a pas été trouvée. Arrêt de l'extraction.");
         return;
     }
+    console.log('[pdfParser] urlPDF', urlPDF);
 
     // Extraction du texte
     let fullText = await extractTextFromPDF(urlPDF);
@@ -75,87 +74,147 @@ async function processFoundPdfIframe(elements) {
     let hashId = customHash(fullText);
 
     // Données déjà extraites pour ce PDF ?
-    const alreadyExtractedData = JSON.parse(sessionStorage.getItem(hashId));
-    console.log('[pdfParser] alreadyExtractedData', alreadyExtractedData);
-    const alreadyImported = alreadyExtractedData ? alreadyExtractedData.alreadyImported : false;
-    // console.log('[pdfParser] alreadyImported', alreadyImported);
-
+    let { alreadyExtractedData, alreadyImported } = checkAlreadyExtractedData(hashId);
     if (alreadyImported) {
-        console.log("[pdfParser] Données déjà extraites pour ce PDF. Arrêt de la procédure.");
-        console.error("[pdfParser] Commentaire à retirer pour la mise en production.");
-        // return; /!\ TODO : décommenter pour arrêter la procédure si les données ont déjà été extraites
-    } else {
-        console.log("[pdfParser] Données non extraites pour ce PDF. Poursuite de la procédure.");
+        console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction.");
+        return;
     }
 
-    // Stockage des informations pertinentes // TODO reprendre la reprise des commentaires ici
-    // Ajouter à extractedData l'identifiant de la ligne d'action actuelle
-    extractedData.actionLine = actualActionLine();
-    extractedData.alreadyImported = false;
-    extractedData.isUserRejected = false;
+    // Si la date de naissance ou le nom n'ont pas été trouvés, on recherche le datamatrix
+    if (!extractedData.dateOfBirth || extractedData.nameMatches.length === 0) {
+        console.log("[pdfParser] Date de naissance ou nom non trouvée. Recherche du datamatrix.");
+        dataMatrixReturn = await extractDatamatrixFromPDF(urlPDF);
+        console.log('[pdfParser] dataMatrixReturn', dataMatrixReturn);
+        if (!dataMatrixReturn) {
+            console.log("[pdfParser] Datamatrix non trouvé. Arrêt de la procédure.");
+            return;
+        }
+    }
+
+    // Stockage et priorisation des informations pertinentes dans le sessionStorage
+    // => le dataMatrix est prioritaire sur les informations extraites du texte
+    completeExtractedData(extractedData, dataMatrixReturn);
     let extractedDataStr = JSON.stringify(extractedData);
     console.log('[pdfParser] extractedData', extractedDataStr);
     sessionStorage.setItem(hashId, extractedDataStr);
-    // On obtiens un objet du type :
-    // {
-    //     documentDate: "01/01/2021",
-    //     dateOfBirth: "01/01/2021",
-    //     nameMatches: ["DUPONT Jean", "DUPONT Jeanne"],
-    //     actionLine: "0",
-    //     alreadyImported: false,
-    //     isUserRejected: false
-    // }
 
-    // 7. Recherche du patient pertinent dans la base de données via la date de naissance si elle est présente
-    // 7.1 On lance la recherche par DDN
+    // Recherche du patient par la date de naissance
+    // => on pourrait rechercher par INS si on a le datamatrix, mais cela impliquerait de
+    //    naviguer entre les différents types de recherche dans la fenêtre d'import
     let properDDNSearched = lookupPatient(extractedData["dateOfBirth"]);
     if (!properDDNSearched) {
-        console.log("[pdfParser] DDN non trouvée, arrêt pour cette fois.");
+        console.log("[pdfParser] DDN non trouvée, arrêt de la procédure.");
         return; // Ici c'est un échec complet, la procédure s'arrête pour de bon.
     }
     console.log("[pdfParser] DDN présente, on continue à chercher le patient.");
 
-    // 7.2. On clique sur le bon patient s'il est présent sans ambiguïté et qu'il n'est pas déjà sélectionné
-    let patientElements = getPatientsList();
-    console.log('[pdfParser] patientElements', patientElements);
-    let nameMatches = extractedData["nameMatches"];
-    let patientToClick = searchProperPatient(patientElements, nameMatches);
-    let patientToClickName = patientToClick.innerText;
-    if (patientToClickName === selectedPatientName()) {
-        // Ici le bon patient est déjà sélectionné.
-        // On en déduis que la procédure a déjà aboutie et qu'il faut s'arrêter.
-        console.log("[pdfParser] Patient déjà sélectionné, arrêt de la recherche.");
-        return;
-    } else {
-        let patientToClicSelector = "#" + patientToClick.id;
-        console.log("[pdfParser] Patient à sélectionner :", patientToClickName, patientToClick);
-        // patientToClick.click(); => ne fonctionne pas à cause du CSP en milieu ISOLATED
-        clicCSPLockedElement(patientToClicSelector);
-    }
+    // Clic sur le patient pertinent dans la liste trouvée (ou on arrête si le bon patient est déjà sélectionné)
+    if (!clicPatient(extractedData)) {return;}
 
-    // 7.3. En cas d'échec, on cherche le datamatrix
-    let retourDataMatrix = await extractDatamatrixFromPDF(urlPDF);
-    console.log('[pdfParser] retourDataMatrix', retourDataMatrix);
+    // Intégration des données dans le formulaire d'import
+    setExtractedDataInForm(extractedData);
 
-
-    // 8. Intégration des données dans le formulaire d'import
-    useExtractedData("documentDate", extractedData["documentDate"]);
-    // TODO : Faire la classification et modifier la fonction ci-dessus trop vague
-    // Pour qu'elle ne fasse que l'insertion de la date du document
-
-
-    // 9. Marquage des données comme déjà importées
-    extractedData.alreadyImported = true;
-    extractedDataStr = JSON.stringify(extractedData);
-    sessionStorage.setItem(hashId, extractedDataStr);
-
-
-    // si besoin sans se faire écraser les données par le script
+    // Marquage des données comme déjà importées
+    // markDataAsImported(hashId, extractedData); // TODO : décommenter pour activer le marquage des données
 }
 
 
 
 // // Fonctions utilitaires
+// marque les données comme déjà importées
+function markDataAsImported(hashId, extractedData) {
+    extractedData.alreadyImported = true;
+    let extractedDataStr = JSON.stringify(extractedData);
+    sessionStorage.setItem(hashId, extractedDataStr);
+}
+
+
+// Application des données extraites dans les zones adaptées
+function setExtractedDataInForm(extractedData) {
+    // Récupère la ligne d'action actuelle
+    const ligneAction = actualActionLine();
+
+    // Sélecteurs pour les champs du formulaire
+    const selectors = {
+        documentDate: `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_${ligneAction}`,
+        documentType: `#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementEvenementType_${ligneAction}`,
+        title: `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_${ligneAction}`
+    };
+
+    // Récupère les éléments du DOM correspondant aux sélecteurs
+    const inputs = {
+        documentDate: document.querySelector(selectors.documentDate),
+        documentType: document.querySelector(selectors.documentType),
+        title: document.querySelector(selectors.title)
+    };
+
+    // Données à insérer dans les champs du formulaire
+    const fields = {
+        documentDate: extractedData.documentDate,
+        documentType: extractedData.documentType,
+        title: extractedData.Title
+    };
+
+    // Parcourt chaque champ et met à jour la valeur si elle existe
+    Object.keys(fields).forEach(key => {
+        if (fields[key] && inputs[key]) {
+            inputs[key].value = fields[key];
+            // Déclenche un événement de changement pour chaque champ mis à jour
+            inputs[key].dispatchEvent(new Event('change'));
+        }
+    });
+}
+
+// Clic sur le patient trouvé
+function clicPatient(extractedData) {
+    let patientToClick = searchProperPatient(getPatientsList(), extractedData["nameMatches"]);
+    let patientToClickName = patientToClick.innerText;
+    if (patientToClickName === selectedPatientName()) {
+        // Ici le bon patient est déjà sélectionné pour import.
+        // On en déduis que la procédure a déjà aboutie et qu'il faut s'arrêter.
+        console.log("[pdfParser] Patient déjà sélectionné, arrêt de la recherche.");
+        return false;
+    } else {
+        let patientToClicSelector = "#" + patientToClick.id;
+        console.log("[pdfParser] Patient à sélectionner :", patientToClickName, patientToClick);
+        // patientToClick.click(); => ne fonctionne pas à cause du CSP en milieu ISOLATED
+        clicCSPLockedElement(patientToClicSelector);
+        return true;
+    }
+}
+
+// Complète les données d'extractedData avec des informations supplémentaires.
+/**
+ * Exemple d'objet obtenu après extraction :
+ * {
+ *     documentDate: "01/01/2021",
+ *     dateOfBirth: "01/01/2021",
+ *     nameMatches: ["DUPONT Jean", "DUPONT Jeanne"],
+ *     actionLine: "0",
+ *     alreadyImported: false,
+ *     isUserRejected: false
+ * }
+ */
+function completeExtractedData(extractedData, dataMatrixReturn) {
+    extractedData.actionLine = actualActionLine();
+    extractedData.alreadyImported = false;
+    extractedData.isUserRejected = false;
+    if (dataMatrixReturn) {
+        extractedData.dataMatrix = dataMatrixReturn;
+        extractedData.dateOfBirth = dataMatrixReturn.DateNaissance;
+        extractedData.nameMatches = [dataMatrixReturn.Nom + dataMatrixReturn.Prenoms.split(' ')[0]];
+    }
+}
+
+// Vérifie si les données d'un pdf ont déjà été extraites
+function checkAlreadyExtractedData(hashId) {
+    const alreadyExtractedData = JSON.parse(sessionStorage.getItem(hashId));
+    console.log('[pdfParser] alreadyExtractedData', alreadyExtractedData);
+    const alreadyImported = alreadyExtractedData ? alreadyExtractedData.alreadyImported : false;
+    return { alreadyExtractedData, alreadyImported };
+}
+
+
 // Renvoie la liste des patients trouvés après recherche
 function getPatientsList() {
     // #ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0
@@ -264,26 +323,6 @@ function lookupPatient(dateOfBirth) {
 
 
 
-// Application des données extraites dans les zones adaptées
-function useExtractedData(dataLocation, dataToUse) {
-    let dictInputZones = {
-        "documentDate": "#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_",
-        "researchField": "[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherche']",
-        "titleField": "#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_",
-        "classificationTarget": "#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementEvenementType_",
-        "classificationType": "#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_",
-    };
-    const ligneAction = actualActionLine();
-    let inputSelector = dictInputZones[dataLocation] + ligneAction;
-    let inputElement = document.querySelector(inputSelector);
-    let valeurActuelle = inputElement.value;
-    if (valeurActuelle === dataToUse) {
-        return;
-    } else {
-        inputElement.value = dataToUse;
-        inputElement.dispatchEvent(new Event('change'));
-    }
-}
 
 // Récupérer la meta-ligne d'action actuelle
 function actualActionLine() {
@@ -303,24 +342,25 @@ async function findPdfUrl(elements) {
     let iframe = elements[0];
     if (!iframe) {
         console.error("[pdfParser] iframe non trouvée. Arrêt de l'extraction.");
-        return null;
+        resolve(null);
     }
-
 
     return new Promise((resolve, reject) => {
         let intervalId = setInterval(() => {
-            let url = iframe.contentWindow.location.href;
-            console.log('[pdfParser] url', url);
+            if (iframe.contentWindow) {
+                let url = iframe.contentWindow.location.href;
+                console.log('[pdfParser] url', url);
 
-            if (url !== 'about:blank' && url !== null) {
-                clearInterval(intervalId);
-                resolve(url);
+                if (url !== 'about:blank' && url !== null) {
+                    clearInterval(intervalId);
+                    resolve(url);
+                }
             }
         }, 100);
 
         setTimeout(() => {
             clearInterval(intervalId);
-            reject(new Error('Timeout: PDF URL not found'));
+            resolve(null);
         }, 5000);
     });
 }
@@ -402,18 +442,6 @@ async function extractRelevantData(fullText, pdfUrl) {
     const nameMatches = extractNames(fullText, regexPatterns.nameRegexes);
     const documentType = determineDocumentType(fullText);
 
-    // Si échec, alors rechercher un datamatrix
-    if (!documentDate || !dateOfBirth || nameMatches.length === 0) {
-        console.log('[pdfParser] Aucune information pertinente trouvée dans le texte. Extraction du datamatrix.');
-        const datamatrixData = await extractDatamatrixFromPDF(pdfUrl);
-        console.log('[pdfParser] Données extraites du datamatrix', datamatrixData);
-        if (datamatrixData) {
-            console.log('[pdfParser] Données extraites du datamatrix', datamatrixData);
-            // TODO : Intégrer les données du datamatrix dans les données extraites
-        }
-    }
-
-
     let extractedData = {
         documentDate: documentDate ? formatDate(documentDate) : null,
         dateOfBirth: dateOfBirth ? formatDate(dateOfBirth) : null,
@@ -426,17 +454,14 @@ async function extractRelevantData(fullText, pdfUrl) {
 // Extraction du datamatrix des pages du PDF
 async function extractDatamatrixFromPDF(pdfUrl) {
     const pdf = await pdfjsLib.getDocument(pdfUrl).promise;
-    const firstPage = await pdf.getPage(1);
-    const lastPage = await pdf.getPage(pdf.numPages);
+    const pagesToCheck = [1, pdf.numPages]; // Vérifie la première et la dernière page
 
-    const firstPageData = await extractDatamatrixFromPage(firstPage);
-    if (firstPageData) {
-        return firstPageData;
-    }
-
-    const lastPageData = await extractDatamatrixFromPage(lastPage);
-    if (lastPageData) {
-        return lastPageData;
+    for (const pageNum of pagesToCheck) {
+        const page = await pdf.getPage(pageNum);
+        const pageData = await extractDatamatrixFromPage(page);
+        if (pageData) {
+            return pageData;
+        }
     }
 
     return null;
@@ -487,11 +512,30 @@ async function extractDatamatrixFromPage(PDFpage) {
         console.log('[pdfParser] formattedResult', formattedResult);
         return formattedResult;
     } catch (error) {
-        console.error('[pdfParser] Error decoding barcode:', error);
+        console.warn('[pdfParser] Error decoding barcode:', error);
         return null;
     }
 }
 
+/**
+ * Formate le résultat décodé du datamatrix et renvoie les données pertinentes dans un format plus lisible.
+ * 
+ * Specifications techniques issues de https://industriels.esante.gouv.fr/sites/default/files/media/document/ANS_Datamatrix_INS_v2.2.pdf (fev. 2022 p6-9)
+ * IS - Matricule INS.
+ *      Taille Min.: 15, Taille Max.: 15, Type: Alphanumérique
+ * S1 - OID.
+ *      Taille Min.: 19, Taille Max.: 20, Type: Alphanumérique
+ * S2 - Liste des prénoms de naissance.
+ *      Taille Min.: 1, Taille Max.: 100, Type: Alphanumérique
+ * S3 - Nom de naissance.
+ *      Taille Min.: 1, Taille Max.: 100, Type: Alphanumérique
+ * S4 - Sexe.
+ *      Taille Min.: 1, Taille Max.: 1, Type: Alphanumérique, Format: M ou F
+ * S5 - Date de naissance.
+ *      Taille Min.: 10, Taille Max.: 10, Type: Alphanumérique, Format: JJ-MM-AAAA
+ * S7 - Code lieu de naissance.
+ *      Taille Min.: 5, Taille Max.: 5, Type: Alphanumérique
+ */
 function formatDecodeResult(result) { // TODO : reprendre ici pour formater les données du datamatrix
     // et ne renvoyer que les données pertinentes dans un format plus lisible
     // Par exemple {"Prénom": "Jean Paul", "Nom": "Dupont", "Date de naissance": "01/01/1970", "NIR": "1234567890123"} etc.
@@ -508,16 +552,29 @@ function formatDecodeResult(result) { // TODO : reprendre ici pour formater les 
     // Split the text into relevant parts
     const textParts = formattedResult.text.split('\u001d');
     formattedResult.parsedText = {
-        IS: textParts[0],
-        S1: textParts[1],
-        S2: textParts[2],
-        S3: textParts[3],
-        S4: textParts[4],
-        S5: textParts[5],
-        S7: textParts[6]
+        INS: textParts[0],
+        OID: textParts[1],
+        Prenoms: textParts[2],
+        Nom: textParts[3],
+        Sexe: textParts[4],
+        DateNaissance: textParts[5],
+        CodeLieuNaissance: textParts[6]
     };
 
-    return formattedResult;
+    // Convertir la date de naissance en objet Date
+    const dateParts = formattedResult.parsedText.DateNaissance.split('-');
+    const dateOfBirth = new Date(dateParts[2], dateParts[1] - 1, dateParts[0]);
+    formattedResult.parsedText.DateNaissance = dateOfBirth;
+
+    return {
+        INS: formattedResult.parsedText.INS,
+        OID: formattedResult.parsedText.OID,
+        Prenoms: formattedResult.parsedText.Prenoms,
+        Nom: formattedResult.parsedText.Nom,
+        Sexe: formattedResult.parsedText.Sexe,
+        DateNaissance: formattedResult.parsedText.DateNaissance,
+        CodeLieuNaissance: formattedResult.parsedText.CodeLieuNaissance
+    };
 }
 
 function visualizeBinaryBitmap(binaryBitmap) {
