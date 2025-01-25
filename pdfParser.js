@@ -71,13 +71,17 @@ async function processFoundPdfIframe(elements) {
     let extractedData = await extractRelevantData(fullText, urlPDF);
 
     // Création d'un id unique
-    let hashId = customHash(fullText);
+    let hashId = customHash(fullText, urlPDF);
 
     // Données déjà extraites pour ce PDF ?
     let { alreadyExtractedData, alreadyImported } = checkAlreadyExtractedData(hashId);
     if (alreadyImported) {
         console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction.");
         return;
+    }
+    if (alreadyExtractedData) {
+        console.log("[pdfParser] Données déjà extraites pour ce PDF. Utilisation des données existantes.");
+        extractedData = alreadyExtractedData;
     }
 
     // Si la date de naissance ou le nom n'ont pas été trouvés, on recherche le datamatrix
@@ -87,6 +91,7 @@ async function processFoundPdfIframe(elements) {
         console.log('[pdfParser] dataMatrixReturn', dataMatrixReturn);
         if (!dataMatrixReturn) {
             console.log("[pdfParser] Datamatrix non trouvé. Arrêt de la procédure.");
+            sessionStorage.setItem(hashId, JSON.stringify({ alreadyImported: true }));
             return;
         }
     }
@@ -109,13 +114,13 @@ async function processFoundPdfIframe(elements) {
     console.log("[pdfParser] DDN présente, on continue à chercher le patient.");
 
     // Clic sur le patient pertinent dans la liste trouvée (ou on arrête si le bon patient est déjà sélectionné)
-    if (!clicPatient(extractedData)) {return;}
+    if (!clicPatient(extractedData)) { return; }
 
     // Intégration des données dans le formulaire d'import
     setExtractedDataInForm(extractedData);
 
     // Marquage des données comme déjà importées
-    // markDataAsImported(hashId, extractedData); // TODO : décommenter pour activer le marquage des données
+    markDataAsImported(hashId, extractedData);
 }
 
 
@@ -201,8 +206,12 @@ function completeExtractedData(extractedData, dataMatrixReturn) {
     extractedData.isUserRejected = false;
     if (dataMatrixReturn) {
         extractedData.dataMatrix = dataMatrixReturn;
-        extractedData.dateOfBirth = dataMatrixReturn.DateNaissance;
+        extractedData.dateOfBirth = formatDate(dataMatrixReturn.DateNaissance);
         extractedData.nameMatches = [dataMatrixReturn.Nom + dataMatrixReturn.Prenoms.split(' ')[0]];
+    }
+    // Vérifier que les dates ne sont pas identiques
+    if (extractedData.documentDate === extractedData.dateOfBirth) {
+        extractedData.documentDate = null;
     }
 }
 
@@ -497,17 +506,18 @@ function generateHints() {
 async function extractDatamatrixFromPage(PDFpage) {
     // Rendu de la page du PDF dans un canvas (objet HTML obligatoire pour ZXing)
     const canvas = await renderPageToCanvas(PDFpage);
-    const subCanvases = generateSubCanvases(canvas);
-    // const subCanvases = { '0,0,164': canvas }; // Pour les tests
-
-    // Affichage des subCanvases pour vérification
-    displaySubCanvases(subCanvases);
-
     const hints = generateHints();
     const reader = new ZXing.MultiFormatReader();
+    let subCanvases = {};
+    let passCount = 0;
+    
+    const uniqueId = Date.now();
+    console.time(`[pdfParser] Datamatrix Extraction Time ${uniqueId}`);
 
-    for (const [coordinates, subCanvas] of Object.entries(subCanvases)) {
+    for (const [coordinates, subCanvas] of generateSubCanvases(canvas)) {
+        passCount++;
         const binaryBitmap = generateBinaryBitmap(subCanvas);
+        subCanvases[coordinates] = binaryBitmap;
         try {
             const result = reader.decode(binaryBitmap, hints);
             console.log('[pdfParser] result', result);
@@ -515,25 +525,28 @@ async function extractDatamatrixFromPage(PDFpage) {
                 const formattedResult = formatDecodeResult(result);
                 console.log('[pdfParser] formattedResult', formattedResult);
                 console.log(visualizeBinaryBitmap(binaryBitmap));
+                console.timeEnd(`[pdfParser] Datamatrix Extraction Time ${uniqueId}`);
+                console.log(`[pdfParser] Nombre de passes à la recherche d'un datamatrix: ${passCount}`);
                 return formattedResult;
             }
         } catch (error) {
-            console.error('[pdfParser] Error while decoding datamatrix', error);
             // Ignorer les erreurs pour continuer l'analyse
         }
     }
 
+    console.timeEnd(`[pdfParser] Datamatrix Extraction Time ${uniqueId}`);
+    console.log(`[pdfParser] Nombre de passes à la recherche d'un datamatrix: ${passCount}`);
     console.warn('[pdfParser] No datamatrix found');
     return null;
 }
 
-
-function generateSubCanvases(canvas) {
+function* generateSubCanvases(canvas) {
+    // Ces paramètres effectuent un balayage d'un pdf standard en 2 passes
+    // ce qui constitue environs 105 analyses, ce qui prend < 120ms sur mon poste
     const initialSquareSize = 360; // Taille initiale plus grande
-    const reductionSize = 10; // Réduction de la taille à chaque passe
-    const minSquareSize = 72; // Taille minimale des carrés
+    const reductionSize = 80; // Réduction de la taille à chaque passe
+    const minSquareSize = 280; // Taille minimale des carrés
     const offset = 30;
-    const subCanvases = {};
     const width = canvas.width;
     const height = canvas.height;
 
@@ -546,7 +559,7 @@ function generateSubCanvases(canvas) {
                 subCanvas.height = squareSize;
                 const subContext = subCanvas.getContext('2d');
                 subContext.drawImage(canvas, x, y, squareSize, squareSize, 0, 0, squareSize, squareSize);
-                subCanvases[`${x},${y},${squareSize}`] = subCanvas;
+                yield [`${x},${y},${squareSize}`, subCanvas];
             }
         }
 
@@ -558,12 +571,10 @@ function generateSubCanvases(canvas) {
                 subCanvas.height = squareSize;
                 const subContext = subCanvas.getContext('2d');
                 subContext.drawImage(canvas, x, y, squareSize, squareSize, 0, 0, squareSize, squareSize);
-                subCanvases[`${x},${y},${squareSize}`] = subCanvas;
+                yield [`${x},${y},${squareSize}`, subCanvas];
             }
         }
     }
-
-    return subCanvases;
 }
 
 function displaySubCanvases(subCanvases) {
@@ -724,7 +735,6 @@ function extractDates(fullText, dateRegexes) {
 
 // Fonction auxiliaire pour chercher directement la date dans le texte
 function findDateInText(fullText, dateRegexes) {
-    console.log('[pdfParser] fullText', fullText);
     for (const regex of dateRegexes) {
         const matches = fullText.matchAll(regex);
         for (const match of matches) {
@@ -802,14 +812,31 @@ function formatDate(date) {
 
 // Fonction de hachage personnalisée pour générer un identifiant unique à partir du texte du PDF
 // Assez basique, mais largement suffisant pour nos besoins
-function customHash(str) {
+async function pdfBlob(urlPDF) {
+    const response = await fetch(urlPDF);
+    const blob = await response.blob();
+    return blob;
+}
+
+async function customHash(str, urlPDF) {
+    console.time('customHash'); // Démarrer le chronomètre
+
+    if (str.length < 10) {
+        str = await pdfBlob(urlPDF); // Attendre la promesse
+        console.log('[pdfParser] je demande un hash basé sur le blob du pdf');
+        // ça prend environs 20ms pour un pdf de 300ko
+    }
+
     const FNV_PRIME = 0x01000193;
     const FNV_OFFSET_BASIS = 0x811c9dc5;
 
     let hash = FNV_OFFSET_BASIS;
     for (let i = 0; i < str.length; i++) {
         hash ^= str.charCodeAt(i);
-        hash = (hash * FNV_PRIME) >>> 0; // Convert to 32bit unsigned integer
+        hash = (hash * FNV_PRIME) >>> 0; // Convertir en entier non signé 32 bits
     }
-    return hash.toString(16); // Return as hexadecimal string
+
+    console.timeEnd('customHash'); // Arrêter le chronomètre et afficher le temps écoulé
+    console.log('[pdfParser] hash', hash.toString(16)); // Afficher le hash en hexadécimal
+    return hash.toString(16); // Retourner en chaîne hexadécimale
 }
