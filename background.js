@@ -49,6 +49,11 @@ var advancedDefaultSettings = [{
         "description": "Activer les modifications pour la fenêtre d'importations (page télécharger des documents).",
         "default": true
     }, {
+        "name": "autoPdfParser",
+        "type": TYPE_BOOL,
+        "description": "Analyse automatiquement les pdfs en attente d'import et essaie d'en extraire les informations (date, nom patient, etc.).",
+        "default": true
+    }, {
         "name": "EnableHelp",
         "type": TYPE_BOOL,
         "description": "Affiche l'aide en appuyant sur Alt de manière prolongée.",

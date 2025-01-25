@@ -462,3 +462,21 @@ function setLastPrintDate() {
     sessionStorage.setItem('lastPrintDate', date.toISOString());
     console.log('Dernière date d\'impression enregistrée :', date);
 }
+
+
+// Clic sur certains éléments où le CSP bloque le clic quand on est en isolated
+// Passe par un script injecté pour contourner le problème
+
+// Initialise d'abord FWNotif.js
+function startClicScript() {
+    var scriptClicElements = document.createElement('script');
+    scriptClicElements.src = chrome.runtime.getURL('FW_scripts/clickElement.js');
+    (document.head || document.documentElement).appendChild(scriptClicElements);
+}
+startClicScript();
+
+function clicCSPLockedElement(elementSelector) {
+    console.log('Clic sur élément bloqué par CSP :', elementSelector);
+    const event = new CustomEvent('clicElement', { detail: elementSelector });
+    document.dispatchEvent(event);        
+}   
