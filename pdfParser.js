@@ -449,7 +449,8 @@ async function extractRelevantData(fullText, pdfUrl) {
     const documentDate = determineDocumentDate(fullText, dateMatches, regexPatterns.documentDateRegexes);
     const dateOfBirth = determineDateOfBirth(fullText, dateMatches, regexPatterns.dateOfBirthRegexes);
     const nameMatches = extractNames(fullText, regexPatterns.nameRegexes);
-    const documentType = determineDocumentType(fullText);
+    const documentType = determineDocumentType(fullText); //TODO
+    const documentTitle = determineDocumentTitle(fullText); //TODO
 
     let extractedData = {
         documentDate: documentDate ? formatDate(documentDate) : null,
@@ -538,7 +539,7 @@ class DatamatrixHeatMap {
 
     getHotSpots() {
         return Object.entries(this.heatMap)
-            .sort(([,a], [,b]) => b - a)
+            .sort(([, a], [, b]) => b - a)
             .map(([coords]) => coords);
     }
 }
@@ -546,12 +547,12 @@ class DatamatrixHeatMap {
 async function extractDatamatrixFromPage(PDFpages) {
     const heatMap = new DatamatrixHeatMap();
     await heatMap.load();
-    
+
     const canvases = await renderPagesToCanvases(PDFpages);
     const hints = generateHints();
     const reader = new ZXing.MultiFormatReader();
     let passCount = 0;
-    
+
     const uniqueId = Date.now();
     console.time(`[pdfParser] Datamatrix Extraction Time ${uniqueId}`);
 
@@ -778,13 +779,52 @@ function determineDocumentType(fullText) {
     for (const [type, keywords] of Object.entries(documentTypes)) {
         for (const keyword of keywords) {
             if (fullText.toLowerCase().includes(keyword.toLowerCase())) {
-                // console.log('[pdfParser] type de document trouvé', type);
+                console.log('[pdfParser] type de document trouvé', type);
                 return type;
             }
         }
     }
 
     return null;
+}
+
+function determineDocumentTitle(fullText) {
+    console.log('[pdfParser] determineDocumentTitle', fullText);
+    const specialites = [
+        "Orthopédie",
+        "Gynécologie",
+        "Cardiologie",
+        "Neurologie",
+        "Pédiatrie",
+        "Radiologie",
+        "Ophtalmologie",
+        "Pneumologie",
+        "ORL",
+        "Dermatologie",
+        "Urologie",
+        "Chirurgie",
+        "Rhumatologie",
+        "Endocrinologie",
+        "Gastro-entérologie",
+        "Hématologie",
+        "Néphrologie",
+        "Oncologie",
+        "Psychiatrie",
+        "Stomatologie",
+        "Addictologie"
+    ];
+
+    const imageries = [
+        "scanner",
+        "IRM",
+        "radiographie",
+        "échographie",
+        "mammographie",
+        "scintigraphie",
+        "tomodensitométrie",
+        "ostéodensitométrie",
+        "TDM"
+    ];
 }
 
 // Extraction des dates du texte
