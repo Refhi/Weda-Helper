@@ -544,97 +544,79 @@ class DatamatrixHeatMap {
     }
 }
 
+function createSubCanvas(canvas, x, y, squareSize) {
+    const subCanvas = document.createElement('canvas');
+    subCanvas.width = squareSize;
+    subCanvas.height = squareSize;
+    const subContext = subCanvas.getContext('2d');
+    subContext.drawImage(canvas, x, y, squareSize, squareSize, 0, 0, squareSize, squareSize);
+    return subCanvas;
+}
+
 async function extractDatamatrixFromPage(PDFpages) {
     const heatMap = new DatamatrixHeatMap();
     await heatMap.load();
-
     const canvases = await renderPagesToCanvases(PDFpages);
     const hints = generateHints();
     const reader = new ZXing.MultiFormatReader();
     let passCount = 0;
-
     const uniqueId = Date.now();
     console.time(`[pdfParser] Datamatrix Extraction Time ${uniqueId}`);
 
-    // Test des zones chaudes
-    const hotSpots = heatMap.getHotSpots();
-    for (const coordinates of hotSpots) {
+    const decodeSubCanvas = async (subCanvas, coordinates, source = 'scan') => {
         passCount++;
+        const binaryBitmap = generateBinaryBitmap(subCanvas);
+        try {
+            const result = reader.decode(binaryBitmap, hints);
+            if (result) {
+                await heatMap.addHit(coordinates);
+                console.timeEnd(`[pdfParser] Datamatrix Extraction Time ${uniqueId}`);
+                console.log(`[pdfParser] Trouvé après ${passCount} passes (source: ${source})`);
+                return { ...formatDecodeResult(result), source };
+            }
+        } catch (error) { /* Ignorer les erreurs */ }
+        return null;
+    };
+
+    // Test des zones chaudes
+    for (const coordinates of heatMap.getHotSpots()) {
         const [canvasIndex, x, y, squareSize] = coordinates.split(',').map(Number);
         if (canvasIndex >= canvases.length) continue;
-
-        const subCanvas = document.createElement('canvas');
-        subCanvas.width = squareSize;
-        subCanvas.height = squareSize;
-        const subContext = subCanvas.getContext('2d');
-        subContext.drawImage(canvases[canvasIndex], x, y, squareSize, squareSize, 0, 0, squareSize, squareSize);
-
-        const binaryBitmap = generateBinaryBitmap(subCanvas);
-        try {
-            const result = reader.decode(binaryBitmap, hints);
-            if (result) {
-                await heatMap.addHit(coordinates);
-                const formattedResult = formatDecodeResult(result);
-                console.timeEnd(`[pdfParser] Datamatrix Extraction Time ${uniqueId}`);
-                console.log(`[pdfParser] Trouvé dans HeatMap après ${passCount} passes`);
-                return formattedResult;
-            }
-        } catch (error) {
-            // Ignorer les erreurs
-        }
+        
+        const result = await decodeSubCanvas(
+            createSubCanvas(canvases[canvasIndex], x, y, squareSize),
+            coordinates
+        );
+        if (result) return result;
     }
 
-    // Balayage classique si rien trouvé
+    // Balayage classique
     for (const [coordinates, subCanvas] of generateSubCanvases(canvases)) {
-        passCount++;
-        const binaryBitmap = generateBinaryBitmap(subCanvas);
-        try {
-            const result = reader.decode(binaryBitmap, hints);
-            if (result) {
-                await heatMap.addHit(coordinates);
-                const formattedResult = formatDecodeResult(result);
-                console.timeEnd(`[pdfParser] Datamatrix Extraction Time ${uniqueId}`);
-                console.log(`[pdfParser] Trouvé hors HeatMap après ${passCount} passes totales`);
-                return formattedResult;
-            }
-        } catch (error) {
-            // Ignorer les erreurs
-        }
+        const result = await decodeSubCanvas(subCanvas, null);
+        if (result) return result;
     }
 
     console.timeEnd(`[pdfParser] Datamatrix Extraction Time ${uniqueId}`);
-    console.log(`[pdfParser] Nombre de passes à la recherche d'un datamatrix: ${passCount}`);
+    console.log(`[pdfParser] Nombre de passes: ${passCount}`);
     console.warn('[pdfParser] No datamatrix found');
     return null;
 }
-
 
 function* generateSubCanvases(canvases) {
     // Ces paramètres effectuent un balayage d'un pdf standard en plusieurs passes
     const initialSquareSize = 360; // Taille initiale plus grande
     const reductionSize = 80; // Réduction de la taille à chaque passe
     const minSquareSize = 280; // Taille minimale des carrés
-    const offset = 30; // Déplacement du carré
+    let offset = 0;
 
     for (let canvasIndex = 0; canvasIndex < canvases.length; canvasIndex++) {
         const canvas = canvases[canvasIndex];
-        const width = canvas.width;
-        const height = canvas.height;
-
-        // Balayage du canvas en carrés de différentes tailles
         for (let squareSize = initialSquareSize; squareSize >= minSquareSize; squareSize -= reductionSize) {
-            // Parcours vertical du canvas
-            for (let y = 0; y < height; y += offset) {
-                // Parcours horizontal du canvas
-                for (let x = 0; x < width; x += offset) {
-                    const subCanvas = document.createElement('canvas');
-                    subCanvas.width = squareSize;
-                    subCanvas.height = squareSize;
-                    const subContext = subCanvas.getContext('2d');
-
-                    // Dessiner la partie du canvas original dans le sous-canvas
-                    subContext.drawImage(canvas, x, y, squareSize, squareSize, 0, 0, squareSize, squareSize);
-                    yield [`${canvasIndex},${x},${y},${squareSize}`, subCanvas];
+            offset = Math.floor(squareSize / 3);
+            for (let y = 0; y < canvas.height; y += offset) {
+                for (let x = 0; x < canvas.width; x += offset) {
+                    const coordinates = `${canvasIndex},${x},${y},${squareSize}`;
+                    yield [coordinates, createSubCanvas(canvas, x, y, squareSize)];
                 }
             }
         }
