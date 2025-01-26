@@ -151,6 +151,43 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'TweakImports', function () {
                 }
             });
         }
+        // Ajouter l'élément .grid-pager rd a à la fin de l'ordre de tabulation
+        var actualPagePager = document.querySelector('.grid-pager span');
+        if (actualPagePager) {
+            var nextAnchor = actualPagePager.nextElementSibling;
+            if (nextAnchor && nextAnchor.tagName.toLowerCase() === 'a') {
+                nextAnchor.tabIndex = tabIndex;
+                // Ajout d'un listener sur nextAnchor pour renvoyer le focus vers le premier élément de la liste de patients
+                nextAnchor.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter') {
+                        setTimeout(function () {
+                            const firstPatientElement = document.getElementById('ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_0');
+                            if (firstPatientElement) {
+                                firstPatientElement.focus();
+                            }
+                        }, 500);
+                    }
+                });
+            }
+        }
+
+        // Ajouter un listener sur tout les #ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_
+        // pour renvoyer le focus vers #ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherchePatientByDate 
+        const dateElements = document.querySelectorAll('[id^="ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_"]');
+        dateElements.forEach(function (dateElement) {
+            dateElement.addEventListener('keydown', function (event) {
+                if (event.key === 'Tab' && event.shiftKey) {
+                    event.preventDefault(); // Inhibe le comportement par défaut de Shift+Tab
+                    const searchBox = document.getElementById('ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherchePatientByDate');
+                    if (searchBox) {
+                        searchBox.focus();
+                        searchBox.select();
+                    }
+                }
+            });
+        });
+
+
     }
 
     // Convert a truncated date to a full date
