@@ -358,7 +358,6 @@ async function findPdfUrl(elements) {
         let intervalId = setInterval(() => {
             if (iframe.contentWindow) {
                 let url = iframe.contentWindow.location.href;
-                console.log('[pdfParser] url', url);
 
                 if (url !== 'about:blank' && url !== null) {
                     clearInterval(intervalId);
@@ -569,9 +568,12 @@ async function extractDatamatrixFromPage(PDFpages) {
         try {
             const result = reader.decode(binaryBitmap, hints);
             if (result) {
+                console.log(`[pdfParser] Datamatrix trouvé: ${coordinates}`);
                 await heatMap.addHit(coordinates);
                 console.timeEnd(`[pdfParser] Datamatrix Extraction Time ${uniqueId}`);
                 console.log(`[pdfParser] Trouvé après ${passCount} passes (source: ${source})`);
+                const dataUrl = visualizeBinaryBitmap(binaryBitmap);
+                console.log(`[pdfParser] Datamatrix trouvé: ${dataUrl}`);
                 return { ...formatDecodeResult(result), source };
             }
         } catch (error) { /* Ignorer les erreurs */ }
@@ -580,19 +582,21 @@ async function extractDatamatrixFromPage(PDFpages) {
 
     // Test des zones chaudes
     for (const coordinates of heatMap.getHotSpots()) {
+        console.log(`[pdfParser] Test de la zone chaude: ${coordinates}`);
         const [canvasIndex, x, y, squareSize] = coordinates.split(',').map(Number);
         if (canvasIndex >= canvases.length) continue;
-        
+
         const result = await decodeSubCanvas(
             createSubCanvas(canvases[canvasIndex], x, y, squareSize),
-            coordinates
+            coordinates,
+            'heatmap'
         );
-        if (result) return result;
+        if (result) { return result }
     }
 
     // Balayage classique
     for (const [coordinates, subCanvas] of generateSubCanvases(canvases)) {
-        const result = await decodeSubCanvas(subCanvas, null);
+        const result = await decodeSubCanvas(subCanvas, coordinates,'scan');
         if (result) return result;
     }
 
@@ -611,15 +615,19 @@ function* generateSubCanvases(canvases) {
 
     for (let canvasIndex = 0; canvasIndex < canvases.length; canvasIndex++) {
         const canvas = canvases[canvasIndex];
-        for (let squareSize = initialSquareSize; squareSize >= minSquareSize; squareSize -= reductionSize) {
-            offset = Math.floor(squareSize / 2);
-            for (let y = 0; y < canvas.height; y += offset) {
-                for (let x = 0; x < canvas.width; x += offset) {
-                    const coordinates = `${canvasIndex},${x},${y},${squareSize}`;
-                    yield [coordinates, createSubCanvas(canvas, x, y, squareSize)];
-                }
+        // J'ai neutralisé la réduction de taille pour des questions de performances
+        // for (let squareSize = initialSquareSize; squareSize >= minSquareSize; squareSize -= reductionSize) {
+        // offset = Math.floor(squareSize / 2);
+        offset = Math.floor(initialSquareSize / 2);
+        let squareSize = initialSquareSize;
+        for (let y = 0; y < canvas.height; y += offset) {
+            for (let x = 0; x < canvas.width; x += offset) {
+                const coordinates = `${canvasIndex},${x},${y},${squareSize}`;
+                // console.log(`[pdfParser] Génération de la sous-canvas: ${coordinates}`);
+                yield [coordinates, createSubCanvas(canvas, x, y, squareSize)];
             }
         }
+        // }
     }
 }
 
@@ -699,7 +707,7 @@ function formatDecodeResult(result) {
     // Exemple : "ISO010000000000000000000000S1123456789012345S21.2.250.1.213.1.4.8S3JOHN DOES4SMITHS5MS601-01-1990S799999"
     const text = result.getText();
     const parsedText = parseTextDataMatrix(text);
-    console.log('[pdfParser] parsedText', parsedText);
+    // console.log('[pdfParser] parsedText', parsedText);
 
     // Convertir la date de naissance en objet Date si elle est présente
     if (parsedText.DateNaissance) {
