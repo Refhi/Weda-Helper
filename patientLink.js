@@ -111,11 +111,11 @@ addTweak(urls, '*addATCDShortcut', function () {
 
     async function addPatientUrlParams(element, patientFileNumber) {
         let patientInfo = await getPatientInfo(patientFileNumber);
-        console.log('patientInfo', patientInfo);
+        // console.log('patientInfo', patientInfo);
         let patientFileUrl = patientInfo.patientFileUrl;
         let patientFileUrlParts = patientFileUrl.split('?');
         let patientFileUrlParams = patientFileUrlParts[1];
-        console.log('patientFileUrlParams', patientFileUrlParams);
+        // console.log('patientFileUrlParams', patientFileUrlParams);
         // Ajoute l'information dans une propriété UrlParams
         element.UrlParams = patientFileUrlParams;
         // console.log('ajout de ', patientFileUrlParams, 'à', element, 'ce qui donne ', element.UrlParams);
