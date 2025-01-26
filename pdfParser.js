@@ -71,7 +71,7 @@ async function processFoundPdfIframe(elements) {
     let extractedData = await extractRelevantData(fullText, urlPDF);
 
     // Création d'un id unique
-    let hashId = customHash(fullText, urlPDF);
+    let hashId = await customHash(fullText, urlPDF);
 
     // Données déjà extraites pour ce PDF ?
     let { alreadyExtractedData, alreadyImported } = checkAlreadyExtractedData(hashId);
@@ -218,7 +218,7 @@ function completeExtractedData(extractedData, dataMatrixReturn) {
 // Vérifie si les données d'un pdf ont déjà été extraites
 function checkAlreadyExtractedData(hashId) {
     const alreadyExtractedData = JSON.parse(sessionStorage.getItem(hashId));
-    console.log('[pdfParser] alreadyExtractedData', alreadyExtractedData);
+    console.log('[pdfParser] alreadyExtractedData', alreadyExtractedData, hashId);
     const alreadyImported = alreadyExtractedData ? alreadyExtractedData.alreadyImported : false;
     return { alreadyExtractedData, alreadyImported };
 }
@@ -466,27 +466,31 @@ async function extractDatamatrixFromPDF(pdfUrl) {
     const numPages = pdf.numPages;
     const pagesToCheck = numPages === 1 ? [1] : [1, numPages]; // Vérifie la première et la dernière page, ou juste la première si une seule page
 
+    const pages = [];
     for (const pageNum of pagesToCheck) {
         const page = await pdf.getPage(pageNum);
-        const pageData = await extractDatamatrixFromPage(page);
-        if (pageData) {
-            return pageData;
-        }
+        pages.push(page);
     }
 
-    return null;
+    const pageData = await extractDatamatrixFromPage(pages);
+    return pageData || null;
 }
 
-async function renderPageToCanvas(PDFpage) {
-    const viewport = PDFpage.getViewport({ scale: 2 });
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
+async function renderPagesToCanvases(PDFpages) {
+    const canvases = [];
 
-    await PDFpage.render({ canvasContext: context, viewport: viewport }).promise;
+    for (const PDFpage of PDFpages) {
+        const viewport = PDFpage.getViewport({ scale: 2 });
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
 
-    return canvas;
+        await PDFpage.render({ canvasContext: context, viewport: viewport }).promise;
+        canvases.push(canvas);
+    }
+
+    return canvases;
 }
 
 function generateBinaryBitmap(canvas) {
@@ -503,9 +507,9 @@ function generateHints() {
     return hints;
 }
 
-async function extractDatamatrixFromPage(PDFpage) {
+async function extractDatamatrixFromPage(PDFpages) {
     // Rendu de la page du PDF dans un canvas (objet HTML obligatoire pour ZXing)
-    const canvas = await renderPageToCanvas(PDFpage);
+    const canvases = await renderPagesToCanvases(PDFpages);
     const hints = generateHints();
     const reader = new ZXing.MultiFormatReader();
     let subCanvases = {};
@@ -514,7 +518,7 @@ async function extractDatamatrixFromPage(PDFpage) {
     const uniqueId = Date.now();
     console.time(`[pdfParser] Datamatrix Extraction Time ${uniqueId}`);
 
-    for (const [coordinates, subCanvas] of generateSubCanvases(canvas)) {
+    for (const [coordinates, subCanvas] of generateSubCanvases(canvases)) {
         passCount++;
         const binaryBitmap = generateBinaryBitmap(subCanvas);
         subCanvases[coordinates] = binaryBitmap;
@@ -540,38 +544,33 @@ async function extractDatamatrixFromPage(PDFpage) {
     return null;
 }
 
-function* generateSubCanvases(canvas) {
-    // Ces paramètres effectuent un balayage d'un pdf standard en 2 passes
-    // ce qui constitue environs 105 analyses, ce qui prend < 120ms sur mon poste
+function* generateSubCanvases(canvases) {
+    // Ces paramètres effectuent un balayage d'un pdf standard en plusieurs passes
     const initialSquareSize = 360; // Taille initiale plus grande
     const reductionSize = 80; // Réduction de la taille à chaque passe
     const minSquareSize = 280; // Taille minimale des carrés
-    const offset = 30;
-    const width = canvas.width;
-    const height = canvas.height;
+    const offset = 30; // Déplacement du carré
 
-    for (let squareSize = initialSquareSize; squareSize >= minSquareSize; squareSize -= reductionSize) {
-        // Première passe sans offset
-        for (let y = 0; y < height; y += squareSize) {
-            for (let x = 0; x < width; x += squareSize) {
-                const subCanvas = document.createElement('canvas');
-                subCanvas.width = squareSize;
-                subCanvas.height = squareSize;
-                const subContext = subCanvas.getContext('2d');
-                subContext.drawImage(canvas, x, y, squareSize, squareSize, 0, 0, squareSize, squareSize);
-                yield [`${x},${y},${squareSize}`, subCanvas];
-            }
-        }
+    for (let canvasIndex = 0; canvasIndex < canvases.length; canvasIndex++) {
+        const canvas = canvases[canvasIndex];
+        const width = canvas.width;
+        const height = canvas.height;
 
-        // Deuxième passe avec offset
-        for (let y = offset; y < height; y += squareSize) {
-            for (let x = offset; x < width; x += squareSize) {
-                const subCanvas = document.createElement('canvas');
-                subCanvas.width = squareSize;
-                subCanvas.height = squareSize;
-                const subContext = subCanvas.getContext('2d');
-                subContext.drawImage(canvas, x, y, squareSize, squareSize, 0, 0, squareSize, squareSize);
-                yield [`${x},${y},${squareSize}`, subCanvas];
+        // Balayage du canvas en carrés de différentes tailles
+        for (let squareSize = initialSquareSize; squareSize >= minSquareSize; squareSize -= reductionSize) {
+            // Parcours vertical du canvas
+            for (let y = 0; y < height; y += offset) {
+                // Parcours horizontal du canvas
+                for (let x = 0; x < width; x += offset) {
+                    const subCanvas = document.createElement('canvas');
+                    subCanvas.width = squareSize;
+                    subCanvas.height = squareSize;
+                    const subContext = subCanvas.getContext('2d');
+
+                    // Dessiner la partie du canvas original dans le sous-canvas
+                    subContext.drawImage(canvas, x, y, squareSize, squareSize, 0, 0, squareSize, squareSize);
+                    yield [`${canvasIndex},${x},${y},${squareSize}`, subCanvas];
+                }
             }
         }
     }
