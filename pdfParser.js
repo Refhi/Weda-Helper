@@ -77,11 +77,11 @@ async function processFoundPdfIframe(elements) {
     let { alreadyExtractedData, alreadyImported } = checkAlreadyExtractedData(hashId);
     if (alreadyImported) {
         console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction.");
-        return;
+        return; // TODO : décommenter pour la prod
     }
     if (alreadyExtractedData) {
         console.log("[pdfParser] Données déjà extraites pour ce PDF. Utilisation des données existantes.");
-        extractedData = alreadyExtractedData;
+        extractedData = alreadyExtractedData; // TODO : décommenter pour la prod
     }
 
     // Si la date de naissance ou le nom n'ont pas été trouvés, on recherche le datamatrix
@@ -90,9 +90,8 @@ async function processFoundPdfIframe(elements) {
         dataMatrixReturn = await extractDatamatrixFromPDF(urlPDF);
         console.log('[pdfParser] dataMatrixReturn', dataMatrixReturn);
         if (!dataMatrixReturn) {
-            console.log("[pdfParser] Datamatrix non trouvé. Arrêt de la procédure.");
+            console.log("[pdfParser] Datamatrix non trouvé.");
             sessionStorage.setItem(hashId, JSON.stringify({ alreadyImported: true }));
-            return;
         }
     }
 
@@ -109,18 +108,24 @@ async function processFoundPdfIframe(elements) {
     let properDDNSearched = lookupPatient(extractedData["dateOfBirth"]);
     if (!properDDNSearched) {
         console.log("[pdfParser] DDN non trouvée, arrêt de la procédure.");
-        return; // Ici c'est un échec complet, la procédure s'arrête pour de bon.
     }
     console.log("[pdfParser] DDN présente, on continue à chercher le patient.");
 
-    // Clic sur le patient pertinent dans la liste trouvée (ou on arrête si le bon patient est déjà sélectionné)
-    if (!clicPatient(extractedData)) { return; }
+    // Clic sur le patient pertinent dans la liste trouvée (on arrête si le clic viens
+    // d'être fait pour éviter que l'extraction ne se fasse induement)
+    if (clicPatient(extractedData)) { return; }
 
     // Intégration des données dans le formulaire d'import
     setExtractedDataInForm(extractedData);
 
     // Marquage des données comme déjà importées
     markDataAsImported(hashId, extractedData);
+
+    // Mise du focus sur la date du document importé
+    let dateSelector = `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_${actualActionLine()}`;
+    document.querySelector(dateSelector).focus();
+    // met en surbrillance la date pour faciliter la saisie
+    document.querySelector(dateSelector).select();
 }
 
 
@@ -134,7 +139,6 @@ function markDataAsImported(hashId, extractedData) {
 }
 
 
-// Application des données extraites dans les zones adaptées
 function setExtractedDataInForm(extractedData) {
     // Récupère la ligne d'action actuelle
     const ligneAction = actualActionLine();
@@ -142,28 +146,41 @@ function setExtractedDataInForm(extractedData) {
     // Sélecteurs pour les champs du formulaire
     const selectors = {
         documentDate: `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_${ligneAction}`,
-        documentType: `#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementEvenementType_${ligneAction}`,
-        title: `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_${ligneAction}`
+        documentType: `#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_${ligneAction}`,
+        documentTitle: `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_${ligneAction}`
     };
 
     // Récupère les éléments du DOM correspondant aux sélecteurs
     const inputs = {
         documentDate: document.querySelector(selectors.documentDate),
         documentType: document.querySelector(selectors.documentType),
-        title: document.querySelector(selectors.title)
+        documentTitle: document.querySelector(selectors.documentTitle)
     };
 
     // Données à insérer dans les champs du formulaire
     const fields = {
         documentDate: extractedData.documentDate,
         documentType: extractedData.documentType,
-        title: extractedData.Title
+        documentTitle: extractedData.documentTitle
     };
+
+    console.log('[pdfParser] fields', fields);
 
     // Parcourt chaque champ et met à jour la valeur si elle existe
     Object.keys(fields).forEach(key => {
         if (fields[key] && inputs[key]) {
-            inputs[key].value = fields[key];
+            if (key === 'documentType') { // Cas particulier pour le champ documentType
+                // Trouver l'option correspondante pour documentType
+                const options = inputs[key].options;
+                for (let i = 0; i < options.length; i++) {
+                    if (options[i].text === fields[key]) {
+                        inputs[key].value = options[i].value;
+                        break;
+                    }
+                }
+            } else {
+                inputs[key].value = fields[key];
+            }
             // Déclenche un événement de changement pour chaque champ mis à jour
             inputs[key].dispatchEvent(new Event('change'));
         }
@@ -181,10 +198,15 @@ function clicPatient(extractedData) {
         return false;
     } else {
         let patientToClicSelector = "#" + patientToClick.id;
-        console.log("[pdfParser] Patient à sélectionner :", patientToClickName, patientToClick);
         // patientToClick.click(); => ne fonctionne pas à cause du CSP en milieu ISOLATED
-        clicCSPLockedElement(patientToClicSelector);
-        return true;
+        if (patientToClick) {
+            console.log("[pdfParser] Patient à sélectionner :", patientToClickName, patientToClick);
+            clicCSPLockedElement(patientToClicSelector);
+            return true;
+        } else {
+            console.log("[pdfParser] Patient non trouvé, je continue la procédure.");
+            return false;
+        }
     }
 }
 
@@ -422,10 +444,10 @@ async function extractLines(textItems) {
 async function extractRelevantData(fullText, pdfUrl) {
     const regexPatterns = {
         dateRegexes: [
-            /[0-9]{2}[\/|-][0-9]{2}[\/|-][0-9]{4}/g // Match dates dd/mm/yyyy ou dd-mm-yyyy
+            /[0-9]{2}[\/\-.][0-9]{2}[\/\-.][0-9]{4}/g // Match dates dd/mm/yyyy ou dd-mm-yyyy
         ],
         dateOfBirthRegexes: [
-            /(?:né\(e\) le|date de naissance:|date de naissance :|née le)[\s\S]([0-9]{2}[\/|-][0-9]{4})/gi // Match la date de naissance
+            /(?:né\(e\) le|date de naissance:|date de naissance :|née le)[\s\S]([0-9]{2}[\/\-.][0-9]{4})/gi // Match la date de naissance
         ],
         nameRegexes: [
             /(?:Mme|Madame|Monsieur|M\.) (.*?)(?: \(| né| - né)/gi, // Match pour les courriers, typiquement "Mr. XXX né le"
@@ -438,7 +460,7 @@ async function extractRelevantData(fullText, pdfUrl) {
             /Nometprénomdenaissance:([A-Z]+[a-z]+)/g, // Match pour les courriers, typiquement "Nometprénomdenaissance: XXX"
         ],
         documentDateRegexes: [
-            /, le (\d{2}[\/-]\d{2}[\/-]\d{4})/gi // Match pour les dates dans les courriers
+            /, le (\d{2}[\/\-.]\d{2}[\/\-.]\d{4})/gi // Match pour les dates dans les courriers
         ]
     };
 
@@ -448,14 +470,15 @@ async function extractRelevantData(fullText, pdfUrl) {
     const documentDate = determineDocumentDate(fullText, dateMatches, regexPatterns.documentDateRegexes);
     const dateOfBirth = determineDateOfBirth(fullText, dateMatches, regexPatterns.dateOfBirthRegexes);
     const nameMatches = extractNames(fullText, regexPatterns.nameRegexes);
-    const documentType = determineDocumentType(fullText); //TODO
-    const documentTitle = determineDocumentTitle(fullText); //TODO
+    const documentType = determineDocumentType(fullText);
+    const documentTitle = determineDocumentTitle(fullText, documentType); //TODO
 
     let extractedData = {
         documentDate: documentDate ? formatDate(documentDate) : null,
         dateOfBirth: dateOfBirth ? formatDate(dateOfBirth) : null,
         nameMatches: nameMatches,
-        documentType: documentType
+        documentType: documentType,
+        documentTitle: documentTitle
     };
     return extractedData;
 }
@@ -596,7 +619,7 @@ async function extractDatamatrixFromPage(PDFpages) {
 
     // Balayage classique
     for (const [coordinates, subCanvas] of generateSubCanvases(canvases)) {
-        const result = await decodeSubCanvas(subCanvas, coordinates,'scan');
+        const result = await decodeSubCanvas(subCanvas, coordinates, 'scan');
         if (result) return result;
     }
 
@@ -746,75 +769,137 @@ function visualizeBinaryBitmap(binaryBitmap) {
 
 // Détermination du type de courrier
 function determineDocumentType(fullText) {
-    const documentTypes = {
-        "Courrier": ["Chère Consœur", "chère consoeur", "Cher confrère", "courrier", "lettre"],
-        "Compte Rendu": ["compte rendu", "rapport"],
-        "IMAGERIE": ["imagerie", "radiographie", "scanner", "IRM"],
-        "CRO/CRH": ["cro", "crh"],
-        "Administratif": [],
-        "Arrêt de travail": ["arrêt de travail", "congé maladie"],
-        "Biologie": ["biologie", "analyse sanguine"],
-        "Bon de transport": ["bon de transport", "transport médical"],
-        "Certificat": ["certificat", "attestation"],
-        "ECG": ["ecg", "électrocardiogramme"],
-        "EFR": ["efr", "exploration fonctionnelle respiratoire"],
-        "LABORATOIRE/BIO": ["laboratoire", "bio"],
-        "MT": ["mt", "médecine du travail"],
-        "Ordonnance": ["ordonnance", "prescription"],
-        "PARAMEDICAL": ["paramédical", "soins"],
-        "SPECIALISTE": ["spécialiste", "consultation spécialisée"],
-        "Consultation": ["consultation", "visite médicale"],
-    };
+    console.log('[pdfParser] determineDocumentType');
+    // On utilise un tableau de tableaux pour permettre de parcourir les types de documents par ordre de spécificité
+    // Et de mettre plusieurs fois la même clé, avec des valeurs de moins en moins exigeantes
+    const documentTypes = [
+        // Niveau 1 de spécificité : la présence du mot-clé signe directement le type de document sans ambiguïté
+        ["LABORATOIRE/BIO", ["BIOCEANE", "LABORATOIRE"]],
+        ["Arrêt de travail", ["avis d’arrêt de travail"]],
+        ["CRO/CRH", ["Compte Rendu Opératoire", "Compte Rendu Hospitalier", "Compte Rendu d'Hospitalisation", "COMPTE RENDU OPERATOIRE"]],
+        ["Consultation", ["COMPTE-RENDU DE CONSULTATION"]],
+        // Niveau 2 de spécificité : des mots plus ambivalents, mais qui,
+        // parcouru dans l'ordre devraient permettre de déterminer le type de document
+        ["Courrier", ["Chère Consœur", "chère consoeur", "Cher confrère", "courrier", "lettre", "chère amie", "cher ami", "Cherconfrére", "Chèreconsoeur", "Chèreconsœur"]],
+        ["IMAGERIE", ["imagerie", "radiographie", "scanner", "IRM", "radiologie"]],
+        ["Administratif", []],
+        ["Arrêt de travail", ["arrêt de travail", "congé maladie"]],
+        ["Biologie", ["biologie", "analyse sanguine"]],
+        ["Bon de transport", ["bon de transport", "transport médical"]],
+        ["Certificat", ["certificat", "attestation"]],
+        ["ECG", ["ecg", "électrocardiogramme"]],
+        ["EFR", ["efr", "exploration fonctionnelle respiratoire"]],
+        ["LABORATOIRE/BIO", ["laboratoire"]],
+        ["MT", ["Déclaration de Médecin Traitant", "déclaration médecin traitant"]],
+        ["PARAMEDICAL", ["paramédical", "soins"]],
+        ["SPECIALISTE", ["spécialiste", "consultation spécialisée"]],
+        ["Consultation", ["consultation", "visite médicale"]],
+        ["Ordonnance", ["ordonnance", "prescription", "60-3937"]], // 60-3937 est le cerfa des bizones
+        // Niveau 3 de spécificité : des mots plus génériques, qui peuvent être présents dans plusieurs types de documents
+        ["Compte Rendu", ["compte rendu", "compte-rendu", "automesure"]],
+    ];
 
-    for (const [type, keywords] of Object.entries(documentTypes)) {
+    for (const [type, keywords] of documentTypes) {
+        console.log('[pdfParser] recherche du type de document', type);
         for (const keyword of keywords) {
-            if (fullText.toLowerCase().includes(keyword.toLowerCase())) {
-                console.log('[pdfParser] type de document trouvé', type);
+            // Remplacer les espaces par \s* pour permettre les espaces optionnels
+            const regex = new RegExp(keyword.replace(/\s+/g, '\\s*'), 'i');
+            if (regex.test(fullText)) {
+                console.log('[pdfParser] type de document trouvé', type, 'car présence de', keyword);
                 return type;
             }
         }
     }
-
+    console.log('[pdfParser] type de document non trouvé');
     return null;
 }
 
-function determineDocumentTitle(fullText) {
-    console.log('[pdfParser] determineDocumentTitle');
-    const specialites = [
-        "Orthopédie",
-        "Gynécologie",
-        "Cardiologie",
-        "Neurologie",
-        "Pédiatrie",
-        "Radiologie",
-        "Ophtalmologie",
-        "Pneumologie",
-        "ORL",
-        "Dermatologie",
-        "Urologie",
-        "Chirurgie",
-        "Rhumatologie",
-        "Endocrinologie",
-        "Gastro-entérologie",
-        "Hématologie",
-        "Néphrologie",
-        "Oncologie",
-        "Psychiatrie",
-        "Stomatologie",
-        "Addictologie"
-    ];
 
-    const imageries = [
-        "scanner",
-        "IRM",
-        "radiographie",
-        "échographie",
-        "mammographie",
-        "scintigraphie",
-        "tomodensitométrie",
-        "ostéodensitométrie",
-        "TDM"
-    ];
+// Fonction pour trouver la spécialité dans le texte
+function findSpecialite(fullText, specialites) {
+    for (const [specialite, keywords] of Object.entries(specialites)) {
+        for (const keyword of keywords) {
+            if (fullText.toLowerCase().includes(keyword.toLowerCase())) {
+                console.log('[pdfParser] spécialité trouvée', specialite);
+                return specialite;
+            }
+        }
+    }
+    return null;
+}
+
+// Fonction pour trouver le type d'imagerie dans le texte
+function findImagerie(fullText, imageries) {
+    for (const [imagerie, keywords] of Object.entries(imageries)) {
+        for (const keyword of keywords) {
+            if (fullText.toLowerCase().includes(keyword.toLowerCase())) {
+                console.log('[pdfParser] type d\'imagerie trouvé', imagerie);
+                return imagerie;
+            }
+        }
+    }
+    return null;
+}
+
+// Fonction pour déterminer le titre du document
+function determineDocumentTitle(fullText, documentType) {
+    const specialites = {
+        "Orthopédie": ["Orthopédie"],
+        "Gynécologie": ["Gynécologie"],
+        "Cardiologie": ["Cardiologie"],
+        "Neurologie": ["Neurologie"],
+        "Pédiatrie": ["Pédiatrie"],
+        "Radiologie": ["Radiologie"],
+        "Ophtalmologie": ["Ophtalmologie"],
+        "Pneumologie": ["Pneumologie"],
+        "Dermatologie": ["Dermatologie"],
+        "Urologie": ["Urologie"],
+        "Chirurgie": ["Chirurgie"],
+        "Rhumatologie": ["Rhumatologie"],
+        "Endocrinologie": ["Endocrinologie"],
+        "Gastro-entérologie": ["Gastro-entérologie"],
+        "Hématologie": ["Hématologie"],
+        "Néphrologie": ["Néphrologie"],
+        "Oncologie": ["Oncologie"],
+        "Psychiatrie": ["Psychiatrie"],
+        "Stomatologie": ["Stomatologie"],
+        "Addictologie": ["Addictologie"],
+        "ORL": ["Otologie", "Rhinologie", "Laryngologie"],
+    };
+
+    const imageries = {
+        "scanner": ["scanner"],
+        "échographie": ["échographie", "doppler"],
+        "radiographie": ["radiographie"],
+        "mammographie": ["mammographie"],
+        "scintigraphie": ["scintigraphie"],
+        "tomodensitométrie": ["tomodensitométrie"],
+        "ostéodensitométrie": ["ostéodensitométrie"],
+        "TDM": ["TDM"],
+        "IRM": ["IRM"]
+    };
+
+    console.log('[pdfParser] determineDocumentTitle');
+
+    // Trouver la spécialité médicale
+    let specialite = findSpecialite(fullText, specialites);
+
+    // Trouver le type d'imagerie si présent
+    let imagerie = findImagerie(fullText, imageries);
+
+    // Construire le titre du document
+    let documentTitle = documentType;
+    if (documentType === "IMAGERIE" && imagerie) {
+        if (imagerie) {
+            documentTitle += ` - ${imagerie}`;
+        }
+    } else if (specialite) {
+        documentTitle += ` - ${specialite}`;
+    }
+
+
+    console.log('[pdfParser] Titre du document déterminé', documentTitle);
+    return documentTitle;
 }
 
 // Extraction des dates du texte
@@ -892,7 +977,7 @@ function extractNames(fullText, nameRegexes) {
 }
 
 function parseDate(dateString) {
-    const parts = dateString.split(/[\/-]/);
+    const parts = dateString.split(/[\/\-.]/);
     return new Date(parts[2], parts[1] - 1, parts[0]);
 }
 
