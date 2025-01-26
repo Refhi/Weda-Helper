@@ -176,9 +176,9 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'TweakImports', function () {
         const dateElements = document.querySelectorAll('[id^="ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_"]');
         dateElements.forEach(function (dateElement) {
             dateElement.addEventListener('keydown', function (event) {
-                if (event.key === 'Tab' && event.shiftKey) {
+                const searchBox = document.getElementById('ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherchePatientByDate');
+                if (event.key === 'Tab' && event.shiftKey && searchBox) {
                     event.preventDefault(); // Inhibe le comportement par défaut de Shift+Tab
-                    const searchBox = document.getElementById('ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherchePatientByDate');
                     if (searchBox) {
                         searchBox.focus();
                         searchBox.select();

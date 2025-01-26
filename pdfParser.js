@@ -77,6 +77,7 @@ async function processFoundPdfIframe(elements) {
     let { alreadyExtractedData, alreadyImported } = checkAlreadyExtractedData(hashId);
     if (alreadyImported) {
         console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction.");
+        highlightDate();
         return; // TODO : décommenter pour la prod
     }
     if (alreadyExtractedData) {
@@ -122,15 +123,23 @@ async function processFoundPdfIframe(elements) {
     markDataAsImported(hashId, extractedData);
 
     // Mise du focus sur la date du document importé
-    let dateSelector = `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_${actualActionLine()}`;
-    document.querySelector(dateSelector).focus();
-    // met en surbrillance la date pour faciliter la saisie
-    document.querySelector(dateSelector).select();
+    setTimeout(function() {
+        highlightDate();
+    }, 200);
+
 }
 
 
 
 // // Fonctions utilitaires
+// met la date en focus et surbrillance pour faciliter la saisie
+function highlightDate() {
+    let dateSelector = `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_${actualActionLine()}`;
+    console.log("[pdfParser] Mise en surbrillance de la date pour faciliter la saisie.");
+    document.querySelector(dateSelector).focus();
+    document.querySelector(dateSelector).select();
+}
+
 // marque les données comme déjà importées
 function markDataAsImported(hashId, extractedData) {
     extractedData.alreadyImported = true;
