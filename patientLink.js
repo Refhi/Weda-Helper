@@ -118,7 +118,7 @@ addTweak(urls, '*addATCDShortcut', function () {
         console.log('patientFileUrlParams', patientFileUrlParams);
         // Ajoute l'information dans une propriété UrlParams
         element.UrlParams = patientFileUrlParams;
-        console.log('ajout de ', patientFileUrlParams, 'à', element, 'ce qui donne ', element.UrlParams);
+        // console.log('ajout de ', patientFileUrlParams, 'à', element, 'ce qui donne ', element.UrlParams);
     }
 
     function openPatientNotes(element) {
@@ -151,9 +151,10 @@ addTweak(urls, '*addATCDShortcut', function () {
             let parts = title.split('|');
             let patientFileNumber = parts[0]; // Prendre le premier élément
             if (parseInt(patientFileNumber, 10) === 0) {
-                console.log('Ne fonctionne pas pour Achimed');
+                // console.log('Ne fonctionne pas pour Archimed');
                 return;
-            } console.log('patientFileNumber', patientFileNumber);
+            }
+            // console.log('patientFileNumber', patientFileNumber);
             addPatientUrlParams(element, patientFileNumber);
             addATCDShortcut(element);
         });

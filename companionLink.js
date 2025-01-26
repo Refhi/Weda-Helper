@@ -47,7 +47,7 @@ function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithD
             })
             .catch(error => {
                 if (testing) {
-                    console.log('testing error', error);
+                    // console.log('testing error', error);
                     if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
                         callback(false);
                         return;

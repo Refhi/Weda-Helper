@@ -65,7 +65,7 @@ async function processFoundPdfIframe(elements) {
 
     // Extraction du texte
     let fullText = await extractTextFromPDF(urlPDF);
-    console.log('[pdfParser] fullText', fullText);
+    console.log('[pdfParser] fullText', [fullText]);
 
     // Extraction des informations pertinentes
     let extractedData = await extractRelevantData(fullText, urlPDF);
@@ -612,7 +612,7 @@ function* generateSubCanvases(canvases) {
     for (let canvasIndex = 0; canvasIndex < canvases.length; canvasIndex++) {
         const canvas = canvases[canvasIndex];
         for (let squareSize = initialSquareSize; squareSize >= minSquareSize; squareSize -= reductionSize) {
-            offset = Math.floor(squareSize / 3);
+            offset = Math.floor(squareSize / 2);
             for (let y = 0; y < canvas.height; y += offset) {
                 for (let x = 0; x < canvas.width; x += offset) {
                     const coordinates = `${canvasIndex},${x},${y},${squareSize}`;
@@ -771,7 +771,7 @@ function determineDocumentType(fullText) {
 }
 
 function determineDocumentTitle(fullText) {
-    console.log('[pdfParser] determineDocumentTitle', fullText);
+    console.log('[pdfParser] determineDocumentTitle');
     const specialites = [
         "Orthopédie",
         "Gynécologie",
