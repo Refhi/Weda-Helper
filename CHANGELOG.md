@@ -2,6 +2,11 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+# [2.10] - classement assisté
+## Ajouts :
+- [#327](https://github.com/Refhi/Weda-Helper/pull/327) - Ajout d'une assistance à l'import des documents avec lecture des datamatrix si besoin
+- Amélioration de la navigation par tabulation dans l'import des documents. Alt+S permet désormais de supprimer le document en cours.
+
 # [2.9]
 ## Ajouts :
 - [#275](https://github.com/Refhi/Weda-Helper/issues/275) - Permet de sélectionner automatiquement le(s) médecin(s)traitant(s) comme destinataire(s) lors de l'envoi d'un courrier (désactivé par défaut)

@@ -36,7 +36,12 @@ const keyCommands = {
     },
     'push_delete': function () {
         console.log('push_delete activé');
-        clickElementByClass('button delete');
+        const binElementCurrentImport = document.getElementById(`ContentPlaceHolder1_FileStreamClassementsGrid_DeleteButtonGridFileStreamClassement_${actualActionLine()}`);
+        if (binElementCurrentImport){
+            binElementCurrentImport.click();
+        } else {
+            clickElementByClass('button delete');
+        }
     },
     'shortcut_w': function () {
         console.log('shortcut_w activé');
