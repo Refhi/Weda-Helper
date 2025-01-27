@@ -123,7 +123,7 @@ async function processFoundPdfIframe(elements) {
     markDataAsImported(hashId, extractedData);
 
     // Mise du focus sur la date du document importé
-    setTimeout(function() {
+    setTimeout(function () {
         highlightDate();
     }, 200);
 
@@ -367,11 +367,16 @@ function lookupPatient(dateOfBirth) {
 // Récupérer la meta-ligne d'action actuelle
 function actualActionLine() {
     const ligneSelectionne = document.querySelector(".grid-selecteditem");
-    // On cherche ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_0 mais le 0 est variable jusqu'à 9
-    let patientADefinirElement = ligneSelectionne.querySelector("[id^='ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_']");
-    // de là on récupère le dernier chiffre de l'id de l'élément
-    let numeroDeLigne = patientADefinirElement.id.match(/\d+$/)[0];
-    return numeroDeLigne;
+    if (ligneSelectionne) {
+        // On cherche ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_0 mais le 0 est variable jusqu'à 9
+        let patientADefinirElement = ligneSelectionne.querySelector("[id^='ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_']");
+        // de là on récupère le dernier chiffre de l'id de l'élément
+        let numeroDeLigne = patientADefinirElement.id.match(/\d+$/)[0];
+        return numeroDeLigne;
+    } else {
+        console.log("[pdfParser] Pas de ligne d'action sélectionnée.");
+        return null;
+    }
 }
 
 
