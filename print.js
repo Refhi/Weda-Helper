@@ -17,7 +17,7 @@
  * // Téléchargement du modèle 1 (si pertinent)
  * handlePrint('download', 1);
  */
-function handlePrint(printType, modelNumber = 0) {
+function handlePrint(printType, modelNumber = 0, forcedPostPrintBehavior = null) {
     // D'abord récupération de l'ensemble des options pertinentes dans les options.
     getOption(['RemoveLocalCompanionPrint', 'postPrintBehavior', 'instantPrint'], function ([RemoveLocalCompanionPrint, postPrintBehavior, instantPrint]) {
         // De quel type d'"impression" s'agit-il ? (impression, téléchargement, companion)
@@ -27,6 +27,7 @@ function handlePrint(printType, modelNumber = 0) {
         // Est-ce qu'instantPrint est activé ? (nécessite que RemoveLocalCompanionPrint soit false)
         instantPrint = instantPrint && !RemoveLocalCompanionPrint;
         // On lance le processus d'impression
+        if (forcedPostPrintBehavior) {postPrintBehavior = forcedPostPrintBehavior;} // nécessaire pour l'envoi simultané par ctrl+E
         startPrinting(handlingType, whatToPrint, postPrintBehavior, modelNumber, instantPrint);
     });
 }

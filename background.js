@@ -475,6 +475,11 @@ var advancedDefaultSettings = [{
                 "type": TYPE_BOOL,
                 "description": "Impression instantanée : dès l'envoi de l'impression via le Companion, ouvre un nouvel onglet. Ferme ensuite l'onglet originel quand l'impression est terminée. Utile pour faire DMP et ordonnances numériques sans ralentir le flux de la consultation. Attention les pdfs des impressions ne seront pas immédiatement visible car pas encore terminé au moment du retour vers le dossier patient.",
                 "default": false
+            }, {
+                "name": "sendAndPrint",
+                "type": TYPE_BOOL,
+                "description": "Envoie et imprime le document lors de l'usage de Ctrl+E ou Ctrl+Shift+E.",
+                "default": false
             }]
         }, {
             "name": "KeepFocus",

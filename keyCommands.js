@@ -23,10 +23,16 @@ const keyCommands = {
         handlePrint('download', 1);
     },
     'send_document': function () {
-        clickPrintModelNumber(0, true); //TODO à faire autrement, handlePrint n'est pas adapté
+        getOption('sendAndPrint', function (sendAndPrint) {
+            if (sendAndPrint) {
+                // TODO : d'abord l'imppression puis l'envoi
+            }
+            // Puis de toute façon l'envoi
+            clickPrintModelNumber(0, true);
+        });
     },
     'send_document_bis': function () {
-        clickPrintModelNumber(0, true); 
+        clickPrintModelNumber(1, true); 
     },
     'upload_latest_file': uploadLatest,
     'twain_scan': startscanning,

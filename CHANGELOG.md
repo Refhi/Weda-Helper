@@ -7,6 +7,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#327](https://github.com/Refhi/Weda-Helper/pull/327) - Ajout d'une assistance à l'import des documents avec lecture des datamatrix si besoin
 - Amélioration de la navigation par tabulation dans l'import des documents. Alt+S permet désormais de supprimer le document en cours.
 - [#50](https://github.com/Refhi/Weda-Helper/issues/50) - Ajout d'un raccourcis Ctrl+Shift+S pour lancer le scan de documents
+- [#323](https://github.com/Refhi/Weda-Helper/issues/323) - Ctrl+E ou Ctrl+Shift+E pour lancer l'envoi de courrier peut optionnellement lancer l'impression en même temps
 
 # [2.9]
 ## Ajouts :
