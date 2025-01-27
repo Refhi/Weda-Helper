@@ -648,6 +648,10 @@ var defaultShortcuts = {
         "default": "Ctrl+U",
         "description": "Upload le dernier fichier du dossier envoyé par le Companion",
     },
+    "twain_scan": {
+        "default": "Ctrl+Shift+S",
+        "description": "Lance le scanneur de document",
+    },
     "insert_date": {
         "default": "Alt+D",
         "description": "Insère la date du jour dans le champ de texte en cours d'édition",

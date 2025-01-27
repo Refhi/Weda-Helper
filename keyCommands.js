@@ -29,6 +29,7 @@ const keyCommands = {
         clickPrintModelNumber(0, true); 
     },
     'upload_latest_file': uploadLatest,
+    'twain_scan': startscanning,
     'insert_date': insertDate,
     'push_enregistrer': function () {
         console.log('push_enregistrer activé');
@@ -305,6 +306,16 @@ function insertDate() {
     }
     else if (tagName == 'body') {
         activeElement.textContent += currentDate;
+    }
+}
+
+// Débute le scan de documents
+function startscanning() {
+    console.log('startscanning activé');
+    const scanButtonSelector = 'a.level2.dynamic[href^="javascript:void(window.weda.actions.startScan"]';
+    let scanButton = document.querySelector(scanButtonSelector);
+    if (scanButton) {
+        clicCSPLockedElement(scanButtonSelector);
     }
 }
 
