@@ -27,7 +27,8 @@ function handlePrint(printType, modelNumber = 0, forcedPostPrintBehavior = null)
         // Est-ce qu'instantPrint est activé ? (nécessite que RemoveLocalCompanionPrint soit false)
         instantPrint = instantPrint && !RemoveLocalCompanionPrint;
         // On lance le processus d'impression
-        if (forcedPostPrintBehavior) {postPrintBehavior = forcedPostPrintBehavior;} // nécessaire pour l'envoi simultané par ctrl+E
+        if (forcedPostPrintBehavior) { postPrintBehavior = forcedPostPrintBehavior; } // nécessaire pour l'envoi simultané par ctrl+E
+        console.debug('handlePrint', postPrintBehavior);
         startPrinting(handlingType, whatToPrint, postPrintBehavior, modelNumber, instantPrint);
     });
 }
@@ -175,13 +176,13 @@ function clickPrintModelNumber(modelNumber = 0, send = false) {
     console.log('Voici les modeles d impression trouvés', elements);
     if (elements[modelNumber]) {
         console.log('clicking on model number', modelNumber, elements[modelNumber]);
-        
+
 
         if (send) {
-            setTimeout(function() {
+            setTimeout(function () {
                 var childElements = document.querySelectorAll('.level3');
                 console.log('Voici les éléments enfants trouvés', childElements);
-                var sendElement = Array.from(childElements).find(function(el) {
+                var sendElement = Array.from(childElements).find(function (el) {
                     return el.innerText.trim() === "Envoyer";
                 });
                 if (sendElement) {
@@ -359,11 +360,14 @@ async function startPrinting(handlingType, whatToPrint, postPrintBehavior, model
         console.error('[startPrinting] Type non reconnu :', whatToPrint);
         return;
     }
-    const postPrintBehaviors = ['doNothing', 'closePreview', 'returnToPatient'];
+    const postPrintBehaviors = ['doNothing', 'closePreview', 'returnToPatient', 'send'];
     if (!postPrintBehaviors.includes(postPrintBehavior)) {
         console.error('[startPrinting] Comportement non reconnu :', postPrintBehavior);
         return;
     }
+    const mustSend = postPrintBehavior === 'send';
+
+
     if (whatToPrint === 'model' && isNaN(modelNumber)) {
         console.error('[startPrinting] Numéro de modèle non valide :', modelNumber);
         return;
@@ -405,7 +409,7 @@ async function startPrinting(handlingType, whatToPrint, postPrintBehavior, model
                     if (Date.now() - result.FSEPrintGreenLightTimestamp < 10000) {
                         console.log('FSEPrintGreenLightTimestamp is less than 10 seconds ago, je lance l\'impression');
                         // Quand l'iframe est chargée, lancer l'impression
-                        printIframeWhenAvailable("iframe", handlingType, whatToPrint, postPrintBehavior)                        
+                        printIframeWhenAvailable("iframe", handlingType, whatToPrint, postPrintBehavior)
                             .then((result) => {
                                 if (result) {
                                     postPrintAction(result.postPrintBehavior, whatToPrint);
@@ -427,13 +431,17 @@ async function startPrinting(handlingType, whatToPrint, postPrintBehavior, model
         waitForFSEPrintGreenLight();
 
 
-    } else { // sinon, c'est un modèle d'impression        
-        if (instantPrint) {
-            postPrintBehavior = 'returnToPatient'; // On doit mettre 'returnToPatient' pour que l'envoi au DMP soit fait
+    } else { // sinon, c'est un modèle d'impression   
+        if (instantPrint && !mustSend) {
+            postPrintBehavior = 'closePreview'; // On doit mettre 'returnToPatient' pour que l'envoi au DMP soit fait
             // Appel de tabAndPrintHandler pour ouvrir un nouvel onglet avec le patient en cours
             // gérer les notifications de succès ou d'échec
             // et fermer l'onglet actuel une fois l'impression terminée
             tabAndPrintHandler();
+        }
+
+        if (mustSend) {
+            postPrintBehavior = 'closePreview'; // Nécessaire pour qu'on puisse ensuite faire l'envoi au DMP puis l'envoi
         }
 
         // il faut d'abord cliquer sur le modèle d'impression pertinent
@@ -442,17 +450,46 @@ async function startPrinting(handlingType, whatToPrint, postPrintBehavior, model
         printIframeWhenAvailable("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", handlingType, whatToPrint, postPrintBehavior)
             .then((result) => {
                 if (result) {
-                    if (instantPrint) {
-                        // Attendre que la FSE soit fermée pour fermer l'onglet
-                        waitForNoFSE(function () {
-                            postPrintAction(result.postPrintBehavior, whatToPrint);
-                        });
-                    } else {
-                        postPrintAction(result.postPrintBehavior, result.whatToPrint);
+                    postPrintAction(postPrintBehavior, whatToPrint);
+                    if (instantPrint || mustSend) {
+                        // Si on utilise instantPrint ou 'send' on envoie manuellement au DMP
+                        const DMPCheckBox = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelPrescriptionDmp #mat-checkbox-1-input');
+                        // Vérifie si la case DMP est cochée
+                        if (DMPCheckBox && DMPCheckBox.checked) {
+                            // Envoie le DMP
+                            let DMPSendButton = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelPrescriptionDmp span.mat-button-wrapper');
+                            if (DMPSendButton) {
+                                console.log('[startPrinting] Je dois envoyer manuellement au DMP', DMPSendButton);
+                                DMPSendButton.click();
+                                // Attendre la disparition de la barre de progression
+                                if (mustSend) {
+                                    waitForDMPCompletion(() => {
+                                        // Ensuite, on envoie le document
+                                        console.log('[startPrinting] Envoi du document au DMP terminé, je clique sur le bouton Envoyer');
+                                        setTimeout(() => {
+                                            clickPrintModelNumber(modelNumber, true);
+                                        }, 500);
+                                    });
+                                }
+                            }
+                        }
                     }
                 }
             });
     }
+}
+
+function waitForDMPCompletion(callback) {
+    console.log('waitForDMPCompletion activé');
+    waitForElement({
+        selector: 'svg circle',
+        justOnce: true,
+        callback: function (circles) {
+            let circle = circles[0];
+            console.log('circle', circle);
+            observeDiseapearance(circle, callback);
+        }
+    });
 }
 
 
@@ -472,25 +509,6 @@ function watchForClose() {
     }, 15000);
 }
 
-function waitForNoFSE(callback) {
-    const interval = setInterval(() => {
-        // Vérifiez si la FSE est fermée
-        chrome.storage.local.get('FSEActiveTimestamp', function(result) {
-            let lastActiveTimestamp = result.FSEActiveTimestamp;
-            let currentTime = Date.now();
-            // Si le timestamp de la FSE n'a pas été mis à jour depuis plus de 5 secondes, considérez-la comme fermée
-            let difference = currentTime - lastActiveTimestamp;
-            if (difference > 2000) {
-                console.log('[waitForNoFSE] FSE inactive, ok pour le callback');
-                clearInterval(interval);
-                callback();
-                watchForClose();
-            } else {
-                console.log('[waitForNoFSE] FSE active, j\attends qu\'aucune FSE ne soit active avant de poursuivre');
-            }
-        });
-    }, 1000); // Vérifiez toutes les secondes
-}
 
 function companionPrintDone(callback, delay = 20000) {
     let startTime = Date.now();
@@ -570,7 +588,7 @@ function closeWindow() {
  * @async
  * @function tabAndPrintHandler
  */
-async function tabAndPrintHandler() { 
+async function tabAndPrintHandler() {
     console.log('newTabPrintAndCloseOriginal activé');
     // Ouvre un nouvel onglet avec l'URL du dossier du patient actuel
     await newPatientTab();

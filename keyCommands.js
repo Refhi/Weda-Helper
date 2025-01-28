@@ -23,22 +23,10 @@ const keyCommands = {
         handlePrint('download', 1);
     },
     'send_document': function () {
-        getOption('sendAndPrint', function (sendAndPrint) {
-            if (sendAndPrint) {
-                handlePrint('print', 0);
-            }
-            // Puis de toute façon l'envoi
-            clickPrintModelNumber(0, true);
-        });
+        send_document(0);
     },
     'send_document_bis': function () {
-        getOption('sendAndPrint', function (sendAndPrint) {
-            if (sendAndPrint) {
-                handlePrint('print', 1);
-            }
-            // Puis de toute façon l'envoi
-            clickPrintModelNumber(0, true);
-        });
+        send_document(1);
     },
     'upload_latest_file': uploadLatest,
     'twain_scan': startscanning,
@@ -589,3 +577,16 @@ addTweak('*', 'WarpButtons', async function () {
         });
     });
 });
+
+
+// Gestion du workflow pour envoi + impression + DMP des courriers
+function send_document(printModelNumber) {
+    getOption('sendAndPrint', function (sendAndPrint) {
+        if (sendAndPrint) {
+            console.log('sendAndPrint activé');
+            handlePrint('print', printModelNumber, 'send');
+        } else {
+            clickPrintModelNumber(printModelNumber, true);
+        }
+    });
+}

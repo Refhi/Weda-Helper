@@ -478,7 +478,7 @@ var advancedDefaultSettings = [{
             }, {
                 "name": "sendAndPrint",
                 "type": TYPE_BOOL,
-                "description": "Envoie et imprime le document lors de l'usage de Ctrl+E ou Ctrl+Shift+E.",
+                "description": "Imprimer le courrier avant de l'envoyer lors de l'usage de Ctrl+E ou Ctrl+Shift+E ",
                 "default": false
             }]
         }, {

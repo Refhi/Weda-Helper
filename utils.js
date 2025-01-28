@@ -158,19 +158,21 @@ function waitForElement({ selector, callback, parentElement = document, justOnce
 
 
 
-function observeDiseapearance(element, callback, justOnce = false) {
-    function callBackIfElementDisapear() {
-        if (!document.contains(element)) {
-            callback();
-            if (justOnce) {
-                observer.disconnect();
-            }
-        }
-    }
+function observeDiseapearance(element, callback) {
+    const interval = 100; // 100ms
+    const timeout = 30000; // 30 seconds
+    let elapsed = 0;
 
-    let observer = new MutationObserver(callBackIfElementDisapear);
-    let config = { childList: true, subtree: true };
-    observer.observe(document, config);
+    const intervalId = setInterval(() => {
+        if (!document.contains(element)) {
+            clearInterval(intervalId);
+            callback();
+        }
+        elapsed += interval;
+        if (elapsed >= timeout) {
+            clearInterval(intervalId);
+        }
+    }, interval);
 }
 
 function waitForWeda(logWait, callback) {
