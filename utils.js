@@ -73,7 +73,7 @@ function waitLegacyForElement(selector, text = null, timeout, callback) {
 function afterMutations({ delay, callback, callBackId = "callback id undefined", preventMultiple = false }) {
     let timeoutId = null;
     const action = () => {
-        console.log(`Aucune mutation détectée pendant ${delay}ms, je considère la page comme chargée. Appel du Callback. (${callBackId})`);
+        console.debug(`Aucune mutation détectée pendant ${delay}ms, je considère la page comme chargée. Appel du Callback. (${callBackId})`);
         if (preventMultiple) {
             observer.disconnect();
             callback();

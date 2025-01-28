@@ -9,6 +9,9 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#50](https://github.com/Refhi/Weda-Helper/issues/50) - Ajout d'un raccourcis Ctrl+Shift+S pour lancer le scan de documents
 - [#323](https://github.com/Refhi/Weda-Helper/issues/323) - Ctrl+E ou Ctrl+Shift+E pour lancer l'envoi de courrier peut optionnellement lancer l'impression en même temps
 
+## Fix :
+- [#339](https://github.com/Refhi/Weda-Helper/issues/339) - Correction du système de recherche automatique de l'addresse MSsanté
+
 # [2.9]
 ## Ajouts :
 - [#275](https://github.com/Refhi/Weda-Helper/issues/275) - Permet de sélectionner automatiquement le(s) médecin(s)traitant(s) comme destinataire(s) lors de l'envoi d'un courrier (désactivé par défaut)

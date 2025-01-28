@@ -126,123 +126,34 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoMTIncludeAndCheckContact', 
 });
 
 // III. Intégration du MT dans les contacts
-// III.a. Fonctions supports
-function handleError(message) {
-    sendWedaNotifAllTabs({
-        message: message,
-        type: 'undefined',
-        icon: 'help_outline'
-    });
-    console.error("[autoMTIncludeAndCheckContact] " + message);
-    sessionStorage.removeItem('autoMTIncludeAndCheckContact');
-    return false;
-}
-
-function extractMTInfo(contacts) {
-    const mtList = contacts
-        .map(contact => {
-            const contactNumber = contact.id.split('_')[3];
-            const dropDown = document.querySelector(
-                `#ContentPlaceHolder1_PatientContactsGrid_DropDownListGridPatientContactLabelRelation_${contactNumber}`
-            );
-            return dropDown.value === '5' ? contact.parentElement.querySelector('b').innerText : null;
-        })
-        .filter(Boolean);
-
-    if (mtList.length !== 1) {
-        return handleError('Erreur dans la récupération du MT : plusieurs ou aucun MT trouvés !');
-    }
-
-    const noms = mtList[0].split(' ');
-    return {
-        nom: noms.filter(word => !/[a-z]/.test(word)).join(' '),
-        prenom: noms.filter(word => /[a-z]/.test(word)).join(' ')
-    };
-}
-
-function updateSpeciality() {
-    const dropDown = document.querySelector('#ContentPlaceHolder1_DropDownListUserSpecialiteSVFind');
-    if (dropDown.value === '01') return true;
-
-    dropDown.value = '01';
-    dropDown.dispatchEvent(new Event('change'));
-    return false;
-}
-
-function updateSearchField(nom) {
-    const input = document.querySelector('#ContentPlaceHolder1_TextBoxRecherche');
-    if (input.value === nom) return true;
-
-    input.value = nom;
-    input.dispatchEvent(new Event('change'));
-    return false;
-}
-
-function selectMTContact(prenom) {
-    const prenoms = document.querySelectorAll('[id^="ContentPlaceHolder1_ContactsGrid_LinkButtonContactPrenom_"]');
-    const contactNumbers = Array.from(prenoms)
-        .filter(p => p.innerText === prenom)
-        .map(p => p.id.split('_').pop());
-
-    if (contactNumbers.length !== 1) {
-        return handleError('Erreur dans la recherche du MT : plusieurs ou aucun prenoms correspondants trouvés !');
-    }
-
-    document.querySelector(`#ContentPlaceHolder1_ContactsGrid_EditButtonContactsGrid_${contactNumbers[0]}`).click();
-    return true;
-}
-
-// III.b. AddTweak principal
 /**
  * Déclenché depuis l'accueil du ContactForm
  * Cherche le contact du médecin traitant et le sélectionne pour édition
  * S'arrête si plus de 5 secondes se sont écoulées
  */
 addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', function () {
-    // III.b.1. Fonctions de support à nouveau
-    function timeStampUpdate() {
-        console.log("[autoMTIncludeAndCheckContact] Mise à jour du timestamp");
-        sessionStorage.setItem('autoMTIncludeAndCheckContact', Date.now());
-    }
-
-    function verifierTimestamp() {
-        const timestamp = sessionStorage.getItem('autoMTIncludeAndCheckContact');
-        if (!timestamp) {
-            console.log("[autoMTIncludeAndCheckContact] Aucun timestamp trouvé");
-            return false;
-        }
-        const timeDiff = Date.now() - parseInt(timestamp);
-        const resultCheck = timeDiff < 5000;
-        console.log("[autoMTIncludeAndCheckContact] Vérification du timestamp : ", resultCheck);
-        return resultCheck;
-    }
-
-    function nettoyerTimestamp() {
-        let timeStampActuel = sessionStorage.getItem('autoMTIncludeAndCheckContact');
-        console.log("[autoMTIncludeAndCheckContact] Nettoyage du timestamp", timeStampActuel);
-        sessionStorage.removeItem('autoMTIncludeAndCheckContact');
-    }
-
-
     if (!verifierTimestamp()) {
         nettoyerTimestamp();
         return;
     }
-    // III.c. Flux principal
-    waitForElement({
+    waitForElement({ // On attend que les contacts à droite de la page soient chargés
         selector: '[id^="ContentPlaceHolder1_PatientContactsGrid_LabelIsContactWeda_"]',
         callback: function (contacts) {
+            console.log('[autoMTIncludeAndCheckContact] Contacts trouvés : ', contacts);
+            // Si le timestamp est toujours valide, on continue
             if (!verifierTimestamp()) {
                 return;
             }
+            console.log('[autoMTIncludeAndCheckContact] Timestamp valide');
 
-            const mtInfo = extractMTInfo(contacts); // Récupération nom/prénom du MT
+            const mtInfo = extractMTInfo(contacts); // Récupération nom/prénom du MT dans la liste de contact à droite
             recordMetrics({ clicks: 1, drags: 1 });
             if (!mtInfo) {
                 nettoyerTimestamp();
                 return;
             }
 
+            console.log('[autoMTIncludeAndCheckContact] MT trouvé : ', mtInfo);
             // Mise à jour de la spécialité - arrêt si échec
             recordMetrics({ clicks: 1, drags: 1 });
             if (!updateSpeciality()) {
@@ -250,16 +161,21 @@ addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', functi
                 return;
             }
 
+            console.log('[autoMTIncludeAndCheckContact] Spécialité mise à jour');
+
             // Mise à jour du champ de recherche avec le nom du MT
             recordMetrics({ clicks: 1, drags: 1 });
             if (!updateSearchField(mtInfo.nom)) {
-                nettoyerTimestamp();
                 return;
             }
+
+            console.log('[autoMTIncludeAndCheckContact] Champ de recherche mis à jour');
 
             // Sélection du contact du MT pour édition
             timeStampUpdate();
             recordMetrics({ clicks: 1, drags: 1 });
+
+            console.log('[autoMTIncludeAndCheckContact] Contact sélectionné : ', mtInfo.prenom);
             selectMTContact(mtInfo.prenom);
         }
     });
@@ -333,3 +249,104 @@ addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', functi
         }
     });
 });
+
+
+
+// Fonctions support
+function handleError(message) {
+    sendWedaNotifAllTabs({
+        message: message,
+        type: 'undefined',
+        icon: 'help_outline'
+    });
+    console.error("[autoMTIncludeAndCheckContact] " + message);
+    sessionStorage.removeItem('autoMTIncludeAndCheckContact');
+    return false;
+}
+
+function extractMTInfo(contacts) {
+    const mtList = contacts
+        .map(contact => {
+            const contactNumber = contact.id.split('_')[3];
+            const dropDown = document.querySelector(
+                `#ContentPlaceHolder1_PatientContactsGrid_DropDownListGridPatientContactLabelRelation_${contactNumber}`
+            );
+            return dropDown.value === '5' ? contact.parentElement.querySelector('b').innerText : null;
+        })
+        .filter(Boolean);
+
+    if (mtList.length !== 1) {
+        return handleError('Erreur dans la récupération du MT : plusieurs ou aucun MT trouvés !');
+    }
+
+    const noms = mtList[0].split(' ');
+    console.log('[extractMTInfo]', noms);
+    return {
+        nom: noms.filter(word => !/[a-z]/.test(word)).join(' '),
+        prenom: noms.filter(word => /[a-z]/.test(word)).join(' ')
+    };
+}
+
+function updateSpeciality() {
+    const dropDown = document.querySelector('#ContentPlaceHolder1_DropDownListUserSpecialiteSVFind');
+    if (dropDown.value === '01') return true;
+
+    dropDown.value = '01';
+    dropDown.dispatchEvent(new Event('change'));
+    return false;
+}
+
+function updateSearchField(nom) {
+    const input = document.querySelector('#ContentPlaceHolder1_TextBoxRecherche');
+    if (input.value === nom) return true;
+
+    input.value = nom;
+    input.dispatchEvent(new Event('change'));
+    return false;
+}
+
+function selectMTContact(prenom) {
+    const prenoms = document.querySelectorAll('[id^="ContentPlaceHolder1_ContactsGrid_LinkButtonContactPrenom_"]');
+    const contactNumbers = Array.from(prenoms)
+        .filter(p => p.innerText === prenom)
+        .map(p => p.id.split('_').pop());
+
+    console.log("[selectMTContact]  : trouvé ces contacts", contactNumbers);
+
+    if (contactNumbers.length !== 1) {
+        return handleError('Erreur dans la recherche du MT : plusieurs ou aucun prenoms correspondants trouvés !');
+    }
+
+    console.log("[selectMTContact]  : sélection du contact", contactNumbers[0]);
+    const editionButtonElement = document.querySelector(`#ContentPlaceHolder1_ContactsGrid_EditButtonContactsGrid_${contactNumbers[0]}`)
+    if (editionButtonElement) {
+        editionButtonElement.click();
+    } else {
+        handleError('Erreur dans la recherche du MT : bouton d\'édition non trouvé !');
+    }
+    return true;
+}
+
+// III.b.1. Fonctions de support à nouveau
+function timeStampUpdate() {
+    console.log("[autoMTIncludeAndCheckContact] Mise à jour du timestamp");
+    sessionStorage.setItem('autoMTIncludeAndCheckContact', Date.now());
+}
+
+function verifierTimestamp() {
+    const timestamp = sessionStorage.getItem('autoMTIncludeAndCheckContact');
+    if (!timestamp) {
+        console.log("[autoMTIncludeAndCheckContact] Aucun timestamp trouvé");
+        return false;
+    }
+    const timeDiff = Date.now() - parseInt(timestamp);
+    const resultCheck = timeDiff < 5000;
+    console.log("[autoMTIncludeAndCheckContact] Vérification du timestamp : ", resultCheck);
+    return resultCheck;
+}
+
+function nettoyerTimestamp() {
+    let timeStampActuel = sessionStorage.getItem('autoMTIncludeAndCheckContact');
+    console.log("[autoMTIncludeAndCheckContact] Nettoyage du timestamp", timeStampActuel);
+    sessionStorage.removeItem('autoMTIncludeAndCheckContact');
+}
