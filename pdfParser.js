@@ -73,6 +73,9 @@ async function processFoundPdfIframe(elements) {
     // Création d'un id unique
     let hashId = await customHash(fullText, urlPDF);
 
+    // Ajout d'un bouton de reset du sessionStorage correspondant
+    addResetButton(hashId);
+
     // Données déjà extraites pour ce PDF ?
     let { alreadyExtractedData, alreadyImported } = checkAlreadyExtractedData(hashId);
     if (alreadyImported) {
@@ -131,7 +134,22 @@ async function processFoundPdfIframe(elements) {
 
 
 
-// // Fonctions utilitaires
+// Fonctions utilitaires
+// Bouton pour réinitialiser les données d'un PDF
+function addResetButton(hashId) {
+    let resetButton = document.createElement('button');
+    resetButton.innerText = '🔄'; // Emoji de réinitialisation
+    resetButton.style.marginLeft = '10px';
+    resetButton.title = "Weda-Helper : Réinitialiser les données d'analyse automatique du PDF"; // Texte lors du survol de la souris
+    resetButton.onclick = function () {
+        sessionStorage.removeItem(hashId);
+        console.log("[pdfParser] Données réinitialisées pour le PDF.");
+    };
+    let binButtonSelector = "#ContentPlaceHolder1_FileStreamClassementsGrid_DeleteButtonGridFileStreamClassement_" + actualActionLine();
+    let buttonContainer = document.querySelector(binButtonSelector);
+    buttonContainer.insertAdjacentElement('afterend', resetButton);
+}
+
 // met la date en focus et surbrillance pour faciliter la saisie
 function highlightDate() {
     let dateSelector = `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_${actualActionLine()}`;
