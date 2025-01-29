@@ -54,6 +54,8 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
 
 async function processFoundPdfIframe(elements) {
     // Setup de la procédure
+    // Partie "neutre" => n'entraine pas de rafraichissement de la page ou de DOM change
+    // ---------------------------------
     let dataMatrixReturn = null;
     console.log('[pdfParser] ----------------- Nouvelle boucle --------------------------------');
     let urlPDF = await findPdfUrl(elements);
@@ -79,13 +81,14 @@ async function processFoundPdfIframe(elements) {
     // Données déjà extraites pour ce PDF ?
     let { alreadyExtractedData, alreadyImported } = checkAlreadyExtractedData(hashId);
     if (alreadyImported) {
-        console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction.");
-        highlightDate();
-        return; // TODO : décommenter pour la prod
+        console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction. Renvoi vers le champ de recherche ou le 1er patient de la liste si présent");
+        // TODO : renvoyer vers la date si un patient est déjà sélectionné
+        selectFirstPatientOrSearchField();
+        return;
     }
     if (alreadyExtractedData) {
         console.log("[pdfParser] Données déjà extraites pour ce PDF. Utilisation des données existantes.");
-        extractedData = alreadyExtractedData; // TODO : décommenter pour la prod
+        extractedData = alreadyExtractedData;
     }
 
     // Si la date de naissance ou le nom n'ont pas été trouvés, on recherche le datamatrix
@@ -106,18 +109,29 @@ async function processFoundPdfIframe(elements) {
     console.log('[pdfParser] extractedData', extractedDataStr);
     sessionStorage.setItem(hashId, extractedDataStr);
 
+    // Partie "non-neutre" - entraine un rafraichissement de la page ou un changement du DOM
+    // ---------------------------------
     // Recherche du patient par la date de naissance
     // => on pourrait rechercher par INS si on a le datamatrix, mais cela impliquerait de
     //    naviguer entre les différents types de recherche dans la fenêtre d'import
-    let properDDNSearched = lookupPatient(extractedData["dateOfBirth"]);
-    if (!properDDNSearched) {
-        console.log("[pdfParser] DDN non trouvée, arrêt de la procédure.");
-    }
-    console.log("[pdfParser] DDN présente, on continue à chercher le patient.");
 
-    // Clic sur le patient pertinent dans la liste trouvée (on arrête si le clic viens
-    // d'être fait pour éviter que l'extraction ne se fasse induement)
-    if (clicPatient(extractedData)) { return; }
+    // Recherche du patient par la date de naissance
+    let properDDNSearched = lookupPatient(extractedData["dateOfBirth"]);
+    if (properDDNSearched != true) {
+        console.log("[pdfParser] champ DDN non trouvée, arrêt de la procédure.", properDDNSearched);
+        return;
+    } else {
+        console.log("[pdfParser] DDN présente, on continue à chercher le patient.");
+        // Clic sur le patient pertinent dans la liste trouvée (on arrête si le clic viens
+        // d'être fait pour éviter que l'extraction ne se fasse induement)
+        if (clicPatientSuccess(extractedData)) {
+            // Le patient a été cliqué, on arrête la procédure : 
+            return;
+        } else {
+            console.log("[pdfParser] Patient non trouvé ou correctement sélectionné, je continue la procédure.");
+            // Le patient est correctement sélectionné ou non trouvé, on peut passer à l'import des données
+        }
+    }
 
     // Intégration des données dans le formulaire d'import
     setExtractedDataInForm(extractedData);
@@ -135,6 +149,25 @@ async function processFoundPdfIframe(elements) {
 
 
 // Fonctions utilitaires
+// 
+function selectFirstPatientOrSearchField() {
+    // On va chercher le premier patient de la liste
+    let firstPatient = getPatientsList()[0];
+    console.log("[pdfParser] firstPatient", firstPatient);
+    if (firstPatient) {
+        firstPatient.focus();
+        // TODO : ajouter la gestion du tabOrder à ce niveau
+    } else {
+        // Si aucun patient n'est trouvé, on va chercher le champ de recherche  
+        let searchField = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherchePatientByDate']");
+        console.log("[pdfParser] searchField", searchField);
+        if (searchField) {
+            searchField.focus();
+            searchField.select();
+        }
+    }
+}
+
 // Bouton pour réinitialiser les données d'un PDF
 function addResetButton(hashId) {
     let resetButton = document.createElement('button');
@@ -191,7 +224,7 @@ function setExtractedDataInForm(extractedData) {
         documentTitle: extractedData.documentTitle
     };
 
-    console.log('[pdfParser] fields', fields);
+    console.log('[pdfParser] INtroduction des données dans les champs : ', fields);
 
     // Parcourt chaque champ et met à jour la valeur si elle existe
     Object.keys(fields).forEach(key => {
@@ -215,7 +248,7 @@ function setExtractedDataInForm(extractedData) {
 }
 
 // Clic sur le patient trouvé
-function clicPatient(extractedData) {
+function clicPatientSuccess(extractedData) {
     let patientToClick = searchProperPatient(getPatientsList(), extractedData["nameMatches"]);
     let patientToClickName = patientToClick.innerText;
     if (patientToClickName === selectedPatientName()) {
@@ -339,19 +372,22 @@ function selectedPatientName() {
 
 // Recherche du patient dans la base de données via la date de naissance
 function lookupPatient(dateOfBirth) {
-    if (!dateOfBirth) {
-        console.log("[pdfParser] Pas de date de naissance trouvée. Arrêt de la recherche de patient.");
-        return null;
+    const today = formatDate(new Date());
+    if (!dateOfBirth || dateOfBirth === today) {
+        console.log("[pdfParser] Pas de date de naissance trouvée. Arrêt de la recherche de patient mais poursuite de la procédure.");
+        return true;
     }
     // D'abord il nous faut sélectionner "Naissance" dans le menu déroulant "#ContentPlaceHolder1_FindPatientUcForm2_DropDownListRechechePatient"
     const dropDownResearch = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_DropDownListRechechePatient']");
-    console.log('[pdfParser] dropDownResearch', dropDownResearch);
+    console.log('[pdfParser] Menu déroulant de recherche trouvé :', dropDownResearch);
     // Valeur actuelle
     const currentDropDownValue = dropDownResearch.value;
     if (currentDropDownValue !== "Naissance") {
+        console.log("[pdfParser] Menu de recherche réglé sur autre que par ddn => Changement de valeur du menu déroulant de recherche + change event");
         dropDownResearch.value = "Naissance";
         dropDownResearch.dispatchEvent(new Event('change'));
-        return null;
+        console.log('[pdfParser] Event change déclenché');
+        return 'change Search Mode';
     }
 
     // On vérifie que le champ de recherche de DDN est bien apparu
@@ -362,7 +398,7 @@ function lookupPatient(dateOfBirth) {
         dropDownResearch.value = "Nom";
         dropDownResearch.dispatchEvent(new Event('change'));
         // La page est rafraichie par ce changement, on arrête là
-        return null;
+        return "Champ de recherche non réglé sur la date de naissance alors que l'input DDN est portant présent => set vers Nom pour forcer le rafraichissement de la page";
     }
     // On remplit le champ de recherche avec la date de naissance si elle n'est pas déjà renseignée
 
@@ -375,7 +411,7 @@ function lookupPatient(dateOfBirth) {
         // On clique sur le bouton de recherche ContentPlaceHolder1_FindPatientUcForm2_ButtonRecherchePatient
         const searchButton = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_ButtonRecherchePatient']");
         searchButton.click();
-        return false;
+        return 'searchButton clicked avec la date de naissance';
     }
 }
 
