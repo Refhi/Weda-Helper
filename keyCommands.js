@@ -37,7 +37,7 @@ const keyCommands = {
     },
     'push_delete': function () {
         console.log('push_delete activé');
-        const binElementCurrentImport = document.getElementById(`ContentPlaceHolder1_FileStreamClassementsGrid_DeleteButtonGridFileStreamClassement_${actualActionLine()}`);
+        const binElementCurrentImport = document.getElementById(`ContentPlaceHolder1_FileStreamClassementsGrid_DeleteButtonGridFileStreamClassement_${actualImportActionLine()}`);
         if (binElementCurrentImport) {
             binElementCurrentImport.click();
         } else {

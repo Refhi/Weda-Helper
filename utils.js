@@ -482,3 +482,19 @@ function clicCSPLockedElement(elementSelector) {
     const event = new CustomEvent('clicElement', { detail: elementSelector });
     document.dispatchEvent(event);        
 }   
+
+
+// Récupérer la meta-ligne d'action actuelle dans la fenêtre des importations
+function actualImportActionLine() {
+    const ligneSelectionne = document.querySelector(".grid-selecteditem");
+    if (ligneSelectionne) {
+        // On cherche ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_0 mais le 0 est variable jusqu'à 9
+        let patientADefinirElement = ligneSelectionne.querySelector("[id^='ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_']");
+        // de là on récupère le dernier chiffre de l'id de l'élément
+        let numeroDeLigne = patientADefinirElement.id.match(/\d+$/)[0];
+        return numeroDeLigne;
+    } else {
+        console.log("[pdfParser] Pas de ligne d'action sélectionnée.");
+        return null;
+    }
+}

@@ -21,25 +21,11 @@ function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = fals
     }
 
     function FocusToDocDateAfterPatientSelect() {
-        // find all elements with id starting with ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_
-        const elements = document.querySelectorAll('[id^="ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_"]');
-        // starting from the last element, find the first element with title= starting with "Vous avez attribué ce document au patient" and gets its id
-        for (let i = elements.length - 1; i >= 0; i--) {
-            const element = elements[i];
-            console.log('element', element);
-            if (element.title.startsWith("Vous avez attribué ce document au patient")) {
-                const id = element.id;
-                // get the 1 or 2 digits at the end of the id
-                const patient_number = id.match(/\d+$/)[0];
-                console.log('Le patient en cours est en position', patient_number);
-                // focus on the element with ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_ + patient_number
-                const elementToFocus = document.getElementById('ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_' + patient_number);
-                if (elementToFocus) {
-                    elementToFocus.focus();
-                    recordMetrics({ clicks: 1, drags: 1 });
-                    break;
-                }
-            }
+        // focus on the element with ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_ + patient_number
+        const elementToFocus = document.getElementById('ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_' + actualImportActionLine());
+        if (elementToFocus) {
+            elementToFocus.focus();
+            recordMetrics({ clicks: 1, drags: 1 });
         }
     }
 

@@ -178,14 +178,14 @@ function addResetButton(hashId) {
         sessionStorage.removeItem(hashId);
         console.log("[pdfParser] Données réinitialisées pour le PDF.");
     };
-    let binButtonSelector = "#ContentPlaceHolder1_FileStreamClassementsGrid_DeleteButtonGridFileStreamClassement_" + actualActionLine();
+    let binButtonSelector = "#ContentPlaceHolder1_FileStreamClassementsGrid_DeleteButtonGridFileStreamClassement_" + actualImportActionLine();
     let buttonContainer = document.querySelector(binButtonSelector);
     buttonContainer.insertAdjacentElement('afterend', resetButton);
 }
 
 // met la date en focus et surbrillance pour faciliter la saisie
 function highlightDate() {
-    let dateSelector = `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_${actualActionLine()}`;
+    let dateSelector = `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_${actualImportActionLine()}`;
     console.log("[pdfParser] Mise en surbrillance de la date pour faciliter la saisie.");
     document.querySelector(dateSelector).focus();
     document.querySelector(dateSelector).select();
@@ -201,7 +201,7 @@ function markDataAsImported(hashId, extractedData) {
 
 function setExtractedDataInForm(extractedData) {
     // Récupère la ligne d'action actuelle
-    const ligneAction = actualActionLine();
+    const ligneAction = actualImportActionLine();
 
     // Sélecteurs pour les champs du formulaire
     const selectors = {
@@ -283,7 +283,7 @@ function clicPatientSuccess(extractedData) {
  * }
  */
 function completeExtractedData(extractedData, dataMatrixReturn) {
-    extractedData.actionLine = actualActionLine();
+    extractedData.actionLine = actualImportActionLine();
     extractedData.alreadyImported = false;
     extractedData.isUserRejected = false;
     if (dataMatrixReturn) {
@@ -361,7 +361,7 @@ function selectedPatientName() {
     // On va rechercher si un patient est déjà sélectionné dans l'élément #ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_1
     let idPatientSelectedBaseId = '#ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_'
     // On ajoute le niveau de selection actuel au sélecteur
-    let idPatientSelected = idPatientSelectedBaseId + actualActionLine();
+    let idPatientSelected = idPatientSelectedBaseId + actualImportActionLine();
     // On cherche son nom dans l'innerText
     let patientSelectedElement = document.querySelector(idPatientSelected);
     let patientSelectedName = patientSelectedElement.innerText;
@@ -418,20 +418,7 @@ function lookupPatient(dateOfBirth) {
 
 
 
-// Récupérer la meta-ligne d'action actuelle
-function actualActionLine() {
-    const ligneSelectionne = document.querySelector(".grid-selecteditem");
-    if (ligneSelectionne) {
-        // On cherche ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_0 mais le 0 est variable jusqu'à 9
-        let patientADefinirElement = ligneSelectionne.querySelector("[id^='ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_']");
-        // de là on récupère le dernier chiffre de l'id de l'élément
-        let numeroDeLigne = patientADefinirElement.id.match(/\d+$/)[0];
-        return numeroDeLigne;
-    } else {
-        console.log("[pdfParser] Pas de ligne d'action sélectionnée.");
-        return null;
-    }
-}
+
 
 
 
