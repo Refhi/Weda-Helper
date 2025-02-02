@@ -91,14 +91,17 @@ async function processFoundPdfIframe(elements) {
         extractedData = alreadyExtractedData;
     }
 
-    // Si la date de naissance ou le nom n'ont pas été trouvés, on recherche le datamatrix
-    if (!extractedData.dateOfBirth || extractedData.nameMatches.length === 0) {
-        console.log("[pdfParser] Date de naissance ou nom non trouvée. Recherche du datamatrix.");
-        dataMatrixReturn = await extractDatamatrixFromPDF(urlPDF);
-        console.log('[pdfParser] dataMatrixReturn', dataMatrixReturn);
-        if (!dataMatrixReturn) {
-            console.log("[pdfParser] Datamatrix non trouvé.");
-            sessionStorage.setItem(hashId, JSON.stringify({ alreadyImported: true }));
+    // Si on n'a pas de nirMatches, on se rabattra sur la DDN et le nom.
+    if (!extractedData.nirMatches || extractedData.nirMatches.length === 0) {
+        // Si la date de naissance ou le nom n'ont pas été trouvés, on recherche le datamatrix
+        if (!extractedData.dateOfBirth || extractedData.nameMatches.length === 0) {
+            console.log("[pdfParser] Date de naissance ou nom non trouvée. Recherche du datamatrix.");
+            dataMatrixReturn = await extractDatamatrixFromPDF(urlPDF);
+            console.log('[pdfParser] dataMatrixReturn', dataMatrixReturn);
+            if (!dataMatrixReturn) {
+                console.log("[pdfParser] Datamatrix non trouvé.");
+                sessionStorage.setItem(hashId, JSON.stringify({ alreadyImported: true }));
+            }
         }
     }
 
@@ -115,21 +118,28 @@ async function processFoundPdfIframe(elements) {
     // => on pourrait rechercher par INS si on a le datamatrix, mais cela impliquerait de
     //    naviguer entre les différents types de recherche dans la fenêtre d'import
 
-    // Recherche du patient par la date de naissance
-    let properDDNSearched = lookupPatient(extractedData["dateOfBirth"]);
-    if (properDDNSearched != true) {
-        console.log("[pdfParser] champ DDN non trouvée, arrêt de la procédure.", properDDNSearched);
-        return;
+    // Cas 1 : on a un INS, plus fiable.
+    if (extractedData.nirMatches || extractedData.nirMatches.length > 0) {
+        console.log("[pdfParser] INS trouvé, recherche du patient par INS");
+        lookupPatient("nirMatches", extractedData.nirMatches);
     } else {
-        console.log("[pdfParser] DDN présente, on continue à chercher le patient.");
-        // Clic sur le patient pertinent dans la liste trouvée (on arrête si le clic viens
-        // d'être fait pour éviter que l'extraction ne se fasse induement)
-        if (clicPatientSuccess(extractedData)) {
-            // Le patient a été cliqué, on arrête la procédure : 
+        // Cas 2 : on a une date de naissance
+        // Recherche du patient par la date de naissance
+        let properDDNSearched = lookupPatient("dateOfBirth", extractedData["dateOfBirth"]);
+        if (properDDNSearched != true) {
+            console.log("[pdfParser] champ DDN non trouvée, arrêt de la procédure.", properDDNSearched);
             return;
         } else {
-            console.log("[pdfParser] Patient non trouvé ou correctement sélectionné, je continue la procédure.");
-            // Le patient est correctement sélectionné ou non trouvé, on peut passer à l'import des données
+            console.log("[pdfParser] DDN présente, on continue à chercher le patient.");
+            // Clic sur le patient pertinent dans la liste trouvée (on arrête si le clic viens
+            // d'être fait pour éviter que l'extraction ne se fasse induement)
+            if (clicPatientSuccess(extractedData)) {
+                // Le patient a été cliqué, on arrête la procédure : 
+                return;
+            } else {
+                console.log("[pdfParser] Patient non trouvé ou correctement sélectionné, je continue la procédure.");
+                // Le patient est correctement sélectionné ou non trouvé, on peut passer à l'import des données
+            }
         }
     }
 
@@ -305,10 +315,11 @@ function completeExtractedData(extractedData, dataMatrixReturn) {
     extractedData.actionLine = actualImportActionLine();
     extractedData.alreadyImported = false;
     extractedData.isUserRejected = false;
-    if (dataMatrixReturn) {
+    if (dataMatrixReturn) { // Cf. parseTextDataMatrix()
         extractedData.dataMatrix = dataMatrixReturn;
         extractedData.dateOfBirth = formatDate(dataMatrixReturn.DateNaissance);
         extractedData.nameMatches = [dataMatrixReturn.Nom + dataMatrixReturn.Prenoms.split(' ')[0]];
+        extractedData.nirMatches = dataMatrixReturn.INS;
     }
     // Vérifier que les dates ne sont pas identiques
     if (extractedData.documentDate === extractedData.dateOfBirth) {
@@ -388,49 +399,71 @@ function selectedPatientName() {
     return patientSelectedName;
 }
 
-
-// Recherche du patient dans la base de données via la date de naissance
-function lookupPatient(dateOfBirth) {
+/**
+ * Recherche du patient dans la base de données via la date de naissance ou le NIR
+ * @param {string} searchType - Type de recherche (dateOfBirth ou nirMatches)
+ * @param {string} data
+ * 
+ */
+function lookupPatient(searchType, data) {
     const today = formatDate(new Date());
-    if (!dateOfBirth || dateOfBirth === today) {
-        console.log("[pdfParser] Pas de date de naissance trouvée. Arrêt de la recherche de patient mais poursuite de la procédure.");
+    if (!data || data === today) {
+        console.log("[pdfParser] Pas de données de recherche trouvées. Arrêt de la recherche de patient mais poursuite de la procédure.");
         return true;
     }
-    // D'abord il nous faut sélectionner "Naissance" dans le menu déroulant "#ContentPlaceHolder1_FindPatientUcForm2_DropDownListRechechePatient"
+
+    // Déterminer la valeur du menu déroulant en fonction du type de recherche
+    let dropDownValue;
+    if (searchType === "dateOfBirth") {
+        dropDownValue = "Naissance";
+    } else if (searchType === "nirMatches") {
+        dropDownValue = "InsSearch";
+    } else {
+        console.log("[pdfParser] Type de recherche inconnu.");
+        return false;
+    }
+
+    // Sélectionner le menu déroulant de recherche
     const dropDownResearch = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_DropDownListRechechePatient']");
     console.log('[pdfParser] Menu déroulant de recherche trouvé :', dropDownResearch);
-    // Valeur actuelle
     const currentDropDownValue = dropDownResearch.value;
-    if (currentDropDownValue !== "Naissance") {
-        console.log("[pdfParser] Menu de recherche réglé sur autre que par ddn => Changement de valeur du menu déroulant de recherche + change event");
-        dropDownResearch.value = "Naissance";
+    if (currentDropDownValue !== dropDownValue) {
+        console.log(`[pdfParser] Menu de recherche réglé sur autre que par ${dropDownValue} => Changement de valeur du menu déroulant de recherche + change event`);
+        dropDownResearch.value = dropDownValue;
         dropDownResearch.dispatchEvent(new Event('change'));
         console.log('[pdfParser] Event change déclenché');
         return 'change Search Mode';
     }
 
     // On vérifie que le champ de recherche de DDN est bien apparu
-    const inputResearch = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherchePatientByDate']");
-    if (!inputResearch) {
-        console.log("[pdfParser] Champ de recherche de date de naissance non trouvé. Arrêt de la recherche de patient.");
-        // On va remettre le menu déroulant à une autre valeur par exemple "Nom"
+    const inputDateResearch = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherchePatientByDate']");
+    // pas certains que ça soit spécifique à la recherche d'INS
+    const inputINSResearch = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherche']"); 
+    if ((searchType === "dateOfBirth" && !inputDateResearch) || (searchType === "nirMatches" && !inputINSResearch)) {
+        console.log(`[pdfParser] Champ de recherche de ${searchType} non trouvé. Arrêt de la recherche de patient.`);
+        // Remettre le menu déroulant à une autre valeur par exemple "Nom"
         dropDownResearch.value = "Nom";
         dropDownResearch.dispatchEvent(new Event('change'));
-        // La page est rafraichie par ce changement, on arrête là
-        return "Champ de recherche non réglé sur la date de naissance alors que l'input DDN est portant présent => set vers Nom pour forcer le rafraichissement de la page";
+        return `Champ de recherche non réglé sur ${searchType} alors que l'input est pourtant présent => set vers Nom pour forcer le rafraichissement de la page`;
     }
-    // On remplit le champ de recherche avec la date de naissance si elle n'est pas déjà renseignée
 
+    // Remplir le champ de recherche avec les données si elles ne sont pas déjà renseignées
+    let inputResearch;
+    if (searchType === "dateOfBirth") {
+        inputResearch = inputDateResearch;
+    } else if (searchType === "nirMatches") {
+        inputResearch = inputINSResearch;
+    }
     console.log('[pdfParser] inputResearch', inputResearch);
     const valeurActuelle = inputResearch.value;
-    if (valeurActuelle === dateOfBirth) {
+    if (valeurActuelle === data) {
         return true;
     } else {
-        inputResearch.value = dateOfBirth;
-        // On clique sur le bouton de recherche ContentPlaceHolder1_FindPatientUcForm2_ButtonRecherchePatient
+        inputResearch.value = data;
+        // Cliquer sur le bouton de recherche
         const searchButton = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_ButtonRecherchePatient']");
         searchButton.click();
-        return 'searchButton clicked avec la date de naissance';
+        return `searchButton clicked avec ${searchType}`;
     }
 }
 
@@ -535,6 +568,9 @@ async function extractRelevantData(fullText, pdfUrl) {
         ],
         documentDateRegexes: [
             /, le (\d{2}[\/\-.]\d{2}[\/\-.]\d{4})/gi // Match pour les dates dans les courriers
+        ],
+        nirRegexes: [
+            /\b[12]\d{14}\b/g // Match pour le NIR, un nombre de 15 chiffres commençant par 1 ou 2
         ]
     };
 
@@ -546,13 +582,15 @@ async function extractRelevantData(fullText, pdfUrl) {
     const nameMatches = extractNames(fullText, regexPatterns.nameRegexes);
     const documentType = determineDocumentType(fullText);
     const documentTitle = determineDocumentTitle(fullText, documentType); //TODO
+    const nirMatches = extractNIR(fullText, regexPatterns.nirRegexes);
 
     let extractedData = {
         documentDate: documentDate ? formatDate(documentDate) : null,
         dateOfBirth: dateOfBirth ? formatDate(dateOfBirth) : null,
         nameMatches: nameMatches,
         documentType: documentType,
-        documentTitle: documentTitle
+        documentTitle: documentTitle,
+        nirMatches: nirMatches
     };
     return extractedData;
 }
@@ -852,6 +890,7 @@ function determineDocumentType(fullText) {
         ["Arrêt de travail", ["avis d’arrêt de travail"]],
         ["CRO/CRH", ["Compte Rendu Opératoire", "Compte Rendu Hospitalier", "Compte Rendu d'Hospitalisation", "COMPTE RENDU OPERATOIRE"]],
         ["Consultation", ["COMPTE-RENDU DE CONSULTATION"]],
+        ["PARAMEDICAL", ["BILAN ORTHOPTIQUE"]],
         // Niveau 2 de spécificité : des mots plus ambivalents, mais qui,
         // parcouru dans l'ordre devraient permettre de déterminer le type de document
         ["Courrier", ["Chère Consœur", "chère consoeur", "Cher confrère", "courrier", "lettre", "chère amie", "cher ami", "Cherconfrére", "Chèreconsoeur", "Chèreconsœur"]],
@@ -862,7 +901,7 @@ function determineDocumentType(fullText) {
         ["Bon de transport", ["bon de transport", "transport médical"]],
         ["Certificat", ["certificat", "attestation"]],
         ["ECG", ["ecg", "électrocardiogramme"]],
-        ["EFR", ["efr", "exploration fonctionnelle respiratoire"]],
+        ["EFR", ["exploration fonctionnelle respiratoire"]],
         ["LABORATOIRE/BIO", ["laboratoire"]],
         ["MT", ["Déclaration de Médecin Traitant", "déclaration médecin traitant"]],
         ["PARAMEDICAL", ["paramédical", "soins"]],
@@ -1034,6 +1073,15 @@ function determineDateOfBirth(fullText, dateMatches, dateOfBirthRegexes) {
     }
 
     return dateOfBirth;
+}
+
+// Extraction du NIR du texte
+function extractNIR(fullText, nirRegexes) {
+    let matches = [];
+    for (const regex of nirRegexes) {
+        matches = matches.concat(fullText.match(regex) || []);
+    }
+    return matches;
 }
 
 // Extraction des noms du texte
