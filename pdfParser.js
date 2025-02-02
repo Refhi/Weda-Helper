@@ -119,30 +119,14 @@ async function processFoundPdfIframe(elements) {
     //    naviguer entre les différents types de recherche dans la fenêtre d'import
 
     // Cas 1 : on a un INS, plus fiable.
-    if (extractedData.nirMatches || extractedData.nirMatches.length > 0) {
+    if (extractedData.nirMatches && extractedData.nirMatches.length > 0) {
         console.log("[pdfParser] INS trouvé, recherche du patient par INS");
-        lookupPatient("nirMatches", extractedData.nirMatches);
+        if (!handlePatientSearch("nirMatches", extractedData.nirMatches[0], extractedData)) return;
     } else {
         // Cas 2 : on a une date de naissance
-        // Recherche du patient par la date de naissance
-        let properDDNSearched = lookupPatient("dateOfBirth", extractedData["dateOfBirth"]);
-        if (properDDNSearched != true) {
-            console.log("[pdfParser] champ DDN non trouvée, arrêt de la procédure.", properDDNSearched);
-            return;
-        } else {
-            console.log("[pdfParser] DDN présente, on continue à chercher le patient.");
-            // Clic sur le patient pertinent dans la liste trouvée (on arrête si le clic viens
-            // d'être fait pour éviter que l'extraction ne se fasse induement)
-            if (clicPatientSuccess(extractedData)) {
-                // Le patient a été cliqué, on arrête la procédure : 
-                return;
-            } else {
-                console.log("[pdfParser] Patient non trouvé ou correctement sélectionné, je continue la procédure.");
-                // Le patient est correctement sélectionné ou non trouvé, on peut passer à l'import des données
-            }
-        }
+        console.log("[pdfParser] Recherche du patient par la date de naissance");
+        if (!handlePatientSearch("dateOfBirth", extractedData.dateOfBirth, extractedData)) return;
     }
-
     // Intégration des données dans le formulaire d'import
     setExtractedDataInForm(extractedData);
 
@@ -159,7 +143,28 @@ async function processFoundPdfIframe(elements) {
 
 
 // Fonctions utilitaires
-// 
+
+// Fonction pour gérer la recherche et la sélection du patient
+function handlePatientSearch(type, data, extractedData) {
+    let properSearched = lookupPatient(type, data);
+    if (properSearched !== true) {
+        console.log(`[pdfParser] champ ${type} non trouvé, arrêt de la procédure.`, properSearched);
+        return false;
+    } else {
+        console.log(`[pdfParser] ${type} présent, on continue à chercher le patient.`);
+        if (clicPatientSuccess(extractedData)) {
+            // Le patient a été cliqué, on arrête la procédure
+            return false;
+        } else {
+            console.log("[pdfParser] Patient non trouvé ou correctement sélectionné, je continue la procédure.");
+            // Le patient est correctement sélectionné ou non trouvé, on peut passer à l'import des données
+            return true;
+        }
+    }
+}
+
+
+// Fonction pour sélectionner le premier patient de la liste ou le champ de recherche
 function selectFirstPatientOrSearchField() {
     // On va chercher le premier patient de la liste
     let firstPatient = getPatientsList()[0];
@@ -279,11 +284,21 @@ function setExtractedDataInForm(extractedData) {
 // Clic sur le patient trouvé
 function clicPatientSuccess(extractedData) {
     let patientToClick = searchProperPatient(getPatientsList(), extractedData["nameMatches"]);
+    if (!patientToClick) {
+        // On va tenter le premier patient de la liste
+        console.log("[pdfParser] Patient non trouvé, je vais essayer le premier de la liste.");
+        patientToClick = getPatientsList()[0];
+    }
+    if (!patientToClick) {
+        console.log("[pdfParser] Aucun patient trouvé, je continue la procédure.");
+        return false;
+    }
+
     let patientToClickName = patientToClick.innerText;
-    if (patientToClickName === selectedPatientName()) {
+    if (selectedPatientName() !== 'Patient à définir...') {
         // Ici le bon patient est déjà sélectionné pour import.
         // On en déduis que la procédure a déjà aboutie et qu'il faut s'arrêter.
-        console.log("[pdfParser] Patient déjà sélectionné, arrêt de la recherche.");
+        console.log("[pdfParser] Un patient est déjà sélectionné, arrêt de la recherche.");
         return false;
     } else {
         let patientToClicSelector = "#" + patientToClick.id;
@@ -406,67 +421,62 @@ function selectedPatientName() {
  * 
  */
 function lookupPatient(searchType, data) {
+    // D'abord on vérifie si les données sont mauvaises (DDN à la date du jour, ou données null)
     const today = formatDate(new Date());
     if (!data || data === today) {
         console.log("[pdfParser] Pas de données de recherche trouvées. Arrêt de la recherche de patient mais poursuite de la procédure.");
         return true;
     }
 
-    // Déterminer la valeur du menu déroulant en fonction du type de recherche
-    let dropDownValue;
-    if (searchType === "dateOfBirth") {
-        dropDownValue = "Naissance";
-    } else if (searchType === "nirMatches") {
-        dropDownValue = "InsSearch";
-    } else {
-        console.log("[pdfParser] Type de recherche inconnu.");
+    // La correspondance entre les types de recherche et les valeurs du menu déroulant
+    const searchTypes = {
+        dateOfBirth: "Naissance",
+        nirMatches: "InsSearch"
+    };
+
+    const dropDownValue = searchTypes[searchType];
+    if (!dropDownValue) {
+        console.error("[pdfParser] Type de recherche inconnu.");
         return false;
     }
 
-    // Sélectionner le menu déroulant de recherche
     const dropDownResearch = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_DropDownListRechechePatient']");
     console.log('[pdfParser] Menu déroulant de recherche trouvé :', dropDownResearch);
-    const currentDropDownValue = dropDownResearch.value;
-    if (currentDropDownValue !== dropDownValue) {
+
+    if (dropDownResearch.value !== dropDownValue) {
         console.log(`[pdfParser] Menu de recherche réglé sur autre que par ${dropDownValue} => Changement de valeur du menu déroulant de recherche + change event`);
         dropDownResearch.value = dropDownValue;
         dropDownResearch.dispatchEvent(new Event('change'));
         console.log('[pdfParser] Event change déclenché');
         return 'change Search Mode';
+    } else {
+        console.log(`[pdfParser] Menu de recherche déjà réglé sur ${dropDownValue}`);
     }
 
-    // On vérifie que le champ de recherche de DDN est bien apparu
-    const inputDateResearch = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherchePatientByDate']");
-    // pas certains que ça soit spécifique à la recherche d'INS
-    const inputINSResearch = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherche']"); 
-    if ((searchType === "dateOfBirth" && !inputDateResearch) || (searchType === "nirMatches" && !inputINSResearch)) {
+    const inputFields = {
+        dateOfBirth: document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherchePatientByDate']"),
+        nirMatches: document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherche']")
+    };
+
+    const inputResearch = inputFields[searchType];
+    if (!inputResearch) {
         console.log(`[pdfParser] Champ de recherche de ${searchType} non trouvé. Arrêt de la recherche de patient.`);
-        // Remettre le menu déroulant à une autre valeur par exemple "Nom"
         dropDownResearch.value = "Nom";
         dropDownResearch.dispatchEvent(new Event('change'));
         return `Champ de recherche non réglé sur ${searchType} alors que l'input est pourtant présent => set vers Nom pour forcer le rafraichissement de la page`;
     }
 
-    // Remplir le champ de recherche avec les données si elles ne sont pas déjà renseignées
-    let inputResearch;
-    if (searchType === "dateOfBirth") {
-        inputResearch = inputDateResearch;
-    } else if (searchType === "nirMatches") {
-        inputResearch = inputINSResearch;
-    }
-    console.log('[pdfParser] inputResearch', inputResearch);
-    const valeurActuelle = inputResearch.value;
-    if (valeurActuelle === data) {
+    console.log(`[pdfParser] Champ de recherche de ${searchType} trouvé :`, inputResearch, "il contient :", inputResearch.value, "et devrait contenir :", data);
+    if (inputResearch.value === data) {
+        // Les données de recherche sont déjà présentes, on peut valider la suite de la procédure
         return true;
     } else {
         inputResearch.value = data;
-        // Cliquer sur le bouton de recherche
         const searchButton = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_ButtonRecherchePatient']");
         searchButton.click();
         return `searchButton clicked avec ${searchType}`;
     }
 }
-
 
 
 
