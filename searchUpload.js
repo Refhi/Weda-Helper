@@ -20,14 +20,36 @@ function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = fals
         }
     }
 
-    function FocusToDocDateAfterPatientSelect() {
-        // focus on the element with ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_ + patient_number
-        const elementToFocus = document.getElementById('ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_' + actualImportActionLine());
-        if (elementToFocus) {
-            elementToFocus.focus();
-            recordMetrics({ clicks: 1, drags: 1 });
-        }
+    function waitUntilLoadSpinDisappear() {
+        const interval = 50; // Intervalle de vérification en ms
+        const timeout = 5000; // Durée maximale en ms
+        const startTime = Date.now();
+    
+        return new Promise((resolve, reject) => {
+            const checkLoadSpin = () => {
+                const loadSpin = document.querySelector('#ContentPlaceHolder1_progress');
+                if (loadSpin) {
+                    const display = window.getComputedStyle(loadSpin).display;
+                    if (display === 'none') {
+                        console.log('loadSpin is hidden');
+                        resolve(true);
+                    } else {
+                        console.log('loadSpin is visible');
+                        if (Date.now() - startTime >= timeout) {
+                            reject(new Error('Timeout: loadSpin did not disappear within 5 seconds'));
+                        } else {
+                            setTimeout(checkLoadSpin, interval);
+                        }
+                    }
+                } else {
+                    reject(new Error('loadSpin element not found'));
+                }
+            };
+    
+            checkLoadSpin();
+        });
     }
+
 
 
     // place a listner on all patients names (ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 etc.)
@@ -42,9 +64,9 @@ function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = fals
             elements[i].addEventListener('keydown', function (event) {
                 if (event.key === 'Enter') {
                     console.log('Enter pressed on patient name');
-                    setTimeout(function () {
-                        FocusToDocDateAfterPatientSelect();
-                    }, 500);
+                    waitUntilLoadSpinDisappear().then(() => {
+                        highlightDate();
+                    })
                 }
             });
         }
