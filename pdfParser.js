@@ -82,35 +82,35 @@ async function processFoundPdfIframe(elements) {
     let { alreadyExtractedData, alreadyImported } = checkAlreadyExtractedData(hashId);
     if (alreadyImported) {
         console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction. Renvoi vers le champ de recherche ou le 1er patient de la liste si présent");
-        // TODO : renvoyer vers la date si un patient est déjà sélectionné
         selectFirstPatientOrSearchField();
         return;
     }
     if (alreadyExtractedData) {
         console.log("[pdfParser] Données déjà extraites pour ce PDF. Utilisation des données existantes.");
         extractedData = alreadyExtractedData;
-    }
+    } else {
 
-    // Si on n'a pas de nirMatches, on se rabattra sur la DDN et le nom.
-    if (!extractedData.nirMatches || extractedData.nirMatches.length === 0) {
-        // Si la date de naissance ou le nom n'ont pas été trouvés, on recherche le datamatrix
-        if (!extractedData.dateOfBirth || extractedData.nameMatches.length === 0) {
-            console.log("[pdfParser] Date de naissance ou nom non trouvée. Recherche du datamatrix.");
-            dataMatrixReturn = await extractDatamatrixFromPDF(urlPDF);
-            console.log('[pdfParser] dataMatrixReturn', dataMatrixReturn);
-            if (!dataMatrixReturn) {
-                console.log("[pdfParser] Datamatrix non trouvé.");
-                sessionStorage.setItem(hashId, JSON.stringify({ alreadyImported: true }));
+        // Si on n'a pas de nirMatches, on se rabattra sur la DDN et le nom.
+        if (!extractedData.nirMatches || extractedData.nirMatches.length === 0) {
+            // Si la date de naissance ou le nom n'ont pas été trouvés, on recherche le datamatrix
+            if (!extractedData.dateOfBirth || extractedData.nameMatches.length === 0) {
+                console.log("[pdfParser] Date de naissance ou nom non trouvée. Recherche du datamatrix.");
+                dataMatrixReturn = await extractDatamatrixFromPDF(urlPDF);
+                console.log('[pdfParser] dataMatrixReturn', dataMatrixReturn);
+                if (!dataMatrixReturn) {
+                    console.log("[pdfParser] Datamatrix non trouvé.");
+                    sessionStorage.setItem(hashId, JSON.stringify({ alreadyImported: true }));
+                }
             }
         }
-    }
 
-    // Stockage et priorisation des informations pertinentes dans le sessionStorage
-    // => le dataMatrix est prioritaire sur les informations extraites du texte
-    completeExtractedData(extractedData, dataMatrixReturn);
-    let extractedDataStr = JSON.stringify(extractedData);
-    console.log('[pdfParser] extractedData', extractedDataStr);
-    sessionStorage.setItem(hashId, extractedDataStr);
+        // Stockage et priorisation des informations pertinentes dans le sessionStorage
+        // => le dataMatrix est prioritaire sur les informations extraites du texte
+        completeExtractedData(extractedData, dataMatrixReturn);
+        let extractedDataStr = JSON.stringify(extractedData);
+        console.log('[pdfParser] extractedData', extractedDataStr);
+        sessionStorage.setItem(hashId, extractedDataStr);
+    }
 
     // Partie "non-neutre" - entraine un rafraichissement de la page ou un changement du DOM
     // ---------------------------------
@@ -118,7 +118,7 @@ async function processFoundPdfIframe(elements) {
     // => on pourrait rechercher par INS si on a le datamatrix, mais cela impliquerait de
     //    naviguer entre les différents types de recherche dans la fenêtre d'import
 
-    // Cas 1 : on a un INS, plus fiable.
+    // Cas 1 : on a un INS, plus fiable. A noter qu'il échouera si l'INS n'a pas été validé.
     if (extractedData.nirMatches && extractedData.nirMatches.length > 0) {
         console.log("[pdfParser] INS trouvé, recherche du patient par INS");
         if (!handlePatientSearch("nirMatches", extractedData.nirMatches[0], extractedData)) return;
@@ -170,8 +170,8 @@ function selectFirstPatientOrSearchField() {
     let firstPatient = getPatientsList()[0];
     console.log("[pdfParser] firstPatient", firstPatient);
     if (firstPatient) {
+        ListTabOrderer(firstPatient.id);
         firstPatient.focus();
-        // TODO : ajouter la gestion du tabOrder à ce niveau
     } else {
         // Si aucun patient n'est trouvé, on va chercher le champ de recherche  
         let searchField = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherchePatientByDate']");
@@ -286,8 +286,13 @@ function clicPatientSuccess(extractedData) {
     let patientToClick = searchProperPatient(getPatientsList(), extractedData["nameMatches"]);
     if (!patientToClick) {
         // On va tenter le premier patient de la liste
-        console.log("[pdfParser] Patient non trouvé, je vais essayer le premier de la liste.");
-        patientToClick = getPatientsList()[0];
+        console.log("[pdfParser] Patient non trouvé, je vais essayer le premier de la liste s'il est seul.");
+        const patientList = getPatientsList();
+        if (patientList.length === 1) {
+            patientToClick = getPatientsList()[0];
+        } else {
+            patient = null;
+        }
     }
     if (!patientToClick) {
         console.log("[pdfParser] Aucun patient trouvé, je continue la procédure.");
@@ -579,8 +584,18 @@ async function extractRelevantData(fullText, pdfUrl) {
         documentDateRegexes: [
             /, le (\d{2}[\/\-.]\d{2}[\/\-.]\d{4})/gi // Match pour les dates dans les courriers
         ],
+        /** 
+         * Les NIR sont des numéros de sécurité sociale, ils sont composés de 15 chiffres
+         * et commencent par 1 ou 2. Ils sont souvent écrits sans espace, mais peuvent aussi
+         * dans le cadre des arrêts de travail être écrits comme ceci :
+         * 1 8 8 0 1 1 2 1 2 3 4 5 6
+         * NOM PRENOM
+         * 8 (un chiffre)
+         * 7 8 (la clé)
+         */
         nirRegexes: [
-            /\b[12]\d{14}\b/g // Match pour le NIR, un nombre de 15 chiffres commençant par 1 ou 2
+            /\b[12]\d{14}\b/g, // Match pour le NIR, un nombre de 15 chiffres commençant par 1 ou 2
+            /((1|2)(\s\d){12})\n[\s\S]*?\n8\n(\d \d)/gm
         ]
     };
 
@@ -591,7 +606,7 @@ async function extractRelevantData(fullText, pdfUrl) {
     const dateOfBirth = determineDateOfBirth(fullText, dateMatches, regexPatterns.dateOfBirthRegexes);
     const nameMatches = extractNames(fullText, regexPatterns.nameRegexes);
     const documentType = determineDocumentType(fullText);
-    const documentTitle = determineDocumentTitle(fullText, documentType); //TODO
+    const documentTitle = determineDocumentTitle(fullText, documentType);
     const nirMatches = extractNIR(fullText, regexPatterns.nirRegexes);
 
     let extractedData = {
@@ -1087,10 +1102,32 @@ function determineDateOfBirth(fullText, dateMatches, dateOfBirthRegexes) {
 
 // Extraction du NIR du texte
 function extractNIR(fullText, nirRegexes) {
-    let matches = [];
-    for (const regex of nirRegexes) {
-        matches = matches.concat(fullText.match(regex) || []);
+    function flattenNIR(result) {
+        // Vérifie si result est bien composé d'au moins 5 éléments
+        if (result.length < 5) {
+            return "";
+        }
+        const nir = result[1].replace(/\s/g, ''); // Supprimer les espaces du NIR
+        const cle = result[4].replace(/\s/g, ''); // Supprimer les espaces de la clé
+        return nir + cle;
     }
+    console.log('[pdfParser] extractNIR', nirRegexes);
+    let matches = [];
+    let result = [];
+    for (const regex of nirRegexes) {
+        result = regex.exec(fullText);
+        if (result) {
+            console.log('[pdfParser] NIR result', result, "de longueur", result.length);
+            // Le nir a été trouvé d'un bloc
+            if (result.length === 1) {
+                console.log('[pdfParser] NIR matches une seule entrée', matches);
+                matches = matches.concat(fullText.match(regex) || []);
+            } else { // Le nir a été trouvé en plusieurs blocs dans un arrêt de travail
+                matches = matches.concat(flattenNIR(result));
+            }
+        }
+    }
+    console.log('[pdfParser] NIR matches', matches);
     return matches;
 }
 
