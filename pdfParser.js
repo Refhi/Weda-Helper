@@ -604,7 +604,7 @@ async function extractRelevantData(fullText, pdfUrl) {
         nameRegexes: [
             /(?:Mme|Madame|Monsieur|M\.) (.*?)(?: \(| né| - né)/gi, // Match pour les courriers, typiquement "Mr. XXX né le"
             /(?:Nom de naissance : |Nom : |Nom de naiss\.: )(.*?)(?:\n|$)/gim, // Match pour les CR d'imagerie, typiquement "Nom : XXX \n" ou "Nom : XXX"
-            /(?<=(?:MME|Mme)\s+)([A-Z\s]+)(?=\s|$)/g, // Match pour les courriers, typiquement "Mme XXX"
+            /(?<=(?:MME|Mme|Madame|Monsieur)\s+)([A-Za-z\s]+)(?=\s|$)/gi, // Match pour les courriers, typiquement "Mme XXX", "Madame XXX", "Monsieur XXX"
             /([A-Z]+[a-z]+)(?:\s)?Né(?:e)? le/g,  // Support des deux genres "Né le" et "Née le"
             /_?Nom\s*d[e']\s*(?:usage|naissance)\s*([A-Z]+)/g, // Nom de naissance ou nom d'usage avec ou sans espace
             /Enfant ([A-Z\s]+)(?:\s|$)/g,  // Modification pour capturer plusieurs mots majuscules
