@@ -123,7 +123,7 @@ async function processFoundPdfIframe(elements) {
     // Cas 1 : on a un INS, plus fiable. A noter qu'il échouera si l'INS n'a pas été validé.    
     if (extractedData.nirMatches && extractedData.nirMatches.length > 0 && checkSearchPossibility("InsSearch")) {
         console.log("[pdfParser] Recherche du patient par l'INS car disponible");
-        if (!handlePatientSearch("nirMatches", extractedData.nirMatches[0], extractedData)) return;        
+        if (!handlePatientSearch("nirMatches", extractedData.nirMatches[0], extractedData)) return;
     } else {
         // Cas 2 : on a une date de naissance
         console.log("[pdfParser] Recherche du patient par la date de naissance (fallback)");
@@ -555,10 +555,19 @@ async function extractTextFromPDF(pdfUrl) {
         // console.log("Extracting page" + i + "/" + maxPages);
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
+        const annotations = await page.getAnnotations();
 
         const textItems = textContent.items;
 
         let fullText = await extractLines(textItems);
+
+        // Extraction du contenu des champs de formulaire remplis
+        annotations.forEach(annotation => {
+            if (annotation.subtype === 'Widget' && annotation.fieldType === 'Tx') {
+                fullText += `\n${annotation.fieldName}: ${annotation.fieldValue}`;
+            }
+        });
+
         pagePromises.push(fullText);
     }
 
@@ -604,7 +613,7 @@ async function extractRelevantData(fullText, pdfUrl) {
         nameRegexes: [
             /(?:Mme|Madame|Monsieur|M\.) (.*?)(?: \(| né| - né)/gi, // Match pour les courriers, typiquement "Mr. XXX né le"
             /(?:Nom de naissance : |Nom : |Nom de naiss\.: )(.*?)(?:\n|$)/gim, // Match pour les CR d'imagerie, typiquement "Nom : XXX \n" ou "Nom : XXX"
-            /(?<=(?:MME|Mme|Madame|Monsieur)\s+)([A-Za-z\s]+)(?=\s|$)/gi, // Match pour les courriers, typiquement "Mme XXX", "Madame XXX", "Monsieur XXX"
+            /(?<=(?:MME|Mme|Madame|Monsieur|MR)\s+)([A-Za-z\s]+)(?=\s|$)/gi, // Match pour les courriers, typiquement "Mme XXX", "Madame XXX", "Monsieur XXX"
             /([A-Z]+[a-z]+)(?:\s)?Né(?:e)? le/g,  // Support des deux genres "Né le" et "Née le"
             /_?Nom\s*d[e']\s*(?:usage|naissance)\s*([A-Z]+)/g, // Nom de naissance ou nom d'usage avec ou sans espace
             /Enfant ([A-Z\s]+)(?:\s|$)/g,  // Modification pour capturer plusieurs mots majuscules
@@ -625,7 +634,8 @@ async function extractRelevantData(fullText, pdfUrl) {
          */
         nirRegexes: [
             /\b[12]\d{14}\b/g, // Match pour le NIR, un nombre de 15 chiffres commençant par 1 ou 2
-            /((1|2)(\s\d){12})\n[\s\S]*?\n8\n(\d \d)/gm
+            /((1|2)(\s\d){12})\n[\s\S]*?\n8\n(\d \d)/gm,
+            /\b[12]\d{12}\s\d{2}\b/g // Si la clé est séparée par un espace
         ]
     };
 
@@ -948,7 +958,7 @@ function determineDocumentType(fullText) {
         ["PARAMEDICAL", ["BILAN ORTHOPTIQUE"]],
         // Niveau 2 de spécificité : des mots plus ambivalents, mais qui,
         // parcouru dans l'ordre devraient permettre de déterminer le type de document
-        ["Courrier", ["Chère Consœur", "chère consoeur", "Cher confrère", "courrier", "lettre", "chère amie", "cher ami", "Cherconfrére", "Chèreconsoeur", "Chèreconsœur"]],
+        ["Courrier", ["Chère Consœur", "chère consoeur", "Cher confrère", "chère amie", "cher ami", "Cherconfrére", "Chèreconsoeur", "Chèreconsœur"]],
         ["IMAGERIE", ["imagerie", "radiographie", "scanner", "IRM", "radiologie"]],
         ["Administratif", []],
         ["Arrêt de travail", ["arrêt de travail", "congé maladie"]],
@@ -1012,6 +1022,7 @@ function findImagerie(fullText, imageries) {
 // Fonction pour déterminer le titre du document
 function determineDocumentTitle(fullText, documentType) {
     const specialites = {
+        "Médecine Interne": ["Médecine Interne"],
         "Orthopédie": ["Orthopédie"],
         "Gynécologie": ["Gynécologie"],
         "Cardiologie": ["Cardiologie"],

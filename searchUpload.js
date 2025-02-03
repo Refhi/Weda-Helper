@@ -111,9 +111,9 @@ function PatientSelectEntryListener() {
                     waitUntilLoadSpinDisappear().then(() => {
                         setTimeout(function () {
                             highlightDate();
-                        }, 200);
+                        }, 300);
                     })
-                }, 200);
+                }, 300);
             }
         });
     }
