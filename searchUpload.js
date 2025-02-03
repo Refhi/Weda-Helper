@@ -20,57 +20,6 @@ function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = fals
         }
     }
 
-    function waitUntilLoadSpinDisappear() {
-        const interval = 50; // Intervalle de vérification en ms
-        const timeout = 5000; // Durée maximale en ms
-        const startTime = Date.now();
-    
-        return new Promise((resolve, reject) => {
-            const checkLoadSpin = () => {
-                const loadSpin = document.querySelector('#ContentPlaceHolder1_progress');
-                if (loadSpin) {
-                    const display = window.getComputedStyle(loadSpin).display;
-                    if (display === 'none') {
-                        console.log('loadSpin is hidden');
-                        resolve(true);
-                    } else {
-                        console.log('loadSpin is visible');
-                        if (Date.now() - startTime >= timeout) {
-                            reject(new Error('Timeout: loadSpin did not disappear within 5 seconds'));
-                        } else {
-                            setTimeout(checkLoadSpin, interval);
-                        }
-                    }
-                } else {
-                    reject(new Error('loadSpin element not found'));
-                }
-            };
-    
-            checkLoadSpin();
-        });
-    }
-
-
-
-    // place a listner on all patients names (ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 etc.)
-    function PatientSelectEntryListener() {
-        console.log('[debug] PatientSelectEntryListener started');
-        // place a listener on all elements starting with ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_
-        var elements = document.querySelectorAll(
-            '[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"], ' + // mode horizontal
-            '[id^="ContentPlaceHolder1_FindPatientUcForm2_PatientsGrid_LinkButtonPatientGetNomPrenom_"]'); // mode vertical
-        for (var i = 0; i < elements.length; i++) {
-            console.log('added event listener to patient name', elements[i]);
-            elements[i].addEventListener('keydown', function (event) {
-                if (event.key === 'Enter') {
-                    console.log('Enter pressed on patient name');
-                    waitUntilLoadSpinDisappear().then(() => {
-                        highlightDate();
-                    })
-                }
-            });
-        }
-    }
 
     function watchForEarlyDOMChanges() {
         var startTime = Date.now();
@@ -113,6 +62,64 @@ function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = fals
         });
     }
 }
+
+function waitUntilLoadSpinDisappear() {
+    const interval = 50; // Intervalle de vérification en ms
+    const timeout = 5000; // Durée maximale en ms
+    const startTime = Date.now();
+
+    return new Promise((resolve, reject) => {
+        const checkLoadSpin = () => {
+            const loadSpin = document.querySelector('#ContentPlaceHolder1_progress');
+            if (loadSpin) {
+                const display = window.getComputedStyle(loadSpin).display;
+                if (display === 'none') {
+                    console.log('loadSpin is hidden');
+                    resolve(true);
+                } else {
+                    console.log('loadSpin is visible');
+                    if (Date.now() - startTime >= timeout) {
+                        reject(new Error('Timeout: loadSpin did not disappear within 5 seconds'));
+                    } else {
+                        setTimeout(checkLoadSpin, interval);
+                    }
+                }
+            } else {
+                reject(new Error('loadSpin element not found'));
+            }
+        };
+
+        checkLoadSpin();
+    });
+}
+
+
+
+// place a listner on all patients names (ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 etc.)
+function PatientSelectEntryListener() {
+    console.log('[debug] PatientSelectEntryListener started');
+    // place a listener on all elements starting with ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_
+    var elements = document.querySelectorAll(
+        '[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"], ' + // mode horizontal
+        '[id^="ContentPlaceHolder1_FindPatientUcForm2_PatientsGrid_LinkButtonPatientGetNomPrenom_"]'); // mode vertical
+    for (var i = 0; i < elements.length; i++) {
+        console.log('added event listener to patient name', elements[i]);
+        elements[i].addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                console.log('Enter pressed on patient name');
+                setTimeout(function () {
+                    waitUntilLoadSpinDisappear().then(() => {
+                        setTimeout(function () {
+                            highlightDate();
+                        }, 200);
+                    })
+                }, 200);
+            }
+        });
+    }
+}
+
+
 
 
 

@@ -57,6 +57,7 @@ async function processFoundPdfIframe(elements) {
     // Partie "neutre" => n'entraine pas de rafraichissement de la page ou de DOM change
     // ---------------------------------
     let dataMatrixReturn = null;
+    let extractedData = null;
     console.log('[pdfParser] ----------------- Nouvelle boucle --------------------------------');
     let urlPDF = await findPdfUrl(elements);
     if (!urlPDF) {
@@ -69,8 +70,7 @@ async function processFoundPdfIframe(elements) {
     let fullText = await extractTextFromPDF(urlPDF);
     console.log('[pdfParser] fullText', [fullText]);
 
-    // Extraction des informations pertinentes
-    let extractedData = await extractRelevantData(fullText, urlPDF);
+
 
     // Création d'un id unique
     let hashId = await customHash(fullText, urlPDF);
@@ -86,10 +86,12 @@ async function processFoundPdfIframe(elements) {
         return;
     }
     if (alreadyExtractedData) {
-        console.log("[pdfParser] Données déjà extraites pour ce PDF. Utilisation des données existantes.");
+        console.log("[pdfParser] Données déjà extraites pour ce PDF. Utilisation des données existantes.", alreadyExtractedData);
         extractedData = alreadyExtractedData;
     } else {
-
+        console.log("[pdfParser] Données non extraites pour ce PDF. Extraction des données.");
+        // Extraction des informations pertinentes
+        extractedData = await extractRelevantData(fullText, urlPDF);
         // Si on n'a pas de nirMatches, on se rabattra sur la DDN et le nom.
         if (!extractedData.nirMatches || extractedData.nirMatches.length === 0) {
             // Si la date de naissance ou le nom n'ont pas été trouvés, on recherche le datamatrix
@@ -120,11 +122,11 @@ async function processFoundPdfIframe(elements) {
 
     // Cas 1 : on a un INS, plus fiable. A noter qu'il échouera si l'INS n'a pas été validé.    
     if (extractedData.nirMatches && extractedData.nirMatches.length > 0 && checkSearchPossibility("InsSearch")) {
-        console.log("[pdfParser] INS trouvé, recherche du patient par INS");
+        console.log("[pdfParser] Recherche du patient par l'INS car disponible");
         if (!handlePatientSearch("nirMatches", extractedData.nirMatches[0], extractedData)) return;        
     } else {
         // Cas 2 : on a une date de naissance
-        console.log("[pdfParser] Recherche du patient par la date de naissance");
+        console.log("[pdfParser] Recherche du patient par la date de naissance (fallback)");
         if (!handlePatientSearch("dateOfBirth", extractedData.dateOfBirth, extractedData)) return;
     }
     // Intégration des données dans le formulaire d'import
@@ -165,7 +167,7 @@ function checkSearchPossibility(searchOptionValue) {
 function handlePatientSearch(type, data, extractedData) {
     let properSearched = lookupPatient(type, data);
     if (properSearched !== true) {
-        console.log(`[pdfParser] champ ${type} non trouvé, arrêt de la procédure.`, properSearched);
+        console.log(`[pdfParser] arrêt de la procédure car :`, properSearched);
         return false;
     } else {
         console.log(`[pdfParser] ${type} présent, on continue à chercher le patient.`);
@@ -188,6 +190,7 @@ function selectFirstPatientOrSearchField() {
     console.log("[pdfParser] firstPatient", firstPatient);
     if (firstPatient) {
         ListTabOrderer(firstPatient.id);
+        PatientSelectEntryListener();
         firstPatient.focus();
     } else {
         // Si aucun patient n'est trouvé, on va chercher le champ de recherche  
@@ -367,7 +370,7 @@ function completeExtractedData(extractedData, dataMatrixReturn) {
 // Vérifie si les données d'un pdf ont déjà été extraites
 function checkAlreadyExtractedData(hashId) {
     const alreadyExtractedData = JSON.parse(sessionStorage.getItem(hashId));
-    console.log('[pdfParser] alreadyExtractedData', alreadyExtractedData, hashId);
+    // console.log('[pdfParser] alreadyExtractedData', alreadyExtractedData, hashId);
     const alreadyImported = alreadyExtractedData ? alreadyExtractedData.alreadyImported : false;
     return { alreadyExtractedData, alreadyImported };
 }
@@ -463,23 +466,22 @@ function lookupPatient(searchType, data) {
             message: `Type de recherche ${searchType} non disponible. Contactez votre expert pour l'activer.`,
             type: 'fail'
         })
-        return false;
+        return `Type de recherche ${searchType} non disponible.`;
     }
 
     const dropDownValue = searchTypes[searchType];
     if (!dropDownValue) {
         console.error("[pdfParser] Type de recherche inconnu.");
-        return false;
+        return "Type de recherche inconnu.";
     }
 
     const dropDownResearch = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_DropDownListRechechePatient']");
-    console.log('[pdfParser] Menu déroulant de recherche trouvé :', dropDownResearch);
+    // console.log('[pdfParser] Menu déroulant de recherche trouvé :', dropDownResearch);
 
     if (dropDownResearch.value !== dropDownValue) {
-        console.log(`[pdfParser] Menu de recherche réglé sur autre que par ${dropDownValue} => Changement de valeur du menu déroulant de recherche + change event`);
+        console.log(`[pdfParser] Menu de recherche réglé sur ${dropDownResearch.value} alors qu'on souhaite ${dropDownValue} => Changement de valeur du menu déroulant de recherche vers ${dropDownValue} + change event`);
         dropDownResearch.value = dropDownValue;
         dropDownResearch.dispatchEvent(new Event('change'));
-        console.log('[pdfParser] Event change déclenché');
         return 'change Search Mode';
     } else {
         console.log(`[pdfParser] Menu de recherche déjà réglé sur ${dropDownValue}`);
@@ -550,7 +552,7 @@ async function extractTextFromPDF(pdfUrl) {
     const maxPages = pdf.numPages;
     const pagePromises = [];
     for (var i = 1; i <= maxPages; i++) {
-        console.log("Extracting page" + i + "/" + maxPages);
+        // console.log("Extracting page" + i + "/" + maxPages);
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
 
@@ -562,6 +564,7 @@ async function extractTextFromPDF(pdfUrl) {
 
     const allPageTexts = await Promise.all(pagePromises);
     const fullText = allPageTexts.join('\n');
+    console.log(`[pdfParser] ait extrait ${allPageTexts.length} pages`);
 
     return fullText;
 }
@@ -933,7 +936,7 @@ function visualizeBinaryBitmap(binaryBitmap) {
 
 // Détermination du type de courrier
 function determineDocumentType(fullText) {
-    console.log('[pdfParser] determineDocumentType');
+    // console.log('[pdfParser] determineDocumentType');
     // On utilise un tableau de tableaux pour permettre de parcourir les types de documents par ordre de spécificité
     // Et de mettre plusieurs fois la même clé, avec des valeurs de moins en moins exigeantes
     const documentTypes = [
@@ -965,7 +968,7 @@ function determineDocumentType(fullText) {
     ];
 
     for (const [type, keywords] of documentTypes) {
-        console.log('[pdfParser] recherche du type de document', type);
+        // console.log('[pdfParser] recherche du type de document', type);
         for (const keyword of keywords) {
             // Remplacer les espaces par \s* pour permettre les espaces optionnels
             const regex = new RegExp(keyword.replace(/\s+/g, '\\s*'), 'i');
@@ -1044,7 +1047,7 @@ function determineDocumentTitle(fullText, documentType) {
         "IRM": ["IRM"]
     };
 
-    console.log('[pdfParser] determineDocumentTitle');
+    // console.log('[pdfParser] determineDocumentTitle');
 
     // Trouver la spécialité médicale
     let specialite = findSpecialite(fullText, specialites);
@@ -1063,7 +1066,7 @@ function determineDocumentTitle(fullText, documentType) {
     }
 
 
-    console.log('[pdfParser] Titre du document déterminé', documentTitle);
+    console.log('[pdfParser] Titre du document déterminé', documentTitle, 'car document de type', documentType, 'avec spécialité', specialite, 'et imagerie', imagerie);
     return documentTitle;
 }
 
@@ -1138,16 +1141,16 @@ function extractNIR(fullText, nirRegexes) {
         const cle = result[4].replace(/\s/g, ''); // Supprimer les espaces de la clé
         return nir + cle;
     }
-    console.log('[pdfParser] extractNIR', nirRegexes);
+    // console.log('[pdfParser] extractNIR', nirRegexes);
     let matches = [];
     let result = [];
     for (const regex of nirRegexes) {
         result = regex.exec(fullText);
         if (result) {
-            console.log('[pdfParser] NIR result', result, "de longueur", result.length);
+            // console.log('[pdfParser] NIR result', result, "de longueur", result.length);
             // Le nir a été trouvé d'un bloc
             if (result.length === 1) {
-                console.log('[pdfParser] NIR matches une seule entrée', matches);
+                // console.log('[pdfParser] NIR matches une seule entrée', matches);
                 matches = matches.concat(fullText.match(regex) || []);
             } else { // Le nir a été trouvé en plusieurs blocs dans un arrêt de travail
                 matches = matches.concat(flattenNIR(result));
@@ -1193,7 +1196,7 @@ async function pdfBlob(urlPDF) {
 }
 
 async function customHash(str, urlPDF) {
-    console.time('customHash'); // Démarrer le chronomètre
+    // console.time('customHash'); // Démarrer le chronomètre
 
     if (str.length < 10) {
         str = await pdfBlob(urlPDF); // Attendre la promesse
@@ -1210,7 +1213,7 @@ async function customHash(str, urlPDF) {
         hash = (hash * FNV_PRIME) >>> 0; // Convertir en entier non signé 32 bits
     }
 
-    console.timeEnd('customHash'); // Arrêter le chronomètre et afficher le temps écoulé
-    console.log('[pdfParser] hash', hash.toString(16)); // Afficher le hash en hexadécimal
+    // console.timeEnd('customHash'); // Arrêter le chronomètre et afficher le temps écoulé
+    // console.log('[pdfParser] hash', hash.toString(16)); // Afficher le hash en hexadécimal
     return hash.toString(16); // Retourner en chaîne hexadécimale
 }
