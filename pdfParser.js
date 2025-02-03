@@ -118,10 +118,10 @@ async function processFoundPdfIframe(elements) {
     // => on pourrait rechercher par INS si on a le datamatrix, mais cela impliquerait de
     //    naviguer entre les différents types de recherche dans la fenêtre d'import
 
-    // Cas 1 : on a un INS, plus fiable. A noter qu'il échouera si l'INS n'a pas été validé.
-    if (extractedData.nirMatches && extractedData.nirMatches.length > 0) {
+    // Cas 1 : on a un INS, plus fiable. A noter qu'il échouera si l'INS n'a pas été validé.    
+    if (extractedData.nirMatches && extractedData.nirMatches.length > 0 && checkSearchPossibility("InsSearch")) {
         console.log("[pdfParser] INS trouvé, recherche du patient par INS");
-        if (!handlePatientSearch("nirMatches", extractedData.nirMatches[0], extractedData)) return;
+        if (!handlePatientSearch("nirMatches", extractedData.nirMatches[0], extractedData)) return;        
     } else {
         // Cas 2 : on a une date de naissance
         console.log("[pdfParser] Recherche du patient par la date de naissance");
@@ -143,6 +143,23 @@ async function processFoundPdfIframe(elements) {
 
 
 // Fonctions utilitaires
+
+// Rechercher quels types de recherche sont possibles
+function checkSearchPossibility(searchOptionValue) {
+    let dropDownResearch = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_DropDownListRechechePatient']");
+    let options = dropDownResearch.options;
+    for (let i = 0; i < options.length; i++) {
+        if (options[i].value === searchOptionValue) {
+            return true;
+        }
+    }
+    sendWedaNotif({
+        message: `Type de recherche ${searchOptionValue} non disponible. Contactez votre expert pour l'activer. (demandez l'accès aux INS pour votre compte)`,
+        type: 'fail'
+    });
+
+    return false;
+}
 
 // Fonction pour gérer la recherche et la sélection du patient
 function handlePatientSearch(type, data, extractedData) {
@@ -438,6 +455,16 @@ function lookupPatient(searchType, data) {
         dateOfBirth: "Naissance",
         nirMatches: "InsSearch"
     };
+
+    // On vérifie que la valeur de recherche est disponible
+    if (!checkSearchPossibility(searchTypes[searchType])) {
+        console.error(`[pdfParser] Type de recherche ${searchType} non disponible.`);
+        sendWedaNotif({
+            message: `Type de recherche ${searchType} non disponible. Contactez votre expert pour l'activer.`,
+            type: 'fail'
+        })
+        return false;
+    }
 
     const dropDownValue = searchTypes[searchType];
     if (!dropDownValue) {
