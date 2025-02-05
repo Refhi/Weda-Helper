@@ -89,6 +89,8 @@ async function processFoundPdfIframe(elements) {
     // Ajout d'un bouton de reset du sessionStorage correspondant
     addResetButton(hashId);
 
+
+    // TODO : problème de permanence de données pour 
     // Données déjà extraites pour ce PDF ?
     let { alreadyExtractedData, alreadyImported } = checkAlreadyExtractedData(hashId);
     if (alreadyImported) {
@@ -131,8 +133,9 @@ async function processFoundPdfIframe(elements) {
     // => on pourrait rechercher par INS si on a le datamatrix, mais cela impliquerait de
     //    naviguer entre les différents types de recherche dans la fenêtre d'import
 
-
-    if (!handlePatientSearch(extractedData)) {
+    let handlePatientSearchReturn = handlePatientSearch(extractedData);
+    if (handlePatientSearchReturn.status === 'refresh') {
+        console.log("[pdfParser] handlePatientSearchReturn", handlePatientSearchReturn.message);
         // La procédure n'est pas arrivée au bout, un rafraichissement de la page est attendu
         // On bloque donc ici pour éviter d'intégrer des données trop tôt
         return;
@@ -190,26 +193,26 @@ function handlePatientSearch(extractedData) {
     // On initialise les priorités de recherche en vérifiant si les données sont présentes et cohérentes
     const searchPriorities = [
         { type: "InsSearch", data: extractedData.nirMatches && extractedData.nirMatches.length > 0 ? extractedData.nirMatches[0] : null },
-        { type: "DateSearch", data: extractedData.dateOfBirth && extractedData.dateOfBirth !== formatDate(new Date()) ? extractedData.dateOfBirth : null },
-        { type: "NameSearch", data: extractedData.nameMatches && extractedData.nameMatches.length > 0 ? extractedData.nameMatches[0] : null }
+        { type: "Naissance", data: extractedData.dateOfBirth && extractedData.dateOfBirth !== formatDate(new Date()) ? extractedData.dateOfBirth : null },
+        { type: "Nom", data: extractedData.nameMatches && extractedData.nameMatches.length > 0 ? extractedData.nameMatches[0] : null }
     ];
 
     for (let search of searchPriorities) {
-        if (search.data) {
+        // TODO : problème de rémanence de extractedData :
+        // Lors du refresh, il "oublie" les données extraites et les recherches déjà effectuées
+        // => créer une fonction dédiée qui accède au sessionStorage en fonction du hash ?
+        if (search.data && !extractedData.failedSearches.includes(search.type)) {
             let properSearched = lookupPatient(search.type, search.data);
             if (properSearched.status === 'success') {
                 console.log(`[pdfParser] ${search.type} présent, on continue à chercher le patient.`);
                 const clicPatientReturn = clicPatient(extractedData);
                 console.log("[pdfParser] clicPatientReturn", clicPatientReturn.status, clicPatientReturn.message);
                 if (clicPatientReturn.status === 'success') {
-                    // Le patient a été cliqué, on arrête la procédure car un rafraichissement de la page est attendu
                     return { status: 'refresh', message: 'Patient trouvé et cliqué' };
                 } else if (clicPatientReturn.status === 'error') {
-                    // La méthode en cours n'a retrouvé aucun patient. On la marque comme un échec
                     extractedData.failedSearches.push(search.type);
                 } else if (clicPatientReturn.status === 'continue') {
                     console.log("[pdfParser] Patient non trouvé ou correctement sélectionné, je continue la procédure.");
-                    // Le patient est correctement sélectionné ou non trouvé, on peut passer à l'import des données
                     return { status: 'continue', message: 'Patient non trouvé ou correctement sélectionné' };
                 } else {
                     console.error("[pdfParser] Erreur inconnue lors de la recherche du patient, je continue la procédure.");
@@ -230,6 +233,7 @@ function handlePatientSearch(extractedData) {
     console.log("[pdfParser] Aucune donnée ou méthode de recherche disponible. Arrêt de la recherche de patient.");
     return { status: 'continue', message: 'Aucune donnée ou méthode de recherche disponible' };
 }
+
 
 // Fonction pour sélectionner le premier patient de la liste ou le champ de recherche
 function selectFirstPatientOrSearchField() {
@@ -408,6 +412,7 @@ function clicPatient(extractedData) {
 function completeExtractedData(extractedData, dataMatrixReturn) {
     extractedData.actionLine = actualImportActionLine();
     extractedData.alreadyImported = false;
+    extractedData.failedSearches = [];
     if (dataMatrixReturn) { // Cf. parseTextDataMatrix()
         extractedData.dataMatrix = dataMatrixReturn;
         extractedData.dateOfBirth = formatDate(dataMatrixReturn.DateNaissance);
@@ -521,14 +526,14 @@ function lookupPatient(searchType, data) {
 
     const dropDownResearch = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_DropDownListRechechePatient']");
 
-    if (dropDownResearch.value !== dropDownValue) {
-        console.log(`[pdfParser] Menu de recherche réglé sur ${dropDownResearch.value} alors qu'on souhaite ${dropDownValue} => Changement de valeur du menu déroulant de recherche vers ${dropDownValue} + change event`);
-        dropDownResearch.value = dropDownValue;
+    if (dropDownResearch.value !== searchType) {
+        console.log(`[pdfParser] Menu de recherche réglé sur ${dropDownResearch.value} alors qu'on souhaite ${searchType} => Changement de valeur du menu déroulant de recherche vers ${searchType} + change event`);
+        dropDownResearch.value = searchType;
         dropDownResearch.dispatchEvent(new Event('change'));
         return { status: 'refresh', message: 'Change Search Mode' };
         
     } else {
-        console.log(`[pdfParser] Menu de recherche déjà réglé sur ${dropDownValue}`);
+        console.log(`[pdfParser] Menu de recherche déjà réglé sur ${searchType}`);
     }
 
     const inputFields = {
