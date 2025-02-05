@@ -173,7 +173,19 @@ function checkSearchPossibility(searchOptionValue) {
     return false;
 }
 
-// Fonction pour gérer la recherche et la sélection du patient
+/**
+ * Gère la recherche et la sélection du patient en fonction des données extraites.
+ * 
+ * @param {Object} extractedData - Les données extraites du PDF.
+ * @param {Array} extractedData.nirMatches - Les correspondances de NIR trouvées dans les données extraites.
+ * @param {string} extractedData.dateOfBirth - La date de naissance extraite.
+ * @param {Array} extractedData.nameMatches - Les correspondances de noms trouvées dans les données extraites.
+ * @param {Array} extractedData.failedSearches - Les méthodes de recherche qui ont échoué.
+ * 
+ * @returns {Object} - Le statut et le message de la recherche.
+ * @returns {string} status - Le statut de la recherche ('refresh', 'continue').
+ * @returns {string} message - Le message associé au statut.
+ */
 function handlePatientSearch(extractedData) {
     // On initialise les priorités de recherche en vérifiant si les données sont présentes et cohérentes
     const searchPriorities = [
@@ -188,24 +200,25 @@ function handlePatientSearch(extractedData) {
             if (properSearched.status === 'success') {
                 console.log(`[pdfParser] ${search.type} présent, on continue à chercher le patient.`);
                 const clicPatientReturn = clicPatient(extractedData);
-                if (clicPatientReturn === "Patient trouvé et cliqué") {
+                console.log("[pdfParser] clicPatientReturn", clicPatientReturn.status, clicPatientReturn.message);
+                if (clicPatientReturn.status === 'success') {
                     // Le patient a été cliqué, on arrête la procédure car un rafraichissement de la page est attendu
-                    return false;
-                } else if (clicPatientReturn === "Aucun patient trouvé") {
+                    return { status: 'refresh', message: 'Patient trouvé et cliqué' };
+                } else if (clicPatientReturn.status === 'error') {
                     // La méthode en cours n'a retrouvé aucun patient. On la marque comme un échec
                     extractedData.failedSearches.push(search.type);
-                } else if (clicPatientReturn === "Un patient est déjà sélectionné") {
+                } else if (clicPatientReturn.status === 'continue') {
                     console.log("[pdfParser] Patient non trouvé ou correctement sélectionné, je continue la procédure.");
                     // Le patient est correctement sélectionné ou non trouvé, on peut passer à l'import des données
-                    return true;
+                    return { status: 'continue', message: 'Patient non trouvé ou correctement sélectionné' };
                 } else {
                     console.error("[pdfParser] Erreur inconnue lors de la recherche du patient, je continue la procédure.");
-                    return true;
+                    return { status: 'continue', message: 'Erreur inconnue lors de la recherche du patient' };
                 }
             } else if (properSearched.status === 'refresh') {
                 console.log(`[pdfParser] arrêt de la procédure car :`, properSearched.message);
                 // On attends aussi un rafraichissement de la page
-                return false;
+                return { status: 'refresh', message: properSearched.message };
             } else {
                 // On marque l'échec de cette méthode de recherche => la boucle suivante l'écartera
                 console.error(`[pdfParser] Echec de la méthode de recherche :`, properSearched.message, `pour ${search.type}`, "je la marque comme un échec et je continue la procédure.");
@@ -214,10 +227,9 @@ function handlePatientSearch(extractedData) {
         }
     }
 
-    console.log("[pdfParser] Aucune donnée de recherche disponible. Arrêt de la recherche de patient.");
-    return 'patient non trouvé';
+    console.log("[pdfParser] Aucune donnée ou méthode de recherche disponible. Arrêt de la recherche de patient.");
+    return { status: 'continue', message: 'Aucune donnée ou méthode de recherche disponible' };
 }
-
 
 // Fonction pour sélectionner le premier patient de la liste ou le champ de recherche
 function selectFirstPatientOrSearchField() {
@@ -337,7 +349,14 @@ function setExtractedDataInForm(extractedData) {
     });
 }
 
-// Clic sur le patient trouvé
+/**
+ * Clic sur le patient trouvé.
+ * @param {Object} extractedData - Les données extraites du PDF.
+ * @param {Array} extractedData.nameMatches - Les noms correspondants trouvés dans le PDF.
+ * @returns {Object} - Objet contenant le statut et un message.
+ * @returns {string} status - Statut de l'opération ('success', 'error', 'continue').
+ * @returns {string} message - Message décrivant le résultat de l'opération.
+ */
 function clicPatient(extractedData) {
     let patientToClick = searchProperPatient(getPatientsList(), extractedData["nameMatches"]);
     if (!patientToClick) {
@@ -359,7 +378,7 @@ function clicPatient(extractedData) {
         // Ici le bon patient est déjà sélectionné pour import.
         // On en déduis que la procédure a déjà aboutie et qu'il faut s'arrêter.
         console.log("[pdfParser] Un patient est déjà sélectionné, arrêt de la recherche.");
-        return { status: 'success', message: "Un patient est déjà sélectionné" };
+        return { status: 'continue', message: "Un patient est déjà sélectionné" };
     } else {
         let patientToClicSelector = "#" + patientToClick.id;
         // patientToClick.click(); => ne fonctionne pas à cause du CSP en milieu ISOLATED
@@ -373,6 +392,8 @@ function clicPatient(extractedData) {
         }
     }
 }
+
+
 // Complète les données d'extractedData avec des informations supplémentaires.
 /**
  * Exemple d'objet obtenu après extraction :
