@@ -1206,9 +1206,17 @@ function determineDocumentTitle(fullText, documentType) {
 // Extraction des dates du texte
 function extractDates(fullText, dateRegexes) {
     let matches = [];
+    const today = new Date();
+
     for (const regex of dateRegexes) {
-        matches = matches.concat(fullText.match(regex) || []);
+        const dateStrings = fullText.match(regex) || [];
+        const parsedDates = dateStrings.map(dateString => {
+            const date = parseDate(dateString);
+            return date <= today ? date : null;
+        }).filter(date => date !== null);
+        matches = matches.concat(parsedDates);
     }
+
     return matches;
 }
 
@@ -1230,9 +1238,8 @@ function determineDocumentDate(fullText, dateMatches, documentDateRegexes) {
     let documentDate = null;
     // On cherche la date la plus récente, ce qui correspond souvent à la date du document
     for (const date of dateMatches) {
-        const processedDate = parseDate(date); // On convertit la date en objet Date
-        if (!documentDate || documentDate < processedDate) {
-            documentDate = processedDate;
+        if (!documentDate || documentDate < date) {
+            documentDate = date;
         }
     }
     // On peut aussi chercher directement la date du document
@@ -1249,9 +1256,8 @@ function determineDateOfBirth(fullText, dateMatches, dateOfBirthRegexes) {
     let dateOfBirth = null;
     // On cherche la date la plus ancienne, ce qui correspond souvent à la date de naissance
     for (const date of dateMatches) {
-        const processedDate = parseDate(date); // On convertit la date en objet Date
-        if (!dateOfBirth || dateOfBirth > processedDate) {
-            dateOfBirth = processedDate;
+        if (!dateOfBirth || dateOfBirth > date) {
+            dateOfBirth = date;
         }
     }
     // Mais on peut aussi chercher directement la date de naissance
@@ -1310,7 +1316,30 @@ function extractNames(fullText, nameRegexes) {
 
 function parseDate(dateString) {
     const parts = dateString.split(/[\/\-.]/);
-    return new Date(parts[2], parts[1] - 1, parts[0]);
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const year = parseInt(parts[2], 10);
+
+    // Vérification des plages valides pour jour, mois et année
+    if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1900 || year > 9999) {
+        return null; // Retourne null pour une date invalide
+    }
+
+    const date = new Date(year, month - 1, day);
+
+    // Vérification que la date est valide (par exemple, 30 février n'existe pas)
+    if (date.getDate() !== day || date.getMonth() !== month - 1 || date.getFullYear() !== year) {
+        return null; // Retourne null pour une date invalide
+    }
+
+    const minDate = new Date(1900, 0, 1); // 1er janvier 1900
+    const today = new Date();
+
+    if (date < minDate || date > today) {
+        return null; // Retourne null si la date n'est pas dans la plage valide
+    }
+
+    return date;
 }
 
 function formatDate(date) {
