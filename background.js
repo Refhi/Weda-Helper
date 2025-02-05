@@ -220,7 +220,7 @@ var advancedDefaultSettings = [{
         }, {
             "name": "autoPdfParser",
             "type": TYPE_BOOL,
-            "description": "Analyse automatiquement les pdfs en attente d'import et essaie d'en extraire les informations (date, nom patient, etc.).",
+            "description": "Analyse automatiquement les pdfs en attente d'import et essaie d'en extraire les informations (date, nom patient, etc.). Pour les PDFs scannés il est recommandé d'avoir une OCR de qualité. Pour les geeks vous pouvez regarder https://github.com/Refhi/pdf_ocr_pdf (fonctionne bien mais nécessite pas mal de compétences pour l'installer).",
             "default": true,
             "subOptions": [{
                 "name": "PdfParserAutoTitle",
