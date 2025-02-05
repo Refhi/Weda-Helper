@@ -50,6 +50,17 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
  * - si elles ne le sont pas, il effectue l'étape demandée, ce qui déclenche un rafrachissement de la page
  * - sinon elles le sont, il passe donc à l'étape suivante
  * - et ainsi de suite jusqu'à la fin de la procédure
+ * 
+ * Exemple d'objet extractedData :
+ * {
+ *    documentDate: "01/01/2021",
+ *    dateOfBirth: "01/01/2021",
+ *    nameMatches: ["DUPONT Jean", "DUPONT Jeanne"],
+ *    nirMatches: ["1234567890123", "1234567890124"],
+ *    actionLine: "0",
+ *    alreadyImported: false,
+ *    failedSearches: ["InsSearch", "DateSearch"]
+ * }
  */
 
 async function processFoundPdfIframe(elements) {
@@ -120,15 +131,14 @@ async function processFoundPdfIframe(elements) {
     // => on pourrait rechercher par INS si on a le datamatrix, mais cela impliquerait de
     //    naviguer entre les différents types de recherche dans la fenêtre d'import
 
-    // Cas 1 : on a un INS, plus fiable. A noter qu'il échouera si l'INS n'a pas été validé.    
-    if (extractedData.nirMatches && extractedData.nirMatches.length > 0 && checkSearchPossibility("InsSearch")) {
-        console.log("[pdfParser] Recherche du patient par l'INS car disponible");
-        if (!handlePatientSearch("nirMatches", extractedData.nirMatches[0], extractedData)) return;
-    } else {
-        // Cas 2 : on a une date de naissance
-        console.log("[pdfParser] Recherche du patient par la date de naissance (fallback)");
-        if (!handlePatientSearch("dateOfBirth", extractedData.dateOfBirth, extractedData)) return;
+
+    if (!handlePatientSearch(extractedData)) {
+        // La procédure n'est pas arrivée au bout, un rafraichissement de la page est attendu
+        // On bloque donc ici pour éviter d'intégrer des données trop tôt
+        return;
     }
+
+
     // Intégration des données dans le formulaire d'import
     setExtractedDataInForm(extractedData);
 
@@ -164,22 +174,48 @@ function checkSearchPossibility(searchOptionValue) {
 }
 
 // Fonction pour gérer la recherche et la sélection du patient
-function handlePatientSearch(type, data, extractedData) {
-    let properSearched = lookupPatient(type, data);
-    if (properSearched !== true) {
-        console.log(`[pdfParser] arrêt de la procédure car :`, properSearched);
-        return false;
-    } else {
-        console.log(`[pdfParser] ${type} présent, on continue à chercher le patient.`);
-        if (clicPatientSuccess(extractedData)) {
-            // Le patient a été cliqué, on arrête la procédure
-            return false;
-        } else {
-            console.log("[pdfParser] Patient non trouvé ou correctement sélectionné, je continue la procédure.");
-            // Le patient est correctement sélectionné ou non trouvé, on peut passer à l'import des données
-            return true;
+function handlePatientSearch(extractedData) {
+    // On initialise les priorités de recherche en vérifiant si les données sont présentes et cohérentes
+    const searchPriorities = [
+        { type: "InsSearch", data: extractedData.nirMatches && extractedData.nirMatches.length > 0 ? extractedData.nirMatches[0] : null },
+        { type: "DateSearch", data: extractedData.dateOfBirth && extractedData.dateOfBirth !== formatDate(new Date()) ? extractedData.dateOfBirth : null },
+        { type: "NameSearch", data: extractedData.nameMatches && extractedData.nameMatches.length > 0 ? extractedData.nameMatches[0] : null }
+    ];
+
+    for (let search of searchPriorities) {
+        if (search.data) {
+            let properSearched = lookupPatient(search.type, search.data);
+            if (properSearched.status === 'success') {
+                console.log(`[pdfParser] ${search.type} présent, on continue à chercher le patient.`);
+                const clicPatientReturn = clicPatient(extractedData);
+                if (clicPatientReturn === "Patient trouvé et cliqué") {
+                    // Le patient a été cliqué, on arrête la procédure car un rafraichissement de la page est attendu
+                    return false;
+                } else if (clicPatientReturn === "Aucun patient trouvé") {
+                    // La méthode en cours n'a retrouvé aucun patient. On la marque comme un échec
+                    extractedData.failedSearches.push(search.type);
+                } else if (clicPatientReturn === "Un patient est déjà sélectionné") {
+                    console.log("[pdfParser] Patient non trouvé ou correctement sélectionné, je continue la procédure.");
+                    // Le patient est correctement sélectionné ou non trouvé, on peut passer à l'import des données
+                    return true;
+                } else {
+                    console.error("[pdfParser] Erreur inconnue lors de la recherche du patient, je continue la procédure.");
+                    return true;
+                }
+            } else if (properSearched.status === 'refresh') {
+                console.log(`[pdfParser] arrêt de la procédure car :`, properSearched.message);
+                // On attends aussi un rafraichissement de la page
+                return false;
+            } else {
+                // On marque l'échec de cette méthode de recherche => la boucle suivante l'écartera
+                console.error(`[pdfParser] Echec de la méthode de recherche :`, properSearched.message, `pour ${search.type}`, "je la marque comme un échec et je continue la procédure.");
+                extractedData.failedSearches.push(search.type);
+            }
         }
     }
+
+    console.log("[pdfParser] Aucune donnée de recherche disponible. Arrêt de la recherche de patient.");
+    return 'patient non trouvé';
 }
 
 
@@ -302,7 +338,7 @@ function setExtractedDataInForm(extractedData) {
 }
 
 // Clic sur le patient trouvé
-function clicPatientSuccess(extractedData) {
+function clicPatient(extractedData) {
     let patientToClick = searchProperPatient(getPatientsList(), extractedData["nameMatches"]);
     if (!patientToClick) {
         // On va tenter le premier patient de la liste
@@ -311,12 +347,11 @@ function clicPatientSuccess(extractedData) {
         if (patientList.length === 1) {
             patientToClick = getPatientsList()[0];
         } else {
-            patient = null;
+            patientToClick = null;
         }
     }
     if (!patientToClick) {
-        console.log("[pdfParser] Aucun patient trouvé, je continue la procédure.");
-        return false;
+        return { status: 'error', message: "Aucun patient trouvé" };
     }
 
     let patientToClickName = patientToClick.innerText;
@@ -324,21 +359,20 @@ function clicPatientSuccess(extractedData) {
         // Ici le bon patient est déjà sélectionné pour import.
         // On en déduis que la procédure a déjà aboutie et qu'il faut s'arrêter.
         console.log("[pdfParser] Un patient est déjà sélectionné, arrêt de la recherche.");
-        return false;
+        return { status: 'success', message: "Un patient est déjà sélectionné" };
     } else {
         let patientToClicSelector = "#" + patientToClick.id;
         // patientToClick.click(); => ne fonctionne pas à cause du CSP en milieu ISOLATED
         if (patientToClick) {
             console.log("[pdfParser] Patient à sélectionner :", patientToClickName, patientToClick);
             clicCSPLockedElement(patientToClicSelector);
-            return true;
+            return { status: 'success', message: "Patient trouvé et cliqué" };
         } else {
-            console.log("[pdfParser] Patient non trouvé, je continue la procédure.");
-            return false;
+            console.log("[pdfParser] Patient non trouvé");
+            return { status: 'error', message: "Aucun patient trouvé" };
         }
     }
 }
-
 // Complète les données d'extractedData avec des informations supplémentaires.
 /**
  * Exemple d'objet obtenu après extraction :
@@ -348,13 +382,11 @@ function clicPatientSuccess(extractedData) {
  *     nameMatches: ["DUPONT Jean", "DUPONT Jeanne"],
  *     actionLine: "0",
  *     alreadyImported: false,
- *     isUserRejected: false
  * }
  */
 function completeExtractedData(extractedData, dataMatrixReturn) {
     extractedData.actionLine = actualImportActionLine();
     extractedData.alreadyImported = false;
-    extractedData.isUserRejected = false;
     if (dataMatrixReturn) { // Cf. parseTextDataMatrix()
         extractedData.dataMatrix = dataMatrixReturn;
         extractedData.dateOfBirth = formatDate(dataMatrixReturn.DateNaissance);
@@ -441,78 +473,102 @@ function selectedPatientName() {
 
 /**
  * Recherche du patient dans la base de données via la date de naissance ou le NIR
- * @param {string} searchType - Type de recherche (dateOfBirth ou nirMatches)
- * @param {string} data
- * 
+ * @param {string} searchType - Type de recherche (InsSearch, DateSearch, NameSearch)
+ * @param {string} data - Données à utiliser pour la recherche
+ * @returns {Object} - Objet contenant le statut et un message
+ * @returns {string} status - Statut de la recherche ('success', 'refresh', 'error', 'searchTypeFail')
+ * @returns {string} message - Message décrivant le résultat de la recherche
  */
+
 function lookupPatient(searchType, data) {
-    // D'abord on vérifie si les données sont mauvaises (DDN à la date du jour, ou données null)
-    const today = formatDate(new Date());
-    if (!data || data === today) {
-        console.log("[pdfParser] Pas de données de recherche trouvées. Arrêt de la recherche de patient mais poursuite de la procédure.");
-        return true;
+    if (!isValidSearchType(searchType)) {
+        console.error(`[pdfParser] Type de recherche ${searchType} non disponible.`);
+        return { status: 'error', message: `Type de recherche ${searchType} non disponible.` };
     }
 
-    // La correspondance entre les types de recherche et les valeurs du menu déroulant
-    const searchTypes = {
-        dateOfBirth: "Naissance",
-        nirMatches: "InsSearch"
-    };
 
-    // On vérifie que la valeur de recherche est disponible
-    if (!checkSearchPossibility(searchTypes[searchType])) {
+
+    // On vérifie que la valeur de recherche est disponible (les comptes secretaire n'ont pas forcément la recherche par INS)
+    if (!checkSearchPossibility(searchType)) {
         console.error(`[pdfParser] Type de recherche ${searchType} non disponible.`);
         sendWedaNotif({
             message: `Type de recherche ${searchType} non disponible. Contactez votre expert pour l'activer.`,
             type: 'fail'
         })
-        return `Type de recherche ${searchType} non disponible.`;
-    }
-
-    const dropDownValue = searchTypes[searchType];
-    if (!dropDownValue) {
-        console.error("[pdfParser] Type de recherche inconnu.");
-        return "Type de recherche inconnu.";
+        return { status: 'searchTypeFail', message: `Type de recherche ${searchType} non disponible.` };
     }
 
     const dropDownResearch = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_DropDownListRechechePatient']");
-    // console.log('[pdfParser] Menu déroulant de recherche trouvé :', dropDownResearch);
 
     if (dropDownResearch.value !== dropDownValue) {
         console.log(`[pdfParser] Menu de recherche réglé sur ${dropDownResearch.value} alors qu'on souhaite ${dropDownValue} => Changement de valeur du menu déroulant de recherche vers ${dropDownValue} + change event`);
         dropDownResearch.value = dropDownValue;
         dropDownResearch.dispatchEvent(new Event('change'));
-        return 'change Search Mode';
+        return { status: 'refresh', message: 'Change Search Mode' };
+        
     } else {
         console.log(`[pdfParser] Menu de recherche déjà réglé sur ${dropDownValue}`);
     }
 
     const inputFields = {
-        dateOfBirth: document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherchePatientByDate']"),
-        nirMatches: document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherche']")
+        Naissance: document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherchePatientByDate']"),
+        others: document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherche']")
     };
 
-    const inputResearch = inputFields[searchType];
+    const inputResearch = searchType === "Naissance" ? inputFields.Naissance : inputFields.others;
     if (!inputResearch) {
         console.log(`[pdfParser] Champ de recherche de ${searchType} non trouvé. Arrêt de la recherche de patient.`);
-        dropDownResearch.value = "Nom";
+        dropDownResearch.value = "Prenom";
         dropDownResearch.dispatchEvent(new Event('change'));
-        return `Champ de recherche non réglé sur ${searchType} alors que l'input est pourtant présent => set vers Nom pour forcer le rafraichissement de la page`;
+        return { status: 'refresh', message: `Champ de recherche non réglé sur ${searchType} alors que l'input est pourtant présent => set vers Prenom pour forcer le rafraichissement de la page` };
     }
 
     console.log(`[pdfParser] Champ de recherche de ${searchType} trouvé :`, inputResearch, "il contient :", inputResearch.value, "et devrait contenir :", data);
     if (inputResearch.value === data) {
         // Les données de recherche sont déjà présentes, on peut valider la suite de la procédure
-        return true;
+        return { status: 'success', message: 'Les données de recherche sont déjà présentes.' };
     } else {
         inputResearch.value = data;
         const searchButton = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_ButtonRecherchePatient']");
         searchButton.click();
-        return `searchButton clicked avec ${searchType}`;
+        return { status: 'refresh', message: `searchButton clicked avec ${searchType}` };
     }
 }
 
+function isValidSearchType(searchType) {
+    const searchTypes = {
+        Nom: "Recherche d'une fiche patient",
+        Prenom: "Recherche exacte par prénom",
+        Naissance: "Recherche exacte par date de naissance",
+        Covid: "Recherche des patients ayant un formulaire COVID-19",
+        DCD: "Recherche des patients DCD",
+        NumeroDossier: "Recherche des patients par n° de dossier",
+        WithoutRecette: "Recherche des patients sans recette",
+        Date: "Recherche d'une fiche patient par date",
+        RdV: "Recherche d'une fiche patient par RdV",
+        Vac: "Recherche des alarmes, rappels ou vaccins",
+        Gro: "Recherche des grossesses en cours",
+        CG42952: "Grossesse : 1ère échographie",
+        CG42953: "Grossesse : Dépistage sérique de trisomie 21",
+        CG42954: "Grossesse : 2ème échographie",
+        CG42955: "Grossesse : 3ème échographie",
+        CG42956: "Grossesse : Accouchement",
+        CG42957: "Grossesse : Début",
+        P4P: "Recherche des patients ayant un indicateur ROSP",
+        Prioritaire: "Recherche des patients prioritaires",
+        NPV: "Recherche des patients NPV",
+        StatEtiquette: "Recherche des patients par étiquette",
+        NoMTInCab: "Recherche des patients sans MT dans ce cabinet",
+        InsSearch: "Recherche par INS"
+    };
 
+    // Vérification que searchType fait bien partie des types de recherche
+    if (!searchTypes.hasOwnProperty(searchType)) {
+        console.error(`Type de recherche ${searchType} non disponible.`);
+        return false;
+    }
+    return true;
+}
 
 
 
