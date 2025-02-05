@@ -63,7 +63,7 @@ function SearchBoxEntryListener(idsSearchBox, validTarget, listTabOrderer = fals
     }
 }
 
-function waitUntilLoadSpinDisappear() {
+function waitForLoadSpin(shouldAppear) {
     const interval = 50; // Intervalle de vérification en ms
     const timeout = 5000; // Durée maximale en ms
     const startTime = Date.now();
@@ -73,13 +73,14 @@ function waitUntilLoadSpinDisappear() {
             const loadSpin = document.querySelector('#ContentPlaceHolder1_progress');
             if (loadSpin) {
                 const display = window.getComputedStyle(loadSpin).display;
-                if (display === 'none') {
-                    console.log('loadSpin is hidden');
+                const conditionMet = shouldAppear ? display === 'block' : display === 'none';
+                if (conditionMet) {
+                    console.log(`loadSpin is ${shouldAppear ? 'visible' : 'hidden'}`);
                     resolve(true);
                 } else {
-                    console.log('loadSpin is visible');
+                    console.log(`loadSpin is ${shouldAppear ? 'hidden' : 'visible'}`);
                     if (Date.now() - startTime >= timeout) {
-                        reject(new Error('Timeout: loadSpin did not disappear within 5 seconds'));
+                        reject(new Error(`Timeout: loadSpin did not ${shouldAppear ? 'appear' : 'disappear'} within 5 seconds`));
                     } else {
                         setTimeout(checkLoadSpin, interval);
                     }
@@ -94,7 +95,6 @@ function waitUntilLoadSpinDisappear() {
 }
 
 
-
 // place a listner on all patients names (ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 etc.)
 function PatientSelectEntryListener() {
     console.log('[debug] PatientSelectEntryListener started');
@@ -107,13 +107,13 @@ function PatientSelectEntryListener() {
         elements[i].addEventListener('keydown', function (event) {
             if (event.key === 'Enter') {
                 console.log('Enter pressed on patient name');
-                setTimeout(function () {
-                    waitUntilLoadSpinDisappear().then(() => {
+                waitForLoadSpin(true).then(() => {
+                    waitForLoadSpin(false).then(() => {
                         setTimeout(function () {
                             highlightDate();
                         }, 300);
                     })
-                }, 300);
+                });
             }
         });
     }
