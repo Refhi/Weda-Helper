@@ -89,18 +89,18 @@ async function processFoundPdfIframe(elements) {
     // Ajout d'un bouton de reset du sessionStorage correspondant
     addResetButton(hashId);
 
+    // Récupération des données déjà extraites pour ce PDF
+    extractedData = getPdfData(hashId);
 
-    // TODO : problème de permanence de données pour 
+
     // Données déjà extraites pour ce PDF ?
-    let { alreadyExtractedData, alreadyImported } = checkAlreadyExtractedData(hashId);
-    if (alreadyImported) {
+    if (extractedData.alreadyImported) {
         console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction. Renvoi vers le champ de recherche ou le 1er patient de la liste si présent");
         selectFirstPatientOrSearchField();
         return;
     }
-    if (alreadyExtractedData) {
-        console.log("[pdfParser] Données déjà extraites pour ce PDF. Utilisation des données existantes.", alreadyExtractedData);
-        extractedData = alreadyExtractedData;
+    if (Object.keys(extractedData).length > 0) {
+        console.log("[pdfParser] Données déjà extraites pour ce PDF. Utilisation des données existantes.", extractedData);
     } else {
         console.log("[pdfParser] Données non extraites pour ce PDF. Extraction des données.");
         // Extraction des informations pertinentes
@@ -114,7 +114,7 @@ async function processFoundPdfIframe(elements) {
                 console.log('[pdfParser] dataMatrixReturn', dataMatrixReturn);
                 if (!dataMatrixReturn) {
                     console.log("[pdfParser] Datamatrix non trouvé.");
-                    sessionStorage.setItem(hashId, JSON.stringify({ alreadyImported: true }));
+                    setPdfData(hashId, { alreadyImported: true });
                 }
             }
         }
@@ -122,9 +122,8 @@ async function processFoundPdfIframe(elements) {
         // Stockage et priorisation des informations pertinentes dans le sessionStorage
         // => le dataMatrix est prioritaire sur les informations extraites du texte
         completeExtractedData(extractedData, dataMatrixReturn);
-        let extractedDataStr = JSON.stringify(extractedData);
-        console.log('[pdfParser] extractedData', extractedDataStr);
-        sessionStorage.setItem(hashId, extractedDataStr);
+        console.log('[pdfParser] extractedData', JSON.stringify(extractedData));
+        setPdfData(hashId, extractedData);
     }
 
     // Partie "non-neutre" - entraine un rafraichissement de la page ou un changement du DOM
@@ -133,7 +132,7 @@ async function processFoundPdfIframe(elements) {
     // => on pourrait rechercher par INS si on a le datamatrix, mais cela impliquerait de
     //    naviguer entre les différents types de recherche dans la fenêtre d'import
 
-    let handlePatientSearchReturn = handlePatientSearch(extractedData);
+    let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
     if (handlePatientSearchReturn.status === 'refresh') {
         console.log("[pdfParser] handlePatientSearchReturn", handlePatientSearchReturn.message);
         // La procédure n'est pas arrivée au bout, un rafraichissement de la page est attendu
@@ -158,6 +157,42 @@ async function processFoundPdfIframe(elements) {
 
 
 // Fonctions utilitaires
+/**
+ * Récupère les données du PDF en fonction du hash.
+ * 
+ * @param {string} hashId - L'identifiant unique du hash pour le PDF.
+ * @param {string|null} [key=null] - La clé des données à récupérer.
+ * 
+ * @returns {Object|null} - Les données récupérées depuis le sessionStorage si key est null, sinon la valeur associée à la clé.
+ */
+function getPdfData(hashId, key = null) {
+    if (typeof hashId !== 'string') {
+        throw new Error('hashId doit être une chaîne de caractères');
+    }
+
+    let storedData = JSON.parse(sessionStorage.getItem(hashId)) || {};
+    return key === null ? storedData : (storedData[key] || null);
+}
+
+/**
+ * Stocke les données du PDF en fonction du hash.
+ * 
+ * @param {string} hashId - L'identifiant unique du hash pour le PDF.
+ * @param {Object} data - Les données à stocker.
+ */
+function setPdfData(hashId, data) {
+    if (typeof hashId !== 'string') {
+        throw new Error('hashId doit être une chaîne de caractères');
+    }
+
+    if (typeof data !== 'object' || data === null) {
+        throw new Error('Les données à stocker doivent être un objet non nul');
+    }
+
+    let storedData = JSON.parse(sessionStorage.getItem(hashId)) || {};
+    let mergedData = { ...storedData, ...data };
+    sessionStorage.setItem(hashId, JSON.stringify(mergedData));
+}
 
 // Rechercher quels types de recherche sont possibles
 function checkSearchPossibility(searchOptionValue) {
@@ -189,18 +224,18 @@ function checkSearchPossibility(searchOptionValue) {
  * @returns {string} status - Le statut de la recherche ('refresh', 'continue').
  * @returns {string} message - Le message associé au statut.
  */
-function handlePatientSearch(extractedData) {
+function handlePatientSearch(extractedData, hashId) {
     // On initialise les priorités de recherche en vérifiant si les données sont présentes et cohérentes
     const searchPriorities = [
         { type: "InsSearch", data: extractedData.nirMatches && extractedData.nirMatches.length > 0 ? extractedData.nirMatches[0] : null },
+        // "Nom" porte mal son nom : on peut y rechercher pas mal de choses, dont le NIR tronqué (sans clé) ce qui est utile pour les INS non validés
+        { type: "Nom", data: extractedData.nirMatches && extractedData.nirMatches.length > 0 ? extractedData.nirMatches[0] : null },
         { type: "Naissance", data: extractedData.dateOfBirth && extractedData.dateOfBirth !== formatDate(new Date()) ? extractedData.dateOfBirth : null },
-        { type: "Nom", data: extractedData.nameMatches && extractedData.nameMatches.length > 0 ? extractedData.nameMatches[0] : null }
+
     ];
 
     for (let search of searchPriorities) {
-        // TODO : problème de rémanence de extractedData :
-        // Lors du refresh, il "oublie" les données extraites et les recherches déjà effectuées
-        // => créer une fonction dédiée qui accède au sessionStorage en fonction du hash ?
+        console.log("[pdfParser] Les méthodes refusées sont :", extractedData.failedSearches);
         if (search.data && !extractedData.failedSearches.includes(search.type)) {
             let properSearched = lookupPatient(search.type, search.data);
             if (properSearched.status === 'success') {
@@ -211,6 +246,7 @@ function handlePatientSearch(extractedData) {
                     return { status: 'refresh', message: 'Patient trouvé et cliqué' };
                 } else if (clicPatientReturn.status === 'error') {
                     extractedData.failedSearches.push(search.type);
+                    setPdfData(hashId, extractedData); // permet la rémanence des données
                 } else if (clicPatientReturn.status === 'continue') {
                     console.log("[pdfParser] Patient non trouvé ou correctement sélectionné, je continue la procédure.");
                     return { status: 'continue', message: 'Patient non trouvé ou correctement sélectionné' };
@@ -226,6 +262,7 @@ function handlePatientSearch(extractedData) {
                 // On marque l'échec de cette méthode de recherche => la boucle suivante l'écartera
                 console.error(`[pdfParser] Echec de la méthode de recherche :`, properSearched.message, `pour ${search.type}`, "je la marque comme un échec et je continue la procédure.");
                 extractedData.failedSearches.push(search.type);
+                setPdfData(hashId, extractedData); // permet la rémanence des données
             }
         }
     }
@@ -428,9 +465,11 @@ function completeExtractedData(extractedData, dataMatrixReturn) {
 // Vérifie si les données d'un pdf ont déjà été extraites
 function checkAlreadyExtractedData(hashId) {
     const alreadyExtractedData = JSON.parse(sessionStorage.getItem(hashId));
-    // console.log('[pdfParser] alreadyExtractedData', alreadyExtractedData, hashId);
-    const alreadyImported = alreadyExtractedData ? alreadyExtractedData.alreadyImported : false;
-    return { alreadyExtractedData, alreadyImported };
+    if (alreadyExtractedData) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 
@@ -512,8 +551,6 @@ function lookupPatient(searchType, data) {
         return { status: 'error', message: `Type de recherche ${searchType} non disponible.` };
     }
 
-
-
     // On vérifie que la valeur de recherche est disponible (les comptes secretaire n'ont pas forcément la recherche par INS)
     if (!checkSearchPossibility(searchType)) {
         console.error(`[pdfParser] Type de recherche ${searchType} non disponible.`);
@@ -524,6 +561,9 @@ function lookupPatient(searchType, data) {
         return { status: 'searchTypeFail', message: `Type de recherche ${searchType} non disponible.` };
     }
 
+    // Petite conversion de donnée : si on recherche par nom, on veut en fait une recherche par NIR tronqué (sans clé)
+    if (searchType === "Nom") { data = data.substring(0, 13); }
+
     const dropDownResearch = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_DropDownListRechechePatient']");
 
     if (dropDownResearch.value !== searchType) {
@@ -531,7 +571,7 @@ function lookupPatient(searchType, data) {
         dropDownResearch.value = searchType;
         dropDownResearch.dispatchEvent(new Event('change'));
         return { status: 'refresh', message: 'Change Search Mode' };
-        
+
     } else {
         console.log(`[pdfParser] Menu de recherche déjà réglé sur ${searchType}`);
     }
