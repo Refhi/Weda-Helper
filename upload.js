@@ -62,20 +62,37 @@ addTweak('/FolderMedical/PopUpUploader.aspx', '*hotkeyUpload', function() {
         console.log('Dernier upload il y a moins de 5 secondes, on ajoute un bouton Valider et archiver');
         let boutonValider = document.getElementById('ButtonValidFileStream');
         if (boutonValider) {
-            console.log('ButtonValidFileStream found, ajout du bouton Valider et archiver', boutonValider);
+            console.log('ButtonValidFileStream found, ajout des boutons Valider et archiver et Valider et supprimer', boutonValider);
             // Ajout du bouton à côté de selectors[0]
-            let button = document.createElement('button');
-            button.id = 'WHButtonValidAndArchive';
-            button.className = 'button';
-            button.value = 'Valider et archiver';
-            button.innerHTML = 'Valider et archiver';
-            button.type = 'button'; // pour éviter le submit
+            let deleteButton = document.createElement('button');
+            deleteButton.id = 'WHButtonValidAndDelete'
+            deleteButton.className = 'button';
+            deleteButton.value = 'Valider et mettre à la corbeille';
+            deleteButton.innerHTML = 'Valider et mettre à la corbeille';
+            deleteButton.type = 'button'; // pour éviter le submit
+            deleteButton.style = 'color: #f00 !important'
+
+            let archiveButton = document.createElement('button');
+            archiveButton.id = 'WHButtonValidAndArchive';
+            archiveButton.className = 'button';
+            archiveButton.value = 'Valider et archiver';
+            archiveButton.innerHTML = 'Valider et archiver';
+            archiveButton.type = 'button'; // pour éviter le submit
             // Insérer le bouton après l'élément trouvé
-            boutonValider.parentNode.insertBefore(button, boutonValider.nextSibling);
+
+            boutonValider.parentNode.insertBefore(deleteButton, boutonValider.nextSibling);
+            boutonValider.parentNode.insertBefore(archiveButton, boutonValider.nextSibling);
             // Ajout de l'événement en cas de clic
-            button.onclick = function() {
+            archiveButton.onclick = function() {
                 console.log('[Archivage auto] envoi au companion de la demande d\'archivage');
                 sendToCompanion('archiveLastUpload', null, null, function (response) {
+                    console.log('[Archivage auto] réponse du companion', response);
+                        boutonValider.click();
+                });
+            };
+            deleteButton.onclick = function() {
+                console.log('[Archivage auto] envoi au companion de la demande de supression');
+                sendToCompanion('trashLastUpload', null, null, function (response) {
                     console.log('[Archivage auto] réponse du companion', response);
                         boutonValider.click();
                 });
