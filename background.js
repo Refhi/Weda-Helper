@@ -38,22 +38,40 @@ const TYPE_HTML = "html";
 const TYPE_RADIO = "radio";
 const TYPE_TITLE = "title";
 
+const PdfParserAutoCategoryDefaut = JSON.stringify([
+    // Niveau 1 de spécificité : la présence du mot-clé signe directement le type de document sans ambiguïté
+    ["LABORATOIRE/BIO", ["BIOCEANE", "LABORATOIRE"]],
+    ["Arrêt de travail", ["avis d’arrêt de travail"]],
+    ["CRO/CRH", ["Compte Rendu Opératoire", "Compte Rendu Hospitalier", "Compte Rendu d'Hospitalisation", "COMPTE RENDU OPERATOIRE"]],
+    ["Consultation", ["COMPTE-RENDU DE CONSULTATION"]],
+    ["PARAMEDICAL", ["BILAN ORTHOPTIQUE"]],
+    // Niveau 2 de spécificité : des mots plus ambivalents, mais qui,
+    // parcouru dans l'ordre devraient permettre de déterminer le type de document
+    ["Courrier", ["Chère Consœur", "chère consoeur", "Cher confrère", "chère amie", "cher ami", "Cherconfrére", "Chèreconsoeur", "Chèreconsœur"]],
+    ["IMAGERIE", ["imagerie", "radiographie", "scanner", "IRM", "radiologie"]],
+    ["Administratif", []],
+    ["Arrêt de travail", ["arrêt de travail", "congé maladie"]],
+    ["Biologie", ["biologie", "analyse sanguine"]],
+    ["Bon de transport", ["bon de transport", "transport médical"]],
+    ["Certificat", ["certificat", "attestation"]],
+    ["ECG", ["ecg", "électrocardiogramme"]],
+    ["EFR", ["exploration fonctionnelle respiratoire"]],
+    ["LABORATOIRE/BIO", ["laboratoire"]],
+    ["MT", ["Déclaration de Médecin Traitant", "déclaration médecin traitant"]],
+    ["PARAMEDICAL", ["paramédical", "soins"]],
+    ["SPECIALISTE", ["spécialiste", "consultation spécialisée"]],
+    ["Consultation", ["consultation", "visite médicale"]],
+    ["Ordonnance", ["ordonnance", "prescription", "60-3937"]], // 60-3937 est le cerfa des bizones
+    // Niveau 3 de spécificité : des mots plus génériques, qui peuvent être présents dans plusieurs types de documents
+    ["Compte Rendu", ["compte rendu", "compte-rendu", "automesure"]],
+]);
+
 
 var advancedDefaultSettings = [{
     "name": "Options générales",
     "description": "Des options générales valables partout",
     "type": TYPE_TITLE,
     "options": [{
-        "name": "TweakImports",
-        "type": TYPE_BOOL,
-        "description": "Activer les modifications pour la fenêtre d'importations (page télécharger des documents).",
-        "default": true
-    }, {
-        "name": "autoPdfParser",
-        "type": TYPE_BOOL,
-        "description": "Analyse automatiquement les pdfs en attente d'import et essaie d'en extraire les informations (date, nom patient, etc.).",
-        "default": true
-    }, {
         "name": "EnableHelp",
         "type": TYPE_BOOL,
         "description": "Affiche l'aide en appuyant sur Alt de manière prolongée.",
@@ -191,6 +209,31 @@ var advancedDefaultSettings = [{
             "description": "Permuter le titre du corps du message et de la pièce jointe dans la messagerie sécurisée.",
             "default": false
         }]
+    }, {
+        "name": "Options d'importation",
+        "type": TYPE_TITLE,
+        "options": [{
+            "name": "TweakImports",
+            "type": TYPE_BOOL,
+            "description": "Activer les modifications pour la fenêtre d'importations (page télécharger des documents). : modification de l'odre des tabulations et agrandissement de la fenêtre de visualisation des documents.",
+            "default": true
+        }, {
+            "name": "autoPdfParser",
+            "type": TYPE_BOOL,
+            "description": "Analyse automatiquement les pdfs en attente d'import et essaie d'en extraire les informations (date, nom patient, etc.).",
+            "default": true,
+            "subOptions": [{
+                "name": "PdfParserAutoTitle",
+                "type": TYPE_BOOL,
+                "description": "Crée automatiquement un titre pour les documents importés.",
+                "default": true
+            }, {
+                "name": "PdfParserAutoCategoryDict",
+                "type": TYPE_TEXT,
+                "description": "⤷ Catégorise les documents importés dans les [\"catégories\", [\"selon\", \"les\", \"mots clés\", \"trouvés\"]]. Format : [[\"Catégorie1\",[\"mot1\",\"mot2\"]],[\"Catégorie2\",[\"mot3\",\"mot4\"]]]. Modifiez-le en fonction des catégories utilisées dans vos imports. Sensible à la casse. Mettez [] pour désactiver. Vous pouvez mettre plusieurs fois la même catégorie avec des mots clés de moins en moins spécifiques pour une meilleure précision. /!\\ Attention à respecter scrupuleusement la syntaxe de l'exemple /!\\",
+                "default": PdfParserAutoCategoryDefaut
+            }]
+        }]
     }]
 }, {
     "name": "Options de consultation",
@@ -219,7 +262,7 @@ var advancedDefaultSettings = [{
     }, {
         "name": "defautDataType",
         "type": TYPE_TEXT,
-        "description": "Types de données automatique (vider pour désactiver. Pas d'espaces. Sensible à la Case.) Défaut = TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%",
+        "description": "⤷ Types de données automatique (vider pour désactiver. Pas d'espaces. Sensible à la Case.) Défaut = TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%",
         "default": "TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%,Z-IMC:ds"
     }]
 }, {

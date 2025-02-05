@@ -147,6 +147,10 @@ async function processFoundPdfIframe(elements) {
     // Marquage des données comme déjà importées
     markDataAsImported(hashId, extractedData);
 
+    // Enregistrement des métriques approximatives
+    recordMetrics({ clicks: 9, drags: 9, keyStrokes: 10 });
+
+
     // Mise du focus sur la date du document importé
     setTimeout(function () {
         highlightDate();
@@ -311,7 +315,6 @@ function addResetButton(hashId) {
 function highlightDate() {
     let dateSelector = `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_${actualImportActionLine()}`;
     console.log("[pdfParser] Mise en surbrillance de la date pour faciliter la saisie.");
-    recordMetrics({ clicks: 1, drags: 1 });
     document.querySelector(dateSelector).focus();
     document.querySelector(dateSelector).select();
 }
@@ -360,33 +363,35 @@ function setExtractedDataInForm(extractedData) {
         documentTitle: document.querySelector(selectors.documentTitle)
     };
 
-    // Données à insérer dans les champs du formulaire
-    const fields = {
-        documentDate: extractedData.documentDate,
-        documentType: extractedData.documentType,
-        documentTitle: extractedData.documentTitle
-    };
+    getOption('PdfParserAutoTitle', (PdfParserAutoTitle) => {
+        // Données à insérer dans les champs du formulaire
+        const fields = {
+            documentDate: extractedData.documentDate,
+            documentType: extractedData.documentType,
+            documentTitle: PdfParserAutoTitle ? extractedData.documentTitle : null
+        };
 
-    console.log('[pdfParser] INtroduction des données dans les champs : ', fields);
+        console.log('[pdfParser] INtroduction des données dans les champs : ', fields);
 
-    // Parcourt chaque champ et met à jour la valeur si elle existe
-    Object.keys(fields).forEach(key => {
-        if (fields[key] && inputs[key]) {
-            if (key === 'documentType') { // Cas particulier pour le champ documentType
-                // Trouver l'option correspondante pour documentType
-                const options = inputs[key].options;
-                for (let i = 0; i < options.length; i++) {
-                    if (options[i].text === fields[key]) {
-                        inputs[key].value = options[i].value;
-                        break;
+        // Parcourt chaque champ et met à jour la valeur si elle existe
+        Object.keys(fields).forEach(key => {
+            if (fields[key] && inputs[key]) {
+                if (key === 'documentType') { // Cas particulier pour le champ documentType
+                    // Trouver l'option correspondante pour documentType
+                    const options = inputs[key].options;
+                    for (let i = 0; i < options.length; i++) {
+                        if (options[i].text === fields[key]) {
+                            inputs[key].value = options[i].value;
+                            break;
+                        }
                     }
+                } else {
+                    inputs[key].value = fields[key];
                 }
-            } else {
-                inputs[key].value = fields[key];
+                // Déclenche un événement de changement pour chaque champ mis à jour
+                inputs[key].dispatchEvent(new Event('change'));
             }
-            // Déclenche un événement de changement pour chaque champ mis à jour
-            inputs[key].dispatchEvent(new Event('change'));
-        }
+        });
     });
 }
 
@@ -1071,47 +1076,35 @@ function determineDocumentType(fullText) {
     // console.log('[pdfParser] determineDocumentType');
     // On utilise un tableau de tableaux pour permettre de parcourir les types de documents par ordre de spécificité
     // Et de mettre plusieurs fois la même clé, avec des valeurs de moins en moins exigeantes
-    const documentTypes = [
-        // Niveau 1 de spécificité : la présence du mot-clé signe directement le type de document sans ambiguïté
-        ["LABORATOIRE/BIO", ["BIOCEANE", "LABORATOIRE"]],
-        ["Arrêt de travail", ["avis d’arrêt de travail"]],
-        ["CRO/CRH", ["Compte Rendu Opératoire", "Compte Rendu Hospitalier", "Compte Rendu d'Hospitalisation", "COMPTE RENDU OPERATOIRE"]],
-        ["Consultation", ["COMPTE-RENDU DE CONSULTATION"]],
-        ["PARAMEDICAL", ["BILAN ORTHOPTIQUE"]],
-        // Niveau 2 de spécificité : des mots plus ambivalents, mais qui,
-        // parcouru dans l'ordre devraient permettre de déterminer le type de document
-        ["Courrier", ["Chère Consœur", "chère consoeur", "Cher confrère", "chère amie", "cher ami", "Cherconfrére", "Chèreconsoeur", "Chèreconsœur"]],
-        ["IMAGERIE", ["imagerie", "radiographie", "scanner", "IRM", "radiologie"]],
-        ["Administratif", []],
-        ["Arrêt de travail", ["arrêt de travail", "congé maladie"]],
-        ["Biologie", ["biologie", "analyse sanguine"]],
-        ["Bon de transport", ["bon de transport", "transport médical"]],
-        ["Certificat", ["certificat", "attestation"]],
-        ["ECG", ["ecg", "électrocardiogramme"]],
-        ["EFR", ["exploration fonctionnelle respiratoire"]],
-        ["LABORATOIRE/BIO", ["laboratoire"]],
-        ["MT", ["Déclaration de Médecin Traitant", "déclaration médecin traitant"]],
-        ["PARAMEDICAL", ["paramédical", "soins"]],
-        ["SPECIALISTE", ["spécialiste", "consultation spécialisée"]],
-        ["Consultation", ["consultation", "visite médicale"]],
-        ["Ordonnance", ["ordonnance", "prescription", "60-3937"]], // 60-3937 est le cerfa des bizones
-        // Niveau 3 de spécificité : des mots plus génériques, qui peuvent être présents dans plusieurs types de documents
-        ["Compte Rendu", ["compte rendu", "compte-rendu", "automesure"]],
-    ];
+    getOption('PdfParserAutoCategoryDict', (PdfParserAutoCategoryDict) => {
+        try {
+            documentTypes = JSON.parse(PdfParserAutoCategoryDict);
+        } catch (error) {
+            console.error('[pdfParser] Erreur lors de l\'analyse du JSON pour PdfParserAutoCategoryDict:', error, PdfParserAutoCategoryDict);
+            if (confirm('Erreur de syntaxe pour la catégorisation automatique du document. Vérifiez dans les options de Weda-Helper. Cliquez sur OK pour réinitialiser ce paramètre.')) {
+                chrome.storage.local.remove('PdfParserAutoCategoryDict', function () {
+                    console.log('[pdfParser] PdfParserAutoCategoryDict réinitialisé');
+                    alert('PdfParserAutoCategoryDict réinitialisé. Veuillez recharger la page pour appliquer les changements.');
+                });
+            }
 
-    for (const [type, keywords] of documentTypes) {
-        // console.log('[pdfParser] recherche du type de document', type);
-        for (const keyword of keywords) {
-            // Remplacer les espaces par \s* pour permettre les espaces optionnels
-            const regex = new RegExp(keyword.replace(/\s+/g, '\\s*'), 'i');
-            if (regex.test(fullText)) {
-                console.log('[pdfParser] type de document trouvé', type, 'car présence de', keyword);
-                return type;
+            return null;
+        }
+
+        for (const [type, keywords] of documentTypes) {
+            // console.log('[pdfParser] recherche du type de document', type);
+            for (const keyword of keywords) {
+                // Remplacer les espaces par \s* pour permettre les espaces optionnels
+                const regex = new RegExp(keyword.replace(/\s+/g, '\\s*'), 'i');
+                if (regex.test(fullText)) {
+                    console.log('[pdfParser] type de document trouvé', type, 'car présence de', keyword);
+                    return type;
+                }
             }
         }
-    }
-    console.log('[pdfParser] type de document non trouvé');
-    return null;
+        console.log('[pdfParser] type de document non trouvé');
+        return null;
+    });
 }
 
 
