@@ -1077,6 +1077,7 @@ function determineDocumentType(fullText) {
     // On utilise un tableau de tableaux pour permettre de parcourir les types de documents par ordre de spécificité
     // Et de mettre plusieurs fois la même clé, avec des valeurs de moins en moins exigeantes
     getOption('PdfParserAutoCategoryDict', (PdfParserAutoCategoryDict) => {
+        // TODO utiliser ici la fonction d'auto-categorisation
         try {
             documentTypes = JSON.parse(PdfParserAutoCategoryDict);
         } catch (error) {
@@ -1106,6 +1107,12 @@ function determineDocumentType(fullText) {
         return null;
     });
 }
+
+// TODO : créer une option pour récupérer les catégories possibles de classifications
+// Et les intégrer dans une liste toute faite dans PdfParserAutoCategoryDict avec le bon format
+// Doit également mettre des faux mots-clés d'exemples pour faciliter le travail de l'utilisateur
+// Sauf si la catégorie existe déjà (non-case-sensitive) auquel cas on réutilise les mots-clés existants
+// en ajustant la case de la clé
 
 
 // Fonction pour trouver la spécialité dans le texte
