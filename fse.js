@@ -783,22 +783,6 @@ addTweak('/vitalzen/fse.aspx', '*autoSelectRienAMO', function () {
     });
 });
 
-// Ajout d'un timestamp toutes les secondes pour acter qu'une FSE est bien en usage actif
-addTweak('/vitalzen/fse.aspx', '*FSEActive', function () {
-    function saveTimestamp() {
-        let timestamp = Date.now();
-        chrome.storage.local.set({ FSEActiveTimestamp: timestamp }, function () {
-            console.log('[FSEActive] FSE en cours, actualisation du timestamp');
-            // Est utilisé pour vérifier si la FSE est active afin d'éviter la fermeture
-            // d'un onglet post-impression pendant ce temps, ce qui coupe 
-            // parfois la connexion avec vitalZen (rare, mais TRES pénible)
-            // Fix seulement partiel hélas
-        });
-    }
-
-    saveTimestamp(); // Sauvegarde initiale
-    setInterval(saveTimestamp, 1000); // Sauvegarde toutes les secondes
-});
 
 // Ajout d'un écouteur de click sur le bouton "Sécuriser" pour déclencher tpesender
 function tpesender() {

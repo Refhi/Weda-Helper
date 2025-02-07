@@ -73,7 +73,7 @@ function waitLegacyForElement(selector, text = null, timeout, callback) {
 function afterMutations({ delay, callback, callBackId = "callback id undefined", preventMultiple = false }) {
     let timeoutId = null;
     const action = () => {
-        console.log(`Aucune mutation détectée pendant ${delay}ms, je considère la page comme chargée. Appel du Callback. (${callBackId})`);
+        console.debug(`Aucune mutation détectée pendant ${delay}ms, je considère la page comme chargée. Appel du Callback. (${callBackId})`);
         if (preventMultiple) {
             observer.disconnect();
             callback();
@@ -158,19 +158,21 @@ function waitForElement({ selector, callback, parentElement = document, justOnce
 
 
 
-function observeDiseapearance(element, callback, justOnce = false) {
-    function callBackIfElementDisapear() {
-        if (!document.contains(element)) {
-            callback();
-            if (justOnce) {
-                observer.disconnect();
-            }
-        }
-    }
+function observeDiseapearance(element, callback) {
+    const interval = 100; // 100ms
+    const timeout = 30000; // 30 seconds
+    let elapsed = 0;
 
-    let observer = new MutationObserver(callBackIfElementDisapear);
-    let config = { childList: true, subtree: true };
-    observer.observe(document, config);
+    const intervalId = setInterval(() => {
+        if (!document.contains(element)) {
+            clearInterval(intervalId);
+            callback();
+        }
+        elapsed += interval;
+        if (elapsed >= timeout) {
+            clearInterval(intervalId);
+        }
+    }, interval);
 }
 
 function waitForWeda(logWait, callback) {
@@ -462,3 +464,23 @@ function setLastPrintDate() {
     sessionStorage.setItem('lastPrintDate', date.toISOString());
     console.log('Dernière date d\'impression enregistrée :', date);
 }
+
+
+// Clic sur certains éléments où le CSP bloque le clic quand on est en isolated
+// Passe par un script injecté pour contourner le problème
+
+// Initialise d'abord FWNotif.js
+function startClicScript() {
+    var scriptClicElements = document.createElement('script');
+    scriptClicElements.src = chrome.runtime.getURL('FW_scripts/clickElement.js');
+    (document.head || document.documentElement).appendChild(scriptClicElements);
+}
+startClicScript();
+
+function clicCSPLockedElement(elementSelector) {
+    console.log('Clic sur élément bloqué par CSP :', elementSelector);
+    const event = new CustomEvent('clicElement', { detail: elementSelector });
+    document.dispatchEvent(event);        
+}   
+
+

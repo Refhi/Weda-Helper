@@ -23,12 +23,13 @@ const keyCommands = {
         handlePrint('download', 1);
     },
     'send_document': function () {
-        clickPrintModelNumber(0, true); //TODO à faire autrement, handlePrint n'est pas adapté
+        send_document(0);
     },
     'send_document_bis': function () {
-        clickPrintModelNumber(0, true); 
+        send_document(1);
     },
     'upload_latest_file': uploadLatest,
+    'twain_scan': startscanning,
     'insert_date': insertDate,
     'push_enregistrer': function () {
         console.log('push_enregistrer activé');
@@ -36,7 +37,12 @@ const keyCommands = {
     },
     'push_delete': function () {
         console.log('push_delete activé');
-        clickElementByClass('button delete');
+        const binElementCurrentImport = document.getElementById(`ContentPlaceHolder1_FileStreamClassementsGrid_DeleteButtonGridFileStreamClassement_${actualImportActionLine()}`);
+        if (binElementCurrentImport) {
+            binElementCurrentImport.click();
+        } else {
+            clickElementByClass('button delete');
+        }
     },
     'shortcut_w': function () {
         console.log('shortcut_w activé');
@@ -93,8 +99,8 @@ function throttleWithPersistence(func, limit) {
     // chrome.storage.local.get(['lastRan'], function(result) {
     //     lastRan = result.lastRan || 0;  // Si lastRan n'existe pas, initialisez-le à 0
     // });
- 
-    return function(...args) {
+
+    return function (...args) {
         const context = this;
 
         // Vérifier si la page a débuté son chargement depuis au moins 500ms
@@ -109,17 +115,17 @@ function throttleWithPersistence(func, limit) {
             console.log('[throttleWithPersistence] Exécution de la fonction car lastRan est', lastRan, 'et Date.now() est', Date.now());
             func.apply(context, args);
             lastRan = Date.now();
- 
+
             // Sauvegarder la nouvelle valeur de lastRan dans chrome.storage.local
             chrome.storage.local.set({ lastRan: lastRan });
         } else {
             // Si la fonction est appelée trop vite, utiliser un timeout
             console.log('[throttleWithPersistence] La fonction a été appelée trop vite, inhibiteur de délai');
             clearTimeout(lastFunc);
-            lastFunc = setTimeout(function() {
+            lastFunc = setTimeout(function () {
                 if ((Date.now() - lastRan) >= limit) {
                     lastRan = Date.now();
- 
+
                     // Sauvegarder la nouvelle valeur de lastRan
                     chrome.storage.local.set({ lastRan: lastRan });
                 }
@@ -303,6 +309,16 @@ function insertDate() {
     }
 }
 
+// Débute le scan de documents
+function startscanning() {
+    console.log('startscanning activé');
+    const scanButtonSelector = 'a.level2.dynamic[href^="javascript:void(window.weda.actions.startScan"]';
+    let scanButton = document.querySelector(scanButtonSelector);
+    if (scanButton) {
+        clicCSPLockedElement(scanButtonSelector);
+    }
+}
+
 
 // Clique sur un bouton selon sa classe
 function clickElementByClass(className) {
@@ -459,33 +475,33 @@ addTweak('*', 'WarpButtons', async function () {
         function addIdToButton(button) {
             var actions = {
                 'Annuler': [
-                    'Annuler', 
+                    'Annuler',
                     'ANNULER',
-                    'Continuez sans l\'ordonnance numérique', 
-                    'Non', 
-                    'NON', 
+                    'Continuez sans l\'ordonnance numérique',
+                    'Non',
+                    'NON',
                     'Ne pas inclure',
                     'FSE dégradée'
                 ],
                 'Valider': [
-                    'Oui', 
-                    'OUI', 
-                    'Confirmer', 
-                    'Valider', 
+                    'Oui',
+                    'OUI',
+                    'Confirmer',
+                    'Valider',
                     'VALIDER',
-                    'Réessayer', 
-                    'Désactiver aujourd\'hui', 
-                    'Transmettre', 
-                    'Importer', 
-                    'Inclure', 
-                    'Sécuriser', 
+                    'Réessayer',
+                    'Désactiver aujourd\'hui',
+                    'Transmettre',
+                    'Importer',
+                    'Inclure',
+                    'Sécuriser',
                     'Affecter ce résultat',
                     'FSE Teleconsultation'
                 ]
             };
             if (button) {
                 var buttonText = button.textContent;
-                if (buttonText.length == 0){
+                if (buttonText.length == 0) {
                     buttonText = button.value; //Bypass pour les boutons non Angular qui ont un textContent vide
                 }
                 var action = Object.keys(actions).find(key => actions[key].includes(buttonText));
@@ -516,7 +532,7 @@ addTweak('*', 'WarpButtons', async function () {
                 span.style.display = 'inline-block'; // S'assurer que le span ne prenne pas plus de hauteur que nécessaire
                 span.style.pointerEvents = 'none'; // Empêcher les événements de pointer sur le span
             }
-        
+
             if (button) {
                 console.log('ajout de raccourcis au button', button);
                 var raccourci = raccourcis[button.id];
@@ -530,7 +546,7 @@ addTweak('*', 'WarpButtons', async function () {
                 }
             }
         }
-        
+
 
 
 
@@ -553,7 +569,7 @@ addTweak('*', 'WarpButtons', async function () {
         '.tab_valid_cancel .button', // Notamment dans la déclaration de MT
         '.boutonCustonWH'
     ];
-    
+
     selectors.forEach(selector => {
         waitForElement({
             selector: selector,
@@ -561,3 +577,16 @@ addTweak('*', 'WarpButtons', async function () {
         });
     });
 });
+
+
+// Gestion du workflow pour envoi + impression + DMP des courriers
+function send_document(printModelNumber) {
+    getOption('sendAndPrint', function (sendAndPrint) {
+        if (sendAndPrint) {
+            console.log('sendAndPrint activé');
+            handlePrint('print', printModelNumber, 'send');
+        } else {
+            clickPrintModelNumber(printModelNumber, true);
+        }
+    });
+}
