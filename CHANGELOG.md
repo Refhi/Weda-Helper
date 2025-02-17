@@ -2,6 +2,14 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+# [2.10.1]
+## Améliorations :
+- [#356](https://github.com/Refhi/Weda-Helper/issues/356) - mise en oeuvre de la catégorisation automatique avec une gestion des listes de mots-clés à chercher simplifiée
+
+## Fix :
+- [#361](https://github.com/Refhi/Weda-Helper/issues/361) - ajout de KDE pour les mots-clés de kinésithérapie
+
+
 # [2.10] - classement assisté !!!
 ## Ajouts :
 - [#327](https://github.com/Refhi/Weda-Helper/pull/327) - Ajout d'une assistance à l'import des documents avec lecture des datamatrix si besoin

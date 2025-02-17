@@ -204,7 +204,7 @@ function waitForWeda(logWait, callback) {
  * });
  * 
  */
-function getOption(optionNames, callback) {
+function getOptionValues(optionNames, callback) {
     let isInputArray = Array.isArray(optionNames);
 
     if (!isInputArray) {
@@ -233,6 +233,16 @@ function getOption(optionNames, callback) {
             }
             callback(isInputArray ? options : options[0]);
         });
+    });
+}
+
+function getOption(optionNames, callback) {
+    getOptionValues(optionNames, callback);
+}
+
+function getOptionPromise(optionNames) {
+    return new Promise((resolve, reject) => {
+        getOptionValues(optionNames, resolve);
     });
 }
 

@@ -33,6 +33,7 @@
 
 const TYPE_BOOL = "bool";
 const TYPE_TEXT = "text";
+const TYPE_JSON = "json";
 const TYPE_SMALLTEXT = "smalltext";
 const TYPE_HTML = "html";
 const TYPE_RADIO = "radio";
@@ -229,8 +230,8 @@ var advancedDefaultSettings = [{
                 "default": true
             }, {
                 "name": "PdfParserAutoCategoryDict",
-                "type": TYPE_TEXT,
-                "description": "⤷ Catégorise les documents importés dans les [\"catégories\", [\"selon\", \"les\", \"mots clés\", \"trouvés\"]]. Format : [[\"Catégorie1\",[\"mot1\",\"mot2\"]],[\"Catégorie2\",[\"mot3\",\"mot4\"]]]. Modifiez-le en fonction des catégories utilisées dans vos imports. Sensible à la casse. Mettez [] pour désactiver. Vous pouvez mettre plusieurs fois la même catégorie avec des mots clés de moins en moins spécifiques pour une meilleure précision. /!\\ Attention à respecter scrupuleusement la syntaxe de l'exemple /!\\",
+                "type": TYPE_JSON,
+                "description": "=> Catégorise les documents importés dans les catégories : selon, les, mots-clés donnés. Parcours la liste et valide la première catégorie qui correspond. Vous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés. La liste par défaut est donnée pour exemple. Vous devez initialiser la votre depuis la fenêtre des imports avec la petite icone ⚙️.",
                 "default": PdfParserAutoCategoryDefaut
             }]
         }]
@@ -607,7 +608,7 @@ function validateSettings(settings) {
         if (!option.name || typeof option.name !== 'string') {
             errors.push(`Erreur dans l'option: 'name' est manquant ou n'est pas une chaîne de caractères.`);
         }
-        if (!option.type || ![TYPE_BOOL, TYPE_TEXT, TYPE_HTML, TYPE_RADIO, TYPE_SMALLTEXT].includes(option.type)) {
+        if (!option.type || ![TYPE_BOOL, TYPE_TEXT, TYPE_HTML, TYPE_RADIO, TYPE_SMALLTEXT, TYPE_JSON].includes(option.type)) {
             errors.push(`Erreur dans l'option '${option.name}': 'type' est manquant ou invalide.`);
         }
         if (!option.description || typeof option.description !== 'string') {
