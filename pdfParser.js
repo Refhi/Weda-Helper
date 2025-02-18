@@ -34,7 +34,7 @@
 // ------------------------
 
 // 1. Injection du script
-addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
+addTweak(['/FolderMedical/UpLoaderForm.aspx','/FolderMedical/WedaEchanges/'], 'autoPdfParser', function () {
     // 2. Attente de l'apparition de l'iframe contenant le PDF
     waitForElement({
         // l'id est splité car il y a un chiffre variable au milieu (1 ou 2 selon que l'option
