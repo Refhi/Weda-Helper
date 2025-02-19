@@ -188,6 +188,7 @@ function waitForWeda(logWait, callback) {
 /**
  * Récupère la valeur d'une ou plusieurs options depuis le stockage local de Chrome.
  * Si une option n'est pas trouvée, elle utilise la valeur par défaut des paramètres.
+ * @see getOptionPromise pour une version utilisant les Promesses
  *
  * @param {string|string[]} optionNames - Le nom de l'option ou un tableau de noms d'options à récupérer.
  * @param {function} callback - La fonction de rappel à exécuter avec les valeurs des options récupérées.
@@ -203,7 +204,24 @@ function waitForWeda(logWait, callback) {
  *     console.log('Valeur de postPrintBehavior:', postPrintBehavior);
  * });
  * 
+ * 
  */
+function getOption(optionNames, callback) {
+    getOptionValues(optionNames, callback);
+}
+
+
+/**
+ * version de getOption utilisant les Promesses
+ * @see getOption pour une version utilisant les callbacks 
+ */
+function getOptionPromise(optionNames) {
+    return new Promise((resolve, reject) => {
+        getOptionValues(optionNames, resolve);
+    });
+}
+
+
 function getOptionValues(optionNames, callback) {
     let isInputArray = Array.isArray(optionNames);
 
@@ -236,15 +254,6 @@ function getOptionValues(optionNames, callback) {
     });
 }
 
-function getOption(optionNames, callback) {
-    getOptionValues(optionNames, callback);
-}
-
-function getOptionPromise(optionNames) {
-    return new Promise((resolve, reject) => {
-        getOptionValues(optionNames, resolve);
-    });
-}
 
 /**
  * Ajoute une modification (tweak) en fonction de l'URL et des options spécifiées.
