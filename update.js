@@ -6,21 +6,23 @@ function htmlMaker(text) {
 }
 
 var nouveautes = `
-<h3>[2.10] - classement assisté !!!</h3>
-<h3>Ajouts :</h3>
+<h3>Video de présentation de Weda-Helper 3.10.1 - imports assistés</h3>
+<p>brève video explicative (merci Abel :) : <a href="https://youtu.be/D2qX9uC_J0w" target="_blank">Ouvrir dans un autre onglet pour regarder plus tard</a> ajoutez-la à votre liste de lecture YouTube : <a href="https://youtu.be/D2qX9uC_J0w&list=WL" target="_blank">Ajouter à ma liste de lecture</a></p>
+<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; height: auto;">
+    <iframe style="position: absolute; top: 0; left: 0; width: 80%; height: 80%;" src="https://www.youtube.com/embed/D2qX9uC_J0w" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+</div>
+
+<h3>Améliorations :</h3>
 <ul>
-    <li><a href="https://github.com/Refhi/Weda-Helper/pull/327" target="_blank">#327</a> - Ajout d'une assistance à l'import des documents avec lecture des datamatrix si besoin</li>
-    <li>Amélioration de la navigation par tabulation dans l'import des documents. Alt+S permet désormais de supprimer le document en cours.</li>
-    <li><a href="https://github.com/Refhi/Weda-Helper/issues/50" target="_blank">#50</a> - Ajout d'un raccourcis Ctrl+Shift+S pour lancer le scan de documents</li>
-    <li><a href="https://github.com/Refhi/Weda-Helper/issues/323" target="_blank">#323</a> - Ctrl+E ou Ctrl+Shift+E pour lancer l'envoi de courrier peut optionnellement lancer l'impression en même temps</li>
+    <li><a href="https://github.com/Refhi/Weda-Helper/issues/356" target="_blank">#356</a> - mise en oeuvre de la catégorisation automatique avec une gestion des listes de mots-clés à chercher simplifiée</li>
+    <li><a href="https://github.com/Refhi/Weda-Helper/issues/363" target="_blank">#363</a> - ajout d'une option pour éviter la date automatique dans l'import automatique</li>
 </ul>
 
 <h3>Fix :</h3>
 <ul>
-    <li><a href="https://github.com/Refhi/Weda-Helper/issues/339" target="_blank">#339</a> - Correction du système de recherche automatique de l'adresse MSsanté</li>
+    <li><a href="https://github.com/Refhi/Weda-Helper/issues/361" target="_blank">#361</a> - ajout de KDE pour les mots-clés de kinésithérapie</li>
 </ul>
 `;
-
 nouveautes = htmlMaker(nouveautes);
 
 
