@@ -233,6 +233,11 @@ var advancedDefaultSettings = [{
                 "type": TYPE_JSON,
                 "description": "=> Catégorise les documents importés dans les catégories : selon, les, mots-clés donnés. Parcours la liste et valide la première catégorie qui correspond. Vous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés. La liste par défaut est donnée pour exemple. Vous devez initialiser la votre depuis la fenêtre des imports avec la petite icone ⚙️.",
                 "default": PdfParserAutoCategoryDefaut
+            }, {
+                "name": "PdfParserAutoDate",
+                "type": TYPE_BOOL,
+                "description": "Extrait automatiquement la date du document importé.",
+                "default": true
             }]
         }]
     }]
