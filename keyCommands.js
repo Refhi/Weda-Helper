@@ -272,6 +272,7 @@ function push_annuler() {
         () => clickElementByClass('button cancel'),
         () => GenericClicker("title", "Annuler"),
         () => GenericClicker("title", "Quitter"),
+        () => clickElementById('ContentPlaceHolder1_PatientsGrid_ButtonHistoriqueResultat_0'),
         // () => clickElementByChildtextContent("ANNULER") => on passe à la gestion par targetAnnuler
     ];
 

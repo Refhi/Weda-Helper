@@ -5,6 +5,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 # [2.11]
 ## Améliorations :
 - [#360](https://github.com/Refhi/Weda-Helper/issues/360) - L'impression instantanée fonctionne désormais avec le ctrl+E réglé pour l'impression associée
+- [#353](https://github.com/Refhi/Weda-Helper/issues/353) - Alt+A permet aussi d'afficher l'historique des biologies dans la fenêtre des importations
 
 
 # [2.10.1]

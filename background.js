@@ -672,7 +672,7 @@ var defaultShortcuts = {
     },
     "push_annuler": {
         "default": "Alt+A",
-        "description": "Appuie Annuler"
+        "description": "Appuie Annuler ou affiche l'historique des biologies dans la fenêtre d'importations"
     },
     "print_meds": {
         "default": "Ctrl+P",
