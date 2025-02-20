@@ -482,6 +482,11 @@ var advancedDefaultSettings = [{
         "type": TYPE_BOOL,
         "description": "Sélectionne automatiquement \"Inclure la FSP en SCOR\".",
         "default": true
+    }, {
+        "name": "autoValidateSCOR",
+        "type": TYPE_BOOL,
+        "description": "Valide automatiquement l'inclusion du PDF de la FSE dégradée",
+        "default": false
     }]
 }, {
     "name": "Lien avec Weda-Helper-Companion",

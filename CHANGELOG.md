@@ -5,6 +5,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 # [2.10.1]
 ## Améliorations :
 - [#356](https://github.com/Refhi/Weda-Helper/issues/356) - mise en oeuvre de la catégorisation automatique avec une gestion des listes de mots-clés à chercher simplifiée
+- [#338](https://github.com/Refhi/Weda-Helper/issues/338) - validation automatique de la FSE dégradée
 
 ## Fix :
 - [#361](https://github.com/Refhi/Weda-Helper/issues/361) - ajout de KDE pour les mots-clés de kinésithérapie
