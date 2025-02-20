@@ -31,6 +31,7 @@ Cf. ci-dessous pour les retours et les contributions.
     - [Documents du cabinet](#documents-du-cabinet)
     - [Agenda](#agenda)
     - [Antécédents :](#antécédents-)
+    - [Navigation :](#navigation-)
   - [Facilitation des imports](#facilitation-des-imports)
   - [Weda-Helper-Companion](#weda-helper-companion)
   - [Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):](#problèmes-et-limitations-connues-qui-seront-peut-être-résolues-dans-de-futures-mises-à-jour)
@@ -186,6 +187,7 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 - Agrandissement de la fenêtre de prévisualisation pour faciliter la lecture du PDF à importer
 - Complétion automatique des dates partielles
 - En cliquant sur l'icône de l'extension, le bouton "Tout mettre en consultation" permet de sélectionner d'un coup "Consultation" pour l'ensemble des documents en attente d'importation.
+- recherche automatique du patient, synthèse d'un titre, détection automatique de la date
 
 - On peut désormais utiliser Ctrl+U pour uploader directement dans Weda le document le plus récent présent dans un dossier pré-sélectionné dans le Companion. Un nouveau bouton permet d'archiver si souhaité le document après l'upload.
 - Option pour décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée

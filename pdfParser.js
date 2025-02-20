@@ -144,7 +144,7 @@ async function processFoundPdfIframe(elements) {
 
 
     // Intégration des données dans le formulaire d'import
-    setExtractedDataInForm(extractedData);
+    await setExtractedDataInForm(extractedData);
 
     // Marquage des données comme déjà importées
     markDataAsImported(hashId, extractedData);
@@ -347,7 +347,7 @@ function markDataAsImported(hashId, extractedData) {
 }
 
 
-function setExtractedDataInForm(extractedData) {
+async function setExtractedDataInForm(extractedData) {
     // Récupère la ligne d'action actuelle
     const ligneAction = actualImportActionLine();
 
@@ -365,35 +365,36 @@ function setExtractedDataInForm(extractedData) {
         documentTitle: document.querySelector(selectors.documentTitle)
     };
 
-    getOption('PdfParserAutoTitle', (PdfParserAutoTitle) => {
-        // Données à insérer dans les champs du formulaire
-        const fields = {
-            documentDate: extractedData.documentDate,
-            documentType: extractedData.documentType,
-            documentTitle: PdfParserAutoTitle ? extractedData.documentTitle : null
-        };
+    PdfParserAutoTitle = await getOptionPromise('PdfParserAutoTitle')
+    PdfParserAutoDate = await getOptionPromise('PdfParserAutoDate')
 
-        console.log('[pdfParser] INtroduction des données dans les champs : ', fields);
+    // Données à insérer dans les champs du formulaire
+    const fields = {
+        documentDate: PdfParserAutoDate ? extractedData.documentDate : null,
+        documentType: extractedData.documentType,
+        documentTitle: PdfParserAutoTitle ? extractedData.documentTitle : null
+    };
 
-        // Parcourt chaque champ et met à jour la valeur si elle existe
-        Object.keys(fields).forEach(key => {
-            if (fields[key] && inputs[key]) {
-                if (key === 'documentType') { // Cas particulier pour le champ documentType
-                    // Trouver l'option correspondante pour documentType
-                    const options = inputs[key].options;
-                    for (let i = 0; i < options.length; i++) {
-                        if (options[i].text === fields[key]) {
-                            inputs[key].value = options[i].value;
-                            break;
-                        }
+    console.log('[pdfParser] INtroduction des données dans les champs : ', fields);
+
+    // Parcourt chaque champ et met à jour la valeur si elle existe
+    Object.keys(fields).forEach(key => {
+        if (fields[key] && inputs[key]) {
+            if (key === 'documentType') { // Cas particulier pour le champ documentType
+                // Trouver l'option correspondante pour documentType
+                const options = inputs[key].options;
+                for (let i = 0; i < options.length; i++) {
+                    if (options[i].text === fields[key]) {
+                        inputs[key].value = options[i].value;
+                        break;
                     }
-                } else {
-                    inputs[key].value = fields[key];
                 }
-                // Déclenche un événement de changement pour chaque champ mis à jour
-                inputs[key].dispatchEvent(new Event('change'));
+            } else {
+                inputs[key].value = fields[key];
             }
-        });
+            // Déclenche un événement de changement pour chaque champ mis à jour
+            inputs[key].dispatchEvent(new Event('change'));
+        }
     });
 }
 
@@ -1091,7 +1092,7 @@ async function determineDocumentType(fullText) {
 
     // Vérifier que tous les types de documents sont bien définis
     const possibleDocumentTypes = initDocumentTypes();
-    
+
     // Vérifier que chaque type de document dans documentTypes est présent dans possibleDocumentTypes
     for (const [type, _] of documentTypes) {
         if (!possibleDocumentTypes.some(possibleType => possibleType[0] === type)) {
@@ -1102,7 +1103,7 @@ async function determineDocumentType(fullText) {
             return null;
         }
     }
-    
+
     // Vérifier que chaque type de document dans possibleDocumentTypes est présent dans documentTypes
     for (const [possibleType, _] of possibleDocumentTypes) {
         if (!documentTypes.some(([type, _]) => type === possibleType)) {
@@ -1169,7 +1170,7 @@ function storeDocumentTypes(categories) {
         });
 
         // Supprimer les catégories qui ne sont pas dans la variable
-        existingCategories = existingCategories.filter(existingCategory => 
+        existingCategories = existingCategories.filter(existingCategory =>
             categories.some(category => category[0] === existingCategory[0])
         );
 

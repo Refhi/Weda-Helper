@@ -432,7 +432,7 @@ async function startPrinting(handlingType, whatToPrint, postPrintBehavior, model
 
 
     } else { // sinon, c'est un modèle d'impression   
-        if (instantPrint && !mustSend) {
+        if (instantPrint) {
             postPrintBehavior = 'closePreview'; // On doit mettre 'returnToPatient' pour que l'envoi au DMP soit fait
             // Appel de tabAndPrintHandler pour ouvrir un nouvel onglet avec le patient en cours
             // gérer les notifications de succès ou d'échec

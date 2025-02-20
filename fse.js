@@ -165,12 +165,12 @@ function tweakFSECreation() {
             justOnce: false,
             callback: function (elements) {
                 let lireCarteVitaleElement = elements[0];
-                
+
                 // Vérifier si les boutons existent déjà
                 if (document.getElementById('targetValider') || document.getElementById('targetAnnuler')) {
                     return;
                 }
-            
+
                 // Style commun pour les boutons
                 const commonStyle = {
                     backgroundColor: 'rgba(0, 0, 0, 0.32)',
@@ -182,7 +182,7 @@ function tweakFSECreation() {
                     cursor: 'pointer',
                     transition: 'background-color 0.3s ease'
                 };
-            
+
                 // Créer le premier bouton
                 var button1 = document.createElement('button');
                 // button1.id = 'targetValider';
@@ -192,7 +192,7 @@ function tweakFSECreation() {
                 button1.onclick = function () {
                     degradeTeleconsult('Dégradé');
                 };
-            
+
                 // Créer le deuxième bouton
                 var button2 = document.createElement('button');
                 // button2.id = 'targetAnnuler';
@@ -202,7 +202,7 @@ function tweakFSECreation() {
                 button2.onclick = function () {
                     degradeTeleconsult('Téléconsultation');
                 };
-            
+
                 // Insérer les boutons avant l'élément "Lire la carte vitale"
                 lireCarteVitaleElement.parentNode.insertBefore(button2, lireCarteVitaleElement);
                 lireCarteVitaleElement.parentNode.insertBefore(button1, lireCarteVitaleElement);
@@ -819,3 +819,43 @@ addTweak('/vitalzen/fse.aspx', 'autoValidateSCOR', function () {
         }
     });
 });
+
+// Affichage de l'historique des facturations
+// 1 - charger une iframe avec l'historique
+// 2 - en extraire les données : date, cotation, montant
+// 3 - afficher les données
+addTweak('/vitalzen/fse.aspx', '*showBillingHistory', function () {
+    const targetElement = document.querySelector('.fseContainer');
+    const iframe = createIframe(targetElement); // ici targetElement est nécessaire comme référence pour l'insertion de l'iframe
+    // dans cette iframe, faire la liste des éléments contenant les données pertinentes, name = dh9
+    iframe.addEventListener('load', () => {
+        const iframeDocument = iframe.contentDocument;
+        const elements = iframeDocument.querySelectorAll('[name=dh9]');
+        // Dans ces éléments, on va trouver un élément avec les labels (.labelid) et les valeurs (son frère)
+        const billingData = [];
+        elements.forEach(element => {
+            let labels = element.querySelectorAll('.labelil');
+            labels = labels[1];
+            const values = labels.nextElementSibling.querySelectorAll('td');
+            console.log('values', values);
+            const Date = values[1].textContent;
+            const Actes = values[4].textContent;
+            const Montant = values[5].textContent + ' €';
+            billingData.push({ Date, Actes, Montant });
+        });
+        console.log('billingData', billingData);
+        // Afficher les données à droite de .actesList
+        showBillingData(billingData);
+    });
+});
+
+function showBillingData(billingData) {
+    const actesList = document.querySelector('.actesList');
+    const billingDataContainer = document.createElement('div');
+    billingDataContainer.style = 'position: fixed; top: 40px; right: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; width: 300px; height: auto;';
+    billingDataContainer.innerHTML = '<h3>Historique des facturations</h3>';
+    billingData.forEach(data => {
+        billingDataContainer.innerHTML += `<p>${data.Date} - ${data.Actes} - ${data.Montant}</p>`;
+    });
+    document.body.appendChild(billingDataContainer);
+}
