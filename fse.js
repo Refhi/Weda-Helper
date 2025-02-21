@@ -807,6 +807,18 @@ addTweak('/vitalzen/fse.aspx', '!RemoveLocalCompanionTPE', function () {
     });
 });
 
+// Validation automatique du PDF de la FSE dégradée en SCOR
+addTweak('/vitalzen/fse.aspx', 'autoValidateSCOR', function () {
+    waitForElement({
+        selector: '#targetValider span.mat-button-wrapper',
+        textContent: 'Inclure',
+        callback: function (element) {
+            console.log('bouton Inclure trouvé, je le clique');
+            element[0].click();
+            recordMetrics({ clicks: 1, drags: 1 });
+        }
+    });
+});
 
 // Affichage de l'historique des facturations
 // 1 - charger une iframe avec l'historique
