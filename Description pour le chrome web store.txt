@@ -30,6 +30,6 @@ et bien plus encore! (cf. https://github.com/Refhi/Weda-Helper pour voir la list
 Weda Helper ne collecte aucune donnée, tout est en local !
 
 ### Crédits: ###
-- Développé par un médecin Eurois et un médecin Toulousain pour leurs pairs et les 
+- Développé par un médecin Eurois et un médecin Toulousain (plus de précisions sur le github)
 
 Merci d'utiliser Weda Helper! 😃
