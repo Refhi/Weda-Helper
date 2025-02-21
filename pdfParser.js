@@ -34,13 +34,24 @@
 // ------------------------
 
 // 1. Injection du script
-addTweak(['/FolderMedical/UpLoaderForm.aspx','/FolderMedical/WedaEchanges/'], 'autoPdfParser', function () {
+addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
+    // 1. Ajout du bouton pour initialiser les catégories
+    addDocumentTypesButton();
     // 2. Attente de l'apparition de l'iframe contenant le PDF
     waitForElement({
         // l'id est splité car il y a un chiffre variable au milieu (1 ou 2 selon que l'option
         // "vertical" est cochée ou nondans la fenêtre d'import)
         selector: "[id^='ContentPlaceHolder1_ViewPdfDocumentUCForm'][id$='_iFrameViewFile']",
         callback: processFoundPdfIframe
+    });
+});
+
+addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
+    waitForElement({
+        // l'id est splité car il y a un chiffre variable au milieu (1 ou 2 selon que l'option
+        // "vertical" est cochée ou nondans la fenêtre d'import)
+        selector: 'a[download$=".pdf"]',
+        callback: processFoundPdfBase64
     });
 });
 
@@ -142,7 +153,84 @@ async function processFoundPdfIframe(elements) {
 
 
     // Intégration des données dans le formulaire d'import
-    setExtractedDataInForm(extractedData);
+    await setExtractedDataInForm(extractedData);
+
+    // Marquage des données comme déjà importées
+    markDataAsImported(hashId, extractedData);
+
+    // Enregistrement des métriques approximatives
+    recordMetrics({ clicks: 9, drags: 9, keyStrokes: 10 });
+
+
+    // Mise du focus sur la date du document importé
+    setTimeout(function () {
+        highlightDate();
+    }, 200);
+
+}
+
+async function processFoundPdfBase64(elements) {
+    // Setup de la procédure
+    // Partie "neutre" => n'entraine pas de rafraichissement de la page ou de DOM change
+    // ---------------------------------
+    let dataMatrixReturn = null;
+    let extractedData = null;
+    console.log('[pdfParser] ----------------- Nouvelle boucle --------------------------------');
+    let urlPDF = elements[0].href;
+    if (!urlPDF) {
+        console.log("[pdfParser] l'url du PDF n'a pas été trouvée. Arrêt de l'extraction.");
+        return;
+    }
+    console.log('[pdfParser] urlPDF', urlPDF);
+
+    // Extraction du texte
+    let fullText = await extractTextFromPDF(urlPDF);
+    console.log('[pdfParser] fullText', [fullText]);
+
+
+
+    // Création d'un id unique
+    let hashId = await customHash(fullText, urlPDF);
+
+    // Ajout d'un bouton de reset du sessionStorage correspondant
+    //addResetButton(hashId);
+
+    // Récupération des données déjà extraites pour ce PDF
+    extractedData = getPdfData(hashId);
+
+
+    // Données déjà extraites pour ce PDF ?
+    if (extractedData.alreadyImported) {
+        console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction. Renvoi vers le champ de recherche ou le 1er patient de la liste si présent");
+        selectFirstPatientOrSearchField();
+        return;
+    }
+    if (Object.keys(extractedData).length > 0) {
+        console.log("[pdfParser] Données déjà extraites pour ce PDF. Utilisation des données existantes.", extractedData);
+    } else {
+        console.log("[pdfParser] Données non extraites pour ce PDF. Extraction des données.");
+        // Extraction des informations pertinentes
+        extractedData = await extractRelevantData(fullText, urlPDF);
+        // Si on n'a pas de nirMatches, on se rabattra sur la DDN et le nom.
+        if (!extractedData.nirMatches || extractedData.nirMatches.length === 0) {
+            // Si la date de naissance ou le nom n'ont pas été trouvés, on recherche le datamatrix
+            if (!extractedData.dateOfBirth || extractedData.nameMatches.length === 0) {
+                console.log("[pdfParser] Date de naissance ou nom non trouvée. Recherche du datamatrix.");
+                dataMatrixReturn = await extractDatamatrixFromPDF(urlPDF);
+                console.log('[pdfParser] dataMatrixReturn', dataMatrixReturn);
+                if (!dataMatrixReturn) {
+                    console.log("[pdfParser] Datamatrix non trouvé.");
+                    setPdfData(hashId, { alreadyImported: true });
+                }
+            }
+        }
+
+        // Stockage et priorisation des informations pertinentes dans le sessionStorage
+        // => le dataMatrix est prioritaire sur les informations extraites du texte
+        completeExtractedData(extractedData, dataMatrixReturn);
+        console.log('[pdfParser] extractedData', JSON.stringify(extractedData));
+        setPdfData(hashId, extractedData);
+    }
 
     // Marquage des données comme déjà importées
     markDataAsImported(hashId, extractedData);
@@ -345,7 +433,7 @@ function markDataAsImported(hashId, extractedData) {
 }
 
 
-function setExtractedDataInForm(extractedData) {
+async function setExtractedDataInForm(extractedData) {
     // Récupère la ligne d'action actuelle
     const ligneAction = actualImportActionLine();
 
@@ -363,35 +451,36 @@ function setExtractedDataInForm(extractedData) {
         documentTitle: document.querySelector(selectors.documentTitle)
     };
 
-    getOption('PdfParserAutoTitle', (PdfParserAutoTitle) => {
-        // Données à insérer dans les champs du formulaire
-        const fields = {
-            documentDate: extractedData.documentDate,
-            documentType: extractedData.documentType,
-            documentTitle: PdfParserAutoTitle ? extractedData.documentTitle : null
-        };
+    PdfParserAutoTitle = await getOptionPromise('PdfParserAutoTitle')
+    PdfParserAutoDate = await getOptionPromise('PdfParserAutoDate')
 
-        console.log('[pdfParser] INtroduction des données dans les champs : ', fields);
+    // Données à insérer dans les champs du formulaire
+    const fields = {
+        documentDate: PdfParserAutoDate ? extractedData.documentDate : null,
+        documentType: extractedData.documentType,
+        documentTitle: PdfParserAutoTitle ? extractedData.documentTitle : null
+    };
 
-        // Parcourt chaque champ et met à jour la valeur si elle existe
-        Object.keys(fields).forEach(key => {
-            if (fields[key] && inputs[key]) {
-                if (key === 'documentType') { // Cas particulier pour le champ documentType
-                    // Trouver l'option correspondante pour documentType
-                    const options = inputs[key].options;
-                    for (let i = 0; i < options.length; i++) {
-                        if (options[i].text === fields[key]) {
-                            inputs[key].value = options[i].value;
-                            break;
-                        }
+    console.log('[pdfParser] INtroduction des données dans les champs : ', fields);
+
+    // Parcourt chaque champ et met à jour la valeur si elle existe
+    Object.keys(fields).forEach(key => {
+        if (fields[key] && inputs[key]) {
+            if (key === 'documentType') { // Cas particulier pour le champ documentType
+                // Trouver l'option correspondante pour documentType
+                const options = inputs[key].options;
+                for (let i = 0; i < options.length; i++) {
+                    if (options[i].text === fields[key]) {
+                        inputs[key].value = options[i].value;
+                        break;
                     }
-                } else {
-                    inputs[key].value = fields[key];
                 }
-                // Déclenche un événement de changement pour chaque champ mis à jour
-                inputs[key].dispatchEvent(new Event('change'));
+            } else {
+                inputs[key].value = fields[key];
             }
-        });
+            // Déclenche un événement de changement pour chaque champ mis à jour
+            inputs[key].dispatchEvent(new Event('change'));
+        }
     });
 }
 
@@ -772,7 +861,7 @@ async function extractRelevantData(fullText, pdfUrl) {
     const documentDate = determineDocumentDate(fullText, dateMatches, regexPatterns.documentDateRegexes);
     const dateOfBirth = determineDateOfBirth(fullText, dateMatches, regexPatterns.dateOfBirthRegexes);
     const nameMatches = extractNames(fullText, regexPatterns.nameRegexes);
-    const documentType = determineDocumentType(fullText);
+    const documentType = await determineDocumentType(fullText);
     const documentTitle = determineDocumentTitle(fullText, documentType);
     const nirMatches = extractNIR(fullText, regexPatterns.nirRegexes);
 
@@ -1071,48 +1160,153 @@ function visualizeBinaryBitmap(binaryBitmap) {
     return dataUrl;
 }
 
-// Détermination du type de courrier
-function determineDocumentType(fullText) {
+async function determineDocumentType(fullText) {
+    if (document.URL.includes('WedaEchanges'))   
+        return null;
     // console.log('[pdfParser] determineDocumentType');
     // On utilise un tableau de tableaux pour permettre de parcourir les types de documents par ordre de spécificité
     // Et de mettre plusieurs fois la même clé, avec des valeurs de moins en moins exigeantes
-    getOption('PdfParserAutoCategoryDict', (PdfParserAutoCategoryDict) => {
-        // TODO utiliser ici la fonction d'auto-categorisation
-        try {
-            documentTypes = JSON.parse(PdfParserAutoCategoryDict);
-        } catch (error) {
-            console.error('[pdfParser] Erreur lors de l\'analyse du JSON pour PdfParserAutoCategoryDict:', error, PdfParserAutoCategoryDict);
-            if (confirm('Erreur de syntaxe pour la catégorisation automatique du document. Vérifiez dans les options de Weda-Helper. Cliquez sur OK pour réinitialiser ce paramètre.')) {
-                chrome.storage.local.remove('PdfParserAutoCategoryDict', function () {
-                    console.log('[pdfParser] PdfParserAutoCategoryDict réinitialisé');
-                    alert('PdfParserAutoCategoryDict réinitialisé. Veuillez recharger la page pour appliquer les changements.');
-                });
-            }
+    const PdfParserAutoCategoryDict = await getOptionPromise('PdfParserAutoCategoryDict');
+    let documentTypes;
+    try {
+        documentTypes = JSON.parse(PdfParserAutoCategoryDict);
+    } catch (error) {
+        console.error('[pdfParser] Erreur lors de l\'analyse du JSON pour PdfParserAutoCategoryDict:', error, PdfParserAutoCategoryDict);
+        if (confirm('Erreur de syntaxe pour la catégorisation automatique du document. Vérifiez dans les options de Weda-Helper. Cliquez sur OK pour réinitialiser ce paramètre.')) {
+            handleDocumentTypesConsent();
+        }
+        return null;
+    }
 
+    // Vérifier que tous les types de documents sont bien définis
+    const possibleDocumentTypes = initDocumentTypes();
+
+    // Vérifier que chaque type de document dans documentTypes est présent dans possibleDocumentTypes
+    for (const [type, _] of documentTypes) {
+        if (!possibleDocumentTypes.some(possibleType => possibleType[0] === type)) {
+            console.error(`[pdfParser] Type de document ${type} non défini dans les catégories possibles. Veuillez mettre à jour les catégories.`);
+            if (confirm(`Type de document ${type} non défini dans les catégories possibles. Voulez-vous mettre à jour les catégories ?`)) {
+                handleDocumentTypesConsent();
+            }
             return null;
         }
+    }
 
-        for (const [type, keywords] of documentTypes) {
-            // console.log('[pdfParser] recherche du type de document', type);
-            for (const keyword of keywords) {
-                // Remplacer les espaces par \s* pour permettre les espaces optionnels
-                const regex = new RegExp(keyword.replace(/\s+/g, '\\s*'), 'i');
-                if (regex.test(fullText)) {
-                    console.log('[pdfParser] type de document trouvé', type, 'car présence de', keyword);
-                    return type;
-                }
+    // Vérifier que chaque type de document dans possibleDocumentTypes est présent dans documentTypes
+    for (const [possibleType, _] of possibleDocumentTypes) {
+        if (!documentTypes.some(([type, _]) => type === possibleType)) {
+            console.error(`[pdfParser] Catégorie possible ${possibleType} non définie dans les types de documents. Veuillez mettre à jour les types de documents.`);
+            if (confirm(`Catégorie possible ${possibleType} non définie dans les types de documents. Voulez-vous mettre à jour les types de documents ?`)) {
+                handleDocumentTypesConsent();
+            }
+            return null;
+        }
+    }
+
+    for (const [type, keywords] of documentTypes) {
+        // console.log('[pdfParser] recherche du type de document', type);
+        for (const keyword of keywords) {
+            // Remplacer les espaces par \s* pour permettre les espaces optionnels
+            const regex = new RegExp(keyword.replace(/\s+/g, '\\s*'), 'i');
+            if (regex.test(fullText)) {
+                console.log('[pdfParser] type de document trouvé', type, 'car présence de', keyword);
+                return type;
             }
         }
-        console.log('[pdfParser] type de document non trouvé');
-        return null;
+    }
+    console.log('[pdfParser] type de document non trouvé');
+    return null;
+}
+
+// Fonction pour initialiser les catégories possibles de classification
+function initDocumentTypes() {
+    // on va d'abord sélectionner le menu contenant les catégories de classification
+    const dropDownListCats = "#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_0";
+    const dropDownCats = document.querySelector(dropDownListCats);
+    if (!dropDownCats) {
+        alert('[pdfParser] Pour initialiser les catégories, vous devez avoir au moins un document en attente de classification.');
+        return;
+    }
+    const options = dropDownCats.options;
+
+    // Créer un tableau pour stocker les catégories
+    const categories = [];
+
+    // Parcourir les options et ajouter les catégories au tableau
+    for (let i = 0; i < options.length; i++) {
+        const option = options[i];
+        if (option.value !== "0") { // Ignorer l'option par défaut
+            categories.push([option.text, []]); // Initialiser les valeurs à un tableau vide
+        }
+    }
+
+    console.log('[pdfParser] Catégories possibles de classification:', categories);
+    return categories;
+}
+
+// Stockage des différentes catégories de classification dans le chrome local storage
+function storeDocumentTypes(categories) {
+    getOption('PdfParserAutoCategoryDict', (PdfParserAutoCategoryDict) => {
+        console.log('[pdfParser] Catégories de classification existantes:', PdfParserAutoCategoryDict);
+        let existingCategories = PdfParserAutoCategoryDict ? JSON.parse(PdfParserAutoCategoryDict) : [];
+
+        // Ajouter les nouvelles catégories
+        categories.forEach(category => {
+            if (!existingCategories.some(existingCategory => existingCategory[0] === category[0])) {
+                existingCategories.push(category);
+            }
+        });
+
+        // Supprimer les catégories qui ne sont pas dans la variable
+        existingCategories = existingCategories.filter(existingCategory =>
+            categories.some(category => category[0] === existingCategory[0])
+        );
+
+        const updatedCategories = JSON.stringify(existingCategories);
+
+        chrome.storage.local.set({ 'PdfParserAutoCategoryDict': updatedCategories }, function () {
+            console.log('[pdfParser] Catégories de classification mises à jour:', updatedCategories);
+            // Contrôle de ce qui a été stocké
+            chrome.storage.local.get('PdfParserAutoCategoryDict', function (result) {
+                console.log('[pdfParser] Catégories de classification stockées:', PdfParserAutoCategoryDict);
+            });
+        });
     });
 }
 
-// TODO : créer une option pour récupérer les catégories possibles de classifications
-// Et les intégrer dans une liste toute faite dans PdfParserAutoCategoryDict avec le bon format
-// Doit également mettre des faux mots-clés d'exemples pour faciliter le travail de l'utilisateur
-// Sauf si la catégorie existe déjà (non-case-sensitive) auquel cas on réutilise les mots-clés existants
-// en ajustant la case de la clé
+// gestion du consentement de l'utilisateur pour l'initialisation des catégories de classification
+function handleDocumentTypesConsent() {
+    if (confirm("Initialiser les catégories de classification ? Pensez ensuite à compléter les mots-clés dans les options de l'extension.")) {
+        const categories = initDocumentTypes();
+        storeDocumentTypes(categories);
+    }
+}
+
+// Ajout d'un bouton à côté de #ContentPlaceHolder1_ButtonExit pour initialiser les catégories de classification
+function addDocumentTypesButton() {
+    console.log('[pdfParser] Ajout du bouton pour initialiser les catégories de classification');
+    const exitButton = document.querySelector("#ContentPlaceHolder1_ButtonExit");
+    const initButton = document.createElement('button');
+
+    // Style du bouton
+    initButton.style.padding = '5px';
+    initButton.style.border = 'none';
+    initButton.style.background = 'none';
+    initButton.style.cursor = 'pointer';
+    initButton.style.position = 'relative';
+
+    // Ajouter l'icône d'engrenage
+    const icon = document.createElement('span');
+    icon.textContent = '⚙️';
+    initButton.appendChild(icon);
+
+    // Ajouter le titre pour afficher le texte au survol
+    initButton.title = 'Initialiser les catégories de classification. Cette action est nécessaire une seule fois à la première utilisation puis si vous modifiez les catégories.';
+
+    initButton.onclick = handleDocumentTypesConsent;
+    exitButton.parentNode.insertBefore(initButton, exitButton);
+}
+
 
 
 // Fonction pour trouver la spécialité dans le texte
