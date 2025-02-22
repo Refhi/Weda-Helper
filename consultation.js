@@ -571,7 +571,7 @@ function getUrlHistory() {
     return `${baseUrl}/FolderMedical/FrameHistoriqueForm.aspx?${params}`;
 }
 
-function createIframe(targetElement) {
+function createIframe(targetElement, id = null) {
     console.log('Création de l\'iframe', targetElement);
     const iframe = document.createElement('iframe');
     iframe.style.width = `${window.innerWidth * HISTORY_PROPORTION}px`;
@@ -581,6 +581,7 @@ function createIframe(targetElement) {
     iframe.style.left = '0px'; // Aligné avec le bord gauche
     iframe.style.border = "none";
     iframe.style.zIndex = '0';
+    iframe.id = id || 'WedaHelperIframe';
     // Injecter l'iframe dans le DOM proche de targetElement pour que ça soit au même niveau (sur l'axe vertical)
     const parent = targetElement.parentNode;
     if (parent) {

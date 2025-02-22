@@ -824,38 +824,130 @@ addTweak('/vitalzen/fse.aspx', 'autoValidateSCOR', function () {
 // 1 - charger une iframe avec l'historique
 // 2 - en extraire les données : date, cotation, montant
 // 3 - afficher les données
-addTweak('/vitalzen/fse.aspx', '*showBillingHistory', function () {
+addTweak('/vitalzen/fse.aspx', '*showBillingHistory', async function () {
+    const iframeId = 'WHHistoryIframe';
     const targetElement = document.querySelector('.fseContainer');
-    const iframe = createIframe(targetElement); // ici targetElement est nécessaire comme référence pour l'insertion de l'iframe
-    // dans cette iframe, faire la liste des éléments contenant les données pertinentes, name = dh9
-    iframe.addEventListener('load', () => {
-        const iframeDocument = iframe.contentDocument;
-        const elements = iframeDocument.querySelectorAll('[name=dh9]');
-        // Dans ces éléments, on va trouver un élément avec les labels (.labelid) et les valeurs (son frère)
-        const billingData = [];
-        elements.forEach(element => {
-            let labels = element.querySelectorAll('.labelil');
-            labels = labels[1];
-            const values = labels.nextElementSibling.querySelectorAll('td');
-            console.log('values', values);
-            const Date = values[1].textContent;
-            const Actes = values[4].textContent;
-            const Montant = values[5].textContent + ' €';
-            billingData.push({ Date, Actes, Montant });
-        });
-        console.log('billingData', billingData);
-        // Afficher les données à droite de .actesList
-        showBillingData(billingData);
+    const iframe = createIframe(targetElement, iframeId); // ici targetElement est nécessaire comme référence pour l'insertion de l'iframe
+
+    await new Promise((resolve) => {
+        iframe.addEventListener('load', resolve);
     });
+
+    // ensuite on doit mettre dans l'iframe les paramètres suivants :
+    // 1 - utilisateur actuel dans id=DropDownListUsers
+    // 2 - affichage de l'ensemble de l'historique du patient via un clic sur id=HistoriqueUCForm1_LinkButtonSuiteWeda (peut-être avec le système de contournement)
+
+
+    await selectProperUser(iframeId);
+    await showWholeHistory(iframeId);
+
+
+    const billingData = extractBillingData(iframe.contentDocument);
+    console.log('billingData', billingData);
+    showBillingData(billingData);
 });
 
+async function showWholeHistory(iframeId) {
+    console.log('[showBillingHistory] showWholeHistory');
+    iframeId = '#' + iframeId;
+    clicCSPLockedElement("#HistoriqueUCForm1_LinkButtonSuiteWeda", iframeId);
+
+    const iframe = document.querySelector(iframeId);
+    if (iframe) {
+        await new Promise((resolve) => {
+            setTimeout(resolve, 250); // Attendre pour que la page se charge
+        });
+    }
+}
+
+async function selectProperUser(iframeId) {
+    console.log('[showBillingHistory] selectProperUser');
+    iframeId = '#' + iframeId;
+    const iframe = document.querySelector(iframeId);
+    if (!iframe) {
+        console.error('[showBillingHistory] iframe not found');
+        return;
+    }
+
+    let userSelect = iframe.contentDocument.querySelector('#DropDownListUsers');
+    console.log('[showBillingHistory] userSelect', userSelect);
+    if (userSelect) {    
+        let userToLookFor = swapNomPrenom(document.getElementById('LabelUserLog').innerText);
+        console.log('[showBillingHistory] userToLookFor', userToLookFor);
+
+        const options = userSelect.options;
+        for (let i = 0; i < options.length; i++) {
+            if (options[i].textContent.trim().startsWith(userToLookFor)) {
+                userSelect.selectedIndex = i;
+                userSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                break;
+            }
+        }
+        await new Promise((resolve) => {
+            setTimeout(resolve, 250); // Attendre pour que la page se charge
+        });
+    }
+}
+
+
+function swapNomPrenom(loggedInUser) {
+    const parts = loggedInUser.split(' ');
+    const lastNameIndex = parts.findIndex(part => part === part.toUpperCase());
+    if (lastNameIndex === -1) {
+        return loggedInUser; // Si aucun nom en majuscule n'est trouvé, retourner l'original
+    }
+    const firstName = parts.slice(0, lastNameIndex).join(' ');
+    const lastName = parts.slice(lastNameIndex).join(' ');
+    return `${lastName} ${firstName}`;
+}
+
+function extractBillingData(iframeDocument) {
+    const elements = iframeDocument.querySelectorAll('[name=dh9]');
+    const billingData = [];
+
+    elements.forEach(element => {
+        const labels = element.querySelectorAll('.labelil')[1];
+        if (!labels) {
+            return;
+        }
+        const values = labels.nextElementSibling.querySelectorAll('td');
+        if (!values || values.length < 6) {
+            return;
+        }
+        const Date = values[1].textContent || '';
+        const Actes = values[4].textContent || '';
+        const Montant = (values[5].textContent || '') + ' €';
+
+        billingData.push({ Date, Actes, Montant });
+    });
+
+    return billingData;
+}
+
+function trimOldBillingData(billingData, olderThanYears) {
+    const today = new Date();
+    const year = today.getFullYear();
+    const olderThan = year - olderThanYears;
+    return billingData.filter(data => {
+        const year = parseInt(data.Date.split('/')[2]);
+        return year >= olderThan;
+    });
+}
+
 function showBillingData(billingData) {
-    const actesList = document.querySelector('.actesList');
-    const billingDataContainer = document.createElement('div');
-    billingDataContainer.style = 'position: fixed; top: 40px; right: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; width: 300px; height: auto;';
+    billingData = trimOldBillingData(billingData, 2);
+    const billingDataContainer = createBillingDataContainer();
+
     billingDataContainer.innerHTML = '<h3>Historique des facturations</h3>';
     billingData.forEach(data => {
         billingDataContainer.innerHTML += `<p>${data.Date} - ${data.Actes} - ${data.Montant}</p>`;
     });
+
     document.body.appendChild(billingDataContainer);
+}
+
+function createBillingDataContainer() {
+    const container = document.createElement('div');
+    container.style = 'position: fixed; top: 40px; right: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; width: 300px; height: auto;';
+    return container;
 }

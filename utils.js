@@ -488,7 +488,7 @@ function setLastPrintDate() {
 // Clic sur certains éléments où le CSP bloque le clic quand on est en isolated
 // Passe par un script injecté pour contourner le problème
 
-// Initialise d'abord FWNotif.js
+// Initialise d'abord clickElement.js
 function startClicScript() {
     var scriptClicElements = document.createElement('script');
     scriptClicElements.src = chrome.runtime.getURL('FW_scripts/clickElement.js');
@@ -496,10 +496,9 @@ function startClicScript() {
 }
 startClicScript();
 
-function clicCSPLockedElement(elementSelector) {
+function clicCSPLockedElement(elementSelector, iframeSelector = null) {
     console.log('Clic sur élément bloqué par CSP :', elementSelector);
-    const event = new CustomEvent('clicElement', { detail: elementSelector });
+    const event = new CustomEvent('clicElement', { detail: { elementSelector, iframeSelector } });
     document.dispatchEvent(event);        
-}   
-
+}
 
