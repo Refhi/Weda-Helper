@@ -985,16 +985,13 @@ async function filterBillingData(billingData) {
     toBeFiltered = toBeFiltered.split(',').map(item => item.trim());
 
     function checkIfCotationOk(data) {
-        console.log('checkIfCotationOk', data);
         // On cherche dans data.actes si on trouve +xIK (où x peut-être n'importe quel nombre).
         // S'il est trouvé, on le remplace par +IK pour la comparaison, mais on garde l'original.
         const actesForComparison = data.Actes.replace(/\+\d+IK/g, '+IK');
-        console.log('actesForComparison', actesForComparison);
         let toReturn = !toBeFiltered.includes(actesForComparison);
-        console.log('toReturn', toReturn);
         return toReturn;
     }
-    
+
     return billingData.filter(checkIfCotationOk);
 }
 
@@ -1006,3 +1003,91 @@ function createBillingDataContainer() {
     container.style.width = 'auto';
     return container;
 }
+
+
+// Aide à la cotation
+addTweak('/vitalzen/fse.aspx', '*cotationHelper', function () {
+    waitForElement({
+        selector: '[vz-acte]',
+        justOnce: false,
+        callback: function (element) {
+            console.log('vz-actes trouvé');
+            let actualCotation = getActualCotation();
+            console.log('actualCotation', actualCotation);
+            let actualMTSituation = getActualMTSituation();
+            console.log('actualMTSituation', mtSituationOptions[actualMTSituation]);
+            checkPossibleHelp(actualCotation, actualMTSituation);
+        }
+    });
+});
+
+function checkPossibleHelp(actualCotation, actualMTSituation) {
+    cotationHelper.forEach(helper => {
+        console.log('CotationHelper', helper, 'actualCotation', actualCotation, 'actualMTSituation', actualMTSituation);
+        let isConditionMet = helper.valueCondition.length === 0 || helper.valueCondition.every(condition => {
+            if (condition.startsWith('!')) {
+                return !actualCotation.includes(condition.substring(1));
+            }
+            return actualCotation.includes(condition);
+        });
+        console.log('isConditionMet', isConditionMet);
+
+        let isCotationMet = helper.cotation.length === 0 || helper.cotation.every(cotation => {
+            if (cotation.startsWith('!')) {
+                return !actualMTSituation.includes(cotation.substring(1));
+            }
+            return actualMTSituation.includes(cotation);
+        });
+        console.log('isCotationMet', isCotationMet);
+
+        if (isConditionMet && isCotationMet && helper.divers(actualMTSituation)) {
+            console.log('cotationHelper trouvé', helper);
+            alert(helper.conseil);
+            window.open(helper.link, '_blank');
+        }
+    });
+}
+
+const cotationHelper = [ // TODO : reprendre ici
+    {
+        valueCondition: ['08'],
+        cotation: ['G'],
+        divers: function () { return true; },
+        conseil: 'Cette situation peut peut-être bénéficier de la cotation MCG',
+        link: 'https://omniprat.org/fiches-pratiques/consultations-visites/majoration-de-coordination-generaliste/'
+    },
+];
+
+function getActualCotation() {
+    let actes = document.querySelectorAll('[vz-acte]');
+    let cotationArray = [];
+    actes.forEach(acte => {
+        let acteText = acte.querySelector('.acteCell input.mat-input-element');
+        if (acteText && acteText.value.trim() !== '') {
+            cotationArray.push(acteText.value.trim());
+        }
+    });
+    return cotationArray;
+}
+
+function getActualMTSituation() {
+    let mtSituationList = document.querySelector('vz-orientation select');
+    return mtSituationList.value;
+}
+
+const mtSituationOptions = {
+    "03": "Je suis le médecin traitant",
+    "11": "Orienté par le MT",
+    "12": "Orienté par un Médecin autre que le MT",
+    "04": "Nouveau Médecin Traitant",
+    "05": "Médecin Traitant de substitution",
+    "06": "Généraliste récemment installé",
+    "07": "Médecin installé en zone sous Médicalisée",
+    "08": "Hors résidence",
+    "09": "Accès direct spécifique",
+    "10": "Hors accès direct spécifique",
+    "13": "Non respect du parcours de soin",
+    "01": "Exclusion du parcours de soin",
+    "02": "Urgence"
+};
+
