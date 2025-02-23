@@ -1017,6 +1017,7 @@ addTweak('/vitalzen/fse.aspx', '*cotationHelper', function () {
             let actualMTSituation = getActualMTSituation();
             console.log('actualMTSituation', mtSituationOptions[actualMTSituation]);
             checkPossibleHelp(actualCotation, actualMTSituation);
+            // TODO : aussi déclencher si la situation du MT change ?
         }
     });
 });
