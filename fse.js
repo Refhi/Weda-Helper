@@ -824,7 +824,7 @@ addTweak('/vitalzen/fse.aspx', 'autoValidateSCOR', function () {
 // 1 - charger une iframe avec l'historique
 // 2 - en extraire les données : date, cotation, montant
 // 3 - afficher les données
-addTweak('/vitalzen/fse.aspx', '*showBillingHistory', async function () {
+addTweak('/vitalzen/fse.aspx', 'showBillingHistory', async function () {
     const iframeId = 'WHHistoryIframe';
     const targetElement = document.querySelector('.fseContainer');
     const iframe = createIframe(targetElement, iframeId); // ici targetElement est nécessaire comme référence pour l'insertion de l'iframe
@@ -842,9 +842,11 @@ addTweak('/vitalzen/fse.aspx', '*showBillingHistory', async function () {
     await showWholeHistory(iframeId);
 
 
-    const billingData = extractBillingData(iframe.contentDocument);
+    let billingData = extractBillingData(iframe.contentDocument);
     console.log('billingData', billingData);
-    showBillingData(billingData);
+    billingData = trimOldBillingData(billingData, 5); // Afficher uniquement les 5 dernières années, car certaines cotations peuvent être appliquées une fois sur 5 ans
+    let filteredBillingData = await filterBillingData(billingData); // Filtrer les cotations indésirables
+    await showBillingData(billingData, filteredBillingData);
 });
 
 async function showWholeHistory(iframeId) {
@@ -871,7 +873,7 @@ async function selectProperUser(iframeId) {
 
     let userSelect = iframe.contentDocument.querySelector('#DropDownListUsers');
     console.log('[showBillingHistory] userSelect', userSelect);
-    if (userSelect) {    
+    if (userSelect) {
         let userToLookFor = swapNomPrenom(document.getElementById('LabelUserLog').innerText);
         console.log('[showBillingHistory] userToLookFor', userToLookFor);
 
@@ -934,20 +936,73 @@ function trimOldBillingData(billingData, olderThanYears) {
     });
 }
 
-function showBillingData(billingData) {
-    billingData = trimOldBillingData(billingData, 2);
+async function showBillingData(billingData, billingDataFiltered) {
     const billingDataContainer = createBillingDataContainer();
 
-    billingDataContainer.innerHTML = '<h3>Historique des facturations</h3>';
-    billingData.forEach(data => {
-        billingDataContainer.innerHTML += `<p>${data.Date} - ${data.Actes} - ${data.Montant}</p>`;
+    const toggleButton = document.createElement('button');
+    toggleButton.textContent = 'Afficher toutes les données';
+    let showingFiltered = true;
+
+    toggleButton.addEventListener('click', () => {
+        showingFiltered = !showingFiltered;
+        toggleButton.textContent = showingFiltered ? 'Afficher toutes les données' : 'Afficher les données filtrées';
+        updateBillingData(showingFiltered ? billingDataFiltered : billingData);
     });
 
+    const infoIcon = document.createElement('span');
+    infoIcon.textContent = 'ℹ️'; // Icône d'information
+    infoIcon.style.cursor = 'pointer';
+    infoIcon.title = "Historique des facturations affiché via Weda-Helper. Si non désiré ou s'il gène l'affichage sur un écran en 4:3, vous pouvez le désactiver dans les options";
+
+    const title = document.createElement('h3');
+    title.textContent = 'Historique des facturations';
+    title.appendChild(infoIcon);
+
+    billingDataContainer.appendChild(title);
+    billingDataContainer.appendChild(toggleButton);
     document.body.appendChild(billingDataContainer);
+
+    updateBillingData(billingDataFiltered);
+
+    function updateBillingData(data) {
+        billingDataContainer.querySelectorAll('div').forEach(div => div.remove());
+        const dataContainer = document.createElement('div');
+        data.forEach(item => {
+            dataContainer.innerHTML += `<p>${item.Date} - ${item.Actes} - ${item.Montant}</p>`;
+        });
+        billingDataContainer.appendChild(dataContainer);
+    }
+}
+
+async function filterBillingData(billingData) {
+    // billingDataFilter contiens une liste de cotations à filtrer
+    let toBeFiltered = await getOptionPromise('billingDataFilter');
+    console.log('toBeFiltered', toBeFiltered);
+    if (!toBeFiltered) {
+        return billingData;
+    }
+    // Convertir la chaîne en tableau sans espaces
+    toBeFiltered = toBeFiltered.split(',').map(item => item.trim());
+
+    function checkIfCotationOk(data) {
+        console.log('checkIfCotationOk', data);
+        // On cherche dans data.actes si on trouve +xIK (où x peut-être n'importe quel nombre).
+        // S'il est trouvé, on le remplace par +IK pour la comparaison, mais on garde l'original.
+        const actesForComparison = data.Actes.replace(/\+\d+IK/g, '+IK');
+        console.log('actesForComparison', actesForComparison);
+        let toReturn = !toBeFiltered.includes(actesForComparison);
+        console.log('toReturn', toReturn);
+        return toReturn;
+    }
+    
+    return billingData.filter(checkIfCotationOk);
 }
 
 function createBillingDataContainer() {
     const container = document.createElement('div');
     container.style = 'position: fixed; top: 40px; right: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; width: 300px; height: auto;';
+    container.style.maxHeight = '80vh'; // Limite la hauteur à 80% de la hauteur de la fenêtre
+    container.style.overflowY = 'auto'; // Active le défilement vertical si nécessaire
+    container.style.width = 'auto';
     return container;
 }

@@ -492,6 +492,17 @@ var advancedDefaultSettings = [{
         "type": TYPE_BOOL,
         "description": "Valide automatiquement l'inclusion du PDF de la FSE dégradée",
         "default": false
+    },{
+        "name": "showBillingHistory",
+        "type": TYPE_BOOL,
+        "description": "Affiche l'historique des facturations dans la page de télétransmission.",
+        "default": true,
+        "subOptions": [{
+            "name": "billingDataFilter",
+            "type": TYPE_TEXT,
+            "description": "Filtre les données affichées dans l'historique des facturations en excluant les cotations notées. Ex. (G, GS, VL). IK correspond à n'importe quel nombre d'IK (ex. IK filtre aussi bien 9IK que 1IK ou IK).",
+            "default": "G,GS,VG+MD+IK, VGS+MD+IK, VG+MD, VGS+MD"
+        }]
     }]
 }, {
     "name": "Lien avec Weda-Helper-Companion",
