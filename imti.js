@@ -55,7 +55,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoControlMT', function () {
 });
 
 // Facilite la déclaration du MT en précochant les cases
-addTweak('/FolderMedical/PatientViewForm.aspx', '*oneClickMT', function () {
+addTweak('/FolderMedical/PatientViewForm.aspx', 'oneClickMT', function () {
     waitForElement({
         selector: '.dmpMtInfo',
         callback: function (elements) {
@@ -64,6 +64,10 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*oneClickMT', function () {
                 checkBox.click();
                 recordMetrics({ clicks: 1, drags: 1 });
             });
+            setTimeout(() => {
+                let boutonValider = document.querySelector('#targetValider');
+                boutonValider.click();
+            }, 500);
         }
     });
 });

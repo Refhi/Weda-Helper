@@ -7,6 +7,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#360](https://github.com/Refhi/Weda-Helper/issues/360) - L'impression instantanée fonctionne désormais avec le ctrl+E réglé pour l'impression associée
 - [#353](https://github.com/Refhi/Weda-Helper/issues/353) - Alt+A permet aussi d'afficher l'historique des biologies dans la fenêtre des importations
 - [#340](https://github.com/Refhi/Weda-Helper/issues/340) - Affichage des dernières facturations dans la page des FSE
+- [#341](https://github.com/Refhi/Weda-Helper/issues/341) - Déclaration de MT en un click
 
 
 # [2.10.1]

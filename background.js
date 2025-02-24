@@ -189,6 +189,11 @@ var advancedDefaultSettings = [{
                 "type": TYPE_BOOL,
                 "description": "Ajoute un lien pour qu'ajouter le MT récupéré initie la récupération de l'adresse sécurisée. Compatible avec l'option précédente.",
                 "default": true
+            }, {
+                "name": "oneClickMT",
+                "type": TYPE_BOOL,
+                "description": "Permet de faire la déclaration de MT en un clic.",
+                "default": true
             }]
         }],
     }, {
