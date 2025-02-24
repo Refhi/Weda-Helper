@@ -407,7 +407,8 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
         { regex: /\bkiné\b|\bkine\b|kinésithérapie|kinesitherapie|MKDE|KDE|kinesitherapeute|kinesithérapeute/i, type: 1 },
         { regex: /orthophonie|orthophonique|orthophoniste/i, type: 2 },
         { regex: /orthoptie|orthoptique|orthoptiste/i, type: 3 },
-        { regex: /pédicure|pedicure|pédicurie|pedicurie|podologie|podologique|podologue|semelle|orthoplastie/i, type: 4 }
+        { regex: /pédicure|pedicure|pédicurie|pedicurie|podologie|podologique|podologue|semelle|orthoplastie/i, type: 4 },
+        { regex: /psychologue|psychologie/i, type: 99 },
     ];
 
     let contexteSoins = [
@@ -484,7 +485,13 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
 
         else {
             console.log('type de soin trouvé', type, 'je clique dessus', choixPossibles[type]);
-            choixPossibles[type].click();
+            if (type === 99) {
+                console.log("Type de soin non éligible à l'ordonnance numérique, je clique sur #targetAnnuler");
+                // Type de soin non éligible à l'ordonnance numérique, je clique sur #targetAnnuler
+                document.getElementById('targetAnnuler').click();
+            } else {
+                choixPossibles[type].click();
+            }
             recordMetrics({ clicks: 1, drags: 1 });
             if (callback) { callback(); }
 
