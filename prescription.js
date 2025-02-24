@@ -407,7 +407,7 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
         { regex: /\bkiné\b|\bkine\b|kinésithérapie|kinesitherapie|MKDE|KDE|kinesitherapeute|kinesithérapeute/i, type: 1 },
         { regex: /orthophonie|orthophonique|orthophoniste/i, type: 2 },
         { regex: /orthoptie|orthoptique|orthoptiste/i, type: 3 },
-        { regex: /pédicure|pedicure|podologie|podologique|podologue|semelle|orthoplastie/i, type: 4 }
+        { regex: /pédicure|pedicure|pédicurie|pedicurie|podologie|podologique|podologue|semelle|orthoplastie/i, type: 4 }
     ];
 
     let contexteSoins = [
