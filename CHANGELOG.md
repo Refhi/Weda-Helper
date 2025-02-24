@@ -8,6 +8,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#353](https://github.com/Refhi/Weda-Helper/issues/353) - Alt+A permet aussi d'afficher l'historique des biologies dans la fenêtre des importations
 - [#340](https://github.com/Refhi/Weda-Helper/issues/340) - Affichage des dernières facturations dans la page des FSE
 - [#341](https://github.com/Refhi/Weda-Helper/issues/341) - Déclaration de MT en un click
+- [#326](https://github.com/Refhi/Weda-Helper/issues/326) - Ajout d'une infobulle pour avertir de possibles cotations applicables à certaines situation (ex. SHE ou MCG), qu'on oublie habituellement tout le temps...
 
 
 # [2.10.1]

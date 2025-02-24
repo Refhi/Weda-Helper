@@ -508,6 +508,12 @@ var advancedDefaultSettings = [{
             "description": "Filtre les données affichées dans l'historique des facturations en excluant les cotations notées. Ex. (G, GS, VL). IK correspond à n'importe quel nombre d'IK (ex. IK filtre aussi bien 9IK que 1IK ou IK).",
             "default": "G,GS,VG+MD+IK, VGS+MD+IK, VG+MD, VGS+MD, COD, GS+MEG, G+MEG"
         }]
+    },{
+        "name": "cotationHelper",
+        "type": TYPE_BOOL,
+        "description": "Propose des cotations supplémentaires selon le contexte (SHE, MCG, etc.).",
+        "longDescription": "Nous sommes parfois confronté à des cotations modificatrices très faciles à oublier en fonction du contexte. Cette petite aide vous permettra peut-être d'en rattraper certaines. Par exemple s'il détecte que vous êtes en train de faire des consultations aux horaires du SAS, il vous suggerera d'ajouter la cotation SHE. Si vous voyez un patient hors résidence, il vous proposera la cotation MCG. A chaque fois un clic sur la cotation vous permettra de consulter la source parlant de cette cotation.",
+        "default": true
     }]
 }, {
     "name": "Lien avec Weda-Helper-Companion",

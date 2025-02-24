@@ -73,7 +73,7 @@ function waitLegacyForElement(selector, text = null, timeout, callback) {
 function afterMutations({ delay, callback, callBackId = "callback id undefined", preventMultiple = false }) {
     let timeoutId = null;
     const action = () => {
-        console.debug(`Aucune mutation détectée pendant ${delay}ms, je considère la page comme chargée. Appel du Callback. (${callBackId})`);
+        // console.debug(`Aucune mutation détectée pendant ${delay}ms, je considère la page comme chargée. Appel du Callback. (${callBackId})`);
         if (preventMultiple) {
             observer.disconnect();
             callback();
@@ -432,8 +432,23 @@ function sendWedaNotif({
 
     const event = new CustomEvent('showNotification', { detail: notifToSend });
     document.dispatchEvent(event);
+    // Rendre la notification cliquable si elle contient une URL
+    setTimeout(() => {addUrlLink();}, 100);
 }
 
+function addUrlLink() {
+    let NotifPopupElement = document.querySelector('p.ng-star-inserted');
+    // Cherche dans le innerText une éventuelle URL
+    let url = NotifPopupElement.innerText.match(/(https?:\/\/[^\s]+)/);
+    if (url) {
+        // Rend la popup cliquable
+        NotifPopupElement.style.cursor = 'pointer';
+        NotifPopupElement.addEventListener('click', () => {
+            window.open(url[0], '_blank');
+        });
+    }
+}
+        
 
 /* === implementation de la fonction sendWedaNotif === */
 // utilisé pour l'envoi depuis le popup

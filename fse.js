@@ -845,7 +845,7 @@ addTweak('/vitalzen/fse.aspx', 'showBillingHistory', async function () {
     await showWholeHistory(iframeId);
 
     let billingData = extractBillingData(iframe.contentDocument);
-    console.log('billingData', billingData);
+    // console.log('billingData', billingData);
     billingData = trimOldBillingData(billingData, 5); // Afficher uniquement les 5 dernières années, car certaines cotations peuvent être appliquées une fois sur 5 ans
     let filteredBillingData = await filterBillingData(billingData); // Filtrer les cotations indésirables
     await showBillingData(billingData, filteredBillingData);
@@ -997,7 +997,7 @@ async function showBillingData(billingData, billingDataFiltered) {
 async function filterBillingData(billingData) {
     // billingDataFilter contiens une liste de cotations à filtrer
     let toBeFiltered = await getOptionPromise('billingDataFilter');
-    console.log('toBeFiltered', toBeFiltered);
+    // console.log('toBeFiltered', toBeFiltered);
     if (!toBeFiltered) {
         return billingData;
     }
@@ -1024,59 +1024,93 @@ function createBillingDataContainer() {
     return container;
 }
 
-
 // Aide à la cotation
-addTweak('/vitalzen/fse.aspx', '*cotationHelper', function () {
+addTweak('/vitalzen/fse.aspx', 'cotationHelper', function () {
     waitForElement({
         selector: '[vz-acte]',
         justOnce: false,
         callback: function (element) {
-            console.log('vz-actes trouvé');
-            let actualCotation = getActualCotation();
-            console.log('actualCotation', actualCotation);
-            let actualMTSituation = getActualMTSituation();
-            console.log('actualMTSituation', mtSituationOptions[actualMTSituation]);
-            checkPossibleHelp(actualCotation, actualMTSituation);
-            // TODO : aussi déclencher si la situation du MT change ?
+            watchForMtSituationChange();
+            checkPossibleHelp();
         }
     });
 });
 
-function checkPossibleHelp(actualCotation, actualMTSituation) {
-    cotationHelper.forEach(helper => {
-        console.log('CotationHelper', helper, 'actualCotation', actualCotation, 'actualMTSituation', actualMTSituation);
-        let isConditionMet = helper.valueCondition.length === 0 || helper.valueCondition.every(condition => {
-            if (condition.startsWith('!')) {
-                return !actualCotation.includes(condition.substring(1));
-            }
-            return actualCotation.includes(condition);
-        });
-        console.log('isConditionMet', isConditionMet);
-
-        let isCotationMet = helper.cotation.length === 0 || helper.cotation.every(cotation => {
-            if (cotation.startsWith('!')) {
-                return !actualMTSituation.includes(cotation.substring(1));
-            }
-            return actualMTSituation.includes(cotation);
-        });
-        console.log('isCotationMet', isCotationMet);
-
-        if (isConditionMet && isCotationMet && helper.divers(actualMTSituation)) {
-            console.log('cotationHelper trouvé', helper);
-            alert(helper.conseil);
-            window.open(helper.link, '_blank');
+function watchForMtSituationChange() {
+    const REFRACTORY_KEY = 'cotationHelperLastMtCheckChange';
+    const REFRACTORY_PERIOD = 10; // ms
+    
+    let mtSituationList = document.querySelector('vz-orientation select');
+    mtSituationList.addEventListener('change', function () {
+        const now = Date.now();
+        const lastCheck = sessionStorage.getItem(REFRACTORY_KEY) || 0;
+        
+        if (now - lastCheck > REFRACTORY_PERIOD) {
+            sessionStorage.setItem(REFRACTORY_KEY, now);
+            checkPossibleHelp();
         }
     });
 }
 
-const cotationHelper = [ // TODO : reprendre ici
+
+function checkPossibleHelp() {
+    const cotationContext = {
+        cotation: getActualCotation(),
+        mtSituation: getActualMTSituation(),
+        patientAge: patientAgeInFSE(),
+        hour: new Date().getHours(),
+        dayOfWeek: new Date().getDay() // Sunday = 0, Monday = 1, etc.
+    };
+    cotationHelper.forEach(helper => {
+        if (helper.test(cotationContext)) {
+            console.log('cotationHelper trouvé', helper);
+            sendWedaNotif(
+                {
+                    message: helper.conseil + ' ' + (helper.link ? 'En savoir plus : ' + helper.link : ''),
+                    type: 'undefined',
+                    icon: 'info',
+                    timeout: 10000
+                },
+            )
+
+        }
+    });
+}
+
+const cotationHelper = [
     {
-        valueCondition: ['08'],
-        cotation: ['G'],
-        divers: function () { return true; },
+        titre: 'Cotation MCG',
+        test: function(context) {
+            console.log('Ajout de MCG', context);
+            return context.mtSituation.includes('08') && context.cotation.includes('G');
+        },
         conseil: 'Cette situation peut peut-être bénéficier de la cotation MCG',
         link: 'https://omniprat.org/fiches-pratiques/consultations-visites/majoration-de-coordination-generaliste/'
-    },
+    }, {
+        titre: 'Cotation SHE',
+        test: function(context) {
+            console.log('Ajout de SHE', context);
+            // La cotation doit contenir SNP ou MRT
+            let isProperCotation = context.cotation.some(cot => cot.includes('SNP') || cot.includes('MRT'));
+            // L'heure doit être 19, 20 ou 21h
+            let isProperHour = [19, 20, 21].includes(context.hour);
+            return isProperCotation && isProperHour;
+        },
+        conseil: 'Cette situation peut peut-être bénéficier de la cotation SHE',
+        link: 'https://www.hauts-de-france.ars.sante.fr/le-service-dacces-aux-soins-sas-1'
+    }, {
+        titre: 'Cotation MHP',
+        test: function(context) {
+            console.log('Ajout de MHP', context);
+            // Doit être aux horaires de PDSA : donc samedi 12+ heure ou soir 20+ heure
+            let isProperHour = (context.dayOfWeek === 6 && context.hour >= 12) || context.hour >= 20;
+            // La cotation doit contenir G et ne pas contenir SNP
+            let isProperCotation = context.cotation.includes('G') && !context.cotation.includes('SNP');
+            return isProperHour && isProperCotation;
+        },
+        conseil: 'Cette situation peut peut-être bénéficier de la cotation MHP',
+        link: 'https://www.ameli.fr/medecin/exercice-liberal/facturation-remuneration/consultations-actes/tarifs/tarifs-conventionnels-medecins-generalistes-specialistes'
+    }
 ];
 
 function getActualCotation() {

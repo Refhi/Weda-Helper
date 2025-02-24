@@ -171,9 +171,68 @@ function getCategoriesFromJsonInput(input) {
 
 
 function createLabel(option) {
+  // Ajouter les styles si pas déjà présents
+  if (!document.getElementById('info-tooltip-styles')) {
+    const styles = document.createElement('style');
+    styles.id = 'info-tooltip-styles';
+    styles.textContent = `
+      .info-icon {
+        cursor: help;
+        position: relative;
+        margin-left: 5px;
+      }
+      
+      .info-tooltip {
+        display: none;
+        position: absolute;
+        left: 25px;
+        top: -5px;
+        background: white;
+        color: inherit;
+        padding: 8px 12px;
+        border-radius: 4px;
+        width: max-content;
+        max-width: 300px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        z-index: 100;
+        font-size: 14px;
+        line-height: 1.4;
+      }
+      
+      .info-tooltip::before {
+        content: '';
+        position: absolute;
+        left: -4px;
+        top: 50%;
+        transform: translateY(-50%);
+        border-width: 6px;
+        border-style: solid;
+        border-color: transparent #333 transparent transparent;
+      }
+      
+      .info-icon:hover .info-tooltip {
+        display: block;
+      }`;
+    document.head.appendChild(styles);
+  }
+
   const label = document.createElement('span');
-  label.innerHTML = option.description; // Utilisez innerHTML pour insérer du HTML
+  label.innerHTML = option.description;
   label.setAttribute('for', option.name);
+
+  if (option.longDescription) {
+    const infoIcon = document.createElement('span');
+    infoIcon.innerHTML = ' ℹ️';
+    infoIcon.className = 'info-icon';
+    
+    const tooltip = document.createElement('div');
+    tooltip.className = 'info-tooltip';
+    tooltip.textContent = option.longDescription;
+    
+    infoIcon.appendChild(tooltip);
+    label.appendChild(infoIcon);
+  }
+
   return label;
 }
 
