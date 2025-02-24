@@ -833,61 +833,81 @@ addTweak('/vitalzen/fse.aspx', 'showBillingHistory', async function () {
         iframe.addEventListener('load', resolve);
     });
 
-    // ensuite on doit mettre dans l'iframe les paramètres suivants :
-    // 1 - utilisateur actuel dans id=DropDownListUsers
-    // 2 - affichage de l'ensemble de l'historique du patient via un clic sur id=HistoriqueUCForm1_LinkButtonSuiteWeda (peut-être avec le système de contournement)
+    await sleep(1000); // Attendre un peu pour que la page se charge
+
+    const userSelector = '#DropDownListUsers';
+    const currentUser = getCurrentUser(iframeId, userSelector);
+    const loggedInUser = swapNomPrenom(document.getElementById('LabelUserLog').innerText);
 
 
-    await selectProperUser(iframeId);
+    await selectProperUser(iframeId, loggedInUser, userSelector);
+    await sleep(250);
     await showWholeHistory(iframeId);
-
 
     let billingData = extractBillingData(iframe.contentDocument);
     console.log('billingData', billingData);
     billingData = trimOldBillingData(billingData, 5); // Afficher uniquement les 5 dernières années, car certaines cotations peuvent être appliquées une fois sur 5 ans
     let filteredBillingData = await filterBillingData(billingData); // Filtrer les cotations indésirables
     await showBillingData(billingData, filteredBillingData);
+
+    await sleep(250);
+    await selectProperUser(iframeId, currentUser, userSelector);
 });
 
-async function showWholeHistory(iframeId) {
-    console.log('[showBillingHistory] showWholeHistory');
-    iframeId = '#' + iframeId;
-    clicCSPLockedElement("#HistoriqueUCForm1_LinkButtonSuiteWeda", iframeId);
-
-    const iframe = document.querySelector(iframeId);
-    if (iframe) {
-        await new Promise((resolve) => {
-            setTimeout(resolve, 250); // Attendre pour que la page se charge
-        });
-    }
-}
-
-async function selectProperUser(iframeId) {
-    console.log('[showBillingHistory] selectProperUser');
-    iframeId = '#' + iframeId;
-    const iframe = document.querySelector(iframeId);
+// Fonction utilitaire pour accéder à l'iframe et au sélecteur d'utilisateur
+function getUserSelect(iframeId, selector) {
+    const iframe = document.querySelector('#' + iframeId);
     if (!iframe) {
         console.error('[showBillingHistory] iframe not found');
+        return null;
+    }
+    return iframe.contentDocument.querySelector(selector);
+}
+
+// Fonction utilitaire pour obtenir l'utilisateur sélectionné
+function getSelectedUser(userSelect) {
+    return userSelect.options[userSelect.selectedIndex].textContent;
+}
+
+function getCurrentUser(iframeId, selector) {
+    console.log('[showBillingHistory] getCurrentUser');
+    const userSelect = getUserSelect(iframeId, selector);
+    return userSelect ? getSelectedUser(userSelect) : null;
+}
+
+async function selectProperUser(iframeId, nom, selector) {
+    nom = nom.trim();
+    console.log('[showBillingHistory] selectProperUser on cherche à sélectionner :', nom);
+    const userSelect = getUserSelect(iframeId, selector);
+
+    const currentSelectedUser = getSelectedUser(userSelect);
+    
+    if (currentSelectedUser.startsWith(nom)) {
+        console.log('[showBillingHistory] user already selected');
         return;
     }
 
-    let userSelect = iframe.contentDocument.querySelector('#DropDownListUsers');
-    console.log('[showBillingHistory] userSelect', userSelect);
-    if (userSelect) {
-        let userToLookFor = swapNomPrenom(document.getElementById('LabelUserLog').innerText);
-        console.log('[showBillingHistory] userToLookFor', userToLookFor);
-
-        const options = userSelect.options;
-        for (let i = 0; i < options.length; i++) {
-            if (options[i].textContent.trim().startsWith(userToLookFor)) {
-                userSelect.selectedIndex = i;
-                userSelect.dispatchEvent(new Event('change', { bubbles: true }));
-                break;
-            }
+    // On parcourt les options pour trouver le nom et le sélectionner
+    const options = userSelect.options;
+    for (let i = 0; i < options.length; i++) {
+        if (options[i].textContent.trim().startsWith(nom)) {
+            userSelect.selectedIndex = i;
+            userSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            break;
         }
-        await new Promise((resolve) => {
-            setTimeout(resolve, 250); // Attendre pour que la page se charge
-        });
+    }
+}
+
+
+
+async function showWholeHistory(iframeId) {
+    console.log('[showBillingHistory] showWholeHistory');
+    const iframeSel = '#' + iframeId;
+    clicCSPLockedElement("#HistoriqueUCForm1_LinkButtonSuiteWeda", iframeSel);
+    
+    const iframe = document.querySelector(iframeSel);
+    if (iframe) {
+        await sleep(250);
     }
 }
 

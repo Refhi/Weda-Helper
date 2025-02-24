@@ -502,3 +502,7 @@ function clicCSPLockedElement(elementSelector, iframeSelector = null) {
     document.dispatchEvent(event);        
 }
 
+// Fonction utilitaire pour attendre un certain nombre de millisecondes
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
