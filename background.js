@@ -506,7 +506,7 @@ var advancedDefaultSettings = [{
             "name": "billingDataFilter",
             "type": TYPE_TEXT,
             "description": "Filtre les données affichées dans l'historique des facturations en excluant les cotations notées. Ex. (G, GS, VL). IK correspond à n'importe quel nombre d'IK (ex. IK filtre aussi bien 9IK que 1IK ou IK).",
-            "default": "G,GS,VG+MD+IK, VGS+MD+IK, VG+MD, VGS+MD"
+            "default": "G,GS,VG+MD+IK, VGS+MD+IK, VG+MD, VGS+MD, COD, GS+MEG, G+MEG"
         }]
     }]
 }, {
