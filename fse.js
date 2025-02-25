@@ -364,7 +364,6 @@ function tweakFSECreation() {
 
                         recordMetrics({ clicks: 1, drags: 1 });
                         console.log('Cotation appliquée:', action);
-                        selectLastCotationSpace();
                         return; // Arrête la fonction après avoir appliqué une cotation
                     } else if (action === 'Défaut') {
                         console.log('Action "Défaut" spécifiée mais non trouvée parmi les éléments.');
@@ -810,12 +809,22 @@ addTweak('/vitalzen/fse.aspx', '!RemoveLocalCompanionTPE', function () {
 // Validation automatique du PDF de la FSE dégradée en SCOR
 addTweak('/vitalzen/fse.aspx', 'autoValidateSCOR', function () {
     waitForElement({
-        selector: '#targetValider span.mat-button-wrapper',
-        textContent: 'Inclure',
-        callback: function (element) {
-            console.log('bouton Inclure trouvé, je le clique');
-            element[0].click();
-            recordMetrics({ clicks: 1, drags: 1 });
+        selector: '.previewDocument',
+        callback: function (iframes) {
+            let iframe = iframes[0]
+            let iframedoc = iframe.document;
+            console.log('[autoValidateSCOR] pdf-viewer trouvé, je clique sur le bouton de validation', iframedoc);
+            // Chercher le bouton .mat-button-wrapper avec le innerText "Inclure"
+            let button = iframedoc.querySelectorAll('.mat-button-wrapper');
+            console.log('[autoValidateSCOR] boutons trouvés', button);
+            for (let i = 0; i < button.length; i++) {
+                if (button[i].innerText === 'Inclure') {
+                    console.log('[autoValidateSCOR] bouton trouvé, je clique dessus', button[i]);
+                    button[i].click();
+                    recordMetrics({ clicks: 1, drags: 1 });
+                    break;
+                }
+            }
         }
     });
 });
