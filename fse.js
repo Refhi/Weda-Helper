@@ -1144,7 +1144,7 @@ const cotationHelper = [
             let isProperBillingData = !context.billingData.some(billing => billing.Actes.includes('RDV'));
             return isProperAge && isProperBillingData;
         },
-        conseil: "Le patient est peut-être éligible à la réalisation du Plan Personnalisé de Prévention, donc à la cotation PPP. Cumulable à 70% avec un G, JKHD001 ou DEQP003.",
+        conseil: "Le patient est peut-être éligible à la réalisation du Plan Personnalisé de Prévention, donc à la cotation RDV. Cumulable à 70% avec un G, JKHD001 ou DEQP003.",
         link: 'https://omniprat.org/fiches-pratiques/bilan-de-prevention/'
     }
 ];
