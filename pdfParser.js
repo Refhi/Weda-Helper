@@ -831,7 +831,7 @@ function generateBinaryBitmap(canvas) {
 
 function generateHints() {
     const hints = new Map();
-    // const formats = [ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.DATA_MATRIX/*, ...*/]; // TODO : évaluer les types nécessaires
+    // const formats = [ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.DATA_MATRIX/*, ...*/]; // on pourrait faire évoluer les types nécessaires
     const formats = [ZXing.BarcodeFormat.DATA_MATRIX/*, ...*/]; // Pour l'instant uniquement les datamatrix
     hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
     return hints;
