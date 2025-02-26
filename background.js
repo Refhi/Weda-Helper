@@ -226,7 +226,8 @@ var advancedDefaultSettings = [{
         }, {
             "name": "autoPdfParser",
             "type": TYPE_BOOL,
-            "description": "Analyse automatiquement les pdfs en attente d'import et essaie d'en extraire les informations (date, nom patient, etc.). Pour les PDFs scannés il est recommandé d'avoir une OCR de qualité. Pour les geeks vous pouvez regarder https://github.com/Refhi/pdf_ocr_pdf (fonctionne bien mais nécessite pas mal de compétences pour l'installer).",
+            "description": "Analyse automatiquement les pdfs en attente d'import et essaie d'en extraire les informations (date, nom patient, etc.).",
+            "longDescription": "Pour les PDFs scannés il est recommandé d'avoir une OCR de qualité. Pour les geeks vous pouvez regarder https://github.com/Refhi/pdf_ocr_pdf (fonctionne bien mais nécessite pas mal de compétences pour l'installer). Pour l'instant ne fonctionne que dans https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx (la fenêtre d'imports de masse).",
             "default": true,
             "subOptions": [{
                 "name": "PdfParserAutoTitle",
@@ -236,7 +237,8 @@ var advancedDefaultSettings = [{
             }, {
                 "name": "PdfParserAutoCategoryDict",
                 "type": TYPE_JSON,
-                "description": "=> Catégorise les documents importés dans les catégories : selon, les, mots-clés donnés. Parcours la liste et valide la première catégorie qui correspond. Vous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés. La liste par défaut est donnée pour exemple. Vous devez initialiser la votre depuis la fenêtre des imports avec la petite icone ⚙️.",
+                "description": "=> Catégorise les documents importés dans les catégories",
+                "longDescription": "selon : les, mots-clés donnés. Parcours la liste et valide la première catégorie qui correspond. Vous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés. La liste par défaut est donnée pour exemple. Vous devez initialiser la votre depuis la fenêtre des imports avec la petite icone ⚙️.",
                 "default": PdfParserAutoCategoryDefaut
             }, {
                 "name": "PdfParserAutoDate",
@@ -455,7 +457,8 @@ var advancedDefaultSettings = [{
     "options": [{
         "name": "defaultCotation",
         "type": TYPE_BOOL,
-        "description": "Activer la cotation par défaut dans la FDS. (Nécessite de mettre une cotation favorite nommée \"Défaut\", et de valider la feuille de soin avec les touches o/n).",
+        "description": "Activer les cotations par défaut dans la FDS, comme 'Défaut'",
+        "longDescription": "Nécessite de mettre une cotation favorite nommée 'Défaut', 'DéfautPédia', 'DéfautMOP', 'DéfautALD', 'DéfautTC",
         "default": true
     }, {
         "name": "TweakFSEGestion",
@@ -505,7 +508,8 @@ var advancedDefaultSettings = [{
         "subOptions": [{
             "name": "billingDataFilter",
             "type": TYPE_TEXT,
-            "description": "Filtre les données affichées dans l'historique des facturations en excluant les cotations notées. Ex. (G, GS, VL). IK correspond à n'importe quel nombre d'IK (ex. IK filtre aussi bien 9IK que 1IK ou IK).",
+            "description": "Filtre les données affichées dans l'historique des facturations",
+            "longDescription": "Filtre les données affichées dans l'historique des facturations  en excluant les cotations notées. Ex. (G, GS, VL). IK correspond à n'importe quel nombre d'IK (ex. IK filtre aussi bien 9IK que 1IK ou IK).",
             "default": "G,GS,VG+MD+IK, VGS+MD+IK, VG+MD, VGS+MD, COD, GS+MEG, G+MEG"
         }]
     },{
@@ -549,7 +553,8 @@ var advancedDefaultSettings = [{
             "subOptions": [{
                 "name": "instantPrint",
                 "type": TYPE_BOOL,
-                "description": "Impression instantanée : dès l'envoi de l'impression via le Companion, ouvre un nouvel onglet. Ferme ensuite l'onglet originel quand l'impression est terminée. Utile pour faire DMP et ordonnances numériques sans ralentir le flux de la consultation. Attention les pdfs des impressions ne seront pas immédiatement visible car pas encore terminé au moment du retour vers le dossier patient.",
+                "description": "Impression instantanée",
+                "longDescription": "dès l'envoi de l'impression via le Companion, ouvre un nouvel onglet. Ferme ensuite l'onglet originel quand l'impression est terminée. Utile pour faire DMP et ordonnances numériques sans ralentir le flux de la consultation. Attention les pdfs des impressions ne seront pas immédiatement visible car pas encore terminé au moment du retour vers le dossier patient.",
                 "default": false
             }, {
                 "name": "sendAndPrint",
@@ -566,7 +571,7 @@ var advancedDefaultSettings = [{
             "name": "postPrintBehavior",
             "type": TYPE_RADIO,
             "description": "Comportement après une impression automatique par le Companion.",
-            "default": "closePreview",
+            "default": "returnToPatient",
             // Ici on devrait avoir 'closePreview', 'returnToPatient' et 'doNothing' avec les descriptions associées :
             // "Fermer la fenêtre de prévisualisation", "Retourner au dossier", "Ne rien faire"
             "radioOptions": [{

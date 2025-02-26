@@ -1050,7 +1050,7 @@ addTweak('/vitalzen/fse.aspx', 'cotationHelper', function () {
 
 function watchForMtSituationChange() {
     const REFRACTORY_KEY = 'cotationHelperLastMtCheckChange';
-    const REFRACTORY_PERIOD = 10; // ms
+    const REFRACTORY_PERIOD = 200; // ms
     
     let mtSituationList = document.querySelector('vz-orientation select');
     mtSituationList.addEventListener('change', function () {

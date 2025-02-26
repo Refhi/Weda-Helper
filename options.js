@@ -224,6 +224,8 @@ function createLabel(option) {
     const infoIcon = document.createElement('span');
     infoIcon.innerHTML = ' ℹ️';
     infoIcon.className = 'info-icon';
+    infoIcon.style.fontFamily = 'Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"'; // Ensure emoji font
+
     
     const tooltip = document.createElement('div');
     tooltip.className = 'info-tooltip';

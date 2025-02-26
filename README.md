@@ -50,7 +50,7 @@ Ctrl+P	Imprime le document en cours (1er modèle). Nécessite un module complém
 Ctrl+Shift+P	Imprime le document en cours (2e modèle)
 Ctrl+E Envoie le courrier en cours (1er modèle)
 Ctrl+Shift+E	Envoie le courrier en cours (2e modèle)
-Alt+A	Appuie Annuler
+Alt+A	Appuie Annuler (ou affiche l'historique des biologies dans la fenêtre des imports)
 Alt+S	Appuie Supprimer
 Alt+D	Insère la date du jour
 Ctrl+S	Appuie Enregistrer
@@ -72,7 +72,8 @@ Ctrl+U	Upload le dernier fichier du dossier envoyé par le Companion
 - Ajout d'icones pour copier automatiquement le NIR dans le presse-papier
 - Lecture automatique de la carte vitale et accès direct au dossier médical du patient (s’il est seul sur la carte vitale).
 *Cette fonction nécessite le connecteur Weda V3 installé sur votre PC. Demandez son installation à votre technicien.*
-- Automatisation de la récupération du MT et de sa mise à jour avec l'annuaire des professionnels de santé. (désactivé par défaut)
+- Automatisation de la récupération du MT et de sa mise à jour avec l'annuaire des professionnels de santé.
+- Automatisation de la déclaration de médecin traitant en un clic.
 - Automatisation du contrôle du MT + ouvre un nouvel onglet pour ne pas avoir à patienter. Un message vous indique si cela a fonctionné ou non. Vous pourrez retourner dans le premier onglet si vous souhaitez enregistrer le MT.
 - Automatisation partielle de la déclaration de MT : sélectionne automatiquement le patient en cours, pré-coche les cases de consentement. Vous n'avez plus qu'à cliquer sur "Transmettre" pour valider.
 
@@ -139,6 +140,9 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - option pour automatiquement cocher "Inclure la FSP en SCOR" si la FSE est dégradée (activée par défaut)
 - sélectionne automatiquement "Rien" dans les Pièces justificatives AMO si "Champ de donnée Actes - Pièce Justificative AMO invalide : Erreur de saisie Nature" est détecté
 - maintient le choix du mode de prise en charge AMC
+- affichage de l'historique des cotations sur 5 ans (filtré ou non par cotations courantes), utile pour surveiller les cotations à ne faire qu'une fois tout les ans par exemple.
+- assistance à la cotation : Ajout d'une infobulle pour avertir de possibles cotations applicables à certaines situation (ex. SHE ou MCG), qu'on oublie habituellement tout le temps...
+- validation automatique des FSE dégradées en SCOR
 
 
 ## Divers
