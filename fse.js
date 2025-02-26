@@ -994,6 +994,13 @@ async function showBillingData(billingData, billingDataFiltered) {
     billingDataContainer.appendChild(toggleButton);
     document.body.appendChild(billingDataContainer);
 
+    // Create a hidden div to store the billingData
+    const hiddenBillingData = document.createElement('div');
+    hiddenBillingData.style.display = 'none';
+    hiddenBillingData.id = 'hiddenBillingData';
+    hiddenBillingData.textContent = JSON.stringify(billingData);
+    document.body.appendChild(hiddenBillingData);
+
     updateBillingData(billingDataFiltered);
 
     function updateBillingData(data) {
@@ -1004,6 +1011,11 @@ async function showBillingData(billingData, billingDataFiltered) {
         });
         billingDataContainer.appendChild(dataContainer);
     }
+}
+
+function getHiddenBillingData() {
+    const hiddenBillingData = document.getElementById('hiddenBillingData');
+    return hiddenBillingData ? JSON.parse(hiddenBillingData.textContent) : [];
 }
 
 async function filterBillingData(billingData) {
@@ -1071,7 +1083,8 @@ function checkPossibleHelp() {
         mtSituation: getActualMTSituation(),
         patientAge: patientAgeInFSE(),
         hour: new Date().getHours(),
-        dayOfWeek: new Date().getDay() // Sunday = 0, Monday = 1, etc.
+        dayOfWeek: new Date().getDay(), // Sunday = 0, Monday = 1, etc.
+        billingData: getHiddenBillingData()
     };
     cotationHelper.forEach(helper => {
         if (helper.test(cotationContext)) {
@@ -1122,6 +1135,17 @@ const cotationHelper = [
         },
         conseil: 'Cette situation peut peut-être bénéficier de la cotation MHP',
         link: 'https://www.ameli.fr/medecin/exercice-liberal/facturation-remuneration/consultations-actes/tarifs/tarifs-conventionnels-medecins-generalistes-specialistes'
+    }, {
+        titre: 'cotation RDV',
+        test: function(context) {
+            // les ages doivent être : 18-25 ans ; 45-50 ans ; 60-65 ans ou 70-75 ans, cf. https://www.ameli.fr/medecin/sante-prevention/bilan-prevention-ages-cles
+            let isProperAge = [[18, 25], [45, 50], [60, 65], [70, 75]].some(ageRange => context.patientAge >= ageRange[0] && context.patientAge <= ageRange[1]);
+            // Il ne doit pas y avoir de cotation RDV dans les 7 dernières années. Comme l'affichage est limité à 7 ans, c'est implicitement vérifié
+            let isProperBillingData = !context.billingData.some(billing => billing.Actes.includes('RDV'));
+            return isProperAge && isProperBillingData;
+        },
+        conseil: "Le patient est peut-être éligible à la réalisation du Plan Personnalisé de Prévention, donc à la cotation PPP. Cumulable à 70% avec un G, JKHD001 ou DEQP003.",
+        link: 'https://omniprat.org/fiches-pratiques/bilan-de-prevention/'
     }
 ];
 
