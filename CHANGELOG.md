@@ -11,6 +11,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#326](https://github.com/Refhi/Weda-Helper/issues/326) - Ajout d'une infobulle pour avertir de possibles cotations applicables à certaines situation (ex. SHE ou MCG), qu'on oublie habituellement tout le temps...
 - [#367](https://github.com/Refhi/Weda-Helper/issues/367) - ajout de "Pédicurie" pour les mots-clés détectés pour l'ordonance numérique de pédicurie
 - [#368](https://github.com/Refhi/Weda-Helper/issues/368) - Si une ordonnance paramédicale contiens "psychologue", l'ordonnance numérique est automatiquement convertie en ordonnance classique.
+- [#338](https://github.com/Refhi/Weda-Helper/issues/338) - Validation automatiquement les FSE dégradée
 
 
 # [2.10.1]

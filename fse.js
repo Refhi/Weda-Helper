@@ -810,15 +810,18 @@ addTweak('/vitalzen/fse.aspx', '!RemoveLocalCompanionTPE', function () {
 addTweak('/vitalzen/fse.aspx', 'autoValidateSCOR', function () {
     waitForElement({
         selector: '.previewDocument',
-        callback: function (iframes) {
-            let iframe = iframes[0]
-            let iframedoc = iframe.document;
-            console.log('[autoValidateSCOR] pdf-viewer trouvé, je clique sur le bouton de validation', iframedoc);
+        callback: function () {
+            console.log('[autoValidateSCOR] pdf-viewer trouvé, je clique sur le bouton de validation');
             // Chercher le bouton .mat-button-wrapper avec le innerText "Inclure"
-            let button = iframedoc.querySelectorAll('.mat-button-wrapper');
+            let button = document.querySelectorAll('.mat-button-wrapper');
             console.log('[autoValidateSCOR] boutons trouvés', button);
             for (let i = 0; i < button.length; i++) {
                 if (button[i].innerText === 'Inclure') {
+                    sendWedaNotif({
+                        message: "PDF de la FSE dégradée en SCOR validée automatiquement. Allez dans les options de Weda-Helper pour désactiver cette fonctionnalité.",
+                        type: 'success',
+                        icon: 'check_circle'
+                    })
                     console.log('[autoValidateSCOR] bouton trouvé, je clique dessus', button[i]);
                     button[i].click();
                     recordMetrics({ clicks: 1, drags: 1 });
