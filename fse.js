@@ -818,7 +818,7 @@ addTweak('/vitalzen/fse.aspx', 'autoValidateSCOR', function () {
             for (let i = 0; i < button.length; i++) {
                 if (button[i].innerText === 'Inclure') {
                     sendWedaNotif({
-                        message: "PDF de la FSE dégradée en SCOR validée automatiquement. Allez dans les options de Weda-Helper pour désactiver cette fonctionnalité.",
+                        message: "PDF de la FSE dégradée en SCOR validée automatiquement. Vous pouvez désactiver cette fonctionnalité si vous le souhaitez dans les options de Weda Helper.",
                         type: 'success',
                         icon: 'check_circle'
                     })
