@@ -893,7 +893,7 @@ async function selectProperUser(iframeId, nom, selector) {
     const userSelect = getUserSelect(iframeId, selector);
 
     const currentSelectedUser = getSelectedUser(userSelect);
-    
+
     if (currentSelectedUser.startsWith(nom)) {
         console.log('[showBillingHistory] user already selected');
         return;
@@ -916,7 +916,7 @@ async function showWholeHistory(iframeId) {
     console.log('[showBillingHistory] showWholeHistory');
     const iframeSel = '#' + iframeId;
     clicCSPLockedElement("#HistoriqueUCForm1_LinkButtonSuiteWeda", iframeSel);
-    
+
     const iframe = document.querySelector(iframeSel);
     if (iframe) {
         await sleep(250);
@@ -1061,19 +1061,26 @@ addTweak('/vitalzen/fse.aspx', 'cotationHelper', function () {
 });
 
 function watchForMtSituationChange() {
-    const REFRACTORY_KEY = 'cotationHelperLastMtCheckChange';
-    const REFRACTORY_PERIOD = 200; // ms
-    
     let mtSituationList = document.querySelector('vz-orientation select');
     mtSituationList.addEventListener('change', function () {
-        const now = Date.now();
-        const lastCheck = sessionStorage.getItem(REFRACTORY_KEY) || 0;
-        
-        if (now - lastCheck > REFRACTORY_PERIOD) {
-            sessionStorage.setItem(REFRACTORY_KEY, now);
-            checkPossibleHelp();
-        }
+        checkPossibleHelp();
     });
+}
+
+function greenLightRefractoryPeriodCotationHelper(customKey = '') {
+    const BASE_KEY = 'cotationHelperLastMtCheckChange';
+    const REFRACTORY_KEY = customKey ? `${BASE_KEY}_${customKey}` : BASE_KEY;
+    const REFRACTORY_PERIOD = 5000; // ms
+    const now = Date.now();
+    const lastCheck = sessionStorage.getItem(REFRACTORY_KEY) || 0;
+    const timeDiff = now - lastCheck;
+    console.log('Test refractaire : ', now, lastCheck, timeDiff);
+
+    if (timeDiff > REFRACTORY_PERIOD) {
+        sessionStorage.setItem(REFRACTORY_KEY, now);
+        return true;
+    }
+    return false;
 }
 
 
@@ -1088,13 +1095,16 @@ function checkPossibleHelp() {
     };
     cotationHelper.forEach(helper => {
         if (helper.test(cotationContext)) {
+            if (!greenLightRefractoryPeriodCotationHelper(helper.titre)) {
+                return;
+            }
             console.log('cotationHelper trouvé', helper);
             sendWedaNotif(
                 {
                     message: helper.conseil + ' ' + (helper.link ? 'En savoir plus : ' + helper.link : ''),
                     type: 'undefined',
                     icon: 'info',
-                    timeout: 10000
+                    duration: 10000
                 },
             )
 
@@ -1105,7 +1115,7 @@ function checkPossibleHelp() {
 const cotationHelper = [
     {
         titre: 'Cotation MCG',
-        test: function(context) {
+        test: function (context) {
             console.log('Ajout de MCG', context);
             return context.mtSituation.includes('08') && context.cotation.includes('G');
         },
@@ -1113,7 +1123,7 @@ const cotationHelper = [
         link: 'https://omniprat.org/fiches-pratiques/consultations-visites/majoration-de-coordination-generaliste/'
     }, {
         titre: 'Cotation SHE',
-        test: function(context) {
+        test: function (context) {
             console.log('Ajout de SHE', context);
             // La cotation doit contenir SNP ou MRT
             let isProperCotation = context.cotation.some(cot => cot.includes('SNP') || cot.includes('MRT'));
@@ -1125,7 +1135,7 @@ const cotationHelper = [
         link: 'https://www.hauts-de-france.ars.sante.fr/le-service-dacces-aux-soins-sas-1'
     }, {
         titre: 'Cotation MHP',
-        test: function(context) {
+        test: function (context) {
             console.log('Ajout de MHP', context);
             // Doit être aux horaires de PDSA : donc samedi 12+ heure ou soir 20+ heure
             let isProperHour = (context.dayOfWeek === 6 && context.hour >= 12) || context.hour >= 20;
@@ -1137,7 +1147,7 @@ const cotationHelper = [
         link: 'https://www.ameli.fr/medecin/exercice-liberal/facturation-remuneration/consultations-actes/tarifs/tarifs-conventionnels-medecins-generalistes-specialistes'
     }, {
         titre: 'cotation RDV',
-        test: function(context) {
+        test: function (context) {
             // les ages doivent être : 18-25 ans ; 45-50 ans ; 60-65 ans ou 70-75 ans, cf. https://www.ameli.fr/medecin/sante-prevention/bilan-prevention-ages-cles
             let isProperAge = [[18, 25], [45, 50], [60, 65], [70, 75]].some(ageRange => context.patientAge >= ageRange[0] && context.patientAge <= ageRange[1]);
             // Il ne doit pas y avoir de cotation RDV dans les 7 dernières années. Comme l'affichage est limité à 7 ans, c'est implicitement vérifié
