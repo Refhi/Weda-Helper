@@ -69,6 +69,12 @@ function createInput(option) { // gestion des différents types d'input
   const input = document.createElement(inputType);
   input.id = option.name;
 
+  // Désactiver l'élément si l'option est marquée comme désactivée
+  if (option.disabled) {
+    input.disabled = true;
+  }
+  
+
   // Récupération de la valeur de l'option (sauvegardée ou par défaut)
   getOptionValue(option).then(optionValue => {
     switch (option.type) {

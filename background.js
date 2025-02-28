@@ -26,7 +26,12 @@
 //         "name": "TweakImports",
 //         "type": "bool",
 //         "description": "Activer les modifications pour la fenêtre d'importations (page télécharger des documents).",
-//         "default": true
+//         "longDescription": "description longue, si besoin, s'affiche dans une popup en survolant le point d'exclamation",
+//         "default": true,
+//         "disabled": true,  // option désactivée, mais visible. Facultatif
+//         "subOptions": [{
+//             // structure identique pour les sous-options
+//         }]
 //     }],
 //     "sections": []  // d'éventuelles sous-sections, avec la même structure
 // }]
@@ -504,7 +509,8 @@ var advancedDefaultSettings = [{
         "name": "showBillingHistory",
         "type": TYPE_BOOL,
         "description": "Affiche l'historique des facturations dans la page de télétransmission.",
-        "default": true,
+        "default": false,
+        "disabled": true,
         "subOptions": [{
             "name": "billingDataFilter",
             "type": TYPE_TEXT,
