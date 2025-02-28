@@ -847,6 +847,14 @@ addTweak('/vitalzen/fse.aspx', 'showBillingHistory', async function () {
 
     await sleep(1000); // Attendre un peu pour que la page se charge
 
+    // Vérifier qu'on soit bien sur l'onglet "Consultation" sinon les cotations ne sont pas affichées
+    if (!iframe.contentDocument.querySelector('#LabelCommandAffiche').textContent.includes('Consultation')) {
+        console.log('[showBillingHistory] Onglet "Consultation" non sélectionné, les cotations ne sont pas affichées');
+        let ongletConsultation = iframe.contentDocument.querySelector('#ButtonConsultation');
+        ongletConsultation.click();
+        await sleep(100);
+    }
+
     const userSelector = '#DropDownListUsers';
     const currentUser = getCurrentUser(iframeId, userSelector);
     const loggedInUser = swapNomPrenom(document.getElementById('LabelUserLog').innerText);
