@@ -1094,7 +1094,7 @@ function greenLightRefractoryPeriodCotationHelper(customKey = '') {
 
 function checkPossibleHelp() {
     const cotationContext = {
-        cotation: getActualCotation(),
+        cotation: getActualCotation(), // retourne un array de cotation
         mtSituation: getActualMTSituation(),
         patientAge: patientAgeInFSE(),
         hour: new Date().getHours(),
@@ -1164,6 +1164,16 @@ const cotationHelper = [
         },
         conseil: "Le patient est peut-être éligible à la réalisation du Plan Personnalisé de Prévention, donc à la cotation RDV. Cumulable à 70% avec un G, JKHD001 ou DEQP003.",
         link: 'https://omniprat.org/fiches-pratiques/bilan-de-prevention/'
+    }, {
+        titre: 'notation MOP',
+        test: function (context) {
+            let ageOK = patientAgeInFSE() >= 80;
+            let isMT = estMTdeclareOuReferent(loggedInUser());
+            let noMopSelected = !context.cotation.includes('MOP');
+            return ageOK && isMT && noMopSelected;
+        },
+        conseil: "Le patient a plus de 80 ans et vous n'êtes pas le médecin traitant. Pensez à ajouter la cotation MOP",
+        link: "https://omniprat.org/fiches-pratiques/consultations-visites/majoration-personne-agee-mpa/"
     }
 ];
 
