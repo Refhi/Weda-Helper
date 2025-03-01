@@ -42,6 +42,7 @@ const keyCommands = {
             binElementCurrentImport.click();
         } else {
             clickElementByClass('button delete');
+            clickElementByClass('targetSupprimer');
         }
     },
     'shortcut_w': function () {
@@ -147,6 +148,7 @@ function addHotkeyToDocument(scope, element, shortcut, action) {
         }, 300));
 }
 
+// Renvoie le raccourcis pertinent (personnalisé ou par défaut) pour une action donnée
 function shortcutDefaut(shortcuts, defaultShortcuts, key) {
     if (shortcuts == undefined) {
         return defaultShortcuts[key]["default"];
@@ -248,7 +250,7 @@ function push_valider() {
     // click other elements, one after the other, until one of them works
     const actions = [
         () => clickElementById('ButtonValidFileStream'),
-        () => clickElementById('targetValider'), // utilisé quand j'ajoute une cible à un bouton
+        () => clickElementByClass('targetValider'), // utilisé quand j'ajoute une cible à un bouton
         () => clickElementById('ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonValidDocument'),
         () => clickElementById('ContentPlaceHolder1_ButtonLibreValid'),
         () => clickElementById('ContentPlaceHolder1_FindPatientUcForm1_ButtonValidFamille'),
@@ -267,7 +269,7 @@ function push_valider() {
 function push_annuler() {
     console.log('push_annuler activé');
     const actions = [
-        () => clickElementById('targetAnnuler'), // utilisé quand j'ajoute une cible à un bouton
+        () => clickElementByClass('targetAnnuler'), // utilisé quand j'ajoute une cible à un bouton
         () => clickElementById('ContentPlaceHolder1_FindPatientUcForm1_ButtonCancelFamille'),
         () => clickElementByClass('button cancel'),
         () => GenericClicker("title", "Annuler"),
@@ -462,7 +464,8 @@ addTweak('*', 'WarpButtons', async function () {
             chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function (result) {
                 const raccourcis = {
                     'targetAnnuler': shortcutDefaut(result.shortcuts, result.defaultShortcuts, 'push_annuler'),
-                    'targetValider': shortcutDefaut(result.shortcuts, result.defaultShortcuts, 'push_valider')
+                    'targetValider': shortcutDefaut(result.shortcuts, result.defaultShortcuts, 'push_valider'),
+                    'targetSupprimer': shortcutDefaut(result.shortcuts, result.defaultShortcuts, 'push_delete')
                 };
                 resolve(raccourcis);
             });
@@ -473,7 +476,7 @@ addTweak('*', 'WarpButtons', async function () {
     console.log('[WarpButtons] Raccourcis', raccourcis);
 
     function warpButtons(buttons) {
-        function addIdToButton(button) {
+        function addClassToButton(button) {
             var actions = {
                 'Annuler': [
                     'Annuler',
@@ -482,7 +485,8 @@ addTweak('*', 'WarpButtons', async function () {
                     'Non',
                     'NON',
                     'Ne pas inclure',
-                    'FSE dégradée'
+                    'FSE dégradée',
+                    'Valider les modifications'
                 ],
                 'Valider': [
                     'Oui',
@@ -497,8 +501,14 @@ addTweak('*', 'WarpButtons', async function () {
                     'Inclure',
                     'Sécuriser',
                     'Affecter ce résultat',
-                    'FSE Teleconsultation'
+                    'FSE Teleconsultation',
+                    'Valider et archiver'
+                ],
+                'Supprimer': [
+                    'Valider et mettre à la corbeille',
+                    'Supprimer',
                 ]
+
             };
             if (button) {
                 var buttonText = button.textContent;
@@ -506,13 +516,8 @@ addTweak('*', 'WarpButtons', async function () {
                     buttonText = button.value; //Bypass pour les boutons non Angular qui ont un textContent vide
                 }
                 var action = Object.keys(actions).find(key => actions[key].includes(buttonText));
-                // vérifie que l'id n'est pas déjà présent. Utile quand plusieurs boutons sont éligible.
-                if (document.getElementById('target' + action)) {
-                    console.log(action, 'id already exist !');
-                    return false;
-                }
                 if (action) {
-                    button.id = 'target' + action;
+                    button.classList.add('target' + action);
                 }
             }
             return true;
@@ -535,9 +540,17 @@ addTweak('*', 'WarpButtons', async function () {
             }
 
             if (button) {
-                console.log('ajout de raccourcis au button', button);
-                var raccourci = raccourcis[button.id];
+                let raccourci = null;
+                for (let i = 0; i < button.classList.length; i++) {
+                    let className = button.classList[i];
+                    if (raccourcis[className]) {
+                        raccourci = raccourcis[className];
+                        break;
+                    }
+                }
+                console.log('ajout de raccourcis au button', button, 'raccourcis', raccourci);
                 if (raccourci) {
+                    console.log("Je tente d'ajouter une info de raccourci à un bouton", button);
                     // Créer l'élément span pour le raccourci
                     var span = document.createElement('span');
                     span.textContent = raccourci;
@@ -548,13 +561,9 @@ addTweak('*', 'WarpButtons', async function () {
             }
         }
 
-
-
-
         buttons.forEach(function (button) {
-            // console.log('Bouton trouvé ! Je le redimentionne, lui ajoute un id et note le raccourcis clavier par défaut', button);
             button.style.width = 'auto';
-            if (addIdToButton(button)) {
+            if (addClassToButton(button)) {
                 addShortcutsToButton(button);
             }
         });
@@ -568,12 +577,18 @@ addTweak('*', 'WarpButtons', async function () {
         '#ContentPlaceHolder1_PatientsGrid_ButtonAffecteResultat_0',
         '.mat-button-wrapper',
         '.tab_valid_cancel .button', // Notamment dans la déclaration de MT
-        '.boutonCustonWH'
+        '.boutonCustonWH',
+        '.button.delete', // Le bouton de suppression classique
+        // Trois boutons pour la validation et archivage/suppression suite à ctrl+U
+        '#WHButtonValidAndArchive',
+        '#WHButtonValidAndDelete',
+        '#ButtonValidFileStream'
     ];
 
     selectors.forEach(selector => {
         waitForElement({
             selector: selector,
+            triggerOnInit: true,
             callback: warpButtons
         });
     });
