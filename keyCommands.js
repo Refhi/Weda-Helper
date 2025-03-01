@@ -486,7 +486,8 @@ addTweak('*', 'WarpButtons', async function () {
                     'NON',
                     'Ne pas inclure',
                     'FSE dégradée',
-                    'Valider les modifications'
+                    'Valider les modifications',
+                    'H'
                 ],
                 'Valider': [
                     'Oui',
@@ -523,44 +524,78 @@ addTweak('*', 'WarpButtons', async function () {
             return true;
         }
 
-        function addShortcutsToButton(button) {
-            function applyStylesToSpan(span) {
-                span.style.position = 'absolute';
-                span.style.bottom = '-10px'; // Placer le texte un peu plus bas
-                span.style.right = '5px';
+        function addShortcutsToButton(element) {
+            function applyCommonStylesToSpan(span) {
                 span.style.color = 'grey';
                 span.style.fontSize = '0.8em';
-                span.style.backgroundColor = 'rgba(240, 240, 240, 0.6)'; // Ajouter un fond semi-transparent
-                span.style.padding = '2px'; // Ajouter un peu de padding pour le texte
-                span.style.borderRadius = '10px'; // Ajouter des angles arrondis
-                span.style.height = 'auto'; // Fixer la hauteur
-                span.style.lineHeight = 'normal'; // Fixer la hauteur de ligne
-                span.style.display = 'inline-block'; // S'assurer que le span ne prenne pas plus de hauteur que nécessaire
-                span.style.pointerEvents = 'none'; // Empêcher les événements de pointer sur le span
+                span.style.backgroundColor = 'rgba(240, 240, 240, 0.6)';
+                span.style.padding = '2px 5px';
+                span.style.borderRadius = '10px';
+                span.style.pointerEvents = 'none';
+                span.style.whiteSpace = 'nowrap'; // Prevent text wrapping
+                span.style.zIndex = '5'; // Ensure it appears above other content
             }
-
-            if (button) {
+            
+            function applyStylesToSpanForButton(span) {
+                applyCommonStylesToSpan(span);
+                span.style.position = 'absolute';
+                span.style.bottom = '-10px';
+                span.style.right = '5px';
+                span.style.height = 'auto';
+                span.style.lineHeight = 'normal';
+                span.style.display = 'inline-block';
+            }
+            
+            function applyStylesToSpanForInput(span) {
+                applyCommonStylesToSpan(span);
+                span.style.position = 'absolute';
+                span.style.bottom = '-10px'; // Position below the input
+                span.style.right = '25%';    // Position at the right quarter (75% from left)
+                span.style.transform = 'translateX(50%)'; // Center the tooltip at the 75% point
+            }
+        
+            if (element) {
                 let raccourci = null;
-                for (let i = 0; i < button.classList.length; i++) {
-                    let className = button.classList[i];
+                for (let i = 0; i < element.classList.length; i++) {
+                    let className = element.classList[i];
                     if (raccourcis[className]) {
                         raccourci = raccourcis[className];
                         break;
                     }
                 }
-                console.log('ajout de raccourcis au button', button, 'raccourcis', raccourci);
+                
+                console.log('ajout de raccourcis à l\'élément', element, 'raccourcis', raccourci);
+                
                 if (raccourci) {
-                    console.log("Je tente d'ajouter une info de raccourci à un bouton", button);
+                    console.log("Je tente d'ajouter une info de raccourci à", element.tagName);
+                    
                     // Créer l'élément span pour le raccourci
                     var span = document.createElement('span');
                     span.textContent = raccourci;
-                    applyStylesToSpan(span);
-                    button.style.position = 'relative'; // S'assurer que le bouton a une position relative
-                    button.appendChild(span);
+                    
+                    // Appliquer les styles selon le type d'élément
+                    if (element.tagName.toLowerCase() === 'input') {
+                        // Pour les éléments input
+                        applyStylesToSpanForInput(span);
+                        
+                        // On doit ajouter le span à un parent conteneur
+                        const wrapper = document.createElement('div');
+                        wrapper.style.position = 'relative';
+                        wrapper.style.display = 'inline-block';
+                        
+                        // Remplacer l'input par le wrapper contenant l'input et le span
+                        element.parentNode.insertBefore(wrapper, element);
+                        wrapper.appendChild(element);
+                        wrapper.appendChild(span);
+                    } else {
+                        // Pour les boutons et autres éléments
+                        applyStylesToSpanForButton(span);
+                        element.style.position = 'relative'; // S'assurer que l'élément a une position relative
+                        element.appendChild(span);
+                    }
                 }
             }
         }
-
         buttons.forEach(function (button) {
             button.style.width = 'auto';
             if (addClassToButton(button)) {
@@ -582,7 +617,8 @@ addTweak('*', 'WarpButtons', async function () {
         // Trois boutons pour la validation et archivage/suppression suite à ctrl+U
         '#WHButtonValidAndArchive',
         '#WHButtonValidAndDelete',
-        '#ButtonValidFileStream'
+        '#ButtonValidFileStream',
+        '#ContentPlaceHolder1_PatientsGrid_ButtonHistoriqueResultat_0' // Pour les biologies
     ];
 
     selectors.forEach(selector => {
