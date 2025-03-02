@@ -572,9 +572,24 @@ addTweak('*', 'WarpButtons', async function () {
                     // Créer l'élément span pour le raccourci
                     var span = document.createElement('span');
                     span.textContent = raccourci;
+                    // Ici on veut que l'id soit le raccourci pour pouvoir le cibler, mais il faut que les caractères soient valides
+                    span.id = raccourci
+                        .replace(/ /g, '_')
+                        .replace(/\+/g, 'plus')  // Replace + with the word "plus"
+                        .replace(/'/g, '')
+                        .replace(/é/g, 'e')
+                        .replace(/è/g, 'e')
+                        .replace(/à/g, 'a')
+                        .replace(/ç/g, 'c');
+                    
+                    // On vérifie si un élément avec cet id existe déjà
+                    if (document.getElementById(span.id)) {
+                        return;
+                    }
                     
                     // Appliquer les styles selon le type d'élément
                     if (element.tagName.toLowerCase() === 'input') {
+                        console.log('C\'est un input');
                         // Pour les éléments input
                         applyStylesToSpanForInput(span);
                         
@@ -588,6 +603,7 @@ addTweak('*', 'WarpButtons', async function () {
                         wrapper.appendChild(element);
                         wrapper.appendChild(span);
                     } else {
+                        console.log('C\'est un autre élément'); 
                         // Pour les boutons et autres éléments
                         applyStylesToSpanForButton(span);
                         element.style.position = 'relative'; // S'assurer que l'élément a une position relative
