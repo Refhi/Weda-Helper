@@ -2,10 +2,13 @@
   "manifest_version": 3,
   "name": "Weda Helper",
   "version": "2.11",
-  "version_name": "2.11-alpha1",
+  "version_name": "2.11-alpha2",
   "options_page": "options.html",
   "permissions": [
     "storage"
+  ],
+  "optional_permissions": [
+    "tabs"
   ],
   "host_permissions": [
     "http://localhost/"
@@ -47,7 +50,8 @@
         "courrier.js",
         "imti.js",
         "wedaEchanges.js",
-        "pdfParser.js"
+        "pdfParser.js",
+        "optionalPermissions.js"
       ]
     }
   ],

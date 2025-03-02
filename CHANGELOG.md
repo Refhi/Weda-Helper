@@ -13,6 +13,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#368](https://github.com/Refhi/Weda-Helper/issues/368) - Si une ordonnance paramédicale contiens "psychologue", l'ordonnance numérique est automatiquement convertie en ordonnance classique.
 - [#338](https://github.com/Refhi/Weda-Helper/issues/338) - Validation automatiquement les FSE dégradée
 - [#364](https://github.com/Refhi/Weda-Helper/issues/364) - Les dates types 14 novembre 2024 peuvent être reconnues dans les imports (à activer dans les options)
+- [#369](https://github.com/Refhi/Weda-Helper/issues/369) - Modification de la gestion des impressions instantanées : vous devez accorder l'autorisation à Weda-Helper de gérer les onglets si vous souhaitez l'utiliser. Ça rendra l'impression instantanée plus fiable.
 
 
 # [2.10.1]

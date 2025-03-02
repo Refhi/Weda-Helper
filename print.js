@@ -564,7 +564,8 @@ function closeWindow() {
                 if (!progressBarElement) {
                     console.log('[InstantPrint] progress bar disparue, je ferme la fenêtre');
                     clearInterval(interval);
-                    window.close();
+                    // window.close();
+                    closeCurrentTab();
                     // Normalement la fenêtre est fermée. Mais si jamais elle ne l'est pas, on le signale
                     watchForClose();
                 } else if (Date.now() - startTime > 40000) {
@@ -622,7 +623,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'instantPrint', function () {
         sessionStorage.removeItem('lastPrintDate');
         sessionStorage.removeItem('lastProgressBarDate');
         if (!document.hasFocus()) {
-            window.close();
+            closeCurrentTab();
         } else {
             console.log('[InstantPrint] window has focus, je ne ferme pas');
         }
