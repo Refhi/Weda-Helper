@@ -119,7 +119,7 @@ function afterMutations({ delay, callback, callBackId = "callback id undefined",
  */
 
 let observedElements = new WeakMap();
-function waitForElement({ selector, callback, parentElement = document, justOnce = false, debug = false, textContent = null }) {
+function waitForElement({ selector, callback, parentElement = document, justOnce = false, debug = false, textContent = null, triggerOnInit = false }) {
     let observer = new MutationObserver((mutations) => {
         for (let i = 0; i < mutations.length; i++) {
             let mutation = mutations[i];
@@ -146,7 +146,7 @@ function waitForElement({ selector, callback, parentElement = document, justOnce
                     if (justOnce) {
                         observer.disconnect();
                     }
-                    callback(newElements)
+                    callback(newElements);
                 }
             }
         }
@@ -154,8 +154,29 @@ function waitForElement({ selector, callback, parentElement = document, justOnce
 
     let config = { childList: true, subtree: true };
     observer.observe(parentElement, config);
-}
 
+    // Trigger callback on initialization if elements already exist
+    if (triggerOnInit) {
+        let elements = parentElement.querySelectorAll(selector);
+        if (textContent) {
+            elements = Array.from(elements).filter(element => element.textContent.includes(textContent));
+        }
+        let newElements = [];
+        for (let j = 0; j < elements.length; j++) {
+            let element = elements[j];
+            if (!observedElements.has(element)) {
+                if (debug) { console.log('[waitForElement] Element', element, ' has appeared'); }
+                observedElements.set(element, true); // Add the element to the WeakMap
+                newElements.push(element);
+            } else {
+                if (debug) { console.log('[waitForElement] Element', element, ' already observed'); }
+            }
+        }
+        if (newElements.length > 0) {
+            callback(newElements);
+        }
+    }
+}
 
 
 function observeDiseapearance(element, callback) {
@@ -438,6 +459,10 @@ function sendWedaNotif({
 
 function addUrlLink() {
     let NotifPopupElement = document.querySelector('p.ng-star-inserted');
+    if (!NotifPopupElement) {
+        console.warn('NotifPopupElement not found');
+        return;
+    }
     // Cherche dans le innerText une éventuelle URL
     let url = NotifPopupElement.innerText.match(/(https?:\/\/[^\s]+)/);
     if (url) {
