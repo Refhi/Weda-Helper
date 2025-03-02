@@ -735,7 +735,8 @@ async function extractLines(textItems) {
 async function extractRelevantData(fullText, pdfUrl) {
     const regexPatterns = {
         dateRegexes: [
-            /[0-9]{2}[\/\-.][0-9]{2}[\/\-.][0-9]{4}/g // Match dates dd/mm/yyyy ou dd-mm-yyyy
+            /[0-9]{2}[\/\-.][0-9]{2}[\/\-.][0-9]{4}/g, // Match dates dd/mm/yyyy ou dd-mm-yyyy
+            /([0-9]{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+([0-9]{4})/gi // Match dates comme "28 novembre 2024"
         ],
         dateOfBirthRegexes: [
             /(?:né\(e\) le|date de naissance:|date de naissance :|née le)[\s\S]([0-9]{2}[\/\-.][0-9]{4})/gi // Match la date de naissance
@@ -1420,32 +1421,70 @@ function extractNames(fullText, nameRegexes) {
     return nameMatches;
 }
 
+// Fonction modifiée pour analyser les dates avec mois en toutes lettres
 function parseDate(dateString) {
-    const parts = dateString.split(/[\/\-.]/);
-    const day = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10);
-    const year = parseInt(parts[2], 10);
+    // Mapping des noms de mois en français vers leurs numéros
+    const moisEnFrancais = {
+        'janvier': 1, 'février': 2, 'mars': 3, 'avril': 4, 'mai': 5, 'juin': 6,
+        'juillet': 7, 'août': 8, 'septembre': 9, 'octobre': 10, 'novembre': 11, 'décembre': 12
+    };
+    
+    // Détecter si c'est une date avec le mois en toutes lettres
+    const dateTextuelle = /([0-9]{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+([0-9]{4})/i.exec(dateString);
+    
+    if (dateTextuelle) {
+        const jour = parseInt(dateTextuelle[1], 10);
+        const mois = moisEnFrancais[dateTextuelle[2].toLowerCase()];
+        const annee = parseInt(dateTextuelle[3], 10);
+        
+        // Vérification des plages valides
+        if (jour < 1 || jour > 31 || !mois || annee < 1900 || annee > 9999) {
+            return null;
+        }
+        
+        const date = new Date(annee, mois - 1, jour);
+        
+        // Vérification que la date est valide
+        if (date.getDate() !== jour || date.getMonth() !== mois - 1 || date.getFullYear() !== annee) {
+            return null;
+        }
+        
+        const minDate = new Date(1900, 0, 1);
+        const today = new Date();
+        
+        if (date < minDate || date > today) {
+            return null;
+        }
+        
+        return date;
+    } else {
+        // Format standard dd/mm/yyyy ou dd-mm-yyyy
+        const parts = dateString.split(/[\/\-.]/);
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const year = parseInt(parts[2], 10);
 
-    // Vérification des plages valides pour jour, mois et année
-    if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1900 || year > 9999) {
-        return null; // Retourne null pour une date invalide
+        // Vérification des plages valides pour jour, mois et année
+        if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1900 || year > 9999) {
+            return null; // Retourne null pour une date invalide
+        }
+
+        const date = new Date(year, month - 1, day);
+
+        // Vérification que la date est valide (par exemple, 30 février n'existe pas)
+        if (date.getDate() !== day || date.getMonth() !== month - 1 || date.getFullYear() !== year) {
+            return null; // Retourne null pour une date invalide
+        }
+
+        const minDate = new Date(1900, 0, 1); // 1er janvier 1900
+        const today = new Date();
+
+        if (date < minDate || date > today) {
+            return null; // Retourne null si la date n'est pas dans la plage valide
+        }
+
+        return date;
     }
-
-    const date = new Date(year, month - 1, day);
-
-    // Vérification que la date est valide (par exemple, 30 février n'existe pas)
-    if (date.getDate() !== day || date.getMonth() !== month - 1 || date.getFullYear() !== year) {
-        return null; // Retourne null pour une date invalide
-    }
-
-    const minDate = new Date(1900, 0, 1); // 1er janvier 1900
-    const today = new Date();
-
-    if (date < minDate || date > today) {
-        return null; // Retourne null si la date n'est pas dans la plage valide
-    }
-
-    return date;
 }
 
 function formatDate(date) {
