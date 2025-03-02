@@ -161,8 +161,8 @@ function closeCurrentTab(info = 'Fermeture d\'onglet') {
 
 
 // ---------------- interface de tests ----------------
-// TODO : à suppimer
-
+// Permet de tester les fonctionnalités d'onglets et les permissions
+// Désactivée (cf. tout en bas pour l'activer)
 /**
  * Crée une interface de test pour les fonctionnalités de gestion des onglets
  * @param {HTMLElement} container - Élément DOM où ajouter les boutons de test
@@ -380,4 +380,4 @@ function initTabPermissionTests() {
 }
 
 // Exécuter l'initialisation
-initTabPermissionTests();
+// initTabPermissionTests();
