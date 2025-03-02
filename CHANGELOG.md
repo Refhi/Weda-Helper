@@ -12,6 +12,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#367](https://github.com/Refhi/Weda-Helper/issues/367) - ajout de "Pédicurie" pour les mots-clés détectés pour l'ordonance numérique de pédicurie
 - [#368](https://github.com/Refhi/Weda-Helper/issues/368) - Si une ordonnance paramédicale contiens "psychologue", l'ordonnance numérique est automatiquement convertie en ordonnance classique.
 - [#338](https://github.com/Refhi/Weda-Helper/issues/338) - Validation automatiquement les FSE dégradée
+- [#364](https://github.com/Refhi/Weda-Helper/issues/364) - Les dates types 14 novembre 2024 peuvent être reconnues dans les imports (à activer dans les options)
 
 
 # [2.10.1]

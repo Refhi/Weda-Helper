@@ -249,7 +249,13 @@ var advancedDefaultSettings = [{
                 "name": "PdfParserAutoDate",
                 "type": TYPE_BOOL,
                 "description": "Extrait automatiquement la date du document importé.",
-                "default": true
+                "default": true,
+            },{
+                "name": "PdfParserDateAlphabetique",
+                "type": TYPE_BOOL,
+                "description": "Recherche également les dates type 15 novembre 2021.",
+                "default": false,
+                "longDescription": "Cette option est utile si vous recevez des courriers avec des dates à ce format, mais peut interférer avec les addresses si elles contiennent une date",
             }]
         }]
     }]

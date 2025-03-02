@@ -771,7 +771,7 @@ async function extractRelevantData(fullText, pdfUrl) {
     };
 
     // Extraction de l'ensemble des dates présentes dans le texte
-    const dateMatches = extractDates(fullText, regexPatterns.dateRegexes);
+    const dateMatches = await extractDates(fullText, regexPatterns.dateRegexes);
     // Extraction des éléments pertinents
     const documentDate = determineDocumentDate(fullText, dateMatches, regexPatterns.documentDateRegexes);
     const dateOfBirth = determineDateOfBirth(fullText, dateMatches, regexPatterns.dateOfBirthRegexes);
@@ -1311,17 +1311,17 @@ function determineDocumentTitle(fullText, documentType) {
 }
 
 // Extraction des dates du texte
-function extractDates(fullText, dateRegexes) {
+async function extractDates(fullText, dateRegexes) {
     let matches = [];
     const today = new Date();
 
     for (const regex of dateRegexes) {
         const dateStrings = fullText.match(regex) || [];
-        const parsedDates = dateStrings.map(dateString => {
-            const date = parseDate(dateString);
+        const parsedDates = await Promise.all(dateStrings.map(async dateString => {
+            const date = await parseDate(dateString);
             return date <= today ? date : null;
-        }).filter(date => date !== null);
-        matches = matches.concat(parsedDates);
+        }));
+        matches = matches.concat(parsedDates.filter(date => date !== null));
     }
 
     return matches;
@@ -1422,7 +1422,7 @@ function extractNames(fullText, nameRegexes) {
 }
 
 // Fonction modifiée pour analyser les dates avec mois en toutes lettres
-function parseDate(dateString) {
+async function parseDate(dateString) {
     // Mapping des noms de mois en français vers leurs numéros
     const moisEnFrancais = {
         'janvier': 1, 'février': 2, 'mars': 3, 'avril': 4, 'mai': 5, 'juin': 6,
@@ -1431,8 +1431,8 @@ function parseDate(dateString) {
     
     // Détecter si c'est une date avec le mois en toutes lettres
     const dateTextuelle = /([0-9]{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+([0-9]{4})/i.exec(dateString);
-    
-    if (dateTextuelle) {
+    let rechercheDateAlphabetique = await getOptionPromise('PdfParserDateAlphabetique');
+    if (dateTextuelle && rechercheDateAlphabetique) {
         const jour = parseInt(dateTextuelle[1], 10);
         const mois = moisEnFrancais[dateTextuelle[2].toLowerCase()];
         const annee = parseInt(dateTextuelle[3], 10);
