@@ -41,7 +41,7 @@ const keyCommands = {
         if (binElementCurrentImport) {
             binElementCurrentImport.click();
         } else {
-            clickElementByClass('button delete');
+            // clickElementByClass('button delete');
             clickElementByClass('targetSupprimer');
         }
     },
