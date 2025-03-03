@@ -358,12 +358,12 @@ var advancedDefaultSettings = [{
         "name": "NumPresPrescription",
         "type": TYPE_BOOL,
         "description": "Cocher/Décocher automatiquement la case « ordonnance numérique » pour les prescriptions de médicaments.",
-        "default": false
+        "default": true
     }, {
         "name": "NumPresDemande",
         "type": TYPE_BOOL,
         "description": "Cocher/Décocher automatiquement la case « ordonnance numérique » pour les ordonnances de demandes numériques (labo/imagerie/paramédical)",
-        "default": false
+        "default": true
     }]
 }, {
     "name": "Options de recherche médicale",

@@ -508,7 +508,7 @@ function confirmationPopup(action) {
 
         // Message
         const message = document.createElement('p');
-        message.textContent = `Weda-Helper a besoin d'accéder aux onglets pour cette fonctionnalité. Voulez-vous autoriser?`;
+        message.textContent = `Weda-Helper a besoin d'accéder aux onglets pour cette fonctionnalité. Voulez-vous autoriser ? Chrome vous demandera votre permission pour "l'accès à l'historique de navigation". (Weda-Helper n'utilise cette permission que pour la gestion des onglets ne consulte pas l'historique). Vous pouvez révoquer cette autorisation à tout moment dans les paramètres de Chrome.`;
         message.style.cssText = `
             margin-bottom: 20px;
             color: #555;
