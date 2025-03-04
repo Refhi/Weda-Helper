@@ -1065,12 +1065,18 @@ function createBillingDataContainer() {
 
 // Aide à la cotation
 addTweak('/vitalzen/fse.aspx', 'cotationHelper', function () {
+    let isFirstDetection = true;
     waitForElement({
         selector: '[vz-acte]',
         justOnce: false,
         callback: function (element) {
-            watchForMtSituationChange();
-            checkPossibleHelp();
+            if (isFirstDetection) {
+                watchForMtSituationChange();
+                isFirstDetection = false;
+                console.log('Première détection de vz-acte');
+            } else {
+                checkPossibleHelp();
+            }
         }
     });
 });
