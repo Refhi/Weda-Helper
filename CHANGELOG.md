@@ -6,14 +6,15 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 ## Améliorations :
 - [#360](https://github.com/Refhi/Weda-Helper/issues/360) - L'impression instantanée fonctionne désormais avec le ctrl+E réglé pour l'impression associée
 - [#353](https://github.com/Refhi/Weda-Helper/issues/353) - Alt+A permet aussi d'afficher l'historique des biologies dans la fenêtre des importations
-- [#340](https://github.com/Refhi/Weda-Helper/issues/340) - Affichage des dernières facturations dans la page des FSE
+- [#340](https://github.com/Refhi/Weda-Helper/issues/340) - Affichage des dernières facturations dans la page des FSE (désactivé pour l'instant, en attente du feu vert de Weda)
 - [#341](https://github.com/Refhi/Weda-Helper/issues/341) - Déclaration de MT en un click
 - [#326](https://github.com/Refhi/Weda-Helper/issues/326) - Ajout d'une infobulle pour avertir de possibles cotations applicables à certaines situation (ex. SHE ou MCG), qu'on oublie habituellement tout le temps...
 - [#367](https://github.com/Refhi/Weda-Helper/issues/367) - ajout de "Pédicurie" pour les mots-clés détectés pour l'ordonance numérique de pédicurie
 - [#368](https://github.com/Refhi/Weda-Helper/issues/368) - Si une ordonnance paramédicale contiens "psychologue", l'ordonnance numérique est automatiquement convertie en ordonnance classique.
-- [#338](https://github.com/Refhi/Weda-Helper/issues/338) - Validation automatiquement les FSE dégradée
+- [#338](https://github.com/Refhi/Weda-Helper/issues/338) - Validation automatiqueme du SCOR pour les FSE dégradée
 - [#364](https://github.com/Refhi/Weda-Helper/issues/364) - Les dates types 14 novembre 2024 peuvent être reconnues dans les imports (à activer dans les options)
 - [#369](https://github.com/Refhi/Weda-Helper/issues/369) - Modification de la gestion des impressions instantanées : vous devez accorder l'autorisation à Weda-Helper de gérer les onglets si vous souhaitez l'utiliser. Ça rendra l'impression instantanée plus fiable.
+- amélioration des infos-bulles pour les raccourcis claviers
 
 
 # [2.10.1]

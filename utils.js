@@ -432,7 +432,8 @@ function sendWedaNotif({
     icon = "home",
     type = "success",
     extra = "{}",
-    duration = 5000
+    duration = 5000,
+    action = null
 } = {}) {
     // Vérifie si chaque option est vide et assigne la valeur par défaut si nécessaire
     message = message || "Notification de test";
@@ -451,10 +452,153 @@ function sendWedaNotif({
 
     console.log('Notification envoyée :', notifToSend);
 
+    if (action) {
+        confirmationPopup(action);
+    }
+
+
     const event = new CustomEvent('showNotification', { detail: notifToSend });
     document.dispatchEvent(event);
     // Rendre la notification cliquable si elle contient une URL
-    setTimeout(() => {addUrlLink();}, 100);
+    setTimeout(() => { addUrlLink(); }, 100);
+}
+
+/**
+ * Affiche une popup de confirmation personnalisée et exécute l'action associée lorsque l'utilisateur clique sur "Oui"
+ * @param {Object} action - L'action à exécuter {'requestPermission': 'permission_name'}
+ */
+function confirmationPopup(action) {
+    // Vérifier si l'action est une demande de permission
+    if (action.requestPermission) {
+        const permission = action.requestPermission;
+
+        // Créer les éléments de la popup
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        `;
+
+        const popup = document.createElement('div');
+        popup.style.cssText = `
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            width: 100%;
+        `;
+
+        // En-tête
+        const title = document.createElement('h3');
+        title.textContent = 'Autorisation requise';
+        title.style.cssText = `
+            margin-top: 0;
+            color: #333;
+            font-size: 18px;
+        `;
+
+        // Message
+        const message = document.createElement('p');
+        message.textContent = `Weda-Helper a besoin d'accéder aux onglets pour cette fonctionnalité. Voulez-vous autoriser ? Chrome vous demandera votre permission pour "Consulter l'historique de navigation". (Weda-Helper n'utilise cette permission que pour la gestion des onglets ne consulte pas l'historique). Vous pouvez révoquer cette autorisation à tout moment dans les paramètres de Chrome.`;
+        message.style.cssText = `
+            margin-bottom: 20px;
+            color: #555;
+        `;
+
+        // Conteneur de boutons
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.cssText = `
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        `;
+
+        // Bouton Non
+        const noButton = document.createElement('button');
+        noButton.textContent = 'Non';
+        noButton.style.cssText = `
+            padding: 8px 16px;
+            background-color: #f1f1f1;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #333;
+        `;
+
+        // Bouton Oui
+        const yesButton = document.createElement('button');
+        yesButton.textContent = 'Oui';
+        yesButton.style.cssText = `
+            padding: 8px 16px;
+            background-color: #4285f4;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: white;
+        `;
+
+        // Fonction pour fermer la popup
+        const closePopup = () => {
+            document.body.removeChild(overlay);
+        };
+
+        // Événements des boutons
+        noButton.addEventListener('click', () => {
+            closePopup();
+            console.log(`Permission ${permission} refusée par l'utilisateur`);
+        });
+
+        yesButton.addEventListener('click', () => {
+            // Exécuter l'action de demande de permission - C'est un vrai geste utilisateur ici
+            closePopup();
+
+            // Demande la permission spécifiée
+            let granted = requestPermission(permission);
+            if (granted) {
+                // Permission accordée
+                sendWedaNotifAllTabs({
+                    message: "Accès accordé avec succès!",
+                    icon: 'success',
+                    duration: 5000
+                });
+
+                // Déclenche un événement pour informer le reste de l'application
+                const permissionEvent = new CustomEvent('permissionGranted', {
+                    detail: { permission: permission }
+                });
+                document.dispatchEvent(permissionEvent);
+            } else {
+                // Permission refusée par Chrome
+                sendWedaNotifAllTabs({
+                    message: `L'autorisation a été refusée. Certaines fonctionnalités ne seront pas disponibles.`,
+                    icon: 'warning',
+                    duration: 8000
+                });
+            }
+        });
+
+        // Assembler la popup
+        buttonContainer.appendChild(noButton);
+        buttonContainer.appendChild(yesButton);
+        popup.appendChild(title);
+        popup.appendChild(message);
+        popup.appendChild(buttonContainer);
+        overlay.appendChild(popup);
+
+        // Ajouter au DOM
+        document.body.appendChild(overlay);
+    } else {
+        console.warn('Action non reconnue dans confirmationPopup:', action);
+    }
 }
 
 function addUrlLink() {
@@ -473,7 +617,7 @@ function addUrlLink() {
         });
     }
 }
-        
+
 
 /* === implementation de la fonction sendWedaNotif === */
 // utilisé pour l'envoi depuis le popup
@@ -539,7 +683,7 @@ startClicScript();
 function clicCSPLockedElement(elementSelector, iframeSelector = null) {
     console.log('Clic sur élément bloqué par CSP :', elementSelector);
     const event = new CustomEvent('clicElement', { detail: { elementSelector, iframeSelector } });
-    document.dispatchEvent(event);        
+    document.dispatchEvent(event);
 }
 
 // Fonction utilitaire pour attendre un certain nombre de millisecondes

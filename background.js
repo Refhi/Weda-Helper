@@ -250,7 +250,7 @@ var advancedDefaultSettings = [{
                 "type": TYPE_BOOL,
                 "description": "Extrait automatiquement la date du document importé.",
                 "default": true,
-            },{
+            }, {
                 "name": "PdfParserDateAlphabetique",
                 "type": TYPE_BOOL,
                 "description": "Recherche également les dates type 15 novembre 2021.",
@@ -358,12 +358,12 @@ var advancedDefaultSettings = [{
         "name": "NumPresPrescription",
         "type": TYPE_BOOL,
         "description": "Cocher/Décocher automatiquement la case « ordonnance numérique » pour les prescriptions de médicaments.",
-        "default": false
+        "default": true
     }, {
         "name": "NumPresDemande",
         "type": TYPE_BOOL,
         "description": "Cocher/Décocher automatiquement la case « ordonnance numérique » pour les ordonnances de demandes numériques (labo/imagerie/paramédical)",
-        "default": false
+        "default": true
     }]
 }, {
     "name": "Options de recherche médicale",
@@ -511,7 +511,7 @@ var advancedDefaultSettings = [{
         "type": TYPE_BOOL,
         "description": "Valide automatiquement l'inclusion du PDF de la FSE dégradée",
         "default": false
-    },{
+    }, {
         "name": "showBillingHistory",
         "type": TYPE_BOOL,
         "description": "[En attente du feu vert de Weda] Affiche l'historique des facturations dans la page de télétransmission.",
@@ -524,7 +524,7 @@ var advancedDefaultSettings = [{
             "longDescription": "Filtre les données affichées dans l'historique des facturations  en excluant les cotations notées. Ex. (G, GS, VL). IK correspond à n'importe quel nombre d'IK (ex. IK filtre aussi bien 9IK que 1IK ou IK).",
             "default": "G,GS,VG+MD+IK, VGS+MD+IK, VG+MD, VGS+MD, COD, GS+MEG, G+MEG"
         }]
-    },{
+    }, {
         "name": "cotationHelper",
         "type": TYPE_BOOL,
         "description": "Propose des cotations supplémentaires selon le contexte (SHE, MCG, etc.).",
@@ -812,3 +812,349 @@ var defaultShortcuts = {
 chrome.storage.local.set({ defaultSettings: defaultSettings, defaultShortcuts: defaultShortcuts, advancedDefaultSettings: advancedDefaultSettings }, function () {
     console.log('[background.js] Les valeurs et raccourcis par défaut ont été enregistrées');
 });
+
+
+
+// --------------- gestion des permissions optionnelles ---------------
+
+// Système de gestion centralisée des messages pour les permissions et opérations
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    // Vérification du format attendu de la requête
+    if (!request || typeof request !== 'object') {
+        console.error("Format de requête invalide:", request);
+        sendResponse({ success: false, error: "Format de requête invalide" });
+        return true;
+    }
+
+    // Si ce n'est pas une commande pour notre gestionnaire, on ignore
+    if (request.action !== 'optionalPermissionHandler') {
+        return false;
+    }
+
+    // Vérification que command est présent et valide
+    if (!request.command || typeof request.command !== 'string') {
+        console.error("Format de commande invalide:", request.command);
+        sendResponse({ success: false, error: "Format de commande invalide" });
+        return true;
+    }
+
+    // Vérification que options est un objet (peut être vide)
+    if (request.options !== undefined && typeof request.options !== 'object') {
+        console.error("Format d'options invalide:", request.options);
+        sendResponse({ success: false, error: "Format d'options invalide" });
+        return true;
+    }
+
+    // Traitement asynchrone
+    console.log("[Optionnal Permissions] Traitement de la commande:", request.command);
+    (async () => {
+        const result = await handlePermissionCommand(request.command, request.options, sender || {});
+        sendResponse(result);
+    })();
+
+    // Retourner true pour indiquer que la réponse sera envoyée de manière asynchrone
+    return true;
+});
+
+/**
+ * Gère les commandes liées aux permissions et aux onglets
+ * @param {string} command - Commande à exécuter:
+ *   - 'checkPermission': Vérifie si une permission est accordée
+ *   - 'requestPermission': Demande une permission à l'utilisateur
+ *   - 'resetPermission': Retire une permission précédemment accordée
+ *   - 'tabsFeature': Exécute une action sur les onglets (create, getActiveTab, getCurrentTab, reload, close)
+ *   - 'closeCurrentTab': Ferme l'onglet actuel
+ * @param {Object} options - Options pour la commande
+ * @returns {Promise<Object>} - Résultat de la commande
+ */
+async function handlePermissionCommand(command, options, sender) {
+    console.log("handlePermissionCommand", command, options);
+    try {
+        let result;
+
+        switch (command) {
+            case 'checkPermission':
+                result = { hasPermission: await checkPermission(options.permission) };
+                break;
+
+            case 'requestPermission':
+                result = { granted: await requestPermission(options.permission) };
+                break;
+
+            case 'resetPermission':
+                result = { reset: await resetPermission(options.permission) };
+                break;
+
+            case 'tabsFeature':
+                result = { success: true, result: await handleTabsFeature(options, sender) };
+                break;
+
+            case 'closeCurrentTab':
+                result = { success: true, result: await closeCurrentTab(options?.info) };
+                break;
+
+            default:
+                result = { success: false, error: "Commande non reconnue" };
+        }
+
+        return result;
+    } catch (error) {
+        console.error("Erreur lors du traitement de la commande:", error);
+        return { success: false, error: error.message };
+    }
+}
+
+
+
+/**
+ * Demande une permission optionnelle à l'utilisateur
+ * @param {string|string[]} permission - La permission ou tableau de permissions à demander
+ * @returns {Promise<boolean>} - Une promesse qui se résout avec true si accordée, false sinon
+ */
+function requestPermission(permission) {
+    // Convertir une seule permission en tableau si nécessaire
+    const permissions = Array.isArray(permission) ? permission : [permission];
+
+    return new Promise((resolve) => {
+        chrome.permissions.request({
+            permissions: permissions
+        }, function (granted) {
+            if (granted) {
+                console.log(`L'autorisation ${permissions.join(', ')} a été accordée`);
+                resolve(true);
+            } else {
+                console.log(`L'autorisation ${permissions.join(', ')} a été refusée`);
+                resolve(false);
+            }
+        });
+    });
+}
+
+/**
+ * Réinitialise les permissions optionnelles
+ * @param {string|string[]} permission - La permission ou tableau de permissions à réinitialiser
+ * @returns {Promise<boolean>} - Une promesse qui se résout avec true si réinitialisée, false sinon
+ */
+function resetPermission(permission) {
+    // Convertir une seule permission en tableau si nécessaire
+    const permissions = Array.isArray(permission) ? permission : [permission];
+    console.log("resetPermission", permissions);
+    if (permissions.length === 0) {
+        console.log("Aucune permission à réinitialiser");
+        return Promise.resolve(false);
+    }
+
+    return new Promise((resolve) => {
+        chrome.permissions.remove({
+            permissions: permissions
+        }, function (removed) {
+            if (removed) {
+                console.log(`L'autorisation ${permissions.join(', ')} a été réinitialisée`);
+                resolve(true);
+            } else {
+                console.log(`L'autorisation ${permissions.join(', ')} n'a pas pu être réinitialisée`);
+                resolve(false);
+            }
+        });
+    });
+}
+
+
+/**
+ * Vérifie si une permission optionnelle est déjà accordée
+ * @param {string|string[]|null} permission - La permission ou tableau de permissions à vérifier
+ *                                          - Si null, 'All' ou '*', vérifie toutes les permissions
+ * @returns {Promise<boolean|Object>} - Une promesse qui se résout avec true/false si une permission spécifique,
+ *                                      ou un objet avec toutes les permissions si demandé
+ */
+async function checkPermission(permission) {
+    console.log("checkPermission", permission);
+
+    // Si on demande toutes les permissions
+    if (permission === null || permission === 'All' || permission === '*') {
+        return new Promise((resolve) => {
+            chrome.permissions.getAll((permissions) => {
+                console.log("Toutes les permissions:", permissions);
+                resolve(permissions);
+            });
+        });
+    }
+
+    // Convertir une seule permission en tableau si nécessaire
+    const permissionsList = Array.isArray(permission) ? permission : [permission];
+
+    console.log("permissionsList", permissionsList);
+
+    return new Promise((resolve) => {
+        chrome.permissions.contains({
+            permissions: permissionsList
+        }, function (hasPermission) {
+            console.log("hasPermission", hasPermission);
+            if (hasPermission) {
+                console.log(`L'autorisation ${permissionsList.join(', ')} est déjà accordée`);
+                resolve(true);
+            } else {
+                console.log(`L'autorisation ${permissionsList.join(', ')} n'est pas accordée`);
+                resolve(false);
+            }
+        });
+    });
+}
+
+
+/**
+ * Gère les fonctionnalités liées aux onglets, vérifie et demande les permissions nécessaires
+ * @param {string} action - L'action à effectuer sur les onglets
+ * @param {Object} [options={}] - Options pour l'action spécifiée : create, update, query, getCurrentTab, reload, close, capture, insertCSS
+ * @returns {Promise<boolean|Object>} - Résultat de l'action ou statut de la permission
+ */
+async function handleTabsFeature({ action, options = {}, info = "" } = {}, sender = {}) {
+    // Vérifier si la permission tabs est déjà accordée
+    const hasPermission = await checkPermission('tabs');
+
+    // Si la permission n'est pas accordée, la demander
+    if (!hasPermission) {
+        let granted = await requestPermissionWithConfirmation('tabs');
+        if (!granted) {
+            return false;
+        }
+    }
+
+    // Permission accordée, exécuter l'action demandée
+    // Note : toutes les actions ont été préparées, mais Weda-Helper ne les utilise pas toutes
+    try {
+        switch (action) {
+            case 'create':
+                // Créer un nouvel onglet
+                return new Promise(resolve => {
+                    chrome.tabs.create(options, tab => resolve(tab));
+                });
+
+            case 'update':
+                // Mettre à jour un onglet (options doit contenir tabId)
+                return new Promise(resolve => {
+                    const { tabId, ...updateOptions } = options;
+                    chrome.tabs.update(tabId || null, updateOptions, tab => resolve(tab));
+                });
+
+            case 'query':
+                // Rechercher des onglets selon des critères
+                return new Promise(resolve => {
+                    chrome.tabs.query(options, tabs => resolve(tabs));
+                });
+
+            case 'getCurrentTab':
+                // Obtenir l'onglet où s'exécute le script (contexte actuel)
+                return new Promise(resolve => {
+                    chrome.tabs.get(sender.tab.id, tab => {
+                        if (chrome.runtime.lastError) {
+                            console.error("Erreur lors de l'obtention de l'onglet:", chrome.runtime.lastError.message);
+                            resolve(null);
+                        } else {
+                            resolve(tab);
+                        }
+                    });
+                });
+
+            case 'getActiveTab':
+                // Obtenir l'onglet actif (celui qui a le focus)
+                return new Promise(resolve => {
+                    chrome.tabs.query({ active: true, currentWindow: true }, tabs => resolve(tabs[0]));
+                });
+
+            case 'reload':
+                // Recharger un onglet
+                return new Promise(resolve => {
+                    chrome.tabs.reload(options.tabId, options.reloadOptions || {}, () => {
+                        if (chrome.runtime.lastError) {
+                            resolve(false);
+                        } else {
+                            resolve(true);
+                        }
+                    });
+                });
+
+            case 'close':
+                // Fermer un ou plusieurs onglets
+                if (!options.tabId && !options.tabIds) {
+                    throw new Error("Aucun ID d'onglet spécifié pour la fermeture");
+                }
+                return new Promise(resolve => {
+                    const tabIds = Array.isArray(options.tabIds) ? options.tabIds : [options.tabId];
+                    chrome.tabs.remove(tabIds, () => resolve(true));
+                });
+
+            case 'closeCurrentTab':
+                // Fermer l'onglet courant (si ce n'est pas l'onglet actif)
+                return closeCurrentTab(sender);
+
+            case 'capture':
+                // Capturer le contenu visuel d'un onglet
+                return new Promise(resolve => {
+                    chrome.tabs.captureVisibleTab(options.windowId || null, options.captureOptions || {}, dataUrl => {
+                        resolve(dataUrl);
+                    });
+                });
+
+            case 'insertCSS':
+                // Injecter du CSS dans un onglet
+                return new Promise(resolve => {
+                    chrome.tabs.insertCSS(
+                        options.tabId || null,
+                        options.details || { code: options.code },
+                        () => resolve(true)
+                    );
+                });
+
+            default:
+                throw new Error(`Action non reconnue: ${action}`);
+        }
+    } catch (error) {
+        console.error(`Erreur lors de l'exécution de l'action ${action} sur les onglets:`, error);
+        return false;
+    }
+}
+
+
+/**
+ * Ferme l'onglet courant si ce n'est pas l'onglet actif
+ * @param {string} info - Information sur la raison de la fermeture
+ * @returns {Promise<boolean>} - Résultat de l'opération de fermeture
+ */
+async function closeCurrentTab(sender) {
+    console.log("[closeCurrentTab] Tentative de fermeture de l'onglet courant");
+
+    try {
+        // Récupérer l'onglet où s'exécute le script
+        const currentTab = sender.tab;
+        if (!currentTab) {
+            console.log("[closeCurrentTab] Impossible d'obtenir l'onglet courant");
+            return false;
+        }
+
+        // Récupérer l'onglet actif
+        const activeTab = await handleTabsFeature({ action: 'getActiveTab' });
+        if (!activeTab) {
+            console.log("[closeCurrentTab] Impossible d'obtenir l'onglet actif");
+            return false;
+        }
+
+        // Comparer les IDs des onglets
+        if (currentTab.id === activeTab.id) {
+            console.log("[closeCurrentTab] Fermeture annulée : tentative de fermer l'onglet actif");
+            return false;
+        }
+
+        // Si ce n'est pas l'onglet actif, on peut le fermer
+        const result = await handleTabsFeature({
+            action: 'close',
+            options: { tabId: currentTab.id },
+        });
+
+        return result;
+    } catch (error) {
+        console.error("[closeCurrentTab] Erreur lors de la fermeture de l'onglet:", error);
+        return false;
+    }
+}
+

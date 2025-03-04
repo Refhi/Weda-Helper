@@ -1,205 +1,383 @@
-// Ici on gère les permissions optionnelles
-
-
-
 /**
- * Demande une permission optionnelle à l'utilisateur
- * @param {string|string[]} permission - La permission ou tableau de permissions à demander
- * @returns {Promise<boolean>} - Une promesse qui se résout avec true si accordée, false sinon
- */
-function requestPermission(permission) {
-    // Convertir une seule permission en tableau si nécessaire
-    const permissions = Array.isArray(permission) ? permission : [permission];
-
-    return new Promise((resolve) => {
-        chrome.permissions.request({
-            permissions: permissions
-        }, function (granted) {
-            if (granted) {
-                console.log(`L'autorisation ${permissions.join(', ')} a été accordée`);
-                resolve(true);
-            } else {
-                console.log(`L'autorisation ${permissions.join(', ')} a été refusée`);
-                resolve(false);
-            }
-        });
-    });
-}
-
-
-/**
- * Vérifie si une permission optionnelle est déjà accordée
- * @param {string|string[]} permission - La permission ou tableau de permissions à vérifier
- * @returns {Promise<boolean>} - Une promesse qui se résout avec true si accordée, false sinon
+ * Vérifie une permission via le script background
+ * @param {string} permission - Permission à vérifier
+ * @returns {Promise<boolean>} - True si la permission est accordée
  */
 function checkPermission(permission) {
-    // Convertir une seule permission en tableau si nécessaire
-    const permissions = Array.isArray(permission) ? permission : [permission];
-
     return new Promise((resolve) => {
-        chrome.permissions.contains({
-            permissions: permissions
-        }, function (hasPermission) {
-            if (hasPermission) {
-                console.log(`L'autorisation ${permissions.join(', ')} est déjà accordée`);
-                resolve(true);
-            } else {
-                console.log(`L'autorisation ${permissions.join(', ')} n'est pas accordée`);
-                resolve(false);
-            }
-        });
+        chrome.runtime.sendMessage(
+            {
+                action: 'optionalPermissionHandler',
+                command: 'checkPermission',
+                options: { permission }
+            },
+            (response) => resolve(response?.hasPermission || false)
+        );
     });
 }
 
-
 /**
- * Gère les fonctionnalités liées aux onglets, vérifie et demande les permissions nécessaires
- * @param {string} action - L'action à effectuer sur les onglets
- * @param {Object} [options={}] - Options pour l'action spécifiée : create, update, query, getCurrentTab, reload, close, capture, insertCSS
- * @returns {Promise<boolean|Object>} - Résultat de l'action ou statut de la permission
+ * Demande une permission via le script background
+ * @param {string} permission - Permission à demander
+ * @returns {Promise<boolean>} - True si la permission est accordée
  */
-async function handleTabsFeature({ action, options = {}, info = null } = {}) {
+function requestPermission(permission) {
+    return new Promise((resolve) => {
+        chrome.runtime.sendMessage(
+            {
+                action: 'optionalPermissionHandler',
+                command: 'requestPermission',
+                options: { permission }
+            },
+            (response) => resolve(response?.granted || false)
+        );
+    });
+}
+
+/** 
+ * Annule une permission accordée via le script background
+ * @param {string} permission - Permission à réinitialiser
+ * @returns {Promise<boolean>} - True si la réinitialisation a réussi
+ */
+function resetPermission(permission) {
+    return new Promise((resolve) => {
+        chrome.runtime.sendMessage(
+            {
+                action: 'optionalPermissionHandler',
+                command: 'resetPermission',
+                options: { permission }
+            },
+            (response) => resolve(response?.reset || false)
+        );
+    });
+}
+
+// Dans optionalPermissions.js (modification)
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'showPermissionConfirmation') {
+        const { permission, info } = request;
+        const userAccepted = confirm(`Weda-Helper a besoin d'accéder à ${permission}. ${info || 'Autoriser ?'}`);
+        sendResponse({ userAccepted });
+        return true; // Important: indique que sendResponse sera appelé de façon asynchrone
+    }
+});
+
+// -------- partie spécifique pour les onglets --------
+/**
+ * Gère les fonctionnalités d'onglets via le script background
+ * @param {Object} params - Paramètres pour l'action
+ * @param {string} params.action - Action à effectuer sur les onglets:
+ *   - 'create': Crée un nouvel onglet
+ *   - 'getActiveTab': Récupère l'onglet actif
+ *   - 'getCurrentTab': Récupère l'onglet courant
+ *   - 'reload': Recharge l'onglet actif
+ *   - 'close': Ferme un onglet spécifique
+ *   - 'update': Met à jour les propriétés d'un onglet
+ *   - 'query': Recherche des onglets selon des critères
+ *   - 'resetPermissions': Réinitialise les permissions d'onglets
+ * @param {Object} [params.options] - Options spécifiques à l'action:
+ *   - Pour 'create': {url: string, active?: boolean, pinned?: boolean, ...}
+ *   - Pour 'close': {tabId: number}
+ *   - Pour 'update': {tabId: number, url?: string, active?: boolean, ...}
+ *   - Pour 'query': {active?: boolean, currentWindow?: boolean, ...}
+ * @returns {Promise<any>} - Résultat de l'opération:
+ *   - Pour 'create': Objet représentant l'onglet créé
+ *   - Pour 'getActiveTab'/'getCurrentTab': Objet représentant l'onglet
+ *   - Pour 'reload'/'close'/'update': Confirmation de l'opération
+ *   - Pour 'query': Tableau d'objets d'onglets
+ *   - Pour 'resetPermissions': État de la réinitialisation
+ * 
+ * @example
+ * // Créer un nouvel onglet
+ * handleTabsFeature({
+ *   action: 'create',
+ *   options: { url: 'https://example.com', active: true }
+ * }).then(tab => console.log('Nouvel onglet créé:', tab.id));
+ * 
+ * @example
+ * // Fermer un onglet spécifique
+ * handleTabsFeature({
+ *   action: 'close',
+ *   options: { tabId: 123 },
+ *   info: 'Fermeture après traitement'
+ * }).then(() => console.log('Onglet fermé'));
+ * 
+ * @example
+ * // Rechercher tous les onglets d'une fenêtre
+ * handleTabsFeature({
+ *   action: 'query',
+ *   options: { currentWindow: true }
+ * }).then(tabs => console.log('Nombre d\'onglets:', tabs.length));
+ */
+
+async function handleTabsFeature(params) {
     // Vérifier si la permission tabs est déjà accordée
     const hasPermission = await checkPermission('tabs');
-
-    // Si la permission n'est pas accordée, la demander
     if (!hasPermission) {
-        let granted = await requestPermission('tabs');
-        if (!granted) {
-            console.warn("La fonctionnalité tabs ne peut pas être utilisée sans la permission appropriée");
-            const confirmationAutorisationTab = confirm("[Weda Helper] Pour utiliser l'option " + info + ", vous devez désormais autoriser l'accès aux onglets\nVoulez-vous accorder l'autorisation maintenant?");
-            if (confirmationAutorisationTab) {
-                granted = await requestPermission('tabs');
-            } else {
-                sendWedaNotifAllTabs({
-                    message: "L'accès aux onglets est nécessaire pour utiliser cette fonctionnalité. Pour éviter ce message d'erreur vous devez soit désactiver l'option" + info + " ou accorder l'autorisation d'accès aux onglets la prochaine fois.",
-                    type: 'error',
-                    icon: 'error'
-                })
+        sendWedaNotifAllTabs({
+            message: "L'accès aux onglets est nécessaire pour l'impression instantanée. Veuillez autoriser l'accès ou désactiver l'impresion instantanée dans les paramètres de l'extension.",
+            icon: 'warning',
+            duration: 10000,
+            type: 'undefined',
+            action: { 'requestPermission': 'tabs' },
+        })
+        throw new Error('Permission refusée pour les onglets');
+    }
+
+
+    if (params.info === undefined) {
+        params.info = 'Gestion des Onglets';
+    }
+    return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+            {
+                action: 'optionalPermissionHandler',
+                command: 'tabsFeature',
+                options: params
+            },
+            (response) => {
+                if (response?.success) {
+                    resolve(response.result);
+                } else {
+                    reject(new Error(response?.error || "Échec de l'opération"));
+                }
             }
-            return false;
-        }
-    }
-
-    // Permission accordée, exécuter l'action demandée
-    // Note : toutes les actions ont été préparées, mais Weda-Helper ne les utilise pas toutes
-    try {
-        switch (action) {
-            case 'create':
-                // Créer un nouvel onglet
-                return new Promise(resolve => {
-                    chrome.tabs.create(options, tab => resolve(tab));
-                });
-
-            case 'update':
-                // Mettre à jour un onglet (options doit contenir tabId)
-                return new Promise(resolve => {
-                    const { tabId, ...updateOptions } = options;
-                    chrome.tabs.update(tabId || null, updateOptions, tab => resolve(tab));
-                });
-
-            case 'query':
-                // Rechercher des onglets selon des critères
-                return new Promise(resolve => {
-                    chrome.tabs.query(options, tabs => resolve(tabs));
-                });
-
-            case 'getCurrentTab':
-                // Obtenir l'onglet où s'exécute le script (contexte actuel)
-                return new Promise(resolve => {
-                    chrome.tabs.getCurrent(tab => {
-                        if (chrome.runtime.lastError) {
-                            console.log("Impossible d'obtenir l'onglet courant:", chrome.runtime.lastError.message);
-                            resolve(null);
-                        } else {
-                            resolve(tab);
-                        }
-                    });
-                });
-
-            case 'getActiveTab':
-                // Obtenir l'onglet actif (celui qui a le focus)
-                return new Promise(resolve => {
-                    chrome.tabs.query({ active: true, currentWindow: true }, tabs => resolve(tabs[0]));
-                });
-
-            case 'reload':
-                // Recharger un onglet
-                return new Promise(resolve => {
-                    chrome.tabs.reload(options.tabId, options.reloadOptions || {}, () => {
-                        if (chrome.runtime.lastError) {
-                            resolve(false);
-                        } else {
-                            resolve(true);
-                        }
-                    });
-                });
-
-            case 'close':
-                // Fermer un ou plusieurs onglets
-                return new Promise(resolve => {
-                    const tabIds = Array.isArray(options.tabIds) ? options.tabIds : [options.tabId];
-                    chrome.tabs.remove(tabIds, () => resolve(true));
-                });
-
-            case 'capture':
-                // Capturer le contenu visuel d'un onglet
-                return new Promise(resolve => {
-                    chrome.tabs.captureVisibleTab(options.windowId || null, options.captureOptions || {}, dataUrl => {
-                        resolve(dataUrl);
-                    });
-                });
-
-            case 'insertCSS':
-                // Injecter du CSS dans un onglet
-                return new Promise(resolve => {
-                    chrome.tabs.insertCSS(
-                        options.tabId || null,
-                        options.details || { code: options.code },
-                        () => resolve(true)
-                    );
-                });
-
-            default:
-                throw new Error(`Action non reconnue: ${action}`);
-        }
-    } catch (error) {
-        console.error(`Erreur lors de l'exécution de l'action ${action} sur les onglets:`, error);
-        return false;
-    }
+        );
+    });
 }
 
 /**
- * Ferme l'onglet courant si ce n'est pas l'onglet actif
- * @param {string} info - Information sur la fonctionnalité demandant la fermeture
+ * Ferme l'onglet courant
+ * @param {string} [info] - Information sur la fermeture
+ * @returns {Promise<any>} - Résultat de l'opération
  */
-function closeCurrentTab(info) {
-    // D'abord on récupère l'onglet où s'exécute le script
-    handleTabsFeature({ action: 'getCurrentTab' }).then(currentTab => {
-        if (!currentTab) {
-            console.log("Impossible d'obtenir l'onglet courant");
-            return;
-        }
-        
-        // Ensuite on vérifie si c'est l'onglet actif
-        handleTabsFeature({ action: 'getActiveTab' }).then(activeTab => {
-            if (!activeTab) {
-                console.log("Impossible d'obtenir l'onglet actif");
-                return;
-            }
-            
-            // On compare les IDs des onglets
-            if (currentTab.id === activeTab.id) {
-                console.log("Fermeture annulée : tentative de fermer l'onglet actif");
-                return;
-            }
-            
-            // Si ce n'est pas l'onglet actif, on peut le fermer
-            handleTabsFeature({ 
-                action: 'close', 
-                options: { tabId: currentTab.id }, 
-                info: info 
-            });
-        });
+function closeCurrentTab(info = 'Fermeture d\'onglet') {
+    return handleTabsFeature({
+        action: 'closeCurrentTab',
+        info
     });
 }
+
+
+
+// ---------------- interface de tests ----------------
+// Permet de tester les fonctionnalités d'onglets et les permissions
+// Désactivée (cf. tout en bas pour l'activer)
+/**
+ * Crée une interface de test pour les fonctionnalités de gestion des onglets
+ * @param {HTMLElement} container - Élément DOM où ajouter les boutons de test
+ */
+function createTabsPermissionTestUI(container = document.body) {
+    // Créer un conteneur pour les tests
+    const testContainer = document.createElement('div');
+    testContainer.style.padding = '10px';
+    testContainer.style.margin = '10px';
+    testContainer.style.border = '1px solid #ccc';
+    testContainer.style.borderRadius = '5px';
+    testContainer.style.backgroundColor = '#f5f5f5';
+
+    const title = document.createElement('h3');
+    title.textContent = 'Test des permissions et fonctionnalités d\'onglets';
+    testContainer.appendChild(title);
+
+    // Fonction pour créer un bouton de test
+    function createTestButton(label, action, options, info) {
+        const button = document.createElement('button');
+        button.textContent = label;
+        button.style.margin = '5px';
+        button.style.padding = '8px 12px';
+        button.style.borderRadius = '4px';
+        button.style.border = '1px solid #ddd';
+        button.style.backgroundColor = '#ffffff';
+        button.style.cursor = 'pointer';
+
+        button.addEventListener('click', async () => {
+            const resultDiv = document.getElementById('tab-test-result');
+            resultDiv.textContent = `Exécution de: ${label}...`;
+
+            try {
+                const result = await handleTabsFeature({ action, options, info });
+                resultDiv.textContent = `Résultat: ${JSON.stringify(result, null, 2)}`;
+                resultDiv.style.color = result ? 'green' : 'red';
+            } catch (error) {
+                resultDiv.textContent = `Erreur: ${error.message}`;
+                resultDiv.style.color = 'red';
+            }
+        });
+
+        return button;
+    }
+
+    // Ajouter les boutons de test
+    testContainer.appendChild(createTestButton(
+        'Créer nouvel onglet',
+        'create',
+        { url: 'https://www.google.com' },
+        'Création d\'onglet'
+    ));
+
+    testContainer.appendChild(createTestButton(
+        'Obtenir onglet actif',
+        'getActiveTab',
+        {},
+        'Récupération onglet actif'
+    ));
+
+    testContainer.appendChild(createTestButton(
+        'Obtenir onglet courant',
+        'getCurrentTab',
+        {},
+        'Récupération onglet courant'
+    ));
+
+    testContainer.appendChild(createTestButton(
+        'Recharger onglet actif',
+        'reload',
+        {},
+        'Rechargement d\'onglet'
+    ));
+
+    testContainer.appendChild(createTestButton(
+        'Fermer cet onglet',
+        'close',
+        { tabId: null },
+        'Fermeture d\'onglet'
+    ));
+
+
+
+    // Ajouter un bouton pour tester closeCurrentTab
+    const closeCurrentTabButton = document.createElement('button');
+    closeCurrentTabButton.textContent = 'Test closeCurrentTab';
+    closeCurrentTabButton.style.margin = '5px';
+    closeCurrentTabButton.style.padding = '8px 12px';
+    closeCurrentTabButton.style.borderRadius = '4px';
+    closeCurrentTabButton.style.border = '1px solid #ddd';
+    closeCurrentTabButton.style.backgroundColor = '#ffffff';
+    closeCurrentTabButton.style.cursor = 'pointer';
+    closeCurrentTabButton.addEventListener('click', async () => {
+        const resultDiv = document.getElementById('tab-test-result');
+        resultDiv.textContent = `Exécution de: Test closeCurrentTab...`;
+
+        try {
+            const result = await closeCurrentTab('Test de fermeture');
+            resultDiv.textContent = `Résultat: ${JSON.stringify(result, null, 2)}`;
+            resultDiv.style.color = 'green';
+        } catch (error) {
+            resultDiv.textContent = `Erreur: ${error.message}`;
+            resultDiv.style.color = 'red';
+        }
+    });
+    testContainer.appendChild(closeCurrentTabButton);
+
+    // Zone de résultat
+    const resultDiv = document.createElement('div');
+    resultDiv.id = 'tab-test-result';
+    resultDiv.style.margin = '10px 5px';
+    resultDiv.style.padding = '10px';
+    resultDiv.style.border = '1px solid #eee';
+    resultDiv.style.borderRadius = '4px';
+    resultDiv.style.backgroundColor = '#fff';
+    resultDiv.style.minHeight = '50px';
+    resultDiv.style.whiteSpace = 'pre-wrap';
+    resultDiv.textContent = 'Les résultats apparaîtront ici';
+    testContainer.appendChild(resultDiv);
+
+    // Ajout de boutons personnalisés pour vérifier et demander la permission
+    const checkPermButton = document.createElement('button');
+    checkPermButton.textContent = 'Vérifier Permission';
+    checkPermButton.style.margin = '5px';
+    checkPermButton.style.padding = '8px 12px';
+    checkPermButton.addEventListener('click', async () => {
+        const resultDiv = document.getElementById('tab-test-result');
+        try {
+            const hasPermission = await checkPermission('tabs');
+            resultDiv.textContent = `Permission tabs: ${hasPermission ? 'Accordée' : 'Non accordée'}`;
+            resultDiv.style.color = hasPermission ? 'green' : 'orange';
+        } catch (error) {
+            resultDiv.textContent = `Erreur: ${error.message}`;
+            resultDiv.style.color = 'red';
+        }
+    });
+    testContainer.appendChild(checkPermButton);
+
+    const requestPermButton = document.createElement('button');
+    requestPermButton.textContent = 'Demander Permission';
+    requestPermButton.style.margin = '5px';
+    requestPermButton.style.padding = '8px 12px';
+    requestPermButton.addEventListener('click', async () => {
+        const resultDiv = document.getElementById('tab-test-result');
+        try {
+            const granted = await requestPermission('tabs');
+            resultDiv.textContent = `Permission tabs: ${granted ? 'Accordée' : 'Refusée'}`;
+            resultDiv.style.color = granted ? 'green' : 'red';
+        } catch (error) {
+            resultDiv.textContent = `Erreur: ${error.message}`;
+            resultDiv.style.color = 'red';
+        }
+    });
+    testContainer.appendChild(requestPermButton);
+
+    // Ajouter un bouton pour réinitialiser les permissions
+    const resetPermissionsButton = document.createElement('button');
+    resetPermissionsButton.textContent = 'Réinitialiser Permissions';
+    resetPermissionsButton.style.margin = '5px';
+    resetPermissionsButton.style.padding = '8px 12px';
+    resetPermissionsButton.style.backgroundColor = 'red';
+    resetPermissionsButton.style.color = 'white';
+    resetPermissionsButton.addEventListener('click', async () => {
+        const resultDiv = document.getElementById('tab-test-result');
+        try {
+            const result = await resetPermission('tabs');
+            resultDiv.textContent = `Réinitialisation: ${result ? 'OK' : 'Échec'}`;
+            resultDiv.style.color = result ? 'green' : 'red';
+        } catch (error) {
+            resultDiv.textContent = `Erreur: ${error.message}`;
+            resultDiv.style.color = 'red';
+        }
+    });
+    testContainer.appendChild(resetPermissionsButton);
+
+
+    // Ajouter au container
+    container.appendChild(testContainer);
+}
+
+// Fonction pour initialiser l'interface de test
+function initTabPermissionTests() {
+    // Créer un bouton pour afficher/masquer l'interface de test
+    const toggleButton = document.createElement('button');
+    toggleButton.textContent = 'Afficher/Masquer Tests Permissions Onglets';
+    toggleButton.style.position = 'fixed';
+    toggleButton.style.top = '10px';
+    toggleButton.style.right = '10px';
+    toggleButton.style.zIndex = '10000';
+    toggleButton.style.padding = '8px 12px';
+    toggleButton.style.backgroundColor = '#4CAF50';
+    toggleButton.style.color = 'white';
+    toggleButton.style.border = 'none';
+    toggleButton.style.borderRadius = '4px';
+    toggleButton.style.cursor = 'pointer';
+
+    const testPanel = document.createElement('div');
+    testPanel.style.display = 'none';
+    testPanel.style.position = 'fixed';
+    testPanel.style.top = '50px';
+    testPanel.style.right = '10px';
+    testPanel.style.zIndex = '10000';
+    testPanel.style.maxWidth = '400px';
+    testPanel.style.maxHeight = '80vh';
+    testPanel.style.overflowY = 'auto';
+
+    toggleButton.addEventListener('click', () => {
+        testPanel.style.display = testPanel.style.display === 'none' ? 'block' : 'none';
+    });
+
+    document.body.appendChild(toggleButton);
+    document.body.appendChild(testPanel);
+
+    createTabsPermissionTestUI(testPanel);
+}
+
+// Exécuter l'initialisation
+// initTabPermissionTests();

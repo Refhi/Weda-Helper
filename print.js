@@ -502,7 +502,7 @@ function waitForDMPCompletion(callback) {
 function watchForClose() {
     setTimeout(() => {
         sendWedaNotifAllTabs({
-            message: '[Weda-Helper] l\'onglet initiateur de l\'impression instantanée n\'a pas pu être fermé automatiquement. Veuillez le fermer manuellement. Cela arrive si l\'onglet initiateur n\'a pas été ouvert par Weda Helper.',
+            message: "[Weda-Helper] l\'onglet initiateur de l\'impression instantanée n\'a pas pu être fermé automatiquement. Il manque probablement l'autorisation des tabulations.",
             type: 'undefined',
             icon: 'print'
         });
