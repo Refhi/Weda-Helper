@@ -773,7 +773,7 @@ async function extractRelevantData(fullText, pdfUrl) {
     // Extraction de l'ensemble des dates présentes dans le texte
     const dateMatches = await extractDates(fullText, regexPatterns.dateRegexes);
     // Extraction des éléments pertinents
-    const documentDate = determineDocumentDate(fullText, dateMatches, regexPatterns.documentDateRegexes);
+    const documentDate = await determineDocumentDate(fullText, dateMatches, regexPatterns.documentDateRegexes);
     const dateOfBirth = determineDateOfBirth(fullText, dateMatches, regexPatterns.dateOfBirthRegexes);
     const nameMatches = extractNames(fullText, regexPatterns.nameRegexes);
     const documentType = await determineDocumentType(fullText);
@@ -1341,7 +1341,7 @@ function findDateInText(fullText, dateRegexes) {
 }
 
 // Détermination de la date du document
-function determineDocumentDate(fullText, dateMatches, documentDateRegexes) {
+async function determineDocumentDate(fullText, dateMatches, documentDateRegexes) {
     let documentDate = null;
     // On cherche la date la plus récente, ce qui correspond souvent à la date du document
     for (const date of dateMatches) {
