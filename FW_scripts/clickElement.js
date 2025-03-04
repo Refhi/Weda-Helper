@@ -6,7 +6,10 @@ function clickElement(elementSelector, iframeSelector = null) {
     let targetElement;
     let targetDocument;
 
-    targetDocument = document.querySelector(iframeSelector).contentWindow.document;
+    if (iframeSelector != null)
+    {
+        targetDocument = document.querySelector(iframeSelector).contentWindow.document;
+    }
     if (!targetDocument) {
         targetDocument = document;
     }
