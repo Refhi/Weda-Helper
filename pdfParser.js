@@ -1488,6 +1488,11 @@ async function parseDate(dateString) {
 }
 
 function formatDate(date) {
+    // Vérifier si date est bien un objet Date
+    if (!(date instanceof Date) || isNaN(date)) {
+        console.warn('[pdfParser] formatDate a reçu une valeur non valide:', date);
+        return null;
+    }
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
