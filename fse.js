@@ -1170,7 +1170,7 @@ const cotationHelper = [
             let ageOK = patientAgeInFSE() >= 80;
             let isMT = estMTdeclareOuReferent(loggedInUser());
             let noMopSelected = !context.cotation.includes('MOP');
-            return ageOK && isMT && noMopSelected;
+            return ageOK && !isMT && noMopSelected;
         },
         conseil: "Le patient a plus de 80 ans et vous n'êtes pas le médecin traitant. Pensez à ajouter la cotation MOP",
         link: "https://omniprat.org/fiches-pratiques/consultations-visites/majoration-personne-agee-mpa/"

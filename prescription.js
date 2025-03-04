@@ -488,7 +488,7 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
             if (type === 99) {
                 console.log("Type de soin non éligible à l'ordonnance numérique, je clique sur #targetAnnuler");
                 // Type de soin non éligible à l'ordonnance numérique, je clique sur #targetAnnuler
-                document.getElementById('targetAnnuler').click();
+                document.querySelector('.targetAnnuler').click();
             } else {
                 choixPossibles[type].click();
             }
