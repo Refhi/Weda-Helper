@@ -948,21 +948,28 @@ function extractBillingData(iframeDocument) {
     const billingData = [];
 
     elements.forEach(element => {
-        const labels = element.querySelectorAll('.labelil')[1];
-        if (!labels) {
-            return;
+        const labelilElements = element.querySelectorAll('.labelil');
+        console.log('Nombre d\'éléments labelil trouvés:', labelilElements.length);
+        
+        // Traiter chaque labelil à position impaire (index pair)
+        for (let i = 1; i < labelilElements.length; i += 2) {
+            const currentLabelil = labelilElements[i];
+            if (!currentLabelil) continue;
+            
+            const values = currentLabelil.nextElementSibling?.querySelectorAll('td');
+            if (!values || values.length < 6) continue;
+            
+            const Date = values[1].textContent?.trim() || '';
+            const Actes = values[4].textContent?.trim() || '';
+            const Montant = (values[5].textContent?.trim() || '') + ' €';
+            console.log('Date', Date, 'Actes', Actes, 'Montant', Montant);
+            
+            if (Date && Actes) {  // Vérifier que les données essentielles sont présentes
+                billingData.push({ Date, Actes, Montant });
+            }
         }
-        const values = labels.nextElementSibling.querySelectorAll('td');
-        if (!values || values.length < 6) {
-            return;
-        }
-        const Date = values[1].textContent || '';
-        const Actes = values[4].textContent || '';
-        const Montant = (values[5].textContent || '') + ' €';
-
-        billingData.push({ Date, Actes, Montant });
     });
-
+    
     return billingData;
 }
 
