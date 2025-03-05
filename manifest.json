@@ -51,7 +51,8 @@
         "imti.js",
         "wedaEchanges.js",
         "pdfParser.js",
-        "optionalPermissions.js"
+        "optionalPermissions.js",
+        "headlessSetup.js"
       ]
     }
   ],
