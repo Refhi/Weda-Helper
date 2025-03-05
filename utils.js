@@ -284,6 +284,7 @@ function getOptionValues(optionNames, callback) {
  * L'option ou les options à vérifier. Peut être une chaîne ou un tableau d'objets contenant une option et un callback.
  * Si l'option commence par '!', elle est considérée comme négative. Si elle commence par '*', le callback est toujours exécuté.
  * @param {function} callback - La fonction à exécuter si l'option est activée. Ignorée si l'option est un array contenant des options/callback .
+ * @example addTweak('/FolderGestion/RecetteForm.aspx', 'TweakRecetteForm', function () {console.log('TweakRecetteForm activé');});
  */
 function addTweak(path, option, callback) {
     function executeOption(option, callback, invert = false, mandatory = false) {

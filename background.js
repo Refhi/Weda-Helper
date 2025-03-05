@@ -607,6 +607,21 @@ var advancedDefaultSettings = [{
             "default": true
         }],
     }]
+}, {
+    "name": "Options avancées",
+    "description": "Ces options servent des usages très spécifiques, possiblement seulement utile pour les développeurs.",
+    "type": TYPE_TITLE,
+    "options": [{
+        "name": "headLessSetup",
+        "type": TYPE_BOOL,
+        "description": "shunte le message de mise à jour de Weda sur les postes où vous souhaitez automatiser l'ouverture de Weda (désactivé par défaut). Cela ne correspond qu'à des usages très spécifiques, merci de ne pas l'activer sans en comprendre les implications.",
+        "default": false
+    },{
+        "name": "initTabPermissionTests",
+        "type": TYPE_BOOL,
+        "description": "Affiche l'interface de test des permissions des onglets.",
+        "default": false
+    }],
 }];
 
 /**

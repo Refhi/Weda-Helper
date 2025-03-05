@@ -15,6 +15,8 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#364](https://github.com/Refhi/Weda-Helper/issues/364) - Les dates types 14 novembre 2024 peuvent être reconnues dans les imports (à activer dans les options)
 - [#369](https://github.com/Refhi/Weda-Helper/issues/369) - Modification de la gestion des impressions instantanées : vous devez accorder l'autorisation à Weda-Helper de gérer les onglets si vous souhaitez l'utiliser. Ça rendra l'impression instantanée plus fiable.
 - amélioration des infos-bulles pour les raccourcis claviers
+- [#366](https://github.com/Refhi/Weda-Helper/issues/366) - ajout d'un mode "headLess" : possibilité de shunter le message de mise à jour de Weda sur les postes où vous souhaitez automatiser l'ouverture de Weda (désactivé par défaut). Cela ne correspond qu'à des usages très spécifiques, merci de ne pas l'activer sans en comprendre les implications.
+
 
 
 # [2.10.1]

@@ -380,4 +380,6 @@ function initTabPermissionTests() {
 }
 
 // Exécuter l'initialisation
-// initTabPermissionTests();
+addTweak('*', 'initTabPermissionTests', function () {
+    initTabPermissionTests();
+});

@@ -54,6 +54,7 @@ Alt+A	Appuie Annuler (ou affiche l'historique des biologies dans la fenêtre des
 Alt+S	Appuie Supprimer
 Alt+D	Insère la date du jour
 Ctrl+S	Appuie Enregistrer
+Ctrl+Shift+S Déclenche le scan d'un document
 Alt+V	Appuie Valider
 Alt+Z	Ouvre les antécédents
 Alt+C	Lit la carte vitale
@@ -179,6 +180,9 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Navigation :
 - Un clic du milieu sur le W du Menu W ouvre un nouvel onglet vers l'accueil du dossier patient, et non le module en cours.
+
+### Setup "headless" :
+- possibilité de shunter le message de mise à jour de Weda sur les postes où vous souhaitez automatiser l'ouverture de Weda (désactivé par défaut). Cela ne correspond qu'à des usages très spécifiques, merci de ne pas l'activer sans en comprendre les implications.
 
 
 
