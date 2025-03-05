@@ -142,7 +142,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - sélectionne automatiquement "Rien" dans les Pièces justificatives AMO si "Champ de donnée Actes - Pièce Justificative AMO invalide : Erreur de saisie Nature" est détecté
 - maintient le choix du mode de prise en charge AMC
 - affichage de l'historique des cotations sur 5 ans (filtré ou non par cotations courantes), utile pour surveiller les cotations à ne faire qu'une fois tout les ans par exemple.
-- assistance à la cotation : Ajout d'une infobulle pour avertir de possibles cotations applicables à certaines situation (ex. SHE ou MCG), qu'on oublie habituellement tout le temps...
+- assistance à la cotation : Ajout d'une infobulle pour avertir de possibles cotations applicables à certaines situation (ex. SHE, MCG, PAV, MHP et RDV), qu'on oublie habituellement tout le temps...
 - validation automatique des FSE dégradées en SCOR
 
 
