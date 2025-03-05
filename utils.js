@@ -603,16 +603,18 @@ function confirmationPopup(action) {
 }
 
 function addUrlLink() {
-    let NotifPopupElement = document.querySelector('p.ng-star-inserted');
+    let NotifPopupElement = document.querySelector('weda-notification-container p.ng-star-inserted');
     if (!NotifPopupElement) {
         console.warn('NotifPopupElement not found');
         return;
     }
     // Cherche dans le innerText une éventuelle URL
+    console.log('Notification popup:', NotifPopupElement.innerText);
     let url = NotifPopupElement.innerText.match(/(https?:\/\/[^\s]+)/);
     if (url) {
         // Rend la popup cliquable
         NotifPopupElement.style.cursor = 'pointer';
+        console.log('URL trouvée dans la notification :', url[0]);
         NotifPopupElement.addEventListener('click', () => {
             window.open(url[0], '_blank');
         });

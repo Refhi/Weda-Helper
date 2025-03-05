@@ -263,16 +263,6 @@ function tweakFSECreation() {
 
     }
 
-    function CPSNonLue() {
-        console.log('CPSNonLue démarré');
-        waitLegacyForElement('span', 'CPS non lue', 5000, function (spanElement) {
-            console.log('Détecté : CPS non lue. Je clique sur le bouton de lecture de la CPS');
-            spanElement.click();
-            recordMetrics({ clicks: 1, drags: 1 });
-
-        });
-    }
-
 
     function setDefaultValue() {
         // va parcourir dans l'ordre le tableau de conditions et appliquer la première qui est remplie
@@ -950,26 +940,26 @@ function extractBillingData(iframeDocument) {
     elements.forEach(element => {
         const labelilElements = element.querySelectorAll('.labelil');
         console.log('Nombre d\'éléments labelil trouvés:', labelilElements.length);
-        
+
         // Traiter chaque labelil à position impaire (index pair)
         for (let i = 1; i < labelilElements.length; i += 2) {
             const currentLabelil = labelilElements[i];
             if (!currentLabelil) continue;
-            
+
             const values = currentLabelil.nextElementSibling?.querySelectorAll('td');
             if (!values || values.length < 6) continue;
-            
+
             const Date = values[1].textContent?.trim() || '';
             const Actes = values[4].textContent?.trim() || '';
             const Montant = (values[5].textContent?.trim() || '') + ' €';
             console.log('Date', Date, 'Actes', Actes, 'Montant', Montant);
-            
+
             if (Date && Actes) {  // Vérifier que les données essentielles sont présentes
                 billingData.push({ Date, Actes, Montant });
             }
         }
     });
-    
+
     return billingData;
 }
 
@@ -998,6 +988,8 @@ async function showBillingData(billingData, billingDataFiltered) {
 
     const infoIcon = document.createElement('span');
     infoIcon.textContent = 'ℹ️'; // Icône d'information
+    infoIcon.className = 'info-icon';
+    infoIcon.style.fontFamily = 'Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"'; // Ensure emoji font
     infoIcon.style.cursor = 'pointer';
     infoIcon.title = "Historique des facturations affiché via Weda-Helper. Si non désiré ou s'il gène l'affichage sur un écran en 4:3, vous pouvez le désactiver dans les options";
 
@@ -1187,8 +1179,44 @@ const cotationHelper = [
         },
         conseil: "Le patient a plus de 80 ans et vous n'êtes pas le médecin traitant. Pensez à ajouter la cotation MOP",
         link: "https://omniprat.org/fiches-pratiques/consultations-visites/majoration-personne-agee-mpa/"
+    }, {
+        titre: 'cotation PAV oubliée',
+        test: function (context) {
+            if (totalAmount() < 120) {
+                return false;
+            }
+            // Ensuite on regarde si PAV est déjà présent dans les cotations
+            return !context.cotation.includes('PAV');
+        },
+        conseil: "Le montant total des actes est supérieur ou égal à 120€. Pensez à ajouter la cotation PAV, sauf cas d'exclusion.",
+        link: "https://www.ameli.fr/assure/remboursements/reste-charge/forfait-24-euros"
+    }, {
+        titre: 'cotation PAV mal placée',
+        test: function (context) {
+            if (totalAmount() < 120) {
+                return false;
+            }
+            // Ensuite on vérifie si le PAV est bien en dernière position
+            let pavLast = context.cotation[context.cotation.length - 1] === 'PAV';
+            let pavIsPresent = context.cotation.includes('PAV');
+            return pavIsPresent && !pavLast
+        },
+        conseil: "La cotation PAV doit être en dernière position.",
+        link: "https://www.ameli.fr/assure/remboursements/reste-charge/forfait"
     }
 ];
+
+function totalAmount() {
+    let possibleTotalAmountElements = document.querySelectorAll('.ng-star-inserted');
+    // On cherche un élément qui contient un texte sur le format " Total : 169.15"
+    let totalAmountElement = Array.from(possibleTotalAmountElements).find(element => element.textContent.includes(' Total : '));
+    if (!totalAmountElement) {
+        return false;
+    }
+    let totalAmount = parseFloat(totalAmountElement.textContent.match(/\d+\.\d+/)[0]);
+    console.log('Total amount', totalAmount);
+    return totalAmount;
+}
 
 function getActualCotation() {
     let actes = document.querySelectorAll('[vz-acte]');

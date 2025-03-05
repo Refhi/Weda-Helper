@@ -8,7 +8,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - [#353](https://github.com/Refhi/Weda-Helper/issues/353) - Alt+A permet aussi d'afficher l'historique des biologies dans la fenêtre des importations
 - [#340](https://github.com/Refhi/Weda-Helper/issues/340) - Affichage des dernières facturations dans la page des FSE (désactivé pour l'instant, en attente du feu vert de Weda)
 - [#341](https://github.com/Refhi/Weda-Helper/issues/341) - Déclaration de MT en un click
-- [#326](https://github.com/Refhi/Weda-Helper/issues/326) - Ajout d'une infobulle pour avertir de possibles cotations applicables à certaines situation (ex. SHE ou MCG), qu'on oublie habituellement tout le temps...
+- [#326](https://github.com/Refhi/Weda-Helper/issues/326) - Ajout d'une infobulle pour avertir de possibles cotations applicables à certaines situation (ex. SHE, MCG, PAV, MHP et RDV), qu'on oublie habituellement tout le temps...
 - [#367](https://github.com/Refhi/Weda-Helper/issues/367) - ajout de "Pédicurie" pour les mots-clés détectés pour l'ordonance numérique de pédicurie
 - [#368](https://github.com/Refhi/Weda-Helper/issues/368) - Si une ordonnance paramédicale contiens "psychologue", l'ordonnance numérique est automatiquement convertie en ordonnance classique.
 - [#338](https://github.com/Refhi/Weda-Helper/issues/338) - Validation automatiqueme du SCOR pour les FSE dégradée
