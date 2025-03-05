@@ -52,7 +52,8 @@
         "wedaEchanges.js",
         "pdfParser.js",
         "optionalPermissions.js",
-        "headlessSetup.js"
+        "headlessSetup.js",
+        "instantVaccine.js"
       ]
     }
   ],

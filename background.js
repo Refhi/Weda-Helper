@@ -180,6 +180,12 @@ var advancedDefaultSettings = [{
         "description": "Alerte si le VSM est échu (rouge) ou bientôt échu (orange).",
         "longDescription": "Affiche la date d'alerte de la VSM en orange si la date est dans moins de x mois (6 par défaut, -1 pour désactiver), puis en rouge une fois l'année dépassée.",
         "default": 4
+    },{
+        "name": "instantVaccine",
+        "type": TYPE_BOOL,
+        "description": "Ouverture immédiate du scan du datamatrix d'un vaccin à l'ouverture des dossiers. Aussi accessible depuis la Popup en cliquant sur l'icone de l'extension.",
+        "longDescription": "permet de faciliter l'enregistrement des vaccins pour les pharmaciens par exemple : on met la CV => lue automatiquement => ouverture immédiate du scan du datamatrix.",
+        "default": false
     }],
     "sections": [{
         "name": "Médecin Traitant",

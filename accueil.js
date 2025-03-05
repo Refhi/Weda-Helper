@@ -238,6 +238,9 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*preAlertVSM', async function (
     const VSMElement = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_LabelLastVSMDate');
     if (VSMElement) {
         const lastVSMDate = VSMElement.textContent;
+        if (!lastVSMDate) {
+            return;
+        }
         const today = new Date();
         // lastVSMDate est au format (12/04/2024), on le convertit en objet Date
         const [day, month, year] = lastVSMDate.match(/\d+/g);

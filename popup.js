@@ -32,3 +32,21 @@ for (let id in buttons) {
   });
 }
 
+// Gestion du slider pour l'option instantVaccine
+document.addEventListener('DOMContentLoaded', async function() {
+    // Récupérer l'état actuel de l'option depuis le stockage
+    chrome.storage.local.get('instantVaccine', function(data) {
+        // Définir l'état initial du slider basé sur la valeur stockée
+        document.getElementById('instantVaccineSlider').checked = data.instantVaccine || false;
+    });  
+
+
+    // Surveiller les changements du slider
+    document.getElementById('instantVaccineSlider').addEventListener('change', function() {
+        // Mettre à jour la valeur dans le storage quand le slider change
+        const isEnabled = this.checked;
+        chrome.storage.local.set({ 'instantVaccine': isEnabled }, function() {
+            console.log('Option instantVaccine mise à jour : ' + isEnabled);
+        });
+    });
+});
