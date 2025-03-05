@@ -263,16 +263,6 @@ function tweakFSECreation() {
 
     }
 
-    function CPSNonLue() {
-        console.log('CPSNonLue démarré');
-        waitLegacyForElement('span', 'CPS non lue', 5000, function (spanElement) {
-            console.log('Détecté : CPS non lue. Je clique sur le bouton de lecture de la CPS');
-            spanElement.click();
-            recordMetrics({ clicks: 1, drags: 1 });
-
-        });
-    }
-
 
     function setDefaultValue() {
         // va parcourir dans l'ordre le tableau de conditions et appliquer la première qui est remplie
