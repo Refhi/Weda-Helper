@@ -32,6 +32,7 @@ Cf. ci-dessous pour les retours et les contributions.
     - [Agenda](#agenda)
     - [Antécédents :](#antécédents-)
     - [Navigation :](#navigation-)
+    - [Vaccination "instantanée" :](#vaccination-instantanée-)
   - [Facilitation des imports](#facilitation-des-imports)
   - [Weda-Helper-Companion](#weda-helper-companion)
   - [Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):](#problèmes-et-limitations-connues-qui-seront-peut-être-résolues-dans-de-futures-mises-à-jour)
@@ -77,6 +78,7 @@ Ctrl+U	Upload le dernier fichier du dossier envoyé par le Companion
 - Automatisation de la déclaration de médecin traitant en un clic.
 - Automatisation du contrôle du MT + ouvre un nouvel onglet pour ne pas avoir à patienter. Un message vous indique si cela a fonctionné ou non. Vous pourrez retourner dans le premier onglet si vous souhaitez enregistrer le MT.
 - Automatisation partielle de la déclaration de MT : sélectionne automatiquement le patient en cours, pré-coche les cases de consentement. Vous n'avez plus qu'à cliquer sur "Transmettre" pour valider.
+- Alerte en cas de retard ou d'absence du VSM
 
 ## Consultations
 - Affichage automatique de l'historique dans une colonne à gauche : ouvre automatiquement un historique simplifié (pas de recettes notamment) dans une colonne à gauche de l'écran, uniquement dans les pages de Consultation, de Courrier, de Certificat, de Formulaire et Demandes.
@@ -183,6 +185,9 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Setup "headless" :
 - possibilité de shunter le message de mise à jour de Weda sur les postes où vous souhaitez automatiser l'ouverture de Weda (désactivé par défaut). Cela ne correspond qu'à des usages très spécifiques, merci de ne pas l'activer sans en comprendre les implications.
+
+### Vaccination "instantanée" :
+- si activée, toute ouverture de dossier patient amène immédiatement sur le scan du datamatrix d'un vaccin, permettant aux vaccineurs en série de gagner du temps (particulièrement pensée pour les pharmaciens). Ce paramètre est facilement accessible depuis la popup de l'extension (clic sur l'icône de l'extension).
 
 
 

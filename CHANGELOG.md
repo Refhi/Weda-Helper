@@ -17,7 +17,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 - amélioration des infos-bulles pour les raccourcis claviers
 - [#366](https://github.com/Refhi/Weda-Helper/issues/366) - ajout d'un mode "headLess" : possibilité de shunter le message de mise à jour de Weda sur les postes où vous souhaitez automatiser l'ouverture de Weda (désactivé par défaut). Cela ne correspond qu'à des usages très spécifiques, merci de ne pas l'activer sans en comprendre les implications.
 - [#349](https://github.com/Refhi/Weda-Helper/issues/349) - ajout d'une surveillance du remplissage du VSM : message s'il n'a pas été fait alors qu'une ALD est détectée, ainsi que coloration en orange si on se rapproche des 1 ans puis rouge si elle est dépassée.
-- [#362](https://github.com/Refhi/Weda-Helper/issues/362) - option "vaccins instantanés" : si activée, toute ouverture de dossier patient amène immédiatement sur le scan du datamatrix d'un vaccin, permettant aux vaccineurs en série de gagner du temps (particulièrement pensée pour les pharmaciens)
+- [#362](https://github.com/Refhi/Weda-Helper/issues/362) - option "vaccins instantanés" : si activée, toute ouverture de dossier patient amène immédiatement sur le scan du datamatrix d'un vaccin, permettant aux vaccineurs en série de gagner du temps (particulièrement pensée pour les pharmaciens). Ce paramètre est facilement accessible depuis la popup de l'extension (clic sur l'icône de l'extension).
 
 
 
