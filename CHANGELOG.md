@@ -14,6 +14,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - 🩺 [#349](https://github.com/Refhi/Weda-Helper/issues/349) - ajout d'une surveillance du remplissage du VSM : message s'il n'a pas été fait alors qu'une ALD est détectée, ainsi que coloration en orange si on se rapproche des 1 ans puis rouge si elle est dépassée.
 - 💉 [#362](https://github.com/Refhi/Weda-Helper/issues/362) - option "vaccins instantanés" : si activée, toute ouverture de dossier patient amène immédiatement sur le scan du datamatrix d'un vaccin, permettant aux vaccineurs en série de gagner du temps (particulièrement pensée pour les pharmaciens). Ce paramètre est facilement accessible depuis la popup de l'extension (clic sur l'icône de l'extension).
 - 📅 [#364](https://github.com/Refhi/Weda-Helper/issues/364) - Les dates types 14 novembre 2024 peuvent être reconnues dans les imports (à activer dans les options)
+- 👬 une nouvelle version du Companion est disponible ! Elle permet de diriger l'archivage d'un document importé via Ctrl+U vers un dossier spécifique. Vous pouvez le télécharger [ici](https://github.com/Refhi/Weda-Helper-Companion)
 
 
 ### Dans la page des FSE :
