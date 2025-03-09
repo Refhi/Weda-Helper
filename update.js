@@ -5,23 +5,84 @@ function htmlMaker(text) {
     return text.replace(/\n/g, '<br>');
 }
 
-var nouveautes = `
-<h3>[2.10] - classement assisté !!!</h3>
-<h3>Ajouts :</h3>
-<ul>
-    <li><a href="https://github.com/Refhi/Weda-Helper/pull/327" target="_blank">#327</a> - Ajout d'une assistance à l'import des documents avec lecture des datamatrix si besoin</li>
-    <li>Amélioration de la navigation par tabulation dans l'import des documents. Alt+S permet désormais de supprimer le document en cours.</li>
-    <li><a href="https://github.com/Refhi/Weda-Helper/issues/50" target="_blank">#50</a> - Ajout d'un raccourcis Ctrl+Shift+S pour lancer le scan de documents</li>
-    <li><a href="https://github.com/Refhi/Weda-Helper/issues/323" target="_blank">#323</a> - Ctrl+E ou Ctrl+Shift+E pour lancer l'envoi de courrier peut optionnellement lancer l'impression en même temps</li>
-</ul>
+// Fonction simple pour convertir le Markdown en HTML
+function simpleMarkdownToHtml(markdown) {
+    // Échapper les caractères HTML
+    let html = markdown
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 
-<h3>Fix :</h3>
-<ul>
-    <li><a href="https://github.com/Refhi/Weda-Helper/issues/339" target="_blank">#339</a> - Correction du système de recherche automatique de l'adresse MSsanté</li>
-</ul>
-`;
+    // Convertir les en-têtes
+    html = html.replace(/^###### (.*?)$/gm, '<h6>$1</h6>');
+    html = html.replace(/^##### (.*?)$/gm, '<h5>$1</h5>');
+    html = html.replace(/^#### (.*?)$/gm, '<h4>$1</h4>');
+    html = html.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
 
-nouveautes = htmlMaker(nouveautes);
+    // Convertir les listes
+    html = html.replace(/^\* (.*?)$/gm, '<li>$1</li>');
+    html = html.replace(/^- (.*?)$/gm, '<li>$1</li>');
+
+    // Convertir les paragraphes (lignes vides)
+    html = html.replace(/\n\n/g, '</p><p>');
+
+    // Convertir les liens
+    html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>');
+
+    // Convertir le texte en gras
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    // Convertir le texte en italique
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+    // Envelopper dans des balises <p>
+    html = '<p>' + html + '</p>';
+
+    // Gérer les listes
+    html = html.replace(/<li>(.+?)<\/li>/g, function (match) {
+        return '<ul>' + match + '</ul>';
+    }).replace(/<\/ul><ul>/g, '');
+
+    return html;
+}
+
+
+// Fonction pour extraire les nouveautés du CHANGELOG.md
+function extractChangelogContent() {
+    return fetch(chrome.runtime.getURL('CHANGELOG.md'))
+        .then(response => response.text())
+        .then(markdownText => {
+            // Rechercher les titres de niveau 1 (# Titre)
+            const h1Pattern = /^# .+$/gm;
+            const h1Matches = [...markdownText.matchAll(h1Pattern)];
+            console.log(h1Matches);
+            
+            // S'il y a moins de 3 titres de niveau 1, utiliser un message par défaut
+            if (h1Matches.length < 3) {
+                return `<h3>Version ${currentVersion}</h3><p>Consultez le changelog complet pour plus de détails.</p>`;
+            }
+            
+            // Extraire les indices des 2e et 3e titres de niveau 1
+            const secondH1Index = h1Matches[1].index;
+            const thirdH1Index = h1Matches[2].index;
+            
+            // Extraire le contenu entre le 2e et le 3e titre de niveau 1
+            const changelogSection = markdownText.substring(secondH1Index, thirdH1Index).trim();
+            
+            // Convertir le markdown en HTML
+            return simpleMarkdownToHtml(changelogSection);
+        })
+        .catch(error => {
+            console.error('Erreur lors de l\'extraction du changelog:', error);
+            return `<h3>Version ${currentVersion}</h3><p>Consultez le changelog complet pour plus de détails.</p>`;
+        });
+}
+
+
+// Initialiser les nouveautés avec un placeholder, qui sera remplacé plus tard
+var nouveautes = `<h3>Chargement des nouveautés...</h3>`;
 
 
 
@@ -52,12 +113,12 @@ P.S. 🔍 Pour aller plus loin n'oubliez pas de voir les fonction du <a href="ht
 firstStartMessage = htmlMaker(firstStartMessage)
 
 
-var updateMessage = `
+var updateMessageTemplate = `
 <strong>👋 Bonjour !</strong><br><br>
 
 <strong>✨ Weda-Helper vient d'être mis à jour en version ${currentVersion} !</strong><br><br>
 
-<strong>🔧 Je vous conseille d'aller faire un tour dans les options pour vérifier les nouveaux paramètres : bouton de droite sur l'icone de l'extension puis option.</strong><br><br>
+<strong>🔧 Je vous conseille d'aller faire un tour dans les options pour vérifier les nouveaux paramètres : cliquez sur l'icone de l'extension puis sur ⚙️</strong><br><br>
 
 <strong>🚀 Si vous ne l'avez pas encore, n'hésitez pas à tester le Companion :</strong> 
 <a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.exe" target="_blank">disponible ici pour windows</a> 
@@ -68,7 +129,7 @@ var updateMessage = `
 <strong>📄 Maintenez Alt pour afficher la fiche mémo  raccourcis clavier ! (Double appuis rapide sous MAC)</strong> <br><br>
 
 <strong>🌟 Voici les nouveautés et les améliorations :</strong><br>
-${nouveautes}<br><br>
+NOUVEAUTES_PLACEHOLDER<br><br>
 
 📝 Les suggestions et les rapports de bug c'est toujours par là : 
 <a href="https://github.com/Refhi/Weda-Helper/" target="_blank">Weda-Helper sur gitHub</a><br><br>
@@ -85,6 +146,7 @@ ${nouveautes}<br><br>
 
 <strong>Les devs de Weda-Helper</strong>
 `;
+
 
 function showPopup(text) {
     function createOverlay() {
@@ -165,16 +227,25 @@ function showPopup(text) {
 
 // Lancement du message en cas de premier lancement ou de mise à jour
 chrome.storage.local.get(['lastExtensionVersion', 'firstStart'], function (result) {
-    if (result.lastExtensionVersion !== currentVersion) {
-        // If the last version is different from the current version, there was an update
-        showPopup(updateMessage);
-        chrome.storage.local.set({ lastExtensionVersion: currentVersion });
-    }
-
-    if (!result.firstStart) {
-        // If there's no last version, this is the first launch
-        showPopup(firstStartMessage);
-        // Set firstStart to true
-        chrome.storage.local.set({ firstStart: true });
-    }
+    // Charger d'abord le contenu du changelog
+    extractChangelogContent().then(changelogContent => {
+        // Mettre à jour la variable nouveautes avec le contenu extrait
+        nouveautes = changelogContent;
+        
+        // Insérer les nouveautés dans le message de mise à jour
+        var updateMessage = updateMessageTemplate.replace('NOUVEAUTES_PLACEHOLDER', nouveautes);
+        
+        if (result.lastExtensionVersion !== currentVersion) {
+            // If the last version is different from the current version, there was an update
+            showPopup(updateMessage);
+            chrome.storage.local.set({ lastExtensionVersion: currentVersion });
+        }
+        
+        if (!result.firstStart) {
+            // If there's no last version, this is the first launch
+            showPopup(firstStartMessage);
+            // Set firstStart to true
+            chrome.storage.local.set({ firstStart: true });
+        }
+    });
 });

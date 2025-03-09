@@ -165,12 +165,12 @@ function tweakFSECreation() {
             justOnce: false,
             callback: function (elements) {
                 let lireCarteVitaleElement = elements[0];
-                
+
                 // Vérifier si les boutons existent déjà
                 if (document.getElementById('targetValider') || document.getElementById('targetAnnuler')) {
                     return;
                 }
-            
+
                 // Style commun pour les boutons
                 const commonStyle = {
                     backgroundColor: 'rgba(0, 0, 0, 0.32)',
@@ -182,7 +182,7 @@ function tweakFSECreation() {
                     cursor: 'pointer',
                     transition: 'background-color 0.3s ease'
                 };
-            
+
                 // Créer le premier bouton
                 var button1 = document.createElement('button');
                 // button1.id = 'targetValider';
@@ -192,7 +192,7 @@ function tweakFSECreation() {
                 button1.onclick = function () {
                     degradeTeleconsult('Dégradé');
                 };
-            
+
                 // Créer le deuxième bouton
                 var button2 = document.createElement('button');
                 // button2.id = 'targetAnnuler';
@@ -202,7 +202,7 @@ function tweakFSECreation() {
                 button2.onclick = function () {
                     degradeTeleconsult('Téléconsultation');
                 };
-            
+
                 // Insérer les boutons avant l'élément "Lire la carte vitale"
                 lireCarteVitaleElement.parentNode.insertBefore(button2, lireCarteVitaleElement);
                 lireCarteVitaleElement.parentNode.insertBefore(button1, lireCarteVitaleElement);
@@ -261,16 +261,6 @@ function tweakFSECreation() {
         });
 
 
-    }
-
-    function CPSNonLue() {
-        console.log('CPSNonLue démarré');
-        waitLegacyForElement('span', 'CPS non lue', 5000, function (spanElement) {
-            console.log('Détecté : CPS non lue. Je clique sur le bouton de lecture de la CPS');
-            spanElement.click();
-            recordMetrics({ clicks: 1, drags: 1 });
-
-        });
     }
 
 
@@ -364,7 +354,6 @@ function tweakFSECreation() {
 
                         recordMetrics({ clicks: 1, drags: 1 });
                         console.log('Cotation appliquée:', action);
-                        selectLastCotationSpace();
                         return; // Arrête la fonction après avoir appliqué une cotation
                     } else if (action === 'Défaut') {
                         console.log('Action "Défaut" spécifiée mais non trouvée parmi les éléments.');
@@ -806,3 +795,459 @@ addTweak('/vitalzen/fse.aspx', '!RemoveLocalCompanionTPE', function () {
         }
     });
 });
+
+// Validation automatique du PDF de la FSE dégradée en SCOR
+addTweak('/vitalzen/fse.aspx', 'autoValidateSCOR', function () {
+    waitForElement({
+        selector: '.previewDocument',
+        callback: function () {
+            console.log('[autoValidateSCOR] pdf-viewer trouvé, je clique sur le bouton de validation');
+            // Chercher le bouton .mat-button-wrapper avec le innerText "Inclure"
+            let button = document.querySelectorAll('.mat-button-wrapper');
+            console.log('[autoValidateSCOR] boutons trouvés', button);
+            for (let i = 0; i < button.length; i++) {
+                if (button[i].innerText === 'Inclure') {
+                    sendWedaNotif({
+                        message: "PDF de la FSE dégradée en SCOR validée automatiquement. Vous pouvez désactiver cette fonctionnalité si vous le souhaitez dans les options de Weda Helper.",
+                        type: 'success',
+                        icon: 'check_circle'
+                    })
+                    console.log('[autoValidateSCOR] bouton trouvé, je clique dessus', button[i]);
+                    button[i].click();
+                    recordMetrics({ clicks: 1, drags: 1 });
+                    break;
+                }
+            }
+        }
+    });
+});
+
+// Affichage de l'historique des facturations
+// 1 - charger une iframe avec l'historique
+// 2 - en extraire les données : date, cotation, montant
+// 3 - afficher les données
+addTweak('/vitalzen/fse.aspx', 'showBillingHistory', async function () {
+    const iframeId = 'WHHistoryIframe';
+    const targetElement = document.querySelector('.fseContainer');
+    const iframe = createIframe(targetElement, iframeId); // ici targetElement est nécessaire comme référence pour l'insertion de l'iframe
+
+    await new Promise((resolve) => {
+        iframe.addEventListener('load', resolve);
+    });
+
+    await sleep(1000); // Attendre un peu pour que la page se charge
+
+    // Vérifier qu'on soit bien sur l'onglet "Consultation" sinon les cotations ne sont pas affichées
+    if (!iframe.contentDocument.querySelector('#LabelCommandAffiche').textContent.includes('Consultation')) {
+        console.log('[showBillingHistory] Onglet "Consultation" non sélectionné, les cotations ne sont pas affichées');
+        let ongletConsultation = iframe.contentDocument.querySelector('#ButtonConsultation');
+        ongletConsultation.click();
+        await sleep(100);
+    }
+
+    const userSelector = '#DropDownListUsers';
+    const currentUser = getCurrentUser(iframeId, userSelector);
+    const loggedInUser = swapNomPrenom(document.getElementById('LabelUserLog').innerText);
+
+
+    await selectProperUser(iframeId, loggedInUser, userSelector);
+    await sleep(250);
+    await showWholeHistory(iframeId);
+
+    let billingData = extractBillingData(iframe.contentDocument);
+    // console.log('billingData', billingData);
+    billingData = trimOldBillingData(billingData, 5); // Afficher uniquement les 5 dernières années, car certaines cotations peuvent être appliquées une fois sur 5 ans
+    let filteredBillingData = await filterBillingData(billingData); // Filtrer les cotations indésirables
+    await showBillingData(billingData, filteredBillingData);
+
+    await sleep(250);
+    await selectProperUser(iframeId, currentUser, userSelector);
+});
+
+// Fonction utilitaire pour accéder à l'iframe et au sélecteur d'utilisateur
+function getUserSelect(iframeId, selector) {
+    const iframe = document.querySelector('#' + iframeId);
+    if (!iframe) {
+        console.error('[showBillingHistory] iframe not found');
+        return null;
+    }
+    return iframe.contentDocument.querySelector(selector);
+}
+
+// Fonction utilitaire pour obtenir l'utilisateur sélectionné
+function getSelectedUser(userSelect) {
+    return userSelect.options[userSelect.selectedIndex].textContent;
+}
+
+function getCurrentUser(iframeId, selector) {
+    console.log('[showBillingHistory] getCurrentUser');
+    const userSelect = getUserSelect(iframeId, selector);
+    return userSelect ? getSelectedUser(userSelect) : null;
+}
+
+async function selectProperUser(iframeId, nom, selector) {
+    nom = nom.trim();
+    console.log('[showBillingHistory] selectProperUser on cherche à sélectionner :', nom);
+    const userSelect = getUserSelect(iframeId, selector);
+
+    const currentSelectedUser = getSelectedUser(userSelect);
+
+    if (currentSelectedUser.startsWith(nom)) {
+        console.log('[showBillingHistory] user already selected');
+        return;
+    }
+
+    // On parcourt les options pour trouver le nom et le sélectionner
+    const options = userSelect.options;
+    for (let i = 0; i < options.length; i++) {
+        if (options[i].textContent.trim().startsWith(nom)) {
+            userSelect.selectedIndex = i;
+            userSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            break;
+        }
+    }
+}
+
+
+
+async function showWholeHistory(iframeId) {
+    console.log('[showBillingHistory] showWholeHistory');
+    const iframeSel = '#' + iframeId;
+    clicCSPLockedElement("#HistoriqueUCForm1_LinkButtonSuiteWeda", iframeSel);
+
+    const iframe = document.querySelector(iframeSel);
+    if (iframe) {
+        await sleep(250);
+    }
+}
+
+
+function swapNomPrenom(loggedInUser) {
+    const parts = loggedInUser.split(' ');
+    const lastNameIndex = parts.findIndex(part => part === part.toUpperCase());
+    if (lastNameIndex === -1) {
+        return loggedInUser; // Si aucun nom en majuscule n'est trouvé, retourner l'original
+    }
+    const firstName = parts.slice(0, lastNameIndex).join(' ');
+    const lastName = parts.slice(lastNameIndex).join(' ');
+    return `${lastName} ${firstName}`;
+}
+
+function extractBillingData(iframeDocument) {
+    const elements = iframeDocument.querySelectorAll('[name=dh9]');
+    const billingData = [];
+
+    elements.forEach(element => {
+        const labelilElements = element.querySelectorAll('.labelil');
+        console.log('Nombre d\'éléments labelil trouvés:', labelilElements.length);
+
+        // Traiter chaque labelil à position impaire (index pair)
+        for (let i = 1; i < labelilElements.length; i += 2) {
+            const currentLabelil = labelilElements[i];
+            if (!currentLabelil) continue;
+
+            const values = currentLabelil.nextElementSibling?.querySelectorAll('td');
+            if (!values || values.length < 6) continue;
+
+            const Date = values[1].textContent?.trim() || '';
+            const Actes = values[4].textContent?.trim() || '';
+            const Montant = (values[5].textContent?.trim() || '') + ' €';
+            console.log('Date', Date, 'Actes', Actes, 'Montant', Montant);
+
+            if (Date && Actes) {  // Vérifier que les données essentielles sont présentes
+                billingData.push({ Date, Actes, Montant });
+            }
+        }
+    });
+
+    return billingData;
+}
+
+function trimOldBillingData(billingData, olderThanYears) {
+    const today = new Date();
+    const year = today.getFullYear();
+    const olderThan = year - olderThanYears;
+    return billingData.filter(data => {
+        const year = parseInt(data.Date.split('/')[2]);
+        return year >= olderThan;
+    });
+}
+
+async function showBillingData(billingData, billingDataFiltered) {
+    const billingDataContainer = createBillingDataContainer();
+
+    const toggleButton = document.createElement('button');
+    toggleButton.textContent = 'Afficher toutes les données';
+    let showingFiltered = true;
+
+    toggleButton.addEventListener('click', () => {
+        showingFiltered = !showingFiltered;
+        toggleButton.textContent = showingFiltered ? 'Afficher toutes les données' : 'Afficher les données filtrées';
+        updateBillingData(showingFiltered ? billingDataFiltered : billingData);
+    });
+
+    const infoIcon = document.createElement('span');
+    infoIcon.textContent = 'ℹ️'; // Icône d'information
+    infoIcon.className = 'info-icon';
+    infoIcon.style.fontFamily = 'Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"'; // Ensure emoji font
+    infoIcon.style.cursor = 'pointer';
+    infoIcon.title = "Historique des facturations affiché via Weda-Helper. Si non désiré ou s'il gène l'affichage sur un écran en 4:3, vous pouvez le désactiver dans les options";
+
+    const title = document.createElement('h3');
+    title.textContent = 'Historique des facturations';
+    title.appendChild(infoIcon);
+
+    billingDataContainer.appendChild(title);
+    billingDataContainer.appendChild(toggleButton);
+    document.body.appendChild(billingDataContainer);
+
+    // Create a hidden div to store the billingData
+    const hiddenBillingData = document.createElement('div');
+    hiddenBillingData.style.display = 'none';
+    hiddenBillingData.id = 'hiddenBillingData';
+    hiddenBillingData.textContent = JSON.stringify(billingData);
+    document.body.appendChild(hiddenBillingData);
+
+    updateBillingData(billingDataFiltered);
+
+    function updateBillingData(data) {
+        billingDataContainer.querySelectorAll('div').forEach(div => div.remove());
+        const dataContainer = document.createElement('div');
+        data.forEach(item => {
+            dataContainer.innerHTML += `<p>${item.Date} - ${item.Actes} - ${item.Montant}</p>`;
+        });
+        billingDataContainer.appendChild(dataContainer);
+    }
+}
+
+function getHiddenBillingData() {
+    const hiddenBillingData = document.getElementById('hiddenBillingData');
+    return hiddenBillingData ? JSON.parse(hiddenBillingData.textContent) : [];
+}
+
+async function filterBillingData(billingData) {
+    // billingDataFilter contiens une liste de cotations à filtrer
+    let toBeFiltered = await getOptionPromise('billingDataFilter');
+    // console.log('toBeFiltered', toBeFiltered);
+    if (!toBeFiltered) {
+        return billingData;
+    }
+    // Convertir la chaîne en tableau sans espaces
+    toBeFiltered = toBeFiltered.split(',').map(item => item.trim());
+
+    function checkIfCotationOk(data) {
+        // On cherche dans data.actes si on trouve +xIK (où x peut-être n'importe quel nombre).
+        // S'il est trouvé, on le remplace par +IK pour la comparaison, mais on garde l'original.
+        const actesForComparison = data.Actes.replace(/\+\d+IK/g, '+IK');
+        let toReturn = !toBeFiltered.includes(actesForComparison);
+        return toReturn;
+    }
+
+    return billingData.filter(checkIfCotationOk);
+}
+
+function createBillingDataContainer() {
+    const container = document.createElement('div');
+    container.style = 'position: fixed; top: 40px; right: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; width: 300px; height: auto;';
+    container.style.maxHeight = '80vh'; // Limite la hauteur à 80% de la hauteur de la fenêtre
+    container.style.overflowY = 'auto'; // Active le défilement vertical si nécessaire
+    container.style.width = 'auto';
+    return container;
+}
+
+// Aide à la cotation
+addTweak('/vitalzen/fse.aspx', 'cotationHelper', function () {
+    let isFirstDetection = true;
+    waitForElement({
+        selector: '[vz-acte]',
+        justOnce: false,
+        callback: function (element) {
+            if (isFirstDetection) {
+                watchForMtSituationChange();
+                isFirstDetection = false;
+                console.log('Première détection de vz-acte');
+            } else {
+                checkPossibleHelp();
+            }
+        }
+    });
+});
+
+function watchForMtSituationChange() {
+    let mtSituationList = document.querySelector('vz-orientation select');
+    mtSituationList.addEventListener('change', function () {
+        checkPossibleHelp();
+    });
+}
+
+function greenLightRefractoryPeriodCotationHelper(customKey = '') {
+    const BASE_KEY = 'cotationHelperLastMtCheckChange';
+    const REFRACTORY_KEY = customKey ? `${BASE_KEY}_${customKey}` : BASE_KEY;
+    const REFRACTORY_PERIOD = 5000; // ms
+    const now = Date.now();
+    const lastCheck = sessionStorage.getItem(REFRACTORY_KEY) || 0;
+    const timeDiff = now - lastCheck;
+    console.log('Test refractaire : ', now, lastCheck, timeDiff);
+
+    if (timeDiff > REFRACTORY_PERIOD) {
+        sessionStorage.setItem(REFRACTORY_KEY, now);
+        return true;
+    }
+    return false;
+}
+
+
+function checkPossibleHelp() {
+    const cotationContext = {
+        cotation: getActualCotation(), // retourne un array de cotation
+        mtSituation: getActualMTSituation(),
+        patientAge: patientAgeInFSE(),
+        hour: new Date().getHours(),
+        dayOfWeek: new Date().getDay(), // Sunday = 0, Monday = 1, etc.
+        billingData: getHiddenBillingData()
+    };
+    cotationHelper.forEach(helper => {
+        if (helper.test(cotationContext)) {
+            if (!greenLightRefractoryPeriodCotationHelper(helper.titre)) {
+                return;
+            }
+            console.log('cotationHelper trouvé', helper);
+            sendWedaNotif(
+                {
+                    message: helper.conseil + ' ' + (helper.link ? 'En savoir plus : ' + helper.link : ''),
+                    type: 'undefined',
+                    icon: 'info',
+                    duration: 10000
+                },
+            )
+
+        }
+    });
+}
+
+const cotationHelper = [
+    {
+        titre: 'Cotation MCG',
+        test: function (context) {
+            console.log('Ajout de MCG', context);
+            return context.mtSituation.includes('08') && context.cotation.includes('G');
+        },
+        conseil: 'Cette situation peut peut-être bénéficier de la cotation MCG',
+        link: 'https://omniprat.org/fiches-pratiques/consultations-visites/majoration-de-coordination-generaliste/'
+    }, {
+        titre: 'Cotation SHE',
+        test: function (context) {
+            console.log('Ajout de SHE', context);
+            // La cotation doit contenir SNP ou MRT
+            let isProperCotation = context.cotation.some(cot => cot.includes('SNP') || cot.includes('MRT'));
+            // L'heure doit être 19, 20 ou 21h
+            let isProperHour = [19, 20, 21].includes(context.hour);
+            return isProperCotation && isProperHour;
+        },
+        conseil: 'Cette situation peut peut-être bénéficier de la cotation SHE',
+        link: 'https://www.hauts-de-france.ars.sante.fr/le-service-dacces-aux-soins-sas-1'
+    }, {
+        titre: 'Cotation MHP',
+        test: function (context) {
+            console.log('Ajout de MHP', context);
+            // Doit être aux horaires de PDSA : donc samedi 12+ heure ou soir 20+ heure
+            let isProperHour = (context.dayOfWeek === 6 && context.hour >= 12) || context.hour >= 20;
+            // La cotation doit contenir G et ne pas contenir SNP
+            let isProperCotation = context.cotation.includes('G') && !context.cotation.includes('SNP');
+            return isProperHour && isProperCotation;
+        },
+        conseil: 'Cette situation peut peut-être bénéficier de la cotation MHP',
+        link: 'https://www.ameli.fr/medecin/exercice-liberal/facturation-remuneration/consultations-actes/tarifs/tarifs-conventionnels-medecins-generalistes-specialistes'
+    }, {
+        titre: 'cotation RDV',
+        test: function (context) {
+            // les ages doivent être : 18-25 ans ; 45-50 ans ; 60-65 ans ou 70-75 ans, cf. https://www.ameli.fr/medecin/sante-prevention/bilan-prevention-ages-cles
+            let isProperAge = [[18, 25], [45, 50], [60, 65], [70, 75]].some(ageRange => context.patientAge >= ageRange[0] && context.patientAge <= ageRange[1]);
+            // Il ne doit pas y avoir de cotation RDV dans les 7 dernières années. Comme l'affichage est limité à 7 ans, c'est implicitement vérifié
+            let isProperBillingData = !context.billingData.some(billing => billing.Actes.includes('RDV'));
+            return isProperAge && isProperBillingData;
+        },
+        conseil: "Le patient est peut-être éligible à la réalisation du Plan Personnalisé de Prévention, donc à la cotation RDV. Cumulable à 70% avec JKHD001 ou DEQP003. FDS à part si couplé avec un G.",
+        link: 'https://omniprat.org/fiches-pratiques/bilan-de-prevention/'
+    }, {
+        titre: 'notation MOP',
+        test: function (context) {
+            let ageOK = patientAgeInFSE() >= 80;
+            let isMT = estMTdeclareOuReferent(loggedInUser());
+            let noMopSelected = !context.cotation.includes('MOP');
+            return ageOK && !isMT && noMopSelected;
+        },
+        conseil: "Le patient a plus de 80 ans et vous n'êtes pas le médecin traitant. Pensez à ajouter la cotation MOP",
+        link: "https://omniprat.org/fiches-pratiques/consultations-visites/majoration-personne-agee-mpa/"
+    }, {
+        titre: 'cotation PAV oubliée',
+        test: function (context) {
+            if (totalAmount() < 120) {
+                return false;
+            }
+            // Ensuite on regarde si PAV est déjà présent dans les cotations
+            return !context.cotation.includes('PAV');
+        },
+        conseil: "Le montant total des actes est supérieur ou égal à 120€. Pensez à ajouter la cotation PAV, sauf cas d'exclusion.",
+        link: "https://www.ameli.fr/assure/remboursements/reste-charge/forfait-24-euros"
+    }, {
+        titre: 'cotation PAV mal placée',
+        test: function (context) {
+            if (totalAmount() < 120) {
+                return false;
+            }
+            // Ensuite on vérifie si le PAV est bien en dernière position
+            let pavLast = context.cotation[context.cotation.length - 1] === 'PAV';
+            let pavIsPresent = context.cotation.includes('PAV');
+            return pavIsPresent && !pavLast
+        },
+        conseil: "La cotation PAV doit être en dernière position.",
+        link: "https://www.ameli.fr/assure/remboursements/reste-charge/forfait"
+    }
+];
+
+function totalAmount() {
+    let possibleTotalAmountElements = document.querySelectorAll('.ng-star-inserted');
+    // On cherche un élément qui contient un texte sur le format " Total : 169.15"
+    let totalAmountElement = Array.from(possibleTotalAmountElements).find(element => element.textContent.includes(' Total : '));
+    if (!totalAmountElement) {
+        return false;
+    }
+    let totalAmount = parseFloat(totalAmountElement.textContent.match(/\d+\.\d+/)[0]);
+    console.log('Total amount', totalAmount);
+    return totalAmount;
+}
+
+function getActualCotation() {
+    let actes = document.querySelectorAll('[vz-acte]');
+    let cotationArray = [];
+    actes.forEach(acte => {
+        let acteText = acte.querySelector('.acteCell input.mat-input-element');
+        if (acteText && acteText.value.trim() !== '') {
+            cotationArray.push(acteText.value.trim());
+        }
+    });
+    return cotationArray;
+}
+
+function getActualMTSituation() {
+    let mtSituationList = document.querySelector('vz-orientation select');
+    return mtSituationList.value;
+}
+
+const mtSituationOptions = {
+    "03": "Je suis le médecin traitant",
+    "11": "Orienté par le MT",
+    "12": "Orienté par un Médecin autre que le MT",
+    "04": "Nouveau Médecin Traitant",
+    "05": "Médecin Traitant de substitution",
+    "06": "Généraliste récemment installé",
+    "07": "Médecin installé en zone sous Médicalisée",
+    "08": "Hors résidence",
+    "09": "Accès direct spécifique",
+    "10": "Hors accès direct spécifique",
+    "13": "Non respect du parcours de soin",
+    "01": "Exclusion du parcours de soin",
+    "02": "Urgence"
+};
+

@@ -73,7 +73,7 @@ function waitLegacyForElement(selector, text = null, timeout, callback) {
 function afterMutations({ delay, callback, callBackId = "callback id undefined", preventMultiple = false }) {
     let timeoutId = null;
     const action = () => {
-        console.debug(`Aucune mutation détectée pendant ${delay}ms, je considère la page comme chargée. Appel du Callback. (${callBackId})`);
+        // console.debug(`Aucune mutation détectée pendant ${delay}ms, je considère la page comme chargée. Appel du Callback. (${callBackId})`);
         if (preventMultiple) {
             observer.disconnect();
             callback();
@@ -119,7 +119,7 @@ function afterMutations({ delay, callback, callBackId = "callback id undefined",
  */
 
 let observedElements = new WeakMap();
-function waitForElement({ selector, callback, parentElement = document, justOnce = false, debug = false, textContent = null }) {
+function waitForElement({ selector, callback, parentElement = document, justOnce = false, debug = false, textContent = null, triggerOnInit = false }) {
     let observer = new MutationObserver((mutations) => {
         for (let i = 0; i < mutations.length; i++) {
             let mutation = mutations[i];
@@ -146,7 +146,7 @@ function waitForElement({ selector, callback, parentElement = document, justOnce
                     if (justOnce) {
                         observer.disconnect();
                     }
-                    callback(newElements)
+                    callback(newElements);
                 }
             }
         }
@@ -154,8 +154,29 @@ function waitForElement({ selector, callback, parentElement = document, justOnce
 
     let config = { childList: true, subtree: true };
     observer.observe(parentElement, config);
-}
 
+    // Trigger callback on initialization if elements already exist
+    if (triggerOnInit) {
+        let elements = parentElement.querySelectorAll(selector);
+        if (textContent) {
+            elements = Array.from(elements).filter(element => element.textContent.includes(textContent));
+        }
+        let newElements = [];
+        for (let j = 0; j < elements.length; j++) {
+            let element = elements[j];
+            if (!observedElements.has(element)) {
+                if (debug) { console.log('[waitForElement] Element', element, ' has appeared'); }
+                observedElements.set(element, true); // Add the element to the WeakMap
+                newElements.push(element);
+            } else {
+                if (debug) { console.log('[waitForElement] Element', element, ' already observed'); }
+            }
+        }
+        if (newElements.length > 0) {
+            callback(newElements);
+        }
+    }
+}
 
 
 function observeDiseapearance(element, callback) {
@@ -188,6 +209,7 @@ function waitForWeda(logWait, callback) {
 /**
  * Récupère la valeur d'une ou plusieurs options depuis le stockage local de Chrome.
  * Si une option n'est pas trouvée, elle utilise la valeur par défaut des paramètres.
+ * @see getOptionPromise pour une version utilisant les Promesses
  *
  * @param {string|string[]} optionNames - Le nom de l'option ou un tableau de noms d'options à récupérer.
  * @param {function} callback - La fonction de rappel à exécuter avec les valeurs des options récupérées.
@@ -203,8 +225,25 @@ function waitForWeda(logWait, callback) {
  *     console.log('Valeur de postPrintBehavior:', postPrintBehavior);
  * });
  * 
+ * 
  */
 function getOption(optionNames, callback) {
+    getOptionValues(optionNames, callback);
+}
+
+
+/**
+ * version de getOption utilisant les Promesses
+ * @see getOption pour une version utilisant les callbacks 
+ */
+function getOptionPromise(optionNames) {
+    return new Promise((resolve, reject) => {
+        getOptionValues(optionNames, resolve);
+    });
+}
+
+
+function getOptionValues(optionNames, callback) {
     let isInputArray = Array.isArray(optionNames);
 
     if (!isInputArray) {
@@ -236,6 +275,7 @@ function getOption(optionNames, callback) {
     });
 }
 
+
 /**
  * Ajoute une modification (tweak) en fonction de l'URL et des options spécifiées.
  *
@@ -244,6 +284,7 @@ function getOption(optionNames, callback) {
  * L'option ou les options à vérifier. Peut être une chaîne ou un tableau d'objets contenant une option et un callback.
  * Si l'option commence par '!', elle est considérée comme négative. Si elle commence par '*', le callback est toujours exécuté.
  * @param {function} callback - La fonction à exécuter si l'option est activée. Ignorée si l'option est un array contenant des options/callback .
+ * @example addTweak('/FolderGestion/RecetteForm.aspx', 'TweakRecetteForm', function () {console.log('TweakRecetteForm activé');});
  */
 function addTweak(path, option, callback) {
     function executeOption(option, callback, invert = false, mandatory = false) {
@@ -392,7 +433,8 @@ function sendWedaNotif({
     icon = "home",
     type = "success",
     extra = "{}",
-    duration = 5000
+    duration = 5000,
+    action = null
 } = {}) {
     // Vérifie si chaque option est vide et assigne la valeur par défaut si nécessaire
     message = message || "Notification de test";
@@ -411,8 +453,172 @@ function sendWedaNotif({
 
     console.log('Notification envoyée :', notifToSend);
 
+    if (action) {
+        confirmationPopup(action);
+    }
+
+
     const event = new CustomEvent('showNotification', { detail: notifToSend });
     document.dispatchEvent(event);
+    // Rendre la notification cliquable si elle contient une URL
+    setTimeout(() => { addUrlLink(); }, 100);
+}
+
+/**
+ * Affiche une popup de confirmation personnalisée et exécute l'action associée lorsque l'utilisateur clique sur "Oui"
+ * @param {Object} action - L'action à exécuter {'requestPermission': 'permission_name'}
+ */
+function confirmationPopup(action) {
+    // Vérifier si l'action est une demande de permission
+    if (action.requestPermission) {
+        const permission = action.requestPermission;
+
+        // Créer les éléments de la popup
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        `;
+
+        const popup = document.createElement('div');
+        popup.style.cssText = `
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            width: 100%;
+        `;
+
+        // En-tête
+        const title = document.createElement('h3');
+        title.textContent = 'Autorisation requise';
+        title.style.cssText = `
+            margin-top: 0;
+            color: #333;
+            font-size: 18px;
+        `;
+
+        // Message
+        const message = document.createElement('p');
+        message.textContent = `Weda-Helper a besoin d'accéder aux onglets pour cette fonctionnalité. Voulez-vous autoriser ? Chrome vous demandera votre permission pour "Consulter l'historique de navigation". (Weda-Helper n'utilise cette permission que pour la gestion des onglets ne consulte pas l'historique). Vous pouvez révoquer cette autorisation à tout moment dans les paramètres de Chrome.`;
+        message.style.cssText = `
+            margin-bottom: 20px;
+            color: #555;
+        `;
+
+        // Conteneur de boutons
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.cssText = `
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        `;
+
+        // Bouton Non
+        const noButton = document.createElement('button');
+        noButton.textContent = 'Non';
+        noButton.style.cssText = `
+            padding: 8px 16px;
+            background-color: #f1f1f1;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #333;
+        `;
+
+        // Bouton Oui
+        const yesButton = document.createElement('button');
+        yesButton.textContent = 'Oui';
+        yesButton.style.cssText = `
+            padding: 8px 16px;
+            background-color: #4285f4;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: white;
+        `;
+
+        // Fonction pour fermer la popup
+        const closePopup = () => {
+            document.body.removeChild(overlay);
+        };
+
+        // Événements des boutons
+        noButton.addEventListener('click', () => {
+            closePopup();
+            console.log(`Permission ${permission} refusée par l'utilisateur`);
+        });
+
+        yesButton.addEventListener('click', () => {
+            // Exécuter l'action de demande de permission - C'est un vrai geste utilisateur ici
+            closePopup();
+
+            // Demande la permission spécifiée
+            let granted = requestPermission(permission);
+            if (granted) {
+                // Permission accordée
+                sendWedaNotifAllTabs({
+                    message: "Accès accordé avec succès!",
+                    icon: 'success',
+                    duration: 5000
+                });
+
+                // Déclenche un événement pour informer le reste de l'application
+                const permissionEvent = new CustomEvent('permissionGranted', {
+                    detail: { permission: permission }
+                });
+                document.dispatchEvent(permissionEvent);
+            } else {
+                // Permission refusée par Chrome
+                sendWedaNotifAllTabs({
+                    message: `L'autorisation a été refusée. Certaines fonctionnalités ne seront pas disponibles.`,
+                    icon: 'warning',
+                    duration: 8000
+                });
+            }
+        });
+
+        // Assembler la popup
+        buttonContainer.appendChild(noButton);
+        buttonContainer.appendChild(yesButton);
+        popup.appendChild(title);
+        popup.appendChild(message);
+        popup.appendChild(buttonContainer);
+        overlay.appendChild(popup);
+
+        // Ajouter au DOM
+        document.body.appendChild(overlay);
+    } else {
+        console.warn('Action non reconnue dans confirmationPopup:', action);
+    }
+}
+
+function addUrlLink() {
+    let NotifPopupElement = document.querySelector('weda-notification-container p.ng-star-inserted');
+    if (!NotifPopupElement) {
+        console.warn('NotifPopupElement not found');
+        return;
+    }
+    // Cherche dans le innerText une éventuelle URL
+    console.log('Notification popup:', NotifPopupElement.innerText);
+    let url = NotifPopupElement.innerText.match(/(https?:\/\/[^\s]+)/);
+    if (url) {
+        // Rend la popup cliquable
+        NotifPopupElement.style.cursor = 'pointer';
+        console.log('URL trouvée dans la notification :', url[0]);
+        NotifPopupElement.addEventListener('click', () => {
+            window.open(url[0], '_blank');
+        });
+    }
 }
 
 
@@ -469,7 +675,7 @@ function setLastPrintDate() {
 // Clic sur certains éléments où le CSP bloque le clic quand on est en isolated
 // Passe par un script injecté pour contourner le problème
 
-// Initialise d'abord FWNotif.js
+// Initialise d'abord clickElement.js
 function startClicScript() {
     var scriptClicElements = document.createElement('script');
     scriptClicElements.src = chrome.runtime.getURL('FW_scripts/clickElement.js');
@@ -477,10 +683,13 @@ function startClicScript() {
 }
 startClicScript();
 
-function clicCSPLockedElement(elementSelector) {
+function clicCSPLockedElement(elementSelector, iframeSelector = null) {
     console.log('Clic sur élément bloqué par CSP :', elementSelector);
-    const event = new CustomEvent('clicElement', { detail: elementSelector });
-    document.dispatchEvent(event);        
-}   
+    const event = new CustomEvent('clicElement', { detail: { elementSelector, iframeSelector } });
+    document.dispatchEvent(event);
+}
 
-
+// Fonction utilitaire pour attendre un certain nombre de millisecondes
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}

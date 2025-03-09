@@ -1,11 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper",
-  "version": "2.10",
-  "version_name": "2.10",
+  "version": "2.11",
+  "version_name": "2.11",
   "options_page": "options.html",
   "permissions": [
     "storage"
+  ],
+  "optional_permissions": [
+    "tabs"
   ],
   "host_permissions": [
     "http://localhost/"
@@ -47,7 +50,10 @@
         "courrier.js",
         "imti.js",
         "wedaEchanges.js",
-        "pdfParser.js"
+        "pdfParser.js",
+        "optionalPermissions.js",
+        "headlessSetup.js",
+        "instantVaccine.js"
       ]
     }
   ],
@@ -55,7 +61,8 @@
     {
       "resources": [
         "FW_scripts/*",
-        "lib/*"
+        "lib/*",
+        "CHANGELOG.md"
       ],
       "matches": [
         "<all_urls>"

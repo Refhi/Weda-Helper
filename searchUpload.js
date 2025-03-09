@@ -314,7 +314,6 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'TweakImports', function () {
 
 
 // [Page de prescriptions] Tweaks the prescription page to select the first medicine after a search
-// TODO : à réparer
 addTweak('/FolderMedical/PrescriptionForm.aspx', '*TweakPrescription', function () {
     var idsSearchBox = 'ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack';
     var validTarget = 'ContentPlaceHolder1_BaseVidalUcForm1_VidalPacksGrid_LinkButtonVidalPacksGridName_0';

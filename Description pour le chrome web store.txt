@@ -1,0 +1,35 @@
+Description pour le chrome web store
+
+Améliorez votre expérience sur Weda avec Weda Helper! 🚀
+
+Weda Helper est une extension Chrome conçue pour faciliter les tâches quotidiennes sur Weda, réduire le nombre de clics et automatiser certaines actions, vous permettant ainsi de gagner du temps et de vous concentrer sur l'essentiel: vos patients. 🏥
+
+Créé par des médecins pour des médecins et autres professionnels de santé.
+
+### 🔑 Fonctionnalités Clés: ###
+
+🛠️ Raccourcis claviers pour toutes vos tâches quotidiennes
+🖨️ Impression en un clic
+⚡ Automatisation de la lecture de la carte vitale et accès direct au dossier médical
+📂 Import semi-automatique des pdfs
+🔄 Historique simplifié et affichage automatique des antécédents
+📋 Gestion améliorée des prescriptions et des ordonnances-types
+📅 Accès rapide aux dossiers patients depuis l'agenda
+📈 Affichage simplifié des courbes de pédiatrie et calcul automatique du Z-score de l'IMC
+et bien plus encore! (cf. https://github.com/Refhi/Weda-Helper pour voir la liste complète des fonctionnalités)
+
+### 📌 Liens Utiles: ###
+
+📖 Guide d'utilisation: https://github.com/Refhi/Weda-Helper
+🐛 Rapports de bugs: https://github.com/Refhi/Weda-Helper/issues
+📝 Changelog complet: https://github.com/Refhi/Weda-Helper/blob/main/CHANGELOG.md
+❓ Site de la communauté et échange d'astuces : https://communaute.weda.fr/t5/entraide-logiciel-weda/weda-helper-et-weda-helper-companion/td-p/2791
+
+### 🔐 Utilisation des Données & Confidentialité: ###
+
+Weda Helper ne collecte aucune donnée, tout est en local !
+
+### Crédits: ###
+- Développé par un médecin Eurois et un médecin Toulousain (plus de précisions sur le github)
+
+Merci d'utiliser Weda Helper! 😃

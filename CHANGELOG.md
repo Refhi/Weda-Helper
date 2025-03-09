@@ -1,6 +1,48 @@
 # Changelog
 
-Toutes les modifications notables de ce projet seront documentées dans ce fichier.
+Toutes les modifications notables de ce projet sont documentées dans ce fichier.
+
+Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
+
+# [2.11] - À retrouver facilement dans le menu de l'extension si vous n'avez pas le temps de lire maintenant !
+## Améliorations :
+### Divers :
+- 🔍 [#353](https://github.com/Refhi/Weda-Helper/issues/353) - Dans l'import des biologies, Alt+A permet d'afficher l'historique biologique du patient en cours.
+- 👨‍⚕️ [#341](https://github.com/Refhi/Weda-Helper/issues/341) - Cliquer sur "médecin traitant : vous déclarer" fait automatiquement la déclaration de MT.
+- 💬 amélioration des infos-bulles pour les raccourcis claviers
+- 🤖 [#366](https://github.com/Refhi/Weda-Helper/issues/366) - ajout d'un mode "headLess" : possibilité de shunter le message de mise à jour de Weda sur les postes où vous souhaitez automatiser l'ouverture de Weda (désactivé par défaut). Cela ne correspond qu'à des usages très spécifiques, merci de ne pas l'activer sans en comprendre les implications.
+- 🩺 [#349](https://github.com/Refhi/Weda-Helper/issues/349) - ajout d'une surveillance du remplissage du VSM : message s'il n'a pas été fait alors qu'une ALD est détectée, ainsi que coloration en orange si on se rapproche des 1 ans puis rouge si elle est dépassée.
+- 💉 [#362](https://github.com/Refhi/Weda-Helper/issues/362) - option "vaccins instantanés" : si activée, toute ouverture de dossier patient amène immédiatement sur le scan du datamatrix d'un vaccin, permettant aux vaccineurs en série de gagner du temps (particulièrement pensée pour les pharmaciens). Ce paramètre est facilement accessible depuis la popup de l'extension (clic sur l'icône de l'extension).
+- 📅 [#364](https://github.com/Refhi/Weda-Helper/issues/364) - Les dates types 14 novembre 2024 peuvent être reconnues dans les imports (à activer dans les options)
+- 👬 une nouvelle version du Companion est disponible ! Elle permet de diriger l'archivage d'un document importé via Ctrl+U vers un dossier spécifique. Vous pouvez le télécharger [ici](https://github.com/Refhi/Weda-Helper-Companion)
+
+
+### Dans la page des FSE :
+- 📜 [#340](https://github.com/Refhi/Weda-Helper/issues/340) - L'historique des facturations est désormais affiché.(désactivé pour l'instant, en attente du feu vert de Weda car c'est pour l'instant trop goumand en ressources)
+- 📝 [#338](https://github.com/Refhi/Weda-Helper/issues/338) - Le PDF d'une Dégradée est validé automatiquement
+- 💰 [#326](https://github.com/Refhi/Weda-Helper/issues/326) - Aide à la cotation : une infobulle vous avertit de possibles cotations applicables à certaines situation (ex. SHE, MCG, PAV, MHP et RDV), qu'on oublie habituellement tout le temps...
+
+### Prescriptions numériques paramédicales :
+- 👣 [#367](https://github.com/Refhi/Weda-Helper/issues/367) - Détecte correcte du mot "Pédicurie"
+- 🧠 [#368](https://github.com/Refhi/Weda-Helper/issues/368) - L'ordonnance numérique se désactive si détecte "psychologue"
+
+### Impressions :
+- 🖨️ [#369](https://github.com/Refhi/Weda-Helper/issues/369) - Modification de la gestion des impressions instantanées : vous devez accorder l'autorisation à Weda-Helper de gérer les onglets si vous souhaitez l'utiliser. Ça rendra l'impression instantanée plus fiable.
+- 🖨️ [#360](https://github.com/Refhi/Weda-Helper/issues/360) - Une option permet de lancer également en plus une impression lors de l'usage de Ctrl+E ou Ctrl+Shift+E
+
+
+
+
+
+# [2.10.1]
+## Améliorations :
+- [#356](https://github.com/Refhi/Weda-Helper/issues/356) - mise en oeuvre de la catégorisation automatique avec une gestion des listes de mots-clés à chercher simplifiée
+- [#338](https://github.com/Refhi/Weda-Helper/issues/338) - validation automatique de la FSE dégradée
+- [#363](https://github.com/Refhi/Weda-Helper/issues/363) - ajout d'une option pour éviter la date automatique dans l'import automatique
+
+## Fix :
+- [#361](https://github.com/Refhi/Weda-Helper/issues/361) - ajout de KDE pour les mots-clés de kinésithérapie
+
 
 # [2.10] - classement assisté !!!
 ## Ajouts :

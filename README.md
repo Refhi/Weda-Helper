@@ -31,6 +31,8 @@ Cf. ci-dessous pour les retours et les contributions.
     - [Documents du cabinet](#documents-du-cabinet)
     - [Agenda](#agenda)
     - [Antécédents :](#antécédents-)
+    - [Navigation :](#navigation-)
+    - [Vaccination "instantanée" :](#vaccination-instantanée-)
   - [Facilitation des imports](#facilitation-des-imports)
   - [Weda-Helper-Companion](#weda-helper-companion)
   - [Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):](#problèmes-et-limitations-connues-qui-seront-peut-être-résolues-dans-de-futures-mises-à-jour)
@@ -49,10 +51,11 @@ Ctrl+P	Imprime le document en cours (1er modèle). Nécessite un module complém
 Ctrl+Shift+P	Imprime le document en cours (2e modèle)
 Ctrl+E Envoie le courrier en cours (1er modèle)
 Ctrl+Shift+E	Envoie le courrier en cours (2e modèle)
-Alt+A	Appuie Annuler
+Alt+A	Appuie Annuler (ou affiche l'historique des biologies dans la fenêtre des imports)
 Alt+S	Appuie Supprimer
 Alt+D	Insère la date du jour
 Ctrl+S	Appuie Enregistrer
+Ctrl+Shift+S Déclenche le scan d'un document
 Alt+V	Appuie Valider
 Alt+Z	Ouvre les antécédents
 Alt+C	Lit la carte vitale
@@ -71,9 +74,11 @@ Ctrl+U	Upload le dernier fichier du dossier envoyé par le Companion
 - Ajout d'icones pour copier automatiquement le NIR dans le presse-papier
 - Lecture automatique de la carte vitale et accès direct au dossier médical du patient (s’il est seul sur la carte vitale).
 *Cette fonction nécessite le connecteur Weda V3 installé sur votre PC. Demandez son installation à votre technicien.*
-- Automatisation de la récupération du MT et de sa mise à jour avec l'annuaire des professionnels de santé. (désactivé par défaut)
+- Automatisation de la récupération du MT et de sa mise à jour avec l'annuaire des professionnels de santé.
+- Automatisation de la déclaration de médecin traitant en un clic.
 - Automatisation du contrôle du MT + ouvre un nouvel onglet pour ne pas avoir à patienter. Un message vous indique si cela a fonctionné ou non. Vous pourrez retourner dans le premier onglet si vous souhaitez enregistrer le MT.
 - Automatisation partielle de la déclaration de MT : sélectionne automatiquement le patient en cours, pré-coche les cases de consentement. Vous n'avez plus qu'à cliquer sur "Transmettre" pour valider.
+- Alerte en cas de retard ou d'absence du VSM
 
 ## Consultations
 - Affichage automatique de l'historique dans une colonne à gauche : ouvre automatiquement un historique simplifié (pas de recettes notamment) dans une colonne à gauche de l'écran, uniquement dans les pages de Consultation, de Courrier, de Certificat, de Formulaire et Demandes.
@@ -138,6 +143,9 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - option pour automatiquement cocher "Inclure la FSP en SCOR" si la FSE est dégradée (activée par défaut)
 - sélectionne automatiquement "Rien" dans les Pièces justificatives AMO si "Champ de donnée Actes - Pièce Justificative AMO invalide : Erreur de saisie Nature" est détecté
 - maintient le choix du mode de prise en charge AMC
+- affichage de l'historique des cotations sur 5 ans (filtré ou non par cotations courantes), utile pour surveiller les cotations à ne faire qu'une fois tout les ans par exemple.
+- assistance à la cotation : Ajout d'une infobulle pour avertir de possibles cotations applicables à certaines situation (ex. SHE, MCG, PAV, MHP et RDV), qu'on oublie habituellement tout le temps...
+- validation automatique des FSE dégradées en SCOR
 
 
 ## Divers
@@ -175,6 +183,12 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 ### Navigation :
 - Un clic du milieu sur le W du Menu W ouvre un nouvel onglet vers l'accueil du dossier patient, et non le module en cours.
 
+### Setup "headless" :
+- possibilité de shunter le message de mise à jour de Weda sur les postes où vous souhaitez automatiser l'ouverture de Weda (désactivé par défaut). Cela ne correspond qu'à des usages très spécifiques, merci de ne pas l'activer sans en comprendre les implications.
+
+### Vaccination "instantanée" :
+- si activée, toute ouverture de dossier patient amène immédiatement sur le scan du datamatrix d'un vaccin, permettant aux vaccineurs en série de gagner du temps (particulièrement pensée pour les pharmaciens). Ce paramètre est facilement accessible depuis la popup de l'extension (clic sur l'icône de l'extension).
+
 
 
 
@@ -186,6 +200,7 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 - Agrandissement de la fenêtre de prévisualisation pour faciliter la lecture du PDF à importer
 - Complétion automatique des dates partielles
 - En cliquant sur l'icône de l'extension, le bouton "Tout mettre en consultation" permet de sélectionner d'un coup "Consultation" pour l'ensemble des documents en attente d'importation.
+- recherche automatique du patient, synthèse d'un titre, détection automatique de la date
 
 - On peut désormais utiliser Ctrl+U pour uploader directement dans Weda le document le plus récent présent dans un dossier pré-sélectionné dans le Companion. Un nouveau bouton permet d'archiver si souhaité le document après l'upload.
 - Option pour décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée

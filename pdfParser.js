@@ -35,6 +35,8 @@
 
 // 1. Injection du script
 addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
+    // 1. Ajout du bouton pour initialiser les catégories
+    addDocumentTypesButton();
     // 2. Attente de l'apparition de l'iframe contenant le PDF
     waitForElement({
         // l'id est splité car il y a un chiffre variable au milieu (1 ou 2 selon que l'option
@@ -142,7 +144,7 @@ async function processFoundPdfIframe(elements) {
 
 
     // Intégration des données dans le formulaire d'import
-    setExtractedDataInForm(extractedData);
+    await setExtractedDataInForm(extractedData);
 
     // Marquage des données comme déjà importées
     markDataAsImported(hashId, extractedData);
@@ -345,7 +347,7 @@ function markDataAsImported(hashId, extractedData) {
 }
 
 
-function setExtractedDataInForm(extractedData) {
+async function setExtractedDataInForm(extractedData) {
     // Récupère la ligne d'action actuelle
     const ligneAction = actualImportActionLine();
 
@@ -363,35 +365,36 @@ function setExtractedDataInForm(extractedData) {
         documentTitle: document.querySelector(selectors.documentTitle)
     };
 
-    getOption('PdfParserAutoTitle', (PdfParserAutoTitle) => {
-        // Données à insérer dans les champs du formulaire
-        const fields = {
-            documentDate: extractedData.documentDate,
-            documentType: extractedData.documentType,
-            documentTitle: PdfParserAutoTitle ? extractedData.documentTitle : null
-        };
+    PdfParserAutoTitle = await getOptionPromise('PdfParserAutoTitle')
+    PdfParserAutoDate = await getOptionPromise('PdfParserAutoDate')
 
-        console.log('[pdfParser] INtroduction des données dans les champs : ', fields);
+    // Données à insérer dans les champs du formulaire
+    const fields = {
+        documentDate: PdfParserAutoDate ? extractedData.documentDate : null,
+        documentType: extractedData.documentType,
+        documentTitle: PdfParserAutoTitle ? extractedData.documentTitle : null
+    };
 
-        // Parcourt chaque champ et met à jour la valeur si elle existe
-        Object.keys(fields).forEach(key => {
-            if (fields[key] && inputs[key]) {
-                if (key === 'documentType') { // Cas particulier pour le champ documentType
-                    // Trouver l'option correspondante pour documentType
-                    const options = inputs[key].options;
-                    for (let i = 0; i < options.length; i++) {
-                        if (options[i].text === fields[key]) {
-                            inputs[key].value = options[i].value;
-                            break;
-                        }
+    console.log('[pdfParser] INtroduction des données dans les champs : ', fields);
+
+    // Parcourt chaque champ et met à jour la valeur si elle existe
+    Object.keys(fields).forEach(key => {
+        if (fields[key] && inputs[key]) {
+            if (key === 'documentType') { // Cas particulier pour le champ documentType
+                // Trouver l'option correspondante pour documentType
+                const options = inputs[key].options;
+                for (let i = 0; i < options.length; i++) {
+                    if (options[i].text === fields[key]) {
+                        inputs[key].value = options[i].value;
+                        break;
                     }
-                } else {
-                    inputs[key].value = fields[key];
                 }
-                // Déclenche un événement de changement pour chaque champ mis à jour
-                inputs[key].dispatchEvent(new Event('change'));
+            } else {
+                inputs[key].value = fields[key];
             }
-        });
+            // Déclenche un événement de changement pour chaque champ mis à jour
+            inputs[key].dispatchEvent(new Event('change'));
+        }
     });
 }
 
@@ -732,7 +735,8 @@ async function extractLines(textItems) {
 async function extractRelevantData(fullText, pdfUrl) {
     const regexPatterns = {
         dateRegexes: [
-            /[0-9]{2}[\/\-.][0-9]{2}[\/\-.][0-9]{4}/g // Match dates dd/mm/yyyy ou dd-mm-yyyy
+            /[0-9]{2}[\/\-.][0-9]{2}[\/\-.][0-9]{4}/g, // Match dates dd/mm/yyyy ou dd-mm-yyyy
+            /([0-9]{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+([0-9]{4})/gi // Match dates comme "28 novembre 2024"
         ],
         dateOfBirthRegexes: [
             /(?:né\(e\) le|date de naissance:|date de naissance :|née le)[\s\S]([0-9]{2}[\/\-.][0-9]{4})/gi // Match la date de naissance
@@ -767,12 +771,12 @@ async function extractRelevantData(fullText, pdfUrl) {
     };
 
     // Extraction de l'ensemble des dates présentes dans le texte
-    const dateMatches = extractDates(fullText, regexPatterns.dateRegexes);
+    const dateMatches = await extractDates(fullText, regexPatterns.dateRegexes);
     // Extraction des éléments pertinents
-    const documentDate = determineDocumentDate(fullText, dateMatches, regexPatterns.documentDateRegexes);
+    const documentDate = await determineDocumentDate(fullText, dateMatches, regexPatterns.documentDateRegexes);
     const dateOfBirth = determineDateOfBirth(fullText, dateMatches, regexPatterns.dateOfBirthRegexes);
     const nameMatches = extractNames(fullText, regexPatterns.nameRegexes);
-    const documentType = determineDocumentType(fullText);
+    const documentType = await determineDocumentType(fullText);
     const documentTitle = determineDocumentTitle(fullText, documentType);
     const nirMatches = extractNIR(fullText, regexPatterns.nirRegexes);
 
@@ -828,7 +832,7 @@ function generateBinaryBitmap(canvas) {
 
 function generateHints() {
     const hints = new Map();
-    // const formats = [ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.DATA_MATRIX/*, ...*/]; // TODO : évaluer les types nécessaires
+    // const formats = [ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.DATA_MATRIX/*, ...*/]; // on pourrait faire évoluer les types nécessaires
     const formats = [ZXing.BarcodeFormat.DATA_MATRIX/*, ...*/]; // Pour l'instant uniquement les datamatrix
     hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
     return hints;
@@ -1071,48 +1075,151 @@ function visualizeBinaryBitmap(binaryBitmap) {
     return dataUrl;
 }
 
-// Détermination du type de courrier
-function determineDocumentType(fullText) {
+async function determineDocumentType(fullText) {
     // console.log('[pdfParser] determineDocumentType');
     // On utilise un tableau de tableaux pour permettre de parcourir les types de documents par ordre de spécificité
     // Et de mettre plusieurs fois la même clé, avec des valeurs de moins en moins exigeantes
-    getOption('PdfParserAutoCategoryDict', (PdfParserAutoCategoryDict) => {
-        // TODO utiliser ici la fonction d'auto-categorisation
-        try {
-            documentTypes = JSON.parse(PdfParserAutoCategoryDict);
-        } catch (error) {
-            console.error('[pdfParser] Erreur lors de l\'analyse du JSON pour PdfParserAutoCategoryDict:', error, PdfParserAutoCategoryDict);
-            if (confirm('Erreur de syntaxe pour la catégorisation automatique du document. Vérifiez dans les options de Weda-Helper. Cliquez sur OK pour réinitialiser ce paramètre.')) {
-                chrome.storage.local.remove('PdfParserAutoCategoryDict', function () {
-                    console.log('[pdfParser] PdfParserAutoCategoryDict réinitialisé');
-                    alert('PdfParserAutoCategoryDict réinitialisé. Veuillez recharger la page pour appliquer les changements.');
-                });
-            }
+    const PdfParserAutoCategoryDict = await getOptionPromise('PdfParserAutoCategoryDict');
+    let documentTypes;
+    try {
+        documentTypes = JSON.parse(PdfParserAutoCategoryDict);
+    } catch (error) {
+        console.error('[pdfParser] Erreur lors de l\'analyse du JSON pour PdfParserAutoCategoryDict:', error, PdfParserAutoCategoryDict);
+        if (confirm('Erreur de syntaxe pour la catégorisation automatique du document. Vérifiez dans les options de Weda-Helper. Cliquez sur OK pour réinitialiser ce paramètre.')) {
+            handleDocumentTypesConsent();
+        }
+        return null;
+    }
 
+    // Vérifier que tous les types de documents sont bien définis
+    const possibleDocumentTypes = initDocumentTypes();
+
+    // Vérifier que chaque type de document dans documentTypes est présent dans possibleDocumentTypes
+    for (const [type, _] of documentTypes) {
+        if (!possibleDocumentTypes.some(possibleType => possibleType[0] === type)) {
+            console.error(`[pdfParser] Type de document ${type} non défini dans les catégories possibles. Veuillez mettre à jour les catégories.`);
+            if (confirm(`Type de document ${type} non défini dans les catégories possibles. Voulez-vous mettre à jour les catégories ?`)) {
+                handleDocumentTypesConsent();
+            }
             return null;
         }
+    }
 
-        for (const [type, keywords] of documentTypes) {
-            // console.log('[pdfParser] recherche du type de document', type);
-            for (const keyword of keywords) {
-                // Remplacer les espaces par \s* pour permettre les espaces optionnels
-                const regex = new RegExp(keyword.replace(/\s+/g, '\\s*'), 'i');
-                if (regex.test(fullText)) {
-                    console.log('[pdfParser] type de document trouvé', type, 'car présence de', keyword);
-                    return type;
-                }
+    // Vérifier que chaque type de document dans possibleDocumentTypes est présent dans documentTypes
+    for (const [possibleType, _] of possibleDocumentTypes) {
+        if (!documentTypes.some(([type, _]) => type === possibleType)) {
+            console.error(`[pdfParser] Catégorie possible ${possibleType} non définie dans les types de documents. Veuillez mettre à jour les types de documents.`);
+            if (confirm(`Catégorie possible ${possibleType} non définie dans les types de documents. Voulez-vous mettre à jour les types de documents ?`)) {
+                handleDocumentTypesConsent();
+            }
+            return null;
+        }
+    }
+
+    for (const [type, keywords] of documentTypes) {
+        // console.log('[pdfParser] recherche du type de document', type);
+        for (const keyword of keywords) {
+            // Remplacer les espaces par \s* pour permettre les espaces optionnels
+            const regex = new RegExp(keyword.replace(/\s+/g, '\\s*'), 'i');
+            if (regex.test(fullText)) {
+                console.log('[pdfParser] type de document trouvé', type, 'car présence de', keyword);
+                return type;
             }
         }
-        console.log('[pdfParser] type de document non trouvé');
-        return null;
+    }
+    console.log('[pdfParser] type de document non trouvé');
+    return null;
+}
+
+// Fonction pour initialiser les catégories possibles de classification
+function initDocumentTypes() {
+    // on va d'abord sélectionner le menu contenant les catégories de classification
+    const dropDownListCats = "#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_0";
+    const dropDownCats = document.querySelector(dropDownListCats);
+    if (!dropDownCats) {
+        alert('[pdfParser] Pour initialiser les catégories, vous devez avoir au moins un document en attente de classification.');
+        return;
+    }
+    const options = dropDownCats.options;
+
+    // Créer un tableau pour stocker les catégories
+    const categories = [];
+
+    // Parcourir les options et ajouter les catégories au tableau
+    for (let i = 0; i < options.length; i++) {
+        const option = options[i];
+        if (option.value !== "0") { // Ignorer l'option par défaut
+            categories.push([option.text, []]); // Initialiser les valeurs à un tableau vide
+        }
+    }
+
+    console.log('[pdfParser] Catégories possibles de classification:', categories);
+    return categories;
+}
+
+// Stockage des différentes catégories de classification dans le chrome local storage
+function storeDocumentTypes(categories) {
+    getOption('PdfParserAutoCategoryDict', (PdfParserAutoCategoryDict) => {
+        console.log('[pdfParser] Catégories de classification existantes:', PdfParserAutoCategoryDict);
+        let existingCategories = PdfParserAutoCategoryDict ? JSON.parse(PdfParserAutoCategoryDict) : [];
+
+        // Ajouter les nouvelles catégories
+        categories.forEach(category => {
+            if (!existingCategories.some(existingCategory => existingCategory[0] === category[0])) {
+                existingCategories.push(category);
+            }
+        });
+
+        // Supprimer les catégories qui ne sont pas dans la variable
+        existingCategories = existingCategories.filter(existingCategory =>
+            categories.some(category => category[0] === existingCategory[0])
+        );
+
+        const updatedCategories = JSON.stringify(existingCategories);
+
+        chrome.storage.local.set({ 'PdfParserAutoCategoryDict': updatedCategories }, function () {
+            console.log('[pdfParser] Catégories de classification mises à jour:', updatedCategories);
+            // Contrôle de ce qui a été stocké
+            chrome.storage.local.get('PdfParserAutoCategoryDict', function (result) {
+                console.log('[pdfParser] Catégories de classification stockées:', PdfParserAutoCategoryDict);
+            });
+        });
     });
 }
 
-// TODO : créer une option pour récupérer les catégories possibles de classifications
-// Et les intégrer dans une liste toute faite dans PdfParserAutoCategoryDict avec le bon format
-// Doit également mettre des faux mots-clés d'exemples pour faciliter le travail de l'utilisateur
-// Sauf si la catégorie existe déjà (non-case-sensitive) auquel cas on réutilise les mots-clés existants
-// en ajustant la case de la clé
+// gestion du consentement de l'utilisateur pour l'initialisation des catégories de classification
+function handleDocumentTypesConsent() {
+    if (confirm("Initialiser les catégories de classification ? Pensez ensuite à compléter les mots-clés dans les options de l'extension.")) {
+        const categories = initDocumentTypes();
+        storeDocumentTypes(categories);
+    }
+}
+
+// Ajout d'un bouton à côté de #ContentPlaceHolder1_ButtonExit pour initialiser les catégories de classification
+function addDocumentTypesButton() {
+    console.log('[pdfParser] Ajout du bouton pour initialiser les catégories de classification');
+    const exitButton = document.querySelector("#ContentPlaceHolder1_ButtonExit");
+    const initButton = document.createElement('button');
+
+    // Style du bouton
+    initButton.style.padding = '5px';
+    initButton.style.border = 'none';
+    initButton.style.background = 'none';
+    initButton.style.cursor = 'pointer';
+    initButton.style.position = 'relative';
+
+    // Ajouter l'icône d'engrenage
+    const icon = document.createElement('span');
+    icon.textContent = '⚙️';
+    initButton.appendChild(icon);
+
+    // Ajouter le titre pour afficher le texte au survol
+    initButton.title = 'Initialiser les catégories de classification. Cette action est nécessaire une seule fois à la première utilisation puis si vous modifiez les catégories.';
+
+    initButton.onclick = handleDocumentTypesConsent;
+    exitButton.parentNode.insertBefore(initButton, exitButton);
+}
+
 
 
 // Fonction pour trouver la spécialité dans le texte
@@ -1204,17 +1311,17 @@ function determineDocumentTitle(fullText, documentType) {
 }
 
 // Extraction des dates du texte
-function extractDates(fullText, dateRegexes) {
+async function extractDates(fullText, dateRegexes) {
     let matches = [];
     const today = new Date();
 
     for (const regex of dateRegexes) {
         const dateStrings = fullText.match(regex) || [];
-        const parsedDates = dateStrings.map(dateString => {
-            const date = parseDate(dateString);
+        const parsedDates = await Promise.all(dateStrings.map(async dateString => {
+            const date = await parseDate(dateString);
             return date <= today ? date : null;
-        }).filter(date => date !== null);
-        matches = matches.concat(parsedDates);
+        }));
+        matches = matches.concat(parsedDates.filter(date => date !== null));
     }
 
     return matches;
@@ -1234,7 +1341,7 @@ function findDateInText(fullText, dateRegexes) {
 }
 
 // Détermination de la date du document
-function determineDocumentDate(fullText, dateMatches, documentDateRegexes) {
+async function determineDocumentDate(fullText, dateMatches, documentDateRegexes) {
     let documentDate = null;
     // On cherche la date la plus récente, ce qui correspond souvent à la date du document
     for (const date of dateMatches) {
@@ -1314,35 +1421,78 @@ function extractNames(fullText, nameRegexes) {
     return nameMatches;
 }
 
-function parseDate(dateString) {
-    const parts = dateString.split(/[\/\-.]/);
-    const day = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10);
-    const year = parseInt(parts[2], 10);
+// Fonction modifiée pour analyser les dates avec mois en toutes lettres
+async function parseDate(dateString) {
+    // Mapping des noms de mois en français vers leurs numéros
+    const moisEnFrancais = {
+        'janvier': 1, 'février': 2, 'mars': 3, 'avril': 4, 'mai': 5, 'juin': 6,
+        'juillet': 7, 'août': 8, 'septembre': 9, 'octobre': 10, 'novembre': 11, 'décembre': 12
+    };
+    
+    // Détecter si c'est une date avec le mois en toutes lettres
+    const dateTextuelle = /([0-9]{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+([0-9]{4})/i.exec(dateString);
+    let rechercheDateAlphabetique = await getOptionPromise('PdfParserDateAlphabetique');
+    if (dateTextuelle && rechercheDateAlphabetique) {
+        const jour = parseInt(dateTextuelle[1], 10);
+        const mois = moisEnFrancais[dateTextuelle[2].toLowerCase()];
+        const annee = parseInt(dateTextuelle[3], 10);
+        
+        // Vérification des plages valides
+        if (jour < 1 || jour > 31 || !mois || annee < 1900 || annee > 9999) {
+            return null;
+        }
+        
+        const date = new Date(annee, mois - 1, jour);
+        
+        // Vérification que la date est valide
+        if (date.getDate() !== jour || date.getMonth() !== mois - 1 || date.getFullYear() !== annee) {
+            return null;
+        }
+        
+        const minDate = new Date(1900, 0, 1);
+        const today = new Date();
+        
+        if (date < minDate || date > today) {
+            return null;
+        }
+        
+        return date;
+    } else {
+        // Format standard dd/mm/yyyy ou dd-mm-yyyy
+        const parts = dateString.split(/[\/\-.]/);
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const year = parseInt(parts[2], 10);
 
-    // Vérification des plages valides pour jour, mois et année
-    if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1900 || year > 9999) {
-        return null; // Retourne null pour une date invalide
+        // Vérification des plages valides pour jour, mois et année
+        if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1900 || year > 9999) {
+            return null; // Retourne null pour une date invalide
+        }
+
+        const date = new Date(year, month - 1, day);
+
+        // Vérification que la date est valide (par exemple, 30 février n'existe pas)
+        if (date.getDate() !== day || date.getMonth() !== month - 1 || date.getFullYear() !== year) {
+            return null; // Retourne null pour une date invalide
+        }
+
+        const minDate = new Date(1900, 0, 1); // 1er janvier 1900
+        const today = new Date();
+
+        if (date < minDate || date > today) {
+            return null; // Retourne null si la date n'est pas dans la plage valide
+        }
+
+        return date;
     }
-
-    const date = new Date(year, month - 1, day);
-
-    // Vérification que la date est valide (par exemple, 30 février n'existe pas)
-    if (date.getDate() !== day || date.getMonth() !== month - 1 || date.getFullYear() !== year) {
-        return null; // Retourne null pour une date invalide
-    }
-
-    const minDate = new Date(1900, 0, 1); // 1er janvier 1900
-    const today = new Date();
-
-    if (date < minDate || date > today) {
-        return null; // Retourne null si la date n'est pas dans la plage valide
-    }
-
-    return date;
 }
 
 function formatDate(date) {
+    // Vérifier si date est bien un objet Date
+    if (!(date instanceof Date) || isNaN(date)) {
+        console.warn('[pdfParser] formatDate a reçu une valeur non valide:', date);
+        return null;
+    }
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();

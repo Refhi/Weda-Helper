@@ -225,3 +225,71 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'removeBoldPatientFirstName', fu
         elementPrenom2.style.fontWeight = 'normal';
     }
 });
+
+// Surveillance de la date du dernier VSM
+addTweak('/FolderMedical/PatientViewForm.aspx', '*preAlertVSM', async function () {
+    let preAlertDuration = await getOptionPromise('preAlertVSM');
+    let lastVSMDate = null;
+    // Si la valeur est négative, on ne fait rien
+    if (preAlertDuration < 0) {
+        return;
+    }
+    const patientNumber = getCurrentPatientId();
+
+    const VSMElement = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_LabelLastVSMDate');
+    console.log('[preAlertVSM] VSMElement', VSMElement);
+    if (VSMElement) {
+        lastVSMDate = VSMElement.textContent;
+    }
+    if (VSMElement && lastVSMDate) {
+        console.log('[preAlertVSM] VSMElement', VSMElement);
+        const lastVSMDate = VSMElement.textContent;
+        if (!lastVSMDate) {
+            return;
+        }
+        const today = new Date();
+        // lastVSMDate est au format (12/04/2024), on le convertit en objet Date
+        const [day, month, year] = lastVSMDate.match(/\d+/g);
+        const lastVSMDateObj = new Date(`${year}-${month}-${day}`);
+        // On vérifie que la date est valide
+        if (isNaN(lastVSMDateObj)) {
+            return;
+        }
+        // On vérifie quelle est l'ancienneté du VSM
+        const VSMAge = today - lastVSMDateObj;
+        // Si le VSM a plus de preAlertDuration mois, on le met en orange
+        if (VSMAge > preAlertDuration * 30.44 * 24 * 60 * 60 * 1000) {
+            VSMElement.style.color = 'orange';
+            VSMElement.style.fontWeight = 'bold';
+        }
+        // Si le VSM est plus vieux que 1 an, on le met en rouge
+        if (VSMAge > 31557600000) {
+            VSMElement.style.color = 'red';
+            VSMElement.style.fontWeight = 'bold';
+        }
+    } else {
+        // On vérifie si on a déjà alerté pour ce patient
+        const lastVSMAlertPatient = sessionStorage.getItem('lastVSMAlertPatient');
+        if (lastVSMAlertPatient === patientNumber) {
+            console.log('[preAlertVSM] Alert already sent for patient', patientNumber);
+            return;
+        }
+        console.log('[preAlertVSM] Alert not sent for patient', patientNumber);
+        // On vérifie si le patient
+        let possibleALDPrescription = document.querySelectorAll('div.aldt');
+        if (possibleALDPrescription.length > 0) {
+            // On envoie une notification pour prévenir l'utilisateur
+            sendWedaNotif({
+                message: 'Le patient semble être en ALD, mais la date du dernier VSM est introuvable, pensez à remplir le VSM pour bénéficier du ROSP. Vous pouvez désactiver cette alerte dans les options de Weda-Helper.',
+                type: 'undefined',
+                duration: 7000,
+                icon: 'info',
+            });
+
+        }
+    }
+
+    // On stocke le numéro du patient dans le sessionStorage pour évincer les alertes répétées
+    // => une seule alerte à l'ouverture du dossier.
+    sessionStorage.setItem('lastVSMAlertPatient', patientNumber);
+});

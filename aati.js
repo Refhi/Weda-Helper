@@ -196,7 +196,7 @@ addTweak(urlAATI, 'autoAATI', function () {
                                         type: 'success',
                                         icon: 'print'
                                     });
-                                    window.close();
+                                    window.close(); // Pas la peine d'utiliser les permissions tab car cette page est ouverte par le script
                                 }
                             });
                         })
