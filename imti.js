@@ -71,7 +71,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'oneClickMT', function () {
                 recordMetrics({ clicks: 1, drags: 1 });
             });
             setTimeout(() => {
-                let boutonValider = document.querySelector('#targetValider');
+                let boutonValider = document.querySelector('.targetValider');
                 boutonValider.click();
             }, 500);
         }

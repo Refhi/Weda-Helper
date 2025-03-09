@@ -229,6 +229,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'removeBoldPatientFirstName', fu
 // Surveillance de la date du dernier VSM
 addTweak('/FolderMedical/PatientViewForm.aspx', '*preAlertVSM', async function () {
     let preAlertDuration = await getOptionPromise('preAlertVSM');
+    let lastVSMDate = null;
     // Si la valeur est négative, on ne fait rien
     if (preAlertDuration < 0) {
         return;
@@ -236,7 +237,12 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*preAlertVSM', async function (
     const patientNumber = getCurrentPatientId();
 
     const VSMElement = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_LabelLastVSMDate');
+    console.log('[preAlertVSM] VSMElement', VSMElement);
     if (VSMElement) {
+        lastVSMDate = VSMElement.textContent;
+    }
+    if (VSMElement && lastVSMDate) {
+        console.log('[preAlertVSM] VSMElement', VSMElement);
         const lastVSMDate = VSMElement.textContent;
         if (!lastVSMDate) {
             return;
@@ -265,8 +271,11 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*preAlertVSM', async function (
         // On vérifie si on a déjà alerté pour ce patient
         const lastVSMAlertPatient = sessionStorage.getItem('lastVSMAlertPatient');
         if (lastVSMAlertPatient === patientNumber) {
+            console.log('[preAlertVSM] Alert already sent for patient', patientNumber);
             return;
         }
+        console.log('[preAlertVSM] Alert not sent for patient', patientNumber);
+        // On vérifie si le patient
         let possibleALDPrescription = document.querySelectorAll('div.aldt');
         if (possibleALDPrescription.length > 0) {
             // On envoie une notification pour prévenir l'utilisateur
