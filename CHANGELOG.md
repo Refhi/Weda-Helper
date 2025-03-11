@@ -4,6 +4,10 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.11.1] - fix
+## Fix :
+- [#377](https://github.com/Refhi/Weda-Helper/issues/377) - Les onglets se ferment de façon fiable même en l'absence du DMP (ce fix est à tester, merci de me faire part de vos retours si vous constatez encore des onglets ne se fermant pas)
+
 # [2.11] - À retrouver facilement dans le menu de l'extension si vous n'avez pas le temps de lire maintenant !
 ## Améliorations :
 ### Divers :

@@ -541,7 +541,13 @@ function companionPrintDone(callback, delay = 20000) {
 }
 
 function closeWindow() {
-    // D'abord attendre l'apparition de l'élément avec role="progressbar"
+    // Si l'envoi au DMP est décoché, on ferme l'onglet directement
+    if (!sendToDMPisSelected()) {
+        console.log('[InstantPrint] envoi au DMP non sélectionné, je ferme la fenêtre');
+        closeCurrentTab();
+    }
+    // Sinon on surveille que l'envoi au DMP soit terminé via la surveillance
+    // de l'élément avec role="progressbar"
     waitForElement({
         selector: '[role="progressbar"]',
         justOnce: true,
@@ -579,6 +585,13 @@ function closeWindow() {
             }, 50);
         }
     });
+}
+
+
+function sendToDMPisSelected() {
+    const selecteurCaseDMP = '#mat-checkbox-1-input';
+    const caseDMP = document.querySelector(selecteurCaseDMP);
+    return caseDMP && caseDMP.checked;
 }
 
 /**
