@@ -486,9 +486,16 @@ addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
         else {
             console.log('type de soin trouvé', type, 'je clique dessus', choixPossibles[type]);
             if (type === 99) {
-                console.log("Type de soin non éligible à l'ordonnance numérique, je clique sur #targetAnnuler");
+                console.log("[autoSelectTypeOrdoNum] Type de soin non éligible à l'ordonnance numérique, je clique sur 'Continuer sans l'ordonnance numérique'");
                 // Type de soin non éligible à l'ordonnance numérique, je clique sur #targetAnnuler
-                document.querySelector('.targetAnnuler').click();
+                const targetAnnuler = document.querySelectorAll('.mat-button-wrapper');
+                // Rechercher le texte Continuez sans l'ordonnance numérique et cliquer dessus
+                targetAnnuler.forEach(function (element) {
+                    if (element.textContent === "Continuez sans l'ordonnance numérique") {
+                        console.log("[autoSelectTypeOrdoNum] 'Continuez sans l'ordonnance numérique' trouvé, je clique dessus, element", element);
+                        element.click();
+                    }
+                });
             } else {
                 choixPossibles[type].click();
             }
