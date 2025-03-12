@@ -214,6 +214,7 @@ Installez et laisser tourner ce logiciel sur votre ordinateur pour avoir des fon
 - Envoie le montant à régler à votre TPE (quand on valide une FSE - via alt+v - ou un règlement manuel)
 - un lien vers le journal d'activité du Companion est présent dans la page des options de Weda-Helper
 => Procédures d'installation et de paramétrage sur [le readme du Companion](https://github.com/Refhi/Weda-Helper-Companion)
+- pensez à vérifier votre firewall s'il ne fonctionne pas ou si des messages type "Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ?" apparaissent.
 
 
 ## Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):
