@@ -633,6 +633,12 @@ var advancedDefaultSettings = [{
         "type": TYPE_BOOL,
         "description": "Affiche l'interface de test des permissions des onglets.",
         "default": false
+    },{
+        "name": "inhitAltKey",
+        "type": TYPE_BOOL,
+        "description": "La touche Alt ne met plus le focus sur le menu du navigateur",
+        "default": true,
+        "longDescription": "Cela règle deux problèmes : le focus était perdu lors de l'usage de Alt pour afficher l'aide, et lorsque le Companion tente de rendre le focus au navigateur (via un appuis simulé sur la touche Alt) cela entrainait parfois un focus sur le menu du navigateur."
     }],
 }];
 

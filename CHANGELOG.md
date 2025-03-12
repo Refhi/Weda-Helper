@@ -7,6 +7,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 # [2.11.1] - fix
 ## Fix :
 - [#377](https://github.com/Refhi/Weda-Helper/issues/377) - Les onglets se ferment de façon fiable même en l'absence du DMP (ce fix est à tester, merci de me faire part de vos retours si vous constatez encore des onglets ne se fermant pas)
+- [#385](https://github.com/Refhi/Weda-Helper/issues/385) - La touche Alt ne met plus le focus sur le menu du navigateur (désactivable dans les options). Cela règle deux problèmes : le focus était perdu lors de l'usage de Alt pour afficher l'aide, et lorsque le Companion tente de rendre le focus au navigateur (via un appuis simulé sur la touche Alt) cela entrainait parfois un focus sur le menu du navigateur.
 
 # [2.11] - À retrouver facilement dans le menu de l'extension si vous n'avez pas le temps de lire maintenant !
 ## Améliorations :
