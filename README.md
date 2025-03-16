@@ -1,5 +1,7 @@
 # Weda Helper
 
+*Du temps pour vos patients, pas pour votre écran !*
+
 Extension pour Chrome permettant de faciliter les tâches quotidiennes sur Weda, améliorer l’expérience utilisateur et gagner du temps.
 
 Bien que satisfait de Weda, j'ai trouvé que le nombre de clics pouvait être très nettement diminué en implémentant des raccourcis claviers et quelques automatismes.
