@@ -201,10 +201,10 @@ addTweak(urlAATI, 'autoAATI', function () {
                             });
                         })
                         .catch(error => {
-                            console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
+                            console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error, 'Problème de Firewall ?');
                             if (!errortype.includes('[focus]')) {
                                 sendWedaNotifAllTabs({
-                                    message: 'Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error,
+                                    message: 'Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error + 'Problème de Firewall ?',
                                     type: 'fail',
                                     icon: 'print'
                                 })
