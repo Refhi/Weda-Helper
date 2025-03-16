@@ -101,7 +101,7 @@ var firstStartMessage = `
 
 💖 Et bien sûr m'encourager sur le <a href="https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/m-p/2998" target="_blank">Site de la communauté de weda</a>
 
-💰 Si vous le souhaitez vous pouvez également participer à mes frais de développement (écran, abonnement copilot, etc.) via <a href="https://www.paypal.com/paypalme/refhi" target="_blank">Paypal</a> ("entre proches")
+💰 Si vous le souhaitez vous pouvez également participer à mes frais de développement (écran, abonnement copilot, etc.) via <a href="https://fr.tipeee.com/weda-helper" target="_blank">Tipee</a>
 
 Merci d'utiliser Weda-Helper !
 
@@ -120,14 +120,6 @@ var updateMessageTemplate = `
 
 <strong>🔧 Je vous conseille d'aller faire un tour dans les options pour vérifier les nouveaux paramètres : cliquez sur l'icone de l'extension puis sur ⚙️</strong><br><br>
 
-<strong>🚀 Si vous ne l'avez pas encore, n'hésitez pas à tester le Companion :</strong> 
-<a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.exe" target="_blank">disponible ici pour windows</a> 
-<strong>et</strong> 
-<a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.dmg" target="_blank">ou pour mac</a> 
-<strong>pour profiter de fonctionnalités supplémentaires (Impression totale, lien avec le TPE et upload automatisé).</strong><br><br>
-
-<strong>📄 Maintenez Alt pour afficher la fiche mémo  raccourcis clavier ! (Double appuis rapide sous MAC)</strong> <br><br>
-
 <strong>🌟 Voici les nouveautés et les améliorations :</strong><br>
 NOUVEAUTES_PLACEHOLDER<br><br>
 
@@ -139,8 +131,8 @@ NOUVEAUTES_PLACEHOLDER<br><br>
 
 <span style="font-size: 3em;">💰</span> 
 <strong>Si vous le souhaitez vous pouvez également participer à mes frais de développement (écran, abonnement copilot, etc.) via</strong> 
-<a href="https://www.paypal.com/paypalme/refhi" target="_blank">Paypal</a> 
-<strong>("entre proches")</strong><br><br>
+<a href="https://fr.tipeee.com/weda-helper" target="_blank">Tipeee</a> 
+<strong></strong><br><br>
 
 <strong>Bon courage,</strong><br><br>
 
