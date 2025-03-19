@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper",
-  "version": "2.11.2",
-  "version_name": "2.11.2",
+  "version": "2.11.3",
+  "version_name": "2.11.3",
   "options_page": "options.html",
   "permissions": [
     "storage"
@@ -62,7 +62,9 @@
       "resources": [
         "FW_scripts/*",
         "lib/*",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "README.md",
+        "Images/*"
       ],
       "matches": [
         "<all_urls>"

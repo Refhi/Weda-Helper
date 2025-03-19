@@ -4,6 +4,12 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.11.3] - Amélioration de l'apparence & Tipeee
+## Améliorations :
+- la documentation est désormais accessible en cliquant sur l'icone de l'extension
+- le lien vers le Tipeee est mis en avant dans les messages de mise à jour et dans l'icone de l'extension
+- les boites de dialogue affichées lors des mises à jour sont visuellement améliorées
+
 # [2.11.2] - fix
 ## Fix :
 - [#385](https://github.com/Refhi/Weda-Helper/issues/385) - La touche Alt ne met plus le focus sur le menu du navigateur (désactivable dans les options). Cela règle deux problèmes : le focus était perdu lors de l'usage de Alt pour afficher l'aide, et lorsque le Companion tente de rendre le focus au navigateur (via un appuis simulé sur la touche Alt) cela entrainait parfois un focus sur le menu du navigateur.

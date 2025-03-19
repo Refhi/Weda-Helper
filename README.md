@@ -34,6 +34,7 @@ Cf. ci-dessous pour les retours et les contributions.
     - [Agenda](#agenda)
     - [Antécédents :](#antécédents-)
     - [Navigation :](#navigation-)
+    - [Setup "headless"](#setup-headless)
     - [Vaccination "instantanée" :](#vaccination-instantanée-)
   - [Facilitation des imports](#facilitation-des-imports)
   - [Weda-Helper-Companion](#weda-helper-companion)
@@ -47,30 +48,31 @@ Cf. ci-dessous pour les retours et les contributions.
 *Toutes vos tâches quotidiennes à portée de clavier*
 => Un appui sur la touche Alt prolongé (> 1 seconde) affiche un rappel des raccourcis claviers
 [Fiche Mémo des raccourcis à imprimer](https://github.com/Refhi/Weda-Helper/blob/main/docs/FicheMemo.pdf)
-Ctrl+D	Télécharge le PDF du document en cours (1er modèle)
-Ctrl+Shift+D	Télécharge le PDF du document en cours (2e modèle)
-Ctrl+P	Imprime le document en cours (1er modèle). Nécessite un module complémentaire pour que l'impression soit entièrement automatique. Sinon affiche directement le PDF.
-Ctrl+Shift+P	Imprime le document en cours (2e modèle)
-Ctrl+E Envoie le courrier en cours (1er modèle)
-Ctrl+Shift+E	Envoie le courrier en cours (2e modèle)
-Alt+A	Appuie Annuler (ou affiche l'historique des biologies dans la fenêtre des imports)
-Alt+S	Appuie Supprimer
-Alt+D	Insère la date du jour
-Ctrl+S	Appuie Enregistrer
-Ctrl+Shift+S Déclenche le scan d'un document
-Alt+V	Appuie Valider
-Alt+Z	Ouvre les antécédents
-Alt+C	Lit la carte vitale
-Alt+2	Ouvre ou crée le certificat n°1
-Alt+1	Ouvre ou crée la consultation n°1
-Alt+5	Ouvre ou crée courrier n°1
-Alt+3	Ouvre ou crée la demande n°1
-Alt+F	Ouvre ou crée le formulaire n°1
-Alt+6	Clique sur FSE
-Alt+4	Ouvre ou crée la prescription n°1
-Alt+R	Ouvre la recherche
-Alt+W	Appuie sur W
-Ctrl+U	Upload le dernier fichier du dossier envoyé par le Companion
+- Ctrl+D	Télécharge le PDF du document en cours (1er modèle)
+- Ctrl+Shift+D	Télécharge le PDF du document en cours (2e modèle)
+- Ctrl+P	Imprime le document en cours (1er modèle). Nécessite un module complémentaire pour que l'impression soit entièrement automatique.
+- Sinon affiche directement le PDF.
+- Ctrl+Shift+P	Imprime le document en cours (2e modèle)
+- Ctrl+E Envoie le courrier en cours (1er modèle)
+- Ctrl+Shift+E	Envoie le courrier en cours (2e modèle)
+- Alt+A	Appuie Annuler (ou affiche l'historique des biologies dans la fenêtre des imports)
+- Alt+S	Appuie Supprimer
+- Alt+D	Insère la date du jour
+- Ctrl+S	Appuie Enregistrer
+- Ctrl+Shift+S Déclenche le scan d'un document
+- Alt+V	Appuie Valider
+- Alt+Z	Ouvre les antécédents
+- Alt+C	Lit la carte vitale
+- Alt+2	Ouvre ou crée le certificat n°1
+- Alt+1	Ouvre ou crée la consultation n°1
+- Alt+5	Ouvre ou crée courrier n°1
+- Alt+3	Ouvre ou crée la demande n°1
+- Alt+F	Ouvre ou crée le formulaire n°1
+- Alt+6	Clique sur FSE
+- Alt+4	Ouvre ou crée la prescription n°1
+- Alt+R	Ouvre la recherche
+- Alt+W	Appuie sur W
+- Ctrl+U	Upload le dernier fichier du dossier envoyé par le Companion
 
 ## Accueil dossier patient
 - Ajout d'icones pour copier automatiquement le NIR dans le presse-papier
@@ -185,7 +187,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 ### Navigation :
 - Un clic du milieu sur le W du Menu W ouvre un nouvel onglet vers l'accueil du dossier patient, et non le module en cours.
 
-### Setup "headless" :
+### Setup "headless"
 - possibilité de shunter le message de mise à jour de Weda sur les postes où vous souhaitez automatiser l'ouverture de Weda (désactivé par défaut). Cela ne correspond qu'à des usages très spécifiques, merci de ne pas l'activer sans en comprendre les implications.
 
 ### Vaccination "instantanée" :
