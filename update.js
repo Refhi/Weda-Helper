@@ -185,7 +185,7 @@ var updateMessageTemplate = `
         <span style="font-size: 2.5em; margin-right: 20px;">💰</span> 
         <div style="flex-grow: 1;">
             <strong style="font-size: 1.1em; display: block; margin-bottom: 10px;">Soutenez le développement de Weda-Helper sur Tipeee !</strong> 
-            <p style="margin-bottom: 10px; color: #555;">Si Weda-Helper vous aide à épargner votre temps et à mieux coder, pensez à me soutenir ! Cela me permet de continuer à améliorer cet outil et à développer de nouvelles fonctionnalités.</p>
+            <p style="margin-bottom: 10px; color: #555;">Si Weda-Helper épargne votre temps et vous aide à mieux coter, pensez à me soutenir !</p>
             <a href="https://fr.tipeee.com/weda-helper" target="_blank">
                 <img src="${chrome.runtime.getURL('Images/logoTipeee.png')}" alt="Soutenez-moi sur Tipeee" style="height: 60px; width: auto; border: none;">
             </a>
