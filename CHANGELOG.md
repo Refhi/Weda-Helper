@@ -12,6 +12,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 
 ## Fix :
 - [#398](https://github.com/Refhi/Weda-Helper/issues/398) - Correction d'un défaut d'affichage qui entrainait parfois un chevauchement entre la zone de texte des certificats/prescriptions et la liste des documents par défault
+- [#400](https://github.com/Refhi/Weda-Helper/issues/400) - L'envoi par MSSanté était inhibé lors de l'usage de Ctrl+(maj)+E si l'impression instantanée était activée
 
 # [2.11.2] - fix
 ## Fix :
