@@ -541,6 +541,7 @@ function companionPrintDone(callback, delay = 20000) {
 }
 
 function closeWindow() {
+    console.log('closeWindow activé');
     // Si l'envoi au DMP est décoché, on ferme l'onglet directement
     if (!sendToDMPisSelected()) {
         console.log('[InstantPrint] envoi au DMP non sélectionné, je ferme la fenêtre');
