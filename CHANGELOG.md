@@ -10,6 +10,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#390](https://github.com/Refhi/Weda-Helper/issues/390) - La case "Mon patient accepte que je transmette le présent avis d'arrêt de travail pour son compte [...]" se coche automatiquement.
 - [#399](https://github.com/Refhi/Weda-Helper/issues/399) - Ajout d'un bouton pour mettre à jour le VSM en un clic (vérifie tout de même que le VSM rempli les 70% de nomenclature du ROSP avant de valider).
 - [#396](https://github.com/Refhi/Weda-Helper/issues/396) - Il est désormais possible de déclarer un type de recherche médicamenteuse par défaut (dans les options).
+- Les descriptions des options sont mieux mises en forme, ajout d'un exemple détaillé pour les catégories de classement automatique.
 
 # [2.11.3] - Amélioration de l'apparence & Tipeee
 ## Améliorations :
