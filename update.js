@@ -18,8 +18,8 @@ function simpleMarkdownToHtml(markdown) {
     html = html.replace(/^##### (.*?)$/gm, '<h5>$1</h5>');
     html = html.replace(/^#### (.*?)$/gm, '<h4>$1</h4>');
     html = html.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
-    html = html.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
-    html = html.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
+    html = html.replace(/^## (.*?)$/gm, '<h3>$1</h3>'); // on met max h3 pour éviter les gros titre
+    html = html.replace(/^# (.*?)$/gm, '<h3>$1</h3>');
 
     // Convertir les listes
     html = html.replace(/^\* (.*?)$/gm, '<li>$1</li>');
@@ -87,66 +87,142 @@ var nouveautes = `<h3>Chargement des nouveautés...</h3>`;
 
 
 var firstStartMessage = `
-<h1> 👋 Bienvenue sur Weda-Helper !</h1>
+<div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
+    <!-- Section 1: Titre et bannière principale -->
+    <div style="text-align: center; background-color: #e3f2fd; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+        <h2 style="color: #1565c0;"><strong>👋 Bienvenue sur Weda-Helper !</strong></h2>
+        <p style="color: #555;">Votre assistant pour améliorer votre expérience avec Weda</p>
+    </div>
 
-👌 Tout devrait fonctionner de base sans configuration, mais vous pouvez personnaliser l'extension dans les options (clic droit sur l'icone W de l'extension puis options).
+    <!-- Section 2: Installation et épinglage -->
+    <div style="background-color: #e8f5e9; padding: 15px; border-radius: 10px; margin-bottom: 15px; display: flex; align-items: center;">
+        <div style="flex-grow: 1;">
+            <h3 style="margin-top: 0; margin-bottom: 8px; color: #2e7d32;"><strong>📌 Pour bien démarrer</strong></h3>
+            <p style="color: #555; margin: 0 0 8px 0;">Pour une utilisation optimale de Weda-Helper :</p>
+            <ul style="color: #555; margin: 0; padding-left: 25px;">
+                <li>Épinglez l'extension en cliquant sur la punaise dans la barre d'extensions</li>
+                <li>Maintenez la touche <strong>Alt</strong> enfoncée dans Weda pour voir les raccourcis clavier (double appuis sous MAC)</li>
+                <li>Explorez les options en cliquant sur l'icône de l'extension puis sur ⚙️</li>
+                <li>Appuyez sur ℹ️ pour accéder au manuel</li>
+            </ul>
+        </div>
+        <div style="margin-left: 15px; flex-shrink: 0;">
+            <img src="${chrome.runtime.getURL('Images/tutoPinExtension.png')}" alt="Comment épingler l'extension" style="max-width: 120px; height: auto; border: 1px solid #ccc; border-radius: 5px;">
+        </div>
+    </div>
+    <!-- Section 3: Weda Companion -->
+    <div style="background-color: #e0f2f1; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+        <h3 style="margin-top: 0; color: #00796b;"><strong>🔧 Weda-Helper Companion</strong></h3>
+        <p style="color: #555;">Je vous encourage à installer le Companion pour profiter de fonctionnalités supplémentaires :</p>
+        <ul style="color: #555; margin-bottom: 15px;">
+            <li>Impression totale des documents</li>
+            <li>Lien avec le TPE</li>
+            <li>Upload automatisé de fichiers</li>
+        </ul>
+        <div style="display: flex; gap: 15px; margin-top: 10px;">
+            <a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.exe" target="_blank" style="display: inline-block; padding: 8px 15px; background-color: #00796b; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">💻 Télécharger pour Windows</a>
+            <a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.dmg" target="_blank" style="display: inline-block; padding: 8px 15px; background-color: #00796b; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">🍎 Télécharger pour Mac</a>
+        </div>
+    </div>
 
-📌 Je vous conseille de la mettre en favori en cliquant sur la punaise pour la garder visible.
+    <!-- Section 4: Trucs et astuces -->
+    <div style="background-color: #fff8e1; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+        <h3 style="margin-top: 0; color: #ff8f00;"><strong>💡 Astuces</strong></h3>
+        <ul style="color: #555;">
+            <li>Une fois dans Weda, affichez les raccourcis clavier en maintenant <strong>Alt</strong> (appuyez deux fois rapidement sous Mac)</li>
+            <li>Consultez les options de l'extension pour personnaliser votre expérience</li>
+            <li>Explorez le <a href="https://github.com/Refhi/Weda-Helper-Companion/" target="_blank" style="color: #ff8f00; text-decoration: underline;">Companion</a> pour des fonctionnalités avancées</li>
+        </ul>
+    </div>
 
-🔧 Je vous encourage également à installer le Companion <a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.exe" target="_blank">disponible ici pour windows</a> et <a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.dmg" target="_blank">ou pour mac</a> pour profiter de fonctionnalités supplémentaires (Impression totale, lien avec le TPE et upload automatisé).
+    <!-- Section 5: Support et communauté -->
+    <div style="background-color: #fbe9e7; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+        <h3 style="margin-top: 0; color: #d84315;"><strong>💬 Support et communauté</strong></h3>
+        <p style="color: #555;">Vous avez des questions ou des suggestions ?</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+            <a href="https://github.com/Refhi/Weda-Helper/" target="_blank" style="display: inline-flex; align-items: center; padding: 8px 15px; background-color: #f5f5f5; color: #333; text-decoration: none; border-radius: 5px; border: 1px solid #ddd;">
+                <span style="margin-right: 5px;">📝</span> Documentation GitHub
+            </a>
+            <a href="https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/m-p/2998" target="_blank" style="display: inline-flex; align-items: center; padding: 8px 15px; background-color: #f5f5f5; color: #333; text-decoration: none; border-radius: 5px; border: 1px solid #ddd;">
+                <span style="margin-right: 5px;">💖</span> Communauté Weda
+            </a>
+        </div>
+    </div>
+    
+    <!-- Section 6: Tipeee (Nouvelle section séparée) -->
+    <div style="display: flex; align-items: center; background-color: #fff9e6; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+        <span style="font-size: 2.5em; margin-right: 20px;">💰</span> 
+        <div style="flex-grow: 1;">
+            <strong style="font-size: 1.1em; display: block; margin-bottom: 10px;">Soutenez le développement sur Tipeee !</strong> 
+            <p style="margin-bottom: 10px; color: #555;">Votre soutien permet de continuer à améliorer cet outil et à développer de nouvelles fonctionnalités.</p>
+            <a href="https://fr.tipeee.com/weda-helper" target="_blank">
+                <img src="${chrome.runtime.getURL('Images/logoTipeee.png')}" alt="Soutenez-moi sur Tipeee" style="height: 60px; width: auto; border: none;">
+            </a>
+        </div>
+    </div>
 
-📝 Vous pouvez aussi relire <a href="https://github.com/Refhi/Weda-Helper/" target="_blank">Weda-Helper sur gitHub</a> pour plus de précisions, et y faire des suggestions ou des signalements de bugs. 
+    <!-- Section 7: Signature -->
+    <div style="text-align: center; padding: 10px; color: #777;">
+        <p><strong>Merci d'utiliser Weda-Helper !</strong></p>
+        <p>Bon courage,</p>
+        <p>Le développeur de Weda-Helper</p>
+    </div>
+</div>
+`;
 
-📄 Une fois dans Weda, vous pourrez afficher les raccourcis clavier en maintenant Alt (appuyez deux fois rapidement si vous êtes sous MAC).
-
-💖 Et bien sûr m'encourager sur le <a href="https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/m-p/2998" target="_blank">Site de la communauté de weda</a>
-
-💰 Si vous le souhaitez vous pouvez également participer à mes frais de développement (écran, abonnement copilot, etc.) via <a href="https://www.paypal.com/paypalme/refhi" target="_blank">Paypal</a> ("entre proches")
-
-Merci d'utiliser Weda-Helper !
-
-Bon courage,
-
-Le dev de Weda-Helper
-
-P.S. 🔍 Pour aller plus loin n'oubliez pas de voir les fonction du <a href="https://github.com/Refhi/Weda-Helper-Companion/" target="_blank">Companion</a>`;
-firstStartMessage = htmlMaker(firstStartMessage)
+// firstStartMessage = htmlMaker(firstStartMessage)
 
 
 var updateMessageTemplate = `
-<strong>👋 Bonjour !</strong><br><br>
+<div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
+    <!-- Section 1: Titre et bannière principale -->
+    <div style="text-align: center; background-color: #f0f8ff; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+        <h2 style="color: #2c3e50;"><strong>✨ Weda-Helper vient d'être mis à jour en version ${currentVersion} !</strong></h2>
+    </div>
 
-<strong>✨ Weda-Helper vient d'être mis à jour en version ${currentVersion} !</strong><br><br>
+    <!-- Section 2: Tipee et support -->
+    <div style="display: flex; align-items: center; background-color: #fff9e6; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+        <span style="font-size: 2.5em; margin-right: 20px;">💰</span> 
+        <div style="flex-grow: 1;">
+            <strong style="font-size: 1.1em; display: block; margin-bottom: 10px;">Soutenez le développement de Weda-Helper sur Tipeee !</strong> 
+            <p style="margin-bottom: 10px; color: #555;">Si Weda-Helper épargne votre temps et vous aide à mieux coter, pensez à me soutenir !</p>
+            <a href="https://fr.tipeee.com/weda-helper" target="_blank">
+                <img src="${chrome.runtime.getURL('Images/logoTipeee.png')}" alt="Soutenez-moi sur Tipeee" style="height: 60px; width: auto; border: none;">
+            </a>
+        </div>
+    </div>
 
-<strong>🔧 Je vous conseille d'aller faire un tour dans les options pour vérifier les nouveaux paramètres : cliquez sur l'icone de l'extension puis sur ⚙️</strong><br><br>
+    <!-- Section 3: Options et configuration -->
+    <div style="background-color: #e8f5e9; padding: 15px; border-radius: 10px; margin-bottom: 20px; display: flex; align-items: center;">
+        <div style="flex-grow: 1;">
+            <h3 style="margin-top: 0; color: #2e7d32;"><strong>🔧 Configuration et paramètres</strong></h3>
+            <p style="color: #555;">Parcourez les <strong>options ⚙️</strong>, le <strong>Changelog 📋</strong>, et la <strong>Documentation ℹ️</strong> pour explorer toutes les possibilités.</p>
+        </div>
+        <div style="margin-left: 15px;">
+            <img src="${chrome.runtime.getURL('Images/tutoPopupExplained.png')}" alt="Comment voir la popup" style="max-width: 200px; height: auto; border: 1px solid #ccc; border-radius: 5px;">
+        </div>
+    </div>
 
-<strong>🚀 Si vous ne l'avez pas encore, n'hésitez pas à tester le Companion :</strong> 
-<a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.exe" target="_blank">disponible ici pour windows</a> 
-<strong>et</strong> 
-<a href="https://github.com/Refhi/Weda-Helper-Companion/releases/latest/download/Weda.Companion.dmg" target="_blank">ou pour mac</a> 
-<strong>pour profiter de fonctionnalités supplémentaires (Impression totale, lien avec le TPE et upload automatisé).</strong><br><br>
+    <!-- Section 4: Nouveautés (Changelog) -->
+    <div style="background-color: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #e0e0e0;">
+        <h3 style="color: #1565c0; margin-top: 0;"><strong>🌟 Nouveautés et améliorations</strong></h3>
+        <div style="max-height: 300px; overflow-y: auto; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">
+            NOUVEAUTES_PLACEHOLDER
+        </div>
 
-<strong>📄 Maintenez Alt pour afficher la fiche mémo  raccourcis clavier ! (Double appuis rapide sous MAC)</strong> <br><br>
-
-<strong>🌟 Voici les nouveautés et les améliorations :</strong><br>
-NOUVEAUTES_PLACEHOLDER<br><br>
-
-📝 Les suggestions et les rapports de bug c'est toujours par là : 
-<a href="https://github.com/Refhi/Weda-Helper/" target="_blank">Weda-Helper sur gitHub</a><br><br>
-
-💖 Et les encouragements toujours par ici :-)  
-<a href="https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/m-p/2998" target="_blank">Site de la communauté de weda</a><br><br>
-
-<span style="font-size: 3em;">💰</span> 
-<strong>Si vous le souhaitez vous pouvez également participer à mes frais de développement (écran, abonnement copilot, etc.) via</strong> 
-<a href="https://www.paypal.com/paypalme/refhi" target="_blank">Paypal</a> 
-<strong>("entre proches")</strong><br><br>
-
-<strong>Bon courage,</strong><br><br>
-
-<strong>Les devs de Weda-Helper</strong>
+        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #e0e0e0;">
+            <p>📝 Suggestions et rapports de bug : 
+            <a href="https://github.com/Refhi/Weda-Helper/" target="_blank" style="color: #1565c0; text-decoration: none;">Weda-Helper sur GitHub</a></p>
+            
+            <p>💖 Vos encouragements sont appréciés : 
+            <a href="https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/m-p/2998" target="_blank" style="color: #1565c0; text-decoration: none;">Communauté Weda</a></p>
+            
+            <p><strong>Bon courage !</strong></p>
+            <p><strong>Les développeurs de Weda-Helper</strong></p>
+        </div>
+    </div>
+</div>
 `;
-
 
 function showPopup(text) {
     function createOverlay() {

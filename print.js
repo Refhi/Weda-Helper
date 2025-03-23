@@ -437,7 +437,7 @@ async function startPrinting(handlingType, whatToPrint, postPrintBehavior, model
             // Appel de tabAndPrintHandler pour ouvrir un nouvel onglet avec le patient en cours
             // gérer les notifications de succès ou d'échec
             // et fermer l'onglet actuel une fois l'impression terminée
-            tabAndPrintHandler();
+            tabAndPrintHandler(mustSend);
         }
 
         if (mustSend) {
@@ -447,35 +447,33 @@ async function startPrinting(handlingType, whatToPrint, postPrintBehavior, model
         // il faut d'abord cliquer sur le modèle d'impression pertinent
         clickPrintModelNumber(modelNumber);
         // ensuite attendre que l'iframe soit chargé
-        printIframeWhenAvailable("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", handlingType, whatToPrint, postPrintBehavior)
-            .then((result) => {
-                if (result) {
-                    postPrintAction(postPrintBehavior, whatToPrint);
-                    if (instantPrint || mustSend) {
-                        // Si on utilise instantPrint ou 'send' on envoie manuellement au DMP
-                        const DMPCheckBox = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelPrescriptionDmp #mat-checkbox-1-input');
-                        // Vérifie si la case DMP est cochée
-                        if (DMPCheckBox && DMPCheckBox.checked) {
-                            // Envoie le DMP
-                            let DMPSendButton = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelPrescriptionDmp span.mat-button-wrapper');
-                            if (DMPSendButton) {
-                                console.log('[startPrinting] Je dois envoyer manuellement au DMP', DMPSendButton);
-                                DMPSendButton.click();
-                                // Attendre la disparition de la barre de progression
-                                if (mustSend) {
-                                    waitForDMPCompletion(() => {
-                                        // Ensuite, on envoie le document
-                                        console.log('[startPrinting] Envoi du document au DMP terminé, je clique sur le bouton Envoyer');
-                                        setTimeout(() => {
-                                            clickPrintModelNumber(modelNumber, true);
-                                        }, 500);
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
+        const result = await printIframeWhenAvailable("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", handlingType, whatToPrint, postPrintBehavior);
+        if (!result) { return } // On s'arrête si pas de résultat
+        // ensuite on effectue l'action post impression : fermer la fenêtre, retourner au patient, etc.
+        postPrintAction(postPrintBehavior, whatToPrint);
+
+        // Si on utilise instantPrint ou 'send' on envoie manuellement au DMP
+        let DMPSendButton = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelPrescriptionDmp span.mat-button-wrapper');
+        const DMPCheckBox = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelPrescriptionDmp #mat-checkbox-1-input');
+        const DMPManuel = (instantPrint || mustSend) && DMPCheckBox && DMPCheckBox.checked && DMPSendButton;
+        if (!DMPManuel) { return } // On s'arrête si pas de DMPManuel
+
+        // Envoie au DMP
+        console.log('[startPrinting] Je dois envoyer manuellement au DMP', DMPSendButton);
+        DMPSendButton.click();
+
+        // Et enfin on envoie le document dans le cas du ctrl(+maj)+E (mustSend = true)
+        if (mustSend) {
+            // Attendre la disparition de la barre de progression
+            waitForDMPCompletion(() => {
+                // Ensuite, on envoie le document
+                console.log('[startPrinting] Envoi du document au DMP terminé, je clique sur le bouton Envoyer');
+                setTimeout(() => {
+                    clickPrintModelNumber(modelNumber, true);
+                }, 500);
             });
+        }
+
     }
 }
 
@@ -502,45 +500,58 @@ function waitForDMPCompletion(callback) {
 function watchForClose() {
     setTimeout(() => {
         sendWedaNotifAllTabs({
-            message: "[Weda-Helper] l\'onglet initiateur de l\'impression instantanée n\'a pas pu être fermé automatiquement. Il manque probablement l'autorisation des tabulations.",
+            message: "[Weda-Helper] l\'onglet initiateur de l\'impression instantanée n\'a pas pu être fermé automatiquement. Problème d'autorisation ou vous êtes sur l'onglet qui devrait se fermer.",
             type: 'undefined',
             icon: 'print'
         });
+        console.warn("[watchForClose] l\'onglet initiateur de l\'impression instantanée n\'a pas pu être fermé automatiquement. Problème d'autorisation ou vous êtes sur l'onglet qui devrait se fermer.");
     }, 15000);
 }
 
 
-function companionPrintDone(callback, delay = 20000) {
-    let startTime = Date.now();
-    let interval = setInterval(function () {
-        let lastPrintDate = sessionStorage.getItem('lastPrintDate');
-        // console.log('lastPrintDate', lastPrintDate);
-        if (lastPrintDate) {
-            let printTime = Date.parse(lastPrintDate);
-            if (Date.now() - printTime < 5000) {
+/**
+ * Attend la fin de l'impression par l'application compagnon
+ * Retourne une promesse qui se résout lorsque l'impression est terminée avec succès
+ * ou qui est rejetée lorsque le délai est dépassé
+ * 
+ * @param {number} [delay=20000] - Délai maximum d'attente en ms avant d'abandonner
+ * @returns {Promise<void>} - Promesse qui se résout à la fin de l'impression ou se rejette en cas d'échec
+ */
+function companionPrintDone(delay = 20000) {
+    return new Promise((resolve, reject) => {
+        const startTime = Date.now();
+        const interval = setInterval(() => {
+            const lastPrintDate = sessionStorage.getItem('lastPrintDate');
+            
+            if (lastPrintDate) {
+                const printTime = Date.parse(lastPrintDate);
+                if (Date.now() - printTime < 5000) {
+                    clearInterval(interval);
+                    sendWedaNotifAllTabs({
+                        message: 'L\'impression Instantanée terminée avec succès.',
+                        type: 'success',
+                        icon: 'print',
+                        duration: 2000
+                    });
+                    resolve();
+                }
+            }
+
+            if (Date.now() - startTime > delay) {
                 clearInterval(interval);
                 sendWedaNotifAllTabs({
-                    message: 'L\'impression Instantanée terminée avec succès.',
-                    type: 'success',
-                    icon: 'print',
-                    duration: 2000
+                    message: 'L\'impression Instantanée a échoué. Allez dans l\'onglet ayant lancé l\'impression pour vérifier.',
+                    type: 'undefined',
+                    icon: 'print'
                 });
-                callback();
+                reject(new Error('Délai d\'attente dépassé pour l\'impression'));
             }
-        }
-
-        if (Date.now() - startTime > delay) {
-            clearInterval(interval);
-            sendWedaNotifAllTabs({
-                message: 'L\'impression Instantanée a échoué. Allez dans l\'onglet ayant lancé l\'impression pour vérifier.',
-                type: 'undefined',
-                icon: 'print'
-            });
-        }
-    }, 100);
+        }, 100);
+    });
 }
 
 function closeWindow() {
+    console.log('closeWindow activé');
     // Si l'envoi au DMP est décoché, on ferme l'onglet directement
     if (!sendToDMPisSelected()) {
         console.log('[InstantPrint] envoi au DMP non sélectionné, je ferme la fenêtre');
@@ -602,11 +613,31 @@ function sendToDMPisSelected() {
  * @async
  * @function tabAndPrintHandler
  */
-async function tabAndPrintHandler() {
+async function tabAndPrintHandler(mustSend = false) {
     console.log('newTabPrintAndCloseOriginal activé');
     // Ouvre un nouvel onglet avec l'URL du dossier du patient actuel
     await newPatientTab();
-    companionPrintDone(closeWindow);
+    await companionPrintDone();
+    if (!mustSend) {
+        closeWindow();
+    } else {
+        // L'onglet ne pourra être fermé que depuis l'accueil du dossier patient car Send ne laisse pas d'autre opportunité
+        // On lance une boucle qui réinitialise lastPrintDate toutes les 100ms pendant 10 secondes
+        // pour maximiser les chances que l'autre onglet détecte l'impression
+        console.log('[tabAndPrintHandler] démarrage de la boucle de réinitialisation de lastPrintDate');
+        const startTime = Date.now();
+        const interval = setInterval(() => {
+            if (Date.now() - startTime > 10000) {
+                // Après 10 secondes, on arrête la boucle
+                clearInterval(interval);
+                console.log('[tabAndPrintHandler] fin de la boucle de réinitialisation de lastPrintDate');
+                return;
+            }
+            
+            console.log('[tabAndPrintHandler] réinitialisation de lastPrintDate');
+            setLastPrintDate();
+        }, 100);
+    }
 }
 
 
@@ -616,13 +647,15 @@ async function tabAndPrintHandler() {
 // => Parfois la progressBar reste affichée après l'impression, ce qui empêche la fermeture de la fenêtre
 // => On doit donc se rattraper après le chargement d'une nouvelle page dans la même session
 addTweak('/FolderMedical/PatientViewForm.aspx', 'instantPrint', function () {
+    const DELAY = 5000;
     console.log('[InstantPrint] debug démarré suite retour à dossier patient');
     // Vérifie si une impression ne vient pas de se finir en vérifiant lastProgressBarDate et lastPrintDate
     let lastPrintDate = sessionStorage.getItem('lastPrintDate');
+    console.log('[InstantPrint] délais depuis la dernère impression', lastPrintDate ? Date.now() - Date.parse(lastPrintDate) : 'jamais');
     let lastProgressBarDate = sessionStorage.getItem('lastProgressBarDate');
     let currentTime = Date.now();
-    let isRecentProgressBar = lastProgressBarDate && currentTime - Date.parse(lastProgressBarDate) < 5000;
-    let isRecentPrint = lastPrintDate && currentTime - Date.parse(lastPrintDate) < 5000;
+    let isRecentProgressBar = lastProgressBarDate && currentTime - Date.parse(lastProgressBarDate) < DELAY;
+    let isRecentPrint = lastPrintDate && currentTime - Date.parse(lastPrintDate) < DELAY;
     console.log('[InstantPrint] debug : isRecentProgressBar', isRecentProgressBar, 'isRecentPrint', isRecentPrint);
     // Si la barre de progression a disparu il y a moins de 5 secondes
     if (isRecentProgressBar || isRecentPrint) {

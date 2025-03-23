@@ -647,7 +647,7 @@ addTweak('*', 'WarpButtons', async function () {
 });
 
 
-// Gestion du workflow pour envoi + impression + DMP des courriers
+// Gestion du workflow ctrl(+shift)+E pour envoi + impression + DMP des courriers
 function send_document(printModelNumber) {
     getOption('sendAndPrint', function (sendAndPrint) {
         if (sendAndPrint) {
