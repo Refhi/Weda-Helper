@@ -198,7 +198,7 @@ function createLabel(option) {
         padding: 8px 12px;
         border-radius: 4px;
         width: max-content;
-        max-width: 300px;
+        max-width: 600px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         z-index: 100;
         font-size: 14px;
