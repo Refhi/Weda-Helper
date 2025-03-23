@@ -209,7 +209,7 @@ function createLabel(option) {
         content: '';
         position: absolute;
         left: -4px;
-        top: 50%;
+        top: 15%;
         transform: translateY(-50%);
         border-width: 6px;
         border-style: solid;
@@ -235,7 +235,9 @@ function createLabel(option) {
     
     const tooltip = document.createElement('div');
     tooltip.className = 'info-tooltip';
-    tooltip.textContent = option.longDescription;
+    // tooltip.textContent = option.longDescription;
+    tooltip.innerHTML = option.longDescription.replace(/\n/g, '<br>');
+
     
     infoIcon.appendChild(tooltip);
     label.appendChild(infoIcon);

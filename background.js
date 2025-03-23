@@ -464,7 +464,14 @@ var advancedDefaultSettings = [{
             "description": "Le Top 50",
             "default": false
         }]
-    }, {
+    },
+    {
+        "name": "defautSearchType",
+        "type": TYPE_SMALLTEXT,
+        "description": "Type de recherche par défaut (1 à 14). 0 pour désactiver.",
+        "default": 0,
+        "longDescription": "Par défaut, Weda reviens au dernier type de recherche utilisée. Vous pouvez définir le type de recherche médicamenteuse à utiliser systématiquement au chargement :\n\n1 - Médicaments\n14 - Recherche par produits\n8 - Dénomination commune (DCI)\n2 - Molécules (principes actifs)\n10 - Recherche par U.C.D.\n3 - Recherche par A.T.C.\n13 - Recherche par Vidal\n4 - Indications\n5 - Groupe d'indications\n6 - Laboratoires\n7 - Vos favoris et perso.\n9 - Le Top 50"
+    },{
         "name": "TweakRecetteForm",
         "type": TYPE_BOOL,
         "description": "Appuie automatiquement sur le bouton \"rechercher\" après avoir sélectionné la page des recettes (permet d’afficher les recettes du jour directement en arrivant sur la page).",

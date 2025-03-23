@@ -571,3 +571,16 @@ addTweak(prescriptionUrl, 'autoContinueWithoutNumPres', function () {
         }
     });
 });
+
+
+// Création d'un type de recherche par défaut dans la page de prescription
+addTweak(prescriptionUrl, '*defautSearchType', async function () {
+    const defautSearchType = await getOptionPromise('defautSearchType');
+    if (defautSearchType === "0") { return; }
+    console.log('[defautSearchType] le type par défaut est', defautSearchType);
+    let searchMenu = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_DropDownListRecherche');
+    if (searchMenu.value === defautSearchType) {return;}
+    console.log('[defautSearchType] je change le type de recherche par défaut pour', defautSearchType, 'de', searchMenu.value);
+    searchMenu.value = defautSearchType;
+    recordMetrics({ clicks: 2, drags: 2 });
+});
