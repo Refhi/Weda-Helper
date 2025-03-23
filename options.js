@@ -209,7 +209,7 @@ function createLabel(option) {
         content: '';
         position: absolute;
         left: -4px;
-        top: 15%;
+        top: 12px;
         transform: translateY(-50%);
         border-width: 6px;
         border-style: solid;
