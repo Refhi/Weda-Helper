@@ -185,7 +185,13 @@ var advancedDefaultSettings = [{
         "type": TYPE_SMALLTEXT,
         "description": "Alerte si le VSM est échu (rouge) ou bientôt échu (orange).",
         "longDescription": "Affiche la date d'alerte de la VSM en orange si la date est dans moins de x mois (6 par défaut, -1 pour désactiver), puis en rouge une fois l'année dépassée.",
-        "default": 4
+        "default": 4,
+        "subOptions": [{
+            "name": "oneClickVSM",
+            "type": TYPE_BOOL,
+            "description": "Permet de faire la déclaration de VSM en un clic.",
+            "default": true
+        }]
     }, {
         "name": "instantVaccine",
         "type": TYPE_BOOL,
