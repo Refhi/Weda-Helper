@@ -196,7 +196,7 @@ var updateMessageTemplate = `
     <div style="background-color: #e8f5e9; padding: 15px; border-radius: 10px; margin-bottom: 20px; display: flex; align-items: center;">
         <div style="flex-grow: 1;">
             <h3 style="margin-top: 0; color: #2e7d32;"><strong>🔧 Configuration et paramètres</strong></h3>
-            <p style="color: #555;">N'oubliez pas de vérifier les <strong>options ⚙️</strong> et le <strong>Changelog 📋</strong> pour découvrir toutes les fonctionnalités.</p>
+            <p style="color: #555;">Parcourez les <strong>options ⚙️</strong>, le <strong>Changelog 📋</strong>, et la <strong>Documentation ℹ️</strong> pour explorer toutes les possibilités.</p>
         </div>
         <div style="margin-left: 15px;">
             <img src="${chrome.runtime.getURL('Images/tutoPopupExplained.png')}" alt="Comment voir la popup" style="max-width: 200px; height: auto; border: 1px solid #ccc; border-radius: 5px;">
