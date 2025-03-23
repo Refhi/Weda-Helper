@@ -153,7 +153,13 @@ var advancedDefaultSettings = [{
         "name": "autoAATI",
         "type": TYPE_BOOL,
         "description": "Automatise la réalisation des arrêts de travail (lecture CV auto, sélection patient auto, impression auto etc. Nécessite le Companion pour fonctionner totalement).",
-        "default": true
+        "default": true,
+        subOptions: [{
+            "name": "aatiTermsExcerpt",
+            "type": TYPE_BOOL,
+            "description": "Coche automatiquement la case du consentement pour les arrêts de travail.",
+            "default": true
+        }]
     }, {
         "name": "trimCIM10",
         "type": TYPE_BOOL,
