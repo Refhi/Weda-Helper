@@ -55,25 +55,49 @@ const keyCommands = {
         console.log('shortcut_consult activé');
         submenuW(' Consultation');
     },
+    'shortcut_consult_bis': function () {
+        console.log('shortcut_consult_bis activé');
+        submenuW(' Consultation', true);
+    },
     'shortcut_certif': function () {
         console.log('shortcut_certif activé');
         submenuW(' Certificat');
+    },
+    'shortcut_certif_bis': function () {
+        console.log('shortcut_certif_bis activé');
+        submenuW(' Certificat', true);
     },
     'shortcut_demande': function () {
         console.log('shortcut_demande activé');
         submenuW(' Demande');
     },
+    'shortcut_demande_bis': function () {
+        console.log('shortcut_demande_bis activé');
+        submenuW(' Demande', true);
+    },
     'shortcut_prescription': function () {
         console.log('shortcut_prescription activé');
         submenuW(' Prescription');
+    },
+    'shortcut_prescription_bis': function () {
+        console.log('shortcut_prescription_bis activé');
+        submenuW(' Prescription', true);
     },
     'shortcut_formulaire': function () {
         console.log('shortcut_formulaire activé');
         submenuW(' Formulaire');
     },
+    'shortcut_formulaire_bis': function () {
+        console.log('shortcut_formulaire_bis activé');
+        submenuW(' Formulaire', true);
+    },
     'shortcut_courrier': function () {
         console.log('shortcut_courrier activé');
         submenuW(' Courrier');
+    },
+    'shortcut_courrier_bis': function () {
+        console.log('shortcut_courrier_bis activé');
+        submenuW(' Courrier', true);
     },
     'shortcut_fse': function () {
         console.log('shortcut_fse activé');
@@ -380,32 +404,111 @@ function clickCarteVitale() {
     }
 }
 
+/**
+ * Trouve un élément de niveau 3 du menu qui correspond à la description donnée
+ * @param {HTMLElement} baseMenuLvl1 - L'élément de base du menu de niveau 1
+ * @param {string} description - La description à rechercher
+ * @returns {HTMLElement|null} - L'élément trouvé ou null si non trouvé
+ */
+function findLevel3Element(baseMenuLvl1, description) {
+    if (!baseMenuLvl1) {
+        console.log('[findLevel3Element] Menu de base (level 1) non trouvé');
+        return null;
+    }
+    
+    // Récupère tous les éléments de niveau 3
+    const level3Elements = Array.from(baseMenuLvl1.getElementsByClassName('level3 dynamic'));
+    
+    if (level3Elements.length === 0) {
+        console.log('[findLevel3Element] Aucun élément de niveau 3 trouvé dans le menu');
+        return null;
+    }
+    
+    console.log(`[findLevel3Element] Recherche de "${description}" parmi ${level3Elements.length} éléments de niveau 3`);
+    
+    // On va éviter de cliquer sur les éléments suivants qui sont systématiquement inappropriés
+    const blackList = [
+        " Courrier à établir",
+        " Demande laboratoire",
+        " Demande imagerie",
+        " Demande paramédicale"
+    ];
 
-// Clique sur un élément du menu W selon sa description
-function submenuW(description) {
-    var level1Element = document.getElementsByClassName('level1 static')[0];
-    console.log('level1Element', level1Element);
-    if (level1Element) {
-        var level3Element = Array.from(level1Element.getElementsByClassName('level3 dynamic')).find(function (element) {
-            return element.innerText.includes(description) && element.hasAttribute('tabindex') && element.innerText !== " Courrier à établir"; // la fin est un fix sale pour éviter de cliquer sur l'alerte de courrier à établir
-        });
-        console.log('level3Element', level3Element);
-        if (level3Element) {
-            level3Element.click();
-            recordMetrics({ clicks: 1, drags: 3 });
-            console.log('Element clicked:', level3Element);
+
+    // Recherche l'élément correspondant aux critères
+    const matchingElement = level3Elements.find(function (element) {
+        const includesText = element.innerText.includes(description);
+        const hasTabIndex = element.hasAttribute('tabindex');
+        const isNotBlacklisted = !blackList.some(blacklistedText => element.innerText.includes(blacklistedText));
+        
+        console.log(`[findLevel3Element] Élément: "${element.innerText}" - ` +
+                    `contient "${description}": ${includesText ? 'oui' : 'non'}, ` +
+                    `tabindex: ${hasTabIndex ? 'oui' : 'non'}, ` +
+                    `n'est pas alerte courrier: ${isNotBlacklisted ? 'oui' : 'non'}`);
+        
+        return includesText && hasTabIndex && isNotBlacklisted;
+    });
+    
+    if (matchingElement) {
+        console.log(`[findLevel3Element] Élément trouvé pour "${description}":`, matchingElement.innerText);
+    } else {
+        console.log(`[findLevel3Element] Aucun élément correspondant à "${description}" trouvé`);
+    }
+    
+    return matchingElement;
+}
+
+/**
+ * Trouve un élément de niveau 2 du menu qui correspond à la description donnée
+ * @param {HTMLElement} baseMenuLvl1 - L'élément de base du menu de niveau 1
+ * @param {string} description - La description à rechercher
+ * @returns {HTMLElement|null} - L'élément trouvé ou null si non trouvé
+ */
+function findLevel2Element(baseMenuLvl1, description) {
+    if (!baseMenuLvl1) return null;
+
+    return Array.from(baseMenuLvl1.getElementsByClassName('level2 dynamic')).find(function (element) {
+        return element.innerText.includes(description) && element.hasAttribute('tabindex');
+    });
+}
+
+
+/** Clique sur un élément du menu selon sa description
+ * @param {string} description - La description de l'élément à cliquer ex. " Consultation"
+ * @param {boolean} shiftOn - Si true, on doit créer un nouveau document obligatoirement
+ */
+function submenuW(description, shiftOn = false) {
+    console.log('[submenuW] activé', description, shiftOn);
+    // Selection du menu de base
+    var baseMenuLvl1 = document.getElementsByClassName('level1 static')[0];
+    console.log('baseMenuLvl1', baseMenuLvl1);
+
+    if (!baseMenuLvl1) {
+        console.log('Menu de base non trouvé');
+        return false;
+    }
+
+
+    // D'abord on cherche si un document existe déjà
+    // On le cherche dans les elements de niveau 3
+    var level3Element = findLevel3Element(baseMenuLvl1, description);
+
+    console.log('level3Element', level3Element);
+    if (level3Element && !shiftOn) {
+        level3Element.click();
+        recordMetrics({ clicks: 1, drags: 3 });
+        console.log('Element clicked:', level3Element);
+        return true;
+    } else {
+        // Si la création d'un nouveau document est requise, on va cliquer dans les éléments de niveau 2
+        var level2Element = findLevel2Element(baseMenuLvl1, description);
+        console.log('level2Element', level2Element);
+
+        if (level2Element) {
+            level2Element.click();
+            recordMetrics({ clicks: 1, drags: 2 });
+            console.log('Element clicked:', level2Element);
             return true;
-        } else {
-            var level2Element = Array.from(level1Element.getElementsByClassName('level2 dynamic')).find(function (element) {
-                return element.innerText.includes(description) && element.hasAttribute('tabindex');
-            });
-            console.log('level2Element', level2Element);
-            if (level2Element) {
-                level2Element.click();
-                recordMetrics({ clicks: 1, drags: 2 });
-                console.log('Element clicked:', level2Element);
-                return true;
-            }
         }
     }
     console.log('No elements found', description);
@@ -535,7 +638,7 @@ addTweak('*', 'WarpButtons', async function () {
                 span.style.whiteSpace = 'nowrap'; // Prevent text wrapping
                 span.style.zIndex = '5'; // Ensure it appears above other content
             }
-            
+
             function applyStylesToSpanForButton(span) {
                 applyCommonStylesToSpan(span);
                 span.style.position = 'absolute';
@@ -545,7 +648,7 @@ addTweak('*', 'WarpButtons', async function () {
                 span.style.lineHeight = 'normal';
                 span.style.display = 'inline-block';
             }
-            
+
             function applyStylesToSpanForInput(span) {
                 applyCommonStylesToSpan(span);
                 span.style.position = 'absolute';
@@ -553,7 +656,7 @@ addTweak('*', 'WarpButtons', async function () {
                 span.style.right = '25%';    // Position at the right quarter (75% from left)
                 span.style.transform = 'translateX(50%)'; // Center the tooltip at the 75% point
             }
-        
+
             if (element) {
                 let raccourci = null;
                 for (let i = 0; i < element.classList.length; i++) {
@@ -563,12 +666,12 @@ addTweak('*', 'WarpButtons', async function () {
                         break;
                     }
                 }
-                
+
                 console.log('ajout de raccourcis à l\'élément', element, 'raccourcis', raccourci);
-                
+
                 if (raccourci) {
                     console.log("Je tente d'ajouter une info de raccourci à", element.tagName);
-                    
+
                     // Créer l'élément span pour le raccourci
                     var span = document.createElement('span');
                     span.textContent = raccourci;
@@ -581,29 +684,29 @@ addTweak('*', 'WarpButtons', async function () {
                         .replace(/è/g, 'e')
                         .replace(/à/g, 'a')
                         .replace(/ç/g, 'c');
-                    
+
                     // On vérifie si un élément avec cet id existe déjà
                     if (document.getElementById(span.id)) {
                         return;
                     }
-                    
+
                     // Appliquer les styles selon le type d'élément
                     if (element.tagName.toLowerCase() === 'input') {
                         console.log('C\'est un input');
                         // Pour les éléments input
                         applyStylesToSpanForInput(span);
-                        
+
                         // On doit ajouter le span à un parent conteneur
                         const wrapper = document.createElement('div');
                         wrapper.style.position = 'relative';
                         wrapper.style.display = 'inline-block';
-                        
+
                         // Remplacer l'input par le wrapper contenant l'input et le span
                         element.parentNode.insertBefore(wrapper, element);
                         wrapper.appendChild(element);
                         wrapper.appendChild(span);
                     } else {
-                        console.log('C\'est un autre élément'); 
+                        console.log('C\'est un autre élément');
                         // Pour les boutons et autres éléments
                         applyStylesToSpanForButton(span);
                         element.style.position = 'relative'; // S'assurer que l'élément a une position relative

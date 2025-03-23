@@ -4,6 +4,10 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.12] - 
+## Améliorations :
+- [#393](https://github.com/Refhi/Weda-Helper/issues/393) - Alt+chiffre ouvre désormais le dernier document, et Alt+Maj+chiffre en crée un nouveau (ex. Pour les ordonnances, les prescriptions, les consultations, etc.). Les demandes de nouvelles prescriptions sont mieux prises en compte.
+
 # [2.11.3] - Amélioration de l'apparence & Tipeee
 ## Améliorations :
 - la documentation est désormais accessible en cliquant sur l'icone de l'extension

@@ -180,7 +180,7 @@ var advancedDefaultSettings = [{
         "description": "Alerte si le VSM est échu (rouge) ou bientôt échu (orange).",
         "longDescription": "Affiche la date d'alerte de la VSM en orange si la date est dans moins de x mois (6 par défaut, -1 pour désactiver), puis en rouge une fois l'année dépassée.",
         "default": 4
-    },{
+    }, {
         "name": "instantVaccine",
         "type": TYPE_BOOL,
         "description": "Ouverture immédiate du scan du datamatrix d'un vaccin à l'ouverture des dossiers. Aussi accessible depuis la Popup en cliquant sur l'icone de l'extension.",
@@ -628,12 +628,12 @@ var advancedDefaultSettings = [{
         "type": TYPE_BOOL,
         "description": "shunte le message de mise à jour de Weda sur les postes où vous souhaitez automatiser l'ouverture de Weda (désactivé par défaut). Cela ne correspond qu'à des usages très spécifiques, merci de ne pas l'activer sans en comprendre les implications.",
         "default": false
-    },{
+    }, {
         "name": "initTabPermissionTests",
         "type": TYPE_BOOL,
         "description": "Affiche l'interface de test des permissions des onglets.",
         "default": false
-    },{
+    }, {
         "name": "inhitAltKey",
         "type": TYPE_BOOL,
         "description": "La touche Alt ne met plus le focus sur le menu du navigateur",
@@ -803,27 +803,50 @@ var defaultShortcuts = {
         "default": "Alt+1",
         "description": "Ouvre ou crée la consultation n°1"
     },
+    "shortcut_consult_bis": {
+        "default": "Alt+Shift+1",
+        "description": "Crée une nouvelle consultation"
+    },
     "shortcut_certif": {
         "default": "Alt+2",
         "description": "Ouvre ou crée le certificat n°1"
+    },
+    "shortcut_certif_bis": {
+        "default": "Alt+Shift+2",
+        "description": "Crée un nouveau certificat"
     },
     "shortcut_demande": {
         "default": "Alt+3",
         "description": "Ouvre ou crée la demande n°1"
     },
+    "shortcut_demande_bis": {
+        "default": "Alt+Shift+3",
+        "description": "Crée une nouvelle demande"
+    },
     "shortcut_prescription": {
         "default": "Alt+4",
         "description": "Ouvre ou crée la prescription n°1"
+    },
+    "shortcut_prescription_bis": {
+        "default": "Alt+Shift+4",
+        "description": "Crée une nouvelle prescription"
     },
     "shortcut_formulaire": {
         "default": "Alt+F",
         "description": "Ouvre ou crée le formulaire n°1"
     },
+    "shortcut_formulaire_bis": {
+        "default": "Alt+Shift+F",
+        "description": "Crée un nouveau formulaire"
+    },
     "shortcut_courrier": {
         "default": "Alt+5",
         "description": "Ouvre ou crée courrier n°1"
     },
-    "shortcut_fse": {
+    "shortcut_courrier_bis": {
+        "default": "Alt+Shift+5",
+        "description": "Crée un nouveau courrier"
+    }, "shortcut_fse": {
         "default": "Alt+6",
         "description": "Clique sur FSE"
     },
