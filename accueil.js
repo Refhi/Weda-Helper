@@ -383,7 +383,7 @@ function handleVSMVerificationPage(MAX_ERROR_RATIO, CLICK_TIMEOUT) {
 }
 
 function errorNumber(errorPanel) {
-    if (!errorPanel) return 0;
+    if (!errorPanel) return 0; // Si le panneau n'apparait pas c'est qu'il n'y a pas aucune ligne en erreur
     const errorNumMatch = errorPanel.textContent.match(/\d+/);
 
 
