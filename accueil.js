@@ -383,8 +383,9 @@ function handleVSMVerificationPage(MAX_ERROR_RATIO, CLICK_TIMEOUT) {
 }
 
 function errorNumber(errorPanel) {
+    if (!errorPanel) return 0;
     const errorNumMatch = errorPanel.textContent.match(/\d+/);
-    if (!errorNumMatch) return 0;
+
 
     return parseInt(errorNumMatch[0]);
 }
