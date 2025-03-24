@@ -297,7 +297,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*preAlertVSM', async function (
 
 // One-click VSM
 addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', '/FolderMedical/DMP/view'], 'oneClickVSM', function () {
-    const MAX_ERROR_RATIO = 0.5;
+    const MAX_ERROR_RATIO = 0.3;
     const CLICK_TIMEOUT = 3000;
 
     // Depuis la page d'accueil on ajoute un bouton pour le VSM en un clic
@@ -372,7 +372,7 @@ function handleVSMVerificationPage(MAX_ERROR_RATIO, CLICK_TIMEOUT) {
     } else {
         const successRate = Math.round(((checkBoxElementsNum - errorNum) / checkBoxElementsNum) * 100);
         console.log(`Trop d'erreurs pour le VSM en un clic (${errorNum}/${checkBoxElementsNum}, taux de réussite: ${successRate}%)`);
-        message = `Taux de validation du VSM: ${successRate}% inférieur à ${MAX_ERROR_RATIO * 100}%, envoi manuel requis`;
+        message = `Taux de validation du VSM: ${successRate}% inférieur au taux de ${(1-MAX_ERROR_RATIO) * 100}% requis pour le ROSP. Envoi automatique annulé.`;
         sendWedaNotifAllTabs({
             message: message,
             type: 'undefined',
