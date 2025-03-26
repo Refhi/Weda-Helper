@@ -12,6 +12,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#396](https://github.com/Refhi/Weda-Helper/issues/396) - Il est désormais possible de déclarer un type de recherche médicamenteuse par défaut (dans les options).
 - Les descriptions des options sont mieux mises en forme, ajout d'un exemple détaillé pour les catégories de classement automatique.
 - [#401](https://github.com/Refhi/Weda-Helper/issues/401) - Ajout de quelques aides pour les cotations de spécialités (APC, APY, APU, MCS)
+- [#402](https://github.com/Refhi/Weda-Helper/issues/402) - Changez la durée de TOUT les traitements en 1 clic ! (en allant dans "Définir la durée de traitement en mois pour tous les médicaments", un nouveau bouton est ajouté qui fera à votre place tout le travail)
 
 ## Refactory :
 - addTweak prend désormais en charge les options présentes sous forme de str (et pas seullement bool)

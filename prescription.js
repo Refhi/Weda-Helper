@@ -579,8 +579,301 @@ addTweak(prescriptionUrl, '*defautSearchType', async function () {
     if (defautSearchType === "0" || defautSearchType === 0) { return; }
     console.log('[defautSearchType] le type par défaut est', defautSearchType);
     let searchMenu = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_DropDownListRecherche');
-    if (searchMenu.value === defautSearchType) {return;}
+    if (searchMenu.value === defautSearchType) { return; }
     console.log('[defautSearchType] je change le type de recherche par défaut pour', defautSearchType, 'de', searchMenu.value);
     searchMenu.value = defautSearchType;
     recordMetrics({ clicks: 2, drags: 2 });
 });
+
+
+
+// Changement des durées de prescription globale
+addTweak(prescriptionUrl, '*changeDureePrescription', async function () {
+    // On ajoute les boutons
+    addTreatmentDurationButtons();
+
+    // Si on est en processing, on continue le traitement
+    if (sessionStorage.getItem('dureePrescriptionProcessing') === 'true') {
+        console.log('[changeDureePrescription] Processing en cours');
+        await changePrescriptionDurationCore();
+        return;
+    }
+});
+
+
+async function changePrescriptionDurationCore(duration=null, durationType=null) {
+    const storageKeys = {
+        processed: 'dureePrescriptionProcessed',
+        processing: 'dureePrescriptionProcessing',
+        duration: 'dureePrescriptionDuration',
+        durationType: 'dureePrescriptionDurationType'
+    };
+    
+    try {
+        // Restaurer ou sauvegarder les valeurs de durée et type
+        if (duration !== null && durationType !== null) {
+            // Sauvegarde des nouveaux paramètres
+            sessionStorage.setItem(storageKeys.duration, duration);
+            sessionStorage.setItem(storageKeys.durationType, durationType);
+        } else {
+            // Restauration des paramètres précédemment sauvegardés
+            duration = sessionStorage.getItem(storageKeys.duration);
+            durationType = sessionStorage.getItem(storageKeys.durationType);
+            
+            if (!duration || !durationType) {
+                console.error(`[changeDureePrescription] Aucune durée ou type de durée stocké`);
+                clearProcessState(storageKeys);
+                return;
+            }
+        }
+        
+        // Récupérer l'état actuel du traitement
+        const processState = getPrescriptionProcessState(storageKeys);
+        const { processedLines, isProcessing } = processState;
+        
+        // Vérifier si le traitement est déjà terminé
+        const prescriptionLines = returnPrescriptionLines();
+        if (isProcessing && processedLines.length > 0 && processedLines.length >= prescriptionLines.length) {
+            console.log(`[changeDureePrescription] Toutes les lignes ont été traitées, nettoyage du stockage`);
+            clearProcessState(storageKeys);
+            return;
+        }
+        
+        console.log(`[changeDureePrescription] Changement de la durée de traitement à ${duration} ${durationType}`);
+        console.log(`[changeDureePrescription] Lignes déjà traitées: ${processedLines.length}`);
+        console.log(`[changeDureePrescription] ${prescriptionLines.length} lignes de prescription trouvées`);
+        
+        // Sortir si aucune ligne n'est trouvée
+        if (prescriptionLines.length === 0) {
+            console.log(`[changeDureePrescription] Aucune ligne trouvée, nettoyage du stockage`);
+            clearProcessState(storageKeys);
+            return;
+        }
+        
+        // Marquer que nous sommes en train de traiter des lignes
+        sessionStorage.setItem(storageKeys.processing, 'true');
+        
+        // Trouver la prochaine ligne à traiter
+        const nextLine = findNextLineToProcess(prescriptionLines, processedLines);
+        
+        if (nextLine) {
+            const { lineElement, lineIndex } = nextLine;
+            console.log(`[changeDureePrescription] Traitement de la ligne ${lineIndex}`);
+            
+            // Traiter la ligne
+            await processPrescriptionLine(lineElement, duration, durationType);
+            
+            // Ajouter la ligne traitée à notre liste
+            processedLines.push(lineIndex);
+            sessionStorage.setItem(storageKeys.processed, JSON.stringify(processedLines));
+            
+            // Valider (va provoquer un rechargement de page)
+            validateTreatment();
+        } else {
+            console.log(`[changeDureePrescription] Toutes les lignes ont été traitées, nettoyage du stockage`);
+            clearProcessState(storageKeys);
+        }
+    } catch (error) {
+        console.error(`[changeDureePrescription] Erreur: ${error.message}`);
+        // Nettoyer l'état en cas d'erreur pour éviter de bloquer le traitement
+        clearProcessState(storageKeys);
+    }
+}
+
+// Récupère l'état actuel du traitement depuis sessionStorage
+function getPrescriptionProcessState(storageKeys) {
+    const processedLines = JSON.parse(sessionStorage.getItem(storageKeys.processed) || '[]');
+    const isProcessing = sessionStorage.getItem(storageKeys.processing) === 'true';
+    return { processedLines, isProcessing };
+}
+
+// Nettoie les données de session liées au traitement
+function clearProcessState(storageKeys) {
+    sessionStorage.removeItem(storageKeys.processed);
+    sessionStorage.removeItem(storageKeys.processing);
+    sessionStorage.removeItem(storageKeys.duration);
+    sessionStorage.removeItem(storageKeys.durationType);
+}
+
+// Trouve la prochaine ligne à traiter
+function findNextLineToProcess(prescriptionLines, processedLines) {
+    let nextLineIndex = 0;
+    while (nextLineIndex < prescriptionLines.length && processedLines.includes(nextLineIndex)) {
+        nextLineIndex++;
+    }
+    
+    if (nextLineIndex < prescriptionLines.length) {
+        return {
+            lineElement: prescriptionLines[nextLineIndex],
+            lineIndex: nextLineIndex
+        };
+    }
+    
+    return null;
+}
+
+// Traite une ligne de prescription (ouvre, définit durée et type)
+async function processPrescriptionLine(lineElement, duration, durationType) {
+    await openPrescriptionLine(lineElement);
+    await setTreatmentDuration(duration);
+    setTreatmentDurationType(durationType);
+}
+
+
+// 0 - Faire une liste avec les différentes lignes de prescription, peu importe leur nombre
+function returnPrescriptionLines() {
+    const baseId = 'ContentPlaceHolder1_PrescriptionsGrid_LinkButtonPrescriptionCommonNameGroupName_';
+    let prescriptionLines = [];
+    let i = 0;
+    let line;
+
+    // Boucle jusqu'à ce qu'il n'y ait plus de ligne à trouver
+    while (line = document.getElementById(baseId + i)) {
+        prescriptionLines.push(line);
+        i++;
+    }
+
+    console.log(`[returnPrescriptionLines] ${prescriptionLines.length} lignes de prescription trouvées`);
+    return prescriptionLines;
+}
+
+// 1 - cliquer sur la ligne de prescription
+async function openPrescriptionLine(line) {
+    return new Promise((resolve) => {
+        // line.click(); => protégé
+        const lineId = line.id;
+        clicCSPLockedElement('#' + lineId);
+        waitForElement({
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_PanelPosologie',
+            callback: function () {
+                console.log('La ligne de prescription a été ouverte');
+                resolve(); // Résout la promesse une fois que l'élément est trouvé
+            }
+        });
+    });
+}
+
+// 2 - y cliquer sur la durée de traitement
+async function setTreatmentDuration(duration) {
+    // Vérification que duration est un nombre
+    if (isNaN(duration)) {
+        console.error(`[setTreatmentDuration] La durée "${duration}" n'est pas un nombre valide`);
+        return;
+    }
+
+    // Ici on va cliquer sur la calculette de traitement
+    // Les boutons à cliquer sont des input de classe imgposo0 (ou imgposo1, imgposo2, etc.)
+    // On va cliquer dans l'ordre sur les boutons correspondant à la durée de traitement
+    let digits = duration.toString().split('');
+    console.log(`[setTreatmentDuration] Entrée de la durée: ${duration} (${digits.length} chiffres)`);
+
+    for (let digit of digits) {
+        clickButtonDuration(digit);
+        // Ajout d'un petit délai entre les clics pour simuler une saisie humaine
+        await sleep(50);
+    }
+}
+
+function clickButtonDuration(digit) {
+    let button = document.querySelector(`.imgposo${digit}`);
+    if (button) {
+        button.click();
+        recordMetrics({ clicks: 1, drags: 1 });
+        return true;
+    } else {
+        console.error(`[clickButtonDuration] Bouton pour le chiffre ${digit} non trouvé`);
+        return false;
+    }
+}
+
+/** 3 - y cliquer sur le type de durée
+ * 
+ * @param {string} durationType - Type de durée à sélectionner (d, w, m)
+ */
+function setTreatmentDurationType(durationType) {
+    if (!['d', 'w', 'm'].includes(durationType)) {
+        console.error(`[setTreatmentDurationType] Type de durée "${durationType}" invalide`);
+        return;
+    }
+    const dayButton = document.querySelector('.imgposoday');
+    const weekButton = document.querySelector('.imgposoweek');
+    const monthButton = document.querySelector('.imgposomonth');
+    const buttons = { d: dayButton, w: weekButton, m: monthButton };
+    buttons[durationType].click();
+    recordMetrics({ clicks: 1, drags: 1 });
+}
+
+
+// 4 - valider
+function validateTreatment() {
+    const validateButton = document.querySelector('#ButtonPosoValid');
+    validateButton.click();
+    recordMetrics({ clicks: 1, drags: 1 });
+}
+
+// On ajoute des boutons à droite du menu de durée déjà présent dans Weda
+function addTreatmentDurationButtons() {
+    // On va chercher à ajouter des boutons à côté de certains éléments.
+    // Les éléments sont tout les a .level3.dynamic dont le texte est "Traitement pour un mois"
+    // "un" est remplacé ensuite par 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+    const baseSelector = 'a.level3.dynamic';
+    const targetText = 'Traitement pour'; // Début du texte à rechercher
+    const targetElements = Array.from(document.querySelectorAll(baseSelector))
+        .filter(element => element.textContent.startsWith(targetText));
+    console.log(`[addTreatmentDurationButtons] ${targetElements.length} éléments trouvés`);
+
+    // Mapping des textes vers les nombres (pour gérer le cas "un" au lieu de "1")
+    const durationMapping = {
+        'un': 1,
+        '2': 2,
+        '3': 3,
+        '4': 4,
+        '5': 5,
+        '6': 6,
+        '7': 7,
+        '8': 8,
+        '9': 9,
+        '10': 10,
+        '11': 11,
+        '12': 12
+    };
+
+    targetElements.forEach(element => {
+        // Extraire le nombre du texte (ex: "Traitement pour un mois" -> "un")
+        const text = element.textContent;
+        let durationText = text.replace('Traitement pour ', '').replace(' mois', '');
+        const duration = durationMapping[durationText];
+
+        if (duration) {
+            // Créer le bouton
+            const button = document.createElement('button');
+            button.textContent = 'via Weda-Helper';
+            button.title = `Weda-Helper va appliquer "${text}" à toutes les lignes comme si vous sélectionniez manuellement la durée pour chaque ligne.`;
+            button.className = 'buttonheader';
+            button.style.marginLeft = '5px';
+            button.style.padding = '2px 5px';
+            button.style.fontSize = '11px';
+            
+            // Ajouter l'événement au clic
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log(`[addTreatmentDurationButtons] Changement global de durée: ${duration} mois`);
+                // Nettoyer les données précédentes
+                sessionStorage.removeItem('dureePrescriptionProcessed');
+                sessionStorage.removeItem('dureePrescriptionProcessing');
+                // Démarrer le processus
+                changePrescriptionDurationCore(duration.toString(), 'm');
+                return false;
+            });
+            
+            // Insérer le bouton après l'élément
+            const parent = element.parentNode;
+            if (parent.nextSibling) {
+                parent.parentNode.insertBefore(button, parent.nextSibling);
+            } else {
+                parent.parentNode.appendChild(button);
+            }
+        }
+    });
+}
