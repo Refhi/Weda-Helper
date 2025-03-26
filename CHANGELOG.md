@@ -11,6 +11,10 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#399](https://github.com/Refhi/Weda-Helper/issues/399) - Ajout d'un bouton pour mettre à jour le VSM en un clic (vérifie tout de même que le VSM rempli les 70% de nomenclature du ROSP avant de valider).
 - [#396](https://github.com/Refhi/Weda-Helper/issues/396) - Il est désormais possible de déclarer un type de recherche médicamenteuse par défaut (dans les options).
 - Les descriptions des options sont mieux mises en forme, ajout d'un exemple détaillé pour les catégories de classement automatique.
+- [#401](https://github.com/Refhi/Weda-Helper/issues/401) - Ajout de quelques aides pour les cotations de spécialités (APC, APY, APU, MCS)
+
+## Refactory :
+- addTweak prend désormais en charge les options présentes sous forme de str (et pas seullement bool)
 
 # [2.11.3] - Amélioration de l'apparence & Tipeee
 ## Améliorations :
