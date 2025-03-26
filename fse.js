@@ -847,6 +847,8 @@ addTweak('/vitalzen/fse.aspx', 'showBillingHistory', async function () {
 
     const userSelector = '#DropDownListUsers';
     const currentUser = getCurrentUser(iframeId, userSelector);
+    // On stocke la valeur dans le session storage
+    sessionStorage.setItem('currentHistoryUserForCotationHistory', currentUser);
     const loggedInUser = swapNomPrenom(document.getElementById('LabelUserLog').innerText);
 
 
@@ -862,6 +864,36 @@ addTweak('/vitalzen/fse.aspx', 'showBillingHistory', async function () {
 
     await sleep(250);
     await selectProperUser(iframeId, currentUser, userSelector);
+    // On supprime la valeur du session storage
+    sessionStorage.removeItem('currentHistoryUserForCotationHistory');
+});
+
+// On restaure l'utilisateur sélectionné avant l'affichage de l'historique dans la page d'accueil si le mauvais utilisateur est sélectionné
+// et que le session storage contient une valeur
+addTweak('/FolderMedical/PatientViewForm.aspx', 'showBillingHistory', async function () {
+    console.log('[showBillingHistory] On restaure l\'utilisateur sélectionné avant l\'affichage de l\'historique');
+    const recordedUser = sessionStorage.getItem('currentHistoryUserForCotationHistory');
+    if (!recordedUser) {
+        return;
+    }
+    console.log('[showBillingHistory] Utilisateur enregistré:', recordedUser);
+    const menuUtilisateur = document.querySelector('#ContentPlaceHolder1_DropDownListUsers');
+    if (!menuUtilisateur) {
+        return;
+    }
+    const currentSelectedUser = menuUtilisateur.options[menuUtilisateur.selectedIndex].textContent;
+    if (currentSelectedUser !== recordedUser) {
+        console.log('[showBillingHistory] Mauvais utilisateur sélectionné, on restaure l\'utilisateur enregistré');
+        // Parcourir toutes les options pour trouver celle qui correspond exactement au utilisateur enregistré
+        for (let i = 0; i < menuUtilisateur.options.length; i++) {
+            if (menuUtilisateur.options[i].textContent.trim() === recordedUser.trim()) {
+                menuUtilisateur.selectedIndex = i;
+                menuUtilisateur.dispatchEvent(new Event('change', { bubbles: true }));
+                sessionStorage.removeItem('currentHistoryUserForCotationHistory');
+                break;
+            }
+        }
+    }
 });
 
 // Fonction utilitaire pour accéder à l'iframe et au sélecteur d'utilisateur

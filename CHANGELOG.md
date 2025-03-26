@@ -16,6 +16,9 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 ## Refactory :
 - addTweak prend désormais en charge les options présentes sous forme de str (et pas seullement bool)
 
+## Fix :
+- [#394](https://github.com/Refhi/Weda-Helper/issues/394) - Correction d'un bug dans l'historique des cotations (fonction pour l'instant non activable car en attente de la validation de Weda)
+
 # [2.11.3] - Amélioration de l'apparence & Tipeee
 ## Améliorations :
 - la documentation est désormais accessible en cliquant sur l'icone de l'extension
