@@ -590,6 +590,11 @@ addTweak(prescriptionUrl, '*defautSearchType', async function () {
 // Changement des durées de prescription globale
 addTweak(prescriptionUrl, '*changeDureePrescription', async function () {
     // On ajoute les boutons
+    afterMutations({
+        delay: 100,
+        callBackId: 'changeDureePrescription',
+        callback: addTreatmentDurationButtons,
+    });
     addTreatmentDurationButtons();
 
     // Si on est en processing, on continue le traitement
@@ -601,14 +606,15 @@ addTweak(prescriptionUrl, '*changeDureePrescription', async function () {
 });
 
 
-async function changePrescriptionDurationCore(duration=null, durationType=null) {
+async function changePrescriptionDurationCore(duration = null, durationType = null) {
+    console.log('[changeDureePrescription] started', duration, durationType);
     const storageKeys = {
         processed: 'dureePrescriptionProcessed',
         processing: 'dureePrescriptionProcessing',
         duration: 'dureePrescriptionDuration',
         durationType: 'dureePrescriptionDurationType'
     };
-    
+
     try {
         // Restaurer ou sauvegarder les valeurs de durée et type
         if (duration !== null && durationType !== null) {
@@ -619,18 +625,18 @@ async function changePrescriptionDurationCore(duration=null, durationType=null) 
             // Restauration des paramètres précédemment sauvegardés
             duration = sessionStorage.getItem(storageKeys.duration);
             durationType = sessionStorage.getItem(storageKeys.durationType);
-            
+
             if (!duration || !durationType) {
                 console.error(`[changeDureePrescription] Aucune durée ou type de durée stocké`);
                 clearProcessState(storageKeys);
                 return;
             }
         }
-        
+
         // Récupérer l'état actuel du traitement
         const processState = getPrescriptionProcessState(storageKeys);
         const { processedLines, isProcessing } = processState;
-        
+
         // Vérifier si le traitement est déjà terminé
         const prescriptionLines = returnPrescriptionLines();
         if (isProcessing && processedLines.length > 0 && processedLines.length >= prescriptionLines.length) {
@@ -638,37 +644,50 @@ async function changePrescriptionDurationCore(duration=null, durationType=null) 
             clearProcessState(storageKeys);
             return;
         }
-        
+
         console.log(`[changeDureePrescription] Changement de la durée de traitement à ${duration} ${durationType}`);
         console.log(`[changeDureePrescription] Lignes déjà traitées: ${processedLines.length}`);
         console.log(`[changeDureePrescription] ${prescriptionLines.length} lignes de prescription trouvées`);
-        
+
         // Sortir si aucune ligne n'est trouvée
         if (prescriptionLines.length === 0) {
             console.log(`[changeDureePrescription] Aucune ligne trouvée, nettoyage du stockage`);
             clearProcessState(storageKeys);
             return;
         }
-        
+
         // Marquer que nous sommes en train de traiter des lignes
         sessionStorage.setItem(storageKeys.processing, 'true');
-        
+
         // Trouver la prochaine ligne à traiter
         const nextLine = findNextLineToProcess(prescriptionLines, processedLines);
-        
+
         if (nextLine) {
             const { lineElement, lineIndex } = nextLine;
             console.log(`[changeDureePrescription] Traitement de la ligne ${lineIndex}`);
-            
-            // Traiter la ligne
-            await processPrescriptionLine(lineElement, duration, durationType);
-            
-            // Ajouter la ligne traitée à notre liste
-            processedLines.push(lineIndex);
-            sessionStorage.setItem(storageKeys.processed, JSON.stringify(processedLines));
-            
-            // Valider (va provoquer un rechargement de page)
-            validateTreatment();
+
+            const posoNextLine = returnPosoLineContent(lineIndex);
+            if (posoNextLine) {
+                console.log(`[changeDureePrescription] Posologie ligne à traiter trouvée: ${posoNextLine}`);
+            }
+
+            if (posoNextLine === null || posoNextLine === undefined || posoNextLine === '') {
+                console.log('[changeDureePrescription] Pas de posologie trouvée, passage à la ligne suivante');
+                // Ajouter la ligne traitée à notre liste
+                processedLines.push(lineIndex);
+                sessionStorage.setItem(storageKeys.processed, JSON.stringify(processedLines));
+                changePrescriptionDurationCore();
+            } else {
+                // Traiter la ligne
+                await processPrescriptionLine(lineElement, duration, durationType);
+                // Ajouter la ligne traitée à notre liste
+                processedLines.push(lineIndex);
+                sessionStorage.setItem(storageKeys.processed, JSON.stringify(processedLines));
+                // Valider (va provoquer un rechargement de page)
+                validateTreatment();
+            }
+
+
         } else {
             console.log(`[changeDureePrescription] Toutes les lignes ont été traitées, nettoyage du stockage`);
             clearProcessState(storageKeys);
@@ -701,14 +720,14 @@ function findNextLineToProcess(prescriptionLines, processedLines) {
     while (nextLineIndex < prescriptionLines.length && processedLines.includes(nextLineIndex)) {
         nextLineIndex++;
     }
-    
+
     if (nextLineIndex < prescriptionLines.length) {
         return {
             lineElement: prescriptionLines[nextLineIndex],
             lineIndex: nextLineIndex
         };
     }
-    
+
     return null;
 }
 
@@ -843,6 +862,7 @@ function addTreatmentDurationButtons() {
         const text = element.textContent;
         let durationText = text.replace('Traitement pour ', '').replace(' mois', '');
         const duration = durationMapping[durationText];
+        // console.log(`[addTreatmentDurationButtons] Durée trouvée: ${duration} mois`);
 
         if (duration) {
             // Créer le bouton
@@ -853,9 +873,16 @@ function addTreatmentDurationButtons() {
             button.style.marginLeft = '5px';
             button.style.padding = '2px 5px';
             button.style.fontSize = '11px';
-            
+            button.id = `wh-button-${duration}`;
+
+            // Vérifier si le bouton existe déjà
+            if (document.getElementById(button.id)) {
+                // console.log(`[addTreatmentDurationButtons] Bouton pour la durée ${duration} mois déjà présent`);
+                return;
+            }
+
             // Ajouter l'événement au clic
-            button.addEventListener('click', function(e) {
+            button.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log(`[addTreatmentDurationButtons] Changement global de durée: ${duration} mois`);
@@ -866,7 +893,7 @@ function addTreatmentDurationButtons() {
                 changePrescriptionDurationCore(duration.toString(), 'm');
                 return false;
             });
-            
+
             // Insérer le bouton après l'élément
             const parent = element.parentNode;
             if (parent.nextSibling) {
@@ -876,4 +903,12 @@ function addTreatmentDurationButtons() {
             }
         }
     });
+}
+
+function returnPosoLineContent(line) {
+    const debutIdPosoLine = 'ContentPlaceHolder1_PrescriptionsGrid_LinkButtonPrescriptionPosoText_'
+    const posoLineId = debutIdPosoLine + line;
+    console.log('[returnPosoLineContent] posoLineId', posoLineId);
+    const posoLine = document.getElementById(posoLineId);
+    return posoLine.textContent;
 }
