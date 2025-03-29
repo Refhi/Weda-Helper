@@ -83,8 +83,6 @@ async function processFoundPdfIframe(elements) {
     let fullText = await extractTextFromPDF(urlPDF);
     console.log('[pdfParser] fullText', [fullText]);
 
-
-
     // Création d'un id unique
     let hashId = await customHash(fullText, urlPDF);
 
@@ -94,13 +92,13 @@ async function processFoundPdfIframe(elements) {
     // Récupération des données déjà extraites pour ce PDF
     extractedData = getPdfData(hashId);
 
-
     // Données déjà extraites pour ce PDF ?
     if (extractedData.alreadyImported) {
         console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction. Renvoi vers le champ de recherche ou le 1er patient de la liste si présent");
         selectFirstPatientOrSearchField();
         return;
     }
+
     if (Object.keys(extractedData).length > 0) {
         console.log("[pdfParser] Données déjà extraites pour ce PDF. Utilisation des données existantes.", extractedData);
     } else {
@@ -731,7 +729,32 @@ async function extractLines(textItems) {
     return pageText;
 }
 
-// Extraction des informations pertinentes du texte du PDF
+/**
+ * Extrait les données pertinentes d'un texte PDF.
+ * 
+ * @async
+ * @param {string} fullText - Le texte complet extrait du PDF.
+ * @param {string} pdfUrl - L'URL du PDF.
+ * 
+ * @returns {Promise<Object>} Un objet contenant les données extraites.
+ * @returns {string|null} extractedData.documentDate - La date du document au format JJ/MM/AAAA.
+ * @returns {string|null} extractedData.dateOfBirth - La date de naissance au format JJ/MM/AAAA.
+ * @returns {string[]} extractedData.nameMatches - Les noms trouvés dans le document.
+ * @returns {string|null} extractedData.documentType - Le type de document (ex: "COURRIER", "IMAGERIE").
+ * @returns {string|null} extractedData.documentTitle - Le titre suggéré pour le document.
+ * @returns {string[]} extractedData.nirMatches - Les numéros de sécurité sociale (NIR) trouvés.
+ * 
+ * @example
+ * // Exemple d'objet retourné
+ * {
+ *   documentDate: "15/03/2025",
+ *   dateOfBirth: "01/01/1980",
+ *   nameMatches: ["DUPONT Jean", "DUPONT J."],
+ *   documentType: "COURRIER",
+ *   documentTitle: "COURRIER - Cardiologie",
+ *   nirMatches: ["123456789012345"]
+ * }
+ */
 async function extractRelevantData(fullText, pdfUrl) {
     const regexPatterns = {
         dateRegexes: [
