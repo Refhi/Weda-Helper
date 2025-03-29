@@ -153,7 +153,8 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'TweakImports', function () {
             'ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_',
             'ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_',
             'ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_',
-            'ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_'
+            'ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_',
+            'ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementUser_' // Nom médecin
         ];
 
         let tabIndex = 1;

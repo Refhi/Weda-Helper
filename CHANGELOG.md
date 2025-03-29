@@ -14,6 +14,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#401](https://github.com/Refhi/Weda-Helper/issues/401) - Ajout de quelques aides pour les cotations de spécialités (APC, APY, APU, MCS)
 - [#402](https://github.com/Refhi/Weda-Helper/issues/402) - Changez la durée de TOUT les traitements en 1 clic ! (en allant dans "Définir la durée de traitement en mois pour tous les médicaments", un nouveau bouton est ajouté qui fera à votre place tout le travail)
 - [#397](https://github.com/Refhi/Weda-Helper/issues/397) - Vous pouvez désormais appeler Ctrl+P (et seulement celui-ci !) pour imprimer TOUT les documents du jour depuis l'accueil du dossier patient. Pensez à afficher l'historique mixte si un courrier doit être imprimé. Cela fonctionne surtout si vous avez activé l'impression complète en 1 clic via le Companion.
+- [#387](https://github.com/Refhi/Weda-Helper/issues/387) - Lors de l'import de masse, ajout d'une passe par le choix du médecin à sélectionner si cette liste est disponible
 
 ## Refactory :
 - addTweak prend désormais en charge les options présentes sous forme de str (et pas seullement bool)
