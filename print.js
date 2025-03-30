@@ -693,7 +693,10 @@ addTweak('/FolderMedical/PatientViewForm.aspx', PRINTALLFUNCTION, function () {
     let idToPrint = idsToPrint[0];
     idsToPrint.shift(); // Supprimer l'id de la liste
     localStorage.setItem('printAllIds', JSON.stringify(idsToPrint));
-    console.log('idsToPrint', idToPrint);
+    console.log('idToPrint', idToPrint);
+    if (!idToPrint) {
+        return; // On a tout imprimé
+    }
     
     // Ajout d'un timestamp dans le sessionStorage pour indiquer que ce tab doit imprimer
     sessionStorage.setItem('thisTabMustBePrinted', Date.now().toString());
