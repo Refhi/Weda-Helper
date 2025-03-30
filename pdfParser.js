@@ -1465,61 +1465,177 @@ function findImagerie(fullText, imageries) {
 function determineDocumentTitle(fullText, documentType) {
     const specialites = {
         "Médecine Interne": ["Médecine Interne"],
-        "Orthopédie": ["Orthopédie"],
-        "Gynécologie": ["Gynécologie"],
-        "Cardiologie": ["Cardiologie"],
-        "Neurologie": ["Neurologie"],
-        "Pédiatrie": ["Pédiatrie"],
-        "Radiologie": ["Radiologie"],
-        "Ophtalmologie": ["Ophtalmologie"],
-        "Pneumologie": ["Pneumologie"],
-        "Dermatologie": ["Dermatologie"],
-        "Urologie": ["Urologie"],
-        "Chirurgie": ["Chirurgie"],
-        "Rhumatologie": ["Rhumatologie"],
-        "Endocrinologie": ["Endocrinologie"],
-        "Gastro-entérologie": ["Gastro-entérologie"],
-        "Hématologie": ["Hématologie"],
-        "Néphrologie": ["Néphrologie"],
-        "Oncologie": ["Oncologie"],
-        "Psychiatrie": ["Psychiatrie"],
-        "Stomatologie": ["Stomatologie"],
-        "Addictologie": ["Addictologie"],
-        "ORL": ["Otologie", "Rhinologie", "Laryngologie"],
+        "Orthopédie": ["Orthopédie", "Orthopédique", "Traumatologie"],
+        "Gynécologie": ["Gynécologie", "Obstétrique", "Gynéco"],
+        "Cardiologie": ["Cardiologie", "Cardio", "Cardiovasculaire"],
+        "Neurologie": ["Neurologie", "Neuro", "Neurochirurgie"],
+        "Pédiatrie": ["Pédiatrie", "Pédiatre", "Enfant"],
+        "Radiologie": ["Radiologie", "Radio"],
+        "Ophtalmologie": ["Ophtalmologie", "Ophtalmo", "Oculaire"],
+        "Pneumologie": ["Pneumologie", "Pneumo", "Respiratoire", "Pulmonaire"],
+        "Dermatologie": ["Dermatologie", "Dermato", "Cutané"],
+        "Urologie": ["Urologie", "Uro"],
+        "Chirurgie": ["Chirurgie", "Chirurgical", "Opération"],
+        "Rhumatologie": ["Rhumatologie", "Rhumato"],
+        "Endocrinologie": ["Endocrinologie", "Endocrino", "Diabète", "Diabétologie"],
+        "Gastro-entérologie": ["Gastro-entérologie", "Gastro", "Digestif"],
+        "Hématologie": ["Hématologie", "Hémato"],
+        "Néphrologie": ["Néphrologie", "Néphro", "Rénale"],
+        "Oncologie": ["Oncologie", "Onco", "Cancer"],
+        "Psychiatrie": ["Psychiatrie", "Psy", "Psychologie"],
+        "Stomatologie": ["Stomatologie", "Stomato", "Maxillo-facial"],
+        "Addictologie": ["Addictologie", "Addiction"],
+        "ORL": ["ORL", "Otologie", "Rhinologie", "Laryngologie", "Otorhinolaryngologie"],
+        "Allergologie": ["Allergologie", "Allergie", "Allergique"],
+        "Gériatrie": ["Gériatrie", "Gérontologie", "Personnes âgées"],
+        "Anesthésiologie": ["Anesthésiologie", "Anesthésie", "Réanimation"]
     };
 
     const imageries = {
-        "scanner": ["scanner"],
-        "échographie": ["échographie", "doppler"],
-        "radiographie": ["radiographie"],
-        "mammographie": ["mammographie"],
-        "scintigraphie": ["scintigraphie"],
-        "tomodensitométrie": ["tomodensitométrie"],
-        "ostéodensitométrie": ["ostéodensitométrie"],
-        "TDM": ["TDM"],
-        "IRM": ["IRM"]
+        "scanner": ["scanner", "TDM", "tomodensitométrie"],
+        "échographie": ["échographie", "écho", "doppler", "échodoppler"],
+        "radiographie": ["radiographie", "radio", "rx"],
+        "mammographie": ["mammographie", "mammo"],
+        "scintigraphie": ["scintigraphie", "scinti"],
+        "ostéodensitométrie": ["ostéodensitométrie", "densitométrie osseuse"],
+        "IRM": ["IRM", "imagerie par résonance magnétique"]
     };
-
-    // console.log('[pdfParser] determineDocumentTitle');
+    
+    // Organes/régions anatomiques fréquents pour préciser l'examen
+    const regions = {
+        "thoracique": ["thorax", "thoracique", "pulmonaire", "poumon"],
+        "abdominal": ["abdomen", "abdominal", "abdominale"],
+        "crânien": ["crâne", "crânien", "cérébral", "cerveau", "tête"],
+        "rachis": ["rachis", "colonne vertébrale", "lombaire", "cervical", "dorsal", "vertèbre"],
+        "genou": ["genou", "fémoro-tibial"],
+        "hanche": ["hanche", "coxo-fémoral"],
+        "épaule": ["épaule", "scapulo-huméral"],
+        "poignet": ["poignet", "radio-carpien"],
+        "coude": ["coude"],
+        "cheville": ["cheville", "tibio-tarsien"],
+        "pied": ["pied", "tarsien"],
+        "main": ["main", "métacarpien"],
+        "bassin": ["bassin", "pelvien"],
+        "sinus": ["sinus", "facial"],
+        "artère": ["artère", "artériel", "aorte", "carotide", "fémorale"],
+        "cardiaque": ["cardiaque", "cœur", "coronaire"]
+    };
+    
+    // Établissements de santé ou lieux
+    const lieux = {
+        "CHU": ["CHU", "Centre Hospitalier Universitaire"],
+        "CH": ["CH", "Centre Hospitalier de", "Hôpital de", "Hôpital"],
+        "Clinique": ["Clinique", "Polyclinique"],
+        "Centre": ["Centre médical", "Centre de radiologie", "Centre d'imagerie"],
+        "Cabinet": ["Cabinet médical", "Cabinet de radiologie"]
+    };
+    
+    // Type de compte-rendu
+    const typesCR = {
+        "consultation": ["Consultation", "CS", "Cs", "consultation"],
+        "hospitalisation": ["Hospitalisation", "CRH", "compte rendu d'hospitalisation"],
+        "examen": ["Compte rendu d'examen", "CR d'examen", "compte-rendu d'examen"],
+        "opération": ["Compte rendu opératoire", "CRO", "opération"]
+    };
 
     // Trouver la spécialité médicale
     let specialite = findSpecialite(fullText, specialites);
 
     // Trouver le type d'imagerie si présent
     let imagerie = findImagerie(fullText, imageries);
-
-    // Construire le titre du document
-    let documentTitle = documentType;
-    if (documentType === "IMAGERIE" && imagerie) {
-        if (imagerie) {
-            documentTitle += ` - ${imagerie}`;
+    
+    // Trouver la région anatomique si présente
+    let region = null;
+    for (const [nom, mots] of Object.entries(regions)) {
+        for (const mot of mots) {
+            if (fullText.toLowerCase().includes(mot.toLowerCase())) {
+                region = nom;
+                break;
+            }
         }
-    } else if (specialite) {
-        documentTitle += ` - ${specialite}`;
+        if (region) break;
+    }
+    
+    // Trouver le lieu si présent
+    let lieu = null;
+    for (const [nom, mots] of Object.entries(lieux)) {
+        for (const mot of mots) {
+            if (fullText.toLowerCase().includes(mot.toLowerCase())) {
+                lieu = nom;
+                break;
+            }
+        }
+        if (lieu) break;
+    }
+    
+    // Trouver le type de compte-rendu
+    let typeCR = null;
+    for (const [nom, mots] of Object.entries(typesCR)) {
+        for (const mot of mots) {
+            if (fullText.toLowerCase().includes(mot.toLowerCase())) {
+                typeCR = nom;
+                break;
+            }
+        }
+        if (typeCR) break;
+    }
+    
+    // Recherche d'un médecin mentionné (Dr X)
+    const doctorMatch = fullText.match(/Dr\.?\s+([A-Z][A-Za-z\-]+)/);
+    const medecin = doctorMatch ? doctorMatch[1] : null;
+
+    // Construire le titre du document en fonction du contexte
+    let documentTitle = documentType || "";
+    
+    // Pour les documents d'imagerie
+    if (documentType === "IMAGERIE") {
+        if (imagerie) {
+            documentTitle = imagerie.charAt(0).toUpperCase() + imagerie.slice(1);
+            if (region) {
+                documentTitle += ` ${region}`;
+            }
+        } else if (specialite === "Radiologie") {
+            documentTitle = "Examen radiologique";
+            if (region) {
+                documentTitle += ` ${region}`;
+            }
+        }
+    } 
+    // Pour les consultations
+    else if (documentType === "CONSULTATION" || typeCR === "consultation") {
+        documentTitle = "Consultation";
+        if (medecin) {
+            documentTitle += ` Dr. ${medecin}`;
+        } else if (specialite) {
+            documentTitle += ` ${specialite}`;
+        }
+    } 
+    // Pour les hospitalisations
+    else if (typeCR === "hospitalisation") {
+        documentTitle = "CRH";
+        if (specialite) {
+            documentTitle += ` ${specialite}`;
+        }
+    }
+    // Pour les autres types de documents
+    else if (specialite) {
+        documentTitle += documentTitle ? ` - ${specialite}` : specialite;
+    }
+    
+    // Ajouter le lieu en dernier si présent
+    if (lieu) {
+        documentTitle += ` (${lieu})`;
     }
 
-
-    console.log('[pdfParser] Titre du document déterminé', documentTitle, 'car document de type', documentType, 'avec spécialité', specialite, 'et imagerie', imagerie);
+    console.log('[pdfParser] Titre du document déterminé', documentTitle, 
+                'avec type:', documentType, 
+                'spécialité:', specialite, 
+                'imagerie:', imagerie, 
+                'région:', region,
+                'médecin:', medecin,
+                'lieu:', lieu,
+                'type CR:', typeCR);
+                
     return documentTitle;
 }
 

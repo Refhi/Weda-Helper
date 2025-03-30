@@ -17,6 +17,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#387](https://github.com/Refhi/Weda-Helper/issues/387) - Lors de l'import de masse, ajout d'une passe par le choix du médecin à sélectionner si cette liste est disponible
 - [#389](https://github.com/Refhi/Weda-Helper/issues/389) - Il est désormais possible de choisisir le classement automatique des documents importés. C'est désactivé par défaut.
 - [#387](https://github.com/Refhi/Weda-Helper/issues/387) - Lors de l'import de masse, le médecin attitré est désormais sélectionné automatiquement.
+- [#381](https://github.com/Refhi/Weda-Helper/issues/381) - Refonte du système de titre automatique
 
 ## Refactory :
 - addTweak prend désormais en charge les options présentes sous forme de str (et pas seullement bool)
