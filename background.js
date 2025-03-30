@@ -274,6 +274,12 @@ var advancedDefaultSettings = [{
                 "description": "Extrait automatiquement la date du document importé.",
                 "default": true,
             }, {
+                "name": "PdfParserAutoClassification",
+                "type": TYPE_BOOL,
+                "description": "Extrait automatiquement la classification du document importé.",
+                "default": false,
+                "longDescription": "Si vous souhaitez classer les imports dans les parties Consultation/Résultats d'examen/Courrier, vous pouvez activer cette option pour le faire automatiquement.",
+            },{
                 "name": "PdfParserDateAlphabetique",
                 "type": TYPE_BOOL,
                 "description": "Recherche également les dates type 15 novembre 2021.",

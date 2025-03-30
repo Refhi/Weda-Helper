@@ -353,24 +353,31 @@ async function setExtractedDataInForm(extractedData) {
     const selectors = {
         documentDate: `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_${ligneAction}`,
         documentType: `#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_${ligneAction}`,
-        documentTitle: `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_${ligneAction}`
+        documentTitle: `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_${ligneAction}`,
+        documentAddressedTo: `#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementUser_${ligneAction}`,
+        documentDestinationClass: `#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementEvenementType_${ligneAction}`,
     };
 
     // Récupère les éléments du DOM correspondant aux sélecteurs
     const inputs = {
         documentDate: document.querySelector(selectors.documentDate),
         documentType: document.querySelector(selectors.documentType),
-        documentTitle: document.querySelector(selectors.documentTitle)
+        documentTitle: document.querySelector(selectors.documentTitle),
+        documentAddressedTo: document.querySelector(selectors.documentAddressedTo),
+        documentDestinationClass: document.querySelector(selectors.documentDestinationClass)
     };
 
     PdfParserAutoTitle = await getOptionPromise('PdfParserAutoTitle')
     PdfParserAutoDate = await getOptionPromise('PdfParserAutoDate')
+    PdfParserAutoClassification = await getOptionPromise('PdfParserAutoClassification')
 
     // Données à insérer dans les champs du formulaire
     const fields = {
         documentDate: PdfParserAutoDate ? extractedData.documentDate : null,
         documentType: extractedData.documentType,
-        documentTitle: PdfParserAutoTitle ? extractedData.documentTitle : null
+        documentTitle: PdfParserAutoTitle ? extractedData.documentTitle : null,
+        documentAddressedTo: extractedData.addressedTo,
+        documentDestinationClass: PdfParserAutoClassification ? extractedData.destinationClass : null
     };
 
     console.log('[pdfParser] INtroduction des données dans les champs : ', fields);
@@ -802,6 +809,9 @@ async function extractRelevantData(fullText, pdfUrl) {
     const documentType = await determineDocumentType(fullText);
     const documentTitle = determineDocumentTitle(fullText, documentType);
     const nirMatches = extractNIR(fullText, regexPatterns.nirRegexes);
+    const addressedTo = extractAddressedTo(fullText); // Retourne l'id du choix du dropdown
+    const destinationClass = extractDestinationClass(fullText);
+
 
     let extractedData = {
         documentDate: documentDate ? formatDate(documentDate) : null,
@@ -809,9 +819,189 @@ async function extractRelevantData(fullText, pdfUrl) {
         nameMatches: nameMatches,
         documentType: documentType,
         documentTitle: documentTitle,
-        nirMatches: nirMatches
+        nirMatches: nirMatches,
+        addressedTo: addressedTo,
+        destinationClass: destinationClass
     };
     return extractedData;
+}
+
+// Extraction du médecin à qui est adressé le document
+function extractAddressedTo(fullText) {
+    // D'abord récupérer la liste des médecins accessible
+    const doctorsSelect = document.querySelector('#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementUser_0');
+    if (!doctorsSelect) {
+        console.log("[pdfParser] Liste des médecins non trouvée");
+        return null;
+    }
+
+    // Récupérer la liste des médecins sous forme d'un tableau d'objets avec leurs noms et IDs
+    const doctors = Array.from(doctorsSelect.options).map(option => {
+        // Extraction du nom et prénom du format "NOM Prénom (Dr.)"
+        const fullName = option.text.trim();
+        const nameParts = fullName.match(/^([A-Z\-]+)\s+([^(]+)/);
+        
+        return {
+            id: option.value,
+            fullName: fullName,
+            lastName: nameParts ? nameParts[1].trim() : '',
+            firstName: nameParts ? nameParts[2].trim() : '',
+            text: option.text
+        };
+    });
+
+    console.log("[pdfParser] Liste des médecins disponibles:", doctors);
+    
+    // Recherche dans le texte pour chaque médecin
+    for (const doctor of doctors) {
+        // Créer différentes variations pour la recherche (en tenant compte des possibles sauts de ligne ou caractères entre nom et prénom)
+        const patterns = [
+            // Format NOM Prénom (tolère des caractères entre les deux)
+            new RegExp(`${doctor.lastName}[\\s\\S]{0,5}${doctor.firstName.split('-')[0]}`, 'i'),
+            
+            // Format Prénom NOM (tolère des caractères entre les deux)
+            new RegExp(`${doctor.firstName.split('-')[0]}[\\s\\S]{0,5}${doctor.lastName}`, 'i'),
+            
+            // Recherche seulement le nom de famille s'il est assez distinctif (>= 5 caractères)
+            ...(doctor.lastName.length >= 5 ? [new RegExp(`\\b${doctor.lastName}\\b`, 'i')] : []),
+            
+            // Recherche seulement le prénom s'il est assez distinctif (>= 5 caractères)
+            ...(doctor.firstName.length >= 5 ? [new RegExp(`\\b${doctor.firstName.split('-')[0]}\\b`, 'i')] : [])
+        ];
+        
+        // Tester chaque pattern
+        for (const pattern of patterns) {
+            if (pattern.test(fullText)) {
+                console.log(`[pdfParser] Médecin trouvé dans le texte: ${doctor.fullName} avec le pattern ${pattern}`);
+                return doctor.id;
+            }
+        }
+    }
+
+    console.log("[pdfParser] Aucun médecin destinataire identifié dans le texte");
+    return null;
+}
+
+// Extraction de la classe de destination
+function extractDestinationClass(fullText) {
+    // Les trois destinations possibles 
+    const destinations = {
+        '1': "Consultation",
+        '2': "Résultats d'examens",
+        '3': "Courrier"
+    };
+    
+    // Mots-clés pour chaque destination
+    const keywordsByDestination = {
+        '1': [
+            /consultation/i,
+            /prise en charge/i,
+            /examen clinique/i,
+            /visite médicale/i,
+            /Motif :/i,
+            /histoire de la maladie/i,
+            /SOAP/i,
+            /anamnèse/i,
+            /auscultation/i,
+            /Antécédents :/i,
+            /Au terme de ce bilan/i,
+            /à l'examen clinique/i
+        ],
+        '2': [
+            /examen/i,
+            /résultat/i,
+            /biologie/i,
+            /bilan/i,
+            /analyse/i,
+            /laboratoire/i,
+            /scanner/i,
+            /imagerie/i,
+            /radiographie/i,
+            /échographie/i,
+            /irm/i,
+            /tdm/i,
+            /tep/i,
+            /doppler/i,
+            /mammographie/i,
+            /scintigraphie/i,
+            /echodoppler/i,
+            /renseignements cliniques/i,
+            /technique/i,
+            /conclusion/i
+        ],
+        '3': [
+            /courrier/i,
+            /lettre/i,
+            /correspondance/i,
+            /avis/i,
+            /compte rendu/i,
+            /compte-rendu/i,
+            /CR.{0,5}consult/i,
+            /adressé(?:e)? par/i,
+            /adressé(?:e)? pour/i,
+            /Cher Confrère/i,
+            /chère consoeur/i,
+            /chère consœur/i,
+            /Je vous remercie/i,
+            /nous a consulté/i,
+            /nous a été adressé/i,
+            /information destinée/i,
+            /spécialiste/i
+        ]
+    };
+
+    // Compteur de correspondances pour chaque destination
+    const matchCounts = {
+        '1': 0,
+        '2': 0,
+        '3': 0
+    };
+
+    // Vérifier chaque destination
+    for (const [destId, patterns] of Object.entries(keywordsByDestination)) {
+        for (const pattern of patterns) {
+            const matches = fullText.match(pattern);
+            if (matches) {
+                matchCounts[destId] += matches.length;
+            }
+        }
+    }
+
+    console.log('[pdfParser] Correspondances de classe par destination:', matchCounts);
+
+    // Vérifier s'il y a des correspondances spécifiques qui augmentent fortement la probabilité
+    const specificPatterns = {
+        '1': [/consultation.*du\s+\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{4}/i],
+        '2': [/Résultats? d[''](?:examen|analyse)s?/i, /valeurs? de référence/i],
+        '3': [/Je vous remercie de m'avoir adressé/i]
+    };
+
+    for (const [destId, patterns] of Object.entries(specificPatterns)) {
+        for (const pattern of patterns) {
+            if (pattern.test(fullText)) {
+                matchCounts[destId] += 5; // Ajoute un poids plus fort
+            }
+        }
+    }
+
+    // Sélectionner la destination avec le plus grand nombre de correspondances
+    let maxCount = 0;
+    let selectedDestination = null;
+
+    for (const [destId, count] of Object.entries(matchCounts)) {
+        if (count > maxCount) {
+            maxCount = count;
+            selectedDestination = destId;
+        }
+    }
+
+    // Si aucune correspondance ou égalité, on privilégie "Courrier" qui est souvent la catégorie par défaut
+    if (maxCount === 0 || (matchCounts['3'] === matchCounts['2'] && matchCounts['2'] === maxCount)) {
+        selectedDestination = '3';
+    }
+
+    console.log(`[pdfParser] Classe de destination détectée: ${destinations[selectedDestination]} (ID: ${selectedDestination})`);
+    return selectedDestination;
 }
 
 // Extraction du datamatrix des pages du PDF
