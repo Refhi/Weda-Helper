@@ -694,6 +694,10 @@ addTweak('/FolderMedical/PatientViewForm.aspx', PRINTALLFUNCTION, function () {
     idsToPrint.shift(); // Supprimer l'id de la liste
     localStorage.setItem('printAllIds', JSON.stringify(idsToPrint));
     console.log('idsToPrint', idToPrint);
+    
+    // Ajout d'un timestamp dans le sessionStorage pour indiquer que ce tab doit imprimer
+    sessionStorage.setItem('thisTabMustBePrinted', Date.now().toString());
+    
     idToPrint = document.querySelector(`#${idToPrint}`);
     if (idToPrint) {
         idToPrint.click();
@@ -714,15 +718,25 @@ addTweak('/FolderMedical/PatientViewForm.aspx', PRINTALLFUNCTION, function () {
             });
         } else {
             console.error('Aucun élément à imprimer trouvé');
+            sessionStorage.removeItem('thisTabMustBePrinted'); // Nettoyer le storage si on ne trouve rien
             return;
         }
     }
-
 });
 
 addTweak(["/FolderMedical/CertificatForm.aspx", "/FolderMedical/DemandeForm.aspx", "/FolderMedical/PrescriptionForm.aspx", "/FolderMedical/CourrierForm.aspx"], PRINTALLFUNCTION, function () {
     // On est maintenant dans un des éléments à imprimer.
-    handlePrint('print', 0);
+    // Vérifier si le contrôle thisTabMustBePrinted existe et est récent
+    const printTimestamp = sessionStorage.getItem('thisTabMustBePrinted');
+    
+    if (printTimestamp && (Date.now() - parseInt(printTimestamp) < 20000)) {
+        // La page doit être imprimée car elle a été ouverte par printAll il y a moins de 20 secondes
+        console.log('Impression automatique via printAll détectée');
+        handlePrint('print', 0);
+    }
+    
+    // Nettoyer le sessionStorage dans tous les cas
+    sessionStorage.removeItem('thisTabMustBePrinted');
 });
 
 function startPrintAll() {
