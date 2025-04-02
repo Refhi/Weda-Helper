@@ -197,7 +197,7 @@ addTweak('/FolderTools/BiblioForm.aspx', '*addPrintIcon', function () {
 
             // Ajouter un gestionnaire d'événements de clic sur l'icône d'imprimante
             printIcon.addEventListener('click', function () {
-                handlePrint('print')
+                handlePrint({printType: 'print'});
             });
 
             element.appendChild(printIcon);

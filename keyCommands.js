@@ -11,16 +11,16 @@ const keyCommands = {
     'push_valider': push_valider,
     'push_annuler': push_annuler,
     'print_meds': function () {
-        handlePrint('print', 0);
+        handlePrint({printType: 'print', modelNumber: 0});
     },
     'print_meds_bis': function () {
-        handlePrint('print', 1);
+        handlePrint({printType: 'print', modelNumber: 1});
     },
     'download_document': function () {
-        handlePrint('download', 0);
+        handlePrint({printType: 'download', modelNumber: 0});
     },
     'download_document_bis': function () {
-        handlePrint('download', 1);
+        handlePrint({printType: 'download', modelNumber: 1});
     },
     'send_document': function () {
         send_document(0);
@@ -755,7 +755,7 @@ function send_document(printModelNumber) {
     getOption('sendAndPrint', function (sendAndPrint) {
         if (sendAndPrint) {
             console.log('sendAndPrint activé');
-            handlePrint('print', printModelNumber, 'send');
+            handlePrint({ printType: 'print', modelNumber: printModelNumber, sendAfterPrint: true });
         } else {
             clickPrintModelNumber(printModelNumber, true);
         }

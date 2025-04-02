@@ -5,33 +5,120 @@
  * - `ctrl+shift+P` => Impression, si pertinent du modèle 1
  * - `ctrl+D` => Téléchargement, si pertinent du modèle 0
  * - `ctrl+shift+D` => Téléchargement, si pertinent du modèle 1
+ * - `ctrl+E` => Impression et envoi, si pertinent du modèle 0
+ * - `ctrl+shift+E` => Impression et envoi, si pertinent du modèle 1
  *
- * @param {string} printType - Le type d'action à effectuer, soit "print" pour impression, soit "download" pour téléchargement.
- * @param {number} [modelNumber=0] - Le numéro du modèle à utiliser, par défaut 0.
- *
+ * @param {Object} config - Configuration de l'impression
+ * @param {string} config.printType - Type d'action à effectuer, soit "print" pour impression, soit "download" pour téléchargement.
+ * @param {number} [config.modelNumber=0] - Numéro du modèle à utiliser, par défaut 0.
+ * @param {boolean} [config.massPrint=false] - Indique si on est en mode impression multiple, par défaut false.
+ * @param {boolean} [config.sendAfterPrint=false] - Indique si le document doit être envoyé après impression, par défaut false.
+ * 
  * @example
- * // Impression du modèle 0 (si pertinent)
- * handlePrint('print', 0);
- *
+ * // Impression simple du modèle 0
+ * handlePrint({ printType: 'print' });
+ * 
  * @example
- * // Téléchargement du modèle 1 (si pertinent)
- * handlePrint('download', 1);
+ * // Impression du modèle 1
+ * handlePrint({ printType: 'print', modelNumber: 1 });
+ * 
+ * @example
+ * // Téléchargement du modèle 0
+ * handlePrint({ printType: 'download' });
+ * 
+ * @example
+ * // Impression et envoi du modèle 0
+ * handlePrint({ printType: 'print', sendAfterPrint: true });
  */
-function handlePrint(printType, modelNumber = 0, forcedPostPrintBehavior = null) {
-    // D'abord récupération de l'ensemble des options pertinentes dans les options.
-    getOption(['RemoveLocalCompanionPrint', 'postPrintBehavior', 'instantPrint'], function ([RemoveLocalCompanionPrint, postPrintBehavior, instantPrint]) {
-        // De quel type d'"impression" s'agit-il ? (impression, téléchargement, companion)
-        const handlingType = deduceHandlingType(printType, RemoveLocalCompanionPrint);
-        // Qu'imprime-t-on ? (courbe, FSE ou modèle)
-        const whatToPrint = deduceWhatToPrint();
-        // Est-ce qu'instantPrint est activé ? (nécessite que RemoveLocalCompanionPrint soit false)
-        instantPrint = instantPrint && !RemoveLocalCompanionPrint;
-        // On lance le processus d'impression
-        if (forcedPostPrintBehavior) { postPrintBehavior = forcedPostPrintBehavior; } // nécessaire pour l'envoi simultané par ctrl+E
-        console.debug('handlePrint', postPrintBehavior);
-        startPrinting(handlingType, whatToPrint, postPrintBehavior, modelNumber, instantPrint);
-    });
+async function handlePrint({ printType, modelNumber = 0, massPrint = false, sendAfterPrint = false } = {}) {
+    try {
+        // Récupération des options
+        const [RemoveLocalCompanionPrint, postPrintBehavior, instantPrint] = 
+            await getOptionPromise(['RemoveLocalCompanionPrint', 'postPrintBehavior', 'instantPrint']);
+        
+        // Création d'un objet de configuration pour centraliser les paramètres
+        const printConfig = {
+            // Type d'impression (impression, téléchargement, companion)
+            handlingType: deduceHandlingType(printType, RemoveLocalCompanionPrint),
+            
+            // Type de contenu (courbe, FSE, modèle)
+            whatToPrint: deduceWhatToPrint(),
+
+            // Types de prise en charge spécifiques // TODO à implémenter
+            massPrint: massPrint,
+            sendAfterPrint: sendAfterPrint,
+            
+            // // Comportement après impression (avec priorité à forcedPostPrintBehavior)
+            postPrintBehavior: postPrintBehavior,
+            
+            // Numéro du modèle d'impression
+            modelNumber: modelNumber,
+            
+            // Impression instantanée (uniquement si companion est activé)
+            instantPrint: instantPrint && !RemoveLocalCompanionPrint
+        };
+        
+        // Validation de la configuration
+        if (!validatePrintConfig(printConfig)) {
+            console.error('Configuration d\'impression invalide:', printConfig);
+            return;
+        }
+        console.debug('Configuration de l\'impression:', printConfig);
+        
+        // Démarrage du processus d'impression avec la configuration complète
+        await startPrinting(printConfig);
+
+        // Exemple de printConfig : { handlingType: 'print', whatToPrint: 'model', massPrint: false, sendAfterPrint: false, postPrintBehavior: 'doNothing', modelNumber: 0, instantPrint: false }
+
+
+    } catch (error) {
+        console.error('Erreur lors de l\'initialisation de l\'impression:', error);
+    }
 }
+
+
+/**
+ * Valide les paramètres de configuration pour l'impression ou le téléchargement.
+ * 
+ * @param {Object} printConfig - Configuration de l'impression
+ * @param {string} printConfig.handlingType - Type de traitement ('print', 'download', 'companion')
+ * @param {string} printConfig.whatToPrint - Type de contenu ('courbe', 'fse', 'model')
+ * @param {string} printConfig.postPrintBehavior - Comportement post-impression ('doNothing', 'closePreview', 'returnToPatient', 'send')
+ * @param {number} printConfig.modelNumber - Numéro du modèle (obligatoire si whatToPrint='model')
+ * @returns {boolean} - True si la configuration est valide, sinon false
+ */
+function validatePrintConfig(printConfig) {
+    // Validation des types de traitement
+    const handlingTypes = ['print', 'download', 'companion'];
+    if (!handlingTypes.includes(printConfig.handlingType)) {
+        console.error('[validatePrintConfig] Type de traitement non reconnu:', printConfig.handlingType);
+        return false;
+    }
+    
+    // Validation des types de contenu
+    const whatToPrintTypes = ['courbe', 'fse', 'model'];
+    if (!whatToPrintTypes.includes(printConfig.whatToPrint)) {
+        console.error('[validatePrintConfig] Type de contenu non reconnu:', printConfig.whatToPrint);
+        return false;
+    }
+    
+    // Validation des comportements post-impression
+    const postPrintBehaviors = ['doNothing', 'closePreview', 'returnToPatient', 'send'];
+    if (printConfig.postPrintBehavior && !postPrintBehaviors.includes(printConfig.postPrintBehavior)) {
+        console.error('[validatePrintConfig] Comportement post-impression non reconnu:', printConfig.postPrintBehavior);
+        return false;
+    }
+    
+    // Validation du numéro de modèle (uniquement si on imprime un modèle)
+    if (printConfig.whatToPrint === 'model' && (isNaN(printConfig.modelNumber) || printConfig.modelNumber < 0)) {
+        console.error('[validatePrintConfig] Numéro de modèle non valide:', printConfig.modelNumber);
+        return false;
+    }
+    
+    return true;
+}
+
+
 
 /**
  * Détermine le type de demande d'impression ou de téléchargement.
@@ -340,41 +427,23 @@ async function printIframeWhenAvailable(selector, handlingType, whatToPrint, pos
 
 
 /**
- * Démarre le processus d'impression ou de téléchargement en fonction des paramètres fournis.
+ * Démarre le processus d'impression ou de téléchargement en fonction de la configuration fournie.
  *
- * @param {string} handlingType - Le type de traitement à effectuer : 'print', 'download', 'companion'.
- * @param {string} whatToPrint - Le type de contenu à imprimer ou télécharger : 'courbe', 'fse', ou un numéro de modèle.
- * @param {string} postPrintBehavior - Le comportement à adopter après l'impression : 'doNothing', 'closePreview', 'returnToPatient'.
- * @param {number} modelNumber - Le numéro du modèle à utiliser, généralement 0 ou 1, parfois plus.
+ * @param {Object} printConfig - Configuration complète de l'impression
+ * @param {string} printConfig.handlingType - Type de traitement ('print', 'download', 'companion')
+ * @param {string} printConfig.whatToPrint - Type de contenu ('courbe', 'fse', 'model')
+ * @param {string} printConfig.postPrintBehavior - Comportement post-impression ('doNothing', 'closePreview', 'returnToPatient', 'send')
+ * @param {number} printConfig.modelNumber - Numéro du modèle (requis pour whatToPrint='model')
+ * @param {boolean} [printConfig.instantPrint=false] - Active l'impression instantanée
+ * @param {boolean} [printConfig.massPrint=false] - Indique si on est en mode impression multiple
+ * @param {boolean} [printConfig.sendAfterPrint=false] - Indique si le document doit être envoyé après impression
  */
-async function startPrinting(handlingType, whatToPrint, postPrintBehavior, modelNumber, instantPrint) {
+async function startPrinting(printConfig) {
     console.log('startPrinting activé');
-    // Check if the parameters are correct
-    const handlingTypes = ['print', 'download', 'companion'];
-    if (!handlingTypes.includes(handlingType)) {
-        console.error('[startPrinting] Type non reconnu :', handlingType);
-        return;
-    }
-    const whatToPrintTypes = ['courbe', 'fse', 'model'];
-    if (!whatToPrintTypes.includes(whatToPrint)) {
-        console.error('[startPrinting] Type non reconnu :', whatToPrint);
-        return;
-    }
-    const postPrintBehaviors = ['doNothing', 'closePreview', 'returnToPatient', 'send'];
-    if (!postPrintBehaviors.includes(postPrintBehavior)) {
-        console.error('[startPrinting] Comportement non reconnu :', postPrintBehavior);
-        return;
-    }
-    const mustSend = postPrintBehavior === 'send';
-
-
-    if (whatToPrint === 'model' && isNaN(modelNumber)) {
-        console.error('[startPrinting] Numéro de modèle non valide :', modelNumber);
-        return;
-    }
-
-
-
+    
+    // Exemple de printConfig : { handlingType: 'print', whatToPrint: 'model', massPrint: false, sendAfterPrint: false, postPrintBehavior: 'doNothing', modelNumber: 0, instantPrint: false }
+    // Extraction des propriétés de la configuration
+    const { handlingType, whatToPrint, massPrint, sendAfterPrint, postPrintBehavior, modelNumber, instantPrint } = printConfig;
     recordMetrics({ clicks: 3, drags: 4 });
 
     // trois grands cas de figure : impression d'une courbe, d'une fse ou d'un document
@@ -431,42 +500,55 @@ async function startPrinting(handlingType, whatToPrint, postPrintBehavior, model
         waitForFSEPrintGreenLight();
 
 
-    } else { // sinon, c'est un modèle d'impression   
+    } 
+    // cas des modèles d'impression
+    else { 
+        // 1. Configuration du comportement post-impression
         if (instantPrint) {
-            postPrintBehavior = 'closePreview'; // On doit mettre 'returnToPatient' pour que l'envoi au DMP soit fait
-            // Appel de tabAndPrintHandler pour ouvrir un nouvel onglet avec le patient en cours
-            // gérer les notifications de succès ou d'échec
-            // et fermer l'onglet actuel une fois l'impression terminée
-            tabAndPrintHandler(mustSend);
+            postPrintBehavior = 'closePreview'; 
+            // L'appel au DMP se fera manuellement après l'impression
+            tabAndPrintHandler(sendAfterPrint);
         }
-
-        if (mustSend) {
-            postPrintBehavior = 'closePreview'; // Nécessaire pour qu'on puisse ensuite faire l'envoi au DMP puis l'envoi
+    
+        if (sendAfterPrint) {
+            // Fermer la prévisualisation pour permettre l'envoi au DMP puis l'envoi du document
+            postPrintBehavior = 'closePreview';
         }
-
-        // il faut d'abord cliquer sur le modèle d'impression pertinent
+    
+        // 2. Processus d'impression principal
+        // Sélectionner le modèle d'impression
         clickPrintModelNumber(modelNumber);
-        // ensuite attendre que l'iframe soit chargé
-        const result = await printIframeWhenAvailable("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", handlingType, whatToPrint, postPrintBehavior);
-        if (!result) { return } // On s'arrête si pas de résultat
-        // ensuite on effectue l'action post impression : fermer la fenêtre, retourner au patient, etc.
+        
+        // Préparer et exécuter l'impression
+        const result = await printIframeWhenAvailable(
+            "#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", 
+            handlingType, 
+            whatToPrint, 
+            postPrintBehavior
+        );
+        
+        // Arrêter si l'impression a échoué
+        if (!result) { return; }
+        
+        // Exécuter l'action post-impression configurée
         postPrintAction(postPrintBehavior, whatToPrint);
-
-        // Si on utilise instantPrint ou 'send' on envoie manuellement au DMP
-        let DMPSendButton = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelPrescriptionDmp span.mat-button-wrapper');
+    
+        // 3. Gestion de l'envoi au DMP (si nécessaire)
+        // Vérifier si l'envoi au DMP est requis et possible
+        const DMPSendButton = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelPrescriptionDmp span.mat-button-wrapper');
         const DMPCheckBox = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelPrescriptionDmp #mat-checkbox-1-input');
-        const DMPManuel = (instantPrint || mustSend) && DMPCheckBox && DMPCheckBox.checked && DMPSendButton;
-        if (!DMPManuel) { return } // On s'arrête si pas de DMPManuel
-
-        // Envoie au DMP
+        const DMPManuel = (instantPrint || sendAfterPrint) && DMPCheckBox && DMPCheckBox.checked && DMPSendButton;
+        
+        // Arrêter si l'envoi au DMP n'est pas applicable
+        if (!DMPManuel) { return; }
+    
+        // Envoyer au DMP
         console.log('[startPrinting] Je dois envoyer manuellement au DMP', DMPSendButton);
         DMPSendButton.click();
-
-        // Et enfin on envoie le document dans le cas du ctrl(+maj)+E (mustSend = true)
-        if (mustSend) {
-            // Attendre la disparition de la barre de progression
+    
+        // 4. Gestion de l'envoi du document après DMP (si demandé)
+        if (sendAfterPrint) {
             waitForDMPCompletion(() => {
-                // Ensuite, on envoie le document
                 console.log('[startPrinting] Envoi du document au DMP terminé, je clique sur le bouton Envoyer');
                 setTimeout(() => {
                     clickPrintModelNumber(modelNumber, true);
@@ -474,6 +556,9 @@ async function startPrinting(handlingType, whatToPrint, postPrintBehavior, model
             });
         }
 
+        // 5. Gestion de l'impression de masse :
+        //       si massPrint est activé, on doit inhiber l'ouverture d'un nouvel onglet au lancement de l'impression,
+        //       et fermer l'onglet en cours à la fin de l'impression
     }
 }
 
