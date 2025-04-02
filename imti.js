@@ -67,11 +67,13 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'oneClickMT', function () {
             });
             let checkBoxes = elements[0].parentElement.querySelectorAll('input[type="checkbox"]');
             checkBoxes.forEach(checkBox => {
-                checkBox.click();
-                recordMetrics({ clicks: 1, drags: 1 });
+                if (!checkBox.checked) {
+                    checkBox.click();
+                    recordMetrics({ clicks: 1, drags: 1 });
+                }
             });
             setTimeout(() => {
-                let boutonValider = document.querySelector('.targetValider');
+                let boutonValider = document.querySelector('button[title="Transmettre le formulaire de déclaration de choix du médecin traitant"]');
                 boutonValider.click();
             }, 500);
         }

@@ -607,7 +607,7 @@ function companionPrintDone(delay = 20000) {
         const startTime = Date.now();
         const interval = setInterval(() => {
             const lastPrintDate = sessionStorage.getItem('lastPrintDate');
-            
+
             if (lastPrintDate) {
                 const printTime = Date.parse(lastPrintDate);
                 if (Date.now() - printTime < 5000) {
@@ -718,7 +718,7 @@ async function tabAndPrintHandler(mustSend = false) {
                 console.log('[tabAndPrintHandler] fin de la boucle de réinitialisation de lastPrintDate');
                 return;
             }
-            
+
             console.log('[tabAndPrintHandler] réinitialisation de lastPrintDate');
             setLastPrintDate();
         }, 100);
@@ -760,3 +760,177 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'instantPrint', function () {
         }
     }
 });
+
+
+
+/** Impression de l'ensemble des documents du jour
+ * passe forcément par les tabs
+ */
+const PRINTALLFUNCTION = '*printAll';
+addTweak('/FolderMedical/PatientViewForm.aspx', PRINTALLFUNCTION, function () {
+    // Là on considère qu'on travaille dans un nouvel onglet :
+    // on parcours la liste d'ids présents dans le session storage.
+    // on va cliquer sur l'élément modifier correspondant, et le supprimer
+    // de la liste.
+
+    let idsToPrint = JSON.parse(localStorage.getItem('printAllIds'));
+    console.log('idsToPrint', idsToPrint);
+    let idToPrint = idsToPrint[0];
+    idsToPrint.shift(); // Supprimer l'id de la liste
+    localStorage.setItem('printAllIds', JSON.stringify(idsToPrint));
+    console.log('idToPrint', idToPrint);
+    if (!idToPrint) {
+        return; // On a tout imprimé
+    }
+    
+    // Ajout d'un timestamp dans le sessionStorage pour indiquer que ce tab doit imprimer
+    sessionStorage.setItem('thisTabMustBePrinted', Date.now().toString());
+    
+    idToPrint = document.querySelector(`#${idToPrint}`);
+    if (idToPrint) {
+        idToPrint.click();
+        console.log('idToPrint clicked', idToPrint);
+    } else {
+        // S'il manque l'id, on est probablement sur un élements qui nécessite l'historique mixte pour s'afficher
+        const mixtHistoryButton = document.querySelector('#ContentPlaceHolder1_ButtonShowAllLastEvenement');
+        if (mixtHistoryButton) {
+            mixtHistoryButton.click();
+            console.log('mixtHistoryButton clicked', mixtHistoryButton);
+            waitForElement({
+                selector: `#${idToPrint}`,
+                justOnce: true,
+                callback: (newElements) => {
+                    console.log('idToPrint clicked', newElements[0]);
+                    newElements[0].click();
+                }
+            });
+        } else {
+            console.error('Aucun élément à imprimer trouvé');
+            sessionStorage.removeItem('thisTabMustBePrinted'); // Nettoyer le storage si on ne trouve rien
+            return;
+        }
+    }
+});
+
+addTweak(["/FolderMedical/CertificatForm.aspx", "/FolderMedical/DemandeForm.aspx", "/FolderMedical/PrescriptionForm.aspx", "/FolderMedical/CourrierForm.aspx"], PRINTALLFUNCTION, function () {
+    // On est maintenant dans un des éléments à imprimer.
+    // Vérifier si le contrôle thisTabMustBePrinted existe et est récent
+    const printTimestamp = sessionStorage.getItem('thisTabMustBePrinted');
+    
+    if (printTimestamp && (Date.now() - parseInt(printTimestamp) < 20000)) {
+        // La page doit être imprimée car elle a été ouverte par printAll il y a moins de 20 secondes
+        console.log('Impression automatique via printAll détectée');
+        handlePrint('print', 0);
+    }
+    
+    // Nettoyer le sessionStorage dans tous les cas
+    sessionStorage.removeItem('thisTabMustBePrinted');
+});
+
+function startPrintAll() {
+    // Lister tout les éléments modifier du jour
+    let elementsModifier = listAllTodaysDocs();
+    console.log('elementsModifier', elementsModifier);
+
+    // Stocker les ids de ces éléments dans le session storage
+    let ids = Array.from(elementsModifier).map(element => {
+        return element.id;
+    });
+    console.log('ids', ids);
+    localStorage.setItem('printAllIds', JSON.stringify(ids));
+    // On va ouvrir un nouvel onglet pour chaque élément grace à newPatientTab
+    let index = 0;
+    function openNextTab() {
+        if (index < ids.length) {
+            let id = ids[index];
+            console.log('id', id);
+            newPatientTab(id).then(() => {
+                index++;
+                openNextTab();
+            });
+        } else {
+            console.log('Tous les onglets ont été ouverts');
+        }
+    }
+    openNextTab();
+}
+
+
+function listAllTodaysDocs() {
+    // On va d'abord chercher tous les conteneurs du jour
+    let containers = document.querySelectorAll('td[title="Cliquez sur la date pour ouvrir."]')
+    // Parmi eux, on cherche ceux contenant la date du jour en innerText au format jj/mm/aaaa
+    let today = new Date();
+    let todayString = today.toLocaleDateString('fr-FR');
+    console.log('todayString', todayString);
+    
+    // Trouver tous les marqueurs de conteneur du jour
+    let todayContainerMarkers = Array.from(containers).filter(container => 
+        container.innerText.includes(todayString)
+    );
+    console.log('Nombre de conteneurs trouvés pour aujourd\'hui:', todayContainerMarkers.length);
+    
+    if (todayContainerMarkers.length === 0) {
+        console.error('Aucun conteneur trouvé pour aujourd\'hui');
+        return [];
+    }
+    
+    // Récupérer tous les div.sc correspondants
+    let todayContainers = todayContainerMarkers.map(marker => 
+        marker.closest('div.sc')
+    ).filter(container => container !== null);
+    
+    console.log('Conteneurs valides:', todayContainers.length);
+    
+    // Accumuler tous les éléments "Modifier" de tous les conteneurs
+    let allElementsModifier = [];
+    
+    todayContainers.forEach((container, index) => {
+        // Chercher les liens "Modifier" dans ce conteneur
+        let links = container.querySelectorAll('div.soc');
+        console.log(`Liens trouvés dans le conteneur ${index+1}:`, links.length);
+        
+        let elementsModifier = Array.from(links).filter(link => 
+            link.innerText.includes('Modifier')
+        );
+        
+        // Filtrer les éléments selon les types de documents voulus
+        const toInclude = ['Certificat', 'Demande', 'Prescription', 'Courrier'];
+        elementsModifier = elementsModifier.filter(link => {
+            let parent = link.parentElement;
+            let brotherOfParent = parent.previousElementSibling;
+            
+            if (!brotherOfParent) {
+                console.log('Élément sans frère précédent:', link);
+                return false;
+            }
+            
+            // Vérifier dans le texte du frère aîné
+            let text = brotherOfParent.innerText || '';
+            
+            // Vérifier également dans les attributs des spans enfants
+            let spans = brotherOfParent.querySelectorAll('span');
+            let hasMatchingSpan = false;
+            
+            spans.forEach(span => {
+                let className = span.className || '';
+                let title = span.getAttribute('title') || '';
+                
+                toInclude.forEach(type => {
+                    if (className.includes('img16' + type) || title.includes(type)) {
+                        hasMatchingSpan = true;
+                    }
+                });
+            });
+            
+            let include = toInclude.some(type => text.includes(type)) || hasMatchingSpan;
+            return include;
+        });
+        
+        console.log(`Éléments "Modifier" valides dans le conteneur ${index+1}:`, elementsModifier.length);
+        allElementsModifier = allElementsModifier.concat(elementsModifier);
+    });
+    
+    console.log('Total des éléments "Modifier" trouvés:', allElementsModifier.length);
+    return allElementsModifier;
+}

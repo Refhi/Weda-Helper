@@ -11,7 +11,11 @@ const keyCommands = {
     'push_valider': push_valider,
     'push_annuler': push_annuler,
     'print_meds': function () {
-        handlePrint({printType: 'print', modelNumber: 0});
+        if (window.location.href.includes('/FolderMedical/PatientViewForm.aspx')) {
+            startPrintAll();
+        } else {
+            handlePrint({printType: 'print', modelNumber: 0});
+        }
     },
     'print_meds_bis': function () {
         handlePrint({printType: 'print', modelNumber: 1});

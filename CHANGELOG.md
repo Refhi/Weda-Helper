@@ -11,6 +11,19 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#399](https://github.com/Refhi/Weda-Helper/issues/399) - Ajout d'un bouton pour mettre à jour le VSM en un clic (vérifie tout de même que le VSM rempli les 70% de nomenclature du ROSP avant de valider).
 - [#396](https://github.com/Refhi/Weda-Helper/issues/396) - Il est désormais possible de déclarer un type de recherche médicamenteuse par défaut (dans les options).
 - Les descriptions des options sont mieux mises en forme, ajout d'un exemple détaillé pour les catégories de classement automatique.
+- [#401](https://github.com/Refhi/Weda-Helper/issues/401) - Ajout de quelques aides pour les cotations de spécialités (APC, APY, APU, MCS)
+- [#402](https://github.com/Refhi/Weda-Helper/issues/402) - Changez la durée de TOUT les traitements en 1 clic ! (en allant dans "Définir la durée de traitement en mois pour tous les médicaments", un nouveau bouton est ajouté qui fera à votre place tout le travail)
+- [#397](https://github.com/Refhi/Weda-Helper/issues/397) - Vous pouvez désormais appeler Ctrl+P (et seulement celui-ci !) pour imprimer TOUT les documents du jour depuis l'accueil du dossier patient. Pensez à afficher l'historique mixte si un courrier doit être imprimé. Cela fonctionne surtout si vous avez activé l'impression complète en 1 clic via le Companion.
+- [#387](https://github.com/Refhi/Weda-Helper/issues/387) - Lors de l'import de masse, ajout d'une passe par le choix du médecin à sélectionner si cette liste est disponible
+- [#389](https://github.com/Refhi/Weda-Helper/issues/389) - Il est désormais possible de choisisir le classement automatique des documents importés. C'est désactivé par défaut.
+- [#387](https://github.com/Refhi/Weda-Helper/issues/387) - Lors de l'import de masse, le médecin attitré est désormais sélectionné automatiquement.
+- [#381](https://github.com/Refhi/Weda-Helper/issues/381) - Refonte du système de titre automatique
+
+## Refactory :
+- addTweak prend désormais en charge les options présentes sous forme de str (et pas seullement bool)
+
+## Fix :
+- [#394](https://github.com/Refhi/Weda-Helper/issues/394) - Correction d'un bug dans l'historique des cotations (fonction pour l'instant non activable car en attente de la validation de Weda)
 
 # [2.11.3] - Amélioration de l'apparence & Tipeee
 ## Améliorations :

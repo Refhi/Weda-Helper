@@ -125,7 +125,7 @@ function PatientSelectEntryListener() {
 
 // // Tab and search tweaks
 // [Page d'upload] Tweak the uploader page
-addTweak('/FolderMedical/UpLoaderForm.aspx', 'TweakImports', function () {
+addTweak('/FolderMedical/UpLoaderForm.aspx', 'TweakImports', async function () {
     // Modifie la taille de la fenêtre de prévisualisation du PDF
     function uploaderformResizeElements() {
         const newsize = '600px';
@@ -148,13 +148,21 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'TweakImports', function () {
     }
 
     // Modifie l'ordre de tabulation des éléments
-    function uploaderformSetTabOrder() {
+    async function uploaderformSetTabOrder() {
         const elementIds = [
             'ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_',
             'ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_',
             'ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_',
-            'ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_'
+            'ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_',
+            'ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementUser_' // Nom médecin
         ];
+
+        // On récupère d'abord la valeur de l'option
+        const PdfParserAutoClassification = await getOptionPromise('PdfParserAutoClassification');
+        // Ajoute l'élément de classe de destination seulement si l'option est activée
+        if (PdfParserAutoClassification) {
+            elementIds.push('ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementEvenementType_');
+        }
 
         let tabIndex = 1;
         for (let i = 0; i <= 7; i++) {
@@ -276,11 +284,11 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'TweakImports', function () {
     }
 
     // modifie la page d'upload : modifie la taille de prévisu, modifie l'ordre de tabulation et place un listener sur la searchbox.
-    function uploaderformSetup(verticalMode) {
+    async function uploaderformSetup(verticalMode) {
         if (!verticalMode) {
             uploaderformResizeElements();
         }
-        uploaderformSetTabOrder();
+        await uploaderformSetTabOrder();
         SearchBoxEntryListener(idsSearchBox, validTarget, true);
         addEventListeners();
     };
@@ -302,14 +310,14 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'TweakImports', function () {
     }
 
     // Create a MutationObserver instance to watch for changes in the DOM
-    var observer = new MutationObserver(function (mutations) {
-        uploaderformSetup(verticalMode);
+    var observer = new MutationObserver(async function (mutations) {
+        await uploaderformSetup(verticalMode);
     });
 
     // Start observing the document with the configured parameters
     observer.observe(document, { childList: true, subtree: true });
 
-    uploaderformSetup(verticalMode);
+    await uploaderformSetup(verticalMode);
 });
 
 

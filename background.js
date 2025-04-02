@@ -274,6 +274,12 @@ var advancedDefaultSettings = [{
                 "description": "Extrait automatiquement la date du document importé.",
                 "default": true,
             }, {
+                "name": "PdfParserAutoClassification",
+                "type": TYPE_BOOL,
+                "description": "Extrait automatiquement la classification du document importé.",
+                "default": false,
+                "longDescription": "Si vous souhaitez classer les imports dans les parties Consultation/Résultats d'examen/Courrier, vous pouvez activer cette option pour le faire automatiquement.",
+            },{
                 "name": "PdfParserDateAlphabetique",
                 "type": TYPE_BOOL,
                 "description": "Recherche également les dates type 15 novembre 2021.",
@@ -555,11 +561,11 @@ var advancedDefaultSettings = [{
             "default": "G,GS,VG+MD+IK, VGS+MD+IK, VG+MD, VGS+MD, COD, GS+MEG, G+MEG"
         }]
     }, {
-        "name": "cotationHelper",
-        "type": TYPE_BOOL,
-        "description": "Propose des cotations supplémentaires selon le contexte (SHE, MCG, etc.).",
-        "longDescription": "Nous sommes parfois confronté à des cotations modificatrices très faciles à oublier en fonction du contexte. Cette petite aide vous permettra peut-être d'en rattraper certaines. Par exemple s'il détecte que vous êtes en train de faire des consultations aux horaires du SAS, il vous suggerera d'ajouter la cotation SHE. Si vous voyez un patient hors résidence, il vous proposera la cotation MCG. A chaque fois un clic sur la cotation vous permettra de consulter la source parlant de cette cotation.",
-        "default": true
+        "name": "cotationHelper2",
+        "type": TYPE_TEXT,
+        "description": "Propose des notifications pour suggérer des cotations selon le contexte (SHE, MCG, etc.). Supprimez celles qui ne vous intéressent pas.",
+        "longDescription": "Nous sommes parfois confronté à des cotations modificatrices très faciles à oublier en fonction du contexte.\nCette petite aide vous permettra peut-être d'en rattraper certaines.\nPar exemple s'il détecte que vous êtes en train de faire des consultations aux horaires du SAS, il vous suggerera d'ajouter la cotation SHE.\nSi vous voyez un patient hors résidence, il vous proposera la cotation MCG.\nA chaque fois un clic sur la cotation vous permettra de consulter la source parlant de cette cotation.\nPour l'instant les aides concernent les cotations suivantes :\nMCG, SHE, MHP, RDV, MOP, PAV, APC, APY, APU, MCS",
+        "default": "MCG, SHE, MHP, RDV, MOP, PAV, APC, APY, APU, MCS"
     }]
 }, {
     "name": "Lien avec Weda-Helper-Companion",

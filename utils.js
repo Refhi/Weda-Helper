@@ -295,7 +295,12 @@ function addTweak(path, option, callback) {
             });
         } else {
             getOption(option, function (optionValue) {
-                if ((optionValue === true && !invert) || (optionValue === false && invert)) {
+                // Considérer comme true si:
+                // - optionValue est true (booléen)
+                // - optionValue est une chaîne non vide
+                // Et appliquer l'inversion si nécessaire
+                const isActive = (optionValue === true || (typeof optionValue === 'string' && optionValue !== ''));
+                if ((isActive && !invert) || (!isActive && invert)) {
                     console.log(`[addTweak] ${option} activé`);
                     callback();
                 }
