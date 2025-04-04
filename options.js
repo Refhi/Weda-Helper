@@ -63,9 +63,17 @@ function createInput(option) { // gestion des différents types d'input
   let inputType = 'input';
   if (['html', 'radio'].includes(option.type)) {
     inputType = 'div';
+  } else if (option.type === 'json') {
+    inputType = 'textarea'; // Utiliser un textarea pour les options de type json
   }
   const input = document.createElement(inputType);
   input.id = option.name;
+
+  // Désactiver l'élément si l'option est marquée comme désactivée
+  if (option.disabled) {
+    input.disabled = true;
+  }
+  
 
   // Récupération de la valeur de l'option (sauvegardée ou par défaut)
   getOptionValue(option).then(optionValue => {
@@ -77,6 +85,12 @@ function createInput(option) { // gestion des différents types d'input
       case 'text':
         input.type = 'text';
         input.value = optionValue;
+        break;
+      case 'json':
+        input.classList.add('json-input');
+        input.value = displayCategories(optionValue);
+        input.style.height = '300px';
+        input.style.width = '100%';
         break;
       case 'smalltext':
         input.type = 'text';
@@ -125,11 +139,110 @@ async function getOptionValue(option) {
   });
 }
 
+// Afficher le json sous une forme plus lisible, avec un retour à la ligne après chaque [
+function displayCategories(jsonStr) {
+  let display = '';
+  try {
+    const categories = JSON.parse(jsonStr);
+    categories.forEach(category => {
+      const [name, keywords] = category;
+      display += `${name} : ${keywords.join(' , ')}\n`;
+    });
+  } catch (error) {
+    console.error('Erreur lors de l\'analyse du JSON:', error);
+    // Mettre une erreur pour l'utilisateur
+    alert('Les paramètres pour la gestion des catégories ne sont pas valides, merci de les corriger');
+    display = jsonStr;
+  }
+  console.log(display);
+  return display;
+}
+
+// Récupérer les données affichées et les convertir en JSON
+function getCategoriesFromJsonInput(input) {
+  const categories = [];
+  const lines = input.value.split('\n');
+  lines.forEach(line => {
+    if (line.trim()) { // Vérifier que la ligne n'est pas vide
+      const [name, keywords] = line.split(':');
+      if (name.trim()) { // Vérifier que le nom de la catégorie n'est pas vide
+        const category = [name.trim(), keywords ? keywords.split(',').map(keyword => keyword.trim()) : []];
+        categories.push(category);
+      }
+    }
+  });
+  console.log(JSON.stringify(categories));
+  return categories;
+}
+
 
 function createLabel(option) {
+  // Ajouter les styles si pas déjà présents
+  if (!document.getElementById('info-tooltip-styles')) {
+    const styles = document.createElement('style');
+    styles.id = 'info-tooltip-styles';
+    styles.textContent = `
+      .info-icon {
+        cursor: help;
+        position: relative;
+        margin-left: 5px;
+      }
+      
+      .info-tooltip {
+        display: none;
+        position: absolute;
+        left: 25px;
+        top: -5px;
+        background: white;
+        color: inherit;
+        padding: 8px 12px;
+        border-radius: 4px;
+        width: max-content;
+        max-width: 600px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        z-index: 100;
+        font-size: 14px;
+        line-height: 1.4;
+      }
+      
+      .info-tooltip::before {
+        content: '';
+        position: absolute;
+        left: -4px;
+        top: 12px;
+        transform: translateY(-50%);
+        border-width: 6px;
+        border-style: solid;
+        border-color: transparent #333 transparent transparent;
+      }
+      
+      .info-icon:hover .info-tooltip {
+        display: block;
+      }`;
+    document.head.appendChild(styles);
+  }
+
   const label = document.createElement('span');
-  label.innerHTML = option.description; // Utilisez innerHTML pour insérer du HTML
+  label.innerHTML = option.description;
   label.setAttribute('for', option.name);
+
+  if (option.longDescription) {
+    const infoIcon = document.createElement('span');
+    infoIcon.innerHTML = ' ℹ️';
+    infoIcon.className = 'info-icon';
+    infoIcon.style.fontFamily = 'Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"'; // Ensure emoji font
+
+    
+    const tooltip = document.createElement('div');
+    tooltip.className = 'info-tooltip';
+    // tooltip.textContent = option.longDescription;
+    tooltip.innerHTML = option.longDescription.replace(/\n/g, '<br>');
+
+    
+    infoIcon.appendChild(tooltip);
+    label.appendChild(infoIcon);
+  }
+
   return label;
 }
 
@@ -245,7 +358,7 @@ chrome.storage.local.get('defaultShortcuts', function (result) {
 
     buttonEvent.target.innerHTML = 'Appuyez sur une touche de fonction ou une combinaison de touches';
     buttonEvent.target.classList.add('modifying');
-    
+
     hotkeys('*', function (event, handler) { // On écoute toutes les pressions de touche
       function saveShortcut(keys) {
         var shortcut = "";
@@ -300,6 +413,8 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
       let element = document.getElementById(option);
       if (element.classList.contains('radio-group')) {
         valuesToSave[option] = getSelectedRadioValue(option);
+      } else if (element.classList.contains('json-input')) {
+        valuesToSave[option] = JSON.stringify(getCategoriesFromJsonInput(element));
       } else if (element) { // Vérifiez si l'élément existe
         var value = element.type === 'checkbox' ? element.checked : element.value;
         valuesToSave[option] = value;

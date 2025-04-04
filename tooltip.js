@@ -172,7 +172,7 @@ addTweak('*', '*Tooltip', function () {
     document.addEventListener('keydown', function (event) {
         if (isWindows && event.altKey) {
             handleAltPress();
-        } else if (!isWindows && event.altKey) {
+        } else if (!isWindows && event.key == "Alt") {
             handleAltPressMac(event);
         }
     });

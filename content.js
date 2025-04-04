@@ -197,7 +197,7 @@ addTweak('/FolderTools/BiblioForm.aspx', '*addPrintIcon', function () {
 
             // Ajouter un gestionnaire d'événements de clic sur l'icône d'imprimante
             printIcon.addEventListener('click', function () {
-                handlePrint('print')
+                handlePrint({printType: 'print'});
             });
 
             element.appendChild(printIcon);
@@ -244,5 +244,18 @@ addTweak('*', '*middleClickW', function () {
     waitForElement({
         selector: '.level1.static',
         callback: addMiddleClickEvent
+    });
+});
+
+
+// Inhibition du comportement classique de la touche Alt pour ouvrir le menu du navigateur
+// cela facilite l'usage de l'aide (affichée en maintenant Alt appuyé)
+// et de la récupération du focus via le Companion qui simule un Alt
+
+addTweak('*', 'inhitAltKey', function () {
+    window.addEventListener('keydown', function (event) {
+        if (event.key === 'Alt') {
+            event.preventDefault();
+        }
     });
 });

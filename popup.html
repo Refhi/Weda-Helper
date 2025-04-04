@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,41 +10,132 @@
             font-family: Arial, sans-serif;
             margin: 20px;
         }
+
         .button-container {
             display: flex;
             align-items: center;
-            margin-bottom: 10px; /* Ajouter un peu d'espace entre les lignes */
+            margin-bottom: 10px;
+            /* Ajouter un peu d'espace entre les lignes */
         }
+
         button {
-            margin-right: 10px; /* Ajouter un peu d'espace entre le bouton et le texte */
+            margin-right: 10px;
+            /* Ajouter un peu d'espace entre le bouton et le texte */
             padding: 10px 20px;
             font-size: 1em;
             border: none;
             border-radius: 5px;
             color: #fff;
-            background-color: #007BFF; /* Rendre le fond transparent */
+            background-color: #007BFF;
+            /* Rendre le fond transparent */
             cursor: pointer;
         }
+
         button:hover {
             background-color: #0056b3;
         }
+
         input[type="number"] {
-            width: 100px; /* Réduire la taille du champ de saisie */
+            width: 100px;
+            /* Réduire la taille du champ de saisie */
             padding: 10px;
             font-size: 1em;
             border: 1px solid #ccc;
             border-radius: 5px;
         }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+            margin-right: 10px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+        }
+
+        input:checked+.slider {
+            background-color: #007BFF;
+        }
+
+        input:focus+.slider {
+            box-shadow: 0 0 1px #007BFF;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(26px);
+        }
+
+        /* Bords arrondis */
+        .slider.round {
+            border-radius: 34px;
+        }
+
+        .slider.round:before {
+            border-radius: 50%;
+        }
+
+        .options-icon {
+            display: block;
+            text-align: left;
+            margin-top: 20px;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .options-icon svg {
+            fill: #007BFF;
+            transition: fill 0.3s;
+        }
+
+        .options-icon:hover svg {
+            fill: #0056b3;
+        }
     </style>
 </head>
+
 <body>
     <div class="button-container">
         <button id="allConsultation">Tout CS</button>
         <span>Tout mettre en consultation</span>
+        <span class="info-icon"
+            title="si cliqué depuis la fenêtre d'import des documents en masse, permet de mettre tout les documents visible en attente d'import à destination des consultations.">
+            ℹ️</span>
     </div>
     <div class="button-container">
         <button id="tpebis">TPE Bis</button>
         <span>Relance le dernier règlement sur le TPE</span>
+        <span class="info-icon"
+            title="c'est pour ce patient qui a tellement mis de temps à sortir sa carte que le TPE a expiré"> ℹ️</span>
     </div>
     <div class="button-container">
         <button id="sendCustomAmount">Envoyer au TPE</button>
@@ -52,7 +144,31 @@
     <div class="button-container">
         <button id="sendWedaNotif">Notif</button>
         <span>envoie une notification de test</span>
+        <span class="info-icon"
+            title="C'est surtout à destination des développeurs, mais si ça vous amuse vous pouvez cliquer dessus.">
+            ℹ️</span>
     </div>
+    <div class="button-container">
+        <label class="switch">
+            <input type="checkbox" id="instantVaccineSlider">
+            <span class="slider round"></span>
+        </label>
+        <span>Vaccins instantanés</span>
+        <span class="info-icon"
+            title="si activée, toute ouverture de dossier patient amène immédiatement sur le scan du datamatrix d'un vaccin, permettant aux vaccineurs en série de gagner du temps (particulièrement pensée pour les pharmaciens)">
+            ℹ️</span>
+    </div>
+
+    <div style="display: flex; justify-content: left; margin-top: 20px;">
+        <div id="optionsLink" class="options-icon" title="Paramètres de l'extension" style="font-size: 32px; margin: 0 10px;">⚙️</div>
+        <div id="changelogLink" class="options-icon" title="Voir les dernières mises à jour" style="font-size: 32px; margin: 0 10px;">📋</div>
+        <div id="readmeLink" class="options-icon" title="Documentation et aide" style="font-size: 32px; margin: 0 10px;">ℹ️</div>
+        <div id="tipeeeLink" class="options-icon" title="Soutenir le développement" style="font-size: 32px; margin: 0 10px;">
+            <img src="Images/logoTipeee.png" alt="Tipeee" style="height: 50px; width: auto;">
+        </div>
+    </div>
+    
     <script src="popup.js"></script>
 </body>
+
 </html>

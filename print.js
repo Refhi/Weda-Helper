@@ -5,33 +5,120 @@
  * - `ctrl+shift+P` => Impression, si pertinent du modèle 1
  * - `ctrl+D` => Téléchargement, si pertinent du modèle 0
  * - `ctrl+shift+D` => Téléchargement, si pertinent du modèle 1
+ * - `ctrl+E` => Impression et envoi, si pertinent du modèle 0
+ * - `ctrl+shift+E` => Impression et envoi, si pertinent du modèle 1
  *
- * @param {string} printType - Le type d'action à effectuer, soit "print" pour impression, soit "download" pour téléchargement.
- * @param {number} [modelNumber=0] - Le numéro du modèle à utiliser, par défaut 0.
- *
+ * @param {Object} config - Configuration de l'impression
+ * @param {string} config.printType - Type d'action à effectuer, soit "print" pour impression, soit "download" pour téléchargement.
+ * @param {number} [config.modelNumber=0] - Numéro du modèle à utiliser, par défaut 0.
+ * @param {boolean} [config.massPrint=false] - Indique si on est en mode impression multiple, par défaut false.
+ * @param {boolean} [config.sendAfterPrint=false] - Indique si le document doit être envoyé après impression, par défaut false.
+ * 
  * @example
- * // Impression du modèle 0 (si pertinent)
- * handlePrint('print', 0);
- *
+ * // Impression simple du modèle 0
+ * handlePrint({ printType: 'print' });
+ * 
  * @example
- * // Téléchargement du modèle 1 (si pertinent)
- * handlePrint('download', 1);
+ * // Impression du modèle 1
+ * handlePrint({ printType: 'print', modelNumber: 1 });
+ * 
+ * @example
+ * // Téléchargement du modèle 0
+ * handlePrint({ printType: 'download' });
+ * 
+ * @example
+ * // Impression et envoi du modèle 0
+ * handlePrint({ printType: 'print', sendAfterPrint: true });
  */
-function handlePrint(printType, modelNumber = 0, forcedPostPrintBehavior = null) {
-    // D'abord récupération de l'ensemble des options pertinentes dans les options.
-    getOption(['RemoveLocalCompanionPrint', 'postPrintBehavior', 'instantPrint'], function ([RemoveLocalCompanionPrint, postPrintBehavior, instantPrint]) {
-        // De quel type d'"impression" s'agit-il ? (impression, téléchargement, companion)
-        const handlingType = deduceHandlingType(printType, RemoveLocalCompanionPrint);
-        // Qu'imprime-t-on ? (courbe, FSE ou modèle)
-        const whatToPrint = deduceWhatToPrint();
-        // Est-ce qu'instantPrint est activé ? (nécessite que RemoveLocalCompanionPrint soit false)
-        instantPrint = instantPrint && !RemoveLocalCompanionPrint;
-        // On lance le processus d'impression
-        if (forcedPostPrintBehavior) { postPrintBehavior = forcedPostPrintBehavior; } // nécessaire pour l'envoi simultané par ctrl+E
-        console.debug('handlePrint', postPrintBehavior);
-        startPrinting(handlingType, whatToPrint, postPrintBehavior, modelNumber, instantPrint);
-    });
+async function handlePrint({ printType, modelNumber = 0, massPrint = false, sendAfterPrint = false } = {}) {
+    try {
+        // Récupération des options
+        const [RemoveLocalCompanionPrint, postPrintBehavior, instantPrint] =
+            await getOptionPromise(['RemoveLocalCompanionPrint', 'postPrintBehavior', 'instantPrint']);
+
+        // Création d'un objet de configuration pour centraliser les paramètres
+        const printConfig = {
+            // Type d'impression (impression, téléchargement, companion)
+            handlingType: deduceHandlingType(printType, RemoveLocalCompanionPrint),
+
+            // Type de contenu (courbe, FSE, modèle)
+            whatToPrint: deduceWhatToPrint(),
+
+            // Types de prise en charge spécifiques
+            massPrint: massPrint,
+            sendAfterPrint: sendAfterPrint,
+
+            // // Comportement après impression (avec priorité à forcedPostPrintBehavior)
+            postPrintBehavior: postPrintBehavior,
+
+            // Numéro du modèle d'impression
+            modelNumber: modelNumber,
+
+            // Impression instantanée (uniquement si companion est activé)
+            instantPrint: instantPrint && !RemoveLocalCompanionPrint
+        };
+
+        // Validation de la configuration
+        if (!validatePrintConfig(printConfig)) {
+            console.error('Configuration d\'impression invalide:', printConfig);
+            return;
+        }
+        console.debug('Configuration de l\'impression:', printConfig);
+
+        // Démarrage du processus d'impression avec la configuration complète
+        await startPrinting(printConfig);
+
+        // Exemple de printConfig : { handlingType: 'print', whatToPrint: 'model', massPrint: false, sendAfterPrint: false, postPrintBehavior: 'doNothing', modelNumber: 0, instantPrint: false }
+
+
+    } catch (error) {
+        console.error('Erreur lors de l\'initialisation de l\'impression:', error);
+    }
 }
+
+
+/**
+ * Valide les paramètres de configuration pour l'impression ou le téléchargement.
+ * 
+ * @param {Object} printConfig - Configuration de l'impression
+ * @param {string} printConfig.handlingType - Type de traitement ('print', 'download', 'companion')
+ * @param {string} printConfig.whatToPrint - Type de contenu ('courbe', 'fse', 'model')
+ * @param {string} printConfig.postPrintBehavior - Comportement post-impression ('doNothing', 'closePreview', 'returnToPatient', 'send')
+ * @param {number} printConfig.modelNumber - Numéro du modèle (obligatoire si whatToPrint='model')
+ * @returns {boolean} - True si la configuration est valide, sinon false
+ */
+function validatePrintConfig(printConfig) {
+    // Validation des types de traitement
+    const handlingTypes = ['print', 'download', 'companion'];
+    if (!handlingTypes.includes(printConfig.handlingType)) {
+        console.error('[validatePrintConfig] Type de traitement non reconnu:', printConfig.handlingType);
+        return false;
+    }
+
+    // Validation des types de contenu
+    const whatToPrintTypes = ['courbe', 'fse', 'model'];
+    if (!whatToPrintTypes.includes(printConfig.whatToPrint)) {
+        console.error('[validatePrintConfig] Type de contenu non reconnu:', printConfig.whatToPrint);
+        return false;
+    }
+
+    // Validation des comportements post-impression
+    const postPrintBehaviors = ['doNothing', 'closePreview', 'returnToPatient', 'send'];
+    if (printConfig.postPrintBehavior && !postPrintBehaviors.includes(printConfig.postPrintBehavior)) {
+        console.error('[validatePrintConfig] Comportement post-impression non reconnu:', printConfig.postPrintBehavior);
+        return false;
+    }
+
+    // Validation du numéro de modèle (uniquement si on imprime un modèle)
+    if (printConfig.whatToPrint === 'model' && (isNaN(printConfig.modelNumber) || printConfig.modelNumber < 0)) {
+        console.error('[validatePrintConfig] Numéro de modèle non valide:', printConfig.modelNumber);
+        return false;
+    }
+
+    return true;
+}
+
+
 
 /**
  * Détermine le type de demande d'impression ou de téléchargement.
@@ -340,41 +427,23 @@ async function printIframeWhenAvailable(selector, handlingType, whatToPrint, pos
 
 
 /**
- * Démarre le processus d'impression ou de téléchargement en fonction des paramètres fournis.
+ * Démarre le processus d'impression ou de téléchargement en fonction de la configuration fournie.
  *
- * @param {string} handlingType - Le type de traitement à effectuer : 'print', 'download', 'companion'.
- * @param {string} whatToPrint - Le type de contenu à imprimer ou télécharger : 'courbe', 'fse', ou un numéro de modèle.
- * @param {string} postPrintBehavior - Le comportement à adopter après l'impression : 'doNothing', 'closePreview', 'returnToPatient'.
- * @param {number} modelNumber - Le numéro du modèle à utiliser, généralement 0 ou 1, parfois plus.
+ * @param {Object} printConfig - Configuration complète de l'impression
+ * @param {string} printConfig.handlingType - Type de traitement ('print', 'download', 'companion')
+ * @param {string} printConfig.whatToPrint - Type de contenu ('courbe', 'fse', 'model')
+ * @param {string} printConfig.postPrintBehavior - Comportement post-impression ('doNothing', 'closePreview', 'returnToPatient', 'send')
+ * @param {number} printConfig.modelNumber - Numéro du modèle (requis pour whatToPrint='model')
+ * @param {boolean} [printConfig.instantPrint=false] - Active l'impression instantanée
+ * @param {boolean} [printConfig.massPrint=false] - Indique si on est en mode impression multiple
+ * @param {boolean} [printConfig.sendAfterPrint=false] - Indique si le document doit être envoyé après impression
  */
-async function startPrinting(handlingType, whatToPrint, postPrintBehavior, modelNumber, instantPrint) {
+async function startPrinting(printConfig) {
     console.log('startPrinting activé');
-    // Check if the parameters are correct
-    const handlingTypes = ['print', 'download', 'companion'];
-    if (!handlingTypes.includes(handlingType)) {
-        console.error('[startPrinting] Type non reconnu :', handlingType);
-        return;
-    }
-    const whatToPrintTypes = ['courbe', 'fse', 'model'];
-    if (!whatToPrintTypes.includes(whatToPrint)) {
-        console.error('[startPrinting] Type non reconnu :', whatToPrint);
-        return;
-    }
-    const postPrintBehaviors = ['doNothing', 'closePreview', 'returnToPatient', 'send'];
-    if (!postPrintBehaviors.includes(postPrintBehavior)) {
-        console.error('[startPrinting] Comportement non reconnu :', postPrintBehavior);
-        return;
-    }
-    const mustSend = postPrintBehavior === 'send';
 
-
-    if (whatToPrint === 'model' && isNaN(modelNumber)) {
-        console.error('[startPrinting] Numéro de modèle non valide :', modelNumber);
-        return;
-    }
-
-
-
+    // Exemple de printConfig : { handlingType: 'print', whatToPrint: 'model', massPrint: false, sendAfterPrint: false, postPrintBehavior: 'doNothing', modelNumber: 0, instantPrint: false }
+    // Extraction des propriétés de la configuration
+    let { handlingType, whatToPrint, massPrint, sendAfterPrint, postPrintBehavior, modelNumber, instantPrint } = printConfig;
     recordMetrics({ clicks: 3, drags: 4 });
 
     // trois grands cas de figure : impression d'une courbe, d'une fse ou d'un document
@@ -431,51 +500,72 @@ async function startPrinting(handlingType, whatToPrint, postPrintBehavior, model
         waitForFSEPrintGreenLight();
 
 
-    } else { // sinon, c'est un modèle d'impression   
-        if (instantPrint && !mustSend) {
-            postPrintBehavior = 'closePreview'; // On doit mettre 'returnToPatient' pour que l'envoi au DMP soit fait
-            // Appel de tabAndPrintHandler pour ouvrir un nouvel onglet avec le patient en cours
-            // gérer les notifications de succès ou d'échec
-            // et fermer l'onglet actuel une fois l'impression terminée
-            tabAndPrintHandler();
+    }
+    // cas des modèles d'impression
+    else {
+        // 1. Configuration du comportement post-impression
+        if (instantPrint && !massPrint) {
+            console.log('[startPrinting] instantPrint activé');
+            postPrintBehavior = 'closePreview';
+            // L'appel au DMP se fera manuellement après l'impression
+            tabAndPrintHandler(sendAfterPrint, massPrint);
         }
 
-        if (mustSend) {
-            postPrintBehavior = 'closePreview'; // Nécessaire pour qu'on puisse ensuite faire l'envoi au DMP puis l'envoi
+        if (massPrint) {
+            console.log('[startPrinting] massPrint activé');
+            // On fait presque comme pour l'instanPrint, mais tabAndPrintHandler n'ouvre pas de nouvel onglet
+            postPrintBehavior = 'closePreview';
+            tabAndPrintHandler(sendAfterPrint, massPrint);
         }
 
-        // il faut d'abord cliquer sur le modèle d'impression pertinent
+
+        if (sendAfterPrint) {
+            console.log('[startPrinting] sendAfterPrint activé');
+            // Fermer la prévisualisation pour permettre l'envoi au DMP puis l'envoi du document
+            postPrintBehavior = 'closePreview';
+        }
+
+        // 2. Processus d'impression principal
+        // Sélectionner le modèle d'impression
         clickPrintModelNumber(modelNumber);
-        // ensuite attendre que l'iframe soit chargé
-        printIframeWhenAvailable("#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile", handlingType, whatToPrint, postPrintBehavior)
-            .then((result) => {
-                if (result) {
-                    postPrintAction(postPrintBehavior, whatToPrint);
-                    if (instantPrint || mustSend) {
-                        // Si on utilise instantPrint ou 'send' on envoie manuellement au DMP
-                        const DMPCheckBox = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelPrescriptionDmp #mat-checkbox-1-input');
-                        // Vérifie si la case DMP est cochée
-                        if (DMPCheckBox && DMPCheckBox.checked) {
-                            // Envoie le DMP
-                            let DMPSendButton = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelPrescriptionDmp span.mat-button-wrapper');
-                            if (DMPSendButton) {
-                                console.log('[startPrinting] Je dois envoyer manuellement au DMP', DMPSendButton);
-                                DMPSendButton.click();
-                                // Attendre la disparition de la barre de progression
-                                if (mustSend) {
-                                    waitForDMPCompletion(() => {
-                                        // Ensuite, on envoie le document
-                                        console.log('[startPrinting] Envoi du document au DMP terminé, je clique sur le bouton Envoyer');
-                                        setTimeout(() => {
-                                            clickPrintModelNumber(modelNumber, true);
-                                        }, 500);
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
+
+        // Préparer et exécuter l'impression
+        const result = await printIframeWhenAvailable(
+            "#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile",
+            handlingType,
+            whatToPrint,
+            postPrintBehavior
+        );
+
+        // Arrêter si l'impression a échoué
+        if (!result) { return; }
+
+        // Exécuter l'action post-impression configurée
+        postPrintAction(postPrintBehavior, whatToPrint);
+
+        // 3. Gestion de l'envoi au DMP (si nécessaire)
+        // Vérifier si l'envoi au DMP est requis et possible
+        const DMPSendButton = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelPrescriptionDmp span.mat-button-wrapper');
+        const DMPCheckBox = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelPrescriptionDmp #mat-checkbox-1-input');
+        const DMPManuel = (instantPrint || sendAfterPrint) && DMPCheckBox && DMPCheckBox.checked && DMPSendButton;
+
+        // Arrêter si l'envoi au DMP n'est pas applicable
+        if (!DMPManuel) { return; }
+
+        // Envoyer au DMP
+        console.log('[startPrinting] Je dois envoyer manuellement au DMP', DMPSendButton);
+        DMPSendButton.click();
+
+        // 4. Gestion de l'envoi du document après DMP (si demandé)
+        if (sendAfterPrint) {
+            waitForDMPCompletion(() => {
+                console.log('[startPrinting] Envoi du document au DMP terminé, je clique sur le bouton Envoyer');
+                setTimeout(() => {
+                    clickPrintModelNumber(modelNumber, true); // C'est Weda qui renvoie vers l'accueil après l'envoi
+                }, 500);
             });
+        }
+
     }
 }
 
@@ -502,46 +592,65 @@ function waitForDMPCompletion(callback) {
 function watchForClose() {
     setTimeout(() => {
         sendWedaNotifAllTabs({
-            message: '[Weda-Helper] l\'onglet initiateur de l\'impression instantanée n\'a pas pu être fermé automatiquement. Veuillez le fermer manuellement. Cela arrive si l\'onglet initiateur n\'a pas été ouvert par Weda Helper.',
+            message: "[Weda-Helper] l\'onglet initiateur de l\'impression instantanée n\'a pas pu être fermé automatiquement. Problème d'autorisation ou vous êtes sur l'onglet qui devrait se fermer.",
             type: 'undefined',
             icon: 'print'
         });
+        console.warn("[watchForClose] l\'onglet initiateur de l\'impression instantanée n\'a pas pu être fermé automatiquement. Problème d'autorisation ou vous êtes sur l'onglet qui devrait se fermer.");
     }, 15000);
 }
 
 
-function companionPrintDone(callback, delay = 20000) {
-    let startTime = Date.now();
-    let interval = setInterval(function () {
-        let lastPrintDate = sessionStorage.getItem('lastPrintDate');
-        // console.log('lastPrintDate', lastPrintDate);
-        if (lastPrintDate) {
-            let printTime = Date.parse(lastPrintDate);
-            if (Date.now() - printTime < 5000) {
+/**
+ * Attend la fin de l'impression par l'application compagnon
+ * Retourne une promesse qui se résout lorsque l'impression est terminée avec succès
+ * ou qui est rejetée lorsque le délai est dépassé
+ * 
+ * @param {number} [delay=20000] - Délai maximum d'attente en ms avant d'abandonner
+ * @returns {Promise<void>} - Promesse qui se résout à la fin de l'impression ou se rejette en cas d'échec
+ */
+function companionPrintDone(delay = 20000) {
+    return new Promise((resolve, reject) => {
+        const startTime = Date.now();
+        const interval = setInterval(() => {
+            const lastPrintDate = sessionStorage.getItem('lastPrintDate');
+
+            if (lastPrintDate) {
+                const printTime = Date.parse(lastPrintDate);
+                if (Date.now() - printTime < 5000) {
+                    clearInterval(interval);
+                    sendWedaNotifAllTabs({
+                        message: 'L\'impression Instantanée terminée avec succès.',
+                        type: 'success',
+                        icon: 'print',
+                        duration: 2000
+                    });
+                    resolve();
+                }
+            }
+
+            if (Date.now() - startTime > delay) {
                 clearInterval(interval);
                 sendWedaNotifAllTabs({
-                    message: 'L\'impression Instantanée terminée avec succès.',
-                    type: 'success',
-                    icon: 'print',
-                    duration: 2000
+                    message: 'L\'impression Instantanée a échoué. Allez dans l\'onglet ayant lancé l\'impression pour vérifier.',
+                    type: 'undefined',
+                    icon: 'print'
                 });
-                callback();
+                reject(new Error('Délai d\'attente dépassé pour l\'impression'));
             }
-        }
-
-        if (Date.now() - startTime > delay) {
-            clearInterval(interval);
-            sendWedaNotifAllTabs({
-                message: 'L\'impression Instantanée a échoué. Allez dans l\'onglet ayant lancé l\'impression pour vérifier.',
-                type: 'undefined',
-                icon: 'print'
-            });
-        }
-    }, 100);
+        }, 100);
+    });
 }
 
 function closeWindow() {
-    // D'abord attendre l'apparition de l'élément avec role="progressbar"
+    console.log('closeWindow activé');
+    // Si l'envoi au DMP est décoché, on ferme l'onglet directement
+    if (!sendToDMPisSelected()) {
+        console.log('[InstantPrint] envoi au DMP non sélectionné, je ferme la fenêtre');
+        closeCurrentTab();
+    }
+    // Sinon on surveille que l'envoi au DMP soit terminé via la surveillance
+    // de l'élément avec role="progressbar"
     waitForElement({
         selector: '[role="progressbar"]',
         justOnce: true,
@@ -564,7 +673,8 @@ function closeWindow() {
                 if (!progressBarElement) {
                     console.log('[InstantPrint] progress bar disparue, je ferme la fenêtre');
                     clearInterval(interval);
-                    window.close();
+                    // window.close();
+                    closeCurrentTab();
                     // Normalement la fenêtre est fermée. Mais si jamais elle ne l'est pas, on le signale
                     watchForClose();
                 } else if (Date.now() - startTime > 40000) {
@@ -580,19 +690,83 @@ function closeWindow() {
     });
 }
 
+
+function sendToDMPisSelected() {
+    const selecteurCaseDMP = '#mat-checkbox-1-input';
+    const caseDMP = document.querySelector(selecteurCaseDMP);
+    return caseDMP && caseDMP.checked;
+}
+
 /**
- * Déclenche l'ouverure d'un nouvel onglet sur l'accueil du patient dans l'onglet actuel.
- * Fermé l'onglet initial une fois l'impression terminée.
- * Cette fonction ne doit être appelée que si l'instantPrint est True dans les options.
+ * Gère l'impression dans un nouvel onglet puis la fermeture de l'onglet original.
+ * Cette fonction coordonne le processus d'impression instantanée.
  * 
  * @async
- * @function tabAndPrintHandler
+ * @param {boolean} [mustSend=false] - Indique si le document doit être envoyé après impression
+ * @returns {Promise<void>} - Promesse résolue quand l'opération est terminée
  */
-async function tabAndPrintHandler() {
-    console.log('newTabPrintAndCloseOriginal activé');
-    // Ouvre un nouvel onglet avec l'URL du dossier du patient actuel
-    await newPatientTab();
-    companionPrintDone(closeWindow);
+async function tabAndPrintHandler(mustSend = false, massPrint = false) {
+    console.log('[tabAndPrintHandler] Démarrage du processus d\'impression instantanée');
+
+    try {
+        // 1. Ouverture d'un nouvel onglet sur le dossier patient
+        if (!massPrint) {
+            await newPatientTab();
+        }
+
+        // 2. Attente de la confirmation d'impression par le Companion
+        await companionPrintDone();
+
+        // 3. Action post-impression selon le mode
+        if (mustSend) {
+            // Mode envoi : on maintient l'onglet ouvert et on signale l'impression
+            await handleSendAfterPrintFlags();
+        } else {
+            // Mode impression simple : on ferme l'onglet original en attendant l'éventuelle complétion de l'envoi au DMP
+            closeWindow();
+        }
+
+        console.log('[tabAndPrintHandler] Processus d\'impression instantanée terminé avec succès');
+    } catch (error) {
+        console.error('[tabAndPrintHandler] Erreur durant le processus d\'impression instantanée:', error);
+        sendWedaNotifAllTabs({
+            message: 'L\'impression instantanée a rencontré un problème.',
+            type: 'fail',
+            icon: 'print'
+        });
+    }
+}
+
+/**
+ * Configure les drapeaux de signalisation pour le mode "envoi après impression"
+ * 
+ * @async
+ * @returns {Promise<void>}
+ */
+async function handleSendAfterPrintFlags() {
+    console.log('[handleSendAfterPrintFlags] Configuration des drapeaux d\'envoi');
+
+    // On signale périodiquement que l'impression est réussie
+    // pour que l'onglet patient puisse détecter l'événement
+    const FLAG_REFRESH_INTERVAL = 100; // ms
+    const MAX_WAIT_TIME = 10000; // 10 secondes
+
+    return new Promise((resolve) => {
+        const startTime = Date.now();
+        const interval = setInterval(() => {
+            // Arrêt après le délai maximum
+            if (Date.now() - startTime > MAX_WAIT_TIME) {
+                clearInterval(interval);
+                console.log('[handleSendAfterPrintFlags] Fin du rafraîchissement des drapeaux');
+                resolve();
+                return;
+            }
+
+            // Rafraîchir le drapeau d'impression pour maintenir sa "fraîcheur"
+            setLastPrintDate();
+
+        }, FLAG_REFRESH_INTERVAL);
+    });
 }
 
 
@@ -602,13 +776,15 @@ async function tabAndPrintHandler() {
 // => Parfois la progressBar reste affichée après l'impression, ce qui empêche la fermeture de la fenêtre
 // => On doit donc se rattraper après le chargement d'une nouvelle page dans la même session
 addTweak('/FolderMedical/PatientViewForm.aspx', 'instantPrint', function () {
+    const DELAY = 5000;
     console.log('[InstantPrint] debug démarré suite retour à dossier patient');
     // Vérifie si une impression ne vient pas de se finir en vérifiant lastProgressBarDate et lastPrintDate
     let lastPrintDate = sessionStorage.getItem('lastPrintDate');
+    console.log('[InstantPrint] délais depuis la dernère impression', lastPrintDate ? Date.now() - Date.parse(lastPrintDate) : 'jamais');
     let lastProgressBarDate = sessionStorage.getItem('lastProgressBarDate');
     let currentTime = Date.now();
-    let isRecentProgressBar = lastProgressBarDate && currentTime - Date.parse(lastProgressBarDate) < 5000;
-    let isRecentPrint = lastPrintDate && currentTime - Date.parse(lastPrintDate) < 5000;
+    let isRecentProgressBar = lastProgressBarDate && currentTime - Date.parse(lastProgressBarDate) < DELAY;
+    let isRecentPrint = lastPrintDate && currentTime - Date.parse(lastPrintDate) < DELAY;
     console.log('[InstantPrint] debug : isRecentProgressBar', isRecentProgressBar, 'isRecentPrint', isRecentPrint);
     // Si la barre de progression a disparu il y a moins de 5 secondes
     if (isRecentProgressBar || isRecentPrint) {
@@ -622,9 +798,229 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'instantPrint', function () {
         sessionStorage.removeItem('lastPrintDate');
         sessionStorage.removeItem('lastProgressBarDate');
         if (!document.hasFocus()) {
-            window.close();
+            closeCurrentTab();
         } else {
             console.log('[InstantPrint] window has focus, je ne ferme pas');
         }
     }
 });
+
+
+
+/** Impression de l'ensemble des documents du jour
+ * passe forcément par les tabs
+ */
+const PRINTALLFUNCTION = '*printAll';
+addTweak('/FolderMedical/PatientViewForm.aspx', PRINTALLFUNCTION, function () {
+    // Là on considère qu'on travaille dans un nouvel onglet :
+    // on parcours la liste d'ids présents dans le session storage.
+    // on va cliquer sur l'élément modifier correspondant, et le supprimer
+    // de la liste.
+
+    let idsToPrint = JSON.parse(localStorage.getItem('printAllIds'));
+    console.log('idsToPrint', idsToPrint);
+    let idToPrint = idsToPrint[0];
+    idsToPrint.shift(); // Supprimer l'id de la liste
+    localStorage.setItem('printAllIds', JSON.stringify(idsToPrint));
+    console.log('idToPrint', idToPrint);
+    if (!idToPrint) {
+        return; // On a tout imprimé
+    }
+
+    // Ajout d'un timestamp dans le sessionStorage pour indiquer que ce tab doit imprimer
+    sessionStorage.setItem('thisTabMustBePrinted', Date.now().toString());
+
+    idToPrint = document.querySelector(`#${idToPrint}`);
+    if (idToPrint) {
+        idToPrint.click();
+        console.log('idToPrint clicked', idToPrint);
+    } else {
+        // S'il manque l'id, on est probablement sur un élements qui nécessite l'historique mixte pour s'afficher
+        const mixtHistoryButton = document.querySelector('#ContentPlaceHolder1_ButtonShowAllLastEvenement');
+        if (mixtHistoryButton) {
+            mixtHistoryButton.click();
+            console.log('mixtHistoryButton clicked', mixtHistoryButton);
+            waitForElement({
+                selector: `#${idToPrint}`,
+                justOnce: true,
+                callback: (newElements) => {
+                    console.log('idToPrint clicked', newElements[0]);
+                    newElements[0].click();
+                }
+            });
+        } else {
+            console.error('Aucun élément à imprimer trouvé');
+            sessionStorage.removeItem('thisTabMustBePrinted'); // Nettoyer le storage si on ne trouve rien
+            return;
+        }
+    }
+});
+
+addTweak(["/FolderMedical/CertificatForm.aspx", "/FolderMedical/DemandeForm.aspx", "/FolderMedical/PrescriptionForm.aspx", "/FolderMedical/CourrierForm.aspx"], PRINTALLFUNCTION, function () {
+    // On est maintenant dans un des éléments à imprimer.
+    // Vérifier si le contrôle thisTabMustBePrinted existe et est récent
+    const printTimestamp = sessionStorage.getItem('thisTabMustBePrinted');
+
+    if (printTimestamp && (Date.now() - parseInt(printTimestamp) < 20000)) {
+        // La page doit être imprimée car elle a été ouverte par printAll il y a moins de 20 secondes
+        console.log('Impression automatique via printAll détectée');
+        // On ajoute un timeout pour laisser le temps à la page de se charger
+        setTimeout(() => {
+            handlePrint({ printType: 'print', modelNumber: 0, massPrint: true });
+        }, 1000);
+    }
+
+    // Nettoyer le sessionStorage dans tous les cas
+    sessionStorage.removeItem('thisTabMustBePrinted');
+});
+
+async function startPrintAll() {
+    // D'abord se mettre en mode historique mixte pour être sur de tout imprimer, dont les courriers
+    const mixtHistoryText = document.querySelector('#ContentPlaceHolder1_LabelCommandAffiche');
+    if (mixtHistoryText.innerText !== 'Historique mixte') {
+        const mixtHistoryButton = document.querySelector('#ContentPlaceHolder1_ButtonShowAllLastEvenement');
+        if (mixtHistoryButton) {mixtHistoryButton.click();}
+
+        // Attendre que la progression soit cachée avec un timeout de 10 secondes
+        await waitForUpdateProgressToHide();
+    }
+
+    // Lister tout les éléments modifier du jour
+    let elementsModifier = listAllTodaysDocs();
+    console.log('elementsModifier', elementsModifier);
+
+    // Stocker les ids de ces éléments dans le session storage
+    let ids = Array.from(elementsModifier).map(element => {
+        return element.id;
+    });
+    console.log('ids', ids);
+    localStorage.setItem('printAllIds', JSON.stringify(ids));
+    // On va ouvrir un nouvel onglet pour chaque élément grace à newPatientTab
+    let index = 0;
+    function openNextTab() {
+        if (index < ids.length) {
+            let id = ids[index];
+            console.log('id', id);
+            newPatientTab(id).then(() => {
+                index++;
+                openNextTab();
+            });
+        } else {
+            console.log('Tous les onglets ont été ouverts');
+        }
+    }
+    openNextTab();
+}
+
+
+// On attends que l'historique mixte soit chargé en surveillant le texte du label
+async function waitForUpdateProgressToHide() {
+    return new Promise((resolve) => {
+        const startTime = Date.now();
+        const maxWaitTime = 10000; // 10 secondes maximum d'attente
+        
+        function checkHistoryLabel() {
+            // Vérifier si le temps d'attente maximum est dépassé
+            if (Date.now() - startTime > maxWaitTime) {
+                console.warn('Timeout: l\'historique mixte n\'a pas été chargé après 10 secondes');
+                resolve(); // On continue malgré tout
+                return;
+            }
+            
+            // Récupérer le label qui indique l'état de l'historique
+            const historyLabel = document.querySelector('#ContentPlaceHolder1_LabelCommandAffiche');
+            
+            // Si le label indique "Historique mixte", c'est que le chargement est terminé
+            if (historyLabel && historyLabel.innerText === 'Historique mixte') {
+                console.log('L\'historique mixte est chargé');
+                resolve(); // On peut continuer
+                return;
+            }
+            
+            // L'historique n'est pas encore chargé, on vérifie à nouveau après un court délai
+            setTimeout(checkHistoryLabel, 100);
+        }
+        
+        // Démarrer la vérification
+        checkHistoryLabel();
+    });
+}
+
+function listAllTodaysDocs() {
+    // On va d'abord chercher tous les conteneurs du jour
+    let containers = document.querySelectorAll('td[title="Cliquez sur la date pour ouvrir."]')
+    // Parmi eux, on cherche ceux contenant la date du jour en innerText au format jj/mm/aaaa
+    let today = new Date();
+    let todayString = today.toLocaleDateString('fr-FR');
+    console.log('todayString', todayString);
+
+    // Trouver tous les marqueurs de conteneur du jour
+    let todayContainerMarkers = Array.from(containers).filter(container =>
+        container.innerText.includes(todayString)
+    );
+    console.log('Nombre de conteneurs trouvés pour aujourd\'hui:', todayContainerMarkers.length);
+
+    if (todayContainerMarkers.length === 0) {
+        console.error('Aucun conteneur trouvé pour aujourd\'hui');
+        return [];
+    }
+
+    // Récupérer tous les div.sc correspondants
+    let todayContainers = todayContainerMarkers.map(marker =>
+        marker.closest('div.sc')
+    ).filter(container => container !== null);
+
+    console.log('Conteneurs valides:', todayContainers.length);
+
+    // Accumuler tous les éléments "Modifier" de tous les conteneurs
+    let allElementsModifier = [];
+
+    todayContainers.forEach((container, index) => {
+        // Chercher les liens "Modifier" dans ce conteneur
+        let links = container.querySelectorAll('div.soc');
+        console.log(`Liens trouvés dans le conteneur ${index + 1}:`, links.length);
+
+        let elementsModifier = Array.from(links).filter(link =>
+            link.innerText.includes('Modifier')
+        );
+
+        // Filtrer les éléments selon les types de documents voulus
+        const toInclude = ['Certificat', 'Demande', 'Prescription', 'Courrier'];
+        elementsModifier = elementsModifier.filter(link => {
+            let parent = link.parentElement;
+            let brotherOfParent = parent.previousElementSibling;
+
+            if (!brotherOfParent) {
+                console.log('Élément sans frère précédent:', link);
+                return false;
+            }
+
+            // Vérifier dans le texte du frère aîné
+            let text = brotherOfParent.innerText || '';
+
+            // Vérifier également dans les attributs des spans enfants
+            let spans = brotherOfParent.querySelectorAll('span');
+            let hasMatchingSpan = false;
+
+            spans.forEach(span => {
+                let className = span.className || '';
+                let title = span.getAttribute('title') || '';
+
+                toInclude.forEach(type => {
+                    if (className.includes('img16' + type) || title.includes(type)) {
+                        hasMatchingSpan = true;
+                    }
+                });
+            });
+
+            let include = toInclude.some(type => text.includes(type)) || hasMatchingSpan;
+            return include;
+        });
+
+        console.log(`Éléments "Modifier" valides dans le conteneur ${index + 1}:`, elementsModifier.length);
+        allElementsModifier = allElementsModifier.concat(elementsModifier);
+    });
+
+    console.log('Total des éléments "Modifier" trouvés:', allElementsModifier.length);
+    return allElementsModifier;
+}

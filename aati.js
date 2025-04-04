@@ -196,15 +196,15 @@ addTweak(urlAATI, 'autoAATI', function () {
                                         type: 'success',
                                         icon: 'print'
                                     });
-                                    window.close();
+                                    window.close(); // Pas la peine d'utiliser les permissions tab car cette page est ouverte par le script
                                 }
                             });
                         })
                         .catch(error => {
-                            console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
+                            console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error, 'Problème de Firewall ?');
                             if (!errortype.includes('[focus]')) {
                                 sendWedaNotifAllTabs({
-                                    message: 'Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error,
+                                    message: 'Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error + 'Problème de Firewall ?',
                                     type: 'fail',
                                     icon: 'print'
                                 })
@@ -215,4 +215,34 @@ addTweak(urlAATI, 'autoAATI', function () {
             });
         });
     });
+});
+
+
+// Cochage automatique de " Mon patient accepte que je transmette le présent avis d'arrêt de travail pour son compte et [...]"
+addTweak('/FolderMedical/Aati.aspx', 'aatiTermsExcerpt', function () {
+    // La checkbox est le fils du frère ainé de .aatiTermsExcerpt
+    const selecteurCheckbox = '.aatiTermsExcerpt';
+    const checkBox = document.querySelector(selecteurCheckbox).previousElementSibling.querySelector('input');
+    if (!checkBox) {
+        console.error('Checkbox not found');
+        return;
+    }
+
+    if (checkBox.checked) {
+        console.log('Checkbox already checked');
+        return;
+    }
+
+    console.log("[aatiTermsExcerpt] checkBox d'auto-accord", checkBox);
+
+    checkBox.checked = true;
+    checkBox.dispatchEvent(new Event('change'));
+
+    sendWedaNotifAllTabs({
+        message: "La case 'Mon patient accepte que je transmette [...] a été cochée automatiquement. Allez dans les options de Weda-Helper si vous souhaitez désactiver cette fonctionnalité.",
+        type: 'success',
+        icon: 'check'
+    });
+
+    recordMetrics({ clicks: 1, drags: 1 });    
 });

@@ -571,7 +571,7 @@ function getUrlHistory() {
     return `${baseUrl}/FolderMedical/FrameHistoriqueForm.aspx?${params}`;
 }
 
-function createIframe(targetElement) {
+function createIframe(targetElement, id = null) {
     console.log('Création de l\'iframe', targetElement);
     const iframe = document.createElement('iframe');
     iframe.style.width = `${window.innerWidth * HISTORY_PROPORTION}px`;
@@ -581,6 +581,7 @@ function createIframe(targetElement) {
     iframe.style.left = '0px'; // Aligné avec le bord gauche
     iframe.style.border = "none";
     iframe.style.zIndex = '0';
+    iframe.id = id || 'WedaHelperIframe';
     // Injecter l'iframe dans le DOM proche de targetElement pour que ça soit au même niveau (sur l'axe vertical)
     const parent = targetElement.parentNode;
     if (parent) {
@@ -616,15 +617,19 @@ function setBackgroundDmp() {
 
 function moveAndResizeDocTypes(availableWidth) {
     let documentTypeWidth = (1 - HISTORY_PROPORTION) * availableWidth * 0.2;
+    // On met sur la partie droite le conteneur des types de documents
     var toSetRight = document.querySelector('#ContentPlaceHolder1_UpdatePanelBaseGlossaireUCForm1').parentNode;
     toSetRight.setAttribute("align", "right");
+    // Ensuite on redimensionne le conteneur des types de documents
     var toSetFifty = document.querySelector('#ContentPlaceHolder1_UpdatePanelBaseGlossaireUCForm1 table');
     toSetFifty.style.width = `${documentTypeWidth}px`;
 }
 
 function resizeTextArea(availableWidth, pageType, targetElement) {
-    const adjustement = getAdjustment(availableWidth, pageType);
-    const textAreaWidth = (1 - HISTORY_PROPORTION) * (availableWidth * adjustement) * 0.8;
+    const docTypesElement = document.querySelector('#ContentPlaceHolder1_UpdatePanelBaseGlossaireUCForm1 table');
+    const pixTakenByDocTypes = docTypesElement ? docTypesElement.getBoundingClientRect().width : 0;
+    const textAreaWidth = (1 - HISTORY_PROPORTION) * (availableWidth) - pixTakenByDocTypes - 20;
+
     targetElement.style.width = `${textAreaWidth}px`;
 }
 
@@ -641,32 +646,13 @@ function adjustLayout(pageType, iframe, targetElement) {
         moveAndResizeDocTypes(availableWidth);
         resizeTextArea(availableWidth, pageType, targetElement);
         setBackgroundDmp();
+        afterMutations({
+            delay: 100,
+            callback: () => {moveAndResizeDocTypes(availableWidth);}
+        });
     }
 }
 
-function getAdjustment(availableWidth, pageType) {
-    const adjustmentTable = {
-        "Certificat": { 1500: 0.85, 1700: 0.9, 2000: 0.95, 5000: 1 },
-        "Demande": { 1300: 0.7, 1700: 0.8, 2000: 0.9, 2500: 1 },
-        "Courrier": { 1500: 0.75, 1700: 0.85, 1900: 0.9, 2100: 0.95, 5000: 1 }
-    };
-
-    const keys = Object.keys(adjustmentTable[pageType]).sort((a, b) => a - b);
-    let adjustment = 1; // Valeur par défaut si aucune correspondance n'est trouvée
-    for (let i = 0; i < keys.length; i++) {
-        if (availableWidth <= keys[i]) {
-            adjustment = adjustmentTable[pageType][keys[i]];
-            break;
-        }
-    }
-
-    // Si availableWidth est supérieur à toutes les clés, utilisez la dernière valeur d'ajustement
-    if (availableWidth > keys[keys.length - 1]) {
-        adjustment = adjustmentTable[pageType][keys[keys.length - 1]];
-    }
-
-    return adjustment;
-}
 
 function historyToLeft() {
     // ne pas activer l'historique si le panneau de prévisu est détecté
@@ -674,6 +660,7 @@ function historyToLeft() {
     if (!previsuPanel) {
         pagesToLeftPannel_.forEach(page => {
             addTweak(page.url, page.option, () => {
+                // On récupère la zone de texte qui doit être déplacée (targetElement)
                 const targetElement = document.querySelector(page.targetElementSelector);
                 const iframe = createIframe(targetElement); // ici targetElement est nécessaire comme référence pour l'insertion de l'iframe
                 iframe.addEventListener('load', () => {
@@ -681,6 +668,7 @@ function historyToLeft() {
                     // Ici on ajoute l'appuis automatique de filtre (en url libre car ne sera appelée que si l'histoire est à gauche)
                     actionFilter(iframe.contentDocument);
                 });
+                // On ajuste le layout pour que l'iframe et le targetElement soient bien positionnés
                 adjustLayout(page.pageType, iframe, targetElement);
                 recordMetrics({ clicks: 1, drags: 1 });
             });

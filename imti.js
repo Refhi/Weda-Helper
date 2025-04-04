@@ -55,15 +55,27 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoControlMT', function () {
 });
 
 // Facilite la déclaration du MT en précochant les cases
-addTweak('/FolderMedical/PatientViewForm.aspx', '*oneClickMT', function () {
+addTweak('/FolderMedical/PatientViewForm.aspx', 'oneClickMT', function () {
     waitForElement({
         selector: '.dmpMtInfo',
         callback: function (elements) {
+            sendWedaNotifAllTabs({
+                message: 'Déclaration un clic du médecin traitant activée. Allez dans les options de Weda pour la désactiver si vous préférez.',
+                type: 'success',
+                icon: 'done',
+                duration: 10000
+            });
             let checkBoxes = elements[0].parentElement.querySelectorAll('input[type="checkbox"]');
             checkBoxes.forEach(checkBox => {
-                checkBox.click();
-                recordMetrics({ clicks: 1, drags: 1 });
+                if (!checkBox.checked) {
+                    checkBox.click();
+                    recordMetrics({ clicks: 1, drags: 1 });
+                }
             });
+            setTimeout(() => {
+                let boutonValider = document.querySelector('button[title="Transmettre le formulaire de déclaration de choix du médecin traitant"]');
+                boutonValider.click();
+            }, 500);
         }
     });
 });

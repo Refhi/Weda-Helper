@@ -11,16 +11,20 @@ const keyCommands = {
     'push_valider': push_valider,
     'push_annuler': push_annuler,
     'print_meds': function () {
-        handlePrint('print', 0);
+        if (window.location.href.includes('/FolderMedical/PatientViewForm.aspx')) {
+            startPrintAll();
+        } else {
+            handlePrint({printType: 'print', modelNumber: 0});
+        }
     },
     'print_meds_bis': function () {
-        handlePrint('print', 1);
+        handlePrint({printType: 'print', modelNumber: 1});
     },
     'download_document': function () {
-        handlePrint('download', 0);
+        handlePrint({printType: 'download', modelNumber: 0});
     },
     'download_document_bis': function () {
-        handlePrint('download', 1);
+        handlePrint({printType: 'download', modelNumber: 1});
     },
     'send_document': function () {
         send_document(0);
@@ -41,7 +45,8 @@ const keyCommands = {
         if (binElementCurrentImport) {
             binElementCurrentImport.click();
         } else {
-            clickElementByClass('button delete');
+            // clickElementByClass('button delete');
+            clickElementByClass('targetSupprimer');
         }
     },
     'shortcut_w': function () {
@@ -54,25 +59,49 @@ const keyCommands = {
         console.log('shortcut_consult activé');
         submenuW(' Consultation');
     },
+    'shortcut_consult_bis': function () {
+        console.log('shortcut_consult_bis activé');
+        submenuW(' Consultation', true);
+    },
     'shortcut_certif': function () {
         console.log('shortcut_certif activé');
         submenuW(' Certificat');
+    },
+    'shortcut_certif_bis': function () {
+        console.log('shortcut_certif_bis activé');
+        submenuW(' Certificat', true);
     },
     'shortcut_demande': function () {
         console.log('shortcut_demande activé');
         submenuW(' Demande');
     },
+    'shortcut_demande_bis': function () {
+        console.log('shortcut_demande_bis activé');
+        submenuW(' Demande', true);
+    },
     'shortcut_prescription': function () {
         console.log('shortcut_prescription activé');
         submenuW(' Prescription');
+    },
+    'shortcut_prescription_bis': function () {
+        console.log('shortcut_prescription_bis activé');
+        submenuW(' Prescription', true);
     },
     'shortcut_formulaire': function () {
         console.log('shortcut_formulaire activé');
         submenuW(' Formulaire');
     },
+    'shortcut_formulaire_bis': function () {
+        console.log('shortcut_formulaire_bis activé');
+        submenuW(' Formulaire', true);
+    },
     'shortcut_courrier': function () {
         console.log('shortcut_courrier activé');
         submenuW(' Courrier');
+    },
+    'shortcut_courrier_bis': function () {
+        console.log('shortcut_courrier_bis activé');
+        submenuW(' Courrier', true);
     },
     'shortcut_fse': function () {
         console.log('shortcut_fse activé');
@@ -147,6 +176,7 @@ function addHotkeyToDocument(scope, element, shortcut, action) {
         }, 300));
 }
 
+// Renvoie le raccourcis pertinent (personnalisé ou par défaut) pour une action donnée
 function shortcutDefaut(shortcuts, defaultShortcuts, key) {
     if (shortcuts == undefined) {
         return defaultShortcuts[key]["default"];
@@ -248,7 +278,7 @@ function push_valider() {
     // click other elements, one after the other, until one of them works
     const actions = [
         () => clickElementById('ButtonValidFileStream'),
-        () => clickElementById('targetValider'), // utilisé quand j'ajoute une cible à un bouton
+        () => clickElementByClass('targetValider'), // utilisé quand j'ajoute une cible à un bouton
         () => clickElementById('ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonValidDocument'),
         () => clickElementById('ContentPlaceHolder1_ButtonLibreValid'),
         () => clickElementById('ContentPlaceHolder1_FindPatientUcForm1_ButtonValidFamille'),
@@ -267,11 +297,12 @@ function push_valider() {
 function push_annuler() {
     console.log('push_annuler activé');
     const actions = [
-        () => clickElementById('targetAnnuler'), // utilisé quand j'ajoute une cible à un bouton
+        () => clickElementByClass('targetAnnuler'), // utilisé quand j'ajoute une cible à un bouton
         () => clickElementById('ContentPlaceHolder1_FindPatientUcForm1_ButtonCancelFamille'),
         () => clickElementByClass('button cancel'),
         () => GenericClicker("title", "Annuler"),
         () => GenericClicker("title", "Quitter"),
+        () => clickElementById('ContentPlaceHolder1_PatientsGrid_ButtonHistoriqueResultat_0'),
         // () => clickElementByChildtextContent("ANNULER") => on passe à la gestion par targetAnnuler
     ];
 
@@ -377,32 +408,111 @@ function clickCarteVitale() {
     }
 }
 
+/**
+ * Trouve un élément de niveau 3 du menu qui correspond à la description donnée
+ * @param {HTMLElement} baseMenuLvl1 - L'élément de base du menu de niveau 1
+ * @param {string} description - La description à rechercher
+ * @returns {HTMLElement|null} - L'élément trouvé ou null si non trouvé
+ */
+function findLevel3Element(baseMenuLvl1, description) {
+    if (!baseMenuLvl1) {
+        console.log('[findLevel3Element] Menu de base (level 1) non trouvé');
+        return null;
+    }
+    
+    // Récupère tous les éléments de niveau 3
+    const level3Elements = Array.from(baseMenuLvl1.getElementsByClassName('level3 dynamic'));
+    
+    if (level3Elements.length === 0) {
+        console.log('[findLevel3Element] Aucun élément de niveau 3 trouvé dans le menu');
+        return null;
+    }
+    
+    console.log(`[findLevel3Element] Recherche de "${description}" parmi ${level3Elements.length} éléments de niveau 3`);
+    
+    // On va éviter de cliquer sur les éléments suivants qui sont systématiquement inappropriés
+    const blackList = [
+        " Courrier à établir",
+        " Demande laboratoire",
+        " Demande imagerie",
+        " Demande paramédicale"
+    ];
 
-// Clique sur un élément du menu W selon sa description
-function submenuW(description) {
-    var level1Element = document.getElementsByClassName('level1 static')[0];
-    console.log('level1Element', level1Element);
-    if (level1Element) {
-        var level3Element = Array.from(level1Element.getElementsByClassName('level3 dynamic')).find(function (element) {
-            return element.innerText.includes(description) && element.hasAttribute('tabindex') && element.innerText !== " Courrier à établir"; // la fin est un fix sale pour éviter de cliquer sur l'alerte de courrier à établir
-        });
-        console.log('level3Element', level3Element);
-        if (level3Element) {
-            level3Element.click();
-            recordMetrics({ clicks: 1, drags: 3 });
-            console.log('Element clicked:', level3Element);
+
+    // Recherche l'élément correspondant aux critères
+    const matchingElement = level3Elements.find(function (element) {
+        const includesText = element.innerText.includes(description);
+        const hasTabIndex = element.hasAttribute('tabindex');
+        const isNotBlacklisted = !blackList.some(blacklistedText => element.innerText.includes(blacklistedText));
+        
+        console.log(`[findLevel3Element] Élément: "${element.innerText}" - ` +
+                    `contient "${description}": ${includesText ? 'oui' : 'non'}, ` +
+                    `tabindex: ${hasTabIndex ? 'oui' : 'non'}, ` +
+                    `n'est pas alerte courrier: ${isNotBlacklisted ? 'oui' : 'non'}`);
+        
+        return includesText && hasTabIndex && isNotBlacklisted;
+    });
+    
+    if (matchingElement) {
+        console.log(`[findLevel3Element] Élément trouvé pour "${description}":`, matchingElement.innerText);
+    } else {
+        console.log(`[findLevel3Element] Aucun élément correspondant à "${description}" trouvé`);
+    }
+    
+    return matchingElement;
+}
+
+/**
+ * Trouve un élément de niveau 2 du menu qui correspond à la description donnée
+ * @param {HTMLElement} baseMenuLvl1 - L'élément de base du menu de niveau 1
+ * @param {string} description - La description à rechercher
+ * @returns {HTMLElement|null} - L'élément trouvé ou null si non trouvé
+ */
+function findLevel2Element(baseMenuLvl1, description) {
+    if (!baseMenuLvl1) return null;
+
+    return Array.from(baseMenuLvl1.getElementsByClassName('level2 dynamic')).find(function (element) {
+        return element.innerText.includes(description) && element.hasAttribute('tabindex');
+    });
+}
+
+
+/** Clique sur un élément du menu selon sa description
+ * @param {string} description - La description de l'élément à cliquer ex. " Consultation"
+ * @param {boolean} shiftOn - Si true, on doit créer un nouveau document obligatoirement
+ */
+function submenuW(description, shiftOn = false) {
+    console.log('[submenuW] activé', description, shiftOn);
+    // Selection du menu de base
+    var baseMenuLvl1 = document.getElementsByClassName('level1 static')[0];
+    console.log('baseMenuLvl1', baseMenuLvl1);
+
+    if (!baseMenuLvl1) {
+        console.log('Menu de base non trouvé');
+        return false;
+    }
+
+
+    // D'abord on cherche si un document existe déjà
+    // On le cherche dans les elements de niveau 3
+    var level3Element = findLevel3Element(baseMenuLvl1, description);
+
+    console.log('level3Element', level3Element);
+    if (level3Element && !shiftOn) {
+        level3Element.click();
+        recordMetrics({ clicks: 1, drags: 3 });
+        console.log('Element clicked:', level3Element);
+        return true;
+    } else {
+        // Si la création d'un nouveau document est requise, on va cliquer dans les éléments de niveau 2
+        var level2Element = findLevel2Element(baseMenuLvl1, description);
+        console.log('level2Element', level2Element);
+
+        if (level2Element) {
+            level2Element.click();
+            recordMetrics({ clicks: 1, drags: 2 });
+            console.log('Element clicked:', level2Element);
             return true;
-        } else {
-            var level2Element = Array.from(level1Element.getElementsByClassName('level2 dynamic')).find(function (element) {
-                return element.innerText.includes(description) && element.hasAttribute('tabindex');
-            });
-            console.log('level2Element', level2Element);
-            if (level2Element) {
-                level2Element.click();
-                recordMetrics({ clicks: 1, drags: 2 });
-                console.log('Element clicked:', level2Element);
-                return true;
-            }
         }
     }
     console.log('No elements found', description);
@@ -461,7 +571,8 @@ addTweak('*', 'WarpButtons', async function () {
             chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function (result) {
                 const raccourcis = {
                     'targetAnnuler': shortcutDefaut(result.shortcuts, result.defaultShortcuts, 'push_annuler'),
-                    'targetValider': shortcutDefaut(result.shortcuts, result.defaultShortcuts, 'push_valider')
+                    'targetValider': shortcutDefaut(result.shortcuts, result.defaultShortcuts, 'push_valider'),
+                    'targetSupprimer': shortcutDefaut(result.shortcuts, result.defaultShortcuts, 'push_delete')
                 };
                 resolve(raccourcis);
             });
@@ -472,7 +583,7 @@ addTweak('*', 'WarpButtons', async function () {
     console.log('[WarpButtons] Raccourcis', raccourcis);
 
     function warpButtons(buttons) {
-        function addIdToButton(button) {
+        function addClassToButton(button) {
             var actions = {
                 'Annuler': [
                     'Annuler',
@@ -481,7 +592,9 @@ addTweak('*', 'WarpButtons', async function () {
                     'Non',
                     'NON',
                     'Ne pas inclure',
-                    'FSE dégradée'
+                    'FSE dégradée',
+                    'Valider les modifications',
+                    'H'
                 ],
                 'Valider': [
                     'Oui',
@@ -496,8 +609,14 @@ addTweak('*', 'WarpButtons', async function () {
                     'Inclure',
                     'Sécuriser',
                     'Affecter ce résultat',
-                    'FSE Teleconsultation'
+                    'FSE Teleconsultation',
+                    'Valider et archiver'
+                ],
+                'Supprimer': [
+                    'Valider et mettre à la corbeille',
+                    'Supprimer',
                 ]
+
             };
             if (button) {
                 var buttonText = button.textContent;
@@ -505,55 +624,104 @@ addTweak('*', 'WarpButtons', async function () {
                     buttonText = button.value; //Bypass pour les boutons non Angular qui ont un textContent vide
                 }
                 var action = Object.keys(actions).find(key => actions[key].includes(buttonText));
-                // vérifie que l'id n'est pas déjà présent. Utile quand plusieurs boutons sont éligible.
-                if (document.getElementById('target' + action)) {
-                    console.log(action, 'id already exist !');
-                    return false;
-                }
                 if (action) {
-                    button.id = 'target' + action;
+                    button.classList.add('target' + action);
                 }
             }
             return true;
         }
 
-        function addShortcutsToButton(button) {
-            function applyStylesToSpan(span) {
-                span.style.position = 'absolute';
-                span.style.bottom = '-10px'; // Placer le texte un peu plus bas
-                span.style.right = '5px';
+        function addShortcutsToButton(element) {
+            function applyCommonStylesToSpan(span) {
                 span.style.color = 'grey';
                 span.style.fontSize = '0.8em';
-                span.style.backgroundColor = 'rgba(240, 240, 240, 0.6)'; // Ajouter un fond semi-transparent
-                span.style.padding = '2px'; // Ajouter un peu de padding pour le texte
-                span.style.borderRadius = '10px'; // Ajouter des angles arrondis
-                span.style.height = 'auto'; // Fixer la hauteur
-                span.style.lineHeight = 'normal'; // Fixer la hauteur de ligne
-                span.style.display = 'inline-block'; // S'assurer que le span ne prenne pas plus de hauteur que nécessaire
-                span.style.pointerEvents = 'none'; // Empêcher les événements de pointer sur le span
+                span.style.backgroundColor = 'rgba(240, 240, 240, 0.6)';
+                span.style.padding = '2px 5px';
+                span.style.borderRadius = '10px';
+                span.style.pointerEvents = 'none';
+                span.style.whiteSpace = 'nowrap'; // Prevent text wrapping
+                span.style.zIndex = '5'; // Ensure it appears above other content
             }
 
-            if (button) {
-                console.log('ajout de raccourcis au button', button);
-                var raccourci = raccourcis[button.id];
+            function applyStylesToSpanForButton(span) {
+                applyCommonStylesToSpan(span);
+                span.style.position = 'absolute';
+                span.style.bottom = '-10px';
+                span.style.right = '5px';
+                span.style.height = 'auto';
+                span.style.lineHeight = 'normal';
+                span.style.display = 'inline-block';
+            }
+
+            function applyStylesToSpanForInput(span) {
+                applyCommonStylesToSpan(span);
+                span.style.position = 'absolute';
+                span.style.bottom = '-10px'; // Position below the input
+                span.style.right = '25%';    // Position at the right quarter (75% from left)
+                span.style.transform = 'translateX(50%)'; // Center the tooltip at the 75% point
+            }
+
+            if (element) {
+                let raccourci = null;
+                for (let i = 0; i < element.classList.length; i++) {
+                    let className = element.classList[i];
+                    if (raccourcis[className]) {
+                        raccourci = raccourcis[className];
+                        break;
+                    }
+                }
+
+                console.log('ajout de raccourcis à l\'élément', element, 'raccourcis', raccourci);
+
                 if (raccourci) {
+                    console.log("Je tente d'ajouter une info de raccourci à", element.tagName);
+
                     // Créer l'élément span pour le raccourci
                     var span = document.createElement('span');
                     span.textContent = raccourci;
-                    applyStylesToSpan(span);
-                    button.style.position = 'relative'; // S'assurer que le bouton a une position relative
-                    button.appendChild(span);
+                    // Ici on veut que l'id soit le raccourci pour pouvoir le cibler, mais il faut que les caractères soient valides
+                    span.id = raccourci
+                        .replace(/ /g, '_')
+                        .replace(/\+/g, 'plus')  // Replace + with the word "plus"
+                        .replace(/'/g, '')
+                        .replace(/é/g, 'e')
+                        .replace(/è/g, 'e')
+                        .replace(/à/g, 'a')
+                        .replace(/ç/g, 'c');
+
+                    // On vérifie si un élément avec cet id existe déjà
+                    if (document.getElementById(span.id)) {
+                        return;
+                    }
+
+                    // Appliquer les styles selon le type d'élément
+                    if (element.tagName.toLowerCase() === 'input') {
+                        console.log('C\'est un input');
+                        // Pour les éléments input
+                        applyStylesToSpanForInput(span);
+
+                        // On doit ajouter le span à un parent conteneur
+                        const wrapper = document.createElement('div');
+                        wrapper.style.position = 'relative';
+                        wrapper.style.display = 'inline-block';
+
+                        // Remplacer l'input par le wrapper contenant l'input et le span
+                        element.parentNode.insertBefore(wrapper, element);
+                        wrapper.appendChild(element);
+                        wrapper.appendChild(span);
+                    } else {
+                        console.log('C\'est un autre élément');
+                        // Pour les boutons et autres éléments
+                        applyStylesToSpanForButton(span);
+                        element.style.position = 'relative'; // S'assurer que l'élément a une position relative
+                        element.appendChild(span);
+                    }
                 }
             }
         }
-
-
-
-
         buttons.forEach(function (button) {
-            // console.log('Bouton trouvé ! Je le redimentionne, lui ajoute un id et note le raccourcis clavier par défaut', button);
             button.style.width = 'auto';
-            if (addIdToButton(button)) {
+            if (addClassToButton(button)) {
                 addShortcutsToButton(button);
             }
         });
@@ -567,24 +735,31 @@ addTweak('*', 'WarpButtons', async function () {
         '#ContentPlaceHolder1_PatientsGrid_ButtonAffecteResultat_0',
         '.mat-button-wrapper',
         '.tab_valid_cancel .button', // Notamment dans la déclaration de MT
-        '.boutonCustonWH'
+        '.boutonCustonWH',
+        '.button.delete', // Le bouton de suppression classique
+        // Trois boutons pour la validation et archivage/suppression suite à ctrl+U
+        '#WHButtonValidAndArchive',
+        '#WHButtonValidAndDelete',
+        '#ButtonValidFileStream',
+        '#ContentPlaceHolder1_PatientsGrid_ButtonHistoriqueResultat_0' // Pour les biologies
     ];
 
     selectors.forEach(selector => {
         waitForElement({
             selector: selector,
+            triggerOnInit: true,
             callback: warpButtons
         });
     });
 });
 
 
-// Gestion du workflow pour envoi + impression + DMP des courriers
+// Gestion du workflow ctrl(+shift)+E pour envoi + impression + DMP des courriers
 function send_document(printModelNumber) {
     getOption('sendAndPrint', function (sendAndPrint) {
         if (sendAndPrint) {
             console.log('sendAndPrint activé');
-            handlePrint('print', printModelNumber, 'send');
+            handlePrint({ printType: 'print', modelNumber: printModelNumber, sendAfterPrint: true });
         } else {
             clickPrintModelNumber(printModelNumber, true);
         }

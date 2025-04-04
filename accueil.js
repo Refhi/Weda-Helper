@@ -225,3 +225,178 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'removeBoldPatientFirstName', fu
         elementPrenom2.style.fontWeight = 'normal';
     }
 });
+
+// Surveillance de la date du dernier VSM
+addTweak('/FolderMedical/PatientViewForm.aspx', '*preAlertVSM', async function () {
+    let preAlertDuration = await getOptionPromise('preAlertVSM');
+    let lastVSMDate = null;
+    // Si la valeur est négative, on ne fait rien
+    if (preAlertDuration < 0) {
+        return;
+    }
+    const patientNumber = getCurrentPatientId();
+
+    const VSMElement = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_LabelLastVSMDate');
+    console.log('[preAlertVSM] VSMElement', VSMElement);
+    if (VSMElement) {
+        lastVSMDate = VSMElement.textContent;
+    }
+    if (VSMElement && lastVSMDate) {
+        console.log('[preAlertVSM] VSMElement', VSMElement);
+        const lastVSMDate = VSMElement.textContent;
+        if (!lastVSMDate) {
+            return;
+        }
+        const today = new Date();
+        // lastVSMDate est au format (12/04/2024), on le convertit en objet Date
+        const [day, month, year] = lastVSMDate.match(/\d+/g);
+        const lastVSMDateObj = new Date(`${year}-${month}-${day}`);
+        // On vérifie que la date est valide
+        if (isNaN(lastVSMDateObj)) {
+            return;
+        }
+        // On vérifie quelle est l'ancienneté du VSM
+        const VSMAge = today - lastVSMDateObj;
+        // Si le VSM a plus de preAlertDuration mois, on le met en orange
+        if (VSMAge > preAlertDuration * 30.44 * 24 * 60 * 60 * 1000) {
+            VSMElement.style.color = 'orange';
+            VSMElement.style.fontWeight = 'bold';
+        }
+        // Si le VSM est plus vieux que 1 an, on le met en rouge
+        if (VSMAge > 31557600000) {
+            VSMElement.style.color = 'red';
+            VSMElement.style.fontWeight = 'bold';
+        }
+    } else {
+        // On vérifie si on a déjà alerté pour ce patient
+        const lastVSMAlertPatient = sessionStorage.getItem('lastVSMAlertPatient');
+        if (lastVSMAlertPatient === patientNumber) {
+            console.log('[preAlertVSM] Alert already sent for patient', patientNumber);
+            return;
+        }
+        console.log('[preAlertVSM] Alert not sent for patient', patientNumber);
+        // On vérifie si le patient
+        let possibleALDPrescription = document.querySelectorAll('div.aldt');
+        if (possibleALDPrescription.length > 0) {
+            // On envoie une notification pour prévenir l'utilisateur
+            sendWedaNotif({
+                message: 'Le patient semble être en ALD, mais la date du dernier VSM est introuvable, pensez à remplir le VSM pour bénéficier du ROSP. Vous pouvez désactiver cette alerte dans les options de Weda-Helper.',
+                type: 'undefined',
+                duration: 7000,
+                icon: 'info',
+            });
+
+        }
+    }
+
+    // On stocke le numéro du patient dans le sessionStorage pour évincer les alertes répétées
+    // => une seule alerte à l'ouverture du dossier.
+    sessionStorage.setItem('lastVSMAlertPatient', patientNumber);
+});
+
+
+// One-click VSM
+addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', '/FolderMedical/DMP/view'], 'oneClickVSM', function () {
+    const MAX_ERROR_RATIO = 0.3;
+    const CLICK_TIMEOUT = 3000;
+
+    // Depuis la page d'accueil on ajoute un bouton pour le VSM en un clic
+    waitForElement({
+        selector: '#ContentPlaceHolder1_EtatCivilUCForm1_HyperLinkOpenVSM',
+        callback: function () {setupPatientViewButton()}
+    });
+
+    // Depuis la page de vérification du VSM (on attends l'apparition du titre avant de vérifier les erreurs)
+    waitForElement({
+        selector: 'h1.h1center',
+        callback: function () {handleVSMVerificationPage(MAX_ERROR_RATIO, CLICK_TIMEOUT)}
+    });
+
+    // Code commenté pour la validation finale, à décommenter si nécessaire
+    waitForElement({
+        selector: 'div.tab_valid_cancel button.button.valid',
+        callback: function (elements) {
+            if (oneClickVSMwithinTimeRange(CLICK_TIMEOUT)) {
+                recordMetrics({ clicks: 1, drags: 1 });
+                elements[0].click();
+            }
+        }
+    });
+});
+
+
+// Gestion depuis l'accueil du dossier patient
+function setupPatientViewButton() {
+    const VSMButton = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_HyperLinkOpenVSM');
+    if (!VSMButton) return;
+
+    // Création du bouton de raccourci
+    const oneClickVSMButton = document.createElement('a');
+    oneClickVSMButton.textContent = '+1clickVSM';
+    oneClickVSMButton.title = 'Weda-Helper : Créer un VSM en un clic. Ne fonctionne que si au moins 70% des champs sont au format CIM-10';
+    oneClickVSMButton.style.cssText = 'cursor: pointer; color: blue; text-decoration: underline; margin-left: 10px;';
+
+    oneClickVSMButton.addEventListener('click', function () {
+        setOneClickVSMTimestamp();
+        VSMButton.click();
+    });
+
+    VSMButton.parentNode.appendChild(oneClickVSMButton);
+}
+
+// Gestion depuis la page de vérification du VSM
+function handleVSMVerificationPage(MAX_ERROR_RATIO, CLICK_TIMEOUT) {
+    const DMPButton = document.querySelector('img[aria-describedby="cdk-describedby-message-5"]');
+    if (!DMPButton) return;
+
+    // Vérification du timestamp
+    if (!oneClickVSMwithinTimeRange(CLICK_TIMEOUT)) return;
+
+    // Analyse des erreurs
+    const checkBoxElementsNum = document.querySelectorAll('input[type="checkbox"]').length;
+    const errorPanel = document.querySelectorAll('div.invite p.alertPanel')[1];
+    const errorNum = errorNumber(errorPanel);
+
+    if (errorNum <= checkBoxElementsNum * MAX_ERROR_RATIO) {
+        const successRate = Math.round(((checkBoxElementsNum - errorNum) / checkBoxElementsNum) * 100);
+        console.log(`Nombre d'erreurs acceptable (${errorNum}/${checkBoxElementsNum}, taux de réussite: ${successRate}%), envoi automatique du VSM`);
+        sendWedaNotifAllTabs({
+            message: `Taux de validation du VSM: ${successRate}% supérieur à ${MAX_ERROR_RATIO * 100}%, envoi automatique du VSM`,
+            type: 'success',
+            duration: 5000,
+            icon: 'success',
+        });
+        recordMetrics({ clicks: 1, drags: 1 });
+        setOneClickVSMTimestamp(); // On rafrachit le timestamp
+        DMPButton.click();
+    } else {
+        const successRate = Math.round(((checkBoxElementsNum - errorNum) / checkBoxElementsNum) * 100);
+        console.log(`Trop d'erreurs pour le VSM en un clic (${errorNum}/${checkBoxElementsNum}, taux de réussite: ${successRate}%)`);
+        message = `Taux de validation du VSM: ${successRate}% inférieur au taux de ${(1-MAX_ERROR_RATIO) * 100}% requis pour le ROSP. Envoi automatique annulé.`;
+        sendWedaNotifAllTabs({
+            message: message,
+            type: 'undefined',
+            duration: 5000,
+            icon: 'error',
+        });
+    }
+}
+
+function errorNumber(errorPanel) {
+    if (!errorPanel) return 0; // Si le panneau n'apparait pas c'est qu'il n'y a pas aucune ligne en erreur
+    const errorNumMatch = errorPanel.textContent.match(/\d+/);
+
+
+    return parseInt(errorNumMatch[0]);
+}
+
+function oneClickVSMwithinTimeRange(CLICK_TIMEOUT) {
+    const oneClickVSMTimestamp = sessionStorage.getItem('oneClickVSM');
+    if (!oneClickVSMTimestamp) return false;
+
+    return Date.now() - oneClickVSMTimestamp < CLICK_TIMEOUT;
+}
+
+function setOneClickVSMTimestamp() {
+    sessionStorage.setItem('oneClickVSM', Date.now());
+}
