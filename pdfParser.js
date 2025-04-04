@@ -54,7 +54,7 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
         callback: processFoundPdfIframe
     });
     waitForElement({
-        selector: 'input[name="ctl00$ContentPlaceHolder1$FindPatientUcForm1$TextBoxRecherche"]',
+        selector: '[id$="_DropDownListRechechePatient"]',
         callback: searchPatientEchanges
     })
 });
@@ -99,6 +99,10 @@ async function processFoundPdfIframe(elements) {
 
     // Création d'un id unique
     let hashId = await customHash(fullText, urlPDF);
+
+    if (isMSSante) {
+        sessionStorage.setItem('latestParsedPDFHash', hashId);
+    }
 
     // Ajout d'un bouton de reset du sessionStorage correspondant
     addResetButton(hashId);
@@ -172,10 +176,6 @@ async function processFoundPdfIframe(elements) {
         highlightDate();
     }, 200);
 
-    if (isMSSante) {
-        sessionStorage.setItem('latestParsedPDFHash', hashId);
-    }
-
 }
 
 async function searchPatientEchanges() {
@@ -186,9 +186,10 @@ async function searchPatientEchanges() {
     }
 
     let extractedData = getPdfData(hashId);
-    handlePatientSearch(extractedData, hashId);
-
-
+    if (!extractedData.alreadyImported) {
+        handlePatientSearch(extractedData, hashId);
+        markDataAsImported(hashId, extractedData);
+    }
 }
 
 
@@ -274,11 +275,18 @@ function handlePatientSearch(extractedData, hashId) {
         console.log("[pdfParser] Les méthodes refusées sont :", extractedData.failedSearches);
         if (search.data && !extractedData.failedSearches.includes(search.type)) {
             let properSearched = lookupPatient(search.type, search.data);
-            if (properSearched.status === 'success') {
+            if (properSearched.status === 'success' ) {
                 console.log(`[pdfParser] ${search.type} présent, on continue à chercher le patient.`);
                 const clicPatientReturn = clicPatient(extractedData);
                 console.log("[pdfParser] clicPatientReturn", clicPatientReturn.status, clicPatientReturn.message);
                 if (clicPatientReturn.status === 'success') {
+                    if (isMSSante) {
+                        let importDiv = document.querySelector('we-doc-import');
+                        let importedPatient = document.createElement('h3');
+                        importedPatient.innerText = 'Patient sélectionné : ' + clicPatientReturn.patientName;
+                        importedPatient.style = 'text-align:center;color:red;'
+                        importDiv.insertAdjacentElement('afterbegin', importedPatient);
+                    }
                     return { status: 'refresh', message: 'Patient trouvé et cliqué' };
                 } else if (clicPatientReturn.status === 'error') {
                     extractedData.failedSearches.push(search.type);
@@ -465,7 +473,7 @@ function clicPatient(extractedData) {
         }
     }
     if (!patientToClick) {
-        return { status: 'error', message: "Aucun patient trouvé" };
+        return { status: 'error', message: "Aucun patient trouvé", patientName:null };
     }
 
     let patientToClickName = patientToClick.innerText;
@@ -473,19 +481,17 @@ function clicPatient(extractedData) {
         // Ici le bon patient est déjà sélectionné pour import.
         // On en déduis que la procédure a déjà aboutie et qu'il faut s'arrêter.
         console.log("[pdfParser] Un patient est déjà sélectionné, arrêt de la recherche.");
-        return { status: 'continue', message: "Un patient est déjà sélectionné" };
+        return { status: 'continue', message: "Un patient est déjà sélectionné", patientName:null };
     } else {
         let patientToClicSelector = "#" + patientToClick.id;
         // patientToClick.click(); => ne fonctionne pas à cause du CSP en milieu ISOLATED
         if (patientToClick) {
             console.log("[pdfParser] Patient à sélectionner :", patientToClickName, patientToClick);
-            if (!isMSSante) {
-                clicCSPLockedElement(patientToClicSelector);
-            }
-            return { status: 'success', message: "Patient trouvé et cliqué" };
+            clicCSPLockedElement(patientToClicSelector);
+            return { status: 'success', message: "Patient trouvé et cliqué", patientName:patientToClickName };
         } else {
             console.log("[pdfParser] Patient non trouvé");
-            return { status: 'error', message: "Aucun patient trouvé" };
+            return { status: 'error', message: "Aucun patient trouvé", patientName:null };
         }
     }
 }
