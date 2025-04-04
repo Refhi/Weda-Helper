@@ -479,7 +479,9 @@ function clicPatient(extractedData) {
         // patientToClick.click(); => ne fonctionne pas à cause du CSP en milieu ISOLATED
         if (patientToClick) {
             console.log("[pdfParser] Patient à sélectionner :", patientToClickName, patientToClick);
-            clicCSPLockedElement(patientToClicSelector);
+            if (!isMSSante) {
+                clicCSPLockedElement(patientToClicSelector);
+            }
             return { status: 'success', message: "Patient trouvé et cliqué" };
         } else {
             console.log("[pdfParser] Patient non trouvé");
