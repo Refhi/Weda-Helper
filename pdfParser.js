@@ -26,7 +26,7 @@
 })();
 
 
-
+let isMSSante = window.location.href.includes('WedaEchanges');
 
 
 
@@ -45,6 +45,20 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
         callback: processFoundPdfIframe
     });
 });
+
+addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
+    waitForElement({
+        // l'id est splité car il y a un chiffre variable au milieu (1 ou 2 selon que l'option
+        // "vertical" est cochée ou nondans la fenêtre d'import)
+        selector: 'a[download$=".pdf"]',
+        callback: processFoundPdfIframe
+    });
+    waitForElement({
+        selector: 'input[name="ctl00$ContentPlaceHolder1$FindPatientUcForm1$TextBoxRecherche"]',
+        callback: searchPatientEchanges
+    })
+});
+
 
 
 /** A partir de là la procédure suis globalement un enchainement de "roll-over" :
@@ -132,20 +146,22 @@ async function processFoundPdfIframe(elements) {
     // => on pourrait rechercher par INS si on a le datamatrix, mais cela impliquerait de
     //    naviguer entre les différents types de recherche dans la fenêtre d'import
 
-    let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
-    if (handlePatientSearchReturn.status === 'refresh') {
-        console.log("[pdfParser] handlePatientSearchReturn", handlePatientSearchReturn.message);
-        // La procédure n'est pas arrivée au bout, un rafraichissement de la page est attendu
-        // On bloque donc ici pour éviter d'intégrer des données trop tôt
-        return;
-    }
+    if (!isMSSante) {
+        let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
+        if (handlePatientSearchReturn.status === 'refresh') {
+            console.log("[pdfParser] handlePatientSearchReturn", handlePatientSearchReturn.message);
+            // La procédure n'est pas arrivée au bout, un rafraichissement de la page est attendu
+            // On bloque donc ici pour éviter d'intégrer des données trop tôt
+            return;
+        }
 
 
-    // Intégration des données dans le formulaire d'import
-    await setExtractedDataInForm(extractedData);
-
-    // Marquage des données comme déjà importées
-    markDataAsImported(hashId, extractedData);
+        // Intégration des données dans le formulaire d'import
+        await setExtractedDataInForm(extractedData);
+        
+        // Marquage des données comme déjà importées
+        markDataAsImported(hashId, extractedData);
+    }  
 
     // Enregistrement des métriques approximatives
     recordMetrics({ clicks: 9, drags: 9, keyStrokes: 10 });
@@ -156,8 +172,24 @@ async function processFoundPdfIframe(elements) {
         highlightDate();
     }, 200);
 
+    if (isMSSante) {
+        sessionStorage.setItem('latestParsedPDFHash', hashId);
+    }
+
 }
 
+async function searchPatientEchanges() {
+    let hashId = sessionStorage.getItem('latestParsedPDFHash');
+    if (!hashId) {
+        return;
+        //TODO gérer l'erreur correctement
+    }
+
+    let extractedData = getPdfData(hashId);
+    handlePatientSearch(extractedData, hashId);
+
+
+}
 
 
 // Fonctions utilitaires
@@ -278,6 +310,9 @@ function handlePatientSearch(extractedData, hashId) {
 
 // Fonction pour sélectionner le premier patient de la liste ou le champ de recherche
 function selectFirstPatientOrSearchField() {
+    if (isMSSante) {
+        return;
+    }
     // On va chercher le premier patient de la liste
     let firstPatient = getPatientsList()[0];
     console.log("[pdfParser] firstPatient", firstPatient);
@@ -308,11 +343,17 @@ function addResetButton(hashId) {
     };
     let binButtonSelector = "#ContentPlaceHolder1_FileStreamClassementsGrid_DeleteButtonGridFileStreamClassement_" + actualImportActionLine();
     let buttonContainer = document.querySelector(binButtonSelector);
+    if (isMSSante) {
+        buttonContainer = document.querySelector('a[download$=".pdf"]');
+    }
     buttonContainer.insertAdjacentElement('afterend', resetButton);
 }
 
 // met la date en focus et surbrillance pour faciliter la saisie
 function highlightDate() {
+    if (isMSSante) {
+        return;
+    }
     let dateSelector = `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_${actualImportActionLine()}`;
     console.log("[pdfParser] Mise en surbrillance de la date pour faciliter la saisie.");
     document.querySelector(dateSelector).focus();
@@ -538,6 +579,9 @@ function searchProperPatient(patientElements, nameMatches) {
 }
 
 function selectedPatientName() {
+    if (isMSSante) {
+        return 'Patient à définir...';
+    }
     // On va rechercher si un patient est déjà sélectionné dans l'élément #ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_1
     let idPatientSelectedBaseId = '#ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_'
     // On ajoute le niveau de selection actuel au sélecteur
@@ -656,6 +700,15 @@ function isValidSearchType(searchType) {
 
 // Renvoie l'URL du PDF de l'iframe quand elle est chargée 
 async function findPdfUrl(elements) {
+    if (isMSSante) {
+        let anchor = elements[0];
+        if (!anchor) {
+            console.error("[pdfParser] lien non trouvée. Arrêt de l'extraction.");
+            resolve(null);
+        }
+
+        return anchor.href;
+    }
     let iframe = elements[0];
     if (!iframe) {
         console.error("[pdfParser] iframe non trouvée. Arrêt de l'extraction.");
@@ -1289,6 +1342,9 @@ function visualizeBinaryBitmap(binaryBitmap) {
 }
 
 async function determineDocumentType(fullText) {
+        if (isMSSante) {
+        return null;
+    }
     // console.log('[pdfParser] determineDocumentType');
     // On utilise un tableau de tableaux pour permettre de parcourir les types de documents par ordre de spécificité
     // Et de mettre plusieurs fois la même clé, avec des valeurs de moins en moins exigeantes
