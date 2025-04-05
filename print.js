@@ -811,6 +811,46 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'instantPrint', function () {
  * passe forcément par les tabs
  */
 const PRINTALLFUNCTION = '*printAll';
+// 1 - On va d'abord se mettre en mode historique mixte, lister tous les éléments imprimables du jour, et ouvrir un nouvel onglet pour chaque élément
+async function startPrintAll() {
+    // D'abord se mettre en mode historique mixte pour être sur de tout imprimer, dont les courriers
+    const mixtHistoryText = document.querySelector('#ContentPlaceHolder1_LabelCommandAffiche');
+    if (mixtHistoryText.innerText !== 'Historique mixte') {
+        const mixtHistoryButton = document.querySelector('#ContentPlaceHolder1_ButtonShowAllLastEvenement');
+        if (mixtHistoryButton) {mixtHistoryButton.click();}
+
+        // Attendre que la progression soit cachée avec un timeout de 10 secondes
+        await waitForUpdateProgressToHide();
+    }
+
+    // Lister tout les éléments modifier du jour
+    let elementsModifier = listAllTodaysDocs();
+    console.log('elementsModifier', elementsModifier);
+
+    // Stocker les ids de ces éléments dans le session storage
+    let ids = Array.from(elementsModifier).map(element => {
+        return element.id;
+    });
+    console.log('ids', ids);
+    localStorage.setItem('printAllIds', JSON.stringify(ids));
+    // On va ouvrir un nouvel onglet pour chaque élément grace à newPatientTab
+    let index = 0;
+    function openNextTab() {
+        if (index < ids.length) {
+            let id = ids[index];
+            console.log('id', id);
+            newPatientTab(true).then(() => {
+                index++;
+                openNextTab();
+            });
+        } else {
+            console.log('Tous les onglets ont été ouverts');
+        }
+    }
+    openNextTab();
+}
+
+// 2 - On va maintenant imprimer chaque élément un par un
 addTweak('/FolderMedical/PatientViewForm.aspx', PRINTALLFUNCTION, function () {
     // Là on considère qu'on travaille dans un nouvel onglet :
     // on parcours la liste d'ids présents dans le session storage.
@@ -856,6 +896,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', PRINTALLFUNCTION, function () {
     }
 });
 
+// 3 - On est maintenant dans un des éléments à imprimer => on le traite
 addTweak(["/FolderMedical/CertificatForm.aspx", "/FolderMedical/DemandeForm.aspx", "/FolderMedical/PrescriptionForm.aspx", "/FolderMedical/CourrierForm.aspx"], PRINTALLFUNCTION, function () {
     // On est maintenant dans un des éléments à imprimer.
     // Vérifier si le contrôle thisTabMustBePrinted existe et est récent
@@ -874,43 +915,7 @@ addTweak(["/FolderMedical/CertificatForm.aspx", "/FolderMedical/DemandeForm.aspx
     sessionStorage.removeItem('thisTabMustBePrinted');
 });
 
-async function startPrintAll() {
-    // D'abord se mettre en mode historique mixte pour être sur de tout imprimer, dont les courriers
-    const mixtHistoryText = document.querySelector('#ContentPlaceHolder1_LabelCommandAffiche');
-    if (mixtHistoryText.innerText !== 'Historique mixte') {
-        const mixtHistoryButton = document.querySelector('#ContentPlaceHolder1_ButtonShowAllLastEvenement');
-        if (mixtHistoryButton) {mixtHistoryButton.click();}
 
-        // Attendre que la progression soit cachée avec un timeout de 10 secondes
-        await waitForUpdateProgressToHide();
-    }
-
-    // Lister tout les éléments modifier du jour
-    let elementsModifier = listAllTodaysDocs();
-    console.log('elementsModifier', elementsModifier);
-
-    // Stocker les ids de ces éléments dans le session storage
-    let ids = Array.from(elementsModifier).map(element => {
-        return element.id;
-    });
-    console.log('ids', ids);
-    localStorage.setItem('printAllIds', JSON.stringify(ids));
-    // On va ouvrir un nouvel onglet pour chaque élément grace à newPatientTab
-    let index = 0;
-    function openNextTab() {
-        if (index < ids.length) {
-            let id = ids[index];
-            console.log('id', id);
-            newPatientTab(id).then(() => {
-                index++;
-                openNextTab();
-            });
-        } else {
-            console.log('Tous les onglets ont été ouverts');
-        }
-    }
-    openNextTab();
-}
 
 
 // On attends que l'historique mixte soit chargé en surveillant le texte du label
