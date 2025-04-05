@@ -830,16 +830,16 @@ addTweak('/FolderMedical/PatientViewForm.aspx', PRINTALLFUNCTION, function () {
     // Ajout d'un timestamp dans le sessionStorage pour indiquer que ce tab doit imprimer
     sessionStorage.setItem('thisTabMustBePrinted', Date.now().toString());
 
-    idToPrint = document.querySelector(`#${idToPrint}`);
-    if (idToPrint) {
-        idToPrint.click();
-        console.log('idToPrint clicked', idToPrint);
+    let toPrintElement = document.querySelector(`#${idToPrint}`);
+    if (toPrintElement) {
+        toPrintElement.click();
+        console.log('idToPrint clicked', toPrintElement);
     } else {
         // S'il manque l'id, on est probablement sur un élements qui nécessite l'historique mixte pour s'afficher
         const mixtHistoryButton = document.querySelector('#ContentPlaceHolder1_ButtonShowAllLastEvenement');
         if (mixtHistoryButton) {
             mixtHistoryButton.click();
-            console.log('mixtHistoryButton clicked', mixtHistoryButton);
+            console.log('mixtHistoryButton clicked', mixtHistoryButton, "j'attends l'élément #", idToPrint);
             waitForElement({
                 selector: `#${idToPrint}`,
                 justOnce: true,
