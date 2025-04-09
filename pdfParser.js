@@ -187,8 +187,10 @@ async function searchPatientEchanges() {
 
     let extractedData = getPdfData(hashId);
     if (!extractedData.alreadyImported) {
-        handlePatientSearch(extractedData, hashId);
-        markDataAsImported(hashId, extractedData);
+        let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
+        setTimeout(() => {
+            markDataAsImported(hashId, extractedData);
+        }, "1000"); //Si appellé trop tôt, créé une race condition
     }
 }
 
