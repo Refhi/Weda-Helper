@@ -225,12 +225,40 @@ addTweak(urls, '*addATCDShortcut', function () {
 
 /**
  * Ouvre un nouvel onglet avec l'URL du dossier du patient actuel.
+ * Conserve le focus sur l'onglet d'origine si demandé.
  * 
  * @async
  * @function newPatientTab
+ * @param {boolean} [keepFocus=false] - Si true, conserve le focus sur l'onglet actuel
+ * @returns {Promise<Object|null>} L'onglet créé ou null en cas d'erreur
  */
-async function newPatientTab() {
-    let patientInfo = await getPatientInfo(getCurrentPatientId());
-    let urlPatient = patientInfo['patientFileUrl'];
-    window.open(urlPatient);
+async function newPatientTab(keepFocus = false) {
+    try {
+        const patientInfo = await getPatientInfo(getCurrentPatientId());
+        const urlPatient = patientInfo['patientFileUrl'];
+        
+        // Si on ne veut pas garder le focus, on utilise la méthode standard
+        if (!keepFocus) {
+            window.open(urlPatient);
+            return null;
+        }
+        
+        // Sinon on utilise l'API tabs qui nécessite la permission
+        const result = await handleTabsFeature({
+            action: 'create',
+            options: { 
+                url: `${baseUrl}${urlPatient}`, 
+                active: false // La clé est ici: active: false empêche le nouvel onglet de prendre le focus
+            },
+            info: 'Ouverture du dossier patient dans un nouvel onglet'
+        });
+        
+        return result;
+    } catch (error) {
+        console.error('Erreur lors de l\'ouverture du dossier patient:', error);
+        // En cas d'erreur (permission refusée), on revient à la méthode standard
+        const patientInfo = await getPatientInfo(getCurrentPatientId());
+        window.open(patientInfo['patientFileUrl']);
+        return null;
+    }
 }

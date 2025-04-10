@@ -811,69 +811,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'instantPrint', function () {
  * passe forcément par les tabs
  */
 const PRINTALLFUNCTION = '*printAll';
-addTweak('/FolderMedical/PatientViewForm.aspx', PRINTALLFUNCTION, function () {
-    // Là on considère qu'on travaille dans un nouvel onglet :
-    // on parcours la liste d'ids présents dans le session storage.
-    // on va cliquer sur l'élément modifier correspondant, et le supprimer
-    // de la liste.
-
-    let idsToPrint = JSON.parse(localStorage.getItem('printAllIds'));
-    console.log('idsToPrint', idsToPrint);
-    let idToPrint = idsToPrint[0];
-    idsToPrint.shift(); // Supprimer l'id de la liste
-    localStorage.setItem('printAllIds', JSON.stringify(idsToPrint));
-    console.log('idToPrint', idToPrint);
-    if (!idToPrint) {
-        return; // On a tout imprimé
-    }
-
-    // Ajout d'un timestamp dans le sessionStorage pour indiquer que ce tab doit imprimer
-    sessionStorage.setItem('thisTabMustBePrinted', Date.now().toString());
-
-    idToPrint = document.querySelector(`#${idToPrint}`);
-    if (idToPrint) {
-        idToPrint.click();
-        console.log('idToPrint clicked', idToPrint);
-    } else {
-        // S'il manque l'id, on est probablement sur un élements qui nécessite l'historique mixte pour s'afficher
-        const mixtHistoryButton = document.querySelector('#ContentPlaceHolder1_ButtonShowAllLastEvenement');
-        if (mixtHistoryButton) {
-            mixtHistoryButton.click();
-            console.log('mixtHistoryButton clicked', mixtHistoryButton);
-            waitForElement({
-                selector: `#${idToPrint}`,
-                justOnce: true,
-                callback: (newElements) => {
-                    console.log('idToPrint clicked', newElements[0]);
-                    newElements[0].click();
-                }
-            });
-        } else {
-            console.error('Aucun élément à imprimer trouvé');
-            sessionStorage.removeItem('thisTabMustBePrinted'); // Nettoyer le storage si on ne trouve rien
-            return;
-        }
-    }
-});
-
-addTweak(["/FolderMedical/CertificatForm.aspx", "/FolderMedical/DemandeForm.aspx", "/FolderMedical/PrescriptionForm.aspx", "/FolderMedical/CourrierForm.aspx"], PRINTALLFUNCTION, function () {
-    // On est maintenant dans un des éléments à imprimer.
-    // Vérifier si le contrôle thisTabMustBePrinted existe et est récent
-    const printTimestamp = sessionStorage.getItem('thisTabMustBePrinted');
-
-    if (printTimestamp && (Date.now() - parseInt(printTimestamp) < 20000)) {
-        // La page doit être imprimée car elle a été ouverte par printAll il y a moins de 20 secondes
-        console.log('Impression automatique via printAll détectée');
-        // On ajoute un timeout pour laisser le temps à la page de se charger
-        setTimeout(() => {
-            handlePrint({ printType: 'print', modelNumber: 0, massPrint: true });
-        }, 1000);
-    }
-
-    // Nettoyer le sessionStorage dans tous les cas
-    sessionStorage.removeItem('thisTabMustBePrinted');
-});
-
+// 1 - On va d'abord se mettre en mode historique mixte, lister tous les éléments imprimables du jour, et ouvrir un nouvel onglet pour chaque élément
 async function startPrintAll() {
     // D'abord se mettre en mode historique mixte pour être sur de tout imprimer, dont les courriers
     const mixtHistoryText = document.querySelector('#ContentPlaceHolder1_LabelCommandAffiche');
@@ -901,7 +839,7 @@ async function startPrintAll() {
         if (index < ids.length) {
             let id = ids[index];
             console.log('id', id);
-            newPatientTab(id).then(() => {
+            newPatientTab(true).then(() => {
                 index++;
                 openNextTab();
             });
@@ -911,6 +849,73 @@ async function startPrintAll() {
     }
     openNextTab();
 }
+
+// 2 - On va maintenant imprimer chaque élément un par un
+addTweak('/FolderMedical/PatientViewForm.aspx', PRINTALLFUNCTION, function () {
+    // Là on considère qu'on travaille dans un nouvel onglet :
+    // on parcours la liste d'ids présents dans le session storage.
+    // on va cliquer sur l'élément modifier correspondant, et le supprimer
+    // de la liste.
+
+    let idsToPrint = JSON.parse(localStorage.getItem('printAllIds'));
+    console.log('idsToPrint', idsToPrint);
+    let idToPrint = idsToPrint[0];
+    idsToPrint.shift(); // Supprimer l'id de la liste
+    localStorage.setItem('printAllIds', JSON.stringify(idsToPrint));
+    console.log('idToPrint', idToPrint);
+    if (!idToPrint) {
+        return; // On a tout imprimé
+    }
+
+    // Ajout d'un timestamp dans le sessionStorage pour indiquer que ce tab doit imprimer
+    sessionStorage.setItem('thisTabMustBePrinted', Date.now().toString());
+
+    let toPrintElement = document.querySelector(`#${idToPrint}`);
+    if (toPrintElement) {
+        toPrintElement.click();
+        console.log('idToPrint clicked', toPrintElement);
+    } else {
+        // S'il manque l'id, on est probablement sur un élements qui nécessite l'historique mixte pour s'afficher
+        const mixtHistoryButton = document.querySelector('#ContentPlaceHolder1_ButtonShowAllLastEvenement');
+        if (mixtHistoryButton) {
+            mixtHistoryButton.click();
+            console.log('mixtHistoryButton clicked', mixtHistoryButton, "j'attends l'élément #", idToPrint);
+            waitForElement({
+                selector: `#${idToPrint}`,
+                justOnce: true,
+                callback: (newElements) => {
+                    console.log('idToPrint clicked', newElements[0]);
+                    newElements[0].click();
+                }
+            });
+        } else {
+            console.error('Aucun élément à imprimer trouvé');
+            sessionStorage.removeItem('thisTabMustBePrinted'); // Nettoyer le storage si on ne trouve rien
+            return;
+        }
+    }
+});
+
+// 3 - On est maintenant dans un des éléments à imprimer => on le traite
+addTweak(["/FolderMedical/CertificatForm.aspx", "/FolderMedical/DemandeForm.aspx", "/FolderMedical/PrescriptionForm.aspx", "/FolderMedical/CourrierForm.aspx"], PRINTALLFUNCTION, function () {
+    // On est maintenant dans un des éléments à imprimer.
+    // Vérifier si le contrôle thisTabMustBePrinted existe et est récent
+    const printTimestamp = sessionStorage.getItem('thisTabMustBePrinted');
+
+    if (printTimestamp && (Date.now() - parseInt(printTimestamp) < 20000)) {
+        // La page doit être imprimée car elle a été ouverte par printAll il y a moins de 20 secondes
+        console.log('Impression automatique via printAll détectée');
+        // On ajoute un timeout pour laisser le temps à la page de se charger
+        setTimeout(() => {
+            handlePrint({ printType: 'print', modelNumber: 0, massPrint: true });
+        }, 1000);
+    }
+
+    // Nettoyer le sessionStorage dans tous les cas
+    sessionStorage.removeItem('thisTabMustBePrinted');
+});
+
+
 
 
 // On attends que l'historique mixte soit chargé en surveillant le texte du label
