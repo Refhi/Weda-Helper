@@ -26,7 +26,7 @@
 })();
 
 
-
+let isMSSante = window.location.href.includes('WedaEchanges');
 
 
 
@@ -45,6 +45,20 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
         callback: processFoundPdfIframe
     });
 });
+
+addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
+    waitForElement({
+        // l'id est splité car il y a un chiffre variable au milieu (1 ou 2 selon que l'option
+        // "vertical" est cochée ou nondans la fenêtre d'import)
+        selector: 'a[download$=".pdf"]',
+        callback: processFoundPdfIframe
+    });
+    waitForElement({
+        selector: '[id$="_DropDownListRechechePatient"]',
+        callback: searchPatientEchanges
+    })
+});
+
 
 
 /** A partir de là la procédure suis globalement un enchainement de "roll-over" :
@@ -85,6 +99,10 @@ async function processFoundPdfIframe(elements) {
 
     // Création d'un id unique
     let hashId = await customHash(fullText, urlPDF);
+
+    if (isMSSante) {
+        sessionStorage.setItem('latestParsedPDFHash', hashId);
+    }
 
     // Ajout d'un bouton de reset du sessionStorage correspondant
     addResetButton(hashId);
@@ -132,20 +150,22 @@ async function processFoundPdfIframe(elements) {
     // => on pourrait rechercher par INS si on a le datamatrix, mais cela impliquerait de
     //    naviguer entre les différents types de recherche dans la fenêtre d'import
 
-    let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
-    if (handlePatientSearchReturn.status === 'refresh') {
-        console.log("[pdfParser] handlePatientSearchReturn", handlePatientSearchReturn.message);
-        // La procédure n'est pas arrivée au bout, un rafraichissement de la page est attendu
-        // On bloque donc ici pour éviter d'intégrer des données trop tôt
-        return;
-    }
+    if (!isMSSante) {
+        let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
+        if (handlePatientSearchReturn.status === 'refresh') {
+            console.log("[pdfParser] handlePatientSearchReturn", handlePatientSearchReturn.message);
+            // La procédure n'est pas arrivée au bout, un rafraichissement de la page est attendu
+            // On bloque donc ici pour éviter d'intégrer des données trop tôt
+            return;
+        }
 
 
-    // Intégration des données dans le formulaire d'import
-    await setExtractedDataInForm(extractedData);
-
-    // Marquage des données comme déjà importées
-    markDataAsImported(hashId, extractedData);
+        // Intégration des données dans le formulaire d'import
+        await setExtractedDataInForm(extractedData);
+        
+        // Marquage des données comme déjà importées
+        markDataAsImported(hashId, extractedData);
+    }  
 
     // Enregistrement des métriques approximatives
     recordMetrics({ clicks: 9, drags: 9, keyStrokes: 10 });
@@ -158,6 +178,21 @@ async function processFoundPdfIframe(elements) {
 
 }
 
+async function searchPatientEchanges() {
+    let hashId = sessionStorage.getItem('latestParsedPDFHash');
+    if (!hashId) {
+        return;
+        //TODO gérer l'erreur correctement
+    }
+
+    let extractedData = getPdfData(hashId);
+    if (!extractedData.alreadyImported) {
+        let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
+        setTimeout(() => {
+            markDataAsImported(hashId, extractedData);
+        }, "1000"); //Si appellé trop tôt, créé une race condition
+    }
+}
 
 
 // Fonctions utilitaires
@@ -242,11 +277,18 @@ function handlePatientSearch(extractedData, hashId) {
         console.log("[pdfParser] Les méthodes refusées sont :", extractedData.failedSearches);
         if (search.data && !extractedData.failedSearches.includes(search.type)) {
             let properSearched = lookupPatient(search.type, search.data);
-            if (properSearched.status === 'success') {
+            if (properSearched.status === 'success' ) {
                 console.log(`[pdfParser] ${search.type} présent, on continue à chercher le patient.`);
                 const clicPatientReturn = clicPatient(extractedData);
                 console.log("[pdfParser] clicPatientReturn", clicPatientReturn.status, clicPatientReturn.message);
                 if (clicPatientReturn.status === 'success') {
+                    if (isMSSante) {
+                        let importDiv = document.querySelector('we-doc-import');
+                        let importedPatient = document.createElement('h3');
+                        importedPatient.innerText = 'Patient sélectionné : ' + clicPatientReturn.patientName;
+                        importedPatient.style = 'text-align:center;color:red;'
+                        importDiv.insertAdjacentElement('afterbegin', importedPatient);
+                    }
                     return { status: 'refresh', message: 'Patient trouvé et cliqué' };
                 } else if (clicPatientReturn.status === 'error') {
                     extractedData.failedSearches.push(search.type);
@@ -278,6 +320,9 @@ function handlePatientSearch(extractedData, hashId) {
 
 // Fonction pour sélectionner le premier patient de la liste ou le champ de recherche
 function selectFirstPatientOrSearchField() {
+    if (isMSSante) {
+        return;
+    }
     // On va chercher le premier patient de la liste
     let firstPatient = getPatientsList()[0];
     console.log("[pdfParser] firstPatient", firstPatient);
@@ -308,11 +353,17 @@ function addResetButton(hashId) {
     };
     let binButtonSelector = "#ContentPlaceHolder1_FileStreamClassementsGrid_DeleteButtonGridFileStreamClassement_" + actualImportActionLine();
     let buttonContainer = document.querySelector(binButtonSelector);
+    if (isMSSante) {
+        buttonContainer = document.querySelector('a[download$=".pdf"]');
+    }
     buttonContainer.insertAdjacentElement('afterend', resetButton);
 }
 
 // met la date en focus et surbrillance pour faciliter la saisie
 function highlightDate() {
+    if (isMSSante) {
+        return;
+    }
     let dateSelector = `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_${actualImportActionLine()}`;
     console.log("[pdfParser] Mise en surbrillance de la date pour faciliter la saisie.");
     document.querySelector(dateSelector).focus();
@@ -424,7 +475,7 @@ function clicPatient(extractedData) {
         }
     }
     if (!patientToClick) {
-        return { status: 'error', message: "Aucun patient trouvé" };
+        return { status: 'error', message: "Aucun patient trouvé", patientName:null };
     }
 
     let patientToClickName = patientToClick.innerText;
@@ -432,17 +483,17 @@ function clicPatient(extractedData) {
         // Ici le bon patient est déjà sélectionné pour import.
         // On en déduis que la procédure a déjà aboutie et qu'il faut s'arrêter.
         console.log("[pdfParser] Un patient est déjà sélectionné, arrêt de la recherche.");
-        return { status: 'continue', message: "Un patient est déjà sélectionné" };
+        return { status: 'continue', message: "Un patient est déjà sélectionné", patientName:null };
     } else {
         let patientToClicSelector = "#" + patientToClick.id;
         // patientToClick.click(); => ne fonctionne pas à cause du CSP en milieu ISOLATED
         if (patientToClick) {
             console.log("[pdfParser] Patient à sélectionner :", patientToClickName, patientToClick);
             clicCSPLockedElement(patientToClicSelector);
-            return { status: 'success', message: "Patient trouvé et cliqué" };
+            return { status: 'success', message: "Patient trouvé et cliqué", patientName:patientToClickName };
         } else {
             console.log("[pdfParser] Patient non trouvé");
-            return { status: 'error', message: "Aucun patient trouvé" };
+            return { status: 'error', message: "Aucun patient trouvé", patientName:null };
         }
     }
 }
@@ -538,6 +589,9 @@ function searchProperPatient(patientElements, nameMatches) {
 }
 
 function selectedPatientName() {
+    if (isMSSante) {
+        return 'Patient à définir...';
+    }
     // On va rechercher si un patient est déjà sélectionné dans l'élément #ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_1
     let idPatientSelectedBaseId = '#ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_'
     // On ajoute le niveau de selection actuel au sélecteur
@@ -656,6 +710,15 @@ function isValidSearchType(searchType) {
 
 // Renvoie l'URL du PDF de l'iframe quand elle est chargée 
 async function findPdfUrl(elements) {
+    if (isMSSante) {
+        let anchor = elements[0];
+        if (!anchor) {
+            console.error("[pdfParser] lien non trouvée. Arrêt de l'extraction.");
+            resolve(null);
+        }
+
+        return anchor.href;
+    }
     let iframe = elements[0];
     if (!iframe) {
         console.error("[pdfParser] iframe non trouvée. Arrêt de l'extraction.");
@@ -1289,6 +1352,9 @@ function visualizeBinaryBitmap(binaryBitmap) {
 }
 
 async function determineDocumentType(fullText) {
+        if (isMSSante) {
+        return null;
+    }
     // console.log('[pdfParser] determineDocumentType');
     // On utilise un tableau de tableaux pour permettre de parcourir les types de documents par ordre de spécificité
     // Et de mettre plusieurs fois la même clé, avec des valeurs de moins en moins exigeantes
