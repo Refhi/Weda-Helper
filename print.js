@@ -811,17 +811,55 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'instantPrint', function () {
  * passe forcément par les tabs
  */
 const PRINTALLFUNCTION = '*printAll';
-// 1 - On va d'abord se mettre en mode historique mixte, lister tous les éléments imprimables du jour, et ouvrir un nouvel onglet pour chaque élément
+
+// Ajout d'un store pour les tâches associées aux onglets
+const tabTaskStore = {
+    tasks: {},
+    
+    // Associe une tâche à un onglet
+    assignTask: function(tabId, task) {
+        this.tasks[tabId] = task;
+        // Stockage persistant dans sessionStorage
+        sessionStorage.setItem('tabTasks', JSON.stringify(this.tasks));
+        console.log(`Tâche assignée à l'onglet ${tabId}:`, task);
+    },
+    
+    // Récupère la tâche associée à un onglet
+    getTask: function(tabId) {
+        // Synchroniser d'abord depuis sessionStorage
+        this.loadFromStorage();
+        return this.tasks[tabId] || null;
+    },
+    
+    // Supprime la tâche d'un onglet
+    removeTask: function(tabId) {
+        if (this.tasks[tabId]) {
+            delete this.tasks[tabId];
+            sessionStorage.setItem('tabTasks', JSON.stringify(this.tasks));
+            console.log(`Tâche supprimée pour l'onglet ${tabId}`);
+        }
+    },
+    
+    // Charge les tâches depuis le sessionStorage
+    loadFromStorage: function() {
+        const storedTasks = sessionStorage.getItem('tabTasks');
+        if (storedTasks) {
+            try {
+                this.tasks = JSON.parse(storedTasks);
+            } catch (e) {
+                console.error('Erreur lors du chargement des tâches:', e);
+                this.tasks = {};
+            }
+        }
+    }
+};
+
+
+// 1 - On va d'abord se mettre en mode historique mixte, lister tous les éléments imprimables du jour,
+//     et ouvrir un nouvel onglet pour chaque élément
 async function startPrintAll() {
     // D'abord se mettre en mode historique mixte pour être sur de tout imprimer, dont les courriers
-    const mixtHistoryText = document.querySelector('#ContentPlaceHolder1_LabelCommandAffiche');
-    if (mixtHistoryText.innerText !== 'Historique mixte') {
-        const mixtHistoryButton = document.querySelector('#ContentPlaceHolder1_ButtonShowAllLastEvenement');
-        if (mixtHistoryButton) {mixtHistoryButton.click();}
-
-        // Attendre que la progression soit cachée avec un timeout de 10 secondes
-        await waitForUpdateProgressToHide();
-    }
+    await goToHistoriqueMixte();
 
     // Lister tout les éléments modifier du jour
     let elementsModifier = listAllTodaysDocs();
@@ -832,68 +870,113 @@ async function startPrintAll() {
         return element.id;
     });
     console.log('ids', ids);
-    localStorage.setItem('printAllIds', JSON.stringify(ids));
+    localStorage.setItem('printAllIds', JSON.stringify(ids)); // TODO : à supprimer ?
+
     // On va ouvrir un nouvel onglet pour chaque élément grace à newPatientTab
     let index = 0;
-    function openNextTab() {
+    async function openNextTab() {
         if (index < ids.length) {
-            let id = ids[index];
-            console.log('id', id);
-            newPatientTab(true).then(() => {
+            const id = ids[index];
+            console.log(`Création d'un onglet pour le document ${id}, index ${index}`);
+            
+            try {
+                // Création du nouvel onglet et récupération de ses informations
+                const tabInfo = await newPatientTab(true);                
+                // Associer le document à imprimer à cet onglet
+                tabTaskStore.assignTask(tabInfo.id, {
+                    type: 'printDocument',
+                    documentId: id,
+                    created: Date.now(),
+                    index: index
+                });                
                 index++;
-                openNextTab();
-            });
+                await openNextTab();
+            } catch (error) {
+                console.error(`Erreur lors de la création de l'onglet pour ${id}:`, error);
+            }
         } else {
             console.log('Tous les onglets ont été ouverts');
         }
-    }
-    openNextTab();
+    }    
+    await openNextTab();
 }
+
 
 // 2 - On va maintenant imprimer chaque élément un par un
 addTweak('/FolderMedical/PatientViewForm.aspx', PRINTALLFUNCTION, function () {
-    // Là on considère qu'on travaille dans un nouvel onglet :
-    // on parcours la liste d'ids présents dans le session storage.
-    // on va cliquer sur l'élément modifier correspondant, et le supprimer
-    // de la liste.
-
-    let idsToPrint = JSON.parse(localStorage.getItem('printAllIds'));
-    console.log('idsToPrint', idsToPrint);
-    let idToPrint = idsToPrint[0];
-    idsToPrint.shift(); // Supprimer l'id de la liste
-    localStorage.setItem('printAllIds', JSON.stringify(idsToPrint));
-    console.log('idToPrint', idToPrint);
-    if (!idToPrint) {
-        return; // On a tout imprimé
-    }
-
-    // Ajout d'un timestamp dans le sessionStorage pour indiquer que ce tab doit imprimer
-    sessionStorage.setItem('thisTabMustBePrinted', Date.now().toString());
-
-    let toPrintElement = document.querySelector(`#${idToPrint}`);
-    if (toPrintElement) {
-        toPrintElement.click();
-        console.log('idToPrint clicked', toPrintElement);
-    } else {
-        // S'il manque l'id, on est probablement sur un élements qui nécessite l'historique mixte pour s'afficher
-        const mixtHistoryButton = document.querySelector('#ContentPlaceHolder1_ButtonShowAllLastEvenement');
-        if (mixtHistoryButton) {
-            mixtHistoryButton.click();
-            console.log('mixtHistoryButton clicked', mixtHistoryButton, "j'attends l'élément #", idToPrint);
-            waitForElement({
-                selector: `#${idToPrint}`,
-                justOnce: true,
-                callback: (newElements) => {
-                    console.log('idToPrint clicked', newElements[0]);
-                    newElements[0].click();
-                }
-            });
-        } else {
-            console.error('Aucun élément à imprimer trouvé');
-            sessionStorage.removeItem('thisTabMustBePrinted'); // Nettoyer le storage si on ne trouve rien
+    // Récupérer l'ID de l'onglet courant pour vérifier si une tâche lui est assignée
+    handleTabsFeature({
+        action: 'getCurrentTab',
+        info: 'Récupération de l\'onglet courant pour impression multiple'
+    }).then(async (tabInfo) => {
+        if (!tabInfo || !tabInfo.id) {
+            console.log('Impossible de déterminer l\'ID de l\'onglet courant');
             return;
         }
-    }
+
+        const tabId = tabInfo.id;
+        const task = tabTaskStore.getTask(tabId);
+
+        // Vérifier si cet onglet a une tâche d'impression assignée
+        if (!task || task.type !== 'printDocument') {
+            console.log('Aucune tâche d\'impression assignée à cet onglet', tabId);
+            return;
+        }
+
+        console.log(`Tâche d'impression trouvée pour l'onglet ${tabId}:`, task);
+        const documentId = task.documentId;
+
+        // Marquer cette tâche comme en cours de traitement
+        tabTaskStore.assignTask(tabId, {
+            ...task,
+            status: 'processing',
+            processingStarted: Date.now()
+        });
+
+        // Ajouter un timestamp dans le sessionStorage pour indiquer que ce tab doit imprimer
+        sessionStorage.setItem('thisTabMustBePrinted', Date.now().toString());
+
+        // Rechercher l'élément à imprimer
+        let toPrintElement = document.querySelector(`#${documentId}`);
+        if (toPrintElement) {
+            console.log(`Élément à imprimer trouvé (#${documentId}), clic en cours...`);
+            toPrintElement.click();
+        } else {
+            // S'il manque l'id, on active l'historique mixte pour le trouver
+            console.log(`Élément #${documentId} non trouvé, activation de l'historique mixte...`);
+            
+            try {
+                // Utilisation de goToHistoriqueMixte au lieu d'un clic manuel
+                await goToHistoriqueMixte();
+                
+                // Recherche à nouveau après l'activation de l'historique mixte
+                toPrintElement = document.querySelector(`#${documentId}`);
+                if (toPrintElement) {
+                    console.log(`Élément trouvé après activation de l'historique mixte (#${documentId}), clic en cours...`);
+                    toPrintElement.click();
+                } else {
+                    console.error(`Élément introuvable même après activation de l'historique mixte (#${documentId})`);
+                    sessionStorage.removeItem('thisTabMustBePrinted');
+                    tabTaskStore.assignTask(tabId, {
+                        ...task,
+                        status: 'failed',
+                        error: 'Élément introuvable même après activation de l\'historique mixte'
+                    });
+                }
+            } catch (error) {
+                console.error(`Erreur lors de l'activation de l'historique mixte:`, error);
+                sessionStorage.removeItem('thisTabMustBePrinted');
+                tabTaskStore.assignTask(tabId, {
+                    ...task,
+                    status: 'failed',
+                    error: 'Erreur lors de l\'activation de l\'historique mixte: ' + error.message
+                });
+            }
+        }
+    }).catch(error => {
+        console.error('Erreur lors de la récupération de l\'ID de l\'onglet:', error);
+        sessionStorage.removeItem('thisTabMustBePrinted');
+    });
 });
 
 // 3 - On est maintenant dans un des éléments à imprimer => on le traite
@@ -923,7 +1006,7 @@ async function waitForUpdateProgressToHide() {
     return new Promise((resolve) => {
         const startTime = Date.now();
         const maxWaitTime = 10000; // 10 secondes maximum d'attente
-        
+
         function checkHistoryLabel() {
             // Vérifier si le temps d'attente maximum est dépassé
             if (Date.now() - startTime > maxWaitTime) {
@@ -931,21 +1014,21 @@ async function waitForUpdateProgressToHide() {
                 resolve(); // On continue malgré tout
                 return;
             }
-            
+
             // Récupérer le label qui indique l'état de l'historique
             const historyLabel = document.querySelector('#ContentPlaceHolder1_LabelCommandAffiche');
-            
+
             // Si le label indique "Historique mixte", c'est que le chargement est terminé
             if (historyLabel && historyLabel.innerText === 'Historique mixte') {
                 console.log('L\'historique mixte est chargé');
                 resolve(); // On peut continuer
                 return;
             }
-            
+
             // L'historique n'est pas encore chargé, on vérifie à nouveau après un court délai
             setTimeout(checkHistoryLabel, 100);
         }
-        
+
         // Démarrer la vérification
         checkHistoryLabel();
     });
@@ -1028,4 +1111,16 @@ function listAllTodaysDocs() {
 
     console.log('Total des éléments "Modifier" trouvés:', allElementsModifier.length);
     return allElementsModifier;
+}
+
+async function goToHistoriqueMixte() {
+    console.log('goToHistoriqueMixte activé');
+    const mixtHistoryText = document.querySelector('#ContentPlaceHolder1_LabelCommandAffiche');
+    if (mixtHistoryText.innerText !== 'Historique mixte') {
+        const mixtHistoryButton = document.querySelector('#ContentPlaceHolder1_ButtonShowAllLastEvenement');
+        if (mixtHistoryButton) { mixtHistoryButton.click(); }
+
+        // Attendre que la progression soit cachée avec un timeout de 10 secondes
+        await waitForUpdateProgressToHide();
+    }
 }
