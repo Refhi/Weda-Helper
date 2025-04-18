@@ -819,14 +819,14 @@ const tabTaskStore = {
     // Associe une tâche à un onglet
     assignTask: function(tabId, task) {
         this.tasks[tabId] = task;
-        // Stockage persistant dans sessionStorage
-        sessionStorage.setItem('tabTasks', JSON.stringify(this.tasks));
+        // Stockage persistant dans localStorage
+        localStorage.setItem('tabTasks', JSON.stringify(this.tasks));
         console.log(`Tâche assignée à l'onglet ${tabId}:`, task);
     },
     
     // Récupère la tâche associée à un onglet
     getTask: function(tabId) {
-        // Synchroniser d'abord depuis sessionStorage
+        // Synchroniser d'abord depuis localStorage
         this.loadFromStorage();
         return this.tasks[tabId] || null;
     },
@@ -835,14 +835,15 @@ const tabTaskStore = {
     removeTask: function(tabId) {
         if (this.tasks[tabId]) {
             delete this.tasks[tabId];
-            sessionStorage.setItem('tabTasks', JSON.stringify(this.tasks));
+            localStorage.setItem('tabTasks', JSON.stringify(this.tasks));
             console.log(`Tâche supprimée pour l'onglet ${tabId}`);
         }
     },
     
-    // Charge les tâches depuis le sessionStorage
+    // Charge les tâches depuis le localStorage
     loadFromStorage: function() {
-        const storedTasks = sessionStorage.getItem('tabTasks');
+        const storedTasks = localStorage.getItem('tabTasks');
+        console.log('storedTasks', storedTasks);
         if (storedTasks) {
             try {
                 this.tasks = JSON.parse(storedTasks);
@@ -865,12 +866,11 @@ async function startPrintAll() {
     let elementsModifier = listAllTodaysDocs();
     console.log('elementsModifier', elementsModifier);
 
-    // Stocker les ids de ces éléments dans le session storage
+    // Lister les ids de ces éléments
     let ids = Array.from(elementsModifier).map(element => {
         return element.id;
     });
     console.log('ids', ids);
-    localStorage.setItem('printAllIds', JSON.stringify(ids)); // TODO : à supprimer ?
 
     // On va ouvrir un nouvel onglet pour chaque élément grace à newPatientTab
     let index = 0;
@@ -916,6 +916,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', PRINTALLFUNCTION, function () {
 
         const tabId = tabInfo.id;
         const task = tabTaskStore.getTask(tabId);
+        console.log('Tâche d\'impression trouvée pour l\'onglet:', tabId, task);
 
         // Vérifier si cet onglet a une tâche d'impression assignée
         if (!task || task.type !== 'printDocument') {
