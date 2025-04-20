@@ -26,7 +26,7 @@
 })();
 
 
-
+let isMSSante = window.location.href.includes('WedaEchanges');
 
 
 
@@ -45,6 +45,20 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
         callback: processFoundPdfIframe
     });
 });
+
+addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
+    waitForElement({
+        // l'id est splité car il y a un chiffre variable au milieu (1 ou 2 selon que l'option
+        // "vertical" est cochée ou nondans la fenêtre d'import)
+        selector: 'a[download$=".pdf"]',
+        callback: processFoundPdfIframe
+    });
+    waitForElement({
+        selector: '[id$="_DropDownListRechechePatient"]',
+        callback: searchPatientEchanges
+    })
+});
+
 
 
 /** A partir de là la procédure suis globalement un enchainement de "roll-over" :
@@ -83,10 +97,12 @@ async function processFoundPdfIframe(elements) {
     let fullText = await extractTextFromPDF(urlPDF);
     console.log('[pdfParser] fullText', [fullText]);
 
-
-
     // Création d'un id unique
     let hashId = await customHash(fullText, urlPDF);
+
+    if (isMSSante) {
+        sessionStorage.setItem('latestParsedPDFHash', hashId);
+    }
 
     // Ajout d'un bouton de reset du sessionStorage correspondant
     addResetButton(hashId);
@@ -94,13 +110,13 @@ async function processFoundPdfIframe(elements) {
     // Récupération des données déjà extraites pour ce PDF
     extractedData = getPdfData(hashId);
 
-
     // Données déjà extraites pour ce PDF ?
     if (extractedData.alreadyImported) {
         console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction. Renvoi vers le champ de recherche ou le 1er patient de la liste si présent");
         selectFirstPatientOrSearchField();
         return;
     }
+
     if (Object.keys(extractedData).length > 0) {
         console.log("[pdfParser] Données déjà extraites pour ce PDF. Utilisation des données existantes.", extractedData);
     } else {
@@ -134,20 +150,22 @@ async function processFoundPdfIframe(elements) {
     // => on pourrait rechercher par INS si on a le datamatrix, mais cela impliquerait de
     //    naviguer entre les différents types de recherche dans la fenêtre d'import
 
-    let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
-    if (handlePatientSearchReturn.status === 'refresh') {
-        console.log("[pdfParser] handlePatientSearchReturn", handlePatientSearchReturn.message);
-        // La procédure n'est pas arrivée au bout, un rafraichissement de la page est attendu
-        // On bloque donc ici pour éviter d'intégrer des données trop tôt
-        return;
+    if (!isMSSante) {
+        let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
+        if (handlePatientSearchReturn.status === 'refresh') {
+            console.log("[pdfParser] handlePatientSearchReturn", handlePatientSearchReturn.message);
+            // La procédure n'est pas arrivée au bout, un rafraichissement de la page est attendu
+            // On bloque donc ici pour éviter d'intégrer des données trop tôt
+            return;
+        }
+
+
+        // Intégration des données dans le formulaire d'import
+        await setExtractedDataInForm(extractedData);
+
+        // Marquage des données comme déjà importées
+        markDataAsImported(hashId, extractedData);
     }
-
-
-    // Intégration des données dans le formulaire d'import
-    await setExtractedDataInForm(extractedData);
-
-    // Marquage des données comme déjà importées
-    markDataAsImported(hashId, extractedData);
 
     // Enregistrement des métriques approximatives
     recordMetrics({ clicks: 9, drags: 9, keyStrokes: 10 });
@@ -160,6 +178,21 @@ async function processFoundPdfIframe(elements) {
 
 }
 
+async function searchPatientEchanges() {
+    let hashId = sessionStorage.getItem('latestParsedPDFHash');
+    if (!hashId) {
+        return;
+        //TODO gérer l'erreur correctement
+    }
+
+    let extractedData = getPdfData(hashId);
+    if (!extractedData.alreadyImported) {
+        let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
+        setTimeout(() => {
+            markDataAsImported(hashId, extractedData);
+        }, "1000"); //Si appellé trop tôt, créé une race condition
+    }
+}
 
 
 // Fonctions utilitaires
@@ -249,6 +282,13 @@ function handlePatientSearch(extractedData, hashId) {
                 const clicPatientReturn = clicPatient(extractedData);
                 console.log("[pdfParser] clicPatientReturn", clicPatientReturn.status, clicPatientReturn.message);
                 if (clicPatientReturn.status === 'success') {
+                    if (isMSSante) {
+                        let importDiv = document.querySelector('we-doc-import');
+                        let importedPatient = document.createElement('h3');
+                        importedPatient.innerText = 'Patient sélectionné : ' + clicPatientReturn.patientName;
+                        importedPatient.style = 'text-align:center;color:red;'
+                        importDiv.insertAdjacentElement('afterbegin', importedPatient);
+                    }
                     return { status: 'refresh', message: 'Patient trouvé et cliqué' };
                 } else if (clicPatientReturn.status === 'error') {
                     extractedData.failedSearches.push(search.type);
@@ -280,6 +320,9 @@ function handlePatientSearch(extractedData, hashId) {
 
 // Fonction pour sélectionner le premier patient de la liste ou le champ de recherche
 function selectFirstPatientOrSearchField() {
+    if (isMSSante) {
+        return;
+    }
     // On va chercher le premier patient de la liste
     let firstPatient = getPatientsList()[0];
     console.log("[pdfParser] firstPatient", firstPatient);
@@ -310,11 +353,17 @@ function addResetButton(hashId) {
     };
     let binButtonSelector = "#ContentPlaceHolder1_FileStreamClassementsGrid_DeleteButtonGridFileStreamClassement_" + actualImportActionLine();
     let buttonContainer = document.querySelector(binButtonSelector);
+    if (isMSSante) {
+        buttonContainer = document.querySelector('a[download$=".pdf"]');
+    }
     buttonContainer.insertAdjacentElement('afterend', resetButton);
 }
 
 // met la date en focus et surbrillance pour faciliter la saisie
 function highlightDate() {
+    if (isMSSante) {
+        return;
+    }
     let dateSelector = `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_${actualImportActionLine()}`;
     console.log("[pdfParser] Mise en surbrillance de la date pour faciliter la saisie.");
     document.querySelector(dateSelector).focus();
@@ -355,24 +404,31 @@ async function setExtractedDataInForm(extractedData) {
     const selectors = {
         documentDate: `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_${ligneAction}`,
         documentType: `#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_${ligneAction}`,
-        documentTitle: `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_${ligneAction}`
+        documentTitle: `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_${ligneAction}`,
+        documentAddressedTo: `#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementUser_${ligneAction}`,
+        documentDestinationClass: `#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementEvenementType_${ligneAction}`,
     };
 
     // Récupère les éléments du DOM correspondant aux sélecteurs
     const inputs = {
         documentDate: document.querySelector(selectors.documentDate),
         documentType: document.querySelector(selectors.documentType),
-        documentTitle: document.querySelector(selectors.documentTitle)
+        documentTitle: document.querySelector(selectors.documentTitle),
+        documentAddressedTo: document.querySelector(selectors.documentAddressedTo),
+        documentDestinationClass: document.querySelector(selectors.documentDestinationClass)
     };
 
     PdfParserAutoTitle = await getOptionPromise('PdfParserAutoTitle')
     PdfParserAutoDate = await getOptionPromise('PdfParserAutoDate')
+    PdfParserAutoClassification = await getOptionPromise('PdfParserAutoClassification')
 
     // Données à insérer dans les champs du formulaire
     const fields = {
         documentDate: PdfParserAutoDate ? extractedData.documentDate : null,
         documentType: extractedData.documentType,
-        documentTitle: PdfParserAutoTitle ? extractedData.documentTitle : null
+        documentTitle: PdfParserAutoTitle ? extractedData.documentTitle : null,
+        documentAddressedTo: extractedData.addressedTo,
+        documentDestinationClass: PdfParserAutoClassification ? extractedData.destinationClass : null
     };
 
     console.log('[pdfParser] INtroduction des données dans les champs : ', fields);
@@ -419,7 +475,7 @@ function clicPatient(extractedData) {
         }
     }
     if (!patientToClick) {
-        return { status: 'error', message: "Aucun patient trouvé" };
+        return { status: 'error', message: "Aucun patient trouvé", patientName: null };
     }
 
     let patientToClickName = patientToClick.innerText;
@@ -427,17 +483,17 @@ function clicPatient(extractedData) {
         // Ici le bon patient est déjà sélectionné pour import.
         // On en déduis que la procédure a déjà aboutie et qu'il faut s'arrêter.
         console.log("[pdfParser] Un patient est déjà sélectionné, arrêt de la recherche.");
-        return { status: 'continue', message: "Un patient est déjà sélectionné" };
+        return { status: 'continue', message: "Un patient est déjà sélectionné", patientName: null };
     } else {
         let patientToClicSelector = "#" + patientToClick.id;
         // patientToClick.click(); => ne fonctionne pas à cause du CSP en milieu ISOLATED
         if (patientToClick) {
             console.log("[pdfParser] Patient à sélectionner :", patientToClickName, patientToClick);
             clicCSPLockedElement(patientToClicSelector);
-            return { status: 'success', message: "Patient trouvé et cliqué" };
+            return { status: 'success', message: "Patient trouvé et cliqué", patientName: patientToClickName };
         } else {
             console.log("[pdfParser] Patient non trouvé");
-            return { status: 'error', message: "Aucun patient trouvé" };
+            return { status: 'error', message: "Aucun patient trouvé", patientName: null };
         }
     }
 }
@@ -533,6 +589,9 @@ function searchProperPatient(patientElements, nameMatches) {
 }
 
 function selectedPatientName() {
+    if (isMSSante) {
+        return 'Patient à définir...';
+    }
     // On va rechercher si un patient est déjà sélectionné dans l'élément #ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_1
     let idPatientSelectedBaseId = '#ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_'
     // On ajoute le niveau de selection actuel au sélecteur
@@ -651,6 +710,15 @@ function isValidSearchType(searchType) {
 
 // Renvoie l'URL du PDF de l'iframe quand elle est chargée 
 async function findPdfUrl(elements) {
+    if (isMSSante) {
+        let anchor = elements[0];
+        if (!anchor) {
+            console.error("[pdfParser] lien non trouvée. Arrêt de l'extraction.");
+            resolve(null);
+        }
+
+        return anchor.href;
+    }
     let iframe = elements[0];
     if (!iframe) {
         console.error("[pdfParser] iframe non trouvée. Arrêt de l'extraction.");
@@ -731,7 +799,32 @@ async function extractLines(textItems) {
     return pageText;
 }
 
-// Extraction des informations pertinentes du texte du PDF
+/**
+ * Extrait les données pertinentes d'un texte PDF.
+ * 
+ * @async
+ * @param {string} fullText - Le texte complet extrait du PDF.
+ * @param {string} pdfUrl - L'URL du PDF.
+ * 
+ * @returns {Promise<Object>} Un objet contenant les données extraites.
+ * @returns {string|null} extractedData.documentDate - La date du document au format JJ/MM/AAAA.
+ * @returns {string|null} extractedData.dateOfBirth - La date de naissance au format JJ/MM/AAAA.
+ * @returns {string[]} extractedData.nameMatches - Les noms trouvés dans le document.
+ * @returns {string|null} extractedData.documentType - Le type de document (ex: "COURRIER", "IMAGERIE").
+ * @returns {string|null} extractedData.documentTitle - Le titre suggéré pour le document.
+ * @returns {string[]} extractedData.nirMatches - Les numéros de sécurité sociale (NIR) trouvés.
+ * 
+ * @example
+ * // Exemple d'objet retourné
+ * {
+ *   documentDate: "15/03/2025",
+ *   dateOfBirth: "01/01/1980",
+ *   nameMatches: ["DUPONT Jean", "DUPONT J."],
+ *   documentType: "COURRIER",
+ *   documentTitle: "COURRIER - Cardiologie",
+ *   nirMatches: ["123456789012345"]
+ * }
+ */
 async function extractRelevantData(fullText, pdfUrl) {
     const regexPatterns = {
         dateRegexes: [
@@ -779,6 +872,9 @@ async function extractRelevantData(fullText, pdfUrl) {
     const documentType = await determineDocumentType(fullText);
     const documentTitle = determineDocumentTitle(fullText, documentType);
     const nirMatches = extractNIR(fullText, regexPatterns.nirRegexes);
+    const addressedTo = extractAddressedTo(fullText); // Retourne l'id du choix du dropdown
+    const destinationClass = extractDestinationClass(fullText);
+
 
     let extractedData = {
         documentDate: documentDate ? formatDate(documentDate) : null,
@@ -786,9 +882,189 @@ async function extractRelevantData(fullText, pdfUrl) {
         nameMatches: nameMatches,
         documentType: documentType,
         documentTitle: documentTitle,
-        nirMatches: nirMatches
+        nirMatches: nirMatches,
+        addressedTo: addressedTo,
+        destinationClass: destinationClass
     };
     return extractedData;
+}
+
+// Extraction du médecin à qui est adressé le document
+async function extractAddressedTo(fullText) {
+    // D'abord récupérer la liste des médecins accessible
+    const doctorsSelect = document.querySelector('#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementUser_0');
+    if (!doctorsSelect) {
+        console.log("[pdfParser] Liste des médecins non trouvée");
+        return null;
+    }
+
+    // Récupérer la liste des médecins sous forme d'un tableau d'objets avec leurs noms et IDs
+    const doctors = Array.from(doctorsSelect.options).map(option => {
+        // Extraction du nom et prénom du format "NOM Prénom (Dr.)"
+        const fullName = option.text.trim();
+        const nameParts = fullName.match(/^([A-Z\-]+)\s+([^(]+)/);
+
+        return {
+            id: option.value,
+            fullName: fullName,
+            lastName: nameParts ? nameParts[1].trim() : '',
+            firstName: nameParts ? nameParts[2].trim() : '',
+            text: option.text
+        };
+    });
+
+    console.log("[pdfParser] Liste des médecins disponibles:", doctors);
+
+    // Recherche dans le texte pour chaque médecin
+    for (const doctor of doctors) {
+        // Créer différentes variations pour la recherche (en tenant compte des possibles sauts de ligne ou caractères entre nom et prénom)
+        const patterns = [
+            // Format NOM Prénom (tolère des caractères entre les deux)
+            new RegExp(`${doctor.lastName}[\\s\\S]{0,5}${doctor.firstName.split('-')[0]}`, 'i'),
+
+            // Format Prénom NOM (tolère des caractères entre les deux)
+            new RegExp(`${doctor.firstName.split('-')[0]}[\\s\\S]{0,5}${doctor.lastName}`, 'i'),
+
+            // Recherche seulement le nom de famille s'il est assez distinctif (>= 5 caractères)
+            ...(doctor.lastName.length >= 5 ? [new RegExp(`\\b${doctor.lastName}\\b`, 'i')] : []),
+
+            // Recherche seulement le prénom s'il est assez distinctif (>= 5 caractères)
+            ...(doctor.firstName.length >= 5 ? [new RegExp(`\\b${doctor.firstName.split('-')[0]}\\b`, 'i')] : [])
+        ];
+
+        // Tester chaque pattern
+        for (const pattern of patterns) {
+            if (pattern.test(fullText)) {
+                console.log(`[pdfParser] Médecin trouvé dans le texte: ${doctor.fullName} avec le pattern ${pattern}`);
+                return doctor.id;
+            }
+        }
+    }
+
+    console.log("[pdfParser] Aucun médecin destinataire identifié dans le texte");
+    return null;
+}
+
+// Extraction de la classe de destination
+function extractDestinationClass(fullText) {
+    // Les trois destinations possibles 
+    const destinations = {
+        '1': "Consultation",
+        '2': "Résultats d'examens",
+        '3': "Courrier"
+    };
+
+    // Mots-clés pour chaque destination
+    const keywordsByDestination = {
+        '1': [
+            /consultation/i,
+            /prise en charge/i,
+            /examen clinique/i,
+            /visite médicale/i,
+            /Motif :/i,
+            /histoire de la maladie/i,
+            /SOAP/i,
+            /anamnèse/i,
+            /auscultation/i,
+            /Antécédents :/i,
+            /Au terme de ce bilan/i,
+            /à l'examen clinique/i
+        ],
+        '2': [
+            /examen/i,
+            /résultat/i,
+            /biologie/i,
+            /bilan/i,
+            /analyse/i,
+            /laboratoire/i,
+            /scanner/i,
+            /imagerie/i,
+            /radiographie/i,
+            /échographie/i,
+            /irm/i,
+            /tdm/i,
+            /tep/i,
+            /doppler/i,
+            /mammographie/i,
+            /scintigraphie/i,
+            /echodoppler/i,
+            /renseignements cliniques/i,
+            /technique/i,
+            /conclusion/i
+        ],
+        '3': [
+            /courrier/i,
+            /lettre/i,
+            /correspondance/i,
+            /avis/i,
+            /compte rendu/i,
+            /compte-rendu/i,
+            /CR.{0,5}consult/i,
+            /adressé(?:e)? par/i,
+            /adressé(?:e)? pour/i,
+            /Cher Confrère/i,
+            /chère consoeur/i,
+            /chère consœur/i,
+            /Je vous remercie/i,
+            /nous a consulté/i,
+            /nous a été adressé/i,
+            /information destinée/i,
+            /spécialiste/i
+        ]
+    };
+
+    // Compteur de correspondances pour chaque destination
+    const matchCounts = {
+        '1': 0,
+        '2': 0,
+        '3': 0
+    };
+
+    // Vérifier chaque destination
+    for (const [destId, patterns] of Object.entries(keywordsByDestination)) {
+        for (const pattern of patterns) {
+            const matches = fullText.match(pattern);
+            if (matches) {
+                matchCounts[destId] += matches.length;
+            }
+        }
+    }
+
+    console.log('[pdfParser] Correspondances de classe par destination:', matchCounts);
+
+    // Vérifier s'il y a des correspondances spécifiques qui augmentent fortement la probabilité
+    const specificPatterns = {
+        '1': [/consultation.*du\s+\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{4}/i],
+        '2': [/Résultats? d[''](?:examen|analyse)s?/i, /valeurs? de référence/i],
+        '3': [/Je vous remercie de m'avoir adressé/i]
+    };
+
+    for (const [destId, patterns] of Object.entries(specificPatterns)) {
+        for (const pattern of patterns) {
+            if (pattern.test(fullText)) {
+                matchCounts[destId] += 5; // Ajoute un poids plus fort
+            }
+        }
+    }
+
+    // Sélectionner la destination avec le plus grand nombre de correspondances
+    let maxCount = 0;
+    let selectedDestination = null;
+
+    for (const [destId, count] of Object.entries(matchCounts)) {
+        if (count > maxCount) {
+            maxCount = count;
+            selectedDestination = destId;
+        }
+    }
+
+    // Si aucune correspondance ou égalité, on privilégie "Courrier" qui est souvent la catégorie par défaut
+    if (maxCount === 0 || (matchCounts['3'] === matchCounts['2'] && matchCounts['2'] === maxCount)) {
+        selectedDestination = '3';
+    }
+
+    console.log(`[pdfParser] Classe de destination détectée: ${destinations[selectedDestination]} (ID: ${selectedDestination})`);
+    return selectedDestination;
 }
 
 // Extraction du datamatrix des pages du PDF
@@ -1076,6 +1352,9 @@ function visualizeBinaryBitmap(binaryBitmap) {
 }
 
 async function determineDocumentType(fullText) {
+    if (isMSSante) {
+        return null;
+    }
     // console.log('[pdfParser] determineDocumentType');
     // On utilise un tableau de tableaux pour permettre de parcourir les types de documents par ordre de spécificité
     // Et de mettre plusieurs fois la même clé, avec des valeurs de moins en moins exigeantes
@@ -1250,44 +1529,111 @@ function findImagerie(fullText, imageries) {
 
 // Fonction pour déterminer le titre du document
 function determineDocumentTitle(fullText, documentType) {
+    // Phrases-clés prioritaires avec leurs titres associés
+    const phrasesPrioritaires = {
+        "Frottis": ["Frottis gynécologique de dépistage", "Pappilloma", "Frottis cervico-vaginal"],
+        "Prescription de transport": ["transport pour patient"],
+    };
+
+    // Vérifier d'abord s'il y a une phrase prioritaire dans le texte
+    for (const [titre, phrases] of Object.entries(phrasesPrioritaires)) {
+        for (const phrase of phrases) {
+            // Rechercher la phrase avec une regex insensible à la casse
+            const regex = new RegExp(phrase, 'i');
+            if (regex.test(fullText)) {
+                console.log(`[pdfParser] Phrase prioritaire trouvée: "${phrase}" => Titre: "${titre}"`);
+                let documentTitle = titre;
+
+                // Si un lieu est présent, on peut l'ajouter
+                for (const [nom, mots] of Object.entries(lieux)) {
+                    for (const mot of mots) {
+                        const lieuRegex = new RegExp(`(^|\\s|\\n)${mot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|\\n|$)`, 'i');
+                        if (lieuRegex.test(fullText)) {
+                            documentTitle += ` (${nom})`;
+                            break;
+                        }
+                    }
+                }
+
+                return documentTitle;
+            }
+        }
+    }
+
     const specialites = {
         "Médecine Interne": ["Médecine Interne"],
-        "Orthopédie": ["Orthopédie"],
-        "Gynécologie": ["Gynécologie"],
-        "Cardiologie": ["Cardiologie"],
-        "Neurologie": ["Neurologie"],
-        "Pédiatrie": ["Pédiatrie"],
-        "Radiologie": ["Radiologie"],
-        "Ophtalmologie": ["Ophtalmologie"],
-        "Pneumologie": ["Pneumologie"],
-        "Dermatologie": ["Dermatologie"],
-        "Urologie": ["Urologie"],
-        "Chirurgie": ["Chirurgie"],
-        "Rhumatologie": ["Rhumatologie"],
-        "Endocrinologie": ["Endocrinologie"],
-        "Gastro-entérologie": ["Gastro-entérologie"],
-        "Hématologie": ["Hématologie"],
-        "Néphrologie": ["Néphrologie"],
-        "Oncologie": ["Oncologie"],
-        "Psychiatrie": ["Psychiatrie"],
-        "Stomatologie": ["Stomatologie"],
-        "Addictologie": ["Addictologie"],
-        "ORL": ["Otologie", "Rhinologie", "Laryngologie"],
+        "Orthopédie": ["Orthopédie", "Orthopédique", "Traumatologie"],
+        "Gynécologie": ["Gynécologie", "Obstétrique", "Gynéco"],
+        "Cardiologie": ["Cardiologie", "Cardio", "Cardiovasculaire"],
+        "Neurologie": ["Neurologie", "Neuro", "Neurochirurgie"],
+        "Pédiatrie": ["Pédiatrie", "Pédiatre", "Enfant"],
+        "Radiologie": ["Radiologie", "Radio"],
+        "Ophtalmologie": ["Ophtalmologie", "Ophtalmo", "Oculaire"],
+        "Pneumologie": ["Pneumologie", "Pneumo", "Respiratoire", "Pulmonaire"],
+        "Dermatologie": ["Dermatologie", "Dermato", "Cutané"],
+        "Urologie": ["Urologie", "Uro"],
+        "Chirurgie": ["Chirurgie", "Chirurgical", "Opération"],
+        "Rhumatologie": ["Rhumatologie", "Rhumato"],
+        "Endocrinologie": ["Endocrinologie", "Endocrino", "Diabète", "Diabétologie"],
+        "Gastro-entérologie": ["Gastro-entérologie", "Gastro", "Digestif"],
+        "Hématologie": ["Hématologie", "Hémato"],
+        "Néphrologie": ["Néphrologie", "Néphro", "Rénale"],
+        "Oncologie": ["Oncologie", "Onco", "Cancer"],
+        "Psychiatrie": ["Psychiatrie", "Psy", "Psychologie"],
+        "Stomatologie": ["Stomatologie", "Stomato", "Maxillo-facial"],
+        "Addictologie": ["Addictologie", "Addiction"],
+        "ORL": ["ORL", "Otologie", "Rhinologie", "Laryngologie", "Otorhinolaryngologie"],
+        "Allergologie": ["Allergologie", "Allergie", "Allergique"],
+        "Gériatrie": ["Gériatrie", "Gérontologie", "Personnes âgées"],
+        "Anesthésiologie": ["Anesthésiologie", "Anesthésie", "Réanimation"]
     };
 
     const imageries = {
-        "scanner": ["scanner"],
-        "échographie": ["échographie", "doppler"],
-        "radiographie": ["radiographie"],
-        "mammographie": ["mammographie"],
-        "scintigraphie": ["scintigraphie"],
-        "tomodensitométrie": ["tomodensitométrie"],
-        "ostéodensitométrie": ["ostéodensitométrie"],
-        "TDM": ["TDM"],
-        "IRM": ["IRM"]
+        "scanner": ["scanner", "TDM", "tomodensitométrie"],
+        "échographie": ["échographie", "écho", "doppler", "échodoppler"],
+        "radiographie": ["radiographie", "radio", "rx"],
+        "mammographie": ["mammographie", "mammo"],
+        "scintigraphie": ["scintigraphie", "scinti"],
+        "ostéodensitométrie": ["ostéodensitométrie", "densitométrie osseuse"],
+        "IRM": ["IRM", "imagerie par résonance magnétique"]
     };
 
-    // console.log('[pdfParser] determineDocumentTitle');
+    // Organes/régions anatomiques fréquents pour préciser l'examen
+    const regions = {
+        "thoracique": ["thorax", "thoracique", "pulmonaire", "poumon"],
+        "abdominal": ["abdomen", "abdominal", "abdominale"],
+        "crânien": ["crâne", "crânien", "cérébral", "cerveau", "tête"],
+        "rachis": ["rachis", "colonne vertébrale", "lombaire", "cervical", "dorsal", "vertèbre"],
+        "genou": ["genou", "fémoro-tibial"],
+        "hanche": ["hanche", "coxo-fémoral"],
+        "épaule": ["épaule", "scapulo-huméral"],
+        "poignet": ["poignet", "radio-carpien"],
+        "coude": ["coude"],
+        "cheville": ["cheville", "tibio-tarsien"],
+        "pied": ["pied", "tarsien"],
+        "main": ["main", "métacarpien"],
+        "bassin": ["bassin", "pelvien"],
+        "sinus": ["sinus", "facial"],
+        "artère": ["artère", "artériel", "aorte", "carotide", "fémorale"],
+        "cardiaque": ["cardiaque", "cœur", "coronaire"]
+    };
+
+    // Établissements de santé ou lieux
+    const lieux = {
+        "CHU": ["CHU", "Centre Hospitalier Universitaire"],
+        "CH": ["CH", "Centre Hospitalier de", "Hôpital de", "Hôpital"],
+        "Clinique": ["Clinique", "Polyclinique"],
+        "Centre": ["Centre médical", "Centre de radiologie", "Centre d'imagerie"],
+        "Cabinet": ["Cabinet médical", "Cabinet de radiologie"]
+    };
+
+    // Type de compte-rendu
+    const typesCR = {
+        "consultation": ["Consultation", "CS", "Cs", "consultation"],
+        "hospitalisation": ["Hospitalisation", "CRH", "compte rendu d'hospitalisation"],
+        "examen": ["Compte rendu d'examen", "CR d'examen", "compte-rendu d'examen"],
+        "opération": ["Compte rendu opératoire", "CRO", "opération"]
+    };
 
     // Trouver la spécialité médicale
     let specialite = findSpecialite(fullText, specialites);
@@ -1295,18 +1641,100 @@ function determineDocumentTitle(fullText, documentType) {
     // Trouver le type d'imagerie si présent
     let imagerie = findImagerie(fullText, imageries);
 
-    // Construire le titre du document
-    let documentTitle = documentType;
-    if (documentType === "IMAGERIE" && imagerie) {
-        if (imagerie) {
-            documentTitle += ` - ${imagerie}`;
+    // Trouver la région anatomique si présente
+    let region = null;
+    for (const [nom, mots] of Object.entries(regions)) {
+        for (const mot of mots) {
+            if (fullText.toLowerCase().includes(mot.toLowerCase())) {
+                region = nom;
+                break;
+            }
         }
-    } else if (specialite) {
-        documentTitle += ` - ${specialite}`;
+        if (region) break;
     }
 
+    // Trouver le lieu si présent
+    let lieu = null;
+    for (const [nom, mots] of Object.entries(lieux)) {
+        for (const mot of mots) {
+            // Utiliser une regex avec des limites de mots pour garantir des correspondances exactes
+            const regex = new RegExp(`(^|\\s|\\n)${mot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|\\n|$)`, 'i');
+            if (regex.test(fullText)) {
+                lieu = nom;
+                break;
+            }
+        }
+        if (lieu) break;
+    }
 
-    console.log('[pdfParser] Titre du document déterminé', documentTitle, 'car document de type', documentType, 'avec spécialité', specialite, 'et imagerie', imagerie);
+    // Trouver le type de compte-rendu
+    let typeCR = null;
+    for (const [nom, mots] of Object.entries(typesCR)) {
+        for (const mot of mots) {
+            if (fullText.toLowerCase().includes(mot.toLowerCase())) {
+                typeCR = nom;
+                break;
+            }
+        }
+        if (typeCR) break;
+    }
+
+    // Recherche d'un médecin mentionné (Dr X)
+    const doctorMatch = fullText.match(/Dr\.?\s+([A-Z][A-Za-z\-]+)/);
+    const medecin = doctorMatch ? doctorMatch[1] : null;
+
+    // Construire le titre du document en fonction du contexte
+    let documentTitle = documentType || "";
+
+    // Pour les documents d'imagerie
+    if (documentType === "IMAGERIE") {
+        if (imagerie) {
+            documentTitle = imagerie.charAt(0).toUpperCase() + imagerie.slice(1);
+            if (region) {
+                documentTitle += ` ${region}`;
+            }
+        } else if (specialite === "Radiologie") {
+            documentTitle = "Examen radiologique";
+            if (region) {
+                documentTitle += ` ${region}`;
+            }
+        }
+    }
+    // Pour les consultations
+    else if (documentType === "CONSULTATION" || typeCR === "consultation") {
+        documentTitle = "Consultation";
+        if (medecin) {
+            documentTitle += ` Dr. ${medecin}`;
+        } else if (specialite) {
+            documentTitle += ` ${specialite}`;
+        }
+    }
+    // Pour les hospitalisations
+    else if (typeCR === "hospitalisation") {
+        documentTitle = "CRH";
+        if (specialite) {
+            documentTitle += ` ${specialite}`;
+        }
+    }
+    // Pour les autres types de documents
+    else if (specialite) {
+        documentTitle += documentTitle ? ` - ${specialite}` : specialite;
+    }
+
+    // Ajouter le lieu en dernier si présent
+    if (lieu) {
+        documentTitle += ` (${lieu})`;
+    }
+
+    console.log('[pdfParser] Titre du document déterminé', documentTitle,
+        'avec type:', documentType,
+        'spécialité:', specialite,
+        'imagerie:', imagerie,
+        'région:', region,
+        'médecin:', medecin,
+        'lieu:', lieu,
+        'type CR:', typeCR);
+
     return documentTitle;
 }
 
@@ -1428,7 +1856,7 @@ async function parseDate(dateString) {
         'janvier': 1, 'février': 2, 'mars': 3, 'avril': 4, 'mai': 5, 'juin': 6,
         'juillet': 7, 'août': 8, 'septembre': 9, 'octobre': 10, 'novembre': 11, 'décembre': 12
     };
-    
+
     // Détecter si c'est une date avec le mois en toutes lettres
     const dateTextuelle = /([0-9]{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+([0-9]{4})/i.exec(dateString);
     let rechercheDateAlphabetique = await getOptionPromise('PdfParserDateAlphabetique');
@@ -1436,26 +1864,26 @@ async function parseDate(dateString) {
         const jour = parseInt(dateTextuelle[1], 10);
         const mois = moisEnFrancais[dateTextuelle[2].toLowerCase()];
         const annee = parseInt(dateTextuelle[3], 10);
-        
+
         // Vérification des plages valides
         if (jour < 1 || jour > 31 || !mois || annee < 1900 || annee > 9999) {
             return null;
         }
-        
+
         const date = new Date(annee, mois - 1, jour);
-        
+
         // Vérification que la date est valide
         if (date.getDate() !== jour || date.getMonth() !== mois - 1 || date.getFullYear() !== annee) {
             return null;
         }
-        
+
         const minDate = new Date(1900, 0, 1);
         const today = new Date();
-        
+
         if (date < minDate || date > today) {
             return null;
         }
-        
+
         return date;
     } else {
         // Format standard dd/mm/yyyy ou dd-mm-yyyy

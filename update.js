@@ -206,7 +206,7 @@ var updateMessageTemplate = `
     <!-- Section 4: Nouveautés (Changelog) -->
     <div style="background-color: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #e0e0e0;">
         <h3 style="color: #1565c0; margin-top: 0;"><strong>🌟 Nouveautés et améliorations</strong></h3>
-        <div style="max-height: 300px; overflow-y: auto; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">
+        <div style="overflow-y: auto; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">
             NOUVEAUTES_PLACEHOLDER
         </div>
 

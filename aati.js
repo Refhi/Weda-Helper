@@ -216,3 +216,33 @@ addTweak(urlAATI, 'autoAATI', function () {
         });
     });
 });
+
+
+// Cochage automatique de " Mon patient accepte que je transmette le présent avis d'arrêt de travail pour son compte et [...]"
+addTweak('/FolderMedical/Aati.aspx', 'aatiTermsExcerpt', function () {
+    // La checkbox est le fils du frère ainé de .aatiTermsExcerpt
+    const selecteurCheckbox = '.aatiTermsExcerpt';
+    const checkBox = document.querySelector(selecteurCheckbox).previousElementSibling.querySelector('input');
+    if (!checkBox) {
+        console.error('Checkbox not found');
+        return;
+    }
+
+    if (checkBox.checked) {
+        console.log('Checkbox already checked');
+        return;
+    }
+
+    console.log("[aatiTermsExcerpt] checkBox d'auto-accord", checkBox);
+
+    checkBox.checked = true;
+    checkBox.dispatchEvent(new Event('change'));
+
+    sendWedaNotifAllTabs({
+        message: "La case 'Mon patient accepte que je transmette [...] a été cochée automatiquement. Allez dans les options de Weda-Helper si vous souhaitez désactiver cette fonctionnalité.",
+        type: 'success',
+        icon: 'check'
+    });
+
+    recordMetrics({ clicks: 1, drags: 1 });    
+});

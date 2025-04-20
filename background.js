@@ -153,7 +153,13 @@ var advancedDefaultSettings = [{
         "name": "autoAATI",
         "type": TYPE_BOOL,
         "description": "Automatise la réalisation des arrêts de travail (lecture CV auto, sélection patient auto, impression auto etc. Nécessite le Companion pour fonctionner totalement).",
-        "default": true
+        "default": true,
+        subOptions: [{
+            "name": "aatiTermsExcerpt",
+            "type": TYPE_BOOL,
+            "description": "Coche automatiquement la case du consentement pour les arrêts de travail.",
+            "default": true
+        }]
     }, {
         "name": "trimCIM10",
         "type": TYPE_BOOL,
@@ -179,8 +185,14 @@ var advancedDefaultSettings = [{
         "type": TYPE_SMALLTEXT,
         "description": "Alerte si le VSM est échu (rouge) ou bientôt échu (orange).",
         "longDescription": "Affiche la date d'alerte de la VSM en orange si la date est dans moins de x mois (6 par défaut, -1 pour désactiver), puis en rouge une fois l'année dépassée.",
-        "default": 4
-    },{
+        "default": 4,
+        "subOptions": [{
+            "name": "oneClickVSM",
+            "type": TYPE_BOOL,
+            "description": "Permet de faire la déclaration de VSM en un clic.",
+            "default": true
+        }]
+    }, {
         "name": "instantVaccine",
         "type": TYPE_BOOL,
         "description": "Ouverture immédiate du scan du datamatrix d'un vaccin à l'ouverture des dossiers. Aussi accessible depuis la Popup en cliquant sur l'icone de l'extension.",
@@ -255,14 +267,19 @@ var advancedDefaultSettings = [{
                 "name": "PdfParserAutoCategoryDict",
                 "type": TYPE_JSON,
                 "description": "=> Catégorise les documents importés dans les catégories",
-                "longDescription": "selon : les, mots-clés donnés. Parcours la liste et valide la première catégorie qui correspond. Vous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés. La liste par défaut est donnée pour exemple. Vous devez initialiser la votre depuis la fenêtre des imports avec la petite icone ⚙️.",
-                "default": PdfParserAutoCategoryDefaut
+                "longDescription": "Parcours la liste et valide la première catégorie qui correspond.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple. Vous devez initialiser la votre depuis la fenêtre des imports avec la petite icone ⚙️.\n\nLABORATOIRE/BIO : BIOCEANE , LABORATOIRE\nArrêt de travail : avis d'arrêt de travail\nCRO/CRH : Compte Rendu Opératoire , Compte Rendu Hospitalier , Compte Rendu d'Hospitalisation , COMPTE RENDU OPERATOIRE\nConsultation : COMPTE-RENDU DE CONSULTATION\nPARAMEDICAL : BILAN ORTHOPTIQUE\nCourrier : Chère Consœur , chère consoeur , Cher confrère , chère amie , cher ami , Cherconfrére , Chèreconsoeur , Chèreconsœur\nIMAGERIE : imagerie , radiographie , scanner , IRM , radiologie\nAdministratif : \nArrêt de travail : arrêt de travail , congé maladie\nBiologie : biologie , analyse sanguine\nBon de transport : bon de transport , transport médical\nCertificat : certificat , attestation\nECG : ecg , électrocardiogramme\nEFR : exploration fonctionnelle respiratoire\nLABORATOIRE/BIO : laboratoire\nMT : Déclaration de Médecin Traitant , déclaration médecin traitant\nPARAMEDICAL : paramédical , soins\nSPECIALISTE : spécialiste , consultation spécialisée\nConsultation : consultation , visite médicale\nOrdonnance : ordonnance , prescription , 60-3937\nCompte Rendu : compte rendu , compte-rendu , automesure",                "default": PdfParserAutoCategoryDefaut
             }, {
                 "name": "PdfParserAutoDate",
                 "type": TYPE_BOOL,
                 "description": "Extrait automatiquement la date du document importé.",
                 "default": true,
             }, {
+                "name": "PdfParserAutoClassification",
+                "type": TYPE_BOOL,
+                "description": "Extrait automatiquement la classification du document importé.",
+                "default": false,
+                "longDescription": "Si vous souhaitez classer les imports dans les parties Consultation/Résultats d'examen/Courrier, vous pouvez activer cette option pour le faire automatiquement.",
+            },{
                 "name": "PdfParserDateAlphabetique",
                 "type": TYPE_BOOL,
                 "description": "Recherche également les dates type 15 novembre 2021.",
@@ -452,7 +469,14 @@ var advancedDefaultSettings = [{
             "description": "Le Top 50",
             "default": false
         }]
-    }, {
+    },
+    {
+        "name": "defautSearchType",
+        "type": TYPE_SMALLTEXT,
+        "description": "Type de recherche par défaut (1 à 14). 0 pour désactiver.",
+        "default": 0,
+        "longDescription": "Par défaut, Weda reviens au dernier type de recherche utilisée. Vous pouvez définir le type de recherche médicamenteuse à utiliser systématiquement au chargement :\n\n1 - Médicaments\n14 - Recherche par produits\n8 - Dénomination commune (DCI)\n2 - Molécules (principes actifs)\n10 - Recherche par U.C.D.\n3 - Recherche par A.T.C.\n13 - Recherche par Vidal\n4 - Indications\n5 - Groupe d'indications\n6 - Laboratoires\n7 - Vos favoris et perso.\n9 - Le Top 50"
+    },{
         "name": "TweakRecetteForm",
         "type": TYPE_BOOL,
         "description": "Appuie automatiquement sur le bouton \"rechercher\" après avoir sélectionné la page des recettes (permet d’afficher les recettes du jour directement en arrivant sur la page).",
@@ -537,11 +561,11 @@ var advancedDefaultSettings = [{
             "default": "G,GS,VG+MD+IK, VGS+MD+IK, VG+MD, VGS+MD, COD, GS+MEG, G+MEG"
         }]
     }, {
-        "name": "cotationHelper",
-        "type": TYPE_BOOL,
-        "description": "Propose des cotations supplémentaires selon le contexte (SHE, MCG, etc.).",
-        "longDescription": "Nous sommes parfois confronté à des cotations modificatrices très faciles à oublier en fonction du contexte. Cette petite aide vous permettra peut-être d'en rattraper certaines. Par exemple s'il détecte que vous êtes en train de faire des consultations aux horaires du SAS, il vous suggerera d'ajouter la cotation SHE. Si vous voyez un patient hors résidence, il vous proposera la cotation MCG. A chaque fois un clic sur la cotation vous permettra de consulter la source parlant de cette cotation.",
-        "default": true
+        "name": "cotationHelper2",
+        "type": TYPE_TEXT,
+        "description": "Propose des notifications pour suggérer des cotations selon le contexte (SHE, MCG, etc.). Supprimez celles qui ne vous intéressent pas.",
+        "longDescription": "Nous sommes parfois confronté à des cotations modificatrices très faciles à oublier en fonction du contexte.\nCette petite aide vous permettra peut-être d'en rattraper certaines.\nPar exemple s'il détecte que vous êtes en train de faire des consultations aux horaires du SAS, il vous suggerera d'ajouter la cotation SHE.\nSi vous voyez un patient hors résidence, il vous proposera la cotation MCG.\nA chaque fois un clic sur la cotation vous permettra de consulter la source parlant de cette cotation.\nPour l'instant les aides concernent les cotations suivantes :\nMCG, SHE, MHP, RDV, MOP, PAV, APC, APY, APU, MCS",
+        "default": "MCG, SHE, MHP, RDV, MOP, PAV, APC, APY, APU, MCS"
     }]
 }, {
     "name": "Lien avec Weda-Helper-Companion",
@@ -628,12 +652,12 @@ var advancedDefaultSettings = [{
         "type": TYPE_BOOL,
         "description": "shunte le message de mise à jour de Weda sur les postes où vous souhaitez automatiser l'ouverture de Weda (désactivé par défaut). Cela ne correspond qu'à des usages très spécifiques, merci de ne pas l'activer sans en comprendre les implications.",
         "default": false
-    },{
+    }, {
         "name": "initTabPermissionTests",
         "type": TYPE_BOOL,
         "description": "Affiche l'interface de test des permissions des onglets.",
         "default": false
-    },{
+    }, {
         "name": "inhitAltKey",
         "type": TYPE_BOOL,
         "description": "La touche Alt ne met plus le focus sur le menu du navigateur",
@@ -803,27 +827,50 @@ var defaultShortcuts = {
         "default": "Alt+1",
         "description": "Ouvre ou crée la consultation n°1"
     },
+    "shortcut_consult_bis": {
+        "default": "Alt+Shift+1",
+        "description": "Crée une nouvelle consultation"
+    },
     "shortcut_certif": {
         "default": "Alt+2",
         "description": "Ouvre ou crée le certificat n°1"
+    },
+    "shortcut_certif_bis": {
+        "default": "Alt+Shift+2",
+        "description": "Crée un nouveau certificat"
     },
     "shortcut_demande": {
         "default": "Alt+3",
         "description": "Ouvre ou crée la demande n°1"
     },
+    "shortcut_demande_bis": {
+        "default": "Alt+Shift+3",
+        "description": "Crée une nouvelle demande"
+    },
     "shortcut_prescription": {
         "default": "Alt+4",
         "description": "Ouvre ou crée la prescription n°1"
+    },
+    "shortcut_prescription_bis": {
+        "default": "Alt+Shift+4",
+        "description": "Crée une nouvelle prescription"
     },
     "shortcut_formulaire": {
         "default": "Alt+F",
         "description": "Ouvre ou crée le formulaire n°1"
     },
+    "shortcut_formulaire_bis": {
+        "default": "Alt+Shift+F",
+        "description": "Crée un nouveau formulaire"
+    },
     "shortcut_courrier": {
         "default": "Alt+5",
         "description": "Ouvre ou crée courrier n°1"
     },
-    "shortcut_fse": {
+    "shortcut_courrier_bis": {
+        "default": "Alt+Shift+5",
+        "description": "Crée un nouveau courrier"
+    }, "shortcut_fse": {
         "default": "Alt+6",
         "description": "Clique sur FSE"
     },

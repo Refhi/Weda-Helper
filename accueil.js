@@ -257,8 +257,10 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*preAlertVSM', async function (
         }
         // On vérifie quelle est l'ancienneté du VSM
         const VSMAge = today - lastVSMDateObj;
-        // Si le VSM a plus de preAlertDuration mois, on le met en orange
-        if (VSMAge > preAlertDuration * 30.44 * 24 * 60 * 60 * 1000) {
+        // Calculer combien de temps avant d'atteindre 1 an
+        const timeUntilExpiration = 31557600000 - VSMAge; // 31557600000 ms = 1 an
+        // Si le VSM expire dans moins de preAlertDuration mois, on le met en orange
+        if (timeUntilExpiration > 0 && timeUntilExpiration < preAlertDuration * 30.44 * 24 * 60 * 60 * 1000) {
             VSMElement.style.color = 'orange';
             VSMElement.style.fontWeight = 'bold';
         }
@@ -293,3 +295,110 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*preAlertVSM', async function (
     // => une seule alerte à l'ouverture du dossier.
     sessionStorage.setItem('lastVSMAlertPatient', patientNumber);
 });
+
+
+// One-click VSM
+addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', '/FolderMedical/DMP/view'], 'oneClickVSM', function () {
+    const MAX_ERROR_RATIO = 0.3;
+    const CLICK_TIMEOUT = 3000;
+
+    // Depuis la page d'accueil on ajoute un bouton pour le VSM en un clic
+    waitForElement({
+        selector: '#ContentPlaceHolder1_EtatCivilUCForm1_HyperLinkOpenVSM',
+        callback: function () { setupPatientViewButton() }
+    });
+
+    // Depuis la page de vérification du VSM (on attends l'apparition du titre avant de vérifier les erreurs)
+    waitForElement({
+        selector: 'h1.h1center',
+        callback: function () { handleVSMVerificationPage(MAX_ERROR_RATIO, CLICK_TIMEOUT) }
+    });
+
+    // Code commenté pour la validation finale, à décommenter si nécessaire
+    waitForElement({
+        selector: 'div.tab_valid_cancel button.button.valid',
+        callback: function (elements) {
+            if (oneClickVSMwithinTimeRange(CLICK_TIMEOUT)) {
+                recordMetrics({ clicks: 1, drags: 1 });
+                elements[0].click();
+            }
+        }
+    });
+});
+
+
+// Gestion depuis l'accueil du dossier patient
+function setupPatientViewButton() {
+    const VSMButton = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_HyperLinkOpenVSM');
+    if (!VSMButton) return;
+
+    // Création du bouton de raccourci
+    const oneClickVSMButton = document.createElement('a');
+    oneClickVSMButton.textContent = '+1clickVSM';
+    oneClickVSMButton.title = 'Weda-Helper : Créer un VSM en un clic. Ne fonctionne que si au moins 70% des champs sont au format CIM-10';
+    oneClickVSMButton.style.cssText = 'cursor: pointer; color: blue; text-decoration: underline; margin-left: 10px;';
+
+    oneClickVSMButton.addEventListener('click', function () {
+        setOneClickVSMTimestamp();
+        VSMButton.click();
+    });
+
+    VSMButton.parentNode.appendChild(oneClickVSMButton);
+}
+
+// Gestion depuis la page de vérification du VSM
+function handleVSMVerificationPage(MAX_ERROR_RATIO, CLICK_TIMEOUT) {
+    const DMPButton = document.querySelector('img[aria-describedby="cdk-describedby-message-5"]');
+    if (!DMPButton) return;
+
+    // Vérification du timestamp
+    if (!oneClickVSMwithinTimeRange(CLICK_TIMEOUT)) return;
+
+    // Analyse des erreurs
+    const checkBoxElementsNum = document.querySelectorAll('input[type="checkbox"]').length;
+    const errorPanel = document.querySelectorAll('div.invite p.alertPanel')[1];
+    const errorNum = errorNumber(errorPanel);
+
+    if (errorNum <= checkBoxElementsNum * MAX_ERROR_RATIO) {
+        const successRate = Math.round(((checkBoxElementsNum - errorNum) / checkBoxElementsNum) * 100);
+        console.log(`Nombre d'erreurs acceptable (${errorNum}/${checkBoxElementsNum}, taux de réussite: ${successRate}%), envoi automatique du VSM`);
+        sendWedaNotifAllTabs({
+            message: `Taux de validation du VSM: ${successRate}% supérieur à ${MAX_ERROR_RATIO * 100}%, envoi automatique du VSM`,
+            type: 'success',
+            duration: 5000,
+            icon: 'success',
+        });
+        recordMetrics({ clicks: 1, drags: 1 });
+        setOneClickVSMTimestamp(); // On rafrachit le timestamp
+        DMPButton.click();
+    } else {
+        const successRate = Math.round(((checkBoxElementsNum - errorNum) / checkBoxElementsNum) * 100);
+        console.log(`Trop d'erreurs pour le VSM en un clic (${errorNum}/${checkBoxElementsNum}, taux de réussite: ${successRate}%)`);
+        message = `Taux de validation du VSM: ${successRate}% inférieur au taux de ${(1 - MAX_ERROR_RATIO) * 100}% requis pour le ROSP. Envoi automatique annulé.`;
+        sendWedaNotifAllTabs({
+            message: message,
+            type: 'undefined',
+            duration: 5000,
+            icon: 'error',
+        });
+    }
+}
+
+function errorNumber(errorPanel) {
+    if (!errorPanel) return 0; // Si le panneau n'apparait pas c'est qu'il n'y a pas aucune ligne en erreur
+    const errorNumMatch = errorPanel.textContent.match(/\d+/);
+
+
+    return parseInt(errorNumMatch[0]);
+}
+
+function oneClickVSMwithinTimeRange(CLICK_TIMEOUT) {
+    const oneClickVSMTimestamp = sessionStorage.getItem('oneClickVSM');
+    if (!oneClickVSMTimestamp) return false;
+
+    return Date.now() - oneClickVSMTimestamp < CLICK_TIMEOUT;
+}
+
+function setOneClickVSMTimestamp() {
+    sessionStorage.setItem('oneClickVSM', Date.now());
+}

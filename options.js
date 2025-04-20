@@ -198,7 +198,7 @@ function createLabel(option) {
         padding: 8px 12px;
         border-radius: 4px;
         width: max-content;
-        max-width: 300px;
+        max-width: 600px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         z-index: 100;
         font-size: 14px;
@@ -209,7 +209,7 @@ function createLabel(option) {
         content: '';
         position: absolute;
         left: -4px;
-        top: 50%;
+        top: 12px;
         transform: translateY(-50%);
         border-width: 6px;
         border-style: solid;
@@ -235,7 +235,9 @@ function createLabel(option) {
     
     const tooltip = document.createElement('div');
     tooltip.className = 'info-tooltip';
-    tooltip.textContent = option.longDescription;
+    // tooltip.textContent = option.longDescription;
+    tooltip.innerHTML = option.longDescription.replace(/\n/g, '<br>');
+
     
     infoIcon.appendChild(tooltip);
     label.appendChild(infoIcon);

@@ -847,6 +847,8 @@ addTweak('/vitalzen/fse.aspx', 'showBillingHistory', async function () {
 
     const userSelector = '#DropDownListUsers';
     const currentUser = getCurrentUser(iframeId, userSelector);
+    // On stocke la valeur dans le session storage
+    sessionStorage.setItem('currentHistoryUserForCotationHistory', currentUser);
     const loggedInUser = swapNomPrenom(document.getElementById('LabelUserLog').innerText);
 
 
@@ -862,6 +864,36 @@ addTweak('/vitalzen/fse.aspx', 'showBillingHistory', async function () {
 
     await sleep(250);
     await selectProperUser(iframeId, currentUser, userSelector);
+    // On supprime la valeur du session storage
+    sessionStorage.removeItem('currentHistoryUserForCotationHistory');
+});
+
+// On restaure l'utilisateur sélectionné avant l'affichage de l'historique dans la page d'accueil si le mauvais utilisateur est sélectionné
+// et que le session storage contient une valeur
+addTweak('/FolderMedical/PatientViewForm.aspx', 'showBillingHistory', async function () {
+    console.log('[showBillingHistory] On restaure l\'utilisateur sélectionné avant l\'affichage de l\'historique');
+    const recordedUser = sessionStorage.getItem('currentHistoryUserForCotationHistory');
+    if (!recordedUser) {
+        return;
+    }
+    console.log('[showBillingHistory] Utilisateur enregistré:', recordedUser);
+    const menuUtilisateur = document.querySelector('#ContentPlaceHolder1_DropDownListUsers');
+    if (!menuUtilisateur) {
+        return;
+    }
+    const currentSelectedUser = menuUtilisateur.options[menuUtilisateur.selectedIndex].textContent;
+    if (currentSelectedUser !== recordedUser) {
+        console.log('[showBillingHistory] Mauvais utilisateur sélectionné, on restaure l\'utilisateur enregistré');
+        // Parcourir toutes les options pour trouver celle qui correspond exactement au utilisateur enregistré
+        for (let i = 0; i < menuUtilisateur.options.length; i++) {
+            if (menuUtilisateur.options[i].textContent.trim() === recordedUser.trim()) {
+                menuUtilisateur.selectedIndex = i;
+                menuUtilisateur.dispatchEvent(new Event('change', { bubbles: true }));
+                sessionStorage.removeItem('currentHistoryUserForCotationHistory');
+                break;
+            }
+        }
+    }
 });
 
 // Fonction utilitaire pour accéder à l'iframe et au sélecteur d'utilisateur
@@ -1056,7 +1088,7 @@ function createBillingDataContainer() {
 }
 
 // Aide à la cotation
-addTweak('/vitalzen/fse.aspx', 'cotationHelper', function () {
+addTweak('/vitalzen/fse.aspx', 'cotationHelper2', function () {
     let isFirstDetection = true;
     waitForElement({
         selector: '[vz-acte]',
@@ -1097,7 +1129,7 @@ function greenLightRefractoryPeriodCotationHelper(customKey = '') {
 }
 
 
-function checkPossibleHelp() {
+async function checkPossibleHelp() {
     const cotationContext = {
         cotation: getActualCotation(), // retourne un array de cotation
         mtSituation: getActualMTSituation(),
@@ -1106,8 +1138,19 @@ function checkPossibleHelp() {
         dayOfWeek: new Date().getDay(), // Sunday = 0, Monday = 1, etc.
         billingData: getHiddenBillingData()
     };
+
+    let wishedTestList = await getOptionPromise('cotationHelper2');
+    // La liste est au format "MCG, SHE, MHP, RDV, MOP, PAV"
+    wishedTestList = wishedTestList.split(',').map(item => item.trim());
+    console.log('wishedTestList', wishedTestList);
+
     cotationHelper.forEach(helper => {
-        if (helper.test(cotationContext)) {
+        // Si la cotationHelper n'est pas un tableau, on le transforme en tableau
+        if (!Array.isArray(helper.cotation)) { helper.cotation = [helper.cotation]; }
+        let testIsWishedForThisCotation = helper.cotation.some(cotation => wishedTestList.includes(cotation));
+        let testPassed = helper.test(cotationContext);
+        console.log('Test de cotationHelper', helper.titre, 'est souhaité :', testIsWishedForThisCotation, 'est passé :', testPassed);
+        if (testIsWishedForThisCotation && testPassed) {
             if (!greenLightRefractoryPeriodCotationHelper(helper.titre)) {
                 return;
             }
@@ -1128,16 +1171,16 @@ function checkPossibleHelp() {
 const cotationHelper = [
     {
         titre: 'Cotation MCG',
+        cotation: 'MCG',
         test: function (context) {
-            console.log('Ajout de MCG', context);
             return context.mtSituation.includes('08') && context.cotation.includes('G');
         },
         conseil: 'Cette situation peut peut-être bénéficier de la cotation MCG',
         link: 'https://omniprat.org/fiches-pratiques/consultations-visites/majoration-de-coordination-generaliste/'
     }, {
         titre: 'Cotation SHE',
+        cotation: 'SHE',
         test: function (context) {
-            console.log('Ajout de SHE', context);
             // La cotation doit contenir SNP ou MRT
             let isProperCotation = context.cotation.some(cot => cot.includes('SNP') || cot.includes('MRT'));
             // L'heure doit être 19, 20 ou 21h
@@ -1148,8 +1191,8 @@ const cotationHelper = [
         link: 'https://www.hauts-de-france.ars.sante.fr/le-service-dacces-aux-soins-sas-1'
     }, {
         titre: 'Cotation MHP',
+        cotation: 'MHP',
         test: function (context) {
-            console.log('Ajout de MHP', context);
             // Doit être aux horaires de PDSA : donc samedi 12+ heure ou soir 20+ heure
             let isProperHour = (context.dayOfWeek === 6 && context.hour >= 12) || context.hour >= 20;
             // La cotation doit contenir G et ne pas contenir SNP
@@ -1160,6 +1203,7 @@ const cotationHelper = [
         link: 'https://www.ameli.fr/medecin/exercice-liberal/facturation-remuneration/consultations-actes/tarifs/tarifs-conventionnels-medecins-generalistes-specialistes'
     }, {
         titre: 'cotation RDV',
+        cotation: 'RDV',
         test: function (context) {
             // les ages doivent être : 18-25 ans ; 45-50 ans ; 60-65 ans ou 70-75 ans, cf. https://www.ameli.fr/medecin/sante-prevention/bilan-prevention-ages-cles
             let isProperAge = [[18, 25], [45, 50], [60, 65], [70, 75]].some(ageRange => context.patientAge >= ageRange[0] && context.patientAge <= ageRange[1]);
@@ -1170,7 +1214,8 @@ const cotationHelper = [
         conseil: "Le patient est peut-être éligible à la réalisation du Plan Personnalisé de Prévention, donc à la cotation RDV. Cumulable à 70% avec JKHD001 ou DEQP003. FDS à part si couplé avec un G.",
         link: 'https://omniprat.org/fiches-pratiques/bilan-de-prevention/'
     }, {
-        titre: 'notation MOP',
+        titre: 'cotation MOP',
+        cotation: ['MOP'],
         test: function (context) {
             let ageOK = patientAgeInFSE() >= 80;
             let isMT = estMTdeclareOuReferent(loggedInUser());
@@ -1181,6 +1226,7 @@ const cotationHelper = [
         link: "https://omniprat.org/fiches-pratiques/consultations-visites/majoration-personne-agee-mpa/"
     }, {
         titre: 'cotation PAV oubliée',
+        cotation: ['PAV'],
         test: function (context) {
             if (totalAmount() < 120) {
                 return false;
@@ -1192,6 +1238,7 @@ const cotationHelper = [
         link: "https://www.ameli.fr/assure/remboursements/reste-charge/forfait-24-euros"
     }, {
         titre: 'cotation PAV mal placée',
+        cotation: 'PAV',
         test: function (context) {
             if (totalAmount() < 120) {
                 return false;
@@ -1203,6 +1250,51 @@ const cotationHelper = [
         },
         conseil: "La cotation PAV doit être en dernière position.",
         link: "https://www.ameli.fr/assure/remboursements/reste-charge/forfait"
+    }, {
+        titre: 'alerte cotation APC/APY/APU',
+        cotation: ['APC', 'APY', 'APU'],
+        test: function (context) {
+            // On vérifie d'abord si une cotation APC/APY/APU est présente dans la cotation actuelle
+            let hasAPCotation = context.cotation.some(cot =>
+                cot.includes('APC') || cot.includes('APY') || cot.includes('APU')
+            );
+
+            if (!hasAPCotation) {
+                return false; // Pas de cotation APC/APY/APU, pas d'alerte nécessaire
+            }
+
+            // On va vérifier si l'historique de facturation contient n'importe quelle cotation dans les 4 mois précédents
+            let now = new Date();
+            let fourMonthsAgo = new Date();
+            fourMonthsAgo.setMonth(now.getMonth() - 4);
+
+            // Cherche si une consultation quelconque a été réalisée dans les 4 derniers mois
+            let recentConsultation = context.billingData.some(billing => {
+                let billingDate = new Date(billing.Date.split('/').reverse().join('-'));
+                return billingDate >= fourMonthsAgo; // Vérifie si une facturation a été faite, quelle qu'elle soit
+            });
+
+            return recentConsultation; // Retourne vrai si une consultation récente a été trouvée
+        },
+        conseil: "Attention : vous avez déjà vu ce patient au cours des 4 derniers mois. La cotation APC/APY/APU ne peut être utilisée que pour un patient non vu depuis plus de 4 mois.",
+        link: "https://www.ameli.fr/medecin/exercice-liberal/facturation-remuneration/consultations-actes/tarifs/tarifs-conventionnels-medecins-generalistes-specialistes"
+    }, {
+        titre: 'rappel cotation MCS',
+        cotation: ['MCS'],
+        test: function (context) {
+            // Vérifie si une consultation CS ou CNP est présente dans la cotation actuelle
+            let hasCSorCNP = context.cotation.some(cot => 
+                cot.includes('CS') || cot.includes('CNP')
+            );
+            
+            // Vérifie si le MCS est absent
+            let hasMCS = context.cotation.some(cot => cot.includes('MCS'));
+            
+            // Si la cotation contient CS ou CNP mais pas MCS, on retourne true
+            return hasCSorCNP && !hasMCS;
+        },
+        conseil: "N'oubliez pas d'ajouter la majoration MCS si vous êtes le spécialiste correspondant. Elle est applicable avec les cotations CS et CNP.",
+        link: "https://www.ameli.fr/medecin/exercice-liberal/facturation-remuneration/consultations-actes/tarifs/tarifs-conventionnels-medecins-generalistes-specialistes"
     }
 ];
 

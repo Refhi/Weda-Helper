@@ -4,6 +4,35 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.12] - *Import automatisé, Impression de masse et Durées de prescription de masse*
+## Imports :
+- [#419](https://github.com/Refhi/Weda-Helper/pull/419) - **Classification semi-automatique** pour la Messagerie Sécurisée ! Merci à [Abel](https://github.com/Abeldvlpr) pour cette contribution !
+- [#389](https://github.com/Refhi/Weda-Helper/issues/389) - Il est désormais possible de choisisir le classement automatique des documents importés. C'est désactivé par défaut.
+- [#387](https://github.com/Refhi/Weda-Helper/issues/387) - Le médecin attitré est désormais sélectionné automatiquement.
+- [#381](https://github.com/Refhi/Weda-Helper/issues/381) - Refonte du système de titre automatique (vos retours sont les bienvenus !)
+
+## Raccourcis :
+- [#397](https://github.com/Refhi/Weda-Helper/issues/397) - **Impression de masse** : Vous pouvez désormais appeler Ctrl+P (et seulement celui-ci !) pour imprimer TOUT les documents du jour depuis l'accueil du dossier patient. Cela fonctionne surtout si vous avez activé l'impression complète en 1 clic via le Companion. Au passage les onglets affichent l'étape d'impression en cours.
+- [#393](https://github.com/Refhi/Weda-Helper/issues/393) - Meilleurs raccourcis pour les documents : Alt+chiffre ouvre le dernier document, et Alt+Maj+chiffre en crée un nouveau (ex. Pour les ordonnances, les prescriptions, les consultations, etc.). Les demandes de nouvelles prescriptions sont mieux prises en compte.
+
+## Automatismes :
+- [#390](https://github.com/Refhi/Weda-Helper/issues/390) - La case "Mon patient accepte que je transmette le présent avis d'arrêt de travail pour son compte [...]" se coche automatiquement.
+- [#399](https://github.com/Refhi/Weda-Helper/issues/399) - Ajout d'un bouton pour mettre à jour le **VSM en un clic** (vérifie tout de même que le VSM rempli les 70% de nomenclature du ROSP avant de valider).
+- [#401](https://github.com/Refhi/Weda-Helper/issues/401) - Ajout de quelques aides pour les cotations de spécialités (APC, APY, APU, MCS)
+- [#402](https://github.com/Refhi/Weda-Helper/issues/402) - **Changez la durée de TOUT les traitements en 1 clic !** (en allant dans "Définir la durée de traitement en mois pour tous les médicaments", un nouveau bouton est ajouté qui fera à votre place tout le travail. Prend quelques secondes par ligne.)
+
+## Améliorations diverses :
+- [#396](https://github.com/Refhi/Weda-Helper/issues/396) - Il est désormais possible de déclarer un type de **recherche médicamenteuse par défaut** (dans les options).
+- Les **descriptions des options sont mieux mises en forme**, ajout d'un exemple détaillé pour les catégories de classement automatique.
+
+## Refactory : (pour les développeurs)
+- addTweak prend désormais en charge les options présentes sous forme de str (et pas seullement bool)
+
+## Fix :
+- [#394](https://github.com/Refhi/Weda-Helper/issues/394) - Correction d'un bug dans l'historique des cotations (fonction pour l'instant non activable car en attente de la validation de Weda)
+- [#428](https://github.com/Refhi/Weda-Helper/issues/428) - La pré-alerte du VSM se déclenchait trop tôt (4 mois après le dernier au lieu de 4 mois avant expiration)
+ 
+
 # [2.11.3] - Amélioration de l'apparence & Tipeee
 ## Améliorations :
 - la documentation est désormais accessible en cliquant sur l'icone de l'extension
