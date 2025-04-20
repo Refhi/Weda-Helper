@@ -162,10 +162,10 @@ async function processFoundPdfIframe(elements) {
 
         // Intégration des données dans le formulaire d'import
         await setExtractedDataInForm(extractedData);
-        
+
         // Marquage des données comme déjà importées
         markDataAsImported(hashId, extractedData);
-    }  
+    }
 
     // Enregistrement des métriques approximatives
     recordMetrics({ clicks: 9, drags: 9, keyStrokes: 10 });
@@ -277,7 +277,7 @@ function handlePatientSearch(extractedData, hashId) {
         console.log("[pdfParser] Les méthodes refusées sont :", extractedData.failedSearches);
         if (search.data && !extractedData.failedSearches.includes(search.type)) {
             let properSearched = lookupPatient(search.type, search.data);
-            if (properSearched.status === 'success' ) {
+            if (properSearched.status === 'success') {
                 console.log(`[pdfParser] ${search.type} présent, on continue à chercher le patient.`);
                 const clicPatientReturn = clicPatient(extractedData);
                 console.log("[pdfParser] clicPatientReturn", clicPatientReturn.status, clicPatientReturn.message);
@@ -475,7 +475,7 @@ function clicPatient(extractedData) {
         }
     }
     if (!patientToClick) {
-        return { status: 'error', message: "Aucun patient trouvé", patientName:null };
+        return { status: 'error', message: "Aucun patient trouvé", patientName: null };
     }
 
     let patientToClickName = patientToClick.innerText;
@@ -483,17 +483,17 @@ function clicPatient(extractedData) {
         // Ici le bon patient est déjà sélectionné pour import.
         // On en déduis que la procédure a déjà aboutie et qu'il faut s'arrêter.
         console.log("[pdfParser] Un patient est déjà sélectionné, arrêt de la recherche.");
-        return { status: 'continue', message: "Un patient est déjà sélectionné", patientName:null };
+        return { status: 'continue', message: "Un patient est déjà sélectionné", patientName: null };
     } else {
         let patientToClicSelector = "#" + patientToClick.id;
         // patientToClick.click(); => ne fonctionne pas à cause du CSP en milieu ISOLATED
         if (patientToClick) {
             console.log("[pdfParser] Patient à sélectionner :", patientToClickName, patientToClick);
             clicCSPLockedElement(patientToClicSelector);
-            return { status: 'success', message: "Patient trouvé et cliqué", patientName:patientToClickName };
+            return { status: 'success', message: "Patient trouvé et cliqué", patientName: patientToClickName };
         } else {
             console.log("[pdfParser] Patient non trouvé");
-            return { status: 'error', message: "Aucun patient trouvé", patientName:null };
+            return { status: 'error', message: "Aucun patient trouvé", patientName: null };
         }
     }
 }
@@ -903,7 +903,7 @@ async function extractAddressedTo(fullText) {
         // Extraction du nom et prénom du format "NOM Prénom (Dr.)"
         const fullName = option.text.trim();
         const nameParts = fullName.match(/^([A-Z\-]+)\s+([^(]+)/);
-        
+
         return {
             id: option.value,
             fullName: fullName,
@@ -914,24 +914,24 @@ async function extractAddressedTo(fullText) {
     });
 
     console.log("[pdfParser] Liste des médecins disponibles:", doctors);
-    
+
     // Recherche dans le texte pour chaque médecin
     for (const doctor of doctors) {
         // Créer différentes variations pour la recherche (en tenant compte des possibles sauts de ligne ou caractères entre nom et prénom)
         const patterns = [
             // Format NOM Prénom (tolère des caractères entre les deux)
             new RegExp(`${doctor.lastName}[\\s\\S]{0,5}${doctor.firstName.split('-')[0]}`, 'i'),
-            
+
             // Format Prénom NOM (tolère des caractères entre les deux)
             new RegExp(`${doctor.firstName.split('-')[0]}[\\s\\S]{0,5}${doctor.lastName}`, 'i'),
-            
+
             // Recherche seulement le nom de famille s'il est assez distinctif (>= 5 caractères)
             ...(doctor.lastName.length >= 5 ? [new RegExp(`\\b${doctor.lastName}\\b`, 'i')] : []),
-            
+
             // Recherche seulement le prénom s'il est assez distinctif (>= 5 caractères)
             ...(doctor.firstName.length >= 5 ? [new RegExp(`\\b${doctor.firstName.split('-')[0]}\\b`, 'i')] : [])
         ];
-        
+
         // Tester chaque pattern
         for (const pattern of patterns) {
             if (pattern.test(fullText)) {
@@ -953,7 +953,7 @@ function extractDestinationClass(fullText) {
         '2': "Résultats d'examens",
         '3': "Courrier"
     };
-    
+
     // Mots-clés pour chaque destination
     const keywordsByDestination = {
         '1': [
@@ -1352,7 +1352,7 @@ function visualizeBinaryBitmap(binaryBitmap) {
 }
 
 async function determineDocumentType(fullText) {
-        if (isMSSante) {
+    if (isMSSante) {
         return null;
     }
     // console.log('[pdfParser] determineDocumentType');
@@ -1529,6 +1529,37 @@ function findImagerie(fullText, imageries) {
 
 // Fonction pour déterminer le titre du document
 function determineDocumentTitle(fullText, documentType) {
+    // Phrases-clés prioritaires avec leurs titres associés
+    const phrasesPrioritaires = {
+        "Frottis": ["Frottis gynécologique de dépistage", "Pappilloma", "Frottis cervico-vaginal"],
+        "Prescription de transport": ["transport pour patient"],
+    };
+
+    // Vérifier d'abord s'il y a une phrase prioritaire dans le texte
+    for (const [titre, phrases] of Object.entries(phrasesPrioritaires)) {
+        for (const phrase of phrases) {
+            // Rechercher la phrase avec une regex insensible à la casse
+            const regex = new RegExp(phrase, 'i');
+            if (regex.test(fullText)) {
+                console.log(`[pdfParser] Phrase prioritaire trouvée: "${phrase}" => Titre: "${titre}"`);
+                let documentTitle = titre;
+
+                // Si un lieu est présent, on peut l'ajouter
+                for (const [nom, mots] of Object.entries(lieux)) {
+                    for (const mot of mots) {
+                        const lieuRegex = new RegExp(`(^|\\s|\\n)${mot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|\\n|$)`, 'i');
+                        if (lieuRegex.test(fullText)) {
+                            documentTitle += ` (${nom})`;
+                            break;
+                        }
+                    }
+                }
+
+                return documentTitle;
+            }
+        }
+    }
+
     const specialites = {
         "Médecine Interne": ["Médecine Interne"],
         "Orthopédie": ["Orthopédie", "Orthopédique", "Traumatologie"],
@@ -1566,7 +1597,7 @@ function determineDocumentTitle(fullText, documentType) {
         "ostéodensitométrie": ["ostéodensitométrie", "densitométrie osseuse"],
         "IRM": ["IRM", "imagerie par résonance magnétique"]
     };
-    
+
     // Organes/régions anatomiques fréquents pour préciser l'examen
     const regions = {
         "thoracique": ["thorax", "thoracique", "pulmonaire", "poumon"],
@@ -1586,7 +1617,7 @@ function determineDocumentTitle(fullText, documentType) {
         "artère": ["artère", "artériel", "aorte", "carotide", "fémorale"],
         "cardiaque": ["cardiaque", "cœur", "coronaire"]
     };
-    
+
     // Établissements de santé ou lieux
     const lieux = {
         "CHU": ["CHU", "Centre Hospitalier Universitaire"],
@@ -1595,7 +1626,7 @@ function determineDocumentTitle(fullText, documentType) {
         "Centre": ["Centre médical", "Centre de radiologie", "Centre d'imagerie"],
         "Cabinet": ["Cabinet médical", "Cabinet de radiologie"]
     };
-    
+
     // Type de compte-rendu
     const typesCR = {
         "consultation": ["Consultation", "CS", "Cs", "consultation"],
@@ -1609,7 +1640,7 @@ function determineDocumentTitle(fullText, documentType) {
 
     // Trouver le type d'imagerie si présent
     let imagerie = findImagerie(fullText, imageries);
-    
+
     // Trouver la région anatomique si présente
     let region = null;
     for (const [nom, mots] of Object.entries(regions)) {
@@ -1621,19 +1652,21 @@ function determineDocumentTitle(fullText, documentType) {
         }
         if (region) break;
     }
-    
+
     // Trouver le lieu si présent
     let lieu = null;
     for (const [nom, mots] of Object.entries(lieux)) {
         for (const mot of mots) {
-            if (fullText.toLowerCase().includes(mot.toLowerCase())) {
+            // Utiliser une regex avec des limites de mots pour garantir des correspondances exactes
+            const regex = new RegExp(`(^|\\s|\\n)${mot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|\\n|$)`, 'i');
+            if (regex.test(fullText)) {
                 lieu = nom;
                 break;
             }
         }
         if (lieu) break;
     }
-    
+
     // Trouver le type de compte-rendu
     let typeCR = null;
     for (const [nom, mots] of Object.entries(typesCR)) {
@@ -1645,14 +1678,14 @@ function determineDocumentTitle(fullText, documentType) {
         }
         if (typeCR) break;
     }
-    
+
     // Recherche d'un médecin mentionné (Dr X)
     const doctorMatch = fullText.match(/Dr\.?\s+([A-Z][A-Za-z\-]+)/);
     const medecin = doctorMatch ? doctorMatch[1] : null;
 
     // Construire le titre du document en fonction du contexte
     let documentTitle = documentType || "";
-    
+
     // Pour les documents d'imagerie
     if (documentType === "IMAGERIE") {
         if (imagerie) {
@@ -1666,7 +1699,7 @@ function determineDocumentTitle(fullText, documentType) {
                 documentTitle += ` ${region}`;
             }
         }
-    } 
+    }
     // Pour les consultations
     else if (documentType === "CONSULTATION" || typeCR === "consultation") {
         documentTitle = "Consultation";
@@ -1675,7 +1708,7 @@ function determineDocumentTitle(fullText, documentType) {
         } else if (specialite) {
             documentTitle += ` ${specialite}`;
         }
-    } 
+    }
     // Pour les hospitalisations
     else if (typeCR === "hospitalisation") {
         documentTitle = "CRH";
@@ -1687,21 +1720,21 @@ function determineDocumentTitle(fullText, documentType) {
     else if (specialite) {
         documentTitle += documentTitle ? ` - ${specialite}` : specialite;
     }
-    
+
     // Ajouter le lieu en dernier si présent
     if (lieu) {
         documentTitle += ` (${lieu})`;
     }
 
-    console.log('[pdfParser] Titre du document déterminé', documentTitle, 
-                'avec type:', documentType, 
-                'spécialité:', specialite, 
-                'imagerie:', imagerie, 
-                'région:', region,
-                'médecin:', medecin,
-                'lieu:', lieu,
-                'type CR:', typeCR);
-                
+    console.log('[pdfParser] Titre du document déterminé', documentTitle,
+        'avec type:', documentType,
+        'spécialité:', specialite,
+        'imagerie:', imagerie,
+        'région:', region,
+        'médecin:', medecin,
+        'lieu:', lieu,
+        'type CR:', typeCR);
+
     return documentTitle;
 }
 
@@ -1823,7 +1856,7 @@ async function parseDate(dateString) {
         'janvier': 1, 'février': 2, 'mars': 3, 'avril': 4, 'mai': 5, 'juin': 6,
         'juillet': 7, 'août': 8, 'septembre': 9, 'octobre': 10, 'novembre': 11, 'décembre': 12
     };
-    
+
     // Détecter si c'est une date avec le mois en toutes lettres
     const dateTextuelle = /([0-9]{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+([0-9]{4})/i.exec(dateString);
     let rechercheDateAlphabetique = await getOptionPromise('PdfParserDateAlphabetique');
@@ -1831,26 +1864,26 @@ async function parseDate(dateString) {
         const jour = parseInt(dateTextuelle[1], 10);
         const mois = moisEnFrancais[dateTextuelle[2].toLowerCase()];
         const annee = parseInt(dateTextuelle[3], 10);
-        
+
         // Vérification des plages valides
         if (jour < 1 || jour > 31 || !mois || annee < 1900 || annee > 9999) {
             return null;
         }
-        
+
         const date = new Date(annee, mois - 1, jour);
-        
+
         // Vérification que la date est valide
         if (date.getDate() !== jour || date.getMonth() !== mois - 1 || date.getFullYear() !== annee) {
             return null;
         }
-        
+
         const minDate = new Date(1900, 0, 1);
         const today = new Date();
-        
+
         if (date < minDate || date > today) {
             return null;
         }
-        
+
         return date;
     } else {
         // Format standard dd/mm/yyyy ou dd-mm-yyyy
