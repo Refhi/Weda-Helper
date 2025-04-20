@@ -257,8 +257,10 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*preAlertVSM', async function (
         }
         // On vérifie quelle est l'ancienneté du VSM
         const VSMAge = today - lastVSMDateObj;
-        // Si le VSM a plus de preAlertDuration mois, on le met en orange
-        if (VSMAge > preAlertDuration * 30.44 * 24 * 60 * 60 * 1000) {
+        // Calculer combien de temps avant d'atteindre 1 an
+        const timeUntilExpiration = 31557600000 - VSMAge; // 31557600000 ms = 1 an
+        // Si le VSM expire dans moins de preAlertDuration mois, on le met en orange
+        if (timeUntilExpiration > 0 && timeUntilExpiration < preAlertDuration * 30.44 * 24 * 60 * 60 * 1000) {
             VSMElement.style.color = 'orange';
             VSMElement.style.fontWeight = 'bold';
         }
@@ -303,13 +305,13 @@ addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', 
     // Depuis la page d'accueil on ajoute un bouton pour le VSM en un clic
     waitForElement({
         selector: '#ContentPlaceHolder1_EtatCivilUCForm1_HyperLinkOpenVSM',
-        callback: function () {setupPatientViewButton()}
+        callback: function () { setupPatientViewButton() }
     });
 
     // Depuis la page de vérification du VSM (on attends l'apparition du titre avant de vérifier les erreurs)
     waitForElement({
         selector: 'h1.h1center',
-        callback: function () {handleVSMVerificationPage(MAX_ERROR_RATIO, CLICK_TIMEOUT)}
+        callback: function () { handleVSMVerificationPage(MAX_ERROR_RATIO, CLICK_TIMEOUT) }
     });
 
     // Code commenté pour la validation finale, à décommenter si nécessaire
@@ -372,7 +374,7 @@ function handleVSMVerificationPage(MAX_ERROR_RATIO, CLICK_TIMEOUT) {
     } else {
         const successRate = Math.round(((checkBoxElementsNum - errorNum) / checkBoxElementsNum) * 100);
         console.log(`Trop d'erreurs pour le VSM en un clic (${errorNum}/${checkBoxElementsNum}, taux de réussite: ${successRate}%)`);
-        message = `Taux de validation du VSM: ${successRate}% inférieur au taux de ${(1-MAX_ERROR_RATIO) * 100}% requis pour le ROSP. Envoi automatique annulé.`;
+        message = `Taux de validation du VSM: ${successRate}% inférieur au taux de ${(1 - MAX_ERROR_RATIO) * 100}% requis pour le ROSP. Envoi automatique annulé.`;
         sendWedaNotifAllTabs({
             message: message,
             type: 'undefined',
