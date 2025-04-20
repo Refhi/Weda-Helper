@@ -891,16 +891,7 @@ async function extractRelevantData(fullText, pdfUrl) {
 
 // Extraction du médecin à qui est adressé le document
 async function extractAddressedTo(fullText) {
-    // On récupère d'abord le MT s'il existe.
-    const patientInfo = await getPatientInfo(getCurrentPatientId());
-    const idMT = patientInfo?.refDoctorUserId;
-    if (idMT) {
-        console.log("[pdfParser] Médecin traitant trouvé dans le dossier patient :", idMT);
-        return idMT;
-    }
-
-    // Sinon on fait la procédure plus longue :
-    // d'abord récupérer la liste des médecins accessible
+    // D'abord récupérer la liste des médecins accessible
     const doctorsSelect = document.querySelector('#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementUser_0');
     if (!doctorsSelect) {
         console.log("[pdfParser] Liste des médecins non trouvée");
