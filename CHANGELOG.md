@@ -7,8 +7,8 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 # [2.12] - *Import automatisé, Impression de masse et Durées de prescription de masse*
 ## Imports :
 - [#419](https://github.com/Refhi/Weda-Helper/pull/419) - **Classification semi-automatique** pour la Messagerie Sécurisée ! Merci à [Abel](https://github.com/Abeldvlpr) pour cette contribution !
-- [#389](https://github.com/Refhi/Weda-Helper/issues/389) - Il est désormais possible de choisisir le classement automatique des documents importés. C'est désactivé par défaut.
-- [#387](https://github.com/Refhi/Weda-Helper/issues/387) - Le médecin attitré est désormais sélectionné automatiquement.
+- [#389](https://github.com/Refhi/Weda-Helper/issues/389) - La **destination** automatique peut être activée dans les options (par défaut désactivée). 
+- [#387](https://github.com/Refhi/Weda-Helper/issues/387) - Le médecin attitré est désormais sélectionné automatiquement lors de l'import par une secrétaire.
 - [#381](https://github.com/Refhi/Weda-Helper/issues/381) - Refonte du système de titre automatique (vos retours sont les bienvenus !)
 
 ## Raccourcis :
