@@ -819,33 +819,33 @@ const PRINTALLFUNCTION = '*printAll';
 // Ajout d'un store pour les tâches associées aux onglets
 const tabTaskStore = {
     tasks: {},
-    
+
     // Associe une tâche à un onglet
-    assignTask: function(tabId, task) {
+    assignTask: function (tabId, task) {
         this.tasks[tabId] = task;
         // Stockage persistant dans localStorage
         localStorage.setItem('tabTasks', JSON.stringify(this.tasks));
         console.log(`Tâche assignée à l'onglet ${tabId}:`, task);
     },
-    
+
     // Récupère la tâche associée à un onglet
-    getTask: function(tabId) {
+    getTask: function (tabId) {
         // Synchroniser d'abord depuis localStorage
         this.loadFromStorage();
         return this.tasks[tabId] || null;
     },
-    
+
     // Supprime la tâche d'un onglet
-    removeTask: function(tabId) {
+    removeTask: function (tabId) {
         if (this.tasks[tabId]) {
             delete this.tasks[tabId];
             localStorage.setItem('tabTasks', JSON.stringify(this.tasks));
             console.log(`Tâche supprimée pour l'onglet ${tabId}`);
         }
     },
-    
+
     // Charge les tâches depuis le localStorage
-    loadFromStorage: function() {
+    loadFromStorage: function () {
         const storedTasks = localStorage.getItem('tabTasks');
         console.log('storedTasks', storedTasks);
         if (storedTasks) {
@@ -858,6 +858,47 @@ const tabTaskStore = {
         }
     }
 };
+
+
+// Ajout d'une icone d'imprimange pour lancer startPrintAll sans forcément passer par Ctrl+P
+addTweak('/FolderMedical/PatientViewForm.aspx', PRINTALLFUNCTION, async function () {
+    const elementTitreConsultation = document.querySelector('.sm');
+    // on vérifie que la date (le innerText de son frère ainé) est bien d'aujourd'hui (son innerText est au format "dd/MM/yyyy")
+    const dateElement = elementTitreConsultation.previousElementSibling;
+    // Extraire la date selon le format français "dd/MM/yyyy"
+    const dateStr = dateElement.innerText;
+    const [day, month, year] = dateStr.split('/').map(Number);
+    const date = new Date(year, month - 1, day); // Format JavaScript: année, mois (0-11), jour
+    const today = new Date();
+    // Comparer uniquement année/mois/jour sans les heures
+    const isToday = date.getFullYear() === today.getFullYear() &&
+        date.getMonth() === today.getMonth() &&
+        date.getDate() === today.getDate();
+
+    if (isToday) {
+        // On récupère le raccourcis pour l'impression
+        const raccourcis = await getShortcuts(['print_meds']);
+        const raccourcisImpression = raccourcis["print_meds"];
+        console.log('[PRINTALLFUNCTION] raccourcisImpression', raccourcisImpression);
+
+        // On crée un bouton d'impression simple à côté du titre
+        const printButton = document.createElement('span');
+        printButton.innerHTML = ' 🖨️ <small style="font-size:80%;color:#666">(Imprime tout les documents du jour)</small>';
+        // Le curseur devient une main au survol
+        printButton.style.cursor = 'pointer';
+        printButton.title = "Weda-Helper - Imprimez tous les documents du jour en cliquant ici ou avec le raccourci : " + raccourcisImpression;
+
+        // Ajout de l'événement de clic
+        printButton.addEventListener('click', async () => {
+            console.log('[PRINTALLFUNCTION] Impression de tous les documents du jour');
+            await startPrintAll();
+            console.log('[PRINTALLFUNCTION] Impression de tous les documents du jour terminée');
+        });
+
+        // Ajout directement après elementTitreConsultation
+        elementTitreConsultation.appendChild(printButton);
+    }
+});
 
 
 // 1 - On va d'abord se mettre en mode historique mixte, lister tous les éléments imprimables du jour,
@@ -882,17 +923,17 @@ async function startPrintAll() {
         if (index < ids.length) {
             const id = ids[index];
             console.log(`Création d'un onglet pour le document ${id}, index ${index}`);
-            
+
             try {
                 // Création du nouvel onglet et récupération de ses informations
-                const tabInfo = await newPatientTab(true);                
+                const tabInfo = await newPatientTab(true);
                 // Associer le document à imprimer à cet onglet
                 tabTaskStore.assignTask(tabInfo.id, {
                     type: 'printDocument',
                     documentId: id,
                     created: Date.now(),
                     index: index
-                });                
+                });
                 index++;
                 await openNextTab();
             } catch (error) {
@@ -901,7 +942,7 @@ async function startPrintAll() {
         } else {
             console.log('Tous les onglets ont été ouverts');
         }
-    }    
+    }
     await openNextTab();
 }
 
@@ -949,11 +990,11 @@ addTweak('/FolderMedical/PatientViewForm.aspx', PRINTALLFUNCTION, function () {
         } else {
             // S'il manque l'id, on active l'historique mixte pour le trouver
             console.log(`Élément #${documentId} non trouvé, activation de l'historique mixte...`);
-            
+
             try {
                 // Utilisation de goToHistoriqueMixte au lieu d'un clic manuel
                 await goToHistoriqueMixte();
-                
+
                 // Recherche à nouveau après l'activation de l'historique mixte
                 toPrintElement = document.querySelector(`#${documentId}`);
                 if (toPrintElement) {

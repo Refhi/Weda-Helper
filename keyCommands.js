@@ -189,6 +189,41 @@ function shortcutDefaut(shortcuts, defaultShortcuts, key) {
     }
 }
 
+/**
+ * Récupère les raccourcis clavier pour une liste d'actions données
+ * 
+ * Cette fonction récupère les raccourcis personnalisés ou par défaut pour chaque nom d'action fourni
+ * dans le tableau nomsRaccourcis. Elle utilise la fonction shortcutDefaut pour déterminer le raccourci
+ * à utiliser pour chaque action.
+ * 
+ * @async
+ * @param {string[]} nomsRaccourcis - Tableau contenant les noms des actions dont on veut récupérer les raccourcis
+ * @returns {Promise<Object>} Une promesse qui se résout avec un objet où les clés sont les noms des raccourcis et les valeurs sont les raccourcis clavier
+ * @example
+ * // Récupération de plusieurs raccourcis (format objet)
+ * const raccourcis = await getShortcuts(['push_annuler', 'push_valider', 'push_delete']);
+ * // Retourne (exemple) : 
+ * // {
+ * //   push_annuler: "Alt+Q",
+ * //   push_valider: "Alt+W",
+ * //   push_delete: "Alt+E"
+ * // }
+ */
+async function getShortcuts(nomsRaccourcis) {
+    return new Promise((resolve) => {
+        let raccourcisClaviers = {};
+        chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function (result) {
+            nomsRaccourcis.forEach(function (shortcut) {
+                const currentShortcut = shortcutDefaut(result.shortcuts, result.defaultShortcuts, shortcut);
+                console.log('currentShortcut', currentShortcut);
+                raccourcisClaviers[shortcut] = currentShortcut;
+            });
+            console.log('raccourcisClaviers', raccourcisClaviers);
+            resolve(raccourcisClaviers);
+        });
+    });
+}
+
 function addShortcuts(keyCommands, scope, scopeName) {
     chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function (result) {
         hotkeys.filter = function (event) {
@@ -566,20 +601,20 @@ function openSearch() {
 
 // Ajout des info-bulles sur les boutons + les "sensibilise" aux raccourcis claviers en ajoutant des targets
 addTweak('*', 'WarpButtons', async function () {
-    async function getShortcuts() {
-        return new Promise((resolve) => {
-            chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function (result) {
-                const raccourcis = {
-                    'targetAnnuler': shortcutDefaut(result.shortcuts, result.defaultShortcuts, 'push_annuler'),
-                    'targetValider': shortcutDefaut(result.shortcuts, result.defaultShortcuts, 'push_valider'),
-                    'targetSupprimer': shortcutDefaut(result.shortcuts, result.defaultShortcuts, 'push_delete')
-                };
-                resolve(raccourcis);
-            });
-        });
+    const targetToAction = {
+        'targetAnnuler': 'push_annuler',
+        'targetValider': 'push_valider',
+        'targetSupprimer': 'push_delete'
+    };
+    const raccourcis = await getShortcuts(["push_annuler", "push_valider", "push_delete"]);
+    // Remplacer chaque clé présente dans raccourcis par le target correspondant
+    for (const [key, value] of Object.entries(raccourcis)) {
+        if (targetToAction[key]) {
+            raccourcis[targetToAction[key]] = value;
+            delete raccourcis[key];
+        }
     }
 
-    const raccourcis = await getShortcuts();
     console.log('[WarpButtons] Raccourcis', raccourcis);
 
     function warpButtons(buttons) {
