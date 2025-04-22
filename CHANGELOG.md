@@ -4,6 +4,11 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.13] - 
+## Automatismes :
+- [#424](https://github.com/Refhi/Weda-Helper/issues/424) - Suppression automatique des {mots entre accolades} dans les documents générés par formulaire où l'option a été ignorée (ex. "Certificat de santé de {Nom du patient}" devient "Certificat de santé").
+
+
 # [2.12] - *Import automatisé, Impression de masse et Durées de prescription de masse*
 ## Imports :
 - [#419](https://github.com/Refhi/Weda-Helper/pull/419) - **Classification semi-automatique** pour la Messagerie Sécurisée ! Merci à [Abel](https://github.com/Abeldvlpr) pour cette contribution !
