@@ -856,13 +856,40 @@ const tabTaskStore = {
                 this.tasks = {};
             }
         }
+        // Purge des tâches trop anciennes
+        this.purgeOldTasks();
+    },
+    
+    // Purge les tâches qui sont trop anciennes
+    purgeOldTasks: function (maxAgeMs = 300000) { // Par défaut: 5 minutes
+        const now = Date.now();
+        let purgedCount = 0;
+        
+        // Parcourir toutes les tâches
+        for (const tabId in this.tasks) {
+            const task = this.tasks[tabId];
+            // Vérifier si la tâche a un timestamp created et s'il est trop ancien
+            if (task.created && (now - task.created > maxAgeMs)) {
+                delete this.tasks[tabId];
+                purgedCount++;
+            }
+        }
+        
+        // Si au moins une tâche a été purgée, mettre à jour le localStorage
+        if (purgedCount > 0) {
+            localStorage.setItem('tabTasks', JSON.stringify(this.tasks));
+            console.log(`${purgedCount} tâches anciennes ont été purgées (> ${maxAgeMs/60000} minutes)`);
+        }
+        
+        return purgedCount;
     }
 };
 
 
 // Ajout d'une icone d'imprimange pour lancer startPrintAll sans forcément passer par Ctrl+P
 addTweak('/FolderMedical/PatientViewForm.aspx', PRINTALLFUNCTION, async function () {
-    const elementTitreConsultation = document.querySelector('.sm');
+    const elementTitreConsultation = document.querySelector('#ContentPlaceHolder1_DivScrollHistorique .sm');
+    console.log('[PRINTALLFUNCTION] elementTitreConsultation', elementTitreConsultation);
     // on vérifie que la date (le innerText de son frère ainé) est bien d'aujourd'hui (son innerText est au format "dd/MM/yyyy")
     const dateElement = elementTitreConsultation.previousElementSibling;
     // Extraire la date selon le format français "dd/MM/yyyy"
