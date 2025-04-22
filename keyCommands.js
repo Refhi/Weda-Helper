@@ -606,17 +606,29 @@ addTweak('*', 'WarpButtons', async function () {
         'targetValider': 'push_valider',
         'targetSupprimer': 'push_delete'
     };
-    const raccourcis = await getShortcuts(["push_annuler", "push_valider", "push_delete"]);
-    // Remplacer chaque clé présente dans raccourcis par le target correspondant
-    for (const [key, value] of Object.entries(raccourcis)) {
-        if (targetToAction[key]) {
-            raccourcis[targetToAction[key]] = value;
-            delete raccourcis[key];
+    let raccourcis = await getShortcuts(["push_annuler", "push_valider", "push_delete"]);
+    
+    // Créer un nouvel objet pour stocker les raccourcis transformés
+    const transformedRaccourcis = {};
+    
+    // Pour chaque paire action/raccourci dans l'objet original
+    for (const [action, shortcut] of Object.entries(raccourcis)) {
+        // Trouver la clé dans targetToAction qui correspond à cette action
+        const target = Object.keys(targetToAction).find(key => targetToAction[key] === action);
+        if (target) {
+            // Ajouter au nouvel objet avec la clé transformée
+            transformedRaccourcis[target] = shortcut;
+        } else {
+            // Conserver les clés qui n'ont pas de transformation
+            transformedRaccourcis[action] = shortcut;
         }
     }
-
-    console.log('[WarpButtons] Raccourcis', raccourcis);
-
+    
+    // Remplacer l'objet raccourcis par la version transformée
+    console.log('[WarpButtons] Raccourcis originaux', raccourcis);
+    console.log('[WarpButtons] Raccourcis transformés', transformedRaccourcis);
+    raccourcis = transformedRaccourcis;
+    
     function warpButtons(buttons) {
         function addClassToButton(button) {
             var actions = {
