@@ -15,8 +15,26 @@ chrome.storage.local.get('apiKey', function (result) {
         chrome.storage.local.set({ 'apiKey': apiKey }, function () {
             console.log('Clé API générée et stockée :', apiKey);
         });
-    } else {
-        // console.log('Clé API déjà présente :', result.apiKey);
+    }
+    
+    if (result.apiKey === "votre clé API par défaut") {
+        const messageDejaEnvoye = localStorage.getItem('messageDejaEnvoye');
+        if (!messageDejaEnvoye) {            
+            // Envoi un message ok/annuler à l'utilisateur pour lui demander s'il veut générer une nouvelle clé
+            const choixUtilisateur = confirm("[Weda Helper] : Vous utilisez la clé API par défaut. Cliquez sur ok pour générer une nouvelle clé (recommandé) ou annuler pour ignorer ce message. Si vous générez une nouvelle clé, pensez à la reporter dans le Companion. Ce message n'apparaîtra qu'une fois.");
+            localStorage.setItem('messageDejaEnvoye', 'true');
+            if (choixUtilisateur) {
+                // Si l'utilisateur confirme, générer une nouvelle clé
+                const newApiKey = generateApiKey(32);
+                chrome.storage.local.set({ 'apiKey': newApiKey }, function () {
+                    console.log('Nouvelle clé API générée et stockée :', newApiKey);
+                    alert("Nouvelle clé API générée : " + newApiKey + ". Pensez à la reporter dans le Companion.");
+                });
+            } else {
+                // Si l'utilisateur refuse, ne rien faire ou afficher un message
+                console.log("L'utilisateur a choisi de ne pas générer de nouvelle clé API.");
+            }
+        }
     }
 });
 
