@@ -9,6 +9,9 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#424](https://github.com/Refhi/Weda-Helper/issues/424) - Suppression automatique des {mots entre accolades} dans les documents générés par formulaire où l'option a été ignorée (ex. "Certificat de santé de {Nom du patient}" devient "Certificat de santé").
 - [#421](https://github.com/Refhi/Weda-Helper/issues/421) - Maintient du niveau de scroll lors de l'appuis sur le bouton "Suite" dans l'accueil patient.
 
+## Bugfix :
+- [#415](https://github.com/Refhi/Weda-Helper/issues/415) - La clé API n'était plus générée automatiquement depuis quelques versions => de nouveau générée automatiquement.
+
 
 # [2.12] - *Import automatisé, Impression de masse et Durées de prescription de masse*
 ## Imports :

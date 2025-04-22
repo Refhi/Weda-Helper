@@ -6,6 +6,30 @@
 // Défini le numéro de version dans le storage local
 chrome.storage.local.set({ 'version': '1.2' });
 
+// Initialise la clé API
+chrome.storage.local.get('apiKey', function (result) {
+    console.log('Clé API récupérée :', result.apiKey);
+    if (!result.apiKey) {
+        console.log('Aucune clé API trouvée, génération d\'une nouvelle clé...');
+        const apiKey = generateApiKey(32);
+        chrome.storage.local.set({ 'apiKey': apiKey }, function () {
+            console.log('Clé API générée et stockée :', apiKey);
+        });
+    } else {
+        // console.log('Clé API déjà présente :', result.apiKey);
+    }
+});
+
+// Fonction pour générer une clé API aléatoire
+function generateApiKey(length) {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let apiKey = '';
+    for (let i = 0; i < length; i++) {
+        apiKey += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return apiKey;
+}
+
 function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithData = null, testing = false) {
     let isSuccess = true;
     getOption(['portCompanion', 'apiKey', 'version'], function ([portCompanion, apiKey, version]) {
