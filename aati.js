@@ -246,3 +246,67 @@ addTweak('/FolderMedical/Aati.aspx', 'aatiTermsExcerpt', function () {
 
     recordMetrics({ clicks: 1, drags: 1 });    
 });
+
+// Préparation du retour à la lecture de l'adresse du dossier contenant le blob:xxxxx grace aux permissions tab
+
+/**
+ * Module de détection et traitement des onglets contenant des URLs blob
+ * Permet de récupérer automatiquement les PDFs affichés dans d'autres onglets
+ * et de les envoyer au companion pour impression
+ */
+
+// Fonction pour détecter et traiter les onglets récents avec des URLs blob
+async function detectAndProcessBlobTabs() {
+    console.log('[detectBlobTabs] Recherche des onglets avec URLs blob...');
+    
+    try {
+        // Vérifier si nous avons la permission tabs
+        const hasPermission = await checkPermission('tabs');
+        if (!hasPermission) {
+            console.log('[detectBlobTabs] Permission tabs non accordée');
+            return;
+        }
+        
+        // Récupérer tous les onglets de la fenêtre courante
+        const tabs = await handleTabsFeature({
+            action: 'query',
+            options: { currentWindow: true },
+            info: 'Recherche d\'onglets avec PDFs'
+        });
+        
+        console.log(`[detectBlobTabs] ${tabs.length} onglets trouvés`);
+        
+        const currentTime = Date.now();
+        const recentBlobTabs = tabs.filter(tab => {
+            // Vérifier si l'URL est de type blob et si l'onglet est récent (créé il y a moins de 20 secondes)
+            const isBlobUrl = tab.url && tab.url.startsWith('blob:');
+            const isRecent = (currentTime - tab.lastAccessed) < 20000; // 20 secondes
+            return isBlobUrl && isRecent;
+        });
+        
+        console.log(`[detectBlobTabs] ${recentBlobTabs.length} onglets blob récents trouvés`);
+        
+        // Traiter les onglets trouvés. Normalemnt, il n'y en a qu'un seul
+        if (recentBlobTabs.length === 0 || recentBlobTabs.length > 1) {
+            console.log('[detectBlobTabs] Aucun onglet blob récent trouvé ou plusieurs onglets trouvés');
+            return;
+        }
+
+        const tabUrl = recentBlobTabs[0].url;
+        console.log(`[detectBlobTabs] Onglet blob trouvé dont l'url est : ${tabUrl}`);
+
+    } catch (error) {
+        console.error('[detectBlobTabs] Erreur lors de la détection des onglets blob:', error);
+        sendWedaNotifAllTabs({
+            message: 'Erreur lors de la détection des PDFs: ' + error.message,
+            type: 'fail',
+            icon: 'print'
+        });
+    }
+}
+
+
+addTweak('/FolderMedical/PatientViewForm.aspx', 'autoAATI', function () {
+    console.log('[autoAATI] Initialisation de la détection des onglets blob');
+    detectAndProcessBlobTabs(); // TODO : à poursuivre dans le cadre de #408
+});
