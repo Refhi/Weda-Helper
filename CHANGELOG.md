@@ -4,7 +4,6 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
-
 # [2.13] - 
 ## Automatismes :
 - [#424](https://github.com/Refhi/Weda-Helper/issues/424) - Suppression automatique des {mots entre accolades} dans les documents générés par formulaire où l'option a été ignorée (ex. "Certificat de santé de {Nom du patient}" devient "Certificat de santé").
@@ -13,9 +12,6 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 ## Bugfix :
 - [#415](https://github.com/Refhi/Weda-Helper/issues/415) - La clé API n'était plus générée automatiquement depuis quelques versions => de nouveau générée automatiquement.
 
-# [2.12.1] - hotfix
-## Fix :
-- [#436](https://github.com/Refhi/Weda-Helper/issues/436) - Correction d'un débordement de l'affichage pour le +1clickVSM si la colonne de gauche est trop fine.
 
 # [2.12] - *Import automatisé, Impression de masse et Durées de prescription de masse*
 ## Imports :
