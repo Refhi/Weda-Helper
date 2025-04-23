@@ -12,6 +12,9 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 ## Bugfix :
 - [#415](https://github.com/Refhi/Weda-Helper/issues/415) - La clé API n'était plus générée automatiquement depuis quelques versions => de nouveau générée automatiquement.
 
+## Divers :
+- modification du nom de l'option "Extrait automatiquement la classification du document importé." => "Détermine automatiquement la destination du document importé (Consultation/Résultats d'examen/Courrier)."
+
 
 # [2.12.1] - hotfix
 ## Fix :

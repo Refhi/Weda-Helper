@@ -276,7 +276,7 @@ var advancedDefaultSettings = [{
             }, {
                 "name": "PdfParserAutoClassification",
                 "type": TYPE_BOOL,
-                "description": "Extrait automatiquement la classification du document importé.",
+                "description": "Détermine automatiquement la destination du document importé (Consultation/Résultats d'examen/Courrier).",
                 "default": false,
                 "longDescription": "Si vous souhaitez classer les imports dans les parties Consultation/Résultats d'examen/Courrier, vous pouvez activer cette option pour le faire automatiquement.",
             },{
