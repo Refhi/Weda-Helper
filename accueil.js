@@ -332,6 +332,15 @@ function setupPatientViewButton() {
     const VSMButton = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_HyperLinkOpenVSM');
     if (!VSMButton) return;
 
+    // Vérifier que le cadre où on va ajouter le bouton a une taille suffisante
+    const cadre = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_PanelDmp');
+    const cadreWidth = cadre.offsetWidth;
+    const conteneur = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_FramePatient');
+    const conteneurWidth = conteneur.offsetWidth;
+    // Le bouton ajoute (nommé +1clickVSM) fait environs 70px de large
+    const enoughSpace = conteneurWidth - cadreWidth - 65 > 70; // 65 pour l'icone MonEspaceSanté
+    console.log('cadreWidth', cadreWidth, 'conteneurWidth', conteneurWidth, 'enoughSpace', enoughSpace);
+    
     // Création du bouton de raccourci
     const oneClickVSMButton = document.createElement('a');
     oneClickVSMButton.textContent = '+1clickVSM';
@@ -343,7 +352,20 @@ function setupPatientViewButton() {
         VSMButton.click();
     });
 
-    VSMButton.parentNode.appendChild(oneClickVSMButton);
+    if (enoughSpace) {
+        // Si assez d'espace, ajouter à côté
+        VSMButton.parentNode.appendChild(oneClickVSMButton);
+    } else {
+        console.log('Pas assez de place pour ajouter le bouton +1clickVSM à côté, ajout en dessous');
+        
+        // Créer un div conteneur pour positionner le bouton sous le VSMButton
+        const container = document.createElement('div');
+        container.style.marginTop = '5px';
+        container.appendChild(oneClickVSMButton);
+
+    
+        VSMButton.parentNode.parentNode.parentNode.appendChild(container, VSMButton.nextSibling);
+    }
 }
 
 // Gestion depuis la page de vérification du VSM

@@ -4,6 +4,10 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.12.1] - hotfix
+## Fix :
+- [#436](https://github.com/Refhi/Weda-Helper/issues/436) - Correction d'un débordement de l'affichage pour le +1clickVSM si la colonne de gauche est trop fine.
+
 # [2.12] - *Import automatisé, Impression de masse et Durées de prescription de masse*
 ## Imports :
 - [#419](https://github.com/Refhi/Weda-Helper/pull/419) - **Classification semi-automatique** pour la Messagerie Sécurisée ! Merci à [Abel](https://github.com/Abeldvlpr) pour cette contribution !
