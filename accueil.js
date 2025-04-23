@@ -424,3 +424,36 @@ function oneClickVSMwithinTimeRange(CLICK_TIMEOUT) {
 function setOneClickVSMTimestamp() {
     sessionStorage.setItem('oneClickVSM', Date.now());
 }
+
+// Sauvegarde de la position de défilement
+addTweak('/FolderMedical/PatientViewForm.aspx', '*keepScrollPosition', function () {
+    const boutonSuiteHaute = document.querySelector('#ContentPlaceHolder1_HistoriqueUCForm1_LinkButtonSuiteWeda');
+    const boutonSuiteBas = document.querySelector('#ContentPlaceHolder1_HistoriqueUCForm1_ButtonSuiteWeda');
+    const boutonsSuite = [boutonSuiteHaute, boutonSuiteBas];
+    let scrollContainer = document.querySelector('#ContentPlaceHolder1_DivScrollHistorique');
+
+    // On ajoute un listener sur les boutons de suite pour sauvegarder la position de défilement
+    boutonsSuite.forEach(bouton => {
+        if (bouton) {
+            bouton.addEventListener('click', function () {
+                if (scrollContainer) {
+                    sessionStorage.setItem('historicScrollPosition', scrollContainer.scrollTop);
+                    console.log('[keepScrollPosition] historicScrollPosition sauvegardée', scrollContainer.scrollTop);
+                }
+                // On attends que les boutons disparaissent pour restaurer la position de défilement
+                observeDiseapearance(boutonSuiteHaute, function () {
+                    console.log('[keepScrollPosition] boutonSuiteHaute disparu');
+                    if (scrollContainer) {
+                        const historicScrollPosition = sessionStorage.getItem('historicScrollPosition');
+                        if (historicScrollPosition) {
+                            let scrollContainer = document.querySelector('#ContentPlaceHolder1_DivScrollHistorique');
+                            scrollContainer.scrollTop = parseInt(historicScrollPosition);
+                            console.log('[keepScrollPosition] historicScrollPosition restaurée', historicScrollPosition);
+                            sessionStorage.removeItem('historicScrollPosition');
+                        }
+                    }
+                });
+            });
+        }
+    });
+});
