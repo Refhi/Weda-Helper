@@ -6,6 +6,48 @@
 // Défini le numéro de version dans le storage local
 chrome.storage.local.set({ 'version': '1.2' });
 
+// Initialise la clé API
+chrome.storage.local.get('apiKey', function (result) {
+    console.log('Clé API récupérée :', result.apiKey);
+    if (!result.apiKey) {
+        console.log('Aucune clé API trouvée, génération d\'une nouvelle clé...');
+        const apiKey = generateApiKey(32);
+        chrome.storage.local.set({ 'apiKey': apiKey }, function () {
+            console.log('Clé API générée et stockée :', apiKey);
+        });
+    }
+    
+    if (result.apiKey === "votre clé API par défaut") {
+        const messageDejaEnvoye = localStorage.getItem('messageDejaEnvoye');
+        if (!messageDejaEnvoye) {            
+            // Envoi un message ok/annuler à l'utilisateur pour lui demander s'il veut générer une nouvelle clé
+            const choixUtilisateur = confirm("[Weda Helper] : Vous utilisez la clé API par défaut. Cliquez sur ok pour générer une nouvelle clé (recommandé) ou annuler pour ignorer ce message. Si vous générez une nouvelle clé, pensez à la reporter dans le Companion. Ce message n'apparaîtra qu'une fois.");
+            localStorage.setItem('messageDejaEnvoye', 'true');
+            if (choixUtilisateur) {
+                // Si l'utilisateur confirme, générer une nouvelle clé
+                const newApiKey = generateApiKey(32);
+                chrome.storage.local.set({ 'apiKey': newApiKey }, function () {
+                    console.log('Nouvelle clé API générée et stockée :', newApiKey);
+                    alert("Nouvelle clé API générée : " + newApiKey + ". Pensez à la reporter dans le Companion.");
+                });
+            } else {
+                // Si l'utilisateur refuse, ne rien faire ou afficher un message
+                console.log("L'utilisateur a choisi de ne pas générer de nouvelle clé API.");
+            }
+        }
+    }
+});
+
+// Fonction pour générer une clé API aléatoire
+function generateApiKey(length) {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let apiKey = '';
+    for (let i = 0; i < length; i++) {
+        apiKey += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return apiKey;
+}
+
 function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithData = null, testing = false) {
     let isSuccess = true;
     getOption(['portCompanion', 'apiKey', 'version'], function ([portCompanion, apiKey, version]) {
