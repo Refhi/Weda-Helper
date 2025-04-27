@@ -54,17 +54,20 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoControlMT', function () {
     });
 });
 
-// Facilite la déclaration du MT en précochant les cases
+// Facilite la déclaration du MT en précochant les cases puis en validant le formulaire
 addTweak('/FolderMedical/PatientViewForm.aspx', 'oneClickMT', function () {
     waitForElement({
         selector: '.dmpMtInfo',
         callback: function (elements) {
+            // On ouvre un nouvel onglet pour la déclaration du MT
+            newPatientTab();
             sendWedaNotifAllTabs({
                 message: 'Déclaration un clic du médecin traitant activée. Allez dans les options de Weda pour la désactiver si vous préférez.',
                 type: 'success',
                 icon: 'done',
                 duration: 10000
             });
+            document.title = 'Décla. MT. en cours';
             let checkBoxes = elements[0].parentElement.querySelectorAll('input[type="checkbox"]');
             checkBoxes.forEach(checkBox => {
                 if (!checkBox.checked) {
@@ -73,8 +76,45 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'oneClickMT', function () {
                 }
             });
             setTimeout(() => {
+                document.title = 'Décla. MT. validée';
                 let boutonValider = document.querySelector('button[title="Transmettre le formulaire de déclaration de choix du médecin traitant"]');
                 boutonValider.click();
+            }, 500);
+
+            // Ensuite on attend l'ouverture de la page de confirmation dans une nouvelle tab (via les autorisations tab)
+            // On va faire une boucle toutes les 500ms pour vérifier si la page de confirmation est ouverte avec un timeout de 10 secondes
+            let startTime = Date.now();
+            let interval = setInterval(async () => {
+                if (Date.now() - startTime > 10000) {
+                    clearInterval(interval);
+                    sendWedaNotifAllTabs({
+                        message: "Erreur dans la déclaration du MT, la page de confirmation n'a pas été trouvée.",
+                        type: 'undefined',
+                        icon: 'help_outline',
+                    });
+                    document.title = 'Décla. MT. erreur';
+                } else {
+                    document.title = 'Attente conf. MT.';
+                    let tabs = getAllTabs();
+                    let tab = tabs.find(tab => tab.url.includes('https://secure.weda.fr/FolderMedical/PopUpViewBinaryForm.aspx?Eve='));
+                    if (tab) {
+                        clearInterval(interval);
+                        sendWedaNotifAllTabs({
+                            message: 'Déclaration du MT réussie !',
+                            type: 'success',
+                            icon: 'done',
+                            duration: 10000
+                        });
+                        document.title = 'fin décla. MT. Fermeture.';
+                        // On ferme la tab de déclaration du MT puis la page en cours
+                        await handleTabsFeature({
+                            action: 'close',
+                            options: { tabId: tab.id },
+                            info: 'Fermeture de la page de confirmation MT'
+                        });
+                        closeCurrentTab();
+                    }
+                }
             }, 500);
         }
     });
