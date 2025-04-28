@@ -56,10 +56,15 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoControlMT', function () {
 
 // Facilite la déclaration du MT en précochant les cases puis en validant le formulaire
 addTweak(['/FolderMedical/PatientViewForm.aspx','/FolderMedical/PopUpViewBinaryForm.aspx'], 'oneClickMT', function () {
+    const surveillanceDelay = 30000; // 30 secondes
     waitForElement({
         selector: '.dmpMtInfo',
         callback: function (elements) {
-            // On ouvre un nouvel onglet pour la déclaration du MT
+            // On ouvre un nouvel onglet pour la déclaration du MT + Ajout d'un timestamp pour vérifier qu'aucun newPatientTab n'a été ouvert entre temps
+            // On vérifie que le timestamp est toujours valide car le .dmpMtInfo s'affiche 2 fois
+            if (sessionStorage.getItem('lastNewPatientTab') && Date.now() - parseInt(sessionStorage.getItem('lastNewPatientTab')) < surveillanceDelay) {
+                return;
+            }
             newPatientTab();
             sendWedaNotifAllTabs({
                 message: 'Déclaration un clic du médecin traitant activée. Allez dans les options de Weda pour la désactiver si vous préférez.',
@@ -85,7 +90,7 @@ addTweak(['/FolderMedical/PatientViewForm.aspx','/FolderMedical/PopUpViewBinaryF
             // On va faire une boucle toutes les 500ms pour vérifier si la page de confirmation est ouverte avec un timeout de 10 secondes
             let startTime = Date.now();
             let interval = setInterval(async () => {
-                if (Date.now() - startTime > 10000) {
+                if (Date.now() - startTime > surveillanceDelay) {
                     clearInterval(interval);
                     sendWedaNotifAllTabs({
                         message: "Erreur dans la déclaration du MT, la page de confirmation n'a pas été trouvée.",
