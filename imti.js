@@ -55,7 +55,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoControlMT', function () {
 });
 
 // Facilite la déclaration du MT en précochant les cases puis en validant le formulaire
-addTweak('/FolderMedical/PatientViewForm.aspx', 'oneClickMT', function () {
+addTweak(['/FolderMedical/PatientViewForm.aspx','/FolderMedical/PopUpViewBinaryForm.aspx'], 'oneClickMT', function () {
     waitForElement({
         selector: '.dmpMtInfo',
         callback: function (elements) {
