@@ -137,12 +137,23 @@ async function handleTabsFeature(params) {
             },
             (response) => {
                 if (response?.success) {
+                    console.log(`[debug ${params.info}]`, response.result);
                     resolve(response.result);
                 } else {
                     reject(new Error(response?.error || "Échec de l'opération"));
                 }
             }
         );
+    });
+}
+
+// ------------------ Fonctions simplifiées ------------------
+async function getAllTabs() {
+    console.log("[debug getAllTabs]");
+    return handleTabsFeature({
+        action: 'query',
+        options: {},
+        info: 'Récupération de tous les onglets'
     });
 }
 
@@ -157,7 +168,14 @@ function closeCurrentTab(info = 'Fermeture d\'onglet') {
         info
     });
 }
-
+async function closeTab(tabId) {
+    const info = 'Fermeture d\'onglet spécifique' + tabId;
+    await handleTabsFeature({
+        action: 'close',
+        options: { tabId: tabId },
+        info
+    });
+}
 
 
 // ---------------- interface de tests ----------------
@@ -383,3 +401,12 @@ function initTabPermissionTests() {
 addTweak('*', 'initTabPermissionTests', function () {
     initTabPermissionTests();
 });
+
+async function debugTabs() {
+    let allTabs = await getAllTabs();
+    console.log("[Debug]", allTabs);
+    let tab = allTabs.find(tab => tab.url.includes('https://secure.weda.fr/FolderMedical/PrescriptionForm.aspx'));
+    console.log("[Debug]", tab);
+    closeTab(tab.id)
+}
+debugTabs();

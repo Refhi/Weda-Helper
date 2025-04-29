@@ -100,7 +100,7 @@ addTweak(['/FolderMedical/PatientViewForm.aspx','/FolderMedical/PopUpViewBinaryF
                     document.title = 'Décla. MT. erreur';
                 } else {
                     document.title = 'Attente conf. MT.';
-                    let tabs = getAllTabs();
+                    let tabs = await getAllTabs();
                     let tab = tabs.find(tab => tab.url.includes('https://secure.weda.fr/FolderMedical/PopUpViewBinaryForm.aspx?Eve='));
                     if (tab) {
                         clearInterval(interval);
@@ -112,11 +112,7 @@ addTweak(['/FolderMedical/PatientViewForm.aspx','/FolderMedical/PopUpViewBinaryF
                         });
                         document.title = 'fin décla. MT. Fermeture.';
                         // On ferme la tab de déclaration du MT puis la page en cours
-                        await handleTabsFeature({
-                            action: 'close',
-                            options: { tabId: tab.id },
-                            info: 'Fermeture de la page de confirmation MT'
-                        });
+                        await closeTab(tab.id);
                         closeCurrentTab();
                     }
                 }
