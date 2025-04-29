@@ -1,8 +1,8 @@
 // Fonctions permettant l'upload automatique d'un fichier transmis par le Companion
-addTweak('/FolderMedical/PopUpUploader.aspx', '*hotkeyUpload', function() {
-    chrome.storage.local.get('automaticUpload', function(result) { //On vérifie que le flag automaticUpload est bien présent
+addTweak('/FolderMedical/PopUpUploader.aspx', '*hotkeyUpload', function () {
+    chrome.storage.local.get('automaticUpload', function (result) { //On vérifie que le flag automaticUpload est bien présent
         if (result.automaticUpload == true) {
-            sendToCompanion('latestFile', null, null, function (response){
+            sendToCompanion('latestFile', null, null, function (response) {
 
                 if (!response['data'] || !response['fileName']) {
                     return;
@@ -23,12 +23,12 @@ addTweak('/FolderMedical/PopUpUploader.aspx', '*hotkeyUpload', function() {
                 let dataTransfer = new DataTransfer(); //On ne peut pas modifier l'input du file directement donc on simule un drag and drop https://dev.to/code_rabbi/programmatically-setting-file-inputs-in-javascript-2p7i
                 dataTransfer.items.add(file);
 
-                waitLegacyForElement("input[type=file]", null, 100, function(element) {
+                waitLegacyForElement("input[type=file]", null, 100, function (element) {
 
                     let fileInput = element;
                     fileInput.files = dataTransfer.files;
                     fileInput.dispatchEvent(new Event('change'));
-                        
+
                     // Ajout d'un timestamp dans le sessionStorage
                     let timestamp = Date.now();
                     sessionStorage.setItem('lastUpload', timestamp);
@@ -41,21 +41,21 @@ addTweak('/FolderMedical/PopUpUploader.aspx', '*hotkeyUpload', function() {
                 //         let fileInput = elements[0];
                 //         fileInput.files = dataTransfer.files;
                 //         fileInput.dispatchEvent(new Event('change'));
-                        
+
                 //         // Ajout d'un timestamp dans le sessionStorage
                 //         let timestamp = Date.now();
                 //         sessionStorage.setItem('lastUpload', timestamp);
 
                 //     }
                 // });
-                
+
             });
 
         }
-        chrome.storage.local.set({ 'automaticUpload': false }, function() {}); //On retir le flag pour ne pas gêner un upload manuel
+        chrome.storage.local.set({ 'automaticUpload': false }, function () { }); //On retir le flag pour ne pas gêner un upload manuel
     });
 
-    
+
     // Si le timestamp est présent depuis moins de 5 secondes
     let lastUpload = sessionStorage.getItem('lastUpload');
     if (lastUpload && Date.now() - lastUpload < 5000) {
@@ -83,18 +83,18 @@ addTweak('/FolderMedical/PopUpUploader.aspx', '*hotkeyUpload', function() {
             boutonValider.parentNode.insertBefore(deleteButton, boutonValider.nextSibling);
             boutonValider.parentNode.insertBefore(archiveButton, boutonValider.nextSibling);
             // Ajout de l'événement en cas de clic
-            archiveButton.onclick = function() {
+            archiveButton.onclick = function () {
                 console.log('[Archivage auto] envoi au companion de la demande d\'archivage');
                 sendToCompanion('archiveLastUpload', null, null, function (response) {
                     console.log('[Archivage auto] réponse du companion', response);
-                        boutonValider.click();
+                    boutonValider.click();
                 });
             };
-            deleteButton.onclick = function() {
+            deleteButton.onclick = function () {
                 console.log('[Archivage auto] envoi au companion de la demande de supression');
                 sendToCompanion('trashLastUpload', null, null, function (response) {
                     console.log('[Archivage auto] réponse du companion', response);
-                        boutonValider.click();
+                    boutonValider.click();
                 });
             };
         };
