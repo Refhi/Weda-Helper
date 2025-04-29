@@ -10,6 +10,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#421](https://github.com/Refhi/Weda-Helper/issues/421) - Maintient du niveau de scroll lors de l'appuis sur le bouton "Suite" dans l'accueil patient.
 - [#422](https://github.com/Refhi/Weda-Helper/issues/422) - La déclaration de MT automatique se fait dans un onglet séparé.
 - [#422](https://github.com/Refhi/Weda-Helper/issues/422) - La fenêtre de validation de déclaration du MT se ferme automatiquement.
+- [#408](https://github.com/Refhi/Weda-Helper/issues/408) - La fenêtre de prévisualisation de l'arrêt de travail se ferme automatiquement.
 
 ## Bugfix :
 - [#415](https://github.com/Refhi/Weda-Helper/issues/415) - La clé API n'était plus générée automatiquement depuis quelques versions => de nouveau générée automatiquement.
