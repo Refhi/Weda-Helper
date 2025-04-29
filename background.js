@@ -150,6 +150,12 @@ var advancedDefaultSettings = [{
         "description": "Ouvre les ATCD sur la partie gauche de l'écran quand possible (attention l'affichage est un peu approximatif).",
         "default": false
     }, {
+        "name": "simplifyATCD",
+        "type": TYPE_BOOL,
+        "description": "Permet l'édition d'un atcd depuis la page d'accueil.",
+        "default": true,
+        "longDescription": "En cliquant sur un antécédent depuis la page d'accueil, cela ouvre la fenêtre d'édition directement.",
+    },{
         "name": "autoAATI",
         "type": TYPE_BOOL,
         "description": "Automatise la réalisation des arrêts de travail (lecture CV auto, sélection patient auto, impression auto etc. Nécessite le Companion pour fonctionner totalement).",

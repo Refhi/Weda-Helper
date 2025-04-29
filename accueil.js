@@ -340,7 +340,7 @@ function setupPatientViewButton() {
     // Le bouton ajoute (nommé +1clickVSM) fait environs 70px de large
     const enoughSpace = conteneurWidth - cadreWidth - 65 > 70; // 65 pour l'icone MonEspaceSanté
     console.log('cadreWidth', cadreWidth, 'conteneurWidth', conteneurWidth, 'enoughSpace', enoughSpace);
-    
+
     // Création du bouton de raccourci
     const oneClickVSMButton = document.createElement('a');
     oneClickVSMButton.textContent = '+1clickVSM';
@@ -357,13 +357,13 @@ function setupPatientViewButton() {
         VSMButton.parentNode.appendChild(oneClickVSMButton);
     } else {
         console.log('Pas assez de place pour ajouter le bouton +1clickVSM à côté, ajout en dessous');
-        
+
         // Créer un div conteneur pour positionner le bouton sous le VSMButton
         const container = document.createElement('div');
         container.style.marginTop = '5px';
         container.appendChild(oneClickVSMButton);
 
-    
+
         VSMButton.parentNode.parentNode.parentNode.appendChild(container, VSMButton.nextSibling);
     }
 }
@@ -456,4 +456,45 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*keepScrollPosition', function 
             });
         }
     });
+});
+
+
+// Simplification de l'accès aux atcd
+// Quand on clique sur un atcd depuis la page d'accueil, récupérer l'innerText du span title.
+// Ensuite une fois dans la gestion des antécédents, cliquer sur l'atcd correspondant
+addTweak('/FolderMedical/PatientViewForm.aspx', 'simplifyATCD', function () {
+    const atcdPanelSelector = 'div[title="Cliquez ici pour modifier le volet médical du patient"]';
+    const atcdPanelElement = document.querySelector(atcdPanelSelector);
+    // Ensuite on liste l'ensemble des atcd possibles (uniquement les div directs, sauf ceux avec .sm)
+    const atcdElements = Array.from(atcdPanelElement.children).filter(child =>
+        child.tagName === 'DIV' && !child.classList.contains('sm') && !child.classList.contains('st')
+    );
+    // On y ajoute des clic listeners pour chaque atcd
+    atcdElements.forEach(atcdElement => {
+        atcdElement.addEventListener('click', function () {
+            // On récupère l'innerText du span title
+            const atcdTitle = atcdElement.querySelector('span[title]').innerText;
+            // On le stocke dans le sessionStorage
+            sessionStorage.setItem('atcdTitle', atcdTitle);
+            console.log('[simplifyATCD] atcdTitle sauvegardé', atcdTitle);
+        });
+    });
+});
+
+    // Ensuite on travaille dans la page des atcd.
+addTweak('/FolderMedical/AntecedentForm.aspx', 'simplifyATCD', function () {
+    const atcdTitle = sessionStorage.getItem('atcdTitle');
+    console.log('[simplifyATCD] atcdTitle récupéré', atcdTitle);
+    if (atcdTitle) {
+        // On cherche l'élément qui correspond à l'atcdTitle
+        const atcdElements = document.querySelectorAll('table[title="Cliquez pour modifier"]');
+        atcdElements.forEach(atcdElement => {
+            if (atcdElement.innerText.includes(atcdTitle)) {
+                console.log('[simplifyATCD] atcdElement', atcdElement);
+                // On clique dessus
+                sessionStorage.removeItem('atcdTitle');
+                atcdElement.click();                
+            }
+        });
+    } 
 });

@@ -409,4 +409,4 @@ async function debugTabs() {
     console.log("[Debug]", tab);
     closeTab(tab.id)
 }
-debugTabs();
+// debugTabs();
