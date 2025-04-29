@@ -460,7 +460,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*keepScrollPosition', function 
 
 
 // Simplification de l'accès aux atcd
-// Quand on clique sur un atcd depuis la page d'accueil, récupérer l'innerText du span title.
+// Quand on fait un clic droit sur un atcd depuis la page d'accueil, récupérer l'innerText du span title.
 // Ensuite une fois dans la gestion des antécédents, cliquer sur l'atcd correspondant
 addTweak('/FolderMedical/PatientViewForm.aspx', 'simplifyATCD', function () {
     const atcdPanelSelector = 'div[title="Cliquez ici pour modifier le volet médical du patient"]';
@@ -469,19 +469,72 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'simplifyATCD', function () {
     const atcdElements = Array.from(atcdPanelElement.children).filter(child =>
         child.tagName === 'DIV' && !child.classList.contains('sm') && !child.classList.contains('st')
     );
-    // On y ajoute des clic listeners pour chaque atcd
+    // On y ajoute des clic droit listeners pour chaque atcd
     atcdElements.forEach(atcdElement => {
-        atcdElement.addEventListener('click', function () {
+        // Variable pour stocker le timeout pour l'affichage du tooltip
+        let tooltipTimeout;
+        
+        // Ajout d'un mouseover pour afficher une info-bulle après 200ms
+        atcdElement.addEventListener('mouseover', function () {
+            tooltipTimeout = setTimeout(function() {
+                showTooltip(atcdElement, "WH:bouton droit pour éditer");
+            }, 200);
+        });
+        
+        // Ajout d'un mouseout pour annuler le timeout et retirer l'info-bulle
+        atcdElement.addEventListener('mouseout', function () {
+            // Annuler le timeout si l'utilisateur quitte l'élément avant 200ms
+            clearTimeout(tooltipTimeout);
+            // On retire l'info-bulle
+            removeTooltip(atcdElement);
+        });
+        
+        atcdElement.addEventListener('contextmenu', function (e) {
+            e.preventDefault(); // Empêcher le menu contextuel par défaut
             // On récupère l'innerText du span title
             const atcdTitle = atcdElement.querySelector('span[title]').innerText;
             // On le stocke dans le sessionStorage
             sessionStorage.setItem('atcdTitle', atcdTitle);
             console.log('[simplifyATCD] atcdTitle sauvegardé', atcdTitle);
+            
+            // Cliquer sur l'élément pour naviguer vers la page des ATCD
+            atcdElement.click();
         });
     });
 });
 
-    // Ensuite on travaille dans la page des atcd.
+function showTooltip(element, message) {
+    // Créer une info-bulle
+    let tooltip = document.createElement('div');
+    tooltip.className = 'tooltip';
+    tooltip.innerText = message;
+    tooltip.style.position = 'absolute';
+    tooltip.style.backgroundColor = '#fff';
+    tooltip.style.border = '1px solid #000';
+    tooltip.style.padding = '5px';
+    tooltip.style.zIndex = '1000';
+    document.body.appendChild(tooltip);
+
+    // Positionner l'info-bulle
+    let rect = element.getBoundingClientRect();
+    tooltip.style.left = rect.left + window.scrollX + 'px';
+    tooltip.style.top = rect.bottom + window.scrollY + 'px';
+
+    // Retirer l'info-bulle au bout de 2 secondes
+    setTimeout(() => {
+        document.body.removeChild(tooltip);
+    }, 2000);
+}
+
+function removeTooltip(element) {
+    // Retirer l'info-bulle si elle existe
+    let tooltip = document.querySelector('.tooltip');
+    if (tooltip) {
+        document.body.removeChild(tooltip);
+    }
+}
+
+// Ensuite on travaille dans la page des atcd.
 addTweak('/FolderMedical/AntecedentForm.aspx', 'simplifyATCD', function () {
     const atcdTitle = sessionStorage.getItem('atcdTitle');
     console.log('[simplifyATCD] atcdTitle récupéré', atcdTitle);
