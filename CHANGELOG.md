@@ -4,7 +4,23 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
-# [2.13] - 
+# [2.13] - Gel des demandes de fonctionnalités
+## Annonce :
+Bonsoir à toustes,
+
+Weda-Helper est arrivé à une certaine forme de maturité... et le temps nécessaire pour le maintenir commence à augmenter : + de fonctionnalités = + de temps de maintenance.
+
+J'ai donc pris la décision, en accord avec @Abel, de geler l'arrivée de nouvelles fonctionnalités pour une durée indéfinie (probablement jusqu'à Weda 2 ?).
+
+Cela dit Weda Helper reste en vie ! Je me concentrerais sur la résolution de bugs… mais ne serai plus en mesure de donner suite aux demandes de fonctionnalité. (les tickets de demande non liés à des bugs seront systématiquement clos, désolé !)
+
+Je tiens à vous remercier toutes et tous pour votre soutien et votre aide dans le développement de ce projet un peu fou qui a largement dépassé toutes mes prédictions !
+
+(pour les tickets déjà ouverts, je vais faire un tri au cas-par-cas pour voir ceux que je laisse dans la TODO-list, encore désolé pour les déceptions à venir 🙏)
+
+Merci encore !
+
+
 ## Automatismes :
 - [#424](https://github.com/Refhi/Weda-Helper/issues/424) - Suppression automatique des {mots entre accolades} dans les documents générés par formulaire où l'option a été ignorée (ex. "Certificat de santé de {Nom du patient}" devient "Certificat de santé").
 - [#421](https://github.com/Refhi/Weda-Helper/issues/421) - Maintient du niveau de scroll lors de l'appuis sur le bouton "Suite" dans l'accueil patient.
@@ -15,6 +31,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 
 ## Bugfix :
 - [#415](https://github.com/Refhi/Weda-Helper/issues/415) - La clé API n'était plus générée automatiquement depuis quelques versions => de nouveau générée automatiquement.
+- [#433](https://github.com/Refhi/Weda-Helper/issues/433) - L'option pour masquer le tableau d'aide était défectueuse.
 
 ## Divers :
 - modification du nom de l'option "Extrait automatiquement la classification du document importé." => "Détermine automatiquement la destination du document importé (Consultation/Résultats d'examen/Courrier)."

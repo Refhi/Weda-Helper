@@ -119,7 +119,7 @@ function mouseoutW() {
 
 }
 
-addTweak('*', '*Tooltip', function () {
+addTweak('*', 'EnableHelp', function () {
 
     let lastAltPressTime = 0;
     const isWindows = navigator.platform.indexOf('Win') > -1;
