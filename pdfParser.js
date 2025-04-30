@@ -1813,8 +1813,8 @@ function extractNIR(fullText, nirRegexes) {
         if (result.length < 5) {
             return "";
         }
-        const nir = result[1].replace(/\s/g, ''); // Supprimer les espaces du NIR
-        const cle = result[4].replace(/\s/g, ''); // Supprimer les espaces de la clé
+        const nir = result[1].replace(/\s+/g, ''); // Supprimer les espaces du NIR
+        const cle = result[4].replace(/\s+/g, ''); // Supprimer les espaces de la clé
         return nir + cle;
     }
     // console.log('[pdfParser] extractNIR', nirRegexes);
