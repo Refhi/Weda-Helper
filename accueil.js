@@ -296,8 +296,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*preAlertVSM', async function (
     sessionStorage.setItem('lastVSMAlertPatient', patientNumber);
 });
 
-
-// One-click VSM
+// -------------------------- +1click VSM -------------------------------------
 addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', '/FolderMedical/DMP/view'], 'oneClickVSM', async function () {
     const pourcentageUtilisateur = await getOptionPromise('oneClickVSMToleranceLevel'); // Au format 70 pour 70% pour 0.3 de ratio
     // const MAX_ERROR_RATIO = 0.3;
