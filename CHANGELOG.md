@@ -29,6 +29,9 @@ Merci encore !
 - [#408](https://github.com/Refhi/Weda-Helper/issues/408) - La fenêtre de prévisualisation de l'arrêt de travail se ferme automatiquement.
 - [#409](https://github.com/Refhi/Weda-Helper/issues/409) - On peut désormais éditer un atcd directement depuis la page d'accueil du dossier patient.
 
+## Ajout d'option :
+- [#445](https://github.com/Refhi/Weda-Helper/issues/445) - On peut désormais fixer le pourcentage de validation CIM-10 pour le +1clickVSM (par défaut 70%).
+
 ## Bugfix :
 - [#415](https://github.com/Refhi/Weda-Helper/issues/415) - La clé API n'était plus générée automatiquement depuis quelques versions => de nouveau générée automatiquement.
 - [#433](https://github.com/Refhi/Weda-Helper/issues/433) - L'option pour masquer le tableau d'aide était défectueuse.

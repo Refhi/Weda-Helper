@@ -196,7 +196,14 @@ var advancedDefaultSettings = [{
             "name": "oneClickVSM",
             "type": TYPE_BOOL,
             "description": "Permet de faire la déclaration de VSM en un clic.",
-            "default": true
+            "default": true,
+            "subOptions": [{
+                "name": "oneClickVSMToleranceLevel",
+                "type": TYPE_SMALLTEXT,
+                "description": "Niveau de tolérance pour la déclaration de VSM (0-100).",
+                "default": 70,
+                "longDescription": "Pour que le ROSP soit reconnu au mieux il faut au moins 70% des antécédents codés en CIM-10. Weda-Helper arrête la procédure s'il en détecte moins. Vous pouvez le mettre à 0 pour ne pas être bloqué, mais vous risquez de ne pas toucher le ROSP entièrement.",
+            }]
         }]
     }, {
         "name": "instantVaccine",

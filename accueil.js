@@ -298,8 +298,11 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*preAlertVSM', async function (
 
 
 // One-click VSM
-addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', '/FolderMedical/DMP/view'], 'oneClickVSM', function () {
-    const MAX_ERROR_RATIO = 0.3;
+addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', '/FolderMedical/DMP/view'], 'oneClickVSM', async function () {
+    const pourcentageUtilisateur = await getOptionPromise('oneClickVSMToleranceLevel'); // Au format 70 pour 70% pour 0.3 de ratio
+    // const MAX_ERROR_RATIO = 0.3;
+    const MAX_ERROR_RATIO = parseFloat((1 - pourcentageUtilisateur / 100).toFixed(2)); // On arrondit à 2 décimales
+    console.log('[oneClickVSM] MAX_ERROR_RATIO', MAX_ERROR_RATIO, 'pourcentageUtilisateur', pourcentageUtilisateur);
     const CLICK_TIMEOUT = 3000;
 
     // Depuis la page d'accueil on ajoute un bouton pour le VSM en un clic
