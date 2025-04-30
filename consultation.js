@@ -504,6 +504,7 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'AutoOpenHistory_Consultation',
     waitForElement({
         selector: '#ContentPlaceHolder1_EvenementUcForm1_LinkButtonShowHistoriqueFrame',
         justOnce: true,
+        triggerOnInit: true,
         callback: function (elements) {
             elements[0].click();
         }
