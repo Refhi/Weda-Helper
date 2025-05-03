@@ -298,7 +298,9 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*preAlertVSM', async function (
 
 // -------------------------- +1click VSM -------------------------------------
 addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', '/FolderMedical/DMP/view'], 'oneClickVSM', async function () {
-    const pourcentageUtilisateur = await getOptionPromise('oneClickVSMToleranceLevel'); // Au format 70 pour 70% pour 0.3 de ratio
+    let pourcentageUtilisateur = await getOptionPromise('oneClickVSMToleranceLevel'); // Au format 70 pour 70% pour 0.3 de ratio
+    // Conversion au format numérique
+    pourcentageUtilisateur = parseFloat(pourcentageUtilisateur);
     // const MAX_ERROR_RATIO = 0.3;
     const MAX_ERROR_RATIO = parseFloat((1 - pourcentageUtilisateur / 100).toFixed(2)); // On arrondit à 2 décimales
     console.log('[oneClickVSM] MAX_ERROR_RATIO', MAX_ERROR_RATIO, 'pourcentageUtilisateur', pourcentageUtilisateur);
