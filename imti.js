@@ -56,13 +56,14 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoControlMT', function () {
 
 // Facilite la déclaration du MT en précochant les cases puis en validant le formulaire
 addTweak(['/FolderMedical/PatientViewForm.aspx','/FolderMedical/PopUpViewBinaryForm.aspx'], 'oneClickMT', function () {
-    const surveillanceDelay = 30000; // 30 secondes
+    const surveillanceDelay = 45000; // 30 secondes
     waitForElement({
         selector: '.dmpMtInfo',
         callback: function (elements) {
             // On ouvre un nouvel onglet pour la déclaration du MT + Ajout d'un timestamp pour vérifier qu'aucun newPatientTab n'a été ouvert entre temps
             // On vérifie que le timestamp est toujours valide car le .dmpMtInfo s'affiche 2 fois
             if (sessionStorage.getItem('lastNewPatientTab') && Date.now() - parseInt(sessionStorage.getItem('lastNewPatientTab')) < surveillanceDelay) {
+                console.log("[oneClickMT] Un nouvel onglet a été ouvert entre temps, on ne fait rien.");
                 return;
             }
             newPatientTab();
