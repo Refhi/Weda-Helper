@@ -67,6 +67,8 @@ addTweak(['/FolderMedical/PatientViewForm.aspx','/FolderMedical/PopUpViewBinaryF
                 return;
             }
             newPatientTab();
+            // On ajoute un timestamp pour vérifier qu'aucun newPatientTab n'a été ouvert entre temps
+            sessionStorage.setItem('lastNewPatientTab', Date.now());
             sendWedaNotifAllTabs({
                 message: 'Déclaration un clic du médecin traitant activée. Allez dans les options de Weda pour la désactiver si vous préférez.',
                 type: 'success',
@@ -112,6 +114,8 @@ addTweak(['/FolderMedical/PatientViewForm.aspx','/FolderMedical/PopUpViewBinaryF
                             duration: 10000
                         });
                         document.title = 'fin décla. MT. Fermeture.';
+                        // On supprime de principe le timestamp de session pour éviter les conflits avec d'autres opérations
+                        sessionStorage.removeItem('lastNewPatientTab');
                         // On ferme la tab de déclaration du MT puis la page en cours
                         await closeTab(tab.id);
                         closeCurrentTab();
