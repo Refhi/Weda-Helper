@@ -318,9 +318,10 @@ addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', 
         callback: function () { handleVSMVerificationPage(MAX_ERROR_RATIO, CLICK_TIMEOUT) }
     });
 
-    // Code commenté pour la validation finale, à décommenter si nécessaire
+    // Calidation finale, à décommenter si nécessaire
     waitForElement({
         selector: 'div.tab_valid_cancel button.button.valid',
+        triggerOnInit: true,
         callback: function (elements) {
             if (oneClickVSMwithinTimeRange(CLICK_TIMEOUT)) {
                 recordMetrics({ clicks: 1, drags: 1 });
