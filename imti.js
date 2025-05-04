@@ -62,13 +62,13 @@ addTweak(['/FolderMedical/PatientViewForm.aspx','/FolderMedical/PopUpViewBinaryF
         callback: function (elements) {
             // On ouvre un nouvel onglet pour la déclaration du MT + Ajout d'un timestamp pour vérifier qu'aucun newPatientTab n'a été ouvert entre temps
             // On vérifie que le timestamp est toujours valide car le .dmpMtInfo s'affiche 2 fois
-            if (sessionStorage.getItem('lastNewPatientTab') && Date.now() - parseInt(sessionStorage.getItem('lastNewPatientTab')) < surveillanceDelay) {
+            if (localStorage.getItem('lastNewPatientTab') && Date.now() - parseInt(localStorage.getItem('lastNewPatientTab')) < surveillanceDelay) {
                 console.log("[oneClickMT] Un nouvel onglet a été ouvert entre temps, on ne fait rien.");
                 return;
             }
             newPatientTab();
             // On ajoute un timestamp pour vérifier qu'aucun newPatientTab n'a été ouvert entre temps
-            sessionStorage.setItem('lastNewPatientTab', Date.now());
+            localStorage.setItem('lastNewPatientTab', Date.now());
             sendWedaNotifAllTabs({
                 message: 'Déclaration un clic du médecin traitant activée. Allez dans les options de Weda pour la désactiver si vous préférez.',
                 type: 'success',
@@ -115,7 +115,7 @@ addTweak(['/FolderMedical/PatientViewForm.aspx','/FolderMedical/PopUpViewBinaryF
                         });
                         document.title = 'fin décla. MT. Fermeture.';
                         // On supprime de principe le timestamp de session pour éviter les conflits avec d'autres opérations
-                        sessionStorage.removeItem('lastNewPatientTab');
+                        localStorage.removeItem('lastNewPatientTab');
                         // On ferme la tab de déclaration du MT puis la page en cours
                         await closeTab(tab.id);
                         closeCurrentTab();
