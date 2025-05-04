@@ -34,6 +34,7 @@ let isMSSante = window.location.href.includes('WedaEchanges');
 // ------------------------
 
 // 1. Injection du script
+// 1.a. Dans la page d'import
 addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
     // 1. Ajout du bouton pour initialiser les catégories
     addDocumentTypesButton();
@@ -46,11 +47,11 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
     });
 });
 
+// 2.b. Dans la page des Echanges Sécurisés
 addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
+    console.log('[pdfParser] Chargement de la page d\'échanges');
     waitForElement({
-        // l'id est splité car il y a un chiffre variable au milieu (1 ou 2 selon que l'option
-        // "vertical" est cochée ou nondans la fenêtre d'import)
-        selector: 'a[download$=".pdf"]',
+        selector: '#PanelViewDocument iframe',
         callback: processFoundPdfIframe
     });
     waitForElement({
@@ -710,15 +711,6 @@ function isValidSearchType(searchType) {
 
 // Renvoie l'URL du PDF de l'iframe quand elle est chargée 
 async function findPdfUrl(elements) {
-    if (isMSSante) {
-        let anchor = elements[0];
-        if (!anchor) {
-            console.error("[pdfParser] lien non trouvée. Arrêt de l'extraction.");
-            resolve(null);
-        }
-
-        return anchor.href;
-    }
     let iframe = elements[0];
     if (!iframe) {
         console.error("[pdfParser] iframe non trouvée. Arrêt de l'extraction.");
