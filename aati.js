@@ -188,7 +188,7 @@ addTweak(urlAATI, 'autoAATI', function () {
                             // The blob has been successfully transferred
                             console.log('The blob has been successfully transferred.');
                             recordMetrics({ clicks: 3, drags: 3 });
-                            observeLastPrintDateChange((newValue) => {
+                            observeLastPrintDateChange(async (newValue) => {
                                 let printTime = Date.parse(newValue);
                                 if (Date.now() - printTime < 10000) {
                                     sendWedaNotifAllTabs({
@@ -197,7 +197,7 @@ addTweak(urlAATI, 'autoAATI', function () {
                                         icon: 'print'
                                     });
                                     window.close(); // Pas la peine d'utiliser les permissions tab car cette page est ouverte par le script
-                                    const tabs = getAllTabs();
+                                    const tabs = await getAllTabs();
                                     tabs.forEach(tab => {
                                         if (tab.url.includes('blob:')) {
                                             closeTab(tab.id);
