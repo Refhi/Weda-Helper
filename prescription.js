@@ -741,7 +741,7 @@ async function processPrescriptionLine(lineElement, duration, durationType) {
 
 // 0 - Faire une liste avec les différentes lignes de prescription, peu importe leur nombre
 function returnPrescriptionLines() {
-    const baseId = 'ContentPlaceHolder1_PrescriptionsGrid_LinkButtonPrescriptionCommonNameGroupName_';
+    const baseId = 'ContentPlaceHolder1_PrescriptionsGrid_LinkButtonPrescriptionPosoText_';
     let prescriptionLines = [];
     let i = 0;
     let line;

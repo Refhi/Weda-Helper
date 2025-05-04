@@ -37,6 +37,7 @@ Merci encore !
 - [#433](https://github.com/Refhi/Weda-Helper/issues/433) - L'option pour masquer le tableau d'aide était défectueuse.
 - [#441](https://github.com/Refhi/Weda-Helper/issues/441) - Fix d'un problème de boucle infinie lors de l'import si l'INS est au format 2550699999999  (34) dans le document importé.
 - [#442](https://github.com/Refhi/Weda-Helper/issues/442) - Fix d'un problème d'incompatibilité entre la suppression du panneau de Titre suggerés et l'ouverture automatique de l'historique gauche dans les Consultations.
+- [#402](https://github.com/Refhi/Weda-Helper/issues/402) - Le bouton pour changer la durée de tout les traitements en 1 clic ne fonctionnait pas si le traitement était en DCI.
 
 
 ## Divers :
