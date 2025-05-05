@@ -59,7 +59,7 @@ addTweak(['/FolderMedical/PatientViewForm.aspx','/FolderMedical/PopUpViewBinaryF
     const surveillanceDelay = 45000; // 30 secondes
     waitForElement({
         selector: '.dmpMtInfo',
-        callback: function (elements) {
+        callback: async function (elements) {
             // On ouvre un nouvel onglet pour la déclaration du MT + Ajout d'un timestamp pour vérifier qu'aucun newPatientTab n'a été ouvert entre temps
             // On vérifie que le timestamp est toujours valide car le .dmpMtInfo s'affiche 2 fois
             if (localStorage.getItem('lastNewPatientTab') && Date.now() - parseInt(localStorage.getItem('lastNewPatientTab')) < surveillanceDelay) {
@@ -76,7 +76,9 @@ addTweak(['/FolderMedical/PatientViewForm.aspx','/FolderMedical/PopUpViewBinaryF
                 duration: 10000
             });
             document.title = 'Décla. MT. en cours';
-            let checkBoxes = elements[0].parentElement.querySelectorAll('input[type="checkbox"]');
+            await observeDiseapearance(elements[0]);
+            let secondMTPanel = await waitForElement({selector: ('.dmpMtInfo')});
+            let checkBoxes = secondMTPanel.querySelectorAll('input[type="checkbox"]');
             checkBoxes.forEach(checkBox => {
                 if (!checkBox.checked) {
                     checkBox.click();

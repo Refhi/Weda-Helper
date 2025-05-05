@@ -44,6 +44,9 @@ Merci encore !
 ## Divers :
 - modification du nom de l'option "Extrait automatiquement la classification du document importé." => "Détermine automatiquement la destination du document importé (Consultation/Résultats d'examen/Courrier)."
 
+## Refactory :
+- waitForElement et observeDiseappear peuvent désormais être appelées avec des promesses.
+
 
 # [2.12.1] - hotfix
 ## Fix :
