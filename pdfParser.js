@@ -49,7 +49,8 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
 addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
     console.log('[pdfParser] Chargement de la page d\'échanges');
     waitForElement({
-        selector: '#PanelViewDocument iframe',
+        // Ici on déclenche la procédure à la détection de la page de sélection du patient
+        selector: "#ContentPlaceHolder1_FindPatientUcForm1_DropDownListRechechePatient",
         callback: processFoundPdfIframeEchanges
     });
 });
@@ -132,12 +133,11 @@ async function processFoundPdfIframeImport(elements) {
 // Fonction pour traiter le PDF dans la page des échanges sécurisés
 // va suivre une logique similaire à celle de la page d'import
 async function processFoundPdfIframeEchanges(elements) {
-    // Setup de la procédure
-    // Partie "neutre" => n'entraine pas de rafraichissement de la page ou de DOM change
-    // ---------------------------------
+    iframeDocToImport = document.querySelectorAll('#PanelViewDocument iframe');
 
+    // Setup de la procédure
     // Extraction des données de base
-    const baseData = await extractBasePdfData(elements);
+    const baseData = await extractBasePdfData(iframeDocToImport);
     if (!baseData) return;
 
     const { urlPDF, fullText, hashId } = baseData;
@@ -149,51 +149,47 @@ async function processFoundPdfIframeEchanges(elements) {
     extractedData = await handleDataExtraction(fullText, urlPDF, hashId);
 
     console.log("[pdfParser] je travaille sur les données", extractedData);
+    // Boucle de recherche patient - on continue jusqu'à ce qu'il n'y ait plus de refresh nécessaire
+    let continueSearching = true;
+    let attempts = 0;
+    const MAX_ATTEMPTS = 5; // Limite pour éviter une boucle infinie
 
-    // L'utilisateur clique sur le bouton "Un patient" pour ouvrir le champ de recherche
-    waitForElement({
-        selector: "#ContentPlaceHolder1_FindPatientUcForm1_DropDownListRechechePatient",
-        callback: async function () {
+    while (continueSearching && attempts < MAX_ATTEMPTS) {
+        attempts++;
+        console.log(`[pdfParser] Tentative de recherche de patient ${attempts}/${MAX_ATTEMPTS}`);
 
-            console.log("[pdfParser] je travaille sur les données", extractedData);
-            // Boucle de recherche patient - on continue jusqu'à ce qu'il n'y ait plus de refresh nécessaire
-            let continueSearching = true;
-            let attempts = 0;
-            const MAX_ATTEMPTS = 5; // Limite pour éviter une boucle infinie
+        // Recherche du patient
+        let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
 
-            while (continueSearching && attempts < MAX_ATTEMPTS) {
-                attempts++;
-                console.log(`[pdfParser] Tentative de recherche de patient ${attempts}/${MAX_ATTEMPTS}`);
-
-                // Recherche du patient
-                let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
-
-                if (handlePatientSearchReturn.status === 'refresh') {
-                    console.log("[pdfParser] handlePatientSearchReturn nécessite une action:", handlePatientSearchReturn.message);
-                    // On attend un peu pour que les changements DOM se produisent
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    // On continue la boucle sans quitter la fonction
-                    continue;
-                } else if (handlePatientSearchReturn.status === 'continue') {
-                    console.log("[pdfParser] Recherche de patient terminée avec succès", handlePatientSearchReturn.message);
-                    continueSearching = false;
-                    console.log("[pdfParser] Traitement terminé pour la page d'échanges");
-                } else {
-                    console.log("[pdfParser] Échec de la recherche de patient après plusieurs tentatives");
-                    continueSearching = false;
-                }
-            }
-
-            if (attempts >= MAX_ATTEMPTS) {
-                console.log("[pdfParser] Nombre maximum de tentatives atteint pour la recherche de patient");
-                // Ici vous pouvez ajouter une notification à l'utilisateur
-            }
-
-            // TODO : Suite de la logique pour la page des échanges
-            // 1. Sélection des options spécifiques au contexte d'échange
-            // 2. Validation du formulaire
+        if (handlePatientSearchReturn.status === 'continue' || handlePatientSearchReturn.message === 'Patient trouvé et cliqué') {
+            console.log("[pdfParser] Recherche de patient terminée avec succès", handlePatientSearchReturn.message);
+            continueSearching = false;
+            console.log("[pdfParser] Traitement terminé pour la page d'échanges");
+        } else if (handlePatientSearchReturn.status === 'refresh') {
+            console.log("[pdfParser] handlePatientSearchReturn nécessite une action:", handlePatientSearchReturn.message);
+            // On attend un peu pour que les changements DOM se produisent
+            await new Promise(resolve => setTimeout(resolve, 500));
+            // On continue la boucle sans quitter la fonction
+            continue;
+        } else {
+            console.log("[pdfParser] Échec de la recherche de patient après plusieurs tentatives");
+            continueSearching = false;
         }
-    });
+    }
+
+    if (attempts >= MAX_ATTEMPTS) {
+        console.log("[pdfParser] Nombre maximum de tentatives atteint pour la recherche de patient");
+        return;
+    }
+
+    // On a normalement pu sélectionner le bon patient    
+
+    // TODO : Suite de la logique pour la page des échanges
+    // 1. Sélectionner la bonne destination
+    // 2. Mettre le titre
+    // 3. Sélectionner la bonne catégorie
+    // pas de champ de date possible depuis les échanges sécurisés
+    // 4. mettre le focus sur le bouton de validation "#messageContainer class.button.valid"
 }
 
 
@@ -308,7 +304,12 @@ function setPdfData(hashId, data) {
 
 // Rechercher quels types de recherche sont possibles
 function checkSearchPossibility(searchOptionValue) {
-    let dropDownResearch = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_DropDownListRechechePatient']");
+    let dropDownResearch = document.querySelector("[id*='FindPatientUcForm'][id*='_DropDownListRechechePatient']");
+    if (!dropDownResearch) {
+        console.error("[pdfParser] Le dropdown de recherche n'a pas été trouvé : recherche terminée ?");
+        return false;
+    }
+
     let options = dropDownResearch.options;
     for (let i = 0; i < options.length; i++) {
         if (options[i].value === searchOptionValue) {
@@ -542,7 +543,8 @@ function clicPatient(extractedData) {
     }
 
     let patientToClickName = patientToClick.innerText;
-    if (selectedPatientName() !== 'Patient à définir...') {
+    let patientSelectionneText = selectedPatientName();
+    if (patientSelectionneText !== 'Patient à définir...' && patientSelectionneText !== null) {
         // Ici le bon patient est déjà sélectionné pour import.
         // On en déduis que la procédure a déjà aboutie et qu'il faut s'arrêter.
         console.log("[pdfParser] Un patient est déjà sélectionné, arrêt de la recherche.");
@@ -655,7 +657,11 @@ function selectedPatientName() {
     // On va rechercher si un patient est déjà sélectionné dans l'élément #ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_1
     let idPatientSelectedBaseId = '#ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_'
     // On ajoute le niveau de selection actuel au sélecteur
-    let idPatientSelected = idPatientSelectedBaseId + actualImportActionLine();
+    let actionLineNumber = actualImportActionLine();
+    if (!actionLineNumber) { // On est probablement dans le cas des échanges sécurisés
+        return null
+    }
+    let idPatientSelected = idPatientSelectedBaseId + actionLineNumber;
     // On cherche son nom dans l'innerText
     let patientSelectedElement = document.querySelector(idPatientSelected);
     let patientSelectedName = patientSelectedElement.innerText;
