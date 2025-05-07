@@ -177,8 +177,6 @@ async function processFoundPdfIframeEchanges(elements) {
                 } else if (handlePatientSearchReturn.status === 'continue') {
                     console.log("[pdfParser] Recherche de patient terminée avec succès", handlePatientSearchReturn.message);
                     continueSearching = false;
-
-
                     console.log("[pdfParser] Traitement terminé pour la page d'échanges");
                 } else {
                     console.log("[pdfParser] Échec de la recherche de patient après plusieurs tentatives");
@@ -191,13 +189,11 @@ async function processFoundPdfIframeEchanges(elements) {
                 // Ici vous pouvez ajouter une notification à l'utilisateur
             }
 
-
             // TODO : Suite de la logique pour la page des échanges
             // 1. Sélection des options spécifiques au contexte d'échange
             // 2. Validation du formulaire
         }
     });
-
 }
 
 
@@ -441,6 +437,9 @@ function actualImportActionLine() {
     if (ligneSelectionne) {
         // On cherche ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_0 mais le 0 est variable jusqu'à 9
         let patientADefinirElement = ligneSelectionne.querySelector("[id^='ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_']");
+        if (!patientADefinirElement) {
+            return null;
+        }
         // de là on récupère le dernier chiffre de l'id de l'élément
         let numeroDeLigne = patientADefinirElement.id.match(/\d+$/)[0];
         return numeroDeLigne;
