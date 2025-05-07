@@ -196,14 +196,16 @@ addTweak(urlAATI, 'autoAATI', function () {
                                         type: 'success',
                                         icon: 'print'
                                     });
-                                    window.close(); // Pas la peine d'utiliser les permissions tab car cette page est ouverte par le script
+                                    // D'abord on ferme la prévisu blob de l'AT
                                     const tabs = await getAllTabs();
-                                    tabs.forEach(tab => {
+                                    for (const tab of tabs) {
                                         if (tab.url.includes('blob:')) {
-                                            closeTab(tab.id);
+                                            await closeTab(tab.id);
                                             console.log('Fermeture de l\'onglet', tab.id, 'car il s\'agit d\'un blob');
                                         }
-                                    });
+                                    }
+                                    // On ferme la page en cours (la prévisu iframe pdf de l'AT)
+                                    window.close(); // Pas la peine d'utiliser les permissions tab car cette page est ouverte par le script
                                 }
                             });
                         })
