@@ -81,31 +81,31 @@ async function processFoundPdfIframeImport(elements) {
     // Extraction des données de base
     const baseData = await extractBasePdfData(elements);
     if (!baseData) return;
-    
+
     const { urlPDF, fullText, hashId } = baseData;
-    
+
     // Ajout d'un bouton de reset du sessionStorage correspondant
     addResetButton(hashId);
-    
+
     // Récupération des données déjà extraites pour ce PDF
     let extractedData = getPdfData(hashId);
-    
+
     // Données déjà importées pour ce PDF ?
     if (extractedData.alreadyImported) {
         console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction. Renvoi vers le champ de recherche ou le 1er patient de la liste si présent");
         selectFirstPatientOrSearchField();
         return;
     }
-    
+
     // Extraction ou récupération des données
     extractedData = await handleDataExtraction(fullText, urlPDF, hashId);
-    
+
     // Partie "non-neutre" - entraine un rafraichissement de la page ou un changement du DOM
     // ---------------------------------
     // Recherche du patient par la date de naissance
     // => on pourrait rechercher par INS si on a le datamatrix, mais cela impliquerait de
     //    naviguer entre les différents types de recherche dans la fenêtre d'import
-    
+
     let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
     if (handlePatientSearchReturn.status === 'refresh') {
         console.log("[pdfParser] handlePatientSearchReturn", handlePatientSearchReturn.message);
@@ -113,16 +113,16 @@ async function processFoundPdfIframeImport(elements) {
         // On bloque donc ici pour éviter d'intégrer des données trop tôt
         return;
     }
-    
+
     // Intégration des données dans le formulaire d'import
     await setExtractedDataInForm(extractedData);
-    
+
     // Marquage des données comme déjà importées
     markDataAsImported(hashId, extractedData);
-    
+
     // Enregistrement des métriques approximatives
     recordMetrics({ clicks: 9, drags: 9, keyStrokes: 10 });
-    
+
     // Mise du focus sur la date du document importé
     setTimeout(function () {
         highlightDate();
@@ -135,28 +135,69 @@ async function processFoundPdfIframeEchanges(elements) {
     // Setup de la procédure
     // Partie "neutre" => n'entraine pas de rafraichissement de la page ou de DOM change
     // ---------------------------------
-    
+
     // Extraction des données de base
     const baseData = await extractBasePdfData(elements);
     if (!baseData) return;
-    
+
     const { urlPDF, fullText, hashId } = baseData;
-    
+
     // récupération des données déjà extraites pour ce PDF
     let extractedData = getPdfData(hashId);
-    
-    // Nécessité de gérer si les données sont déjà importées ? TODO
-    
+
     // Récupérer les données via extraction/datamatrix ou sessionStorage si déjà extraites
     extractedData = await handleDataExtraction(fullText, urlPDF, hashId);
-    
-    // TODO : suite de la procédure pour les échanges
-    // 1. Recherche du patient
-    // 2. Sélection du patient
-    // 3. Traitement spécifique à la page des échanges
-    
-    console.log("[pdfParser] Données extraites pour la page d'échanges", extractedData);
-    // Implémenter ici la logique spécifique à la page des échanges
+
+    console.log("[pdfParser] je travaille sur les données", extractedData);
+
+    // L'utilisateur clique sur le bouton "Un patient" pour ouvrir le champ de recherche
+    waitForElement({
+        selector: "#ContentPlaceHolder1_FindPatientUcForm1_DropDownListRechechePatient",
+        callback: async function () {
+
+            console.log("[pdfParser] je travaille sur les données", extractedData);
+            // Boucle de recherche patient - on continue jusqu'à ce qu'il n'y ait plus de refresh nécessaire
+            let continueSearching = true;
+            let attempts = 0;
+            const MAX_ATTEMPTS = 5; // Limite pour éviter une boucle infinie
+
+            while (continueSearching && attempts < MAX_ATTEMPTS) {
+                attempts++;
+                console.log(`[pdfParser] Tentative de recherche de patient ${attempts}/${MAX_ATTEMPTS}`);
+
+                // Recherche du patient
+                let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
+
+                if (handlePatientSearchReturn.status === 'refresh') {
+                    console.log("[pdfParser] handlePatientSearchReturn nécessite une action:", handlePatientSearchReturn.message);
+                    // On attend un peu pour que les changements DOM se produisent
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    // On continue la boucle sans quitter la fonction
+                    continue;
+                } else if (handlePatientSearchReturn.status === 'continue') {
+                    console.log("[pdfParser] Recherche de patient terminée avec succès", handlePatientSearchReturn.message);
+                    continueSearching = false;
+
+
+                    console.log("[pdfParser] Traitement terminé pour la page d'échanges");
+                } else {
+                    console.log("[pdfParser] Échec de la recherche de patient après plusieurs tentatives");
+                    continueSearching = false;
+                }
+            }
+
+            if (attempts >= MAX_ATTEMPTS) {
+                console.log("[pdfParser] Nombre maximum de tentatives atteint pour la recherche de patient");
+                // Ici vous pouvez ajouter une notification à l'utilisateur
+            }
+
+
+            // TODO : Suite de la logique pour la page des échanges
+            // 1. Sélection des options spécifiques au contexte d'échange
+            // 2. Validation du formulaire
+        }
+    });
+
 }
 
 
@@ -169,7 +210,7 @@ async function processFoundPdfIframeEchanges(elements) {
  */
 async function extractBasePdfData(elements) {
     console.log('[pdfParser] ----------------- Nouvelle boucle --------------------------------');
-    
+
     // 1. Trouver l'URL du PDF
     let urlPDF = await findPdfUrl(elements);
     if (!urlPDF) {
@@ -199,7 +240,7 @@ async function extractBasePdfData(elements) {
 async function handleDataExtraction(fullText, urlPDF, hashId) {
     let dataMatrixReturn = null;
     let extractedData = getPdfData(hashId);
-    
+
     if (Object.keys(extractedData).length > 0) {
         console.log("[pdfParser] Données déjà extraites pour ce PDF. Utilisation des données existantes.", extractedData);
         return extractedData;
@@ -207,7 +248,7 @@ async function handleDataExtraction(fullText, urlPDF, hashId) {
         console.log("[pdfParser] Données non extraites pour ce PDF. Extraction des données.");
         // Extraction des informations pertinentes
         extractedData = await extractRelevantData(fullText, urlPDF);
-        
+
         // Si on n'a pas de nirMatches, on se rabattra sur la DDN et le nom
         if (!extractedData.nirMatches || extractedData.nirMatches.length === 0) {
             // Si la date de naissance ou le nom n'ont pas été trouvés, on recherche le datamatrix
@@ -227,7 +268,7 @@ async function handleDataExtraction(fullText, urlPDF, hashId) {
         completeExtractedData(extractedData, dataMatrixReturn);
         console.log('[pdfParser] extractedData', JSON.stringify(extractedData));
         setPdfData(hashId, extractedData);
-        
+
         return extractedData;
     }
 }
@@ -300,6 +341,7 @@ function checkSearchPossibility(searchOptionValue) {
  * @returns {string} message - Le message associé au statut.
  */
 function handlePatientSearch(extractedData, hashId) {
+    console.log("[pdfParser] handlePatientSearch", extractedData);
     // On initialise les priorités de recherche en vérifiant si les données sont présentes et cohérentes
     const searchPriorities = [
         { type: "InsSearch", data: extractedData.nirMatches && extractedData.nirMatches.length > 0 ? extractedData.nirMatches[0] : null },
@@ -311,8 +353,10 @@ function handlePatientSearch(extractedData, hashId) {
 
     for (let search of searchPriorities) {
         console.log("[pdfParser] Les méthodes refusées sont :", extractedData.failedSearches);
+        console.log("[pdfParser] Recherche de patient par :", search.type, "=>", search.data);
         if (search.data && !extractedData.failedSearches.includes(search.type)) {
             let properSearched = lookupPatient(search.type, search.data);
+            console.log(`[pdfParser] après lookupPatient : ${search.type} :`, properSearched);
             if (properSearched.status === 'success') {
                 console.log(`[pdfParser] ${search.type} présent, on continue à chercher le patient.`);
                 const clicPatientReturn = clicPatient(extractedData);
@@ -495,7 +539,7 @@ function clicPatient(extractedData) {
         }
     }
     if (!patientToClick) {
-        return { status: 'error', message: "Aucun patient trouvé"};
+        return { status: 'error', message: "Aucun patient trouvé" };
     }
 
     let patientToClickName = patientToClick.innerText;
@@ -503,17 +547,17 @@ function clicPatient(extractedData) {
         // Ici le bon patient est déjà sélectionné pour import.
         // On en déduis que la procédure a déjà aboutie et qu'il faut s'arrêter.
         console.log("[pdfParser] Un patient est déjà sélectionné, arrêt de la recherche.");
-        return { status: 'continue', message: "Un patient est déjà sélectionné"};
+        return { status: 'continue', message: "Un patient est déjà sélectionné" };
     } else {
         let patientToClicSelector = "#" + patientToClick.id;
         // patientToClick.click(); => ne fonctionne pas à cause du CSP en milieu ISOLATED
         if (patientToClick) {
             console.log("[pdfParser] Patient à sélectionner :", patientToClickName, patientToClick);
             clicCSPLockedElement(patientToClicSelector);
-            return { status: 'success', message: "Patient trouvé et cliqué"};
+            return { status: 'success', message: "Patient trouvé et cliqué" };
         } else {
             console.log("[pdfParser] Patient non trouvé");
-            return { status: 'error', message: "Aucun patient trouvé"};
+            return { status: 'error', message: "Aucun patient trouvé" };
         }
     }
 }
@@ -648,7 +692,8 @@ function lookupPatient(searchType, data) {
     // Petite conversion de donnée : si on recherche par nom, on veut en fait une recherche par NIR tronqué (sans clé)
     if (searchType === "Nom") { data = data.substring(0, 13); }
 
-    const dropDownResearch = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_DropDownListRechechePatient']");
+    let dropDownResearch = document.querySelector("[id*='FindPatientUcForm'][id*='_DropDownListRechechePatient']");
+
 
     if (dropDownResearch.value !== searchType) {
         console.log(`[pdfParser] Menu de recherche réglé sur ${dropDownResearch.value} alors qu'on souhaite ${searchType} => Changement de valeur du menu déroulant de recherche vers ${searchType} + change event`);
@@ -661,8 +706,8 @@ function lookupPatient(searchType, data) {
     }
 
     const inputFields = {
-        Naissance: document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherchePatientByDate']"),
-        others: document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherche']")
+        Naissance: document.querySelector("[id*='FindPatientUcForm'][id*='_TextBoxRecherchePatientByDate']"),
+        others: document.querySelector("[id*='FindPatientUcForm'][id*='_TextBoxRecherche']")
     };
 
     const inputResearch = searchType === "Naissance" ? inputFields.Naissance : inputFields.others;
@@ -1377,7 +1422,7 @@ async function determineDocumentType(fullText) {
 
     // Vérifier que tous les types de documents sont bien définis
     const possibleDocumentTypes = initDocumentTypes();
-    
+
     // Si possibleDocumentTypes est undefined (cas des échanges sécurisés)
     // on retourne null pour éviter l'erreur
     if (!possibleDocumentTypes) {
@@ -1870,7 +1915,7 @@ function extractNIR(fullText, nirRegexes) {
 // Extraction des noms du texte
 function extractNames(fullText, nameRegexes) {
     const nameMatches = [];
-    
+
     // 1. Recherche prioritaire dans l'élément .messageClassement s'il existe
     const messageClassementElement = document.querySelectorAll('.messageClassement');
     messageClassementElement.forEach((element) => {
@@ -1891,7 +1936,7 @@ function extractNames(fullText, nameRegexes) {
         nameMatches.push(patientText);
         return nameMatches;
     });
-    
+
     // 2. Si aucun nom n'est trouvé dans .messageClassement, procéder avec la méthode habituelle
     for (const regex of nameRegexes) {
         let nameMatchesIterator = fullText.matchAll(regex);
