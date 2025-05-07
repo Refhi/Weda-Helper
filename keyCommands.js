@@ -657,7 +657,8 @@ addTweak('*', 'WarpButtons', async function () {
                     'Sécuriser',
                     'Affecter ce résultat',
                     'FSE Teleconsultation',
-                    'Valider et archiver'
+                    'Valider et archiver',
+                    ' Un patient '
                 ],
                 'Supprimer': [
                     'Valider et mettre à la corbeille',
@@ -788,7 +789,8 @@ addTweak('*', 'WarpButtons', async function () {
         '#WHButtonValidAndArchive',
         '#WHButtonValidAndDelete',
         '#ButtonValidFileStream',
-        '#ContentPlaceHolder1_PatientsGrid_ButtonHistoriqueResultat_0' // Pour les biologies
+        '#ContentPlaceHolder1_PatientsGrid_ButtonHistoriqueResultat_0', // Pour les biologies
+        '.btnImport.importPatient'
     ];
 
     selectors.forEach(selector => {
