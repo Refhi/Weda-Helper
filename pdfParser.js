@@ -41,24 +41,24 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
         // l'id est splité car il y a un chiffre variable au milieu (1 ou 2 selon que l'option
         // "vertical" est cochée ou nondans la fenêtre d'import)
         selector: "[id^='ContentPlaceHolder1_ViewPdfDocumentUCForm'][id$='_iFrameViewFile']",
-        callback: processFoundPdfIframe
+        callback: processFoundPdfIframeImport
     });
 });
 
 // 2.b. Dans la page des Echanges Sécurisés TODO
 addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
     console.log('[pdfParser] Chargement de la page d\'échanges');
-    // waitForElement({
-    //     selector: '#PanelViewDocument iframe',
-    //     callback: processFoundPdfIframe
-    // });
+    waitForElement({
+        selector: '#PanelViewDocument iframe',
+        callback: processFoundPdfIframeEchanges
+    });
 });
 
 
 
-/** A partir de là la procédure suis globalement un enchainement de "roll-over" :
+/** A partir de là la procédure suit globalement un enchainement de "roll-over" :
  * - il regarde a chaque étape si les données sont déjà présentes
- * - si elles ne le sont pas, il effectue l'étape demandée, ce qui déclenche un rafrachissement de la page
+ * - si elles ne le sont pas, il effectue l'étape demandée, ce qui déclenche un rafraichissement de la page
  * - sinon elles le sont, il passe donc à l'étape suivante
  * - et ainsi de suite jusqu'à la fin de la procédure
  * 
@@ -73,48 +73,142 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
  *    failedSearches: ["InsSearch", "DateSearch"]
  * }
  */
-
-async function processFoundPdfIframe(elements) {
+async function processFoundPdfIframeImport(elements) {
     // Setup de la procédure
     // Partie "neutre" => n'entraine pas de rafraichissement de la page ou de DOM change
     // ---------------------------------
-    let dataMatrixReturn = null;
-    let extractedData = null;
-    console.log('[pdfParser] ----------------- Nouvelle boucle --------------------------------');
-    let urlPDF = await findPdfUrl(elements);
-    if (!urlPDF) {
-        console.log("[pdfParser] l'url du PDF n'a pas été trouvée. Arrêt de l'extraction.");
-        return;
-    }
-    console.log('[pdfParser] urlPDF', urlPDF);
 
-    // Extraction du texte
-    let fullText = await extractTextFromPDF(urlPDF);
-    console.log('[pdfParser] fullText', [fullText]);
-
-    // Création d'un id unique
-    let hashId = await customHash(fullText, urlPDF);
-
+    // Extraction des données de base
+    const baseData = await extractBasePdfData(elements);
+    if (!baseData) return;
+    
+    const { urlPDF, fullText, hashId } = baseData;
+    
     // Ajout d'un bouton de reset du sessionStorage correspondant
     addResetButton(hashId);
-
+    
     // Récupération des données déjà extraites pour ce PDF
-    extractedData = getPdfData(hashId);
-
-    // Données déjà extraites pour ce PDF ?
+    let extractedData = getPdfData(hashId);
+    
+    // Données déjà importées pour ce PDF ?
     if (extractedData.alreadyImported) {
         console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction. Renvoi vers le champ de recherche ou le 1er patient de la liste si présent");
         selectFirstPatientOrSearchField();
         return;
     }
+    
+    // Extraction ou récupération des données
+    extractedData = await handleDataExtraction(fullText, urlPDF, hashId);
+    
+    // Partie "non-neutre" - entraine un rafraichissement de la page ou un changement du DOM
+    // ---------------------------------
+    // Recherche du patient par la date de naissance
+    // => on pourrait rechercher par INS si on a le datamatrix, mais cela impliquerait de
+    //    naviguer entre les différents types de recherche dans la fenêtre d'import
+    
+    let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
+    if (handlePatientSearchReturn.status === 'refresh') {
+        console.log("[pdfParser] handlePatientSearchReturn", handlePatientSearchReturn.message);
+        // La procédure n'est pas arrivée au bout, un rafraichissement de la page est attendu
+        // On bloque donc ici pour éviter d'intégrer des données trop tôt
+        return;
+    }
+    
+    // Intégration des données dans le formulaire d'import
+    await setExtractedDataInForm(extractedData);
+    
+    // Marquage des données comme déjà importées
+    markDataAsImported(hashId, extractedData);
+    
+    // Enregistrement des métriques approximatives
+    recordMetrics({ clicks: 9, drags: 9, keyStrokes: 10 });
+    
+    // Mise du focus sur la date du document importé
+    setTimeout(function () {
+        highlightDate();
+    }, 200);
+}
 
+// Fonction pour traiter le PDF dans la page des échanges sécurisés
+// va suivre une logique similaire à celle de la page d'import
+async function processFoundPdfIframeEchanges(elements) {
+    // Setup de la procédure
+    // Partie "neutre" => n'entraine pas de rafraichissement de la page ou de DOM change
+    // ---------------------------------
+    
+    // Extraction des données de base
+    const baseData = await extractBasePdfData(elements);
+    if (!baseData) return;
+    
+    const { urlPDF, fullText, hashId } = baseData;
+    
+    // récupération des données déjà extraites pour ce PDF
+    let extractedData = getPdfData(hashId);
+    
+    // Nécessité de gérer si les données sont déjà importées ? TODO
+    
+    // Récupérer les données via extraction/datamatrix ou sessionStorage si déjà extraites
+    extractedData = await handleDataExtraction(fullText, urlPDF, hashId);
+    
+    // TODO : suite de la procédure pour les échanges
+    // 1. Recherche du patient
+    // 2. Sélection du patient
+    // 3. Traitement spécifique à la page des échanges
+    
+    console.log("[pdfParser] Données extraites pour la page d'échanges", extractedData);
+    // Implémenter ici la logique spécifique à la page des échanges
+}
+
+
+
+// Fonctions utilitaires
+/**
+ * Extrait les données de base communes à partir d'un PDF (url, texte, hash).
+ * @param {Element[]} elements - Les éléments DOM contenant l'iframe.
+ * @returns {Promise<Object|null>} - Les données de base extraites ou null si échec.
+ */
+async function extractBasePdfData(elements) {
+    console.log('[pdfParser] ----------------- Nouvelle boucle --------------------------------');
+    
+    // 1. Trouver l'URL du PDF
+    let urlPDF = await findPdfUrl(elements);
+    if (!urlPDF) {
+        console.log("[pdfParser] l'url du PDF n'a pas été trouvée. Arrêt de l'extraction.");
+        return null;
+    }
+    console.log('[pdfParser] urlPDF', urlPDF);
+
+    // 2. Extraire le texte du PDF
+    let fullText = await extractTextFromPDF(urlPDF);
+    console.log('[pdfParser] fullText', [fullText]);
+
+    // 3. Créer un identifiant unique pour ce PDF
+    let hashId = await customHash(fullText, urlPDF);
+
+    return { urlPDF, fullText, hashId };
+}
+
+/**
+ * Gère l'extraction des données à partir du PDF (texte ou datamatrix).
+ * @param {string} fullText - Le texte extrait du PDF.
+ * @param {string} urlPDF - L'URL du PDF.
+ * @param {string} hashId - L'identifiant unique du PDF.
+ * @param {boolean} isEchanges - Si true, contexte des échanges sécurisés, sinon import standard.
+ * @returns {Promise<Object>} - Les données extraites du PDF.
+ */
+async function handleDataExtraction(fullText, urlPDF, hashId) {
+    let dataMatrixReturn = null;
+    let extractedData = getPdfData(hashId);
+    
     if (Object.keys(extractedData).length > 0) {
         console.log("[pdfParser] Données déjà extraites pour ce PDF. Utilisation des données existantes.", extractedData);
+        return extractedData;
     } else {
         console.log("[pdfParser] Données non extraites pour ce PDF. Extraction des données.");
         // Extraction des informations pertinentes
         extractedData = await extractRelevantData(fullText, urlPDF);
-        // Si on n'a pas de nirMatches, on se rabattra sur la DDN et le nom.
+        
+        // Si on n'a pas de nirMatches, on se rabattra sur la DDN et le nom
         if (!extractedData.nirMatches || extractedData.nirMatches.length === 0) {
             // Si la date de naissance ou le nom n'ont pas été trouvés, on recherche le datamatrix
             if (!extractedData.dateOfBirth || extractedData.nameMatches.length === 0) {
@@ -128,46 +222,16 @@ async function processFoundPdfIframe(elements) {
             }
         }
 
-        // Stockage et priorisation des informations pertinentes dans le sessionStorage
+        // Stockage et priorisation des informations pertinentes
         // => le dataMatrix est prioritaire sur les informations extraites du texte
         completeExtractedData(extractedData, dataMatrixReturn);
         console.log('[pdfParser] extractedData', JSON.stringify(extractedData));
         setPdfData(hashId, extractedData);
+        
+        return extractedData;
     }
-
-    // Partie "non-neutre" - entraine un rafraichissement de la page ou un changement du DOM
-    // ---------------------------------
-    // Recherche du patient par la date de naissance
-    // => on pourrait rechercher par INS si on a le datamatrix, mais cela impliquerait de
-    //    naviguer entre les différents types de recherche dans la fenêtre d'import
-
-    let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
-    if (handlePatientSearchReturn.status === 'refresh') {
-        console.log("[pdfParser] handlePatientSearchReturn", handlePatientSearchReturn.message);
-        // La procédure n'est pas arrivée au bout, un rafraichissement de la page est attendu
-        // On bloque donc ici pour éviter d'intégrer des données trop tôt
-        return;
-    }
-    // Intégration des données dans le formulaire d'import
-    await setExtractedDataInForm(extractedData);
-
-    // Marquage des données comme déjà importées
-    markDataAsImported(hashId, extractedData);
-
-    // Enregistrement des métriques approximatives
-    recordMetrics({ clicks: 9, drags: 9, keyStrokes: 10 });
-
-
-    // Mise du focus sur la date du document importé
-    setTimeout(function () {
-        highlightDate();
-    }, 200);
-
 }
 
-
-
-// Fonctions utilitaires
 /**
  * Récupère les données du PDF en fonction du hash.
  * 
@@ -1313,6 +1377,13 @@ async function determineDocumentType(fullText) {
 
     // Vérifier que tous les types de documents sont bien définis
     const possibleDocumentTypes = initDocumentTypes();
+    
+    // Si possibleDocumentTypes est undefined (cas des échanges sécurisés)
+    // on retourne null pour éviter l'erreur
+    if (!possibleDocumentTypes) {
+        console.log('[pdfParser] Liste des types de documents non disponible dans ce contexte');
+        return null;
+    }
 
     // Vérifier que chaque type de document dans documentTypes est présent dans possibleDocumentTypes
     for (const [type, _] of documentTypes) {
@@ -1357,7 +1428,8 @@ function initDocumentTypes() {
     const dropDownListCats = "#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_0";
     const dropDownCats = document.querySelector(dropDownListCats);
     if (!dropDownCats) {
-        alert('[pdfParser] Pour initialiser les catégories, vous devez avoir au moins un document en attente de classification.');
+        // Inhibition de l'alerte pour éviter les interruptions notamment dans la partie Messagerie sécurisée
+        // alert('[pdfParser] Pour initialiser les catégories, vous devez avoir au moins un document en attente de classification.');
         return;
     }
     const options = dropDownCats.options;
@@ -1732,6 +1804,23 @@ async function determineDocumentDate(fullText, dateMatches, documentDateRegexes)
 // Détermination de la date de naissance
 function determineDateOfBirth(fullText, dateMatches, dateOfBirthRegexes) {
     let dateOfBirth = null;
+    // Recherche prioritaire dans .messageClassement s'il existe
+    const messageClassementElement = document.querySelectorAll('.messageClassement');
+    messageClassementElement.forEach((element) => {
+        // On ne prend que si le innerText commence par "Patient :"
+        if (!element.innerText.startsWith('Patient :')) {
+            return;
+        }
+        console.log('[pdfParser] Recherche de la date de naissance dans', element);
+        // On cherche un élément au format 01/01/2000
+        const dateRegex = /\d{1,2}\/\d{1,2}\/\d{4}/; // Format dd/mm/yyyy
+        const dateMatch = element.innerText.match(dateRegex);
+        if (dateMatch) {
+            console.log('[pdfParser] Date de naissance trouvée dans .messageClassement:', dateMatch);
+            return dateMatch;
+        }
+    });
+    // Si pas de date trouvée dans .messageClassement, on continue avec les dates extraites
     // On cherche la date la plus ancienne, ce qui correspond souvent à la date de naissance
     for (const date of dateMatches) {
         if (!dateOfBirth || dateOfBirth > date) {
@@ -1781,7 +1870,29 @@ function extractNIR(fullText, nirRegexes) {
 // Extraction des noms du texte
 function extractNames(fullText, nameRegexes) {
     const nameMatches = [];
-
+    
+    // 1. Recherche prioritaire dans l'élément .messageClassement s'il existe
+    const messageClassementElement = document.querySelectorAll('.messageClassement');
+    messageClassementElement.forEach((element) => {
+        console.log('[pdfParser] Recherche du nom du patient dans', element);
+        // On ne prend que si le innerText commence par "Patient :"
+        if (!element.innerText.startsWith('Patient :')) {
+            return;
+        }
+        // On retire 'Patient :' et on ne garde que le texte qu'on envoie dans fullText
+        let patientText = element.innerText.replace('Patient :', '').trim();
+        // On retire une éventuelle date à la fin
+        const dateRegex = /\d{1,2}\/\d{1,2}\/\d{4}$/; // Format dd/mm/yyyy
+        const dateMatch = patientText.match(dateRegex);
+        if (dateMatch) {
+            patientText = patientText.replace(dateRegex, '').trim();
+        }
+        console.log('[pdfParser] patientText', patientText);
+        nameMatches.push(patientText);
+        return nameMatches;
+    });
+    
+    // 2. Si aucun nom n'est trouvé dans .messageClassement, procéder avec la méthode habituelle
     for (const regex of nameRegexes) {
         let nameMatchesIterator = fullText.matchAll(regex);
         for (const match of nameMatchesIterator) {
