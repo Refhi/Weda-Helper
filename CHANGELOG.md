@@ -39,6 +39,7 @@ Merci encore !
 - [#442](https://github.com/Refhi/Weda-Helper/issues/442) - Fix d'un problème d'incompatibilité entre la suppression du panneau de Titre suggerés et l'ouverture automatique de l'historique gauche dans les Consultations.
 - [#402](https://github.com/Refhi/Weda-Helper/issues/402) - Le bouton pour changer la durée de tout les traitements en 1 clic ne fonctionnait pas si le traitement était en DCI.
 - [#445](https://github.com/Refhi/Weda-Helper/issues/445) - Fix d'un problème où le bouton Valider final ne se cliquait pas automatiquement.
+- [#447](https://github.com/Refhi/Weda-Helper/issues/447) - L'import semi-automatique ne fonctionnait pas dans les échanges sécurisés.
 
 
 ## Divers :

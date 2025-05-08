@@ -53,6 +53,27 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
         selector: "#ContentPlaceHolder1_FindPatientUcForm1_DropDownListRechechePatient",
         callback: processFoundPdfIframeEchanges
     });
+
+    // On ajoute aussi une petite aide : le champ de recherche de patient est décalé vers le bas de l'écran
+    waitForElement({
+        selector: "#ContentPlaceHolder1_FindPatientUcForm1_PanelFindPatient",
+        callback: function () {
+            const searchField = document.querySelector("#ContentPlaceHolder1_FindPatientUcForm1_PanelFindPatient");
+            if (searchField) {
+                const maxHeight = 300;
+                // Déplacer l'élément à 300px du bas de l'écran
+                const displacement = window.innerHeight - maxHeight;
+                searchField.style.position = "fixed";
+                searchField.style.top = `${displacement -50}px`;
+                searchField.style.left = "0";
+                searchField.style.width = "99%";
+                searchField.style.maxHeight = `${maxHeight}px`;
+                // searchField.style.zIndex = "9999"; // Assurez-vous que l'élément est au-dessus des autres
+                searchField.style.overflow = "auto"; // Ajoute un défilement si le contenu dépasse
+                console.log(`[pdfParser] Champ de recherche de patient décalé vers le bas de ${displacement}px avec une hauteur maximale de ${maxHeight}px`);
+            }
+        }
+    });
 });
 
 
@@ -182,19 +203,139 @@ async function processFoundPdfIframeEchanges(elements) {
         return;
     }
 
-    // On a normalement pu sélectionner le bon patient    
-
-    // TODO : Suite de la logique pour la page des échanges
-    // 1. Sélectionner la bonne destination
+    // On a normalement pu sélectionner le bon patient
+    // Sélectionner la bonne destination d'importation (soumis à option false par défaut)
+    await selectDestinationIfNeededES(extractedData.destinationClass);
     // 2. Mettre le titre
+    await setTitleIfNeededES(extractedData.documentTitle);
     // 3. Sélectionner la bonne catégorie
+    await selectDocumentTypeES(extractedData.documentType);
     // pas de champ de date possible depuis les échanges sécurisés
+    // si #ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 existe, y mettre le focus
+    const patientLinkButton = document.querySelector("#ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0");
+    if (patientLinkButton) {
+        console.log("[pdfParser] Mise au focus sur le patient sélectionné");
+        patientLinkButton.focus();
+        ListTabOrderer(patientLinkButton.id);
+        await observeDiseapearance(patientLinkButton);
+    }
     // 4. mettre le focus sur le bouton de validation "#messageContainer class.button.valid"
+    const validationButton = document.querySelector("#messageContainer .button.valid");
+    if (validationButton) {
+        console.log("[pdfParser] Mise au focus sur le bouton de validation");
+        validationButton.focus();
+        sendWedaNotifAllTabs({
+            message: "Sélection du patient et des données d'import terminée. Vous pouvez valider l'import en appuyant sur Enter. Maj+Tab pour effectuer des corrections.",
+            type: 'success',
+            icon: 'success'
+        });
+        // Supprimer #iFrameViewFile du taborder
+        const iframe = document.querySelector("#iFrameViewFile");
+        if (iframe) {
+            iframe.setAttribute("tabindex", "-1");
+            console.log("[pdfParser] Suppression de l'iframe du taborder");
+        }
+    } else {
+        console.error("[pdfParser] Bouton de validation introuvable");
+    }
 }
 
 
 
 // Fonctions utilitaires
+function returnMessageBodyES() {
+    // Sélection de l'élément messageBody
+    const messageBodyElement = document.querySelector('.messageBody');
+    if (messageBodyElement) {
+        // Extraction du texte de l'élément
+        const messageBodyText = messageBodyElement.innerText.trim();
+        console.log("[pdfParser] Texte extrait de messageBody :", messageBodyText);
+
+        return messageBodyText;
+    } else {
+        console.warn("[pdfParser] Aucun élément messageBody trouvé.");
+    }
+
+    return null;
+}
+
+/**
+ * Sélectionne le bon type de document pour les échanges sécurisés
+ */
+async function selectDocumentTypeES(documentType) {
+    console.log("[pdfParser] Sélection du type de document :", documentType);
+    // Le menu déroulant est le select avec le titre "Attribuer une classification au document"
+    const selectElement = document.querySelector("select[title='Attribuer une classification au document']");
+
+    // Vérifier si on a un élément select et un type de document spécifié
+    if (!selectElement || !documentType) {
+        console.log("[pdfParser] Pas de select ou pas de type de document défini");
+        return;
+    }
+
+    // Parcourir les options pour trouver celle qui correspond au documentType
+    for (let i = 0; i < selectElement.options.length; i++) {
+        const option = selectElement.options[i];
+        // On compare en ignorant la casse
+        if (option.text.toLowerCase() === documentType.toLowerCase()) {
+            // Option trouvée, on la sélectionne
+            selectElement.value = option.value;
+            selectElement.dispatchEvent(new Event('change'));
+            console.log(`[pdfParser] Type de document '${documentType}' sélectionné`);
+            return;
+        }
+    }
+    console.warn(`[pdfParser] Aucun type de document correspondant à '${documentType}' trouvé`);
+
+}
+
+/**
+ * Insère le titre au bon endroit pour les échanges sécurisés
+ */
+async function setTitleIfNeededES(Titre) {
+    // Le champ de titre est l'input avec le titre "C'est le titre qu'aura le document dans le dossier patient"
+    const titleInput = document.querySelector("input[title=\"C'est le titre qu'aura le document dans le dossier patient\"]");
+    if (titleInput) {
+        console.log("[pdfParser] Titre trouvé, on le met dans le champ de titre");
+        titleInput.value = Titre;
+        titleInput.dispatchEvent(new Event('change'));
+        return;
+    }
+    console.error("[pdfParser] Titre non trouvé, impossible de le mettre dans le champ de titre");
+}
+
+/**
+ * Sélectionne la bonne destination d'importation dans les **échanges sécurisés**, si l'option est activée.
+ */
+async function selectDestinationIfNeededES(destinationNumber) {
+    const selectionNeeded = await getOptionPromise('PdfParserAutoClassification');
+    if (!selectionNeeded) {
+        return;
+    }
+    // Si l'option est activée, on va chercher la bonne destination
+    // Les destinations possibles sont sélectionnées via des éléments clickables
+    // On reprend la classification de extractDestinationClass, mais les noms sont différents
+    const destinations = {
+        '1': "Ranger dans les consultations",
+        '2': "Ranger dans les résultats d'examens",
+        '3': "Ranger dans les courriers"
+    };
+    // On va cliquer sur l'élément .weImportDocTargets dont le titre est celui de la destination
+    const elementACliquer = document.querySelector(`.weImportDocTargets[title="${destinations[destinationNumber]}"]`);
+    if (elementACliquer) {
+        console.log("[pdfParser] Sélection de la destination d'importation :", destinations[destinationNumber]);
+        // On va cliquer sur l'élément
+        elementACliquer.click();
+        return;
+    }
+
+    console.error("[pdfParser] Aucune destination d'importation trouvée pour le numéro :", destinationNumber);
+}
+
+
+
+
+
 /**
  * Extrait les données de base communes à partir d'un PDF (url, texte, hash).
  * @param {Element[]} elements - Les éléments DOM contenant l'iframe.
@@ -202,21 +343,30 @@ async function processFoundPdfIframeEchanges(elements) {
  */
 async function extractBasePdfData(elements) {
     console.log('[pdfParser] ----------------- Nouvelle boucle --------------------------------');
+    // Initialisation des variables
+    let urlPDF = null;
+    let fullText = null;
+    let hashId = null;
 
     // 1. Trouver l'URL du PDF
-    let urlPDF = await findPdfUrl(elements);
+    urlPDF = await findPdfUrl(elements);
     if (!urlPDF) {
         console.log("[pdfParser] l'url du PDF n'a pas été trouvée. Arrêt de l'extraction.");
-        return null;
+        urlPDF = null;
+        fullText = returnMessageBodyES();
+        hashId = await customHash(fullText, urlPDF);
+        const toReturn = { urlPDF, fullText, hashId };
+        console.log("[pdfParser] toReturn", toReturn);
+        return toReturn;
     }
     console.log('[pdfParser] urlPDF', urlPDF);
 
     // 2. Extraire le texte du PDF
-    let fullText = await extractTextFromPDF(urlPDF);
+    fullText = await extractTextFromPDF(urlPDF);
     console.log('[pdfParser] fullText', [fullText]);
 
     // 3. Créer un identifiant unique pour ce PDF
-    let hashId = await customHash(fullText, urlPDF);
+    hashId = await customHash(fullText, urlPDF);
 
     return { urlPDF, fullText, hashId };
 }
@@ -779,8 +929,8 @@ function isValidSearchType(searchType) {
 async function findPdfUrl(elements) {
     let iframe = elements[0];
     if (!iframe) {
-        console.error("[pdfParser] iframe non trouvée. Arrêt de l'extraction.");
-        resolve(null);
+        console.warn("[pdfParser] iframe non trouvée. Arrêt de l'extraction du pdf.");
+        return null;
     }
 
     return new Promise((resolve, reject) => {
@@ -1127,6 +1277,7 @@ function extractDestinationClass(fullText) {
 
 // Extraction du datamatrix des pages du PDF
 async function extractDatamatrixFromPDF(pdfUrl) {
+    if (!pdfUrl) {return null}
     const pdf = await pdfjsLib.getDocument(pdfUrl).promise;
     const numPages = pdf.numPages;
     const pagesToCheck = numPages === 1 ? [1] : [1, numPages]; // Vérifie la première et la dernière page, ou juste la première si une seule page
@@ -1431,7 +1582,7 @@ async function determineDocumentType(fullText) {
     // Si possibleDocumentTypes est undefined (cas des échanges sécurisés)
     // on retourne null pour éviter l'erreur
     if (!possibleDocumentTypes) {
-        console.log('[pdfParser] Liste des types de documents non disponible dans ce contexte');
+        console.error('[pdfParser] Liste des types de documents non disponible');
         return null;
     }
 
@@ -1475,10 +1626,14 @@ async function determineDocumentType(fullText) {
 // Fonction pour initialiser les catégories possibles de classification
 function initDocumentTypes() {
     // on va d'abord sélectionner le menu contenant les catégories de classification
-    const dropDownListCats = "#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_0";
-    const dropDownCats = document.querySelector(dropDownListCats);
+    let dropDownCats = document.querySelector("#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_0");
+    // Si l'élément n'existe pas, on est probablement dans les échanges sécurisés donc on va essayer de le trouver ailleurs
     if (!dropDownCats) {
-        // Inhibition de l'alerte pour éviter les interruptions notamment dans la partie Messagerie sécurisée
+        dropDownCats = document.querySelector("select[title='Attribuer une classification au document']");
+        console.log('[pdfParser] dropDownCats ES', dropDownCats);
+    }
+    if (!dropDownCats) {
+        console.warn('[pdfParser] Impossible de trouver le menu déroulant des catégories de classification.');
         // alert('[pdfParser] Pour initialiser les catégories, vous devez avoir au moins un document en attente de classification.');
         return;
     }
