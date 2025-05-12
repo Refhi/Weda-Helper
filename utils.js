@@ -697,11 +697,19 @@ chrome.runtime.onMessage.addListener(
     }
 );
 
-function sendWedaNotifAllTabs(options) {
+async function sendWedaNotifAllTabs(options) {
     // Ajoute un identifiant unique basé sur l'horodatage actuel
     options.id = Date.now();
-    chrome.storage.local.set({ 'wedaNotifOptions': options }, function () {
-        console.log('Options de notification stockées avec ID:', options.id);
+    return new Promise((resolve, reject) => {
+        chrome.storage.local.set({ 'wedaNotifOptions': options }, function () {
+            if (chrome.runtime.lastError) {
+                console.error('Erreur lors du stockage des options de notification :', chrome.runtime.lastError);
+                reject(chrome.runtime.lastError);
+            } else {
+                console.log('Options de notification stockées avec ID:', options.id);
+                resolve(options.id);
+            }
+        });
     });
 }
 

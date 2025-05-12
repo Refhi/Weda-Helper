@@ -123,7 +123,7 @@ addTweak('/FolderMedical/PopUpViewBinaryForm.aspx', 'oneClickMT', function () {
 });
 
 // 5. Fermeture auto de la page de déclaration du MT
-addTweak('/FolderMedical/PatientViewForm.aspx', 'oneClickMT', function () {
+addTweak('/FolderMedical/PatientViewForm.aspx', 'oneClickMT', async function () {
     const lastDetection = localStorage.getItem("autoMTDeclarationThisTabMustBeClosed");
     const lastDetectionTime = lastDetection ? parseInt(lastDetection, 10) : NaN;
     // On vérifie si le temps de dernière détection est inférieur à 5 secondes
@@ -132,7 +132,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'oneClickMT', function () {
     if (isRecetDetection) {
         localStorage.removeItem("autoMTDeclarationThisTabMustBeClosed");
         console.log("[oneClickMT] Fermeture de la page de déclaration du MT car ", isRecetDetection);
-        sendWedaNotifAllTabs({
+        await sendWedaNotifAllTabs({
             message: 'Déclaration du médecin traitant automatique terminée.',
             type: 'success',
             icon: 'done',
