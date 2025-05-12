@@ -56,7 +56,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoControlMT', function () {
 
 // Facilite la déclaration du MT en précochant les cases puis en validant le formulaire
 addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/PopUpViewBinaryForm.aspx'], 'oneClickMT', function () {
-    const surveillanceDelay = 45000; // 30 secondes
+    const surveillanceDelay = 45000;
     waitForElement({
         selector: '.dmpMtInfo',
         callback: async function (elements) {
@@ -93,29 +93,54 @@ addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/PopUpViewBinary
                         recordMetrics({ clicks: 1, drags: 1 });
                     }
                 });
+                // Validation du formulaire
                 setTimeout(() => {
                     document.title = 'Décla. MT. validée';
                     let boutonValider = document.querySelector('button[title="Transmettre le formulaire de déclaration de choix du médecin traitant"]');
-                    boutonValider.click();
+                    // On place un timestamp pour marquer que la page doit être fermée
+                    localStorage.setItem('autoMTDeclarationThisTabMustBeClosed', Date.now());
+                    boutonValider.click(); // La page va se recharger
+                    recordMetrics({ clicks: 1, drags: 1 });
                 }, 500);
-
-                // 4. Fermeture auto de la page de confirmation
-                // On attend l'ouverture de la page de confirmation dans une nouvelle tab (via les autorisations tab)
-                // On va faire une boucle toutes les 500ms pour vérifier si la page de confirmation est ouverte avec un timeout de 10 secondes
-                addTweak('/FolderMedical/PopUpViewBinaryForm.aspx', '*ClosingMtConfTab', function () {
-                    const lastDetection = localStorage.getItem("lastdmpMtInfoDetection");
-                    const lastDetectionTime = lastDetection ? parseInt(lastDetection, 10) : NaN;
-                    // On vérifie si le temps de dernière détection est inférieur à surveillanceDelay
-                    const isRecetDetection = !isNaN(lastDetectionTime) && Date.now() - lastDetectionTime < surveillanceDelay;
-                    if (isRecetDetection) {
-                        localStorage.removeItem("lastdmpMtInfoDetection");
-                        windows.close();
-                    }
-                });
             }
         }
     });
 });
+
+// 4. Fermeture auto de la page de confirmation
+// On attend l'ouverture de la page de confirmation dans une nouvelle tab (via les autorisations tab)
+// On va faire une boucle toutes les 500ms pour vérifier si la page de confirmation est ouverte avec un timeout de 10 secondes
+addTweak('/FolderMedical/PopUpViewBinaryForm.aspx', 'oneClickMT', function () {
+    const surveillanceDelay = 45000;
+    const lastDetection = localStorage.getItem("lastdmpMtInfoDetection");
+    const lastDetectionTime = lastDetection ? parseInt(lastDetection, 10) : NaN;
+    // On vérifie si le temps de dernière détection est inférieur à surveillanceDelay
+    const isRecetDetection = !isNaN(lastDetectionTime) && Date.now() - lastDetectionTime < surveillanceDelay;
+    if (isRecetDetection) {
+        localStorage.removeItem("lastdmpMtInfoDetection");
+        window.close();
+    }
+});
+
+// 5. Fermeture auto de la page de déclaration du MT
+addTweak('/FolderMedical/PatientViewForm.aspx', 'oneClickMT', function () {
+    const lastDetection = localStorage.getItem("autoMTDeclarationThisTabMustBeClosed");
+    const lastDetectionTime = lastDetection ? parseInt(lastDetection, 10) : NaN;
+    // On vérifie si le temps de dernière détection est inférieur à 5 secondes
+    const isRecetDetection = !isNaN(lastDetectionTime) && Date.now() - lastDetectionTime < 15000;
+    console.log("[oneClickMT] Dernière détection : ", lastDetectionTime, " - Temps écoulé : ", Date.now() - lastDetectionTime, "isRecetDetection", isRecetDetection);
+    if (isRecetDetection) {
+        localStorage.removeItem("autoMTDeclarationThisTabMustBeClosed");
+        console.log("[oneClickMT] Fermeture de la page de déclaration du MT car ", isRecetDetection);
+        sendWedaNotifAllTabs({
+            message: 'Déclaration du médecin traitant automatique terminée.',
+            type: 'success',
+            icon: 'done',
+        });
+        window.close();
+    }
+});
+
 
 /**
  * Intégration automatique du MT et mise à jour de sa fiche avec l'annuaire IMTi
