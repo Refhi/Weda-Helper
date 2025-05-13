@@ -929,8 +929,12 @@ function isValidSearchType(searchType) {
 async function findPdfUrl(elements) {
     let iframe = elements[0];
     if (!iframe) {
-        console.warn("[pdfParser] iframe non trouvée. Arrêt de l'extraction du pdf.");
-        return null;
+        let base64 = document.querySelector('.attachmentContainer object[type="application/pdf"]'); //Bypass pour les pages Echanges Sécurisés sans iframe PDF
+        if (!base64) {
+            console.warn("[pdfParser] iframe et base64 non trouvés. Arrêt de l'extraction du pdf.");
+            return null;
+        }
+        return base64.data;
     }
 
     return new Promise((resolve, reject) => {
@@ -954,7 +958,15 @@ async function findPdfUrl(elements) {
 
 // Extraction du texte du PDF en 2 parties
 async function extractTextFromPDF(pdfUrl) {
-    const pdf = await pdfjsLib.getDocument(pdfUrl).promise;
+    let pdf;
+    if (pdfUrl.includes('base64')) {
+        pdfUrl = pdfUrl.replace('data:application/pdf;base64,', '');
+        pdfUrl = atob(pdfUrl);
+        pdf = await pdfjsLib.getDocument({data: pdfUrl}).promise;
+    }
+    else {
+        pdf = await pdfjsLib.getDocument(pdfUrl).promise;
+    }
     const maxPages = pdf.numPages;
     const pagePromises = [];
     for (var i = 1; i <= maxPages; i++) {
