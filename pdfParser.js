@@ -837,10 +837,6 @@ function lookupPatient(searchType, data) {
     // On vérifie que la valeur de recherche est disponible (les comptes secretaire n'ont pas forcément la recherche par INS)
     if (!checkSearchPossibility(searchType)) {
         console.error(`[pdfParser] Type de recherche ${searchType} non disponible.`);
-        sendWedaNotif({
-            message: `Type de recherche ${searchType} non disponible. Contactez votre expert pour l'activer.`,
-            type: 'fail'
-        })
         return { status: 'searchTypeFail', message: `Type de recherche ${searchType} non disponible.` };
     }
 
