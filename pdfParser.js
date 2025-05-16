@@ -54,6 +54,19 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
         callback: processFoundPdfIframeEchanges
     });
 
+    // On va également déclencher une procédure simplifiée si est cliqué le bouton "Importer le message"
+    waitForElement({
+        selector: "div.docImportBody td a",
+        text: "Importer le message",
+        callback: function (elements) {
+            // Ajout d'un listener sur le bouton "Importer le message"
+            elements[0].addEventListener("click", function () {
+                console.log("[pdfParser] Importation du message cliqué, je vais traiter le PDF présent dans l'iframe.");
+                processFoundPdfIframeEchanges(true);
+            });
+        }
+    });
+
     // On ajoute aussi une petite aide : le champ de recherche de patient est décalé vers le bas de l'écran
     waitForElement({
         selector: "#ContentPlaceHolder1_FindPatientUcForm1_PanelFindPatient",
@@ -153,7 +166,7 @@ async function processFoundPdfIframeImport(elements) {
 
 // Fonction pour traiter le PDF dans la page des échanges sécurisés
 // va suivre une logique similaire à celle de la page d'import
-async function processFoundPdfIframeEchanges(elements) {
+async function processFoundPdfIframeEchanges(isINSValidated = false) {
     iframeDocToImport = document.querySelectorAll('#PanelViewDocument iframe');
 
     // Setup de la procédure
@@ -170,37 +183,40 @@ async function processFoundPdfIframeEchanges(elements) {
     extractedData = await handleDataExtraction(fullText, urlPDF, hashId);
 
     console.log("[pdfParser] je travaille sur les données", extractedData);
-    // Boucle de recherche patient - on continue jusqu'à ce qu'il n'y ait plus de refresh nécessaire
-    let continueSearching = true;
-    let attempts = 0;
-    const MAX_ATTEMPTS = 5; // Limite pour éviter une boucle infinie
 
-    while (continueSearching && attempts < MAX_ATTEMPTS) {
-        attempts++;
-        console.log(`[pdfParser] Tentative de recherche de patient ${attempts}/${MAX_ATTEMPTS}`);
+    if (!isINSValidated) {
+        // Boucle de recherche patient - on continue jusqu'à ce qu'il n'y ait plus de refresh nécessaire
+        let continueSearching = true;
+        let attempts = 0;
+        const MAX_ATTEMPTS = 5; // Limite pour éviter une boucle infinie
 
-        // Recherche du patient
-        let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
+        while (continueSearching && attempts < MAX_ATTEMPTS) {
+            attempts++;
+            console.log(`[pdfParser] Tentative de recherche de patient ${attempts}/${MAX_ATTEMPTS}`);
 
-        if (handlePatientSearchReturn.status === 'continue' || handlePatientSearchReturn.message === 'Patient trouvé et cliqué') {
-            console.log("[pdfParser] Recherche de patient terminée avec succès", handlePatientSearchReturn.message);
-            continueSearching = false;
-            console.log("[pdfParser] Traitement terminé pour la page d'échanges");
-        } else if (handlePatientSearchReturn.status === 'refresh') {
-            console.log("[pdfParser] handlePatientSearchReturn nécessite une action:", handlePatientSearchReturn.message);
-            // On attend un peu pour que les changements DOM se produisent
-            await new Promise(resolve => setTimeout(resolve, 500));
-            // On continue la boucle sans quitter la fonction
-            continue;
-        } else {
-            console.log("[pdfParser] Échec de la recherche de patient après plusieurs tentatives");
-            continueSearching = false;
+            // Recherche du patient
+            let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
+
+            if (handlePatientSearchReturn.status === 'continue' || handlePatientSearchReturn.message === 'Patient trouvé et cliqué') {
+                console.log("[pdfParser] Recherche de patient terminée avec succès", handlePatientSearchReturn.message);
+                continueSearching = false;
+                console.log("[pdfParser] Traitement terminé pour la page d'échanges");
+            } else if (handlePatientSearchReturn.status === 'refresh') {
+                console.log("[pdfParser] handlePatientSearchReturn nécessite une action:", handlePatientSearchReturn.message);
+                // On attend un peu pour que les changements DOM se produisent
+                await new Promise(resolve => setTimeout(resolve, 500));
+                // On continue la boucle sans quitter la fonction
+                continue;
+            } else {
+                console.log("[pdfParser] Échec de la recherche de patient après plusieurs tentatives");
+                continueSearching = false;
+            }
         }
-    }
 
-    if (attempts >= MAX_ATTEMPTS) {
-        console.log("[pdfParser] Nombre maximum de tentatives atteint pour la recherche de patient");
-        return;
+        if (attempts >= MAX_ATTEMPTS) {
+            console.log("[pdfParser] Nombre maximum de tentatives atteint pour la recherche de patient");
+            return;
+        }
     }
 
     // On a normalement pu sélectionner le bon patient
@@ -307,9 +323,11 @@ async function selectDocumentTypeES(documentType) {
  */
 async function setTitleIfNeededES(Titre) {
     // Le champ de titre est l'input avec le titre "C'est le titre qu'aura le document dans le dossier patient"
-    const titleInput = document.querySelector("input[title=\"C'est le titre qu'aura le document dans le dossier patient\"]");
+    let titleInput = document.querySelectorAll("input[title=\"C'est le titre qu'aura le document dans le dossier patient\"]");
+    // On sélectionne le dernier input (le plus bas dans le DOM)
+    titleInput = titleInput[titleInput.length - 1];
     if (titleInput) {
-        console.log("[pdfParser] Titre trouvé, on le met dans le champ de titre");
+        console.log("[pdfParser] Titre trouvé, on le met dans le champ de titre", Titre);
         titleInput.value = Titre;
         titleInput.dispatchEvent(new Event('change'));
         return;
@@ -1923,7 +1941,7 @@ function determineDocumentTitle(fullText, documentType) {
     const extractDoctorName = (fullText) => {
         // Diviser le texte en lignes pour analyser ligne par ligne
         const lines = fullText.split('\n');
-        
+
         // Patterns simplifiés pour les noms de médecins, sans distinction de casse
         const doctorPatterns = [
             // Format "Dr" ou "Docteur" suivi de 1-4 mots (pour nom/prénom potentiellement composés)
@@ -1931,14 +1949,14 @@ function determineDocumentTitle(fullText, documentType) {
             // Même format mais n'importe où dans la ligne
             /(?:dr\.?|docteur|médecin|praticien)\s+(\w+(?:\s+\w+){0,3})/i
         ];
-        
+
         // Diviser le document en tiers
         const thirds = [
-            { start: Math.floor(lines.length * 2/3), end: lines.length, name: 'signature' },  // Dernier tiers
-            { start: Math.floor(lines.length * 1/3), end: Math.floor(lines.length * 2/3), name: 'corps' },  // Tiers du milieu
-            { start: 0, end: Math.floor(lines.length * 1/3), name: 'entête' }  // Premier tiers
+            { start: Math.floor(lines.length * 2 / 3), end: lines.length, name: 'signature' },  // Dernier tiers
+            { start: Math.floor(lines.length * 1 / 3), end: Math.floor(lines.length * 2 / 3), name: 'corps' },  // Tiers du milieu
+            { start: 0, end: Math.floor(lines.length * 1 / 3), name: 'entête' }  // Premier tiers
         ];
-        
+
         // Parcourir les tiers dans l'ordre: dernier, milieu, premier
         for (const third of thirds) {
             for (let i = third.start; i < third.end; i++) {
@@ -1954,7 +1972,7 @@ function determineDocumentTitle(fullText, documentType) {
                 }
             }
         }
-        
+
         return null;
     };    // Utiliser la fonction pour extraire le nom du médecin
     const doctorInfo = extractDoctorName(fullText);
