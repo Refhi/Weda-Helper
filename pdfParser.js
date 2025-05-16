@@ -1907,12 +1907,10 @@ function determineDocumentTitle(fullText, documentType) {
         if (typeCR) break;
     }
 
-    // Recherche d'un médecin mentionné (Dr X)
-    // Remplacer la regex actuelle par une version plus robuste
     const extractDoctorName = (fullText) => {
         // Diviser le texte en lignes pour analyser ligne par ligne
         const lines = fullText.split('\n');
-    
+        
         // Patterns simplifiés pour les noms de médecins, sans distinction de casse
         const doctorPatterns = [
             // Format "Dr" ou "Docteur" suivi de 1-4 mots (pour nom/prénom potentiellement composés)
@@ -1920,25 +1918,32 @@ function determineDocumentTitle(fullText, documentType) {
             // Même format mais n'importe où dans la ligne
             /(?:dr\.?|docteur|médecin|praticien)\s+(\w+(?:\s+\w+){0,3})/i
         ];
-    
-        // Parcourir toutes les lignes du document de bas en haut
-        for (let i = lines.length - 1; i >= 0; i--) {
-            const line = lines[i];
-            for (const pattern of doctorPatterns) {
-                const match = line.match(pattern);
-                if (match && match[1]) {
-                    return {
-                        fullName: match[1].trim(),
-                        location: i >= lines.length * 2 / 3 ? 'signature' : (i <= lines.length / 3 ? 'entête' : 'corps')
-                    };
+        
+        // Diviser le document en tiers
+        const thirds = [
+            { start: Math.floor(lines.length * 2/3), end: lines.length, name: 'signature' },  // Dernier tiers
+            { start: Math.floor(lines.length * 1/3), end: Math.floor(lines.length * 2/3), name: 'corps' },  // Tiers du milieu
+            { start: 0, end: Math.floor(lines.length * 1/3), name: 'entête' }  // Premier tiers
+        ];
+        
+        // Parcourir les tiers dans l'ordre: dernier, milieu, premier
+        for (const third of thirds) {
+            for (let i = third.start; i < third.end; i++) {
+                const line = lines[i];
+                for (const pattern of doctorPatterns) {
+                    const match = line.match(pattern);
+                    if (match && match[1]) {
+                        return {
+                            fullName: match[1].trim(),
+                            location: third.name
+                        };
+                    }
                 }
             }
         }
-    
+        
         return null;
-    };
-
-    // Utiliser la fonction pour extraire le nom du médecin
+    };    // Utiliser la fonction pour extraire le nom du médecin
     const doctorInfo = extractDoctorName(fullText);
     const medecin = doctorInfo ? doctorInfo.fullName : null;
     // Construire le titre du document en fonction du contexte
