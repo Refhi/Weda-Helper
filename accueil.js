@@ -392,7 +392,7 @@ function handleVSMVerificationPage(MAX_ERROR_RATIO, CLICK_TIMEOUT) {
         const successRate = Math.round(((checkBoxElementsNum - errorNum) / checkBoxElementsNum) * 100);
         console.log(`Nombre d'erreurs acceptable (${errorNum}/${checkBoxElementsNum}, taux de réussite: ${successRate}%), envoi automatique du VSM`);
         sendWedaNotifAllTabs({
-            message: `Taux de validation du VSM: ${successRate}% au taux de ${(1 - MAX_ERROR_RATIO) * 100}% requis => envoi automatique du VSM`,
+            message: `Taux de validation du VSM: ${successRate}% supérieur au taux de ${(1 - MAX_ERROR_RATIO) * 100}% requis => envoi automatique du VSM`,
             type: 'success',
             duration: 5000,
             icon: 'success',
