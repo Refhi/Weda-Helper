@@ -64,7 +64,7 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
                 // Déplacer l'élément à 300px du bas de l'écran
                 const displacement = window.innerHeight - maxHeight;
                 searchField.style.position = "fixed";
-                searchField.style.top = `${displacement -50}px`;
+                searchField.style.top = `${displacement - 50}px`;
                 searchField.style.left = "0";
                 searchField.style.width = "99%";
                 searchField.style.maxHeight = `${maxHeight}px`;
@@ -958,7 +958,7 @@ async function extractTextFromPDF(pdfUrl) {
     if (pdfUrl.includes('base64')) {
         pdfUrl = pdfUrl.replace('data:application/pdf;base64,', '');
         pdfUrl = atob(pdfUrl);
-        pdf = await pdfjsLib.getDocument({data: pdfUrl}).promise;
+        pdf = await pdfjsLib.getDocument({ data: pdfUrl }).promise;
     }
     else {
         pdf = await pdfjsLib.getDocument(pdfUrl).promise;
@@ -1285,7 +1285,7 @@ function extractDestinationClass(fullText) {
 
 // Extraction du datamatrix des pages du PDF
 async function extractDatamatrixFromPDF(pdfUrl) {
-    if (!pdfUrl) {return null}
+    if (!pdfUrl) { return null }
     const pdf = await pdfjsLib.getDocument(pdfUrl).promise;
     const numPages = pdf.numPages;
     const pagesToCheck = numPages === 1 ? [1] : [1, numPages]; // Vérifie la première et la dernière page, ou juste la première si une seule page
@@ -1908,9 +1908,39 @@ function determineDocumentTitle(fullText, documentType) {
     }
 
     // Recherche d'un médecin mentionné (Dr X)
-    const doctorMatch = fullText.match(/Dr\.?\s+([A-Z][A-Za-z\-]+)/);
-    const medecin = doctorMatch ? doctorMatch[1] : null;
+    // Remplacer la regex actuelle par une version plus robuste
+    const extractDoctorName = (fullText) => {
+        // Diviser le texte en lignes pour analyser ligne par ligne
+        const lines = fullText.split('\n');
+    
+        // Patterns simplifiés pour les noms de médecins, sans distinction de casse
+        const doctorPatterns = [
+            // Format "Dr" ou "Docteur" suivi de 1-4 mots (pour nom/prénom potentiellement composés)
+            /^(?:dr\.?|docteur|médecin|praticien)\s+(\w+(?:\s+\w+){0,3})/i,
+            // Même format mais n'importe où dans la ligne
+            /(?:dr\.?|docteur|médecin|praticien)\s+(\w+(?:\s+\w+){0,3})/i
+        ];
+    
+        // Parcourir toutes les lignes du document de bas en haut
+        for (let i = lines.length - 1; i >= 0; i--) {
+            const line = lines[i];
+            for (const pattern of doctorPatterns) {
+                const match = line.match(pattern);
+                if (match && match[1]) {
+                    return {
+                        fullName: match[1].trim(),
+                        location: i >= lines.length * 2 / 3 ? 'signature' : (i <= lines.length / 3 ? 'entête' : 'corps')
+                    };
+                }
+            }
+        }
+    
+        return null;
+    };
 
+    // Utiliser la fonction pour extraire le nom du médecin
+    const doctorInfo = extractDoctorName(fullText);
+    const medecin = doctorInfo ? doctorInfo.fullName : null;
     // Construire le titre du document en fonction du contexte
     let documentTitle = documentType || "";
 
