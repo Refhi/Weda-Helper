@@ -48,6 +48,9 @@ Merci encore !
 ## Refactory :
 - waitForElement et observeDiseappear peuvent désormais être appelées avec des promesses.
 
+## Suppression de fonctionnalités :
+- [#449](https://github.com/Refhi/Weda-Helper/issues/449) - Suppression du rafraichissement automatique des FSE qui était dysfonctionnel et non pertinent.
+
 
 # [2.12.1] - hotfix
 ## Fix :

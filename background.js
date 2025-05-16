@@ -521,11 +521,6 @@ var advancedDefaultSettings = [{
         "longDescription": "Nécessite de mettre une cotation favorite nommée 'Défaut', 'DéfautPédia', 'DéfautMOP', 'DéfautALD', 'DéfautTC",
         "default": true
     }, {
-        "name": "TweakFSEGestion",
-        "type": TYPE_BOOL,
-        "description": "Activer le rafraichissement automatique des FSE dans la page de télétransmission. (fonctionnalité en beta).",
-        "default": true
-    }, {
         "name": "TweakFSECreation",
         "type": TYPE_BOOL,
         "description": "Active les raccourcis clavier de la création de FSE ainsi que la lecture automatique de la carte vitale.",
