@@ -213,6 +213,8 @@ async function processFoundPdfIframeEchanges(elements) {
     // pas de champ de date possible depuis les échanges sécurisés
     // si #ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 existe, y mettre le focus
     const patientLinkButton = document.querySelector("#ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0");
+    // Stocker son innerText pour l'afficher à côté du bouton de validation
+    const patientNameFromPatientSearchList = patientLinkButton ? patientLinkButton.innerText : null;
     if (patientLinkButton) {
         console.log("[pdfParser] Mise au focus sur le patient sélectionné");
         patientLinkButton.focus();
@@ -234,6 +236,17 @@ async function processFoundPdfIframeEchanges(elements) {
         if (iframe) {
             iframe.setAttribute("tabindex", "-1");
             console.log("[pdfParser] Suppression de l'iframe du taborder");
+        }
+        // Ajouter le nom du patient à côté du bouton de validation
+        if (patientNameFromPatientSearchList) {
+            if (document.querySelector("#pdfParserPatientName")) {
+                document.querySelector("#pdfParserPatientName").remove();
+            }
+            const patientNameSpan = document.createElement('span');
+            patientNameSpan.innerText = `Vers dossier : ${patientNameFromPatientSearchList}`;
+            patientNameSpan.style.marginLeft = '10px';
+            patientNameSpan.id = 'pdfParserPatientName';
+            validationButton.insertAdjacentElement('afterend', patientNameSpan);
         }
     } else {
         console.error("[pdfParser] Bouton de validation introuvable");
