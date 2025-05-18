@@ -51,7 +51,9 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
     waitForElement({
         // Ici on déclenche la procédure à la détection de la page de sélection du patient
         selector: "#ContentPlaceHolder1_FindPatientUcForm1_DropDownListRechechePatient",
-        callback: processFoundPdfIframeEchanges
+        callback: function () {
+            processFoundPdfIframeEchanges(false);
+        }
     });
 
     // On va également déclencher une procédure simplifiée si est cliqué le bouton "Importer le message"
@@ -167,6 +169,7 @@ async function processFoundPdfIframeImport(elements) {
 // Fonction pour traiter le PDF dans la page des échanges sécurisés
 // va suivre une logique similaire à celle de la page d'import
 async function processFoundPdfIframeEchanges(isINSValidated = false) {
+    console.log("[pdfParser] processFoundPdfIframeEchanges avec isINSValidated", isINSValidated);
     iframeDocToImport = document.querySelectorAll('#PanelViewDocument iframe');
 
     // Setup de la procédure
@@ -182,9 +185,26 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     // Récupérer les données via extraction/datamatrix ou sessionStorage si déjà extraites
     extractedData = await handleDataExtraction(fullText, urlPDF, hashId);
 
+    // Surveiller les listes de patients cliquables pour savoir quel patient a été cliqué
+    waitForElement({
+        selector: ".grid-item_tr, .grid-selecteditem",
+        callback: showClickedPatient,
+        triggerOnInit: true
+    });
+
+
+    // Données déjà importées pour ce PDF ?
+    if (extractedData.alreadyImported) {
+        console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction. Renvoi vers le champ de recherche ou le 1er patient de la liste si présent");
+        selectFirstPatientOrSearchField();
+        return;
+    }
+
+
     console.log("[pdfParser] je travaille sur les données", extractedData);
 
     if (!isINSValidated) {
+        console.log("[pdfParser] Je ne suis pas sur une INS validée, je vais donc chercher le patient");
         // Boucle de recherche patient - on continue jusqu'à ce qu'il n'y ait plus de refresh nécessaire
         let continueSearching = true;
         let attempts = 0;
@@ -215,6 +235,8 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
 
         if (attempts >= MAX_ATTEMPTS) {
             console.log("[pdfParser] Nombre maximum de tentatives atteint pour la recherche de patient");
+            // Marquage des données comme déjà importées
+            markDataAsImported(hashId, extractedData);
             return;
         }
     }
@@ -226,11 +248,13 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     await setTitleIfNeededES(extractedData.documentTitle);
     // 3. Sélectionner la bonne catégorie
     await selectDocumentTypeES(extractedData.documentType);
+    // Marquage des données comme déjà importées
+    markDataAsImported(hashId, extractedData);
+
+
     // pas de champ de date possible depuis les échanges sécurisés
     // si #ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 existe, y mettre le focus
     const patientLinkButton = document.querySelector("#ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0");
-    // Stocker son innerText pour l'afficher à côté du bouton de validation
-    const patientNameFromPatientSearchList = patientLinkButton ? patientLinkButton.innerText : null;
     if (patientLinkButton) {
         console.log("[pdfParser] Mise au focus sur le patient sélectionné");
         patientLinkButton.focus();
@@ -253,21 +277,48 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
             iframe.setAttribute("tabindex", "-1");
             console.log("[pdfParser] Suppression de l'iframe du taborder");
         }
-        // Ajouter le nom du patient à côté du bouton de validation
-        if (patientNameFromPatientSearchList) {
-            if (document.querySelector("#pdfParserPatientName")) {
-                document.querySelector("#pdfParserPatientName").remove();
-            }
-            const patientNameSpan = document.createElement('span');
-            patientNameSpan.innerText = `Vers dossier : ${patientNameFromPatientSearchList}`;
-            patientNameSpan.style.marginLeft = '10px';
-            patientNameSpan.id = 'pdfParserPatientName';
-            validationButton.insertAdjacentElement('afterend', patientNameSpan);
-        }
     } else {
         console.error("[pdfParser] Bouton de validation introuvable");
     }
 }
+
+async function showClickedPatient() {
+    // On surveille quel patient a été cliqué. : tout les éléments .grid-item_tr et .grid-selecteditem
+    const possibleClickablePatient = document.querySelectorAll(".grid-item_tr, .grid-selecteditem");
+    if (possibleClickablePatient.length > 0) {
+        possibleClickablePatient.forEach((patient) => {
+            patient.addEventListener("click", function () {
+                console.log("[pdfParser] Patient cliqué :", patient.innerText);
+                // La DDN a un id qui commence par "ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatienDateNaissance_"
+                const DDN = patient.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatienDateNaissance_']");
+                // Le NOM PRENOM a un id qui commence par "ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"
+                const NOM_PRENOM = patient.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_']");
+
+                // Correction de la ligne pour éviter les erreurs de concaténation avec null
+                const nomPrenom = NOM_PRENOM ? NOM_PRENOM.innerText : "";
+                const dateNaiss = DDN ? DDN.innerText : "";
+                const patientData = `${nomPrenom} ${dateNaiss}`.trim();
+
+                console.log("[pdfParser] Patient cliqué :", patientData);
+                // Ajouter le nom du patient à côté du bouton de validation
+                if (document.querySelector("#pdfParserPatientName")) {
+                    document.querySelector("#pdfParserPatientName").remove();
+                }
+                const patientNameSpan = document.createElement('span');
+                patientNameSpan.innerText = `Vers dossier : ${patientData}`;
+                patientNameSpan.style.marginLeft = '10px';
+                patientNameSpan.id = 'pdfParserPatientName';
+                const validationButton = document.querySelector("#messageContainer .button.valid");
+                validationButton.insertAdjacentElement('afterend', patientNameSpan)
+                // On retire les listeners pour éviter les doublons
+                possibleClickablePatient.forEach((p) => {
+                    p.removeEventListener("click", arguments.callee);
+                });
+            });
+        });
+    }
+}
+
 
 
 

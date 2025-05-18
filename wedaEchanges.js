@@ -47,12 +47,14 @@ addTweak('/FolderMedical/WedaEchanges/', 'swapTitrePJetCorpsMessage', function (
     waitForElement({
         selector: selecteurTitres,
         callback: function (elements) {
-            let titreCorpsMessage = elements[0].value;
-            let titrePieceJointe = elements[1].value;
-            console.log('[swapTitrePJetCorpsMessage] titreCorpsMessage', titreCorpsMessage, 'titrePieceJointe', titrePieceJointe);
-            elements[0].value = titrePieceJointe;
-            elements[1].value = titreCorpsMessage;
-            recordMetrics({ clicks: 4, drags: 4 });
+            if (elements.length == 2) {
+                let titreCorpsMessage = elements[0].value;
+                let titrePieceJointe = elements[1].value;
+                console.log('[swapTitrePJetCorpsMessage] titreCorpsMessage', titreCorpsMessage, 'titrePieceJointe', titrePieceJointe);
+                elements[0].value = titrePieceJointe;
+                elements[1].value = titreCorpsMessage;
+                recordMetrics({ clicks: 4, drags: 4 });
+            }
         }
     });
 });
