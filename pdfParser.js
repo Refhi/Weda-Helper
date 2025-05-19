@@ -1839,10 +1839,10 @@ function findImagerie(fullText, imageries) {
 function determineDocumentTitle(fullText, documentType) {
     // Phrases-clés prioritaires avec leurs titres associés
     const phrasesPrioritaires = {
-        "Frottis": ["Frottis gynécologique de dépistage", "Pappilloma", "Frottis cervico-vaginal"],
+        "Frottis": ["Frottis gynécologique de dépistage", "papilloma", "Frottis cervico-vaginal"],
         "Prescription de transport": ["transport pour patient"],
         "Arrêt de travail": ["ARRET DE TRAVAIL", "D’ARRET DE TRAVAIL"],
-        "Protocole de soin": ["nPROTOCOLE DE SOINS ELECTRONIQUE"],
+        "Protocole de soin": ["PROTOCOLE DE SOINS ELECTRONIQUE"],
     };
 
     // Vérifier d'abord s'il y a une phrase prioritaire dans le texte
