@@ -23,7 +23,7 @@ et bien plus encore! (cf. https://github.com/Refhi/Weda-Helper pour voir la list
 📖 Guide d'utilisation: https://github.com/Refhi/Weda-Helper
 🐛 Rapports de bugs: https://github.com/Refhi/Weda-Helper/issues
 📝 Changelog complet: https://github.com/Refhi/Weda-Helper/blob/main/CHANGELOG.md
-❓ Site de la communauté et échange d'astuces : https://communaute.weda.fr/t5/entraide-logiciel-weda/weda-helper-et-weda-helper-companion/td-p/2791
+❓ Site de la communauté et échange d'astuces : https://github.com/Refhi/Weda-Helper/discussions
 
 ### 🔐 Utilisation des Données & Confidentialité: ###
 

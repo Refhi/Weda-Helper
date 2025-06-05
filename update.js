@@ -143,7 +143,7 @@ var firstStartMessage = `
             <a href="https://github.com/Refhi/Weda-Helper/" target="_blank" style="display: inline-flex; align-items: center; padding: 8px 15px; background-color: #f5f5f5; color: #333; text-decoration: none; border-radius: 5px; border: 1px solid #ddd;">
                 <span style="margin-right: 5px;">📝</span> Documentation GitHub
             </a>
-            <a href="https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/m-p/2998" target="_blank" style="display: inline-flex; align-items: center; padding: 8px 15px; background-color: #f5f5f5; color: #333; text-decoration: none; border-radius: 5px; border: 1px solid #ddd;">
+            <a href="https://github.com/Refhi/Weda-Helper/discussions" target="_blank" style="display: inline-flex; align-items: center; padding: 8px 15px; background-color: #f5f5f5; color: #333; text-decoration: none; border-radius: 5px; border: 1px solid #ddd;">
                 <span style="margin-right: 5px;">💖</span> Communauté Weda
             </a>
         </div>
@@ -215,7 +215,7 @@ var updateMessageTemplate = `
             <a href="https://github.com/Refhi/Weda-Helper/" target="_blank" style="color: #1565c0; text-decoration: none;">Weda-Helper sur GitHub</a></p>
             
             <p>💖 Vos encouragements sont appréciés : 
-            <a href="https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/m-p/2998" target="_blank" style="color: #1565c0; text-decoration: none;">Communauté Weda</a></p>
+            <a href="https://github.com/Refhi/Weda-Helper/discussions" target="_blank" style="color: #1565c0; text-decoration: none;">Communauté Weda</a></p>
             
             <p><strong>Bon courage !</strong></p>
             <p><strong>Les développeurs de Weda-Helper</strong></p>

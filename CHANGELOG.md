@@ -5,20 +5,52 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
 # [2.13] - Gel des demandes de fonctionnalités
-## Annonce :
+## AnnonceS : (les détails de la mise à jour sont après)
+Sommaire :
+- gel des demandes de fonctionnalités
+- mon investissement dans Weda-Helper
+- Weda soutiens Weda-Helper !
+- … et pour la suite ?  (bonnes nouvelles !)
+- nouveau forum de discussion
+
+
+#### Gel des demandes de fonctionnalités
 Bonsoir à toustes,
 
 Weda-Helper est arrivé à une certaine forme de maturité... et le temps nécessaire pour le maintenir commence à augmenter : + de fonctionnalités = + de temps de maintenance.
 
-J'ai donc pris la décision, en accord avec @Abel, de geler l'arrivée de nouvelles fonctionnalités pour une durée indéfinie (probablement jusqu'à Weda 2 ?).
+J'ai donc pris la décision, en accord avec @Abel, de faire une pause dans l'arrivée de nouvelles fonctionnalités. (rassurez-vous les bonnes nouvelles sont en dessous !)
 
-Cela dit Weda Helper reste en vie ! Je me concentrerais sur la résolution de bugs… mais ne serai plus en mesure de donner suite aux demandes de fonctionnalité. (les tickets de demande non liés à des bugs seront systématiquement clos, désolé !)
+#### Mon investissement dans Weda-Helper
+Mais Weda Helper reste bien vivant ! Je me concentrerais sur la résolution de bugs… mais ne serai plus en mesure de donner suite aux demandes de fonctionnalité. (les tickets de demande non liés à des bugs seront systématiquement clos, désolé !)
 
 Je tiens à vous remercier toutes et tous pour votre soutien et votre aide dans le développement de ce projet un peu fou qui a largement dépassé toutes mes prédictions !
 
-(pour les tickets déjà ouverts, je vais faire un tri au cas-par-cas pour voir ceux que je laisse dans la TODO-list, encore désolé pour les déceptions à venir 🙏)
-
 Merci encore !
+
+#### Weda soutiens Weda-Helper !
+Je viens d'échanger longuement avec Guillaume de Bruc, directeur de Weda, autour du devenir de Weda-Helper et de ma participation à Weda.
+
+L'échange a été chaleureux, constructif, et Guillaume a prêté une oreille très attentive aux apports de Weda-Helper, son accueil par la communauté et les utilisateurs… et à la charge de travail que cela représente pour moi.
+
+J'attends les dernières confirmations de l'équipe, mais le résumé est bref : Weda s'investit dans Weda-Helper !
+
+Les modalités exactes sont en cours de discussion, je vous apporterais plus de précision dès que possible :)
+
+
+#### … et pour la suite ?
+
+Weda 2 pointe le bout de son nez (si si ! Et ce que j'en ai vu est très prometteur) et j'aurais le plaisir d'être plus intégré au processus de développement en terme d'UI/UX pour avoir cette épure finale qui nous plaît tant (A => B = 1 action, pas 12).
+
+Et Weda Helper "2" ? Eh bien selon l'évolution de Weda 2, Weda-Helper pourrait disparaître car inutile (!) ou devenir (un peu comme maintenant) un terrain d'essai pour de futures fonctionnalités : un environnement où les tests sont très rapides à implémenter, avant déploiement dans Weda 2.
+
+J'espère pouvoir revenir vers vous très vite pour vous préciser la mise en application !
+
+#### Nouveau forum de discussion
+
+Suite à la fermeture du site de la communauté Weda, l'espace de discussion de Weda-Helper est désormais sur github : [Weda-Helper Discussions](https://github.com/Refhi/Weda-Helper/discussions), au moins en attendant que Weda puisse mettre en place le prochain espace de la communauté.
+
+
 
 
 ## Automatismes :
