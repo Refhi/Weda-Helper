@@ -188,7 +188,7 @@ addTweak(urlAATI, 'autoAATI', function () {
                             // The blob has been successfully transferred
                             console.log('The blob has been successfully transferred.');
                             recordMetrics({ clicks: 3, drags: 3 });
-                            observeLastPrintDateChange((newValue) => {
+                            observeLastPrintDateChange(async (newValue) => {
                                 let printTime = Date.parse(newValue);
                                 if (Date.now() - printTime < 10000) {
                                     sendWedaNotifAllTabs({
@@ -196,6 +196,15 @@ addTweak(urlAATI, 'autoAATI', function () {
                                         type: 'success',
                                         icon: 'print'
                                     });
+                                    // D'abord on ferme la prévisu blob de l'AT
+                                    const tabs = await getAllTabs();
+                                    for (const tab of tabs) {
+                                        if (tab.url.includes('blob:')) {
+                                            await closeTab(tab.id);
+                                            console.log('Fermeture de l\'onglet', tab.id, 'car il s\'agit d\'un blob');
+                                        }
+                                    }
+                                    // On ferme la page en cours (la prévisu iframe pdf de l'AT)
                                     window.close(); // Pas la peine d'utiliser les permissions tab car cette page est ouverte par le script
                                 }
                             });

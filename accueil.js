@@ -296,11 +296,15 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*preAlertVSM', async function (
     sessionStorage.setItem('lastVSMAlertPatient', patientNumber);
 });
 
-
-// One-click VSM
-addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', '/FolderMedical/DMP/view'], 'oneClickVSM', function () {
-    const MAX_ERROR_RATIO = 0.3;
-    const CLICK_TIMEOUT = 3000;
+// -------------------------- +1click VSM -------------------------------------
+addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', '/FolderMedical/DMP/view'], 'oneClickVSM', async function () {
+    let pourcentageUtilisateur = await getOptionPromise('oneClickVSMToleranceLevel'); // Au format 70 pour 70% pour 0.3 de ratio
+    // Conversion au format numérique
+    pourcentageUtilisateur = parseFloat(pourcentageUtilisateur);
+    // const MAX_ERROR_RATIO = 0.3;
+    const MAX_ERROR_RATIO = parseFloat((1 - pourcentageUtilisateur / 100).toFixed(2)); // On arrondit à 2 décimales
+    console.log('[oneClickVSM] MAX_ERROR_RATIO', MAX_ERROR_RATIO, 'pourcentageUtilisateur', pourcentageUtilisateur);
+    const CLICK_TIMEOUT = 15000;
 
     // Depuis la page d'accueil on ajoute un bouton pour le VSM en un clic
     waitForElement({
@@ -314,13 +318,16 @@ addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', 
         callback: function () { handleVSMVerificationPage(MAX_ERROR_RATIO, CLICK_TIMEOUT) }
     });
 
-    // Code commenté pour la validation finale, à décommenter si nécessaire
+    // Validation finale, à décommenter si nécessaire
     waitForElement({
         selector: 'div.tab_valid_cancel button.button.valid',
+        // triggerOnInit: true, => contre-productif
         callback: function (elements) {
             if (oneClickVSMwithinTimeRange(CLICK_TIMEOUT)) {
                 recordMetrics({ clicks: 1, drags: 1 });
-                elements[0].click();
+                setTimeout(() => {
+                    elements[0].click();
+                }, 500);
             }
         }
     });
@@ -340,7 +347,7 @@ function setupPatientViewButton() {
     // Le bouton ajoute (nommé +1clickVSM) fait environs 70px de large
     const enoughSpace = conteneurWidth - cadreWidth - 65 > 70; // 65 pour l'icone MonEspaceSanté
     console.log('cadreWidth', cadreWidth, 'conteneurWidth', conteneurWidth, 'enoughSpace', enoughSpace);
-    
+
     // Création du bouton de raccourci
     const oneClickVSMButton = document.createElement('a');
     oneClickVSMButton.textContent = '+1clickVSM';
@@ -357,13 +364,13 @@ function setupPatientViewButton() {
         VSMButton.parentNode.appendChild(oneClickVSMButton);
     } else {
         console.log('Pas assez de place pour ajouter le bouton +1clickVSM à côté, ajout en dessous');
-        
+
         // Créer un div conteneur pour positionner le bouton sous le VSMButton
         const container = document.createElement('div');
         container.style.marginTop = '5px';
         container.appendChild(oneClickVSMButton);
 
-    
+
         VSMButton.parentNode.parentNode.parentNode.appendChild(container, VSMButton.nextSibling);
     }
 }
@@ -385,7 +392,7 @@ function handleVSMVerificationPage(MAX_ERROR_RATIO, CLICK_TIMEOUT) {
         const successRate = Math.round(((checkBoxElementsNum - errorNum) / checkBoxElementsNum) * 100);
         console.log(`Nombre d'erreurs acceptable (${errorNum}/${checkBoxElementsNum}, taux de réussite: ${successRate}%), envoi automatique du VSM`);
         sendWedaNotifAllTabs({
-            message: `Taux de validation du VSM: ${successRate}% supérieur à ${MAX_ERROR_RATIO * 100}%, envoi automatique du VSM`,
+            message: `Taux de validation du VSM: ${successRate}% supérieur au taux de ${(1 - MAX_ERROR_RATIO) * 100}% requis => envoi automatique du VSM`,
             type: 'success',
             duration: 5000,
             icon: 'success',
@@ -424,3 +431,130 @@ function oneClickVSMwithinTimeRange(CLICK_TIMEOUT) {
 function setOneClickVSMTimestamp() {
     sessionStorage.setItem('oneClickVSM', Date.now());
 }
+
+// Sauvegarde de la position de défilement
+addTweak('/FolderMedical/PatientViewForm.aspx', '*keepScrollPosition', function () {
+    const boutonSuiteHaute = document.querySelector('#ContentPlaceHolder1_HistoriqueUCForm1_LinkButtonSuiteWeda');
+    const boutonSuiteBas = document.querySelector('#ContentPlaceHolder1_HistoriqueUCForm1_ButtonSuiteWeda');
+    const boutonsSuite = [boutonSuiteHaute, boutonSuiteBas];
+    let scrollContainer = document.querySelector('#ContentPlaceHolder1_DivScrollHistorique');
+
+    // On ajoute un listener sur les boutons de suite pour sauvegarder la position de défilement
+    boutonsSuite.forEach(bouton => {
+        if (bouton) {
+            bouton.addEventListener('click', function () {
+                if (scrollContainer) {
+                    sessionStorage.setItem('historicScrollPosition', scrollContainer.scrollTop);
+                    console.log('[keepScrollPosition] historicScrollPosition sauvegardée', scrollContainer.scrollTop);
+                }
+                // On attends que les boutons disparaissent pour restaurer la position de défilement
+                observeDiseapearance(boutonSuiteHaute, function () {
+                    console.log('[keepScrollPosition] boutonSuiteHaute disparu');
+                    if (scrollContainer) {
+                        const historicScrollPosition = sessionStorage.getItem('historicScrollPosition');
+                        if (historicScrollPosition) {
+                            let scrollContainer = document.querySelector('#ContentPlaceHolder1_DivScrollHistorique');
+                            scrollContainer.scrollTop = parseInt(historicScrollPosition);
+                            console.log('[keepScrollPosition] historicScrollPosition restaurée', historicScrollPosition);
+                            sessionStorage.removeItem('historicScrollPosition');
+                        }
+                    }
+                });
+            });
+        }
+    });
+});
+
+
+// Simplification de l'accès aux atcd
+// Quand on fait un clic droit sur un atcd depuis la page d'accueil, récupérer l'innerText du span title.
+// Ensuite une fois dans la gestion des antécédents, cliquer sur l'atcd correspondant
+addTweak('/FolderMedical/PatientViewForm.aspx', 'simplifyATCD', function () {
+    const atcdPanelSelector = 'div[title="Cliquez ici pour modifier le volet médical du patient"]';
+    const atcdPanelElement = document.querySelector(atcdPanelSelector);
+    // Ensuite on liste l'ensemble des atcd possibles (uniquement les div directs, sauf ceux avec .sm)
+    const atcdElements = Array.from(atcdPanelElement.children).filter(child =>
+        child.tagName === 'DIV' && !child.classList.contains('sm') && !child.classList.contains('st')
+    );
+    // On y ajoute des clic droit listeners pour chaque atcd
+    atcdElements.forEach(atcdElement => {
+        // Variable pour stocker le timeout pour l'affichage du tooltip
+        let tooltipTimeout;
+        
+        // Ajout d'un mouseover pour afficher une info-bulle après 200ms
+        atcdElement.addEventListener('mouseover', function () {
+            tooltipTimeout = setTimeout(function() {
+                showTooltip(atcdElement, "WH:bouton droit pour éditer");
+            }, 200);
+        });
+        
+        // Ajout d'un mouseout pour annuler le timeout et retirer l'info-bulle
+        atcdElement.addEventListener('mouseout', function () {
+            // Annuler le timeout si l'utilisateur quitte l'élément avant 200ms
+            clearTimeout(tooltipTimeout);
+            // On retire l'info-bulle
+            removeTooltip(atcdElement);
+        });
+        
+        atcdElement.addEventListener('contextmenu', function (e) {
+            e.preventDefault(); // Empêcher le menu contextuel par défaut
+            // On récupère l'innerText du span title
+            const atcdTitle = atcdElement.querySelector('span[title]').innerText;
+            // On le stocke dans le sessionStorage
+            sessionStorage.setItem('atcdTitle', atcdTitle);
+            console.log('[simplifyATCD] atcdTitle sauvegardé', atcdTitle);
+            
+            // Cliquer sur l'élément pour naviguer vers la page des ATCD
+            atcdElement.click();
+        });
+    });
+});
+
+function showTooltip(element, message) {
+    // Créer une info-bulle
+    let tooltip = document.createElement('div');
+    tooltip.className = 'tooltip';
+    tooltip.innerText = message;
+    tooltip.style.position = 'absolute';
+    tooltip.style.backgroundColor = '#fff';
+    tooltip.style.border = '1px solid #000';
+    tooltip.style.padding = '5px';
+    tooltip.style.zIndex = '1000';
+    document.body.appendChild(tooltip);
+
+    // Positionner l'info-bulle
+    let rect = element.getBoundingClientRect();
+    tooltip.style.left = rect.left + window.scrollX + 'px';
+    tooltip.style.top = rect.bottom + window.scrollY + 'px';
+
+    // Retirer l'info-bulle au bout de 2 secondes
+    setTimeout(() => {
+        document.body.removeChild(tooltip);
+    }, 2000);
+}
+
+function removeTooltip(element) {
+    // Retirer l'info-bulle si elle existe
+    let tooltip = document.querySelector('.tooltip');
+    if (tooltip) {
+        document.body.removeChild(tooltip);
+    }
+}
+
+// Ensuite on travaille dans la page des atcd.
+addTweak('/FolderMedical/AntecedentForm.aspx', 'simplifyATCD', function () {
+    const atcdTitle = sessionStorage.getItem('atcdTitle');
+    console.log('[simplifyATCD] atcdTitle récupéré', atcdTitle);
+    if (atcdTitle) {
+        // On cherche l'élément qui correspond à l'atcdTitle
+        const atcdElements = document.querySelectorAll('table[title="Cliquez pour modifier"]');
+        atcdElements.forEach(atcdElement => {
+            if (atcdElement.innerText.includes(atcdTitle)) {
+                console.log('[simplifyATCD] atcdElement', atcdElement);
+                // On clique dessus
+                sessionStorage.removeItem('atcdTitle');
+                atcdElement.click();                
+            }
+        });
+    } 
+});

@@ -26,14 +26,13 @@
 })();
 
 
-let isMSSante = window.location.href.includes('WedaEchanges');
-
 
 
 // FLUX PRINCIPAL DU SCRIPT
 // ------------------------
 
 // 1. Injection du script
+// 1.a. Dans la page d'import
 addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
     // 1. Ajout du bouton pour initialiser les catégories
     addDocumentTypesButton();
@@ -42,28 +41,61 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
         // l'id est splité car il y a un chiffre variable au milieu (1 ou 2 selon que l'option
         // "vertical" est cochée ou nondans la fenêtre d'import)
         selector: "[id^='ContentPlaceHolder1_ViewPdfDocumentUCForm'][id$='_iFrameViewFile']",
-        callback: processFoundPdfIframe
+        callback: processFoundPdfIframeImport
     });
 });
 
+// 2.b. Dans la page des Echanges Sécurisés TODO
 addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
+    console.log('[pdfParser] Chargement de la page d\'échanges');
     waitForElement({
-        // l'id est splité car il y a un chiffre variable au milieu (1 ou 2 selon que l'option
-        // "vertical" est cochée ou nondans la fenêtre d'import)
-        selector: 'a[download$=".pdf"]',
-        callback: processFoundPdfIframe
+        // Ici on déclenche la procédure à la détection de la page de sélection du patient
+        selector: "#ContentPlaceHolder1_FindPatientUcForm1_DropDownListRechechePatient",
+        callback: function () {
+            processFoundPdfIframeEchanges(false);
+        }
     });
+
+    // On va également déclencher une procédure simplifiée si est cliqué le bouton "Importer le message"
     waitForElement({
-        selector: '[id$="_DropDownListRechechePatient"]',
-        callback: searchPatientEchanges
-    })
+        selector: "div.docImportBody td a",
+        text: "Importer le message",
+        callback: function (elements) {
+            // Ajout d'un listener sur le bouton "Importer le message"
+            elements[0].addEventListener("click", function () {
+                console.log("[pdfParser] Importation du message cliqué, je vais traiter le PDF présent dans l'iframe.");
+                processFoundPdfIframeEchanges(true);
+            });
+        }
+    });
+
+    // On ajoute aussi une petite aide : le champ de recherche de patient est décalé vers le bas de l'écran
+    waitForElement({
+        selector: "#ContentPlaceHolder1_FindPatientUcForm1_PanelFindPatient",
+        callback: function () {
+            const searchField = document.querySelector("#ContentPlaceHolder1_FindPatientUcForm1_PanelFindPatient");
+            if (searchField) {
+                const maxHeight = 300;
+                // Déplacer l'élément à 300px du bas de l'écran
+                const displacement = window.innerHeight - maxHeight;
+                searchField.style.position = "fixed";
+                searchField.style.top = `${displacement - 50}px`;
+                searchField.style.left = "0";
+                searchField.style.width = "99%";
+                searchField.style.maxHeight = `${maxHeight}px`;
+                // searchField.style.zIndex = "9999"; // Assurez-vous que l'élément est au-dessus des autres
+                searchField.style.overflow = "auto"; // Ajoute un défilement si le contenu dépasse
+                console.log(`[pdfParser] Champ de recherche de patient décalé vers le bas de ${displacement}px avec une hauteur maximale de ${maxHeight}px`);
+            }
+        }
+    });
 });
 
 
 
-/** A partir de là la procédure suis globalement un enchainement de "roll-over" :
+/** A partir de là la procédure suit globalement un enchainement de "roll-over" :
  * - il regarde a chaque étape si les données sont déjà présentes
- * - si elles ne le sont pas, il effectue l'étape demandée, ce qui déclenche un rafrachissement de la page
+ * - si elles ne le sont pas, il effectue l'étape demandée, ce qui déclenche un rafraichissement de la page
  * - sinon elles le sont, il passe donc à l'étape suivante
  * - et ainsi de suite jusqu'à la fin de la procédure
  * 
@@ -78,52 +110,370 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
  *    failedSearches: ["InsSearch", "DateSearch"]
  * }
  */
-
-async function processFoundPdfIframe(elements) {
+async function processFoundPdfIframeImport(elements) {
     // Setup de la procédure
     // Partie "neutre" => n'entraine pas de rafraichissement de la page ou de DOM change
     // ---------------------------------
-    let dataMatrixReturn = null;
-    let extractedData = null;
-    console.log('[pdfParser] ----------------- Nouvelle boucle --------------------------------');
-    let urlPDF = await findPdfUrl(elements);
-    if (!urlPDF) {
-        console.log("[pdfParser] l'url du PDF n'a pas été trouvée. Arrêt de l'extraction.");
-        return;
-    }
-    console.log('[pdfParser] urlPDF', urlPDF);
 
-    // Extraction du texte
-    let fullText = await extractTextFromPDF(urlPDF);
-    console.log('[pdfParser] fullText', [fullText]);
+    // Extraction des données de base
+    const baseData = await extractBasePdfData(elements);
+    if (!baseData) return;
 
-    // Création d'un id unique
-    let hashId = await customHash(fullText, urlPDF);
-
-    if (isMSSante) {
-        sessionStorage.setItem('latestParsedPDFHash', hashId);
-    }
+    const { urlPDF, fullText, hashId } = baseData;
 
     // Ajout d'un bouton de reset du sessionStorage correspondant
     addResetButton(hashId);
 
     // Récupération des données déjà extraites pour ce PDF
-    extractedData = getPdfData(hashId);
+    let extractedData = getPdfData(hashId);
 
-    // Données déjà extraites pour ce PDF ?
+    // Données déjà importées pour ce PDF ?
     if (extractedData.alreadyImported) {
         console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction. Renvoi vers le champ de recherche ou le 1er patient de la liste si présent");
         selectFirstPatientOrSearchField();
         return;
     }
 
+    // Extraction ou récupération des données
+    extractedData = await handleDataExtraction(fullText, urlPDF, hashId);
+
+    // Partie "non-neutre" - entraine un rafraichissement de la page ou un changement du DOM
+    // ---------------------------------
+    // Recherche du patient par la date de naissance
+    // => on pourrait rechercher par INS si on a le datamatrix, mais cela impliquerait de
+    //    naviguer entre les différents types de recherche dans la fenêtre d'import
+
+    let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
+    if (handlePatientSearchReturn.status === 'refresh') {
+        console.log("[pdfParser] handlePatientSearchReturn", handlePatientSearchReturn.message);
+        // La procédure n'est pas arrivée au bout, un rafraichissement de la page est attendu
+        // On bloque donc ici pour éviter d'intégrer des données trop tôt
+        return;
+    }
+
+    // Intégration des données dans le formulaire d'import
+    await setExtractedDataInForm(extractedData);
+
+    // Marquage des données comme déjà importées
+    markDataAsImported(hashId, extractedData);
+
+    // Enregistrement des métriques approximatives
+    recordMetrics({ clicks: 9, drags: 9, keyStrokes: 10 });
+
+    // Mise du focus sur la date du document importé
+    setTimeout(function () {
+        highlightDate();
+    }, 200);
+}
+
+// Fonction pour traiter le PDF dans la page des échanges sécurisés
+// va suivre une logique similaire à celle de la page d'import
+async function processFoundPdfIframeEchanges(isINSValidated = false) {
+    console.log("[pdfParser] processFoundPdfIframeEchanges avec isINSValidated", isINSValidated);
+    iframeDocToImport = document.querySelectorAll('#PanelViewDocument iframe');
+
+    // Setup de la procédure
+    // Extraction des données de base
+    const baseData = await extractBasePdfData(iframeDocToImport);
+    if (!baseData) return;
+
+    const { urlPDF, fullText, hashId } = baseData;
+
+    // récupération des données déjà extraites pour ce PDF
+    let extractedData = getPdfData(hashId);
+
+    // Récupérer les données via extraction/datamatrix ou sessionStorage si déjà extraites
+    extractedData = await handleDataExtraction(fullText, urlPDF, hashId);
+
+    // Surveiller les listes de patients cliquables pour savoir quel patient a été cliqué
+    waitForElement({
+        selector: ".grid-item_tr, .grid-selecteditem",
+        callback: showClickedPatient,
+        triggerOnInit: true
+    });
+
+
+    // Données déjà importées pour ce PDF ?
+    if (extractedData.alreadyImported) {
+        console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction. Renvoi vers le champ de recherche ou le 1er patient de la liste si présent");
+        selectFirstPatientOrSearchField();
+        return;
+    }
+
+
+    console.log("[pdfParser] je travaille sur les données", extractedData);
+
+    if (!isINSValidated) {
+        console.log("[pdfParser] Je ne suis pas sur une INS validée, je vais donc chercher le patient");
+        // Boucle de recherche patient - on continue jusqu'à ce qu'il n'y ait plus de refresh nécessaire
+        let continueSearching = true;
+        let attempts = 0;
+        const MAX_ATTEMPTS = 5; // Limite pour éviter une boucle infinie
+
+        while (continueSearching && attempts < MAX_ATTEMPTS) {
+            attempts++;
+            console.log(`[pdfParser] Tentative de recherche de patient ${attempts}/${MAX_ATTEMPTS}`);
+
+            // Recherche du patient
+            let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
+
+            if (handlePatientSearchReturn.status === 'continue' || handlePatientSearchReturn.message === 'Patient trouvé et cliqué') {
+                console.log("[pdfParser] Recherche de patient terminée avec succès", handlePatientSearchReturn.message);
+                continueSearching = false;
+                console.log("[pdfParser] Traitement terminé pour la page d'échanges");
+            } else if (handlePatientSearchReturn.status === 'refresh') {
+                console.log("[pdfParser] handlePatientSearchReturn nécessite une action:", handlePatientSearchReturn.message);
+                // On attend un peu pour que les changements DOM se produisent
+                await new Promise(resolve => setTimeout(resolve, 500));
+                // On continue la boucle sans quitter la fonction
+                continue;
+            } else {
+                console.log("[pdfParser] Échec de la recherche de patient après plusieurs tentatives");
+                continueSearching = false;
+            }
+        }
+
+        if (attempts >= MAX_ATTEMPTS) {
+            console.log("[pdfParser] Nombre maximum de tentatives atteint pour la recherche de patient");
+            // Marquage des données comme déjà importées
+            markDataAsImported(hashId, extractedData);
+            return;
+        }
+    }
+
+    // On a normalement pu sélectionner le bon patient
+    // Sélectionner la bonne destination d'importation (soumis à option false par défaut)
+    await selectDestinationIfNeededES(extractedData.destinationClass);
+    // 2. Mettre le titre
+    await setTitleIfNeededES(extractedData.documentTitle);
+    // 3. Sélectionner la bonne catégorie
+    await selectDocumentTypeES(extractedData.documentType);
+    // Marquage des données comme déjà importées
+    markDataAsImported(hashId, extractedData);
+
+
+    // pas de champ de date possible depuis les échanges sécurisés
+    // si #ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 existe, y mettre le focus
+    const patientLinkButton = document.querySelector("#ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0");
+    if (patientLinkButton) {
+        console.log("[pdfParser] Mise au focus sur le patient sélectionné");
+        patientLinkButton.focus();
+        ListTabOrderer(patientLinkButton.id);
+        await observeDiseapearance(patientLinkButton);
+    }
+    // 4. mettre le focus sur le bouton de validation "#messageContainer class.button.valid"
+    const validationButton = document.querySelector("#messageContainer .button.valid");
+    if (validationButton) {
+        console.log("[pdfParser] Mise au focus sur le bouton de validation");
+        validationButton.focus();
+        sendWedaNotifAllTabs({
+            message: "Sélection du patient et des données d'import terminée. Vous pouvez valider l'import en appuyant sur Enter. Maj+Tab pour effectuer des corrections.",
+            type: 'success',
+            icon: 'success'
+        });
+        // Supprimer #iFrameViewFile du taborder
+        const iframe = document.querySelector("#iFrameViewFile");
+        if (iframe) {
+            iframe.setAttribute("tabindex", "-1");
+            console.log("[pdfParser] Suppression de l'iframe du taborder");
+        }
+    } else {
+        console.error("[pdfParser] Bouton de validation introuvable");
+    }
+}
+
+async function showClickedPatient() {
+    // On surveille quel patient a été cliqué. : tout les éléments .grid-item_tr et .grid-selecteditem
+    const possibleClickablePatient = document.querySelectorAll(".grid-item_tr, .grid-selecteditem");
+    if (possibleClickablePatient.length > 0) {
+        possibleClickablePatient.forEach((patient) => {
+            patient.addEventListener("click", function () {
+                console.log("[pdfParser] Patient cliqué :", patient.innerText);
+                // La DDN a un id qui commence par "ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatienDateNaissance_"
+                const DDN = patient.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatienDateNaissance_']");
+                // Le NOM PRENOM a un id qui commence par "ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"
+                const NOM_PRENOM = patient.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_']");
+
+                // Correction de la ligne pour éviter les erreurs de concaténation avec null
+                const nomPrenom = NOM_PRENOM ? NOM_PRENOM.innerText : "";
+                const dateNaiss = DDN ? DDN.innerText : "";
+                const patientData = `${nomPrenom} ${dateNaiss}`.trim();
+
+                console.log("[pdfParser] Patient cliqué :", patientData);
+                // Ajouter le nom du patient à côté du bouton de validation
+                if (document.querySelector("#pdfParserPatientName")) {
+                    document.querySelector("#pdfParserPatientName").remove();
+                }
+                const patientNameSpan = document.createElement('span');
+                patientNameSpan.innerText = `Vers dossier : ${patientData}`;
+                patientNameSpan.style.marginLeft = '10px';
+                patientNameSpan.id = 'pdfParserPatientName';
+                const validationButton = document.querySelector("#messageContainer .button.valid");
+                validationButton.insertAdjacentElement('afterend', patientNameSpan)
+                // On retire les listeners pour éviter les doublons
+                possibleClickablePatient.forEach((p) => {
+                    p.removeEventListener("click", arguments.callee);
+                });
+            });
+        });
+    }
+}
+
+
+
+
+// Fonctions utilitaires
+function returnMessageBodyES() {
+    // Sélection de l'élément messageBody
+    const messageBodyElement = document.querySelector('.messageBody');
+    if (messageBodyElement) {
+        // Extraction du texte de l'élément
+        const messageBodyText = messageBodyElement.innerText.trim();
+        console.log("[pdfParser] Texte extrait de messageBody :", messageBodyText);
+
+        return messageBodyText;
+    } else {
+        console.warn("[pdfParser] Aucun élément messageBody trouvé.");
+    }
+
+    return null;
+}
+
+/**
+ * Sélectionne le bon type de document pour les échanges sécurisés
+ */
+async function selectDocumentTypeES(documentType) {
+    console.log("[pdfParser] Sélection du type de document :", documentType);
+    // Le menu déroulant est le select avec le titre "Attribuer une classification au document"
+    const selectElement = document.querySelector("select[title='Attribuer une classification au document']");
+
+    // Vérifier si on a un élément select et un type de document spécifié
+    if (!selectElement || !documentType) {
+        console.log("[pdfParser] Pas de select ou pas de type de document défini");
+        return;
+    }
+
+    // Parcourir les options pour trouver celle qui correspond au documentType
+    for (let i = 0; i < selectElement.options.length; i++) {
+        const option = selectElement.options[i];
+        // On compare en ignorant la casse
+        if (option.text.toLowerCase() === documentType.toLowerCase()) {
+            // Option trouvée, on la sélectionne
+            selectElement.value = option.value;
+            selectElement.dispatchEvent(new Event('change'));
+            console.log(`[pdfParser] Type de document '${documentType}' sélectionné`);
+            return;
+        }
+    }
+    console.warn(`[pdfParser] Aucun type de document correspondant à '${documentType}' trouvé`);
+
+}
+
+/**
+ * Insère le titre au bon endroit pour les échanges sécurisés
+ */
+async function setTitleIfNeededES(Titre) {
+    // Le champ de titre est l'input avec le titre "C'est le titre qu'aura le document dans le dossier patient"
+    let titleInput = document.querySelectorAll("input[title=\"C'est le titre qu'aura le document dans le dossier patient\"]");
+    // On sélectionne le dernier input (le plus bas dans le DOM)
+    titleInput = titleInput[titleInput.length - 1];
+    if (titleInput) {
+        console.log("[pdfParser] Titre trouvé, on le met dans le champ de titre", Titre);
+        titleInput.value = Titre;
+        titleInput.dispatchEvent(new Event('change'));
+        return;
+    }
+    console.error("[pdfParser] Titre non trouvé, impossible de le mettre dans le champ de titre");
+}
+
+/**
+ * Sélectionne la bonne destination d'importation dans les **échanges sécurisés**, si l'option est activée.
+ */
+async function selectDestinationIfNeededES(destinationNumber) {
+    const selectionNeeded = await getOptionPromise('PdfParserAutoClassification');
+    if (!selectionNeeded) {
+        return;
+    }
+    // Si l'option est activée, on va chercher la bonne destination
+    // Les destinations possibles sont sélectionnées via des éléments clickables
+    // On reprend la classification de extractDestinationClass, mais les noms sont différents
+    const destinations = {
+        '1': "Ranger dans les consultations",
+        '2': "Ranger dans les résultats d'examens",
+        '3': "Ranger dans les courriers"
+    };
+    // On va cliquer sur l'élément .weImportDocTargets dont le titre est celui de la destination
+    const elementACliquer = document.querySelector(`.weImportDocTargets[title="${destinations[destinationNumber]}"]`);
+    if (elementACliquer) {
+        console.log("[pdfParser] Sélection de la destination d'importation :", destinations[destinationNumber]);
+        // On va cliquer sur l'élément
+        elementACliquer.click();
+        return;
+    }
+
+    console.error("[pdfParser] Aucune destination d'importation trouvée pour le numéro :", destinationNumber);
+}
+
+
+
+
+
+/**
+ * Extrait les données de base communes à partir d'un PDF (url, texte, hash).
+ * @param {Element[]} elements - Les éléments DOM contenant l'iframe.
+ * @returns {Promise<Object|null>} - Les données de base extraites ou null si échec.
+ */
+async function extractBasePdfData(elements) {
+    console.log('[pdfParser] ----------------- Nouvelle boucle --------------------------------');
+    // Initialisation des variables
+    let urlPDF = null;
+    let fullText = null;
+    let hashId = null;
+
+    // 1. Trouver l'URL du PDF
+    urlPDF = await findPdfUrl(elements);
+    if (!urlPDF) {
+        console.log("[pdfParser] l'url du PDF n'a pas été trouvée. Arrêt de l'extraction.");
+        urlPDF = null;
+        fullText = returnMessageBodyES();
+        hashId = await customHash(fullText, urlPDF);
+        const toReturn = { urlPDF, fullText, hashId };
+        console.log("[pdfParser] toReturn", toReturn);
+        return toReturn;
+    }
+    console.log('[pdfParser] urlPDF', urlPDF);
+
+    // 2. Extraire le texte du PDF
+    fullText = await extractTextFromPDF(urlPDF);
+    console.log('[pdfParser] fullText', [fullText]);
+
+    // 3. Créer un identifiant unique pour ce PDF
+    hashId = await customHash(fullText, urlPDF);
+
+    return { urlPDF, fullText, hashId };
+}
+
+/**
+ * Gère l'extraction des données à partir du PDF (texte ou datamatrix).
+ * @param {string} fullText - Le texte extrait du PDF.
+ * @param {string} urlPDF - L'URL du PDF.
+ * @param {string} hashId - L'identifiant unique du PDF.
+ * @param {boolean} isEchanges - Si true, contexte des échanges sécurisés, sinon import standard.
+ * @returns {Promise<Object>} - Les données extraites du PDF.
+ */
+async function handleDataExtraction(fullText, urlPDF, hashId) {
+    let dataMatrixReturn = null;
+    let extractedData = getPdfData(hashId);
+
     if (Object.keys(extractedData).length > 0) {
         console.log("[pdfParser] Données déjà extraites pour ce PDF. Utilisation des données existantes.", extractedData);
+        return extractedData;
     } else {
         console.log("[pdfParser] Données non extraites pour ce PDF. Extraction des données.");
         // Extraction des informations pertinentes
         extractedData = await extractRelevantData(fullText, urlPDF);
-        // Si on n'a pas de nirMatches, on se rabattra sur la DDN et le nom.
+
+        // Si on n'a pas de nirMatches, on se rabattra sur la DDN et le nom
         if (!extractedData.nirMatches || extractedData.nirMatches.length === 0) {
             // Si la date de naissance ou le nom n'ont pas été trouvés, on recherche le datamatrix
             if (!extractedData.dateOfBirth || extractedData.nameMatches.length === 0) {
@@ -137,65 +487,16 @@ async function processFoundPdfIframe(elements) {
             }
         }
 
-        // Stockage et priorisation des informations pertinentes dans le sessionStorage
+        // Stockage et priorisation des informations pertinentes
         // => le dataMatrix est prioritaire sur les informations extraites du texte
         completeExtractedData(extractedData, dataMatrixReturn);
         console.log('[pdfParser] extractedData', JSON.stringify(extractedData));
         setPdfData(hashId, extractedData);
-    }
 
-    // Partie "non-neutre" - entraine un rafraichissement de la page ou un changement du DOM
-    // ---------------------------------
-    // Recherche du patient par la date de naissance
-    // => on pourrait rechercher par INS si on a le datamatrix, mais cela impliquerait de
-    //    naviguer entre les différents types de recherche dans la fenêtre d'import
-
-    if (!isMSSante) {
-        let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
-        if (handlePatientSearchReturn.status === 'refresh') {
-            console.log("[pdfParser] handlePatientSearchReturn", handlePatientSearchReturn.message);
-            // La procédure n'est pas arrivée au bout, un rafraichissement de la page est attendu
-            // On bloque donc ici pour éviter d'intégrer des données trop tôt
-            return;
-        }
-
-
-        // Intégration des données dans le formulaire d'import
-        await setExtractedDataInForm(extractedData);
-
-        // Marquage des données comme déjà importées
-        markDataAsImported(hashId, extractedData);
-    }
-
-    // Enregistrement des métriques approximatives
-    recordMetrics({ clicks: 9, drags: 9, keyStrokes: 10 });
-
-
-    // Mise du focus sur la date du document importé
-    setTimeout(function () {
-        highlightDate();
-    }, 200);
-
-}
-
-async function searchPatientEchanges() {
-    let hashId = sessionStorage.getItem('latestParsedPDFHash');
-    if (!hashId) {
-        return;
-        //TODO gérer l'erreur correctement
-    }
-
-    let extractedData = getPdfData(hashId);
-    if (!extractedData.alreadyImported) {
-        let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
-        setTimeout(() => {
-            markDataAsImported(hashId, extractedData);
-        }, "1000"); //Si appellé trop tôt, créé une race condition
+        return extractedData;
     }
 }
 
-
-// Fonctions utilitaires
 /**
  * Récupère les données du PDF en fonction du hash.
  * 
@@ -235,7 +536,12 @@ function setPdfData(hashId, data) {
 
 // Rechercher quels types de recherche sont possibles
 function checkSearchPossibility(searchOptionValue) {
-    let dropDownResearch = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_DropDownListRechechePatient']");
+    let dropDownResearch = document.querySelector("[id*='FindPatientUcForm'][id*='_DropDownListRechechePatient']");
+    if (!dropDownResearch) {
+        console.error("[pdfParser] Le dropdown de recherche n'a pas été trouvé : recherche terminée ?");
+        return false;
+    }
+
     let options = dropDownResearch.options;
     for (let i = 0; i < options.length; i++) {
         if (options[i].value === searchOptionValue) {
@@ -264,6 +570,7 @@ function checkSearchPossibility(searchOptionValue) {
  * @returns {string} message - Le message associé au statut.
  */
 function handlePatientSearch(extractedData, hashId) {
+    console.log("[pdfParser] handlePatientSearch", extractedData);
     // On initialise les priorités de recherche en vérifiant si les données sont présentes et cohérentes
     const searchPriorities = [
         { type: "InsSearch", data: extractedData.nirMatches && extractedData.nirMatches.length > 0 ? extractedData.nirMatches[0] : null },
@@ -275,20 +582,15 @@ function handlePatientSearch(extractedData, hashId) {
 
     for (let search of searchPriorities) {
         console.log("[pdfParser] Les méthodes refusées sont :", extractedData.failedSearches);
+        console.log("[pdfParser] Recherche de patient par :", search.type, "=>", search.data);
         if (search.data && !extractedData.failedSearches.includes(search.type)) {
             let properSearched = lookupPatient(search.type, search.data);
+            console.log(`[pdfParser] après lookupPatient : ${search.type} :`, properSearched);
             if (properSearched.status === 'success') {
                 console.log(`[pdfParser] ${search.type} présent, on continue à chercher le patient.`);
                 const clicPatientReturn = clicPatient(extractedData);
                 console.log("[pdfParser] clicPatientReturn", clicPatientReturn.status, clicPatientReturn.message);
                 if (clicPatientReturn.status === 'success') {
-                    if (isMSSante) {
-                        let importDiv = document.querySelector('we-doc-import');
-                        let importedPatient = document.createElement('h3');
-                        importedPatient.innerText = 'Patient sélectionné : ' + clicPatientReturn.patientName;
-                        importedPatient.style = 'text-align:center;color:red;'
-                        importDiv.insertAdjacentElement('afterbegin', importedPatient);
-                    }
                     return { status: 'refresh', message: 'Patient trouvé et cliqué' };
                 } else if (clicPatientReturn.status === 'error') {
                     extractedData.failedSearches.push(search.type);
@@ -320,9 +622,6 @@ function handlePatientSearch(extractedData, hashId) {
 
 // Fonction pour sélectionner le premier patient de la liste ou le champ de recherche
 function selectFirstPatientOrSearchField() {
-    if (isMSSante) {
-        return;
-    }
     // On va chercher le premier patient de la liste
     let firstPatient = getPatientsList()[0];
     console.log("[pdfParser] firstPatient", firstPatient);
@@ -353,17 +652,11 @@ function addResetButton(hashId) {
     };
     let binButtonSelector = "#ContentPlaceHolder1_FileStreamClassementsGrid_DeleteButtonGridFileStreamClassement_" + actualImportActionLine();
     let buttonContainer = document.querySelector(binButtonSelector);
-    if (isMSSante) {
-        buttonContainer = document.querySelector('a[download$=".pdf"]');
-    }
     buttonContainer.insertAdjacentElement('afterend', resetButton);
 }
 
 // met la date en focus et surbrillance pour faciliter la saisie
 function highlightDate() {
-    if (isMSSante) {
-        return;
-    }
     let dateSelector = `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_${actualImportActionLine()}`;
     console.log("[pdfParser] Mise en surbrillance de la date pour faciliter la saisie.");
     document.querySelector(dateSelector).focus();
@@ -377,6 +670,9 @@ function actualImportActionLine() {
     if (ligneSelectionne) {
         // On cherche ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_0 mais le 0 est variable jusqu'à 9
         let patientADefinirElement = ligneSelectionne.querySelector("[id^='ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_']");
+        if (!patientADefinirElement) {
+            return null;
+        }
         // de là on récupère le dernier chiffre de l'id de l'élément
         let numeroDeLigne = patientADefinirElement.id.match(/\d+$/)[0];
         return numeroDeLigne;
@@ -475,25 +771,26 @@ function clicPatient(extractedData) {
         }
     }
     if (!patientToClick) {
-        return { status: 'error', message: "Aucun patient trouvé", patientName: null };
+        return { status: 'error', message: "Aucun patient trouvé" };
     }
 
     let patientToClickName = patientToClick.innerText;
-    if (selectedPatientName() !== 'Patient à définir...') {
+    let patientSelectionneText = selectedPatientName();
+    if (patientSelectionneText !== 'Patient à définir...' && patientSelectionneText !== null) {
         // Ici le bon patient est déjà sélectionné pour import.
         // On en déduis que la procédure a déjà aboutie et qu'il faut s'arrêter.
         console.log("[pdfParser] Un patient est déjà sélectionné, arrêt de la recherche.");
-        return { status: 'continue', message: "Un patient est déjà sélectionné", patientName: null };
+        return { status: 'continue', message: "Un patient est déjà sélectionné" };
     } else {
         let patientToClicSelector = "#" + patientToClick.id;
         // patientToClick.click(); => ne fonctionne pas à cause du CSP en milieu ISOLATED
         if (patientToClick) {
             console.log("[pdfParser] Patient à sélectionner :", patientToClickName, patientToClick);
             clicCSPLockedElement(patientToClicSelector);
-            return { status: 'success', message: "Patient trouvé et cliqué", patientName: patientToClickName };
+            return { status: 'success', message: "Patient trouvé et cliqué" };
         } else {
             console.log("[pdfParser] Patient non trouvé");
-            return { status: 'error', message: "Aucun patient trouvé", patientName: null };
+            return { status: 'error', message: "Aucun patient trouvé" };
         }
     }
 }
@@ -589,13 +886,14 @@ function searchProperPatient(patientElements, nameMatches) {
 }
 
 function selectedPatientName() {
-    if (isMSSante) {
-        return 'Patient à définir...';
-    }
     // On va rechercher si un patient est déjà sélectionné dans l'élément #ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_1
     let idPatientSelectedBaseId = '#ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_'
     // On ajoute le niveau de selection actuel au sélecteur
-    let idPatientSelected = idPatientSelectedBaseId + actualImportActionLine();
+    let actionLineNumber = actualImportActionLine();
+    if (!actionLineNumber) { // On est probablement dans le cas des échanges sécurisés
+        return null
+    }
+    let idPatientSelected = idPatientSelectedBaseId + actionLineNumber;
     // On cherche son nom dans l'innerText
     let patientSelectedElement = document.querySelector(idPatientSelected);
     let patientSelectedName = patientSelectedElement.innerText;
@@ -621,17 +919,14 @@ function lookupPatient(searchType, data) {
     // On vérifie que la valeur de recherche est disponible (les comptes secretaire n'ont pas forcément la recherche par INS)
     if (!checkSearchPossibility(searchType)) {
         console.error(`[pdfParser] Type de recherche ${searchType} non disponible.`);
-        sendWedaNotif({
-            message: `Type de recherche ${searchType} non disponible. Contactez votre expert pour l'activer.`,
-            type: 'fail'
-        })
         return { status: 'searchTypeFail', message: `Type de recherche ${searchType} non disponible.` };
     }
 
     // Petite conversion de donnée : si on recherche par nom, on veut en fait une recherche par NIR tronqué (sans clé)
     if (searchType === "Nom") { data = data.substring(0, 13); }
 
-    const dropDownResearch = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_DropDownListRechechePatient']");
+    let dropDownResearch = document.querySelector("[id*='FindPatientUcForm'][id*='_DropDownListRechechePatient']");
+
 
     if (dropDownResearch.value !== searchType) {
         console.log(`[pdfParser] Menu de recherche réglé sur ${dropDownResearch.value} alors qu'on souhaite ${searchType} => Changement de valeur du menu déroulant de recherche vers ${searchType} + change event`);
@@ -644,8 +939,8 @@ function lookupPatient(searchType, data) {
     }
 
     const inputFields = {
-        Naissance: document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherchePatientByDate']"),
-        others: document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_TextBoxRecherche']")
+        Naissance: document.querySelector("[id*='FindPatientUcForm'][id*='_TextBoxRecherchePatientByDate']"),
+        others: document.querySelector("[id*='FindPatientUcForm'][id*='_TextBoxRecherche']")
     };
 
     const inputResearch = searchType === "Naissance" ? inputFields.Naissance : inputFields.others;
@@ -710,19 +1005,14 @@ function isValidSearchType(searchType) {
 
 // Renvoie l'URL du PDF de l'iframe quand elle est chargée 
 async function findPdfUrl(elements) {
-    if (isMSSante) {
-        let anchor = elements[0];
-        if (!anchor) {
-            console.error("[pdfParser] lien non trouvée. Arrêt de l'extraction.");
-            resolve(null);
-        }
-
-        return anchor.href;
-    }
     let iframe = elements[0];
     if (!iframe) {
-        console.error("[pdfParser] iframe non trouvée. Arrêt de l'extraction.");
-        resolve(null);
+        let base64 = document.querySelector('.attachmentContainer object[type="application/pdf"]'); //Bypass pour les pages Echanges Sécurisés sans iframe PDF
+        if (!base64) {
+            console.warn("[pdfParser] iframe et base64 non trouvés. Arrêt de l'extraction du pdf.");
+            return null;
+        }
+        return base64.data;
     }
 
     return new Promise((resolve, reject) => {
@@ -746,7 +1036,15 @@ async function findPdfUrl(elements) {
 
 // Extraction du texte du PDF en 2 parties
 async function extractTextFromPDF(pdfUrl) {
-    const pdf = await pdfjsLib.getDocument(pdfUrl).promise;
+    let pdf;
+    if (pdfUrl.includes('base64')) {
+        pdfUrl = pdfUrl.replace('data:application/pdf;base64,', '');
+        pdfUrl = atob(pdfUrl);
+        pdf = await pdfjsLib.getDocument({ data: pdfUrl }).promise;
+    }
+    else {
+        pdf = await pdfjsLib.getDocument(pdfUrl).promise;
+    }
     const maxPages = pdf.numPages;
     const pagePromises = [];
     for (var i = 1; i <= maxPages; i++) {
@@ -1069,6 +1367,7 @@ function extractDestinationClass(fullText) {
 
 // Extraction du datamatrix des pages du PDF
 async function extractDatamatrixFromPDF(pdfUrl) {
+    if (!pdfUrl) { return null }
     const pdf = await pdfjsLib.getDocument(pdfUrl).promise;
     const numPages = pdf.numPages;
     const pagesToCheck = numPages === 1 ? [1] : [1, numPages]; // Vérifie la première et la dernière page, ou juste la première si une seule page
@@ -1352,9 +1651,6 @@ function visualizeBinaryBitmap(binaryBitmap) {
 }
 
 async function determineDocumentType(fullText) {
-    if (isMSSante) {
-        return null;
-    }
     // console.log('[pdfParser] determineDocumentType');
     // On utilise un tableau de tableaux pour permettre de parcourir les types de documents par ordre de spécificité
     // Et de mettre plusieurs fois la même clé, avec des valeurs de moins en moins exigeantes
@@ -1372,6 +1668,13 @@ async function determineDocumentType(fullText) {
 
     // Vérifier que tous les types de documents sont bien définis
     const possibleDocumentTypes = initDocumentTypes();
+
+    // Si possibleDocumentTypes est undefined (cas des échanges sécurisés)
+    // on retourne null pour éviter l'erreur
+    if (!possibleDocumentTypes) {
+        console.error('[pdfParser] Liste des types de documents non disponible');
+        return null;
+    }
 
     // Vérifier que chaque type de document dans documentTypes est présent dans possibleDocumentTypes
     for (const [type, _] of documentTypes) {
@@ -1413,10 +1716,15 @@ async function determineDocumentType(fullText) {
 // Fonction pour initialiser les catégories possibles de classification
 function initDocumentTypes() {
     // on va d'abord sélectionner le menu contenant les catégories de classification
-    const dropDownListCats = "#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_0";
-    const dropDownCats = document.querySelector(dropDownListCats);
+    let dropDownCats = document.querySelector("#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_0");
+    // Si l'élément n'existe pas, on est probablement dans les échanges sécurisés donc on va essayer de le trouver ailleurs
     if (!dropDownCats) {
-        alert('[pdfParser] Pour initialiser les catégories, vous devez avoir au moins un document en attente de classification.');
+        dropDownCats = document.querySelector("select[title='Attribuer une classification au document']");
+        console.log('[pdfParser] dropDownCats ES', dropDownCats);
+    }
+    if (!dropDownCats) {
+        console.warn('[pdfParser] Impossible de trouver le menu déroulant des catégories de classification.');
+        // alert('[pdfParser] Pour initialiser les catégories, vous devez avoir au moins un document en attente de classification.');
         return;
     }
     const options = dropDownCats.options;
@@ -1531,10 +1839,10 @@ function findImagerie(fullText, imageries) {
 function determineDocumentTitle(fullText, documentType) {
     // Phrases-clés prioritaires avec leurs titres associés
     const phrasesPrioritaires = {
-        "Frottis": ["Frottis gynécologique de dépistage", "Pappilloma", "Frottis cervico-vaginal"],
+        "Frottis": ["Frottis gynécologique de dépistage", "papilloma", "Frottis cervico-vaginal"],
         "Prescription de transport": ["transport pour patient"],
         "Arrêt de travail": ["ARRET DE TRAVAIL", "D’ARRET DE TRAVAIL"],
-        "Protocole de soin": ["nPROTOCOLE DE SOINS ELECTRONIQUE"],
+        "Protocole de soin": ["PROTOCOLE DE SOINS ELECTRONIQUE"],
     };
 
     // Vérifier d'abord s'il y a une phrase prioritaire dans le texte
@@ -1681,10 +1989,45 @@ function determineDocumentTitle(fullText, documentType) {
         if (typeCR) break;
     }
 
-    // Recherche d'un médecin mentionné (Dr X)
-    const doctorMatch = fullText.match(/Dr\.?\s+([A-Z][A-Za-z\-]+)/);
-    const medecin = doctorMatch ? doctorMatch[1] : null;
+    const extractDoctorName = (fullText) => {
+        // Diviser le texte en lignes pour analyser ligne par ligne
+        const lines = fullText.split('\n');
 
+        // Patterns simplifiés pour les noms de médecins, sans distinction de casse
+        const doctorPatterns = [
+            // Format "Dr" ou "Docteur" suivi de 1-4 mots (pour nom/prénom potentiellement composés)
+            /^(?:dr\.?|docteur|médecin|praticien)\s+(\w+(?:\s+\w+){0,3})/i,
+            // Même format mais n'importe où dans la ligne
+            /(?:dr\.?|docteur|médecin|praticien)\s+(\w+(?:\s+\w+){0,3})/i
+        ];
+
+        // Diviser le document en tiers
+        const thirds = [
+            { start: Math.floor(lines.length * 2 / 3), end: lines.length, name: 'signature' },  // Dernier tiers
+            { start: Math.floor(lines.length * 1 / 3), end: Math.floor(lines.length * 2 / 3), name: 'corps' },  // Tiers du milieu
+            { start: 0, end: Math.floor(lines.length * 1 / 3), name: 'entête' }  // Premier tiers
+        ];
+
+        // Parcourir les tiers dans l'ordre: dernier, milieu, premier
+        for (const third of thirds) {
+            for (let i = third.start; i < third.end; i++) {
+                const line = lines[i];
+                for (const pattern of doctorPatterns) {
+                    const match = line.match(pattern);
+                    if (match && match[1]) {
+                        return {
+                            fullName: match[1].trim(),
+                            location: third.name
+                        };
+                    }
+                }
+            }
+        }
+
+        return null;
+    };    // Utiliser la fonction pour extraire le nom du médecin
+    const doctorInfo = extractDoctorName(fullText);
+    const medecin = doctorInfo ? doctorInfo.fullName : null;
     // Construire le titre du document en fonction du contexte
     let documentTitle = documentType || "";
 
@@ -1791,6 +2134,23 @@ async function determineDocumentDate(fullText, dateMatches, documentDateRegexes)
 // Détermination de la date de naissance
 function determineDateOfBirth(fullText, dateMatches, dateOfBirthRegexes) {
     let dateOfBirth = null;
+    // Recherche prioritaire dans .messageClassement s'il existe
+    const messageClassementElement = document.querySelectorAll('.messageClassement');
+    messageClassementElement.forEach((element) => {
+        // On ne prend que si le innerText commence par "Patient :"
+        if (!element.innerText.startsWith('Patient :')) {
+            return;
+        }
+        console.log('[pdfParser] Recherche de la date de naissance dans', element);
+        // On cherche un élément au format 01/01/2000
+        const dateRegex = /\d{1,2}\/\d{1,2}\/\d{4}/; // Format dd/mm/yyyy
+        const dateMatch = element.innerText.match(dateRegex);
+        if (dateMatch) {
+            console.log('[pdfParser] Date de naissance trouvée dans .messageClassement:', dateMatch);
+            return dateMatch;
+        }
+    });
+    // Si pas de date trouvée dans .messageClassement, on continue avec les dates extraites
     // On cherche la date la plus ancienne, ce qui correspond souvent à la date de naissance
     for (const date of dateMatches) {
         if (!dateOfBirth || dateOfBirth > date) {
@@ -1813,8 +2173,8 @@ function extractNIR(fullText, nirRegexes) {
         if (result.length < 5) {
             return "";
         }
-        const nir = result[1].replace(/\s/g, ''); // Supprimer les espaces du NIR
-        const cle = result[4].replace(/\s/g, ''); // Supprimer les espaces de la clé
+        const nir = result[1].replace(/\s+/g, ''); // Supprimer les espaces du NIR
+        const cle = result[4].replace(/\s+/g, ''); // Supprimer les espaces de la clé
         return nir + cle;
     }
     // console.log('[pdfParser] extractNIR', nirRegexes);
@@ -1841,6 +2201,28 @@ function extractNIR(fullText, nirRegexes) {
 function extractNames(fullText, nameRegexes) {
     const nameMatches = [];
 
+    // 1. Recherche prioritaire dans l'élément .messageClassement s'il existe
+    const messageClassementElement = document.querySelectorAll('.messageClassement');
+    messageClassementElement.forEach((element) => {
+        console.log('[pdfParser] Recherche du nom du patient dans', element);
+        // On ne prend que si le innerText commence par "Patient :"
+        if (!element.innerText.startsWith('Patient :')) {
+            return;
+        }
+        // On retire 'Patient :' et on ne garde que le texte qu'on envoie dans fullText
+        let patientText = element.innerText.replace('Patient :', '').trim();
+        // On retire une éventuelle date à la fin
+        const dateRegex = /\d{1,2}\/\d{1,2}\/\d{4}$/; // Format dd/mm/yyyy
+        const dateMatch = patientText.match(dateRegex);
+        if (dateMatch) {
+            patientText = patientText.replace(dateRegex, '').trim();
+        }
+        console.log('[pdfParser] patientText', patientText);
+        nameMatches.push(patientText);
+        return nameMatches;
+    });
+
+    // 2. Si aucun nom n'est trouvé dans .messageClassement, procéder avec la méthode habituelle
     for (const regex of nameRegexes) {
         let nameMatchesIterator = fullText.matchAll(regex);
         for (const match of nameMatchesIterator) {

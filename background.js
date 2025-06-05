@@ -150,6 +150,12 @@ var advancedDefaultSettings = [{
         "description": "Ouvre les ATCD sur la partie gauche de l'écran quand possible (attention l'affichage est un peu approximatif).",
         "default": false
     }, {
+        "name": "simplifyATCD",
+        "type": TYPE_BOOL,
+        "description": "Permet l'édition d'un atcd depuis la page d'accueil.",
+        "default": true,
+        "longDescription": "En cliquant sur un antécédent depuis la page d'accueil, cela ouvre la fenêtre d'édition directement.",
+    },{
         "name": "autoAATI",
         "type": TYPE_BOOL,
         "description": "Automatise la réalisation des arrêts de travail (lecture CV auto, sélection patient auto, impression auto etc. Nécessite le Companion pour fonctionner totalement).",
@@ -190,7 +196,14 @@ var advancedDefaultSettings = [{
             "name": "oneClickVSM",
             "type": TYPE_BOOL,
             "description": "Permet de faire la déclaration de VSM en un clic.",
-            "default": true
+            "default": true,
+            "subOptions": [{
+                "name": "oneClickVSMToleranceLevel",
+                "type": TYPE_SMALLTEXT,
+                "description": "Niveau de tolérance pour la déclaration de VSM (0-100).",
+                "default": 70,
+                "longDescription": "Pour que le ROSP soit reconnu au mieux il faut au moins 70% des antécédents codés en CIM-10. Weda-Helper arrête la procédure s'il en détecte moins. Vous pouvez le mettre à 0 pour ne pas être bloqué, mais vous risquez de ne pas toucher le ROSP entièrement.",
+            }]
         }]
     }, {
         "name": "instantVaccine",
@@ -276,7 +289,7 @@ var advancedDefaultSettings = [{
             }, {
                 "name": "PdfParserAutoClassification",
                 "type": TYPE_BOOL,
-                "description": "Extrait automatiquement la classification du document importé.",
+                "description": "Détermine automatiquement la destination du document importé (Consultation/Résultats d'examen/Courrier).",
                 "default": false,
                 "longDescription": "Si vous souhaitez classer les imports dans les parties Consultation/Résultats d'examen/Courrier, vous pouvez activer cette option pour le faire automatiquement.",
             },{
@@ -506,11 +519,6 @@ var advancedDefaultSettings = [{
         "type": TYPE_BOOL,
         "description": "Activer les cotations par défaut dans la FDS, comme 'Défaut'",
         "longDescription": "Nécessite de mettre une cotation favorite nommée 'Défaut', 'DéfautPédia', 'DéfautMOP', 'DéfautALD', 'DéfautTC",
-        "default": true
-    }, {
-        "name": "TweakFSEGestion",
-        "type": TYPE_BOOL,
-        "description": "Activer le rafraichissement automatique des FSE dans la page de télétransmission. (fonctionnalité en beta).",
         "default": true
     }, {
         "name": "TweakFSECreation",

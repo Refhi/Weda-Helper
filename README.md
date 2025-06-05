@@ -23,6 +23,7 @@ Cf. ci-dessous pour les retours et les contributions.
     - [Demandes](#demandes)
     - [Recherche de médicaments](#recherche-de-médicaments)
     - [Options d'ordonnance numérique](#options-dordonnance-numérique)
+    - [Mise en forme :](#mise-en-forme-)
   - [Feuilles de soin](#feuilles-de-soin)
   - [Divers](#divers)
     - [Recettes](#recettes)
@@ -51,6 +52,7 @@ Cf. ci-dessous pour les retours et les contributions.
 - Ctrl+D	Télécharge le PDF du document en cours (1er modèle)
 - Ctrl+Shift+D	Télécharge le PDF du document en cours (2e modèle)
 - Ctrl+P	Imprime le document en cours (1er modèle). Nécessite un module complémentaire pour que l'impression soit entièrement automatique.
+=> permet aussi l'impression de l'ensemble des documents du jour depuis la page d'accueil (ne fonctionne que si l'impression automatique est activée)
 - Sinon affiche directement le PDF.
 - Ctrl+Shift+P	Imprime le document en cours (2e modèle)
 - Ctrl+E Envoie le courrier en cours (1er modèle)
@@ -63,13 +65,13 @@ Cf. ci-dessous pour les retours et les contributions.
 - Alt+V	Appuie Valider
 - Alt+Z	Ouvre les antécédents
 - Alt+C	Lit la carte vitale
-- Alt+2	Ouvre ou crée le certificat n°1
-- Alt+1	Ouvre ou crée la consultation n°1
-- Alt+5	Ouvre ou crée courrier n°1
-- Alt+3	Ouvre ou crée la demande n°1
-- Alt+F	Ouvre ou crée le formulaire n°1
+- Alt+1	Ouvre ou crée la consultation n°1 (+Maj pour créer un(e) nouveau/elle)
+- Alt+2	Ouvre ou crée le certificat n°1 (+Maj pour créer un(e) nouveau/elle)
+- Alt+3	Ouvre ou crée la demande n°1 (+Maj pour créer un(e) nouveau/elle)
+- Alt+4	Ouvre ou crée la prescription n°1 (+Maj pour créer un(e) nouveau/elle)
+- Alt+5	Ouvre ou crée courrier n°1 (+Maj pour créer un(e) nouveau/elle)
 - Alt+6	Clique sur FSE
-- Alt+4	Ouvre ou crée la prescription n°1
+- Alt+F	Ouvre ou crée le formulaire n°1 (+Maj pour créer un(e) nouveau/elle)
 - Alt+R	Ouvre la recherche
 - Alt+W	Appuie sur W
 - Ctrl+U	Upload le dernier fichier du dossier envoyé par le Companion
@@ -82,7 +84,7 @@ Cf. ci-dessous pour les retours et les contributions.
 - Automatisation de la déclaration de médecin traitant en un clic.
 - Automatisation du contrôle du MT + ouvre un nouvel onglet pour ne pas avoir à patienter. Un message vous indique si cela a fonctionné ou non. Vous pourrez retourner dans le premier onglet si vous souhaitez enregistrer le MT.
 - Automatisation partielle de la déclaration de MT : sélectionne automatiquement le patient en cours, pré-coche les cases de consentement. Vous n'avez plus qu'à cliquer sur "Transmettre" pour valider.
-- Alerte en cas de retard ou d'absence du VSM
+- Alerte en cas de retard ou d'absence du VSM et ajout d'un bouton pour le réaliser en un clic. (ne fonctionne que si 70%+ est en CIM-10)
 
 ## Consultations
 - Affichage automatique de l'historique dans une colonne à gauche : ouvre automatiquement un historique simplifié (pas de recettes notamment) dans une colonne à gauche de l'écran, uniquement dans les pages de Consultation, de Courrier, de Certificat, de Formulaire et Demandes.
@@ -118,6 +120,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 ### Recherche de médicaments
 - Lors de la recherche d'un médicament le texte est normalement effacé à chaque changement de type de recherche. L'extension maintient le dernier texte recherché.
 - Des boutons de type de recherche favori (paramétrable dans les options) sont affichés. Par défaut "médicament", "DCI" et "recherche par molécule. (A noter qu'il faut enregistrer le panneau d'option pour que seuls les boutons choisis apparaissent. Sinon tous sont affichés.)
+- Il est possible de déclarer un type de **recherche médicamenteuse par défaut** (dans les options).
 
 ### Options d'ordonnance numérique
 - Permet d’activer automatiquement par défaut les ordonnances numériques pour les médicaments mais aussi pour les autres prescriptions.
@@ -126,6 +129,10 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - Sélection automatique du type d'ordonnance numérique quand il s'agit d'une Demande, et qu'un mot-clé est détecté (cf. https://github.com/Refhi/Weda-Helper/blob/main/CHANGELOG.md pour le détail des mots-clés)
 - mettre la souris sur "Ordonnance numérique" dans les prescriptions affiche un choix Oui/Non pour sélectionner le "consentement à la consultation de l'ordonnance numérique". Utile dans le cadre de l'impression automatisée.
 - Clique automatiquement sur "Continuer sans l'ordonnance numérique" si le message d'erreur est détecté (désactivé par défaut).
+
+### Mise en forme :
+- Suppression automatique des {mots entre accolades} dans les documents générés par formulaire où l'option a été ignorée (ex. "Certificat de santé de {Nom du patient}" devient "Certificat de santé").
+- dans les prescriptions médicamenteuses, changement de l'ensemble de la durée de traitement en 1 seul clic (prend quelques secondes par ligne de prescription).
 
 ## Feuilles de soin
 *Toute la FSE : [alt+6], [n], [n], [alt+v]*
@@ -161,7 +168,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### AT
 - simplification de la réalisation des arrêts de travail intégrés à Weda (lecture auto CV, selection auto de l'assuré, impression automatique, autofill de la date en cas de sorties libres, fermeture automatique)
-- Limitation : la fenêtre de prévisualisation dont l'adresse est blob:xxxx ne peut être fermée automatiquement. Il faut la fermer manuellement.
+- La case "Mon patient accepte que je transmette le présent avis d'arrêt de travail pour son compte [...]" se coche automatiquement.
 
 
 ### Métrique
@@ -186,6 +193,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Navigation :
 - Un clic du milieu sur le W du Menu W ouvre un nouvel onglet vers l'accueil du dossier patient, et non le module en cours.
+- Maintient du niveau de scroll lors de l'appuis sur le bouton "Suite" dans l'accueil patient.
 
 ### Setup "headless"
 - possibilité de shunter le message de mise à jour de Weda sur les postes où vous souhaitez automatiser l'ouverture de Weda (désactivé par défaut). Cela ne correspond qu'à des usages très spécifiques, merci de ne pas l'activer sans en comprendre les implications.
@@ -205,6 +213,7 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 - Complétion automatique des dates partielles
 - En cliquant sur l'icône de l'extension, le bouton "Tout mettre en consultation" permet de sélectionner d'un coup "Consultation" pour l'ensemble des documents en attente d'importation.
 - recherche automatique du patient, synthèse d'un titre, détection automatique de la date
+- Classification automatique des documents (titre, destination, type de document, médecin destinataire, etc.) dans les imports de masse et dans la messagerie sécurisée (Merci Abel !)
 
 - On peut désormais utiliser Ctrl+U pour uploader directement dans Weda le document le plus récent présent dans un dossier pré-sélectionné dans le Companion. Un nouveau bouton permet d'archiver si souhaité le document après l'upload.
 - Option pour décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée
@@ -230,6 +239,8 @@ Installez et laisser tourner ce logiciel sur votre ordinateur pour avoir des fon
 Les retours constructifs, rapport de bug et pull requests sont les bienvenus sur
 [https://github.com/Refhi/Weda-Helper](https://github.com/Refhi/Weda-Helper)
 Les encouragements sont les bienvenus sur [le site de la communauté](https://communaute.weda.fr/t5/Entraide-Logiciel-Weda/Weda-Helper-et-Weda-Helper-Companion/td-p/2791)
+
+*Annonce en date du 30/04/2025* : à compter d'aujourd'hui l'extension est considérée comme "fonctionnellement complète". Je ne prévois donc plus d'ajout de nouvelles fonctionnalités jusqu'à Weda 2, mais je continuerai à corriger les bugs et à faire des mises à jour de sécurité si nécessaire. Je vous remercie pour votre soutien et vos contributions !
 
 ## Remerciements
 - à Abel pour ses nombreuses contributions !

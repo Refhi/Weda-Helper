@@ -1,10 +1,22 @@
-// Modifie l'order de tabulation des éléments d'une liste
+/**
+ * Modifie l'ordre de tabulation des éléments d'une liste en fonction d'un identifiant cible.
+ *
+ * Cette fonction ajuste l'attribut `tabIndex` des éléments DOM dont l'identifiant commence par une chaîne donnée.
+ * Cela permet de personnaliser l'ordre de navigation au clavier (tabulation) pour ces éléments.
+ *
+ * @param {string} validTarget - L'identifiant cible utilisé pour sélectionner les éléments. 
+ *                                Il doit correspondre à l'id du premier élément de la liste ex. "ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0".
+ * 
+ * @example
+ * ListTabOrderer('ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0');
+ * 
+ */
 function ListTabOrderer(validTarget) {
     console.log('ListTabOrderer started');
-    var truncated_id = validTarget.slice(0, -1);
-    var elements = document.querySelectorAll('[id^="' + truncated_id + '"]');
+    var truncated_id = validTarget.slice(0, -1); // Supprime le dernier caractère pour obtenir le préfixe
+    var elements = document.querySelectorAll('[id^="' + truncated_id + '"]'); // Sélectionne les éléments dont l'id commence par le préfixe
     for (var i = 0; i < elements.length; i++) {
-        elements[i].tabIndex = i + 100;
+        elements[i].tabIndex = i + 100; // Définit l'ordre de tabulation en commençant à 100
     }
 }
 

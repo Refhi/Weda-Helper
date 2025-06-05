@@ -54,31 +54,93 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoControlMT', function () {
     });
 });
 
-// Facilite la déclaration du MT en précochant les cases
-addTweak('/FolderMedical/PatientViewForm.aspx', 'oneClickMT', function () {
+// Facilite la déclaration du MT en précochant les cases puis en validant le formulaire
+addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/PopUpViewBinaryForm.aspx'], 'oneClickMT', function () {
+    const surveillanceDelay = 45000;
     waitForElement({
         selector: '.dmpMtInfo',
-        callback: function (elements) {
-            sendWedaNotifAllTabs({
-                message: 'Déclaration un clic du médecin traitant activée. Allez dans les options de Weda pour la désactiver si vous préférez.',
-                type: 'success',
-                icon: 'done',
-                duration: 10000
-            });
-            let checkBoxes = elements[0].parentElement.querySelectorAll('input[type="checkbox"]');
-            checkBoxes.forEach(checkBox => {
-                if (!checkBox.checked) {
-                    checkBox.click();
+        callback: async function (elements) {
+            // Setup. On vérifie dans quelle occurrence on se trouve (Première ou deuxième apparition du panneau d'info)
+            const lastDetection = localStorage.getItem("lastdmpMtInfoDetection");
+            const lastDetectionTime = lastDetection ? parseInt(lastDetection, 10) : NaN;
+
+            const isFirstDetection = isNaN(lastDetectionTime) || Date.now() - lastDetectionTime > surveillanceDelay;
+            const isSecondDetection = !isFirstDetection;
+            localStorage.setItem('lastdmpMtInfoDetection', Date.now());
+
+            // 1. Gestion du message d'information et de la tab
+            if (isFirstDetection) {
+                newPatientTab();
+                sendWedaNotifAllTabs({
+                    message: 'Déclaration un clic du médecin traitant activée. Allez dans les options de Weda pour la désactiver si vous préférez.',
+                    type: 'success',
+                    icon: 'done',
+                    duration: 10000
+                });
+                document.title = 'Décla. MT. en cours';
+            }
+
+
+
+            // 2. Cochage et validation du formulaire
+            if (isSecondDetection) {
+                let checkBoxes = document.querySelectorAll('#ContentPlaceHolder1_dmpContainer input[type="checkbox"]');
+                console.log('[oneClickMT] checkBoxes trouvés : ', checkBoxes);
+                checkBoxes.forEach(checkBox => {
+                    if (!checkBox.checked) {
+                        console.log('[oneClickMT] checkBox non coché : ', checkBox, 'je clique dessus');
+                        checkBox.click();
+                        recordMetrics({ clicks: 1, drags: 1 });
+                    }
+                });
+                // Validation du formulaire
+                setTimeout(() => {
+                    document.title = 'Décla. MT. validée';
+                    let boutonValider = document.querySelector('button[title="Transmettre le formulaire de déclaration de choix du médecin traitant"]');
+                    // On place un timestamp pour marquer que la page doit être fermée
+                    localStorage.setItem('autoMTDeclarationThisTabMustBeClosed', Date.now());
+                    boutonValider.click(); // La page va se recharger
                     recordMetrics({ clicks: 1, drags: 1 });
-                }
-            });
-            setTimeout(() => {
-                let boutonValider = document.querySelector('button[title="Transmettre le formulaire de déclaration de choix du médecin traitant"]');
-                boutonValider.click();
-            }, 500);
+                }, 500);
+            }
         }
     });
 });
+
+// 4. Fermeture auto de la page de confirmation
+// On attend l'ouverture de la page de confirmation dans une nouvelle tab (via les autorisations tab)
+// On va faire une boucle toutes les 500ms pour vérifier si la page de confirmation est ouverte avec un timeout de 10 secondes
+addTweak('/FolderMedical/PopUpViewBinaryForm.aspx', 'oneClickMT', function () {
+    const surveillanceDelay = 45000;
+    const lastDetection = localStorage.getItem("lastdmpMtInfoDetection");
+    const lastDetectionTime = lastDetection ? parseInt(lastDetection, 10) : NaN;
+    // On vérifie si le temps de dernière détection est inférieur à surveillanceDelay
+    const isRecetDetection = !isNaN(lastDetectionTime) && Date.now() - lastDetectionTime < surveillanceDelay;
+    if (isRecetDetection) {
+        localStorage.removeItem("lastdmpMtInfoDetection");
+        window.close();
+    }
+});
+
+// 5. Fermeture auto de la page de déclaration du MT
+addTweak('/FolderMedical/PatientViewForm.aspx', 'oneClickMT', async function () {
+    const lastDetection = localStorage.getItem("autoMTDeclarationThisTabMustBeClosed");
+    const lastDetectionTime = lastDetection ? parseInt(lastDetection, 10) : NaN;
+    // On vérifie si le temps de dernière détection est inférieur à 5 secondes
+    const isRecetDetection = !isNaN(lastDetectionTime) && Date.now() - lastDetectionTime < 15000;
+    console.log("[oneClickMT] Dernière détection : ", lastDetectionTime, " - Temps écoulé : ", Date.now() - lastDetectionTime, "isRecetDetection", isRecetDetection);
+    if (isRecetDetection) {
+        localStorage.removeItem("autoMTDeclarationThisTabMustBeClosed");
+        console.log("[oneClickMT] Fermeture de la page de déclaration du MT car ", isRecetDetection);
+        await sendWedaNotifAllTabs({
+            message: 'Déclaration du médecin traitant automatique terminée.',
+            type: 'success',
+            icon: 'done',
+        });
+        window.close();
+    }
+});
+
 
 /**
  * Intégration automatique du MT et mise à jour de sa fiche avec l'annuaire IMTi

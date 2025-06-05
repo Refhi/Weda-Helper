@@ -4,9 +4,90 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.13] - Gel des demandes de fonctionnalités
+## AnnonceS : (les détails de la mise à jour sont après)
+Sommaire :
+- gel des demandes de fonctionnalités
+- mon investissement dans Weda-Helper
+- Weda soutiens Weda-Helper !
+- … et pour la suite ?  (bonnes nouvelles !)
+- nouveau forum de discussion
+
+
+#### Gel des demandes de fonctionnalités
+Bonsoir à toustes,
+
+Weda-Helper est arrivé à une certaine forme de maturité... et le temps nécessaire pour le maintenir commence à augmenter : + de fonctionnalités = + de temps de maintenance.
+
+J'ai donc pris la décision, en accord avec @Abel, de faire une pause dans l'arrivée de nouvelles fonctionnalités. (rassurez-vous les bonnes nouvelles sont en dessous !)
+
+#### Mon investissement dans Weda-Helper
+Mais Weda Helper reste bien vivant ! Je me concentrerais sur la résolution de bugs… mais ne serai plus en mesure de donner suite aux demandes de fonctionnalité. (les tickets de demande non liés à des bugs seront systématiquement clos, désolé !)
+
+Je tiens à vous remercier toutes et tous pour votre soutien et votre aide dans le développement de ce projet un peu fou qui a largement dépassé toutes mes prédictions !
+
+Merci encore !
+
+#### Weda soutiens Weda-Helper !
+Je viens d'échanger longuement avec Guillaume de Bruc, directeur de Weda, autour du devenir de Weda-Helper et de ma participation à Weda.
+
+L'échange a été chaleureux, constructif, et Guillaume a prêté une oreille très attentive aux apports de Weda-Helper, son accueil par la communauté et les utilisateurs… et à la charge de travail que cela représente pour moi.
+
+J'attends les dernières confirmations de l'équipe, mais le résumé est bref : Weda s'investit dans Weda-Helper !
+
+Les modalités exactes sont en cours de discussion, je vous apporterais plus de précision dès que possible :)
+
+
+#### … et pour la suite ?
+
+Weda 2 pointe le bout de son nez (si si ! Et ce que j'en ai vu est très prometteur) et j'aurais le plaisir d'être plus intégré au processus de développement en terme d'UI/UX pour avoir cette épure finale qui nous plaît tant (A => B = 1 action, pas 12).
+
+Et Weda Helper "2" ? Eh bien selon l'évolution de Weda 2, Weda-Helper pourrait disparaître car inutile (!) ou devenir (un peu comme maintenant) un terrain d'essai pour de futures fonctionnalités : un environnement où les tests sont très rapides à implémenter, avant déploiement dans Weda 2.
+
+J'espère pouvoir revenir vers vous très vite pour vous préciser la mise en application !
+
+#### Nouveau forum de discussion
+
+Suite à la fermeture du site de la communauté Weda, l'espace de discussion de Weda-Helper est désormais sur github : [Weda-Helper Discussions](https://github.com/Refhi/Weda-Helper/discussions), au moins en attendant que Weda puisse mettre en place le prochain espace de la communauté.
+
+
+
+
+## Automatismes :
+- [#424](https://github.com/Refhi/Weda-Helper/issues/424) - Suppression automatique des {mots entre accolades} dans les documents générés par formulaire où l'option a été ignorée (ex. "Certificat de santé de {Nom du patient}" devient "Certificat de santé").
+- [#421](https://github.com/Refhi/Weda-Helper/issues/421) - Maintient du niveau de scroll lors de l'appuis sur le bouton "Suite" dans l'accueil patient.
+- [#422](https://github.com/Refhi/Weda-Helper/issues/422) - La déclaration de MT automatique se fait dans un onglet séparé.
+- [#422](https://github.com/Refhi/Weda-Helper/issues/422) - La fenêtre de validation de déclaration du MT se ferme automatiquement.
+- [#408](https://github.com/Refhi/Weda-Helper/issues/408) - La fenêtre de prévisualisation de l'arrêt de travail se ferme automatiquement.
+- [#409](https://github.com/Refhi/Weda-Helper/issues/409) - On peut désormais éditer un atcd directement depuis la page d'accueil du dossier patient.
+
+## Ajout d'option :
+- [#445](https://github.com/Refhi/Weda-Helper/issues/445) - On peut désormais fixer le pourcentage de validation CIM-10 pour le +1clickVSM (par défaut 70%).
+
+## Bugfix :
+- [#415](https://github.com/Refhi/Weda-Helper/issues/415) - La clé API n'était plus générée automatiquement depuis quelques versions => de nouveau générée automatiquement.
+- [#433](https://github.com/Refhi/Weda-Helper/issues/433) - L'option pour masquer le tableau d'aide était défectueuse.
+- [#441](https://github.com/Refhi/Weda-Helper/issues/441) - Fix d'un problème de boucle infinie lors de l'import si l'INS est au format 2550699999999  (34) dans le document importé.
+- [#442](https://github.com/Refhi/Weda-Helper/issues/442) - Fix d'un problème d'incompatibilité entre la suppression du panneau de Titre suggerés et l'ouverture automatique de l'historique gauche dans les Consultations.
+- [#402](https://github.com/Refhi/Weda-Helper/issues/402) - Le bouton pour changer la durée de tout les traitements en 1 clic ne fonctionnait pas si le traitement était en DCI.
+- [#445](https://github.com/Refhi/Weda-Helper/issues/445) - Fix d'un problème où le bouton Valider final ne se cliquait pas automatiquement.
+- [#447](https://github.com/Refhi/Weda-Helper/issues/447) - L'import semi-automatique ne fonctionnait pas dans les échanges sécurisés.
+
+
+## Divers :
+- modification du nom de l'option "Extrait automatiquement la classification du document importé." => "Détermine automatiquement la destination du document importé (Consultation/Résultats d'examen/Courrier)."
+
+## Refactory :
+- waitForElement et observeDiseappear peuvent désormais être appelées avec des promesses.
+
+## Suppression de fonctionnalités :
+- [#449](https://github.com/Refhi/Weda-Helper/issues/449) - Suppression du rafraichissement automatique des FSE qui était dysfonctionnel et non pertinent.
+
+
 # [2.12.1] - hotfix
 ## Fix :
 - [#436](https://github.com/Refhi/Weda-Helper/issues/436) - Correction d'un débordement de l'affichage pour le +1clickVSM si la colonne de gauche est trop fine.
+
 
 # [2.12] - *Import automatisé, Impression de masse et Durées de prescription de masse*
 ## Imports :

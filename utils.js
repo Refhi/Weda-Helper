@@ -101,13 +101,16 @@ function afterMutations({ delay, callback, callBackId = "callback id undefined",
  * Remplace lightObserver
  * @param {Object} options - Les options sous forme destructurée pour plus de clarté :
  * @param {string} options.selector - Le sélecteur de l'élément à observer.
- * @param {Function} options.callback - La fonction à exécuter lorsque l'élément apparaît.
+ * @param {Function} [options.callback] - La fonction à exécuter lorsque l'élément apparaît (optionnel si utilisé avec await).
  * @param {HTMLElement} [options.parentElement=document] - L'élément parent dans lequel observer les mutations.
  * @param {boolean} [options.justOnce=false] - Si vrai, l'observation s'arrête après la première apparition de l'élément.
  * @param {boolean} [options.debug=false] - Si vrai, affiche des messages de debug dans la console.
  * @param {string|null} [options.textContent=null] - Filtre les éléments par leur contenu textuel.
+ * @param {boolean} [options.triggerOnInit=false] - Si vrai, déclenche le callback immédiatement si les éléments existent déjà.
+ * @returns {Promise|MutationObserver} - Retourne une promesse si aucun callback n'est fourni, sinon l'observateur.
  *
  * @example
+ * // Utilisation avec callback
  * waitForElement({
  *   selector: '.my-element',
  *   callback: (elements) => { console.log('Elements found:', elements); },
@@ -116,10 +119,34 @@ function afterMutations({ delay, callback, callBackId = "callback id undefined",
  *   debug: true,
  *   textContent: 'Hello'
  * });
+ * 
+ * @example
+ * // Utilisation avec async/await
+ * const elements = await waitForElement({
+ *   selector: '.my-element',
+ *   justOnce: true,
+ *   textContent: 'Hello'
+ * });
+ * console.log('Elements found:', elements);
  */
 
 let observedElements = new WeakMap();
 function waitForElement({ selector, callback, parentElement = document, justOnce = false, debug = false, textContent = null, triggerOnInit = false }) {
+    // Si aucun callback n'est fourni, retourne une promesse
+    if (!callback) {
+        return new Promise(resolve => {
+            waitForElement({
+                selector, 
+                callback: elements => resolve(elements),
+                parentElement, 
+                justOnce, 
+                debug, 
+                textContent, 
+                triggerOnInit
+            });
+        });
+    }
+
     let observer = new MutationObserver((mutations) => {
         for (let i = 0; i < mutations.length; i++) {
             let mutation = mutations[i];
@@ -176,24 +203,56 @@ function waitForElement({ selector, callback, parentElement = document, justOnce
             callback(newElements);
         }
     }
+    
+    // Retourne l'observateur pour permettre de l'interrompre manuellement si nécessaire
+    return observer;
 }
 
 
-function observeDiseapearance(element, callback) {
-    const interval = 100; // 100ms
-    const timeout = 30000; // 30 seconds
-    let elapsed = 0;
-
-    const intervalId = setInterval(() => {
-        if (!document.contains(element)) {
-            clearInterval(intervalId);
-            callback();
-        }
-        elapsed += interval;
-        if (elapsed >= timeout) {
-            clearInterval(intervalId);
-        }
-    }, interval);
+/**
+ * Observe la disparition d'un élément du DOM avec support pour callback et Promise
+ * @param {HTMLElement} element - L'élément à observer
+ * @param {Function} [callback=null] - Fonction de callback optionnelle appelée quand l'élément disparaît
+ * @param {number} [options] - Options de configuration
+ * @param {number} [options.interval=100] - Intervalle de vérification en ms
+ * @param {number} [options.timeout=30000] - Délai maximum d'attente en ms
+ * @returns {Promise} - Une promesse qui se résout quand l'élément disparaît
+ * 
+ * @example
+ * // Utilisation avec callback
+ * observeDiseapearance(element, () => {
+ *   console.log('Élément disparu');
+ * });
+ * 
+ * @example
+ * // Utilisation avec async/await
+ * await observeDiseapearance(element);
+ * console.log('Élément disparu');
+ */
+function observeDiseapearance(element, callback = null, options = {}) {
+    const interval = options.interval || 100; // 100ms par défaut
+    const timeout = options.timeout || 30000; // 30 secondes par défaut
+    
+    return new Promise((resolve) => {
+        let elapsed = 0;
+        
+        const intervalId = setInterval(() => {
+            if (!document.contains(element)) {
+                clearInterval(intervalId);
+                if (callback && typeof callback === 'function') {
+                    callback();
+                }
+                resolve();
+            }
+            
+            elapsed += interval;
+            if (elapsed >= timeout) {
+                clearInterval(intervalId);
+                console.warn(`[observeDiseapearance] Timeout après ${timeout}ms, l'élément n'a pas disparu`);
+                resolve();
+            }
+        }, interval);
+    });
 }
 
 function waitForWeda(logWait, callback) {
@@ -638,11 +697,19 @@ chrome.runtime.onMessage.addListener(
     }
 );
 
-function sendWedaNotifAllTabs(options) {
+async function sendWedaNotifAllTabs(options) {
     // Ajoute un identifiant unique basé sur l'horodatage actuel
     options.id = Date.now();
-    chrome.storage.local.set({ 'wedaNotifOptions': options }, function () {
-        console.log('Options de notification stockées avec ID:', options.id);
+    return new Promise((resolve, reject) => {
+        chrome.storage.local.set({ 'wedaNotifOptions': options }, function () {
+            if (chrome.runtime.lastError) {
+                console.error('Erreur lors du stockage des options de notification :', chrome.runtime.lastError);
+                reject(chrome.runtime.lastError);
+            } else {
+                console.log('Options de notification stockées avec ID:', options.id);
+                resolve(options.id);
+            }
+        });
     });
 }
 

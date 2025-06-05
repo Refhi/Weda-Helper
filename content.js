@@ -50,25 +50,6 @@ addTweak('/FolderGestion/ReglementForm.aspx', '!RemoveLocalCompanionTPE', functi
 });
 
 
-
-
-
-
-// [page de gestion des feuilles de soins]
-addTweak('/vitalzen/gestion.aspx', 'TweakFSEGestion', function () {
-    waitForElement({
-        selector: '.mat-icon.notranslate.material-icons.mat-icon-no-color', textContent: 'search', timeout: 5000, justOnce: true,
-        callback: elements => {
-            let element = elements[0];
-            console.log('element', element, 'trouvé, je clique dessus');
-            element.click();
-            recordMetrics({ clicks: 1, drags: 1 });
-        }
-    });
-});
-
-
-
 // // Retrait des suggestions de titre
 let titleSuggestionsUrls = [
     '/FolderMedical/ConsultationForm.aspx',
