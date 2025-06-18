@@ -7,6 +7,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 # [2.13.1] - Correctifs
 ## Fix :
 - [#465](https://github.com/Refhi/Weda-Helper/issues/465) - L'historique gauche est de nouveau affiché avec 30% de largeur par défaut au lieu des 50% proposé de base par Weda. (actif si l'historique gauche est activé automatiquement dans les consultations)
+- [#459](https://github.com/Refhi/Weda-Helper/issues/459) - Un bouton permet désormais de réinitialiser le classement automatique des documents dans les échanges sécurisés. Cela permet de tester plus facilement différents mots-clés de classification.
 
 
 # [2.13] - Gel des demandes de fonctionnalités

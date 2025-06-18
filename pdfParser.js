@@ -83,12 +83,37 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
                 searchField.style.left = "0";
                 searchField.style.width = "99%";
                 searchField.style.maxHeight = `${maxHeight}px`;
-                // searchField.style.zIndex = "9999"; // Assurez-vous que l'élément est au-dessus des autres
                 searchField.style.overflow = "auto"; // Ajoute un défilement si le contenu dépasse
                 console.log(`[pdfParser] Champ de recherche de patient décalé vers le bas de ${displacement}px avec une hauteur maximale de ${maxHeight}px`);
             }
         }
     });
+
+    // Et on ajoute un bouton pour réinitialiser les données d'analyse automatique du PDF
+    waitForElement({
+        selector: ".documentImport",
+        callback: function (elements) {
+            const mainDiv = elements[0];
+
+            if (mainDiv) {
+                const resetButton = document.createElement('button');
+                resetButton.innerText = '🔄 WH : Réinitialiser auto-imports';
+                resetButton.style.marginLeft = '10px';
+                resetButton.title = "Weda-Helper : Réinitialise les données d'analyse automatique du PDF. Utile lorsque vous testez différents mots-clés de classement automatique dans les options."; // Texte lors du survol de la souris
+                resetButton.type = 'button'; // Assure que c'est un bouton cliquable
+                resetButton.onclick = function () {
+                    sessionStorage.clear();
+                    console.log("[pdfParser] Toutes les données d'analyse automatique du PDF ont été réinitialisées.");
+                    sendWedaNotif({
+                        message: "Toutes les données d'analyse automatique du PDF ont été réinitialisées.",
+                        type: 'success'
+                    });
+                };
+                mainDiv.appendChild(resetButton);
+            }
+        }
+    });
+
 });
 
 
