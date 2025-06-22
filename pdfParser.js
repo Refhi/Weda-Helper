@@ -1849,14 +1849,34 @@ function findSpecialite(fullText, specialites) {
 
 // Fonction pour trouver le type d'imagerie dans le texte
 function findImagerie(fullText, imageries) {
-    for (const [imagerie, keywords] of Object.entries(imageries)) {
-        for (const keyword of keywords) {
-            if (fullText.toLowerCase().includes(keyword.toLowerCase())) {
-                console.log('[pdfParser] type d\'imagerie trouvé', imagerie);
-                return imagerie;
+    const lines = fullText.split('\n');
+    
+    for (const line of lines) {
+        const lineText = line.toLowerCase();
+        let matchesInLine = [];
+        
+        // Compter combien de types d'imagerie matchent dans cette ligne
+        for (const [imagerie, keywords] of Object.entries(imageries)) {
+            for (const keyword of keywords) {
+                if (lineText.includes(keyword.toLowerCase())) {
+                    matchesInLine.push(imagerie);
+                    break; // Sortir de la boucle keywords pour cette imagerie
+                }
             }
         }
+        
+        // Si exactement un match dans cette ligne, c'est probablement le bon
+        if (matchesInLine.length === 1) {
+            console.log('[pdfParser] type d\'imagerie trouvé', matchesInLine[0], 'dans la ligne:', line.substring(0, 50) + '...');
+            return matchesInLine[0];
+        }
+        // Si plusieurs matches, on ignore cette ligne (probablement une liste de services)
+        else if (matchesInLine.length > 1) {
+            console.log('[pdfParser] Ligne ignorée (multiples types d\'imagerie):', line.substring(0, 50) + '...');
+        }
     }
+    
+    console.log('[pdfParser] Aucun type d\'imagerie trouvé dans une ligne unique');
     return null;
 }
 

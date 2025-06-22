@@ -8,7 +8,10 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 ## Fix :
 - [#465](https://github.com/Refhi/Weda-Helper/issues/465) - L'historique gauche est de nouveau affiché avec 30% de largeur par défaut au lieu des 50% proposé de base par Weda. (actif si l'historique gauche est activé automatiquement dans les consultations)
 - [#459](https://github.com/Refhi/Weda-Helper/issues/459) - Un bouton permet désormais de réinitialiser le classement automatique des documents dans les échanges sécurisés. Cela permet de tester plus facilement différents mots-clés de classification.
-- [#448](https://github.com/Refhi/Weda-Helper/issues/448) - Ignore désormais tout les destinataires lors de la recherche du médecin addresseur d'un courrier.
+
+### Imports automatisés :
+- [#448](https://github.com/Refhi/Weda-Helper/issues/448) - Ignore désormais tout les noms trouvés après le mot-clé "destinataire(s)" dans le dernier tier du document lors de la recherche du médecin addresseur d'un courrier.
+- [#452](https://github.com/Refhi/Weda-Helper/issues/452) - Ignore désormais les lignes contenant plusieurs types d'examens (en général quand le centre d'imagerie annonce ses capacités d'examen).
 
 
 # [2.13] - Gel des demandes de fonctionnalités
