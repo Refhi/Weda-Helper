@@ -45,7 +45,7 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
     });
 });
 
-// 2.b. Dans la page des Echanges Sécurisés TODO
+// 2.b. Dans la page des Echanges Sécurisés
 addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
     console.log('[pdfParser] Chargement de la page d\'échanges');
     waitForElement({
@@ -398,6 +398,12 @@ async function selectDocumentTypeES(documentType) {
  * Insère le titre au bon endroit pour les échanges sécurisés
  */
 async function setTitleIfNeededES(Titre) {
+    const titleOption = await getOptionPromise('PdfParserAutoTitle');
+    console.log("[pdfParser] setTitleIfNeededES avec titleOption", titleOption);
+    if (!titleOption) {
+        console.log("[pdfParser] Option PdfParserAutoTitle désactivée, pas de titre à mettre");
+        return;
+    }
     // Le champ de titre est l'input avec le titre "C'est le titre qu'aura le document dans le dossier patient"
     let titleInput = document.querySelectorAll("input[title=\"C'est le titre qu'aura le document dans le dossier patient\"]");
     // On sélectionne le dernier input (le plus bas dans le DOM)
