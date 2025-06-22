@@ -2037,6 +2037,12 @@ function determineDocumentTitle(fullText, documentType) {
         for (const third of thirds) {
             for (let i = third.start; i < third.end; i++) {
                 const line = lines[i];
+                
+                // Pour le dernier tiers (signature), ignorer tout après "destinataire" ou "destinataires"
+                if (third.name === 'signature' && /destinataires?/i.test(line)) {
+                    break;
+                }
+                
                 for (const pattern of doctorPatterns) {
                     const match = line.match(pattern);
                     if (match && match[1]) {
