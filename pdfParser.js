@@ -169,7 +169,7 @@ async function processFoundPdfIframeImport(elements) {
     //    naviguer entre les différents types de recherche dans la fenêtre d'import
 
     let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
-    if (handlePatientSearchReturn.status === 'refresh') {
+    if (handlePatientSearchReturn.action === 'refresh') {
         console.log("[pdfParser] handlePatientSearchReturn", handlePatientSearchReturn.message);
         // La procédure n'est pas arrivée au bout, un rafraichissement de la page est attendu
         // On bloque donc ici pour éviter d'intégrer des données trop tôt
@@ -242,11 +242,20 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
             // Recherche du patient
             let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
 
-            if (handlePatientSearchReturn.status === 'continue' || handlePatientSearchReturn.message === 'Patient trouvé et cliqué') {
+            if (handlePatientSearchReturn.status === 'success' || handlePatientSearchReturn.message === 'Patient trouvé et cliqué') {
                 console.log("[pdfParser] Recherche de patient terminée avec succès", handlePatientSearchReturn.message);
                 continueSearching = false;
                 console.log("[pdfParser] Traitement terminé pour la page d'échanges");
-            } else if (handlePatientSearchReturn.status === 'refresh') {
+            } else if (handlePatientSearchReturn.status === 'error') {
+                console.error("[pdfParser] Erreur lors de la recherche de patient :", handlePatientSearchReturn.message);
+                continueSearching = false;
+                sendWedaNotifAllTabs({
+                    message: "Erreur lors de la recherche de patient : " + handlePatientSearchReturn.message,
+                    type: 'undefined',
+                    icon: 'search_off',
+                    duration: 10000
+                });                    
+            } else if (handlePatientSearchReturn.action === 'refresh') {
                 console.log("[pdfParser] handlePatientSearchReturn nécessite une action:", handlePatientSearchReturn.message);
                 // On attend un peu pour que les changements DOM se produisent
                 await new Promise(resolve => setTimeout(resolve, 500));
@@ -596,8 +605,9 @@ function checkSearchPossibility(searchOptionValue) {
  * @param {Array} extractedData.nameMatches - Les correspondances de noms trouvées dans les données extraites.
  * @param {Array} extractedData.failedSearches - Les méthodes de recherche qui ont échoué.
  * 
- * @returns {Object} - Le statut et le message de la recherche.
- * @returns {string} status - Le statut de la recherche ('refresh', 'continue').
+ * @returns {Object} - L'action et le message de la recherche.
+ * @returns {string} action - Le statut de la recherche ('refresh', 'continue').
+ * @returns {string} status - Le statut de la recherche ('success', 'error', 'ongoing').
  * @returns {string} message - Le message associé au statut.
  */
 function handlePatientSearch(extractedData, hashId) {
@@ -622,21 +632,21 @@ function handlePatientSearch(extractedData, hashId) {
                 const clicPatientReturn = clicPatient(extractedData);
                 console.log("[pdfParser] clicPatientReturn", clicPatientReturn.status, clicPatientReturn.message);
                 if (clicPatientReturn.status === 'success') {
-                    return { status: 'refresh', message: 'Patient trouvé et cliqué' };
+                    return { status : 'success', action: 'refresh', message: 'Patient trouvé et cliqué' };
                 } else if (clicPatientReturn.status === 'error') {
                     extractedData.failedSearches.push(search.type);
                     setPdfData(hashId, extractedData); // permet la rémanence des données
                 } else if (clicPatientReturn.status === 'continue') {
                     console.log("[pdfParser] Patient non trouvé ou correctement sélectionné, je continue la procédure.");
-                    return { status: 'continue', message: 'Patient non trouvé ou correctement sélectionné' };
+                    return { status : 'success', action: 'continue', message: 'Patient non trouvé ou correctement sélectionné' };
                 } else {
                     console.error("[pdfParser] Erreur inconnue lors de la recherche du patient, je continue la procédure.");
-                    return { status: 'continue', message: 'Erreur inconnue lors de la recherche du patient' };
+                    return { status : 'error', action: 'continue', message: 'Erreur inconnue lors de la recherche du patient' };
                 }
             } else if (properSearched.status === 'refresh') {
                 console.log(`[pdfParser] arrêt de la procédure car :`, properSearched.message);
                 // On attends aussi un rafraichissement de la page
-                return { status: 'refresh', message: properSearched.message };
+                return { status : 'ongoing', action: 'refresh', message: properSearched.message };
             } else {
                 // On marque l'échec de cette méthode de recherche => la boucle suivante l'écartera
                 console.error(`[pdfParser] Echec de la méthode de recherche :`, properSearched.message, `pour ${search.type}`, "je la marque comme un échec et je continue la procédure.");
@@ -646,8 +656,8 @@ function handlePatientSearch(extractedData, hashId) {
         }
     }
 
-    console.log("[pdfParser] Aucune donnée ou méthode de recherche disponible. Arrêt de la recherche de patient.");
-    return { status: 'continue', message: 'Aucune donnée ou méthode de recherche disponible' };
+    console.log("[pdfParser] Aucune donnée permettant de trouver le patient. Arrêt de la recherche de patient.");
+    return { status : 'error', action: 'continue', message: 'Aucune donnée permettant de trouver le patient. Merci de chercher manuellement le patient.' };
 }
 
 

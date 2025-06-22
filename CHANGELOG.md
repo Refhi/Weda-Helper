@@ -13,6 +13,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#448](https://github.com/Refhi/Weda-Helper/issues/448) - Ignore désormais tout les noms trouvés après le mot-clé "destinataire(s)" dans le dernier tier du document lors de la recherche du médecin addresseur d'un courrier.
 - [#452](https://github.com/Refhi/Weda-Helper/issues/452) - Ignore désormais les lignes contenant plusieurs types d'examens (en général quand le centre d'imagerie annonce ses capacités d'examen).
 - [#464](https://github.com/Refhi/Weda-Helper/issues/464) - Prend en compte le décochage de l'option Titre Automatique (échanges sécurisés).
+- [#464](https://github.com/Refhi/Weda-Helper/issues/464) - Amélioration des messages d'erreurs lors de l'import des échanges sécurisés.
 
 
 # [2.13] - Gel des demandes de fonctionnalités
