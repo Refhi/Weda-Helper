@@ -8,6 +8,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 ## Fix :
 - [#468](https://github.com/Refhi/Weda-Helper/issues/468) - tentative de fix pour la non-fermeture de la prévisu de l'arrêt de travail.
 - [#466](https://github.com/Refhi/Weda-Helper/issues/466) - Les antécédents s'affichent de nouveau à gauche si l'option dédiée est activée.
+- [#471](https://github.com/Refhi/Weda-Helper/issues/471) - Ajout du mot "kinésithérapeute" dans les mots-clés de classification automatique des ordonnances numériques.
 
 
 # [2.13.1] - Correctifs

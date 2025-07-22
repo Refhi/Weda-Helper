@@ -404,7 +404,7 @@ addTweak([demandeUrl, prescriptionUrl], '*NumPres', function () {
 addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
     const typesSoins = [
         { regex: /\bIDE\b|infirmier|pansement|injection/i, type: 0 },
-        { regex: /\bkiné\b|\bkine\b|kinésithérapie|kinesitherapie|MKDE|KDE|kinesitherapeute|kinesithérapeute/i, type: 1 },
+        { regex: /\bkiné\b|\bkine\b|kinésithérapie|kinesitherapie|MKDE|KDE|kinesitherapeute|kinesithérapeute|kinésithérapeute/i, type: 1 },
         { regex: /orthophonie|orthophonique|orthophoniste/i, type: 2 },
         { regex: /orthoptie|orthoptique|orthoptiste/i, type: 3 },
         { regex: /pédicure|pedicure|pédicurie|pedicurie|podologie|podologique|podologue|semelle|orthoplastie/i, type: 4 },
