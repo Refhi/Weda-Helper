@@ -4,6 +4,11 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.13.2] - Correctifs
+## Fix :
+- [#468](https://github.com/Refhi/Weda-Helper/issues/468) - tentative de fix pour la non-fermeture de la prévisu de l'arrêt de travail.
+
+
 # [2.13.1] - Correctifs
 ## Fix :
 - [#465](https://github.com/Refhi/Weda-Helper/issues/465) - L'historique gauche est de nouveau affiché avec 30% de largeur par défaut au lieu des 50% proposé de base par Weda. (actif si l'historique gauche est activé automatiquement dans les consultations)

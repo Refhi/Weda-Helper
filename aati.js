@@ -29,7 +29,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoAATI', function () {
 
 urlAATI = [
     '/FolderMedical/Aati.aspx',
-    '/FolderMedical/PopUpViewBinaryForm.aspx'
+    '/BinaryData.aspx'
 ]
 
 addTweak(urlAATI, 'autoAATI', function () {
@@ -144,10 +144,8 @@ addTweak(urlAATI, 'autoAATI', function () {
     waitForElement({
         selector: selectorExitButton,
         callback: function (elements) {
-            // 2.7.2 La nouvelle méthode est d'aller ensuite récupérer le pdf depuis la page d'accueil du dossier patient
             setTimeOfSending('autoAATIexit'); // A l'ouverure de la page d'accueil on n'ouvrira le pdf seulement si < 10 secondes
             // Ici on essai de laisser le temps au pdf d'être généré avant de cliquer sur quitter.
-            // Mais on ne pourra pas empêcher la popup de prévisu de s'afficher
             console.log('autoAATIexit', Date.now(), 'attente de 3 secondes avant de cliquer sur le bouton de sortie');
             setTimeout(() => {
                 console.log('clicking on the exit button + timestamp');
@@ -167,19 +165,17 @@ addTweak(urlAATI, 'autoAATI', function () {
         };
     }
 
-    // Cette partie gère la fermeture de la prévisu de l'AT au moment où on récupère le pdf depuis la page d'accueil du patient    
-    addTweak('/FolderMedical/PopUpViewBinaryForm.aspx', "*sendDocToCompanion", function () {
+    // Envoi du document à l'assistant
+    addTweak('https://secure.weda.fr/BinaryData.aspx', "*sendDocToCompanion", function () {
         chrome.storage.local.get(['autoAATIexit'], function (result) {
             getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
                 if (Date.now() - result.autoAATIexit < 10000 && RemoveLocalCompanionPrint === false) {
                     console.log('autoAATIexit', result.autoAATIexit, 'is less than 10 seconds ago');
-                    chrome.storage.local.set({ autoAATIexit: 0 });
-                    let iframeElement = document.querySelector('iframe');
-                    let url = iframeElement.src;
+                    chrome.storage.local.set({autoAATIexit: 0});
+                    let url = window.location.href;
                     console.log('url', url);
                     fetch(url)
                         .then(response => response.blob())
-                        .then(getLastPageFromBlob)
                         .then(blob => {
                             console.log('blob', blob);
                             return sendToCompanion(`print`, blob);
@@ -187,39 +183,20 @@ addTweak(urlAATI, 'autoAATI', function () {
                         .then(() => {
                             // The blob has been successfully transferred
                             console.log('The blob has been successfully transferred.');
-                            recordMetrics({ clicks: 3, drags: 3 });
-                            observeLastPrintDateChange(async (newValue) => {
-                                let printTime = Date.parse(newValue);
-                                if (Date.now() - printTime < 10000) {
-                                    sendWedaNotifAllTabs({
-                                        message: 'Page 3 de l\'arrêt de travail imprimé avec succès.',
-                                        type: 'success',
-                                        icon: 'print'
-                                    });
-                                    // D'abord on ferme la prévisu blob de l'AT
-                                    const tabs = await getAllTabs();
-                                    for (const tab of tabs) {
-                                        if (tab.url.includes('blob:')) {
-                                            await closeTab(tab.id);
-                                            console.log('Fermeture de l\'onglet', tab.id, 'car il s\'agit d\'un blob');
-                                        }
-                                    }
-                                    // On ferme la page en cours (la prévisu iframe pdf de l'AT)
-                                    window.close(); // Pas la peine d'utiliser les permissions tab car cette page est ouverte par le script
-                                }
-                            });
+                            recordMetrics({clicks: 3, drags: 3});
+                            setTimeout(function () {
+                                window.close();
+                            }, 1000); // essai avec un délai de 1s
                         })
                         .catch(error => {
-                            console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error, 'Problème de Firewall ?');
+                            console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error);
                             if (!errortype.includes('[focus]')) {
-                                sendWedaNotifAllTabs({
-                                    message: 'Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error + 'Problème de Firewall ?',
-                                    type: 'fail',
-                                    icon: 'print'
-                                })
-                                // alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
+                                alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
                             }
                         });
+                } else {
+                    // en cas de Companion désactivé
+                    window.print();
                 }
             });
         });
