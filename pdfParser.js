@@ -45,7 +45,7 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
     });
 });
 
-// 2.b. Dans la page des Echanges Sécurisés TODO
+// 2.b. Dans la page des Echanges Sécurisés
 addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
     console.log('[pdfParser] Chargement de la page d\'échanges');
     waitForElement({
@@ -83,12 +83,37 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
                 searchField.style.left = "0";
                 searchField.style.width = "99%";
                 searchField.style.maxHeight = `${maxHeight}px`;
-                // searchField.style.zIndex = "9999"; // Assurez-vous que l'élément est au-dessus des autres
                 searchField.style.overflow = "auto"; // Ajoute un défilement si le contenu dépasse
                 console.log(`[pdfParser] Champ de recherche de patient décalé vers le bas de ${displacement}px avec une hauteur maximale de ${maxHeight}px`);
             }
         }
     });
+
+    // Et on ajoute un bouton pour réinitialiser les données d'analyse automatique du PDF
+    waitForElement({
+        selector: ".documentImport",
+        callback: function (elements) {
+            const mainDiv = elements[0];
+
+            if (mainDiv) {
+                const resetButton = document.createElement('button');
+                resetButton.innerText = '🔄 WH : Réinitialiser auto-imports';
+                resetButton.style.marginLeft = '10px';
+                resetButton.title = "Weda-Helper : Réinitialise les données d'analyse automatique du PDF. Utile lorsque vous testez différents mots-clés de classement automatique dans les options."; // Texte lors du survol de la souris
+                resetButton.type = 'button'; // Assure que c'est un bouton cliquable
+                resetButton.onclick = function () {
+                    sessionStorage.clear();
+                    console.log("[pdfParser] Toutes les données d'analyse automatique du PDF ont été réinitialisées.");
+                    sendWedaNotif({
+                        message: "Toutes les données d'analyse automatique du PDF ont été réinitialisées.",
+                        type: 'success'
+                    });
+                };
+                mainDiv.appendChild(resetButton);
+            }
+        }
+    });
+
 });
 
 
@@ -144,7 +169,7 @@ async function processFoundPdfIframeImport(elements) {
     //    naviguer entre les différents types de recherche dans la fenêtre d'import
 
     let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
-    if (handlePatientSearchReturn.status === 'refresh') {
+    if (handlePatientSearchReturn.action === 'refresh') {
         console.log("[pdfParser] handlePatientSearchReturn", handlePatientSearchReturn.message);
         // La procédure n'est pas arrivée au bout, un rafraichissement de la page est attendu
         // On bloque donc ici pour éviter d'intégrer des données trop tôt
@@ -217,11 +242,20 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
             // Recherche du patient
             let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
 
-            if (handlePatientSearchReturn.status === 'continue' || handlePatientSearchReturn.message === 'Patient trouvé et cliqué') {
+            if (handlePatientSearchReturn.status === 'success' || handlePatientSearchReturn.message === 'Patient trouvé et cliqué') {
                 console.log("[pdfParser] Recherche de patient terminée avec succès", handlePatientSearchReturn.message);
                 continueSearching = false;
                 console.log("[pdfParser] Traitement terminé pour la page d'échanges");
-            } else if (handlePatientSearchReturn.status === 'refresh') {
+            } else if (handlePatientSearchReturn.status === 'error') {
+                console.error("[pdfParser] Erreur lors de la recherche de patient :", handlePatientSearchReturn.message);
+                continueSearching = false;
+                sendWedaNotifAllTabs({
+                    message: "Erreur lors de la recherche de patient : " + handlePatientSearchReturn.message,
+                    type: 'undefined',
+                    icon: 'search_off',
+                    duration: 10000
+                });                    
+            } else if (handlePatientSearchReturn.action === 'refresh') {
                 console.log("[pdfParser] handlePatientSearchReturn nécessite une action:", handlePatientSearchReturn.message);
                 // On attend un peu pour que les changements DOM se produisent
                 await new Promise(resolve => setTimeout(resolve, 500));
@@ -373,6 +407,12 @@ async function selectDocumentTypeES(documentType) {
  * Insère le titre au bon endroit pour les échanges sécurisés
  */
 async function setTitleIfNeededES(Titre) {
+    const titleOption = await getOptionPromise('PdfParserAutoTitle');
+    console.log("[pdfParser] setTitleIfNeededES avec titleOption", titleOption);
+    if (!titleOption) {
+        console.log("[pdfParser] Option PdfParserAutoTitle désactivée, pas de titre à mettre");
+        return;
+    }
     // Le champ de titre est l'input avec le titre "C'est le titre qu'aura le document dans le dossier patient"
     let titleInput = document.querySelectorAll("input[title=\"C'est le titre qu'aura le document dans le dossier patient\"]");
     // On sélectionne le dernier input (le plus bas dans le DOM)
@@ -565,8 +605,9 @@ function checkSearchPossibility(searchOptionValue) {
  * @param {Array} extractedData.nameMatches - Les correspondances de noms trouvées dans les données extraites.
  * @param {Array} extractedData.failedSearches - Les méthodes de recherche qui ont échoué.
  * 
- * @returns {Object} - Le statut et le message de la recherche.
- * @returns {string} status - Le statut de la recherche ('refresh', 'continue').
+ * @returns {Object} - L'action et le message de la recherche.
+ * @returns {string} action - Le statut de la recherche ('refresh', 'continue').
+ * @returns {string} status - Le statut de la recherche ('success', 'error', 'ongoing').
  * @returns {string} message - Le message associé au statut.
  */
 function handlePatientSearch(extractedData, hashId) {
@@ -591,21 +632,21 @@ function handlePatientSearch(extractedData, hashId) {
                 const clicPatientReturn = clicPatient(extractedData);
                 console.log("[pdfParser] clicPatientReturn", clicPatientReturn.status, clicPatientReturn.message);
                 if (clicPatientReturn.status === 'success') {
-                    return { status: 'refresh', message: 'Patient trouvé et cliqué' };
+                    return { status : 'success', action: 'refresh', message: 'Patient trouvé et cliqué' };
                 } else if (clicPatientReturn.status === 'error') {
                     extractedData.failedSearches.push(search.type);
                     setPdfData(hashId, extractedData); // permet la rémanence des données
                 } else if (clicPatientReturn.status === 'continue') {
                     console.log("[pdfParser] Patient non trouvé ou correctement sélectionné, je continue la procédure.");
-                    return { status: 'continue', message: 'Patient non trouvé ou correctement sélectionné' };
+                    return { status : 'success', action: 'continue', message: 'Patient non trouvé ou correctement sélectionné' };
                 } else {
                     console.error("[pdfParser] Erreur inconnue lors de la recherche du patient, je continue la procédure.");
-                    return { status: 'continue', message: 'Erreur inconnue lors de la recherche du patient' };
+                    return { status : 'error', action: 'continue', message: 'Erreur inconnue lors de la recherche du patient' };
                 }
             } else if (properSearched.status === 'refresh') {
                 console.log(`[pdfParser] arrêt de la procédure car :`, properSearched.message);
                 // On attends aussi un rafraichissement de la page
-                return { status: 'refresh', message: properSearched.message };
+                return { status : 'ongoing', action: 'refresh', message: properSearched.message };
             } else {
                 // On marque l'échec de cette méthode de recherche => la boucle suivante l'écartera
                 console.error(`[pdfParser] Echec de la méthode de recherche :`, properSearched.message, `pour ${search.type}`, "je la marque comme un échec et je continue la procédure.");
@@ -615,8 +656,8 @@ function handlePatientSearch(extractedData, hashId) {
         }
     }
 
-    console.log("[pdfParser] Aucune donnée ou méthode de recherche disponible. Arrêt de la recherche de patient.");
-    return { status: 'continue', message: 'Aucune donnée ou méthode de recherche disponible' };
+    console.log("[pdfParser] Aucune donnée permettant de trouver le patient. Arrêt de la recherche de patient.");
+    return { status : 'error', action: 'continue', message: 'Aucune donnée permettant de trouver le patient. Merci de chercher manuellement le patient.' };
 }
 
 
@@ -1824,14 +1865,34 @@ function findSpecialite(fullText, specialites) {
 
 // Fonction pour trouver le type d'imagerie dans le texte
 function findImagerie(fullText, imageries) {
-    for (const [imagerie, keywords] of Object.entries(imageries)) {
-        for (const keyword of keywords) {
-            if (fullText.toLowerCase().includes(keyword.toLowerCase())) {
-                console.log('[pdfParser] type d\'imagerie trouvé', imagerie);
-                return imagerie;
+    const lines = fullText.split('\n');
+    
+    for (const line of lines) {
+        const lineText = line.toLowerCase();
+        let matchesInLine = [];
+        
+        // Compter combien de types d'imagerie matchent dans cette ligne
+        for (const [imagerie, keywords] of Object.entries(imageries)) {
+            for (const keyword of keywords) {
+                if (lineText.includes(keyword.toLowerCase())) {
+                    matchesInLine.push(imagerie);
+                    break; // Sortir de la boucle keywords pour cette imagerie
+                }
             }
         }
+        
+        // Si exactement un match dans cette ligne, c'est probablement le bon
+        if (matchesInLine.length === 1) {
+            console.log('[pdfParser] type d\'imagerie trouvé', matchesInLine[0], 'dans la ligne:', line.substring(0, 50) + '...');
+            return matchesInLine[0];
+        }
+        // Si plusieurs matches, on ignore cette ligne (probablement une liste de services)
+        else if (matchesInLine.length > 1) {
+            console.log('[pdfParser] Ligne ignorée (multiples types d\'imagerie):', line.substring(0, 50) + '...');
+        }
     }
+    
+    console.log('[pdfParser] Aucun type d\'imagerie trouvé dans une ligne unique');
     return null;
 }
 
@@ -2012,6 +2073,12 @@ function determineDocumentTitle(fullText, documentType) {
         for (const third of thirds) {
             for (let i = third.start; i < third.end; i++) {
                 const line = lines[i];
+                
+                // Pour le dernier tiers (signature), ignorer tout après "destinataire" ou "destinataires"
+                if (third.name === 'signature' && /destinataires?/i.test(line)) {
+                    break;
+                }
+                
                 for (const pattern of doctorPatterns) {
                     const match = line.match(pattern);
                     if (match && match[1]) {

@@ -518,16 +518,27 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'AutoOpenHistory_Consultation',
             actionFilter(elements[0].contentDocument);
         }
     });
+
+    // Réduction de la taille de l'historique (Weda propose une taille de 60% de la page)
+    waitForElement({
+        selector: '#ColumnHistorique',        
+        callback: function (elements) {
+            const historiqueElement = elements[0];
+            console.log('Historique element trouvé', historiqueElement);
+            historiqueElement.style.width = '30%'; // Réduire la taille de l'historique à 30% de la page
+        }
+    });
 });
 
 // // Définir les pages pour lesquelles l'historique doit être déplacé à gauche et leur cible
 let pagesToLeftPannel_ = [
-    {
-        url: '/FolderMedical/ConsultationForm.aspx',
-        targetElementSelector: '#form1 > div:nth-child(14) > div > table > tbody > tr > td:nth-child(1) > table',
-        option: 'MoveHistoriqueToLeft_Consultation',
-        pageType: 'Consultation'
-    },
+    // Depreciated car l'historique est maintenant géré par Weda pour les consultations
+    // {
+    //     url: '/FolderMedical/ConsultationForm.aspx',
+    //     targetElementSelector: '#form1 > div:nth-child(14) > div > table > tbody > tr > td:nth-child(1) > table',
+    //     option: 'MoveHistoriqueToLeft_Consultation',
+    //     pageType: 'Consultation'
+    // },
     {
         url: '/FolderMedical/CertificatForm.aspx',
         targetElementSelector: 'table[onmouseover="ForceCloseListBoxGlossaire();"] > tbody > tr',

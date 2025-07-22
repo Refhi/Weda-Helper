@@ -697,6 +697,44 @@ chrome.runtime.onMessage.addListener(
     }
 );
 
+/**
+ * Envoie une notification Weda à tous les onglets en utilisant le stockage local de Chrome.
+ * Cette fonction stocke les options de notification avec un identifiant unique basé sur l'horodatage,
+ * ce qui déclenche ensuite l'affichage de la notification dans tous les onglets grâce au listener
+ * chrome.storage.onChanged.
+ * 
+ * @async
+ * @function sendWedaNotifAllTabs
+ * @param {Object} options - Les options de la notification à envoyer.
+ * @param {string} [options.message="Notification de test"] - Le message à afficher dans la notification.
+ * @param {string} [options.icon="home"] - L'icône Material Design à utiliser pour la notification.
+ * @param {string} [options.type="success"] - Le type de notification ('success', 'fail', ou undefined pour neutre).
+ * @param {string} [options.extra="{}"] - Données supplémentaires au format JSON.
+ * @param {number} [options.duration=5000] - Durée d'affichage de la notification en millisecondes.
+ * @param {Object} [options.action] - Action optionnelle à exécuter (ex: demande de permission).
+ * 
+ * @example
+ * // Envoi d'une notification simple
+ * const notifId = await sendWedaNotifAllTabs({
+ *     message: "Opération réussie",
+ *     type: "success",
+ *     duration: 3000
+ * });
+ * 
+ * @example
+ * // Envoi d'une notification avec gestion d'erreur
+ * try {
+ *     await sendWedaNotifAllTabs({
+ *         message: "Erreur lors du traitement",
+ *         type: "fail",
+ *         icon: "error"
+ *     });
+ * } catch (error) {
+ *     console.error('Échec de l\'envoi de la notification:', error);
+ * }
+ * 
+ * @see {@link sendWedaNotif} Pour envoyer une notification uniquement dans l'onglet actuel.
+ */
 async function sendWedaNotifAllTabs(options) {
     // Ajoute un identifiant unique basé sur l'horodatage actuel
     options.id = Date.now();
