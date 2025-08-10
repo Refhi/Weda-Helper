@@ -136,13 +136,20 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'debugModePdfParser', function () {
     debugOutput.placeholder = "Résultat du debug";
     debugOutput.style.width = "100%";
     debugOutput.style.marginTop = "10px";
-    debugOutput.style.minHeight = "200px";
+    debugOutput.style.minHeight = "250px";
     debugOutput.readOnly = true;
 
     // Ajout de la logique du bouton
     debugButton.onclick = async function () {
+        const destinations = {
+            '1': "Consultation",
+            '2': "Résultats d'examens",
+            '3': "Courrier"
+        };
+
         const debugValue = debugMode.value;
         const extractedData = await extractRelevantData(debugValue);
+        extractedData.readeableDestination = destinations[extractedData.destinationClass] || "Inconnue";
         // Affichage lisible de l'objet
         debugOutput.value = JSON.stringify(extractedData, null, 2);
         console.log("[pdfParser] Mode debug activé avec la valeur : ", debugValue, extractedData);

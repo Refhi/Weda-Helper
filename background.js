@@ -676,7 +676,7 @@ var advancedDefaultSettings = [{
         "type": TYPE_BOOL,
         "description": "Active le mode debug du PDF Parser.",
         "default": false,
-        "longDescription": "Affiche un bouton dans la popup de l’extension pour tester rapidement l’algorithme d’anayse des PDF. Utile pour les développeurs.",
+        "longDescription": "Affiche un champ de test dans la page des imports pour tester rapidement l’algorithme d’anayse des PDF. Utile pour les développeurs.",
     }],
 }];
 
