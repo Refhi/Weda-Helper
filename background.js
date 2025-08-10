@@ -671,6 +671,12 @@ var advancedDefaultSettings = [{
         "description": "La touche Alt ne met plus le focus sur le menu du navigateur",
         "default": true,
         "longDescription": "Cela règle deux problèmes : le focus était perdu lors de l'usage de Alt pour afficher l'aide, et lorsque le Companion tente de rendre le focus au navigateur (via un appuis simulé sur la touche Alt) cela entrainait parfois un focus sur le menu du navigateur."
+    }, {
+        "name": "debugModePdfParser",
+        "type": TYPE_BOOL,
+        "description": "Active le mode debug du PDF Parser.",
+        "default": false,
+        "longDescription": "Affiche un bouton dans la popup de l’extension pour tester rapidement l’algorithme d’anayse des PDF. Utile pour les développeurs.",
     }],
 }];
 

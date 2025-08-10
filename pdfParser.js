@@ -45,7 +45,7 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
     });
 });
 
-// 2.b. Dans la page des Echanges Sécurisés
+// 1.b. Dans la page des Echanges Sécurisés
 addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
     console.log('[pdfParser] Chargement de la page d\'échanges');
     waitForElement({
@@ -115,6 +115,45 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
     });
 
 });
+
+// 1.c. Ajout d’un champ de debug pour le PDF Parser
+addTweak('/FolderMedical/UpLoaderForm.aspx', 'debugModePdfParser', function () {
+    // Création du champ d’input texte (textarea)
+    const debugMode = document.createElement('textarea');
+    debugMode.placeholder = "Mode debug PDF Parser";
+    debugMode.style.width = "100%";
+    debugMode.style.marginTop = "10px";
+    debugMode.style.minHeight = "80px"; // ou plus selon le besoin
+
+    // Création du bouton pour lancer le debug
+    const debugButton = document.createElement('button');
+    debugButton.innerText = 'Lancer le debug';
+    debugButton.style.marginTop = "10px";
+    debugButton.style.display = "block";
+
+    // Création du champ output (readonly)
+    const debugOutput = document.createElement('textarea');
+    debugOutput.placeholder = "Résultat du debug";
+    debugOutput.style.width = "100%";
+    debugOutput.style.marginTop = "10px";
+    debugOutput.style.minHeight = "200px";
+    debugOutput.readOnly = true;
+
+    // Ajout de la logique du bouton
+    debugButton.onclick = async function () {
+        const debugValue = debugMode.value;
+        const extractedData = await extractRelevantData(debugValue);
+        // Affichage lisible de l'objet
+        debugOutput.value = JSON.stringify(extractedData, null, 2);
+        console.log("[pdfParser] Mode debug activé avec la valeur : ", debugValue, extractedData);
+    };
+
+    // Insertion dans le DOM : textarea, puis bouton, puis output (dans l'ordre)
+    document.body.prepend(debugOutput);
+    document.body.prepend(debugButton);
+    document.body.prepend(debugMode);
+});
+
 
 
 
@@ -511,7 +550,7 @@ async function handleDataExtraction(fullText, urlPDF, hashId) {
     } else {
         console.log("[pdfParser] Données non extraites pour ce PDF. Extraction des données.");
         // Extraction des informations pertinentes
-        extractedData = await extractRelevantData(fullText, urlPDF);
+        extractedData = await extractRelevantData(fullText);
 
         // Si on n'a pas de nirMatches, on se rabattra sur la DDN et le nom
         if (!extractedData.nirMatches || extractedData.nirMatches.length === 0) {
@@ -1164,7 +1203,7 @@ async function extractLines(textItems) {
  *   nirMatches: ["123456789012345"]
  * }
  */
-async function extractRelevantData(fullText, pdfUrl) {
+async function extractRelevantData(fullText) {
     const regexPatterns = {
         dateRegexes: [
             /[0-9]{2}[\/\-.][0-9]{2}[\/\-.][0-9]{4}/g, // Match dates dd/mm/yyyy ou dd-mm-yyyy
