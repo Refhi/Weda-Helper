@@ -1330,7 +1330,6 @@ async function extractAddressedTo(fullText) {
     return null;
 }
 
-// Extraction de la classe de destination
 function extractDestinationClass(fullText) {
     // Les trois destinations possibles 
     const destinations = {
@@ -1339,75 +1338,95 @@ function extractDestinationClass(fullText) {
         '3': "Courrier"
     };
 
-    // Mots-clés pour chaque destination
+    // Mots-clés pour chaque destination, séparés en absolus et probables
     const keywordsByDestination = {
-        '1': [
-            /consultation/i,
-            /prise en charge/i,
-            /examen clinique/i,
-            /visite médicale/i,
-            /Motif :/i,
-            /histoire de la maladie/i,
-            /SOAP/i,
-            /anamnèse/i,
-            /auscultation/i,
-            /Antécédents :/i,
-            /Au terme de ce bilan/i,
-            /à l'examen clinique/i
-        ],
-        '2': [
-            /examen/i,
-            /résultat/i,
-            /biologie/i,
-            /bilan/i,
-            /analyse/i,
-            /laboratoire/i,
-            /scanner/i,
-            /imagerie/i,
-            /radiographie/i,
-            /échographie/i,
-            /irm/i,
-            /tdm/i,
-            /tep/i,
-            /doppler/i,
-            /mammographie/i,
-            /scintigraphie/i,
-            /echodoppler/i,
-            /renseignements cliniques/i,
-            /technique/i,
-            /conclusion/i
-        ],
-        '3': [
-            /courrier/i,
-            /lettre/i,
-            /correspondance/i,
-            /avis/i,
-            /compte rendu/i,
-            /compte-rendu/i,
-            /CR.{0,5}consult/i,
-            /adressé(?:e)? par/i,
-            /adressé(?:e)? pour/i,
-            /Cher Confrère/i,
-            /chère consoeur/i,
-            /chère consœur/i,
-            /Je vous remercie/i,
-            /nous a consulté/i,
-            /nous a été adressé/i,
-            /information destinée/i,
-            /spécialiste/i
-        ]
+        '1': { // Consultation
+            absolus: [
+                /consultation.*du\s+\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{4}/i,
+                /examen clinique/i,
+                /anamnèse/i
+            ],
+            probables: [
+                /consultation/i,
+                /prise en charge/i,
+                /visite médicale/i,
+                /Motif :/i,
+                /histoire de la maladie/i,
+                /SOAP/i,
+                /auscultation/i,
+                /Antécédents :/i,
+                /Au terme de ce bilan/i,
+                /à l'examen clinique/i
+            ]
+        },
+        '2': { // Résultats d'examens
+            absolus: [
+                /Résultats? d['’](examen|analyse)s?/i,
+                /valeurs? de référence/i
+            ],
+            probables: [
+                /examen/i,
+                /résultat/i,
+                /biologie/i,
+                /bilan/i,
+                /analyse/i,
+                /laboratoire/i,
+                /scanner/i,
+                /imagerie/i,
+                /radiographie/i,
+                /échographie/i,
+                /irm/i,
+                /tdm/i,
+                /tep/i,
+                /doppler/i,
+                /mammographie/i,
+                /scintigraphie/i,
+                /echodoppler/i,
+                /renseignements cliniques/i,
+                /technique/i,
+                /conclusion/i
+            ]
+        },
+        '3': { // Courrier
+            absolus: [
+                /Je vous remercie de m'avoir adressé/i,
+                /Je reçois/i,
+                /courrier/i,
+                /lettre/i
+            ],
+            probables: [
+                /correspondance/i,
+                /avis/i,
+                /compte rendu/i,
+                /compte-rendu/i,
+                /CR.{0,5}consult/i,
+                /adressé(?:e)? par/i,
+                /adressé(?:e)? pour/i,
+                /Cher Confrère/i,
+                /chère consoeur/i,
+                /chère consœur/i,
+                /nous a consulté/i,
+                /nous a été adressé/i,
+                /information destinée/i,
+                /spécialiste/i
+            ]
+        }
     };
 
-    // Compteur de correspondances pour chaque destination
-    const matchCounts = {
-        '1': 0,
-        '2': 0,
-        '3': 0
-    };
+    // 1. Recherche des termes absolus
+    for (const [destId, patternsObj] of Object.entries(keywordsByDestination)) {
+        for (const pattern of patternsObj.absolus) {
+            if (pattern.test(fullText)) {
+                console.log(`[pdfParser] Mot-clé absolu trouvé pour ${destinations[destId]} :`, pattern);
+                return destId;
+            }
+        }
+    }
 
-    // Vérifier chaque destination
-    for (const [destId, patterns] of Object.entries(keywordsByDestination)) {
-        for (const pattern of patterns) {
+    // 2. Comptage des termes probables
+    const matchCounts = { '1': 0, '2': 0, '3': 0 };
+    for (const [destId, patternsObj] of Object.entries(keywordsByDestination)) {
+        for (const pattern of patternsObj.probables) {
             const matches = fullText.match(pattern);
             if (matches) {
                 matchCounts[destId] += matches.length;
@@ -1415,27 +1434,11 @@ function extractDestinationClass(fullText) {
         }
     }
 
-    console.log('[pdfParser] Correspondances de classe par destination:', matchCounts);
+    console.log('[pdfParser] Correspondances probables par destination:', matchCounts);
 
-    // Vérifier s'il y a des correspondances spécifiques qui augmentent fortement la probabilité
-    const specificPatterns = {
-        '1': [/consultation.*du\s+\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{4}/i],
-        '2': [/Résultats? d[''](?:examen|analyse)s?/i, /valeurs? de référence/i],
-        '3': [/Je vous remercie de m'avoir adressé/i]
-    };
-
-    for (const [destId, patterns] of Object.entries(specificPatterns)) {
-        for (const pattern of patterns) {
-            if (pattern.test(fullText)) {
-                matchCounts[destId] += 5; // Ajoute un poids plus fort
-            }
-        }
-    }
-
-    // Sélectionner la destination avec le plus grand nombre de correspondances
+    // 3. Sélection de la destination avec le plus grand nombre de correspondances probables
     let maxCount = 0;
     let selectedDestination = null;
-
     for (const [destId, count] of Object.entries(matchCounts)) {
         if (count > maxCount) {
             maxCount = count;
@@ -1443,7 +1446,7 @@ function extractDestinationClass(fullText) {
         }
     }
 
-    // Si aucune correspondance ou égalité, on privilégie "Courrier" qui est souvent la catégorie par défaut
+    // Si aucune correspondance ou égalité, on privilégie "Courrier"
     if (maxCount === 0 || (matchCounts['3'] === matchCounts['2'] && matchCounts['2'] === maxCount)) {
         selectedDestination = '3';
     }
