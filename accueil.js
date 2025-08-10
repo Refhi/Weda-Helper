@@ -52,29 +52,6 @@ let homePageFunctions = [
         }
     },
     {
-        option: '!RemoveLocalCompanionPrint',
-        callback: function () {
-            function returnAATIElement() {
-                // Le selecteur est .sc et le titre débute par "Dernier A.T."
-                let aatiElement = document.querySelector('.sc[title^="Dernier A.T."]');
-                console.log('aatiElement', aatiElement);
-                return aatiElement;
-            }
-            console.log('je tente de clicker sur le dernier pdf');
-            chrome.storage.local.get(['autoAATIexit', 'RemoveLocalCompanionPrint'], function (result) {
-                if (Date.now() - result.autoAATIexit < 10000 && result.RemoveLocalCompanionPrint === false) {
-                    console.log('autoAATIexit', result.autoAATIexit, 'is less than 10s old, donc je tente d\'ouvrir le pdf du dernier arrêt de travail');
-                    // Ouvre le dernier arrêt de travail
-                    let element = returnAATIElement();
-                    element.click();
-                } else {
-                    // let element = returnAATIElement();
-                    // element.click();
-                }
-            });
-        },
-    },
-    {
         option: 'autoSelectPatientCV',
         callback: function () {
             // lit automatiquement la carte vitale elle est insérée
