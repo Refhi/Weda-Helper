@@ -1251,14 +1251,19 @@ async function extractRelevantData(fullText) {
     // Extraction de l'ensemble des dates présentes dans le texte
     const dateMatches = await extractDates(fullText, regexPatterns.dateRegexes);
     // Extraction des éléments pertinents
+    // // Dates et nir : recherche via priorisation et pur regex
     const documentDate = await determineDocumentDate(fullText, dateMatches, regexPatterns.documentDateRegexes);
     const dateOfBirth = determineDateOfBirth(fullText, dateMatches, regexPatterns.dateOfBirthRegexes);
+    const nirMatches = extractNIR(fullText, regexPatterns.nirRegexes);
+
+    // // Noms (recherche via contexte des mots avant/après et place théorique dans le document)
     const nameMatches = extractNames(fullText, regexPatterns.nameRegexes);
+    const addressedTo = extractAddressedTo(fullText); // Retourne l'id du choix du dropdown
+
+    // // Catégorisation générales : recherche via contexte et heuristiques
+    const destinationClass = extractDestinationClass(fullText);
     const documentType = await determineDocumentType(fullText);
     const documentTitle = determineDocumentTitle(fullText, documentType);
-    const nirMatches = extractNIR(fullText, regexPatterns.nirRegexes);
-    const addressedTo = extractAddressedTo(fullText); // Retourne l'id du choix du dropdown
-    const destinationClass = extractDestinationClass(fullText);
 
 
     let extractedData = {
@@ -1273,6 +1278,43 @@ async function extractRelevantData(fullText) {
     };
     return extractedData;
 }
+
+/**
+ * Fonction générique d'extraction de catégories basée sur la configuration utilisateur.
+ * 
+ * @param {string} fullText - Le texte complet du PDF à analyser
+ * @param {string} optionSelector - Nom de l'option dans background.js contenant la configuration
+ * 
+ * Le système fonctionne avec un format de configuration simplifié :
+ * - Chaque ligne de configuration suit le format : "nom_catégorie: mot-clé1, mot-clé2, ..."
+ * - La fonction teste si une catégorie correspond en cherchant ses mots-clés dans le texte
+ * - Une même catégorie peut apparaître plusieurs fois avec des mots-clés différents,
+ *   permettant des passes successives avec des critères de plus en plus larges
+ * 
+ * Exemple de configuration de optionSelector :
+ * ```
+ * COURRIER: lettre, correspondance, adressé
+ * IMAGERIE: scanner, IRM, radiographie
+ * COURRIER: courrier, avis
+ * IMAGERIE: examen, résultat
+ * ```
+ * 
+ * @returns {string|null} - La première catégorie trouvée ou null si aucune correspondance
+ */
+
+// TODO : poursuivre ici puis l'implémenter dans les fonctions ad hoc
+async function extractCategoryFromOptions(fullText, optionSelector, possibleCats) {
+    // 1 - Vérifier que toutes les options présentes dans optionSelector sont bien présente dans possibleCats
+
+    // 2 - parcourir chaque option/ligne présente dans optionSelector (donc le mot-clé présent avant le ":")
+    // et le confronter aux mots/phrases-clés présentes entre chaque ","
+
+    // 3 - en cas de match, faire un return de la catégorie retrouvée
+
+    // 4 - en l'absence de match, retourner un false
+
+}
+
 
 // Extraction du médecin à qui est adressé le document
 async function extractAddressedTo(fullText) {
