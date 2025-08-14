@@ -114,8 +114,11 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
     // on surveille le bouton de sortie pour le cliquer automatiquement
     waitForElement({
         selector: selectorExitButton,
-        callback: function (elements) {
+        callback: async function (elements) {
             console.log('selectorExitButton', elements);
+            // on enregistre le timestamp de sortie dans le local storage
+            await chrome.storage.local.set({autoAATIexit: Date.now()});
+            console.log('autoAATIexit set to', Date.now());
             setTimeout(function () {
                 elements[0].click();
             }, 500); // essai avec un délai de 500ms
@@ -132,7 +135,8 @@ addTweak('/BinaryData.aspx', "*sendDocToCompanion", async function () {
     // récupération des valeurs et options importantes
     const autoAATIexitTimestamp = await chrome.storage.local.get(['autoAATIexit']);
     const isRecentExit = Date.now() - autoAATIexitTimestamp.autoAATIexit < 10000;
-    const companionPrintEnabled = await getOptionPromise('RemoveLocalCompanionPrint');
+    const companionPrintEnabled = !(await getOptionPromise('RemoveLocalCompanionPrint'));
+    console.log('[sendDocToCompanion] variables : autoAATIexit', autoAATIexitTimestamp.autoAATIexit, 'isRecentExit', isRecentExit, 'companionPrintEnabled', companionPrintEnabled);
     // tout d’abord on vérifie qu’on a bien un arrêt de travail récent
     if (!isRecentExit) {
         console.log('autoAATIexit is not recent, skipping Companion print');
@@ -147,7 +151,7 @@ addTweak('/BinaryData.aspx', "*sendDocToCompanion", async function () {
 
     console.log('autoAATIexit is recent and Companion print is enabled, proceeding with Companion print');
     // réinitialisation de la valeur autoAATIexit
-    chrome.storage.local.set({autoAATIexit: 0});
+    await chrome.storage.local.set({autoAATIexit: 0});
 
     // l’url de la page est censée être la page 3 de l'arrêt de travail, on va l'envoyer à Companion
     let url = window.location.href;
