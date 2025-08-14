@@ -1302,12 +1302,14 @@ async function extractRelevantData(fullText) {
  *
  * @returns {string|null} - La première catégorie trouvée (selon l’ordre des règles) ou null si aucune correspondance.
  */
-async function extractCategoryFromOptions(fullText, optionSelector, possibleCats, perfectRuleMatchingNeeded = false) {
+async function extractCategoryFromOptions(fullText, optionSelector, possibleCats = null, perfectRuleMatchingNeeded = false) {
+    console.log("[pdfParser] Extraction de la catégorie à partir des options", optionSelector);
     // 1 - récupérer le tableau via getOption et le convertir en format exploitable
     // On utilise un tableau de tableaux pour permettre de parcourir les types de documents par ordre de spécificité
     // Et de mettre plusieurs fois la même clé, avec des valeurs de moins en moins exigeantes
     let categoryMatchingRules = await getOptionPromise(optionSelector);
     categoryMatchingRules = properArrayOfCategoryMatchingRules(categoryMatchingRules);
+    console.log("[pdfParser] Règles de correspondance pour l'extraction de catégorie :", categoryMatchingRules);
     if (categoryMatchingRules === false) {
         console.warn("[pdfParser] Règles de correspondance invalides pour l'extraction de catégorie.");
         dealWithInvalidRules(optionSelector);
@@ -1316,7 +1318,7 @@ async function extractCategoryFromOptions(fullText, optionSelector, possibleCats
 
     // 2 - Vérifier que toutes les options présentes dans categoryMatchingRules sont bien présente dans possibleCats
     // et vice-versa si une correspondance parfaite est nécessaire
-    if (!matchingRulesAreLegit(categoryMatchingRules, possibleCats, perfectRuleMatchingNeeded)) {
+    if (possibleCats && !matchingRulesAreLegit(categoryMatchingRules, possibleCats, perfectRuleMatchingNeeded)) {
         console.warn("[pdfParser] Les règles de correspondance ne correspondent pas aux catégories possibles.");
         dealWithInvalidRules(optionSelector);
         return null;
@@ -1401,12 +1403,12 @@ async function extractCategoryFromOptions(fullText, optionSelector, possibleCats
     function matchingRulesAreLegit(categoryMatchingRules, possibleCats, perfectRuleMatchingNeeded = false) {
         // Validation des paramètres d'entrée
         if (!Array.isArray(categoryMatchingRules)) {
-            console.error("[pdfParser] categoryMatchingRules doit être un tableau");
+            console.error(`[pdfParser] categoryMatchingRules doit être un tableau ${categoryMatchingRules}`);
             return false;
         }
         
         if (!Array.isArray(possibleCats)) {
-            console.error("[pdfParser] possibleCats doit être un tableau");
+            console.error(`[pdfParser] possibleCats doit être un tableau ${possibleCats}`);
             return false;
         }
 
@@ -1903,21 +1905,6 @@ function visualizeBinaryBitmap(binaryBitmap) {
 }
 
 async function determineDocumentType(fullText) {
-    // console.log('[pdfParser] determineDocumentType');
-    // On utilise un tableau de tableaux pour permettre de parcourir les types de documents par ordre de spécificité
-    // Et de mettre plusieurs fois la même clé, avec des valeurs de moins en moins exigeantes
-    const PdfParserAutoCategoryDict = await getOptionPromise('PdfParserAutoCategoryDict');
-    let documentTypes;
-    try {
-        documentTypes = JSON.parse(PdfParserAutoCategoryDict);
-    } catch (error) {
-        console.error('[pdfParser] Erreur lors de l\'analyse du JSON pour PdfParserAutoCategoryDict:', error, PdfParserAutoCategoryDict);
-        if (confirm('Erreur de syntaxe pour la catégorisation automatique du document. Vérifiez dans les options de Weda-Helper. Cliquez sur OK pour réinitialiser ce paramètre.')) {
-            handleDocumentTypesConsent();
-        }
-        return null;
-    }
-
     // Vérifier que tous les types de documents sont bien définis
     const possibleDocumentTypes = initDocumentTypes();
 
@@ -1928,41 +1915,7 @@ async function determineDocumentType(fullText) {
         return null;
     }
 
-    // Vérifier que chaque type de document dans documentTypes est présent dans possibleDocumentTypes
-    for (const [type, _] of documentTypes) {
-        if (!possibleDocumentTypes.some(possibleType => possibleType[0] === type)) {
-            console.error(`[pdfParser] Type de document ${type} non défini dans les catégories possibles. Veuillez mettre à jour les catégories.`);
-            if (confirm(`Type de document ${type} non défini dans les catégories possibles. Voulez-vous mettre à jour les catégories ?`)) {
-                handleDocumentTypesConsent();
-            }
-            return null;
-        }
-    }
-
-    // Vérifier que chaque type de document dans possibleDocumentTypes est présent dans documentTypes
-    for (const [possibleType, _] of possibleDocumentTypes) {
-        if (!documentTypes.some(([type, _]) => type === possibleType)) {
-            console.error(`[pdfParser] Catégorie possible ${possibleType} non définie dans les types de documents. Veuillez mettre à jour les types de documents.`);
-            if (confirm(`Catégorie possible ${possibleType} non définie dans les types de documents. Voulez-vous mettre à jour les types de documents ?`)) {
-                handleDocumentTypesConsent();
-            }
-            return null;
-        }
-    }
-
-    for (const [type, keywords] of documentTypes) {
-        // console.log('[pdfParser] recherche du type de document', type);
-        for (const keyword of keywords) {
-            // Remplacer les espaces par \s* pour permettre les espaces optionnels
-            const regex = new RegExp(keyword.replace(/\s+/g, '\\s*'), 'i');
-            if (regex.test(fullText)) {
-                console.log('[pdfParser] type de document trouvé', type, 'car présence de', keyword);
-                return type;
-            }
-        }
-    }
-    console.log('[pdfParser] type de document non trouvé');
-    return null;
+    return extractCategoryFromOptions(fullText, 'PdfParserAutoCategoryDict', possibleDocumentTypes, true);
 }
 
 // Fonction pour initialiser les catégories possibles de classification
@@ -1981,14 +1934,14 @@ function initDocumentTypes() {
     }
     const options = dropDownCats.options;
 
-    // Créer un tableau pour stocker les catégories
+    // Créer un tableau pour stocker les catégories (simple tableau de chaînes)
     const categories = [];
 
     // Parcourir les options et ajouter les catégories au tableau
     for (let i = 0; i < options.length; i++) {
         const option = options[i];
         if (option.value !== "0") { // Ignorer l'option par défaut
-            categories.push([option.text, []]); // Initialiser les valeurs à un tableau vide
+            categories.push(option.text); // Ajouter seulement le nom de la catégorie
         }
     }
 
@@ -2061,207 +2014,89 @@ function addDocumentTypesButton() {
 
 
 
-// Fonction pour trouver la spécialité dans le texte
-function findSpecialite(fullText, specialites) {
-    for (const [specialite, keywords] of Object.entries(specialites)) {
-        for (const keyword of keywords) {
-            if (fullText.toLowerCase().includes(keyword.toLowerCase())) {
-                console.log('[pdfParser] spécialité trouvée', specialite);
-                return specialite;
-            }
-        }
-    }
-    return null;
-}
-
-// Fonction pour trouver le type d'imagerie dans le texte
-function findImagerie(fullText, imageries) {
-    const lines = fullText.split('\n');
-
-    for (const line of lines) {
-        const lineText = line.toLowerCase();
-        let matchesInLine = [];
-
-        // Compter combien de types d'imagerie matchent dans cette ligne
-        for (const [imagerie, keywords] of Object.entries(imageries)) {
-            for (const keyword of keywords) {
-                if (lineText.includes(keyword.toLowerCase())) {
-                    matchesInLine.push(imagerie);
-                    break; // Sortir de la boucle keywords pour cette imagerie
-                }
-            }
-        }
-
-        // Si exactement un match dans cette ligne, c'est probablement le bon
-        if (matchesInLine.length === 1) {
-            console.log('[pdfParser] type d\'imagerie trouvé', matchesInLine[0], 'dans la ligne:', line.substring(0, 50) + '...');
-            return matchesInLine[0];
-        }
-        // Si plusieurs matches, on ignore cette ligne (probablement une liste de services)
-        else if (matchesInLine.length > 1) {
-            console.log('[pdfParser] Ligne ignorée (multiples types d\'imagerie):', line.substring(0, 50) + '...');
-        }
-    }
-
-    console.log('[pdfParser] Aucun type d\'imagerie trouvé dans une ligne unique');
-    return null;
-}
-
 // Fonction pour déterminer le titre du document
-function determineDocumentTitle(fullText, documentType) {
-    // Phrases-clés prioritaires avec leurs titres associés
-    const phrasesPrioritaires = {
-        "Frottis": ["Frottis gynécologique de dépistage", "papilloma", "Frottis cervico-vaginal"],
-        "Prescription de transport": ["transport pour patient"],
-        "Arrêt de travail": ["ARRET DE TRAVAIL", "D’ARRET DE TRAVAIL"],
-        "Protocole de soin": ["PROTOCOLE DE SOINS ELECTRONIQUE"],
+async function determineDocumentTitle(fullText, documentType) {
+    const categoryExtractorsOptions = {
+        specialite: "PdfParserAutoSpecialiteDict",
+        imagerie: "PdfParserAutoImagerieDict",
+        region: "PdfParserAutoRegionDict",
+        lieu: "PdfParserAutoLieuDict",
+        typeCR: "PdfParserAutoTypeCRDict"
     };
 
-    // Vérifier d'abord s'il y a une phrase prioritaire dans le texte
-    for (const [titre, phrases] of Object.entries(phrasesPrioritaires)) {
-        for (const phrase of phrases) {
-            // Rechercher la phrase avec une regex insensible à la casse
-            const regex = new RegExp(phrase, 'i');
-            if (regex.test(fullText)) {
-                console.log(`[pdfParser] Phrase prioritaire trouvée: "${phrase}" => Titre: "${titre}"`);
-                let documentTitle = titre;
+    let caracteristics = {
+        specialite: null,
+        imagerie: null,
+        region: null,
+        lieu: null,
+        typeCR: null,
+        doctorName: null,
+        documentType: documentType || null
+    };
 
-                // Si un lieu est présent, on peut l'ajouter
-                for (const [nom, mots] of Object.entries(lieux)) {
-                    for (const mot of mots) {
-                        const lieuRegex = new RegExp(`(^|\\s|\\n)${mot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|\\n|$)`, 'i');
-                        if (lieuRegex.test(fullText)) {
-                            documentTitle += ` (${nom})`;
-                            break;
-                        }
-                    }
+    for (const [key, optionSelector] of Object.entries(categoryExtractorsOptions)) {
+        caracteristics[key] = await extractCategoryFromOptions(fullText, optionSelector);
+    }
+
+
+    caracteristics.doctorName = extractDoctorName(fullText);
+    // Construire le titre du document en fonction du contexte
+    let documentTitle = buildTitle(caracteristics);
+
+    console.log('[pdfParser] Titre du document déterminé', documentTitle, "caractéristiques:", caracteristics);
+
+    return documentTitle;
+
+
+    function buildTitle(caracteristics) {
+        let documentTitle = caracteristics.documentType || "";
+
+        // Pour les documents d'imagerie
+        if (caracteristics.documentType === "IMAGERIE") {
+            if (caracteristics.imagerie) {
+                documentTitle = caracteristics.imagerie.charAt(0).toUpperCase() + caracteristics.imagerie.slice(1);
+                if (caracteristics.region) {
+                    documentTitle += ` ${caracteristics.region}`;
                 }
-
-                return documentTitle;
+            } else if (caracteristics.specialite === "Radiologie") {
+                documentTitle = "Examen radiologique";
+                if (caracteristics.region) {
+                    documentTitle += ` ${caracteristics.region}`;
+                }
             }
         }
-    }
-
-    const specialites = {
-        "Médecine Interne": ["Médecine Interne"],
-        "Orthopédie": ["Orthopédie", "Orthopédique", "Traumatologie"],
-        "Gynécologie": ["Gynécologie", "Obstétrique", "Gynéco"],
-        "Cardiologie": ["Cardiologie", "Cardio", "Cardiovasculaire"],
-        "Neurologie": ["Neurologie", "Neuro", "Neurochirurgie"],
-        "Pédiatrie": ["Pédiatrie", "Pédiatre", "Enfant"],
-        "Radiologie": ["Radiologie", "Radio"],
-        "Ophtalmologie": ["Ophtalmologie", "Ophtalmo", "Oculaire"],
-        "Pneumologie": ["Pneumologie", "Pneumo", "Respiratoire", "Pulmonaire"],
-        "Dermatologie": ["Dermatologie", "Dermato", "Cutané"],
-        "Urologie": ["Urologie", "Uro"],
-        "Chirurgie": ["Chirurgie", "Chirurgical", "Opération"],
-        "Rhumatologie": ["Rhumatologie", "Rhumato"],
-        "Endocrinologie": ["Endocrinologie", "Endocrino", "Diabète", "Diabétologie"],
-        "Gastro-entérologie": ["Gastro-entérologie", "Gastro", "Digestif"],
-        "Hématologie": ["Hématologie", "Hémato"],
-        "Néphrologie": ["Néphrologie", "Néphro", "Rénale"],
-        "Oncologie": ["Oncologie", "Onco", "Cancer"],
-        "Psychiatrie": ["Psychiatrie", "Psy", "Psychologie"],
-        "Stomatologie": ["Stomatologie", "Stomato", "Maxillo-facial"],
-        "Addictologie": ["Addictologie", "Addiction"],
-        "ORL": ["ORL", "Otologie", "Rhinologie", "Laryngologie", "Otorhinolaryngologie"],
-        "Allergologie": ["Allergologie", "Allergie", "Allergique"],
-        "Gériatrie": ["Gériatrie", "Gérontologie", "Personnes âgées"],
-        "Anesthésiologie": ["Anesthésiologie", "Anesthésie", "Réanimation"]
-    };
-
-    const imageries = {
-        "scanner": ["scanner", "TDM", "tomodensitométrie"],
-        "échographie": ["échographie", "écho", "doppler", "échodoppler"],
-        "radiographie": ["radiographie", "radio", "rx"],
-        "mammographie": ["mammographie", "mammo"],
-        "scintigraphie": ["scintigraphie", "scinti"],
-        "ostéodensitométrie": ["ostéodensitométrie", "densitométrie osseuse"],
-        "IRM": ["IRM", "imagerie par résonance magnétique"]
-    };
-
-    // Organes/régions anatomiques fréquents pour préciser l'examen
-    const regions = {
-        "thoracique": ["thorax", "thoracique", "pulmonaire", "poumon"],
-        "abdominal": ["abdomen", "abdominal", "abdominale"],
-        "crânien": ["crâne", "crânien", "cérébral", "cerveau", "tête"],
-        "rachis": ["rachis", "colonne vertébrale", "lombaire", "cervical", "dorsal", "vertèbre"],
-        "genou": ["genou", "fémoro-tibial"],
-        "hanche": ["hanche", "coxo-fémoral"],
-        "épaule": ["épaule", "scapulo-huméral"],
-        "poignet": ["poignet", "radio-carpien"],
-        "coude": ["coude"],
-        "cheville": ["cheville", "tibio-tarsien"],
-        "pied": ["pied", "tarsien"],
-        "main": ["main", "métacarpien"],
-        "bassin": ["bassin", "pelvien"],
-        "sinus": ["sinus", "facial"],
-        "artère": ["artère", "artériel", "aorte", "carotide", "fémorale"],
-        "cardiaque": ["cardiaque", "cœur", "coronaire"]
-    };
-
-    // Établissements de santé ou lieux
-    const lieux = {
-        "CHU": ["CHU", "Centre Hospitalier Universitaire"],
-        "CH": ["CH", "Centre Hospitalier de", "Hôpital de", "Hôpital"],
-        "Clinique": ["Clinique", "Polyclinique"],
-        "Centre": ["Centre médical", "Centre de radiologie", "Centre d'imagerie"],
-        "Cabinet": ["Cabinet médical", "Cabinet de radiologie"]
-    };
-
-    // Type de compte-rendu
-    const typesCR = {
-        "consultation": ["Consultation", "CS", "Cs", "consultation"],
-        "hospitalisation": ["Hospitalisation", "CRH", "compte rendu d'hospitalisation"],
-        "examen": ["Compte rendu d'examen", "CR d'examen", "compte-rendu d'examen"],
-        "opération": ["Compte rendu opératoire", "CRO", "opération"]
-    };
-
-    // Trouver la spécialité médicale
-    let specialite = findSpecialite(fullText, specialites);
-
-    // Trouver le type d'imagerie si présent
-    let imagerie = findImagerie(fullText, imageries);
-
-    // Trouver la région anatomique si présente
-    let region = null;
-    for (const [nom, mots] of Object.entries(regions)) {
-        for (const mot of mots) {
-            if (fullText.toLowerCase().includes(mot.toLowerCase())) {
-                region = nom;
-                break;
+        // Pour les consultations
+        else if (caracteristics.documentType === "CONSULTATION" || caracteristics.typeCR === "consultation") {
+            documentTitle = "Consultation";
+            if (caracteristics.doctorName) {
+                documentTitle += ` Dr. ${caracteristics.doctorName}`;
+            } else if (caracteristics.specialite) {
+                documentTitle += ` ${caracteristics.specialite}`;
             }
         }
-        if (region) break;
-    }
-
-    // Trouver le lieu si présent
-    let lieu = null;
-    for (const [nom, mots] of Object.entries(lieux)) {
-        for (const mot of mots) {
-            // Utiliser une regex avec des limites de mots pour garantir des correspondances exactes
-            const regex = new RegExp(`(^|\\s|\\n)${mot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|\\n|$)`, 'i');
-            if (regex.test(fullText)) {
-                lieu = nom;
-                break;
+        // Pour les hospitalisations
+        else if (caracteristics.typeCR === "hospitalisation") {
+            documentTitle = "CRH";
+            if (caracteristics.specialite) {
+                documentTitle += ` ${caracteristics.specialite}`;
             }
         }
-        if (lieu) break;
-    }
-
-    // Trouver le type de compte-rendu
-    let typeCR = null;
-    for (const [nom, mots] of Object.entries(typesCR)) {
-        for (const mot of mots) {
-            if (fullText.toLowerCase().includes(mot.toLowerCase())) {
-                typeCR = nom;
-                break;
-            }
+        // Pour les autres types de documents
+        else if (caracteristics.specialite) {
+            documentTitle += documentTitle ? ` - ${caracteristics.specialite}` : caracteristics.specialite;
         }
-        if (typeCR) break;
+
+        // Ajouter le lieu en dernier si présent
+        if (caracteristics.lieu) {
+            documentTitle += ` (${caracteristics.lieu})`;
+        }
+
+        console.log('[pdfParser] Titre du document déterminé', documentTitle, "caractéristiques:", caracteristics);
+
+        return documentTitle;
     }
 
-    const extractDoctorName = (fullText) => {
+    function extractDoctorName(fullText) {
         // Diviser le texte en lignes pour analyser ligne par ligne
         const lines = fullText.split('\n');
 
@@ -2293,72 +2128,14 @@ function determineDocumentTitle(fullText, documentType) {
                 for (const pattern of doctorPatterns) {
                     const match = line.match(pattern);
                     if (match && match[1]) {
-                        return {
-                            fullName: match[1].trim(),
-                            location: third.name
-                        };
+                        return match[1].trim();
                     }
                 }
             }
         }
 
         return null;
-    };    // Utiliser la fonction pour extraire le nom du médecin
-    const doctorInfo = extractDoctorName(fullText);
-    const medecin = doctorInfo ? doctorInfo.fullName : null;
-    // Construire le titre du document en fonction du contexte
-    let documentTitle = documentType || "";
-
-    // Pour les documents d'imagerie
-    if (documentType === "IMAGERIE") {
-        if (imagerie) {
-            documentTitle = imagerie.charAt(0).toUpperCase() + imagerie.slice(1);
-            if (region) {
-                documentTitle += ` ${region}`;
-            }
-        } else if (specialite === "Radiologie") {
-            documentTitle = "Examen radiologique";
-            if (region) {
-                documentTitle += ` ${region}`;
-            }
-        }
     }
-    // Pour les consultations
-    else if (documentType === "CONSULTATION" || typeCR === "consultation") {
-        documentTitle = "Consultation";
-        if (medecin) {
-            documentTitle += ` Dr. ${medecin}`;
-        } else if (specialite) {
-            documentTitle += ` ${specialite}`;
-        }
-    }
-    // Pour les hospitalisations
-    else if (typeCR === "hospitalisation") {
-        documentTitle = "CRH";
-        if (specialite) {
-            documentTitle += ` ${specialite}`;
-        }
-    }
-    // Pour les autres types de documents
-    else if (specialite) {
-        documentTitle += documentTitle ? ` - ${specialite}` : specialite;
-    }
-
-    // Ajouter le lieu en dernier si présent
-    if (lieu) {
-        documentTitle += ` (${lieu})`;
-    }
-
-    console.log('[pdfParser] Titre du document déterminé', documentTitle,
-        'avec type:', documentType,
-        'spécialité:', specialite,
-        'imagerie:', imagerie,
-        'région:', region,
-        'médecin:', medecin,
-        'lieu:', lieu,
-        'type CR:', typeCR);
-
-    return documentTitle;
 }
 
 // Extraction des dates du texte
