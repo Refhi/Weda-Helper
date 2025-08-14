@@ -300,7 +300,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
                     type: 'undefined',
                     icon: 'search_off',
                     duration: 10000
-                });                    
+                });
             } else if (handlePatientSearchReturn.action === 'refresh') {
                 console.log("[pdfParser] handlePatientSearchReturn nécessite une action:", handlePatientSearchReturn.message);
                 // On attend un peu pour que les changements DOM se produisent
@@ -678,21 +678,21 @@ function handlePatientSearch(extractedData, hashId) {
                 const clicPatientReturn = clicPatient(extractedData);
                 console.log("[pdfParser] clicPatientReturn", clicPatientReturn.status, clicPatientReturn.message);
                 if (clicPatientReturn.status === 'success') {
-                    return { status : 'success', action: 'refresh', message: 'Patient trouvé et cliqué' };
+                    return { status: 'success', action: 'refresh', message: 'Patient trouvé et cliqué' };
                 } else if (clicPatientReturn.status === 'error') {
                     extractedData.failedSearches.push(search.type);
                     setPdfData(hashId, extractedData); // permet la rémanence des données
                 } else if (clicPatientReturn.status === 'continue') {
                     console.log("[pdfParser] Patient non trouvé ou correctement sélectionné, je continue la procédure.");
-                    return { status : 'success', action: 'continue', message: 'Patient non trouvé ou correctement sélectionné' };
+                    return { status: 'success', action: 'continue', message: 'Patient non trouvé ou correctement sélectionné' };
                 } else {
                     console.error("[pdfParser] Erreur inconnue lors de la recherche du patient, je continue la procédure.");
-                    return { status : 'error', action: 'continue', message: 'Erreur inconnue lors de la recherche du patient' };
+                    return { status: 'error', action: 'continue', message: 'Erreur inconnue lors de la recherche du patient' };
                 }
             } else if (properSearched.status === 'refresh') {
                 console.log(`[pdfParser] arrêt de la procédure car :`, properSearched.message);
                 // On attends aussi un rafraichissement de la page
-                return { status : 'ongoing', action: 'refresh', message: properSearched.message };
+                return { status: 'ongoing', action: 'refresh', message: properSearched.message };
             } else {
                 // On marque l'échec de cette méthode de recherche => la boucle suivante l'écartera
                 console.error(`[pdfParser] Echec de la méthode de recherche :`, properSearched.message, `pour ${search.type}`, "je la marque comme un échec et je continue la procédure.");
@@ -703,7 +703,7 @@ function handlePatientSearch(extractedData, hashId) {
     }
 
     console.log("[pdfParser] Aucune donnée permettant de trouver le patient. Arrêt de la recherche de patient.");
-    return { status : 'error', action: 'continue', message: 'Aucune donnée permettant de trouver le patient. Merci de chercher manuellement le patient.' };
+    return { status: 'error', action: 'continue', message: 'Aucune donnée permettant de trouver le patient. Merci de chercher manuellement le patient.' };
 }
 
 
@@ -1279,40 +1279,160 @@ async function extractRelevantData(fullText) {
     return extractedData;
 }
 
-/**
- * Fonction générique d'extraction de catégories basée sur la configuration utilisateur.
- * 
- * @param {string} fullText - Le texte complet du PDF à analyser
- * @param {string} optionSelector - Nom de l'option dans background.js contenant la configuration
- * 
- * Le système fonctionne avec un format de configuration simplifié :
- * - Chaque ligne de configuration suit le format : "nom_catégorie: mot-clé1, mot-clé2, ..."
- * - La fonction teste si une catégorie correspond en cherchant ses mots-clés dans le texte
- * - Une même catégorie peut apparaître plusieurs fois avec des mots-clés différents,
- *   permettant des passes successives avec des critères de plus en plus larges
- * 
- * Exemple de configuration de optionSelector :
- * ```
- * COURRIER: lettre, correspondance, adressé
- * IMAGERIE: scanner, IRM, radiographie
- * COURRIER: courrier, avis
- * IMAGERIE: examen, résultat
- * ```
- * 
- * @returns {string|null} - La première catégorie trouvée ou null si aucune correspondance
- */
-
 // TODO : poursuivre ici puis l'implémenter dans les fonctions ad hoc
-async function extractCategoryFromOptions(fullText, optionSelector, possibleCats) {
-    // 1 - Vérifier que toutes les options présentes dans optionSelector sont bien présente dans possibleCats
+/**
+ * Extrait la catégorie d'un document à partir de règles de correspondance utilisateur.
+ *
+ * @param {string} fullText - Le texte complet du PDF à analyser.
+ * @param {string} optionSelector - Clé de l'option (dans le stockage) contenant les règles de classification au format JSON.
+ * @param {string[]} possibleCats - Tableau des catégories possibles (ex : ["COURRIER", "IMAGERIE"]).
+ * @param {boolean} [perfectRuleMatchingNeeded=false] - Si true, exige que toutes les catégories/règles soient strictement cohérentes avec possibleCats.
+ *
+ * Le format attendu pour la configuration est un tableau de tableaux :
+ * [
+ *   ["LABORATOIRE/BIO", ["BIOCEANE", "LABORATOIRE"]],
+ *   ["Arrêt de travail", ["avis d’arrêt de travail"]],
+ *   ["LABORATOIRE", ["mots-clés moins spécifiques"]],
+ *   ["IMAGERIE", ["autresmots-clés moins spécifiques"]]
+ * ]
+ *
+ * - Chaque sous-tableau contient : [nom_catégorie, [liste de mots-clés]]
+ * - L’ordre du tableau définit la priorité de détection.
+ * - Une même catégorie peut apparaître plusieurs fois avec des mots-clés différents.
+ *
+ * @returns {string|null} - La première catégorie trouvée (selon l’ordre des règles) ou null si aucune correspondance.
+ */
+async function extractCategoryFromOptions(fullText, optionSelector, possibleCats, perfectRuleMatchingNeeded = false) {
+    // 1 - récupérer le tableau via getOption et le convertir en format exploitable
+    // On utilise un tableau de tableaux pour permettre de parcourir les types de documents par ordre de spécificité
+    // Et de mettre plusieurs fois la même clé, avec des valeurs de moins en moins exigeantes
+    let categoryMatchingRules = await getOptionPromise(optionSelector);
+    categoryMatchingRules = properArrayOfCategoryMatchingRules(categoryMatchingRules);
+    if (categoryMatchingRules === false) {
+        console.warn("[pdfParser] Règles de correspondance invalides pour l'extraction de catégorie.");
+        dealWithInvalidRules(optionSelector);
+        return null;
+    }
 
-    // 2 - parcourir chaque option/ligne présente dans optionSelector (donc le mot-clé présent avant le ":")
-    // et le confronter aux mots/phrases-clés présentes entre chaque ","
+    // 2 - Vérifier que toutes les options présentes dans categoryMatchingRules sont bien présente dans possibleCats
+    // et vice-versa si une correspondance parfaite est nécessaire
+    if (!matchingRulesAreLegit(categoryMatchingRules, possibleCats, perfectRuleMatchingNeeded)) {
+        console.warn("[pdfParser] Les règles de correspondance ne correspondent pas aux catégories possibles.");
+        dealWithInvalidRules(optionSelector);
+        return null;
+    }
 
-    // 3 - en cas de match, faire un return de la catégorie retrouvée
+    // 3 - parcourir chaque ligne de règle et confronter les mots/phrases-clés.
+    // En cas de match, faire un return de la catégorie retrouvée
+    return lookForMatch(fullText, categoryMatchingRules);
 
-    // 4 - en l'absence de match, retourner un false
 
+    function lookForMatch(fullText, categoryMatchingRules) {
+        for (const [type, keywords] of categoryMatchingRules) {
+            // console.log('[pdfParser] recherche du type de document', type);
+            for (const keyword of keywords) {
+                // Remplacer les espaces par \s* pour permettre les espaces optionnels
+                const regex = new RegExp(keyword.replace(/\s+/g, '\\s*'), 'i');
+                if (regex.test(fullText)) {
+                    console.log('[pdfParser] type de document trouvé', type, 'car présence de', keyword);
+                    return type;
+                }
+            }
+        }
+        console.log('[pdfParser] type de document non trouvé');
+        return null;
+    }
+
+    function properArrayOfCategoryMatchingRules(rawOptionOutput) {
+        let jsonOptionOutput = rawOptionOutput;
+        // normalement le raw est au format json
+        if (typeof rawOptionOutput === "string") {
+            try {
+                jsonOptionOutput = JSON.parse(rawOptionOutput);
+            } catch (error) {
+                console.error("[pdfParser] Erreur lors de l'analyse du JSON pour les règles de correspondance :", error);
+                return false;
+            }
+        }
+
+        // On s'assure que le format est un tableau de tableaux
+        if (!Array.isArray(jsonOptionOutput)) {
+            console.warn("[pdfParser] Format inattendu pour les règles de correspondance, attendu un tableau.");
+            return false;
+        }
+
+        // On s’assure que chaque règle a bien un mot-clé et une catégorie
+        if (jsonOptionOutput.some(rule => !Array.isArray(rule) || rule.length !== 2)) {
+            console.warn("[pdfParser] Certaines règles de correspondance sont invalides, elles seront ignorées.");
+            jsonOptionOutput = jsonOptionOutput.filter(rule => Array.isArray(rule) && rule.length === 2);
+        }
+
+        return jsonOptionOutput;
+    }
+
+    function dealWithInvalidRules(optionSelector) {
+        // la réponse à apporter va varier selon le type d’options
+        const invalidRulesDictionary = {
+            "PdfParserAutoCategoryDict": handleDocumentTypesConsent,
+        };
+
+        // on gère d’abord les cas de figure connus
+        const invalidRuleHandler = invalidRulesDictionary[optionSelector];
+        if (invalidRuleHandler) {
+            invalidRuleHandler();
+            return;
+        }
+
+        // on gère ensuite les cas génériques
+        sendWedaNotifAllTabs({
+            message: `Des règles de correspondance invalides ont été détectées pour ${optionSelector}. Merci de les vérifier dans les options de Weda-Helper.`,
+            type: "undefined",
+            icon: "error"
+        });
+    }
+
+    /**
+     * Vérifie si les règles de correspondance sont légitimes par rapport aux catégories possibles.
+     * @param {Array} categoryMatchingRules - Règles de correspondance au format [[catégorie, [mots-clés]], ...]
+     * @param {Array} possibleCats - Catégories possibles au format [catégorie1, catégorie2, ...]
+     * @param {boolean} perfectRuleMatchingNeeded - Si true, exige une correspondance parfaite
+     * @returns {boolean} - True si les règles sont valides
+     */
+    function matchingRulesAreLegit(categoryMatchingRules, possibleCats, perfectRuleMatchingNeeded = false) {
+        // Validation des paramètres d'entrée
+        if (!Array.isArray(categoryMatchingRules)) {
+            console.error("[pdfParser] categoryMatchingRules doit être un tableau");
+            return false;
+        }
+        
+        if (!Array.isArray(possibleCats)) {
+            console.error("[pdfParser] possibleCats doit être un tableau");
+            return false;
+        }
+
+        // Vérifier que toutes les catégories des règles sont dans possibleCats
+        const ruleCategories = categoryMatchingRules.map(rule => rule[0]);
+        const uniqueRuleCategories = [...new Set(ruleCategories)];
+        
+        for (const category of uniqueRuleCategories) {
+            if (!possibleCats.includes(category)) {
+                console.warn(`[pdfParser] Catégorie '${category}' des règles n'est pas dans les catégories possibles`);
+                return false;
+            }
+        }
+        
+        // Si correspondance parfaite requise, vérifier que toutes les catégories possibles sont couvertes
+        if (perfectRuleMatchingNeeded) {
+            for (const possibleCat of possibleCats) {
+                if (!uniqueRuleCategories.includes(possibleCat)) {
+                    console.warn(`[pdfParser] Catégorie possible '${possibleCat}' n'est pas couverte par les règles`);
+                    return false;
+                }
+            }
+        }
+        
+        return true;
+    }
 }
 
 
@@ -1957,11 +2077,11 @@ function findSpecialite(fullText, specialites) {
 // Fonction pour trouver le type d'imagerie dans le texte
 function findImagerie(fullText, imageries) {
     const lines = fullText.split('\n');
-    
+
     for (const line of lines) {
         const lineText = line.toLowerCase();
         let matchesInLine = [];
-        
+
         // Compter combien de types d'imagerie matchent dans cette ligne
         for (const [imagerie, keywords] of Object.entries(imageries)) {
             for (const keyword of keywords) {
@@ -1971,7 +2091,7 @@ function findImagerie(fullText, imageries) {
                 }
             }
         }
-        
+
         // Si exactement un match dans cette ligne, c'est probablement le bon
         if (matchesInLine.length === 1) {
             console.log('[pdfParser] type d\'imagerie trouvé', matchesInLine[0], 'dans la ligne:', line.substring(0, 50) + '...');
@@ -1982,7 +2102,7 @@ function findImagerie(fullText, imageries) {
             console.log('[pdfParser] Ligne ignorée (multiples types d\'imagerie):', line.substring(0, 50) + '...');
         }
     }
-    
+
     console.log('[pdfParser] Aucun type d\'imagerie trouvé dans une ligne unique');
     return null;
 }
@@ -2164,12 +2284,12 @@ function determineDocumentTitle(fullText, documentType) {
         for (const third of thirds) {
             for (let i = third.start; i < third.end; i++) {
                 const line = lines[i];
-                
+
                 // Pour le dernier tiers (signature), ignorer tout après "destinataire" ou "destinataires"
                 if (third.name === 'signature' && /destinataires?/i.test(line)) {
                     break;
                 }
-                
+
                 for (const pattern of doctorPatterns) {
                     const match = line.match(pattern);
                     if (match && match[1]) {
