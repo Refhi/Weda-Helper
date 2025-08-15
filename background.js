@@ -359,37 +359,37 @@ var advancedDefaultSettings = [{
             }, {
                 "name": "PdfParserAutoCategoryDict",
                 "type": TYPE_JSON,
-                "description": "=> Catégorise les documents importés dans les catégories",
+                "description": "Règles de catégorisation : catégorisation du document importé",
                 "longDescription": "Parcours la liste et valide la première catégorie qui correspond.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple. Vous devez initialiser la votre depuis la fenêtre des imports avec la petite icone ⚙️.\n\nLABORATOIRE/BIO : BIOCEANE , LABORATOIRE\nArrêt de travail : avis d'arrêt de travail\nCRO/CRH : Compte Rendu Opératoire , Compte Rendu Hospitalier , Compte Rendu d'Hospitalisation , COMPTE RENDU OPERATOIRE\nConsultation : COMPTE-RENDU DE CONSULTATION\nPARAMEDICAL : BILAN ORTHOPTIQUE\nCourrier : Chère Consœur , chère consoeur , Cher confrère , chère amie , cher ami , Cherconfrére , Chèreconsoeur , Chèreconsœur\nIMAGERIE : imagerie , radiographie , scanner , IRM , radiologie\nAdministratif : \nArrêt de travail : arrêt de travail , congé maladie\nBiologie : biologie , analyse sanguine\nBon de transport : bon de transport , transport médical\nCertificat : certificat , attestation\nECG : ecg , électrocardiogramme\nEFR : exploration fonctionnelle respiratoire\nLABORATOIRE/BIO : laboratoire\nMT : Déclaration de Médecin Traitant , déclaration médecin traitant\nPARAMEDICAL : paramédical , soins\nSPECIALISTE : spécialiste , consultation spécialisée\nConsultation : consultation , visite médicale\nOrdonnance : ordonnance , prescription , 60-3937\nCompte Rendu : compte rendu , compte-rendu , automesure",
                 "default": PdfParserAutoCategoryDefaut
             }, {
                 "name": "PdfParserAutoSpecialiteDict",
                 "type": TYPE_JSON,
-                "description": "=> Détecte automatiquement les spécialités médicales",
+                "description": "Règles de catégorisation : spécialités médicale de la source du document importé",
                 "longDescription": "Liste des spécialités médicales avec leurs mots-clés associés pour la détection automatique.\n\nMédecine Interne : Médecine Interne\nOrthopédie : Orthopédie , Orthopédique , Traumatologie\nGynécologie : Gynécologie , Obstétrique , Gynéco\nCardiologie : Cardiologie , Cardio , Cardiovasculaire\nNeurologie : Neurologie , Neuro , Neurochirurgie\nPédiatrie : Pédiatrie , Pédiatre , Enfant\nRadiologie : Radiologie , Radio\nOphtalmologie : Ophtalmologie , Ophtalmo , Oculaire\nPneumologie : Pneumologie , Pneumo , Respiratoire , Pulmonaire\nDermatologie : Dermatologie , Dermato , Cutané\nUrologie : Urologie , Uro\nChirurgie : Chirurgie , Chirurgical , Opération\nRhumatologie : Rhumatologie , Rhumato\nEndocrinologie : Endocrinologie , Endocrino , Diabète , Diabétologie\nGastro-entérologie : Gastro-entérologie , Gastro , Digestif\nHématologie : Hématologie , Hémato\nNéphrologie : Néphrologie , Néphro , Rénale\nOncologie : Oncologie , Onco , Cancer\nPsychiatrie : Psychiatrie , Psy , Psychologie\nStomatologie : Stomatologie , Stomato , Maxillo-facial\nAddictologie : Addictologie , Addiction\nORL : ORL , Otologie , Rhinologie , Laryngologie , Otorhinolaryngologie\nAllergologie : Allergologie , Allergie , Allergique\nGériatrie : Gériatrie , Gérontologie , Personnes âgées\nAnesthésiologie : Anesthésiologie , Anesthésie , Réanimation",
                 "default": PdfParserAutoSpecialite
             }, {
                 "name": "PdfParserAutoImagerieDict",
                 "type": TYPE_JSON,
-                "description": "=> Détecte automatiquement les types d'imagerie",
+                "description": "Règles de catégorisation : types d'imagerie",
                 "longDescription": "Liste des types d'imagerie avec leurs mots-clés associés pour la détection automatique.\n\nscanner : scanner , TDM , tomodensitométrie\néchographie : échographie , écho , doppler , échodoppler\nradiographie : radiographie , radio , rx\nmammographie : mammographie , mammo\nscintigraphie : scintigraphie , scinti\nostéodensitométrie : ostéodensitométrie , densitométrie osseuse\nIRM : IRM , imagerie par résonance magnétique",
                 "default": PdfParserAutoImagerie
             }, {
                 "name": "PdfParserAutoRegionDict",
                 "type": TYPE_JSON,
-                "description": "=> Détecte automatiquement les régions anatomiques",
+                "description": "Règles de catégorisation : régions anatomiques (utilisé en cas d’imagerie)",
                 "longDescription": "Liste des régions anatomiques avec leurs mots-clés associés pour la détection automatique.\n\nthoracique : thorax , thoracique , pulmonaire , poumon\nabdominal : abdomen , abdominal , abdominale\ncrânien : crâne , crânien , cérébral , cerveau , tête\nrachis : rachis , colonne vertébrale , lombaire , cervical , dorsal , vertèbre\ngenou : genou , fémoro-tibial\nhanche : hanche , coxo-fémoral\népaule : épaule , scapulo-huméral\npoignet : poignet , radio-carpien\ncoude : coude\ncheville : cheville , tibio-tarsien\npied : pied , tarsien\nmain : main , métacarpien\nbassin : bassin , pelvien\nsinus : sinus , facial\nartère : artère , artériel , aorte , carotide , fémorale\ncardiaque : cardiaque , cœur , coronaire",
                 "default": PdfParserAutoRegion
             }, {
                 "name": "PdfParserAutoLieuDict",
                 "type": TYPE_JSON,
-                "description": "=> Détecte automatiquement les établissements de santé",
+                "description": "Règles de catégorisation : types d'établissements de santé",
                 "longDescription": "Liste des établissements de santé avec leurs mots-clés associés pour la détection automatique.\n\nCHU : CHU , Centre Hospitalier Universitaire\nCH : CH , Centre Hospitalier de , Hôpital de , Hôpital\nClinique : Clinique , Polyclinique\nCentre : Centre médical , Centre de radiologie , Centre d'imagerie\nCabinet : Cabinet médical , Cabinet de radiologie",
                 "default": PdfParserAutoLieu
             }, {
                 "name": "PdfParserAutoTypeCRDict",
                 "type": TYPE_JSON,
-                "description": "=> Détecte automatiquement les types de compte-rendu",
+                "description": "Règles de catégorisation : type de compte-rendu",
                 "longDescription": "Liste des types de compte-rendu avec leurs mots-clés associés pour la détection automatique.\n\nconsultation : Consultation , CS , Cs , consultation\nhospitalisation : Hospitalisation , CRH , compte rendu d'hospitalisation\nexamen : Compte rendu d'examen , CR d'examen , compte-rendu d'examen\nopération : Compte rendu opératoire , CRO , opération",
                 "default": PdfParserAutoTypeCR
             }, {

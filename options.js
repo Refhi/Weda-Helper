@@ -73,7 +73,7 @@ function createInput(option) { // gestion des différents types d'input
   if (option.disabled) {
     input.disabled = true;
   }
-  
+
 
   // Récupération de la valeur de l'option (sauvegardée ou par défaut)
   getOptionValue(option).then(optionValue => {
@@ -89,8 +89,18 @@ function createInput(option) { // gestion des différents types d'input
       case 'json':
         input.classList.add('json-input');
         input.value = displayCategories(optionValue);
-        input.style.height = '300px';
+        input.style.height = '20px'; // Hauteur par défaut
         input.style.width = '100%';
+
+        // Ajouter les événements focus et blur
+        input.addEventListener('focus', function () {
+          this.style.height = '400px';
+        });
+
+        input.addEventListener('blur', function () {
+          this.style.height = '20px';
+        });
+        
         break;
       case 'smalltext':
         input.type = 'text';
@@ -232,13 +242,13 @@ function createLabel(option) {
     infoIcon.className = 'info-icon';
     infoIcon.style.fontFamily = 'Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"'; // Ensure emoji font
 
-    
+
     const tooltip = document.createElement('div');
     tooltip.className = 'info-tooltip';
     // tooltip.textContent = option.longDescription;
     tooltip.innerHTML = option.longDescription.replace(/\n/g, '<br>');
 
-    
+
     infoIcon.appendChild(tooltip);
     label.appendChild(infoIcon);
   }
@@ -269,6 +279,18 @@ function createOptionElement(option) { // Création des éléments de l'option
 
     const radioInput = createInput(option);
     optionDiv.appendChild(radioInput);
+  } else if (option.type === 'json') {
+    // Ajouter un retour à la ligne avant l'option
+    optionDiv.appendChild(document.createElement('br'));
+
+    const label = createLabel(option);
+    optionDiv.appendChild(label);
+
+    const input = createInput(option);
+    optionDiv.appendChild(input);
+
+
+
   } else {
     const input = createInput(option);
     optionDiv.appendChild(input);
@@ -276,17 +298,18 @@ function createOptionElement(option) { // Création des éléments de l'option
     const label = createLabel(option);
     optionDiv.appendChild(label);
 
-    if (option.isSubOption) {
-      optionDiv.classList.add('sub-option');
-    }
-  }
 
+  }
+  if (option.isSubOption) {
+    optionDiv.classList.add('sub-option');
+  }
   return optionDiv;
 }
 
 function generateOptionsHTML(settings) {
-  const container = document.getElementById('advanced-options'); // Assurez-vous d'avoir un conteneur pour insérer les options
-  container.innerHTML = ''; // Réinitialisez le conteneur avant d'ajouter de nouveaux éléments
+  // initialisation de la zone d’injection des options
+  const container = document.getElementById('advanced-options');
+  container.innerHTML = '';
 
   let lastParentOption = null;
 
