@@ -135,6 +135,28 @@ const PdfParserAutoRegion = JSON.stringify([
     ["cardiaque", ["cardiaque", "cœur", "coronaire"]]
 ]);
 
+// Définition des règles de classification de destination pour le PDF Parser
+const PdfParserAutoDestinationClass = JSON.stringify([
+    // Niveau 1 : Mots-clés absolus pour les consultations
+    ["1", ["consultation du", "examen clinique", "anamnèse"]],
+
+    // Niveau 1 : Mots-clés absolus pour les résultats d'examens
+    ["2", ["Résultats d’examen", "Résultats d’analyse", "valeurs? de référence"]],
+
+    // Niveau 1 : Mots-clés absolus pour les courriers
+    ["3", ["Je vous remercie de m'avoir adressé", "Je reçois", "courrier", "lettre"]],
+
+    // Niveau 2 : Mots-clés probables pour les consultations (moins spécifiques)
+    ["1", ["consultation", "prise en charge", "visite médicale", "Motif :", "histoire de la maladie", "SOAP", "auscultation", "Antécédents :", "Au terme de ce bilan", "à l'examen clinique"]],
+
+    // Niveau 2 : Mots-clés probables pour les résultats d'examens
+    ["2", ["examen", "résultat", "biologie", "bilan", "analyse", "laboratoire", "scanner", "imagerie", "radiographie", "échographie", "irm", "tdm", "tep", "doppler", "mammographie", "scintigraphie", "echodoppler", "renseignements cliniques", "technique", "conclusion"]],
+
+    // Niveau 2 : Mots-clés probables pour les courriers
+    ["3", ["correspondance", "avis", "compte rendu", "compte-rendu", "CR. consult", "adressé par", "adressée pour", "adressée par", "adressée pour", "Cher Confrère", "chère consoeur", "chère consœur", "nous a consulté", "nous a été adressé", "information destinée", "spécialiste"]]
+]);
+
+
 const PdfParserAutoLieu = JSON.stringify([
     // Établissements de santé avec mots-clés associés
     ["CHU", ["CHU", "Centre Hospitalier Universitaire"]],
@@ -235,7 +257,7 @@ var advancedDefaultSettings = [{
         "description": "Permet l'édition d'un atcd depuis la page d'accueil.",
         "default": true,
         "longDescription": "En cliquant sur un antécédent depuis la page d'accueil, cela ouvre la fenêtre d'édition directement.",
-    },{
+    }, {
         "name": "autoAATI",
         "type": TYPE_BOOL,
         "description": "Automatise la réalisation des arrêts de travail (lecture CV auto, sélection patient auto, impression auto etc. Nécessite le Companion pour fonctionner totalement).",
@@ -403,7 +425,14 @@ var advancedDefaultSettings = [{
                 "description": "Détermine automatiquement la destination du document importé (Consultation/Résultats d'examen/Courrier).",
                 "default": false,
                 "longDescription": "Si vous souhaitez classer les imports dans les parties Consultation/Résultats d'examen/Courrier, vous pouvez activer cette option pour le faire automatiquement.",
-            },{
+                "subOptions": [{
+                    "name": "PdfParserAutoDestinationClassDict",
+                    "type": TYPE_JSON,
+                    "description": "Règles de classification : destination du document importé",
+                    "longDescription": "Règles pour déterminer automatiquement si un document doit être classé en :\n- 1 : Consultation\n- 2 : Résultats d'examens\n- 3 : Courrier\n\nL'ordre définit la priorité de détection.\n\n1 : consultation.*du\\s+\\d{1,2}[\\/\\-.\\d{1,2}[\\/\\-.\\d{4} , examen clinique , anamnèse\n2 : Résultats? d[''](examen|analyse)s? , valeurs? de référence\n3 : Je vous remercie de m\\'avoir adressé , Je reçois , courrier , lettre\n1 : consultation , prise en charge , visite médicale , Motif : , histoire de la maladie , SOAP , auscultation , Antécédents : , Au terme de ce bilan , à l\\'examen clinique\n2 : examen , résultat , biologie , bilan , analyse , laboratoire , scanner , imagerie , radiographie , échographie , irm , tdm , tep , doppler , mammographie , scintigraphie , echodoppler , renseignements cliniques , technique , conclusion\n3 : correspondance , avis , compte rendu , compte-rendu , CR.{0,5}consult , adressé(?:e)? par , adressé(?:e)? pour , Cher Confrère , chère consoeur , chère consœur , nous a consulté , nous a été adressé , information destinée , spécialiste",
+                    "default": PdfParserAutoDestinationClass
+                }]
+            }, {
                 "name": "PdfParserDateAlphabetique",
                 "type": TYPE_BOOL,
                 "description": "Recherche également les dates type 15 novembre 2021.",
@@ -600,7 +629,7 @@ var advancedDefaultSettings = [{
         "description": "Type de recherche par défaut (1 à 14). 0 pour désactiver.",
         "default": 0,
         "longDescription": "Par défaut, Weda reviens au dernier type de recherche utilisée. Vous pouvez définir le type de recherche médicamenteuse à utiliser systématiquement au chargement :\n\n1 - Médicaments\n14 - Recherche par produits\n8 - Dénomination commune (DCI)\n2 - Molécules (principes actifs)\n10 - Recherche par U.C.D.\n3 - Recherche par A.T.C.\n13 - Recherche par Vidal\n4 - Indications\n5 - Groupe d'indications\n6 - Laboratoires\n7 - Vos favoris et perso.\n9 - Le Top 50"
-    },{
+    }, {
         "name": "TweakRecetteForm",
         "type": TYPE_BOOL,
         "description": "Appuie automatiquement sur le bouton \"rechercher\" après avoir sélectionné la page des recettes (permet d’afficher les recettes du jour directement en arrivant sur la page).",

@@ -1261,7 +1261,7 @@ async function extractRelevantData(fullText) {
     const addressedTo = extractAddressedTo(fullText); // Retourne l'id du choix du dropdown
 
     // // Catégorisation générales : recherche via contexte et heuristiques
-    const destinationClass = extractDestinationClass(fullText);
+    const destinationClass = await extractDestinationClass(fullText);
     const documentType = await determineDocumentType(fullText);
     const documentTitle = determineDocumentTitle(fullText, documentType);
 
@@ -1493,7 +1493,14 @@ async function extractAddressedTo(fullText) {
     return null;
 }
 
-function extractDestinationClass(fullText) {
+/**
+ * Extrait la classe de destination d'un document à partir du texte complet.
+ * Utilise extractCategoryFromOptions avec les règles configurées dans les options.
+ * 
+ * @param {string} fullText - Le texte complet du PDF à analyser.
+ * @returns {Promise<string>} - L'ID de la destination détectée ('1', '2', ou '3').
+ */
+async function extractDestinationClass(fullText) {
     // Les trois destinations possibles 
     const destinations = {
         '1': "Consultation",
@@ -1501,122 +1508,33 @@ function extractDestinationClass(fullText) {
         '3': "Courrier"
     };
 
-    // Mots-clés pour chaque destination, séparés en absolus et probables
-    const keywordsByDestination = {
-        '1': { // Consultation
-            absolus: [
-                /consultation.*du\s+\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{4}/i,
-                /examen clinique/i,
-                /anamnèse/i
-            ],
-            probables: [
-                /consultation/i,
-                /prise en charge/i,
-                /visite médicale/i,
-                /Motif :/i,
-                /histoire de la maladie/i,
-                /SOAP/i,
-                /auscultation/i,
-                /Antécédents :/i,
-                /Au terme de ce bilan/i,
-                /à l'examen clinique/i
-            ]
-        },
-        '2': { // Résultats d'examens
-            absolus: [
-                /Résultats? d['’](examen|analyse)s?/i,
-                /valeurs? de référence/i
-            ],
-            probables: [
-                /examen/i,
-                /résultat/i,
-                /biologie/i,
-                /bilan/i,
-                /analyse/i,
-                /laboratoire/i,
-                /scanner/i,
-                /imagerie/i,
-                /radiographie/i,
-                /échographie/i,
-                /irm/i,
-                /tdm/i,
-                /tep/i,
-                /doppler/i,
-                /mammographie/i,
-                /scintigraphie/i,
-                /echodoppler/i,
-                /renseignements cliniques/i,
-                /technique/i,
-                /conclusion/i
-            ]
-        },
-        '3': { // Courrier
-            absolus: [
-                /Je vous remercie de m'avoir adressé/i,
-                /Je reçois/i,
-                /courrier/i,
-                /lettre/i
-            ],
-            probables: [
-                /correspondance/i,
-                /avis/i,
-                /compte rendu/i,
-                /compte-rendu/i,
-                /CR.{0,5}consult/i,
-                /adressé(?:e)? par/i,
-                /adressé(?:e)? pour/i,
-                /Cher Confrère/i,
-                /chère consoeur/i,
-                /chère consœur/i,
-                /nous a consulté/i,
-                /nous a été adressé/i,
-                /information destinée/i,
-                /spécialiste/i
-            ]
-        }
-    };
+    // Les destinations possibles avec leurs IDs
+    const possibleDestinations = ['1', '2', '3'];
 
-    // 1. Recherche des termes absolus
-    for (const [destId, patternsObj] of Object.entries(keywordsByDestination)) {
-        for (const pattern of patternsObj.absolus) {
-            if (pattern.test(fullText)) {
-                console.log(`[pdfParser] Mot-clé absolu trouvé pour ${destinations[destId]} :`, pattern);
-                return destId;
-            }
-        }
+    try {
+        // Utiliser extractCategoryFromOptions pour faire la classification
+        const detectedDestination = await extractCategoryFromOptions(
+            fullText, 
+            'PdfParserAutoDestinationClassDict', 
+            possibleDestinations, 
+            true // perfectRuleMatchingNeeded = true car nous définissons toutes les destinations
+        );
+
+        // Si aucune destination n'est détectée, privilégier "Consultation" par défaut
+        const selectedDestination = detectedDestination || '1';
+
+        console.log(`[pdfParser] Classe de destination détectée: ${destinations[selectedDestination]} (ID: ${selectedDestination})`);
+        return selectedDestination;
+
+    } catch (error) {
+        console.error('[pdfParser] Erreur lors de la classification de destination:', error);
+
+        // Retourner "Consultation" par défaut en cas d'erreur
+        console.log('[pdfParser] Classe de destination par défaut: Consultation (ID: 1)');
+        return '1';
     }
-
-    // 2. Comptage des termes probables
-    const matchCounts = { '1': 0, '2': 0, '3': 0 };
-    for (const [destId, patternsObj] of Object.entries(keywordsByDestination)) {
-        for (const pattern of patternsObj.probables) {
-            const matches = fullText.match(pattern);
-            if (matches) {
-                matchCounts[destId] += matches.length;
-            }
-        }
-    }
-
-    console.log('[pdfParser] Correspondances probables par destination:', matchCounts);
-
-    // 3. Sélection de la destination avec le plus grand nombre de correspondances probables
-    let maxCount = 0;
-    let selectedDestination = null;
-    for (const [destId, count] of Object.entries(matchCounts)) {
-        if (count > maxCount) {
-            maxCount = count;
-            selectedDestination = destId;
-        }
-    }
-
-    // Si aucune correspondance ou égalité, on privilégie "Courrier"
-    if (maxCount === 0 || (matchCounts['3'] === matchCounts['2'] && matchCounts['2'] === maxCount)) {
-        selectedDestination = '3';
-    }
-
-    console.log(`[pdfParser] Classe de destination détectée: ${destinations[selectedDestination]} (ID: ${selectedDestination})`);
-    return selectedDestination;
 }
+
 
 // Extraction du datamatrix des pages du PDF
 async function extractDatamatrixFromPDF(pdfUrl) {
