@@ -1258,12 +1258,12 @@ async function extractRelevantData(fullText) {
 
     // // Noms (recherche via contexte des mots avant/après et place théorique dans le document)
     const nameMatches = extractNames(fullText, regexPatterns.nameRegexes);
-    const addressedTo = extractAddressedTo(fullText); // Retourne l'id du choix du dropdown
+    const addressedTo = await extractAddressedTo(fullText); // Retourne l'id du choix du dropdown
 
     // // Catégorisation générales : recherche via contexte et heuristiques
     const destinationClass = await extractDestinationClass(fullText);
     const documentType = await determineDocumentType(fullText);
-    const documentTitle = determineDocumentTitle(fullText, documentType);
+    const documentTitle = await determineDocumentTitle(fullText, documentType);
 
 
     let extractedData = {
@@ -2013,47 +2013,80 @@ async function determineDocumentTitle(fullText, documentType) {
         return documentTitle;
     }
 
-    function extractDoctorName(fullText) {
-        // Diviser le texte en lignes pour analyser ligne par ligne
-        const lines = fullText.split('\n');
+function extractDoctorName(fullText) { // TODO : ignorer entièrement les lignes contenant des adresses
+    // Diviser le texte en lignes pour analyser ligne par ligne
+    const lines = fullText.split('\n');
 
-        // Patterns simplifiés pour les noms de médecins, sans distinction de casse
-        const doctorPatterns = [
-            // Format "Dr" ou "Docteur" suivi de 1-4 mots (pour nom/prénom potentiellement composés)
-            /^(?:dr\.?|docteur|médecin|praticien)\s+(\w+(?:\s+\w+){0,3})/i,
-            // Même format mais n'importe où dans la ligne
-            /(?:dr\.?|docteur|médecin|praticien)\s+(\w+(?:\s+\w+){0,3})/i
-        ];
+    // Patterns simplifiés pour les noms de médecins, sans distinction de casse
+    const doctorPatterns = [
+        // Format "Dr" ou "Docteur" suivi de 1-4 mots (pour nom/prénom potentiellement composés)
+        // Modifié pour capturer les initiales avec points
+        /^(?:dr\.?|docteur|professeur|pr\.?)\s+((?:[A-Z]\.?\s*)*[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)*)/i,
+        // Même format mais n'importe où dans la ligne
+        /(?:dr\.?|docteur|professeur|pr\.?)\s+((?:[A-Z]\.?\s*)*[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)*)/i
+    ];
 
-        // Diviser le document en tiers
-        const thirds = [
-            { start: Math.floor(lines.length * 2 / 3), end: lines.length, name: 'signature' },  // Dernier tiers
-            { start: Math.floor(lines.length * 1 / 3), end: Math.floor(lines.length * 2 / 3), name: 'corps' },  // Tiers du milieu
-            { start: 0, end: Math.floor(lines.length * 1 / 3), name: 'entête' }  // Premier tiers
-        ];
+    // Parcourir toutes les lignes
+    for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i];
 
-        // Parcourir les tiers dans l'ordre: dernier, milieu, premier
-        for (const third of thirds) {
-            for (let i = third.start; i < third.end; i++) {
-                const line = lines[i];
+        for (const pattern of doctorPatterns) {
+            const match = line.match(pattern);
+            if (match && match[1]) {
+                const vicinityCheckNumber = 4;
+                // Vérifier s'il y a une autre occurrence dans les x lignes précédentes et suivantes
+                let hasOtherOccurrence = false;
 
-                // Pour le dernier tiers (signature), ignorer tout après "destinataire" ou "destinataires"
-                if (third.name === 'signature' && /destinataires?/i.test(line)) {
-                    break;
+                // vérifier qu’il ne s’agisse pas non plus d’une rue, avenue etc
+                const streetPatterns = [
+                    /\b(rue|avenue|boulevard|impasse|chemin|place)\b/i
+                ];
+
+                for (const streetPattern of streetPatterns) {
+                    if (streetPattern.test(line)) {
+                        hasOtherOccurrence = true;
+                        break;
+                    }
                 }
 
-                for (const pattern of doctorPatterns) {
-                    const match = line.match(pattern);
-                    if (match && match[1]) {
-                        return match[1].trim();
+                // Vérifier les x lignes précédentes
+                for (let j = Math.max(0, i - vicinityCheckNumber); j < i; j++) {
+                    const prevLine = lines[j];
+                    for (const checkPattern of doctorPatterns) {
+                        if (checkPattern.test(prevLine)) {
+                            hasOtherOccurrence = true;
+                            break;
+                        }
                     }
+                    if (hasOtherOccurrence) break;
+                }
+                
+                // Vérifier les x lignes suivantes si pas encore trouvé d'occurrence
+                if (!hasOtherOccurrence) {
+                    for (let j = i + 1; j <= i + vicinityCheckNumber && j < lines.length; j++) {
+                        const nextLine = lines[j];
+                        for (const checkPattern of doctorPatterns) {
+                            if (checkPattern.test(nextLine)) {
+                                hasOtherOccurrence = true;
+                                break;
+                            }
+                        }
+                        if (hasOtherOccurrence) break;
+                    }
+                }
+                
+
+
+                // Si pas d'autre occurrence trouvée dans les x lignes précédentes ET suivantes, retourner ce nom
+                if (!hasOtherOccurrence) {
+                    return match[1].trim();
                 }
             }
         }
-
-        return null;
     }
-}
+
+    return null;
+}}
 
 // Extraction des dates du texte
 async function extractDates(fullText, dateRegexes) {
