@@ -1279,7 +1279,6 @@ async function extractRelevantData(fullText) {
     return extractedData;
 }
 
-// TODO : poursuivre ici puis l'implémenter dans les fonctions ad hoc
 /**
  * Extrait la catégorie d'un document à partir de règles de correspondance utilisateur.
  *
