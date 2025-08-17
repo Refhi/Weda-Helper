@@ -1986,7 +1986,7 @@ async function determineDocumentTitle(fullText, documentType) {
         else if (caracteristics.documentType === "CONSULTATION" || caracteristics.typeCR === "consultation") {
             documentTitle = "Consultation";
             if (caracteristics.doctorName) {
-                documentTitle += caracteristics.doctorName;
+                documentTitle += ` ${caracteristics.doctorName}`;
             } else if (caracteristics.specialite) {
                 documentTitle += ` ${caracteristics.specialite}`;
             }
