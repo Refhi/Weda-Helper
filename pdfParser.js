@@ -2013,7 +2013,7 @@ async function determineDocumentTitle(fullText, documentType) {
         return documentTitle;
     }
 
-    function extractDoctorName(fullText) { // TODO : ignorer entièrement les lignes contenant des adresses
+    function extractDoctorName(fullText) {
         // Diviser le texte en lignes pour analyser ligne par ligne
         const lines = fullText.split('\n');
 
