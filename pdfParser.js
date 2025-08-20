@@ -1899,8 +1899,18 @@ function storeDocumentTypes(categories) {
         console.log('[pdfParser] Catégories de classification existantes:', PdfParserAutoCategoryDict);
         let existingCategories = PdfParserAutoCategoryDict ? JSON.parse(PdfParserAutoCategoryDict) : [];
 
+        // Transformer les catégories simples en format [catégorie, []] si nécessaire
+        const formattedCategories = categories.map(category => {
+            // Si c'est déjà un tableau avec le bon format, le garder tel quel
+            if (Array.isArray(category) && category.length === 2 && Array.isArray(category[1])) {
+                return category;
+            }
+            // Sinon, créer le format attendu avec un tableau vide de mots-clés
+            return [category, []];
+        });
+
         // Ajouter les nouvelles catégories
-        categories.forEach(category => {
+        formattedCategories.forEach(category => {
             if (!existingCategories.some(existingCategory => existingCategory[0] === category[0])) {
                 existingCategories.push(category);
             }
@@ -1908,7 +1918,7 @@ function storeDocumentTypes(categories) {
 
         // Supprimer les catégories qui ne sont pas dans la variable
         existingCategories = existingCategories.filter(existingCategory =>
-            categories.some(category => category[0] === existingCategory[0])
+            formattedCategories.some(category => category[0] === existingCategory[0])
         );
 
         const updatedCategories = JSON.stringify(existingCategories);
@@ -1917,7 +1927,7 @@ function storeDocumentTypes(categories) {
             console.log('[pdfParser] Catégories de classification mises à jour:', updatedCategories);
             // Contrôle de ce qui a été stocké
             chrome.storage.local.get('PdfParserAutoCategoryDict', function (result) {
-                console.log('[pdfParser] Catégories de classification stockées:', PdfParserAutoCategoryDict);
+                console.log('[pdfParser] Catégories de classification stockées:', result.PdfParserAutoCategoryDict);
             });
         });
     });
@@ -1927,6 +1937,7 @@ function storeDocumentTypes(categories) {
 function handleDocumentTypesConsent() {
     if (confirm("Initialiser les catégories de classification ? Pensez ensuite à compléter les mots-clés dans les options de l'extension.")) {
         const categories = initDocumentTypes();
+        console.log('[pdfParser] Catégories de classification initialisées:', categories);
         storeDocumentTypes(categories);
     }
 }
