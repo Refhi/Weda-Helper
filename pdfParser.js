@@ -2361,7 +2361,7 @@ function extractDoctorName(fullText) {
                             }
                         }
                         if (hasOtherOccurrence) {
-                            console.log(`[pdfParser] Autre occurrence trouvée dans les lignes suivantes : ${nextLine}, ligne ${j}`);
+                            //console.log(`[pdfParser] Autre occurrence trouvée dans les lignes suivantes : ${nextLine}, ligne ${j}`);
                         }
                     }
                 }
