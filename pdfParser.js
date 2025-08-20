@@ -1248,34 +1248,61 @@ async function extractRelevantData(fullText) {
         ]
     };
 
-    // Extraction de l'ensemble des dates présentes dans le texte
+    const categoryExtractorsOptions = {
+        specialite: "PdfParserAutoSpecialiteDict",
+        imagerie: "PdfParserAutoImagerieDict",
+        region: "PdfParserAutoRegionDict",
+        lieu: "PdfParserAutoLieuDict",
+        typeCR: "PdfParserAutoTypeCRDict"
+    };
+
+    // Dates et NIR : recherche via regex pur et priorisation
     const dateMatches = await extractDates(fullText, regexPatterns.dateRegexes);
-    // Extraction des éléments pertinents
-    // // Dates et nir : recherche via priorisation et pur regex
     const documentDate = await determineDocumentDate(fullText, dateMatches, regexPatterns.documentDateRegexes);
     const dateOfBirth = determineDateOfBirth(fullText, dateMatches, regexPatterns.dateOfBirthRegexes);
     const nirMatches = extractNIR(fullText, regexPatterns.nirRegexes);
 
-    // // Noms (recherche via contexte des mots avant/après et place théorique dans le document)
+    // Noms : recherche via contexte des mots avant/après et place théorique dans le document
     const nameMatches = extractNames(fullText, regexPatterns.nameRegexes);
     const addressedTo = await extractAddressedTo(fullText); // Retourne l'id du choix du dropdown
 
-    // // Catégorisation générales : recherche via contexte et heuristiques
+    // Catégorisation générale : recherche via contexte et heuristiques
     const destinationClass = await extractDestinationClass(fullText);
     const documentType = await determineDocumentType(fullText);
-    const documentTitle = await determineDocumentTitle(fullText, documentType);
+
+    // Extraction en parallèle des caractéristiques basées sur les options
+    const specialite = await extractCategoryFromOptions(fullText, categoryExtractorsOptions.specialite);
+    const imagerie = await extractCategoryFromOptions(fullText, categoryExtractorsOptions.imagerie);
+    const region = await extractCategoryFromOptions(fullText, categoryExtractorsOptions.region);
+    const lieu = await extractCategoryFromOptions(fullText, categoryExtractorsOptions.lieu);
+    const typeCR = await extractCategoryFromOptions(fullText, categoryExtractorsOptions.typeCR);
+    const doctorName = extractDoctorName(fullText);
 
 
+    // ASSEMBLAGE DES DONNÉES EXTRAITES
+    // =================================
     let extractedData = {
         documentDate: documentDate ? formatDate(documentDate) : null,
         dateOfBirth: dateOfBirth ? formatDate(dateOfBirth) : null,
         nameMatches: nameMatches,
         documentType: documentType,
-        documentTitle: documentTitle,
+        documentTitle: null,
         nirMatches: nirMatches,
         addressedTo: addressedTo,
-        destinationClass: destinationClass
+        destinationClass: destinationClass,
+        // Caractéristiques spécialisées
+        specialite: specialite,
+        imagerie: imagerie,
+        region: region,
+        lieu: lieu,
+        typeCR: typeCR,
+        doctorName: doctorName
     };
+
+    // Titrage
+    extractedData.documentTitle = buildTitle(extractedData);
+
+
     return extractedData;
 }
 
@@ -1931,191 +1958,157 @@ function addDocumentTypesButton() {
 
 
 
-// Fonction pour déterminer le titre du document
-async function determineDocumentTitle(fullText, documentType) {
-    const categoryExtractorsOptions = {
-        specialite: "PdfParserAutoSpecialiteDict",
-        imagerie: "PdfParserAutoImagerieDict",
-        region: "PdfParserAutoRegionDict",
-        lieu: "PdfParserAutoLieuDict",
-        typeCR: "PdfParserAutoTypeCRDict"
-    };
 
-    let caracteristics = {
-        specialite: null,
-        imagerie: null,
-        region: null,
-        lieu: null,
-        typeCR: null,
-        doctorName: null,
-        documentType: documentType || null
-    };
+function buildTitle(caracteristics) {
+    let documentTitle = caracteristics.documentType || "";
 
-    for (const [key, optionSelector] of Object.entries(categoryExtractorsOptions)) {
-        caracteristics[key] = await extractCategoryFromOptions(fullText, optionSelector);
+    // Pour les documents d'imagerie
+    if (caracteristics.documentType === "IMAGERIE") {
+        if (caracteristics.imagerie) {
+            documentTitle = caracteristics.imagerie.charAt(0).toUpperCase() + caracteristics.imagerie.slice(1);
+            if (caracteristics.region) {
+                documentTitle += ` ${caracteristics.region}`;
+            }
+        } else if (caracteristics.specialite === "Radiologie") {
+            documentTitle = "Examen radiologique";
+            if (caracteristics.region) {
+                documentTitle += ` ${caracteristics.region}`;
+            }
+        }
+    }
+    // Pour les consultations
+    else if (caracteristics.documentType === "CONSULTATION" || caracteristics.typeCR === "consultation") {
+        documentTitle = "Consultation";
+        if (caracteristics.doctorName) {
+            documentTitle += ` ${caracteristics.doctorName}`;
+        } else if (caracteristics.specialite) {
+            documentTitle += ` ${caracteristics.specialite}`;
+        }
+    }
+    // Pour les hospitalisations
+    else if (caracteristics.typeCR === "hospitalisation") {
+        documentTitle = "CRH";
+        if (caracteristics.specialite) {
+            documentTitle += ` ${caracteristics.specialite}`;
+        }
+    }
+    // Pour les autres types de documents
+    else if (caracteristics.specialite) {
+        documentTitle += documentTitle ? ` - ${caracteristics.specialite}` : caracteristics.specialite;
     }
 
-
-    caracteristics.doctorName = extractDoctorName(fullText);
-    // Construire le titre du document en fonction du contexte
-    let documentTitle = buildTitle(caracteristics);
+    // Ajouter le lieu en dernier si présent
+    if (caracteristics.lieu) {
+        documentTitle += ` (${caracteristics.lieu})`;
+    }
 
     console.log('[pdfParser] Titre du document déterminé', documentTitle, "caractéristiques:", caracteristics);
 
     return documentTitle;
+}
+
+function extractDoctorName(fullText) {
+    // Diviser le texte en lignes pour analyser ligne par ligne
+    const lines = fullText.split('\n');
+
+    // Patterns simplifiés pour les noms de médecins, sans distinction de casse
+    const doctorPatterns = [
+        // Format "Dr" ou "Docteur" suivi de 1-4 mots (pour nom/prénom potentiellement composés)
+        // Détail de la regex :
+        // (?:dr\.?|docteur|professeur|pr\.?) - Groupe non-capturant pour "Dr" (avec point optionnel), "Docteur", "Professeur" ou "Pr" (avec point optionnel)
+        // \s+ - Un ou plusieurs espaces blancs
+        // ( - Début du groupe de capture principal
+        //   (?:[A-Z]\.?\s*)* - Zéro ou plusieurs initiales : lettre majuscule, point optionnel, espaces optionnels (ex: "B. " ou "A.C. ")
+        //   [A-ZÀ-ÿ] - Première lettre du nom principal (majuscule, avec accents français)
+        //   [A-Za-zÀ-ÿ\-]+ - Reste du nom principal (lettres avec accents et traits d'union, ex: "Anne-Claire")
+        //   (?:\s+[A-ZÀ-ÿ][A-Za-zÀ-ÿ\-]+)* - Zéro ou plusieurs noms/prénoms supplémentaires (même format)
+        // ) - Fin du groupe de capture
+        // /i - Flag insensible à la casse
+        //
+        // Exemples de correspondances :
+        // "Dr. B. AUBERT" → "B. AUBERT"
+        // "Professeur Anne-Claire Vançon" → "Anne-Claire Vançon"
+        // "Pr François Müller" → "François Müller"
+        /((?:dr\.?|docteur|professeur|pr\.?)\s+(?:[A-Z]\.?\s*)*[A-ZÀ-ÿ][A-Za-zÀ-ÿ\-]+(?:\s+[A-ZÀ-ÿ][A-Za-zÀ-ÿ\-]+)*)/i
+    ];
+
+    // Parcourir toutes les lignes
+    for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i];
+
+        if (isAnAddress(line)) continue; // Passer à la ligne suivante si c'est une adresse
+
+        console.log(`[pdfParser] Analyse de la ligne ${i}:`, line);
+
+        for (const pattern of doctorPatterns) {
+            const match = line.match(pattern);
+            if (match && match[1]) {
+                const vicinityCheckNumber = 4;
+                // Vérifier s'il y a une autre occurrence dans les x lignes précédentes et suivantes
+                let hasOtherOccurrence = false;
 
 
-    function buildTitle(caracteristics) {
-        let documentTitle = caracteristics.documentType || "";
-
-        // Pour les documents d'imagerie
-        if (caracteristics.documentType === "IMAGERIE") {
-            if (caracteristics.imagerie) {
-                documentTitle = caracteristics.imagerie.charAt(0).toUpperCase() + caracteristics.imagerie.slice(1);
-                if (caracteristics.region) {
-                    documentTitle += ` ${caracteristics.region}`;
+                // Vérifier les x lignes précédentes
+                for (let j = Math.max(0, i - vicinityCheckNumber); j < i; j++) {
+                    const prevLine = lines[j];
+                    if (isAnAddress(prevLine)) continue; // Passer à la ligne suivante si c'est une adresse
+                    for (const checkPattern of doctorPatterns) {
+                        if (checkPattern.test(prevLine)) {
+                            hasOtherOccurrence = true;
+                            break;
+                        }
+                    }
+                    if (hasOtherOccurrence) {
+                        console.log(`[pdfParser] Autre occurrence trouvée dans les lignes précédentes : ${prevLine}, ligne ${j}`);
+                    }
                 }
-            } else if (caracteristics.specialite === "Radiologie") {
-                documentTitle = "Examen radiologique";
-                if (caracteristics.region) {
-                    documentTitle += ` ${caracteristics.region}`;
-                }
-            }
-        }
-        // Pour les consultations
-        else if (caracteristics.documentType === "CONSULTATION" || caracteristics.typeCR === "consultation") {
-            documentTitle = "Consultation";
-            if (caracteristics.doctorName) {
-                documentTitle += ` ${caracteristics.doctorName}`;
-            } else if (caracteristics.specialite) {
-                documentTitle += ` ${caracteristics.specialite}`;
-            }
-        }
-        // Pour les hospitalisations
-        else if (caracteristics.typeCR === "hospitalisation") {
-            documentTitle = "CRH";
-            if (caracteristics.specialite) {
-                documentTitle += ` ${caracteristics.specialite}`;
-            }
-        }
-        // Pour les autres types de documents
-        else if (caracteristics.specialite) {
-            documentTitle += documentTitle ? ` - ${caracteristics.specialite}` : caracteristics.specialite;
-        }
 
-        // Ajouter le lieu en dernier si présent
-        if (caracteristics.lieu) {
-            documentTitle += ` (${caracteristics.lieu})`;
-        }
-
-        console.log('[pdfParser] Titre du document déterminé', documentTitle, "caractéristiques:", caracteristics);
-
-        return documentTitle;
-    }
-
-    function extractDoctorName(fullText) {
-        // Diviser le texte en lignes pour analyser ligne par ligne
-        const lines = fullText.split('\n');
-
-        // Patterns simplifiés pour les noms de médecins, sans distinction de casse
-        const doctorPatterns = [
-            // Format "Dr" ou "Docteur" suivi de 1-4 mots (pour nom/prénom potentiellement composés)
-            // Détail de la regex :
-            // (?:dr\.?|docteur|professeur|pr\.?) - Groupe non-capturant pour "Dr" (avec point optionnel), "Docteur", "Professeur" ou "Pr" (avec point optionnel)
-            // \s+ - Un ou plusieurs espaces blancs
-            // ( - Début du groupe de capture principal
-            //   (?:[A-Z]\.?\s*)* - Zéro ou plusieurs initiales : lettre majuscule, point optionnel, espaces optionnels (ex: "B. " ou "A.C. ")
-            //   [A-ZÀ-ÿ] - Première lettre du nom principal (majuscule, avec accents français)
-            //   [A-Za-zÀ-ÿ\-]+ - Reste du nom principal (lettres avec accents et traits d'union, ex: "Anne-Claire")
-            //   (?:\s+[A-ZÀ-ÿ][A-Za-zÀ-ÿ\-]+)* - Zéro ou plusieurs noms/prénoms supplémentaires (même format)
-            // ) - Fin du groupe de capture
-            // /i - Flag insensible à la casse
-            //
-            // Exemples de correspondances :
-            // "Dr. B. AUBERT" → "B. AUBERT"
-            // "Professeur Anne-Claire Vançon" → "Anne-Claire Vançon"
-            // "Pr François Müller" → "François Müller"
-            /((?:dr\.?|docteur|professeur|pr\.?)\s+(?:[A-Z]\.?\s*)*[A-ZÀ-ÿ][A-Za-zÀ-ÿ\-]+(?:\s+[A-ZÀ-ÿ][A-Za-zÀ-ÿ\-]+)*)/i
-        ];
-
-        // Parcourir toutes les lignes
-        for (let i = lines.length - 1; i >= 0; i--) {
-            const line = lines[i];
-
-            if (isAnAddress(line)) continue; // Passer à la ligne suivante si c'est une adresse
-
-            console.log(`[pdfParser] Analyse de la ligne ${i}:`, line);
-
-            for (const pattern of doctorPatterns) {
-                const match = line.match(pattern);
-                if (match && match[1]) {
-                    const vicinityCheckNumber = 4;
-                    // Vérifier s'il y a une autre occurrence dans les x lignes précédentes et suivantes
-                    let hasOtherOccurrence = false;
-
-
-                    // Vérifier les x lignes précédentes
-                    for (let j = Math.max(0, i - vicinityCheckNumber); j < i; j++) {
-                        const prevLine = lines[j];
-                        if (isAnAddress(prevLine)) continue; // Passer à la ligne suivante si c'est une adresse
+                // Vérifier les x lignes suivantes si pas encore trouvé d'occurrence
+                if (!hasOtherOccurrence) {
+                    for (let j = i + 1; j <= i + vicinityCheckNumber && j < lines.length; j++) {
+                        const nextLine = lines[j];
+                        if (isAnAddress(nextLine)) continue; // Passer à la ligne suivante si c'est une adresse
                         for (const checkPattern of doctorPatterns) {
-                            if (checkPattern.test(prevLine)) {
+                            if (checkPattern.test(nextLine)) {
                                 hasOtherOccurrence = true;
                                 break;
                             }
                         }
                         if (hasOtherOccurrence) {
-                            console.log(`[pdfParser] Autre occurrence trouvée dans les lignes précédentes : ${prevLine}, ligne ${j}`);
+                            console.log(`[pdfParser] Autre occurrence trouvée dans les lignes suivantes : ${nextLine}, ligne ${j}`);
                         }
                     }
-
-                    // Vérifier les x lignes suivantes si pas encore trouvé d'occurrence
-                    if (!hasOtherOccurrence) {
-                        for (let j = i + 1; j <= i + vicinityCheckNumber && j < lines.length; j++) {
-                            const nextLine = lines[j];
-                            if (isAnAddress(nextLine)) continue; // Passer à la ligne suivante si c'est une adresse
-                            for (const checkPattern of doctorPatterns) {
-                                if (checkPattern.test(nextLine)) {
-                                    hasOtherOccurrence = true;
-                                    break;
-                                }
-                            }
-                            if (hasOtherOccurrence) {
-                                console.log(`[pdfParser] Autre occurrence trouvée dans les lignes suivantes : ${nextLine}, ligne ${j}`);
-                            }
-                        }
-                    }
+                }
 
 
 
-                    // Si pas d'autre occurrence trouvée dans les x lignes précédentes ET suivantes, retourner ce nom
-                    if (!hasOtherOccurrence) {
-                        console.log(`[pdfParser] Nom de médecin trouvé: ${match[1].trim()} dans la ligne ${i}`);
-                        return match[1].trim();
-                    }
+                // Si pas d'autre occurrence trouvée dans les x lignes précédentes ET suivantes, retourner ce nom
+                if (!hasOtherOccurrence) {
+                    console.log(`[pdfParser] Nom de médecin trouvé: ${match[1].trim()} dans la ligne ${i}`);
+                    return match[1].trim();
                 }
             }
         }
+    }
 
-        return null;
+    return null;
 
 
-        function isAnAddress(line) {
-            // vérifier qu’il ne s’agisse pas non plus d’une rue, avenue etc
-            const streetPatterns = [
-                /\b(rue|avenue|boulevard|impasse|chemin|place)\b/i
-            ];
+    function isAnAddress(line) {
+        // vérifier qu’il ne s’agisse pas non plus d’une rue, avenue etc
+        const streetPatterns = [
+            /\b(rue|avenue|boulevard|impasse|chemin|place)\b/i
+        ];
 
-            for (const streetPattern of streetPatterns) {
-                if (streetPattern.test(line)) {
-                    hasOtherOccurrence = true;
-                    console.log(`[pdfParser] cette ligne semble être une adresse : ${line}`);
-                    return true;
-                }
+        for (const streetPattern of streetPatterns) {
+            if (streetPattern.test(line)) {
+                hasOtherOccurrence = true;
+                console.log(`[pdfParser] cette ligne semble être une adresse : ${line}`);
+                return true;
             }
-
-            return false;
         }
+
+        return false;
     }
 }
 
