@@ -135,6 +135,19 @@ const PdfParserAutoRegion = JSON.stringify([
     ["cardiaque", ["cardiaque", "cœur", "coronaire"]]
 ]);
 
+
+// TODO - poursuite du travail de personnalisation
+// champ permettant la personnalisation des titres
+// en principe il va générer un titre différent selon la catégorisation prévue.
+// en l’absence de correspondance, il renvoie seulement le titre de la catégorie
+const titleCreator = JSON.stringify([
+    ["LABORATOIRE/BIO",["Bilan biologique"]],
+    ["Arrêt de travail",["Avis d'arrêt de travail"]],
+    ["Consultation",["Cons. [specialite] - [doctorName]"]],
+    ["Courrier",["Cons. [specialite] - [doctorName]"]],
+    ["IMAGERIE",["Imagerie [specialite] - [doctorName]"]]
+]);
+
 // Définition des règles de classification de destination pour le PDF Parser
 const PdfParserAutoDestinationClass = JSON.stringify([
     // Niveau 1 : Mots-clés absolus pour les consultations
