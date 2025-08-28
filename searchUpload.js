@@ -348,6 +348,7 @@ addTweak('/FolderMedical/FindPatientForm.aspx', 'TweakTabSearchPatient', functio
         var timeDifferenceInSeconds = timeDifference / 1000;
         const idsSearchBox = 'ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche';
         const validTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0';
+        const secondTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_1';
         if (timeDifferenceInSeconds >= 5 || isNaN(timeDifferenceInSeconds)) {
             console.log('délais depuis le dernier alt+r :', timeDifferenceInSeconds, 'secondes donc on lance le tweak');
             console.log('TweakTabSearchPatient started');
@@ -355,7 +356,12 @@ addTweak('/FolderMedical/FindPatientForm.aspx', 'TweakTabSearchPatient', functio
             ListTabOrderer(validTarget);
             // Place le focus sur le premier élément de la liste de patients
             const elementToFocus = document.getElementById(validTarget);
-            if (elementToFocus) {
+            const secondTargetElement = document.getElementById(secondTarget);
+
+            if (elementToFocus && !secondTargetElement) {
+                recordMetrics({ clicks: 1, drags: 1 });
+                clicCSPLockedElement("#" + validTarget);
+            } else if (elementToFocus) {
                 elementToFocus.focus();
                 recordMetrics({ clicks: 1, drags: 1 });
             }

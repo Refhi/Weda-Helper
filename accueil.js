@@ -535,3 +535,5 @@ addTweak('/FolderMedical/AntecedentForm.aspx', 'simplifyATCD', function () {
         });
     } 
 });
+
+// Colle le contenu du presse papier et recherche le patient concerné TODO

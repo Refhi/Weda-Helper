@@ -5,8 +5,11 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
 # [2.13.2] - Correctifs
+## Ajouts :
+- Ajout de l'option "autoSelectLonePatient" pour sélectionner automatiquement le patient s'il est seul dans la liste de recherche.
+
 ## Fix :
-- [#468](https://github.com/Refhi/Weda-Helper/issues/468) - tentative de fix pour la non-fermeture de la prévisu de l'arrêt de travail.
+- [#468](https://github.com/Refhi/Weda-Helper/issues/468) - fix de la non-fermeture de la prévisu de l'arrêt de travail.
 - [#466](https://github.com/Refhi/Weda-Helper/issues/466) - Les antécédents s'affichent de nouveau à gauche si l'option dédiée est activée.
 - [#471](https://github.com/Refhi/Weda-Helper/issues/471) - Ajout du mot "kinésithérapeute" dans les mots-clés de classification automatique des ordonnances numériques.
 

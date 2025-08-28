@@ -201,7 +201,13 @@ var advancedDefaultSettings = [{
         "name": "TweakTabSearchPatient",
         "type": TYPE_BOOL,
         "description": "Activer les modifications de la fenêtre recherche patient (navigation facilitée avec la touche Tab).",
-        "default": true
+        "default": true,
+        "subOptions": [{
+            "name": "autoSelectLonePatient",
+            "type": TYPE_BOOL,
+            "description": "Sélectionne automatiquement le patient s'il est seul dans la liste de recherche.",
+            "default": true
+        }]
     }, {
         "name": "autoSelectPatientCV",
         "type": TYPE_BOOL,
