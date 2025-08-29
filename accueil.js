@@ -457,14 +457,14 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'simplifyATCD', function () {
     atcdElements.forEach(atcdElement => {
         // Variable pour stocker le timeout pour l'affichage du tooltip
         let tooltipTimeout;
-        
+
         // Ajout d'un mouseover pour afficher une info-bulle après 200ms
         atcdElement.addEventListener('mouseover', function () {
-            tooltipTimeout = setTimeout(function() {
+            tooltipTimeout = setTimeout(function () {
                 showTooltip(atcdElement, "WH:bouton droit pour éditer");
             }, 200);
         });
-        
+
         // Ajout d'un mouseout pour annuler le timeout et retirer l'info-bulle
         atcdElement.addEventListener('mouseout', function () {
             // Annuler le timeout si l'utilisateur quitte l'élément avant 200ms
@@ -472,7 +472,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'simplifyATCD', function () {
             // On retire l'info-bulle
             removeTooltip(atcdElement);
         });
-        
+
         atcdElement.addEventListener('contextmenu', function (e) {
             e.preventDefault(); // Empêcher le menu contextuel par défaut
             // On récupère l'innerText du span title
@@ -480,7 +480,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'simplifyATCD', function () {
             // On le stocke dans le sessionStorage
             sessionStorage.setItem('atcdTitle', atcdTitle);
             console.log('[simplifyATCD] atcdTitle sauvegardé', atcdTitle);
-            
+
             // Cliquer sur l'élément pour naviguer vers la page des ATCD
             atcdElement.click();
         });
@@ -530,10 +530,44 @@ addTweak('/FolderMedical/AntecedentForm.aspx', 'simplifyATCD', function () {
                 console.log('[simplifyATCD] atcdElement', atcdElement);
                 // On clique dessus
                 sessionStorage.removeItem('atcdTitle');
-                atcdElement.click();                
+                atcdElement.click();
             }
         });
-    } 
+    }
 });
 
 // Colle le contenu du presse papier et recherche le patient concerné TODO
+addTweak('*', '*pastePatient', function () {
+    // tout d’abord on ajoute un élément à droite du champ de recherche
+    const champRecherche = document.querySelector('#PanelFindPatient');
+    if (!champRecherche) return;
+    const champRechercheInput = document.querySelector("#TextBoxFindPatient");
+    // on ajoute à sa droite une emoticone de collage
+    const emoticoneColle = document.createElement('span');
+    emoticoneColle.innerText = '📋';
+    emoticoneColle.style.cursor = 'pointer';
+    emoticoneColle.title = 'Coller le contenu du presse-papiers';
+    emoticoneColle.addEventListener('click', function () {
+        navigator.clipboard.readText().then(text => {
+            console.log('[pastePatient] texte collé', text, "dans", champRechercheInput);
+            // ajout d’un timestamp
+            champRechercheInput.value = text;
+            sessionStorage.setItem('lastPatientSearch', Date.now());
+            champRechercheInput.dispatchEvent(new Event('change', { bubbles: true }));
+            recordMetrics({ clicks: 1, drags: 1 });
+        });
+    });
+    champRecherche.parentNode.insertBefore(emoticoneColle, champRecherche.nextSibling);
+});
+
+// Ajoute un écouteur d’évènements sur la searchbox
+addTweak('*', '*watchPatientSearchBox', function () {
+    const champRechercheInput = document.querySelector("#TextBoxFindPatient");
+    if (!champRechercheInput) return;
+
+    champRechercheInput.addEventListener('input', function () {
+        // On met à jour le timestamp à chaque saisie
+        sessionStorage.setItem('lastPatientSearch', Date.now());
+        // console.log('[watchPatientSearchBox] lastPatientSearch', sessionStorage.getItem('lastPatientSearch'));
+    });
+});

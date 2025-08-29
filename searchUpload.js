@@ -357,8 +357,10 @@ addTweak('/FolderMedical/FindPatientForm.aspx', 'TweakTabSearchPatient', functio
             // Place le focus sur le premier élément de la liste de patients
             const elementToFocus = document.getElementById(validTarget);
             const secondTargetElement = document.getElementById(secondTarget);
+            const lastSearch = parseInt(sessionStorage.getItem('lastPatientSearch')) || 0;
+            const isRecentSearch = Date.now() - lastSearch < 5000; console.log('isRecentSearch', isRecentSearch, 'lastPatientSearch', sessionStorage.getItem('lastPatientSearch'), "et dateNow", Date.now());
 
-            if (elementToFocus && !secondTargetElement) {
+            if (elementToFocus && !secondTargetElement && isRecentSearch) {
                 recordMetrics({ clicks: 1, drags: 1 });
                 clicCSPLockedElement("#" + validTarget);
             } else if (elementToFocus) {

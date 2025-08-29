@@ -7,6 +7,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 # [2.13.2] - Correctifs
 ## Ajouts :
 - Ajout de l'option "autoSelectLonePatient" pour sélectionner automatiquement le patient s'il est seul dans la liste de recherche.
+- Ajout d’un bouton pour coller et rechercher un patient/nir présent dans le presse-papiers.
 
 ## Fix :
 - [#468](https://github.com/Refhi/Weda-Helper/issues/468) - fix de la non-fermeture de la prévisu de l'arrêt de travail.
