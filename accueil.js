@@ -536,9 +536,8 @@ addTweak('/FolderMedical/AntecedentForm.aspx', 'simplifyATCD', function () {
     }
 });
 
-// Colle le contenu du presse papier et recherche le patient concerné TODO
 addTweak('*', '*pastePatient', function () {
-    // tout d’abord on ajoute un élément à droite du champ de recherche
+    // tout d'abord on ajoute un élément à droite du champ de recherche
     const champRecherche = document.querySelector('#PanelFindPatient');
     if (!champRecherche) return;
     const champRechercheInput = document.querySelector("#TextBoxFindPatient");
@@ -546,19 +545,24 @@ addTweak('*', '*pastePatient', function () {
     const emoticoneColle = document.createElement('span');
     emoticoneColle.innerText = '📋';
     emoticoneColle.style.cursor = 'pointer';
+    emoticoneColle.style.marginLeft = '5px';
+    emoticoneColle.style.verticalAlign = 'middle';
     emoticoneColle.title = 'Coller le contenu du presse-papiers';
     emoticoneColle.addEventListener('click', function () {
         navigator.clipboard.readText().then(text => {
             console.log('[pastePatient] texte collé', text, "dans", champRechercheInput);
-            // ajout d’un timestamp
+            // ajout d'un timestamp
             champRechercheInput.value = text;
             sessionStorage.setItem('lastPatientSearch', Date.now());
             champRechercheInput.dispatchEvent(new Event('change', { bubbles: true }));
             recordMetrics({ clicks: 1, drags: 1 });
         });
     });
-    champRecherche.parentNode.insertBefore(emoticoneColle, champRecherche.nextSibling);
+    
+    // Insérer directement dans le panel, à côté de l'input
+    champRecherche.appendChild(emoticoneColle);
 });
+
 
 // Ajoute un écouteur d’évènements sur la searchbox
 addTweak('*', '*watchPatientSearchBox', function () {
