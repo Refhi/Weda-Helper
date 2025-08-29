@@ -212,6 +212,7 @@ var advancedDefaultSettings = [{
             "type": TYPE_BOOL,
             "description": "Colle automatiquement le patient depuis le presse-papiers et lance la recherche.",
             "default": true
+        }]
     }, {
         "name": "WarpButtons",
         "type": TYPE_BOOL,
