@@ -207,12 +207,11 @@ var advancedDefaultSettings = [{
             "type": TYPE_BOOL,
             "description": "Sélectionne automatiquement le patient s'il est seul dans la liste de recherche.",
             "default": true
-        }]
-    }, {
-        "name": "autoSelectPatientCV",
-        "type": TYPE_BOOL,
-        "description": "Lit automatiquement la carte vitale après insertion (nécessite Weda Connect 3) et sélectionne automatiquement le patient s'il est seul.",
-        "default": true
+        }, {
+            "name": "pastePatient",
+            "type": TYPE_BOOL,
+            "description": "Colle automatiquement le patient depuis le presse-papiers et lance la recherche.",
+            "default": true
     }, {
         "name": "WarpButtons",
         "type": TYPE_BOOL,

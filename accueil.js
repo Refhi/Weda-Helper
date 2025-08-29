@@ -536,7 +536,7 @@ addTweak('/FolderMedical/AntecedentForm.aspx', 'simplifyATCD', function () {
     }
 });
 
-addTweak('*', '*pastePatient', function () {
+addTweak('*', 'pastePatient', function () {
     // tout d'abord on ajoute un élément à droite du champ de recherche
     const champRecherche = document.querySelector('#PanelFindPatient');
     if (!champRecherche) return;
