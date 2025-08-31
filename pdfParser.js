@@ -1358,13 +1358,45 @@ async function extractCategoryFromOptions(fullText, optionSelector, possibleCats
     function lookForMatch(fullText, categoryMatchingRules) {
         for (const [type, keywords] of categoryMatchingRules) {
             // console.log('[pdfParser] recherche du type de document', type);
-            for (const keyword of keywords) {
+            
+            // Séparer les mots-clés d'inclusion et d'exclusion
+            const inclusionKeywords = keywords.filter(keyword => !keyword.startsWith('-'));
+            const exclusionKeywords = keywords.filter(keyword => keyword.startsWith('-')).map(keyword => keyword.substring(1));
+            
+            for (const keyword of inclusionKeywords) {
                 // Remplacer les espaces par \s* pour permettre les espaces optionnels
                 const regex = new RegExp(keyword.replace(/\s+/g, '\\s*'), 'i');
-                if (regex.test(fullText)) {
-                    const lineNumber = fullText.substr(0, fullText.match(regex).index).split("\n").length;
-                    console.log(`[pdfParser] ${optionSelector} trouvé : `, type, 'car présence de "', keyword, '"', "en ligne", lineNumber);
-                    return type;
+                const match = fullText.match(regex);
+                
+                if (match) {
+                    // Vérifier les exclusions dans un contexte adapté à chaque mot-clé d'exclusion
+                    const matchIndex = match.index;
+                    const matchLength = match[0].length;
+                    
+                    let isExcluded = false;
+                    
+                    for (const exclusionKeyword of exclusionKeywords) {
+                        // Calculer la taille de contexte pour ce mot-clé d'exclusion spécifique
+                        const contextSize = exclusionKeyword.length;
+                        
+                        // Définir une zone de contexte autour du match adaptée à ce mot-clé d'exclusion
+                        const contextStart = Math.max(0, matchIndex - contextSize);
+                        const contextEnd = Math.min(fullText.length, matchIndex + matchLength + contextSize);
+                        const contextText = fullText.substring(contextStart, contextEnd);
+                        
+                        const exclusionRegex = new RegExp(exclusionKeyword.replace(/\s+/g, '\\s*'), 'i');
+                        if (exclusionRegex.test(contextText)) {
+                            console.log(`[pdfParser] ${optionSelector} : match trouvé pour "${keyword}" mais exclu par "${exclusionKeyword}" dans le contexte`);
+                            isExcluded = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!isExcluded) {
+                        const lineNumber = fullText.substr(0, match.index).split("\n").length;
+                        console.log(`[pdfParser] ${optionSelector} trouvé : `, type, 'car présence de "', keyword, '"', "en ligne", lineNumber);
+                        return type;
+                    }
                 }
             }
         }

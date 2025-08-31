@@ -418,6 +418,10 @@ var advancedDefaultSettings = [{
                     }
                 ]
             }, {
+                "name": "Règles de catégorisation",
+                "type": TYPE_TITLE,
+                "description": "Lors d’une tentative de classification, Weda-Helper parcourt chacune des listes ci-dessous et valide à chaque fois la première catégorie trouvée dans la ligne.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple. Une phrase-clé débutant par - (ex. -chef de clinique) permet d’éviter les faux positifs. Par exemple si vous mettez dans les mots-clés «clinique» et «-chef de clinique», le mot-clé «clinique» ne sera pas pris en compte si le mot est dans la phrase «chef de clinique».",
+            },{
                 "name": "PdfParserAutoCategoryDict",
                 "type": TYPE_JSON,
                 "description": "Règles de catégorisation : catégorisation du document importé",
