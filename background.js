@@ -51,6 +51,7 @@ const PdfParserAutoCategoryDefaut = JSON.stringify([
     ["LABORATOIRE/BIO", ["BIOCEANE", "LABORATOIRE"]],
     ["Arrêt de travail", ["avis d’arrêt de travail"]],
     ["CRO/CRH", ["Compte Rendu Opératoire", "Compte Rendu Hospitalier", "Compte Rendu d'Hospitalisation", "COMPTE RENDU OPERATOIRE"]],
+    ["Compte Rendu", ["Compte rendu des Urgences"]],
     ["Consultation", ["COMPTE-RENDU DE CONSULTATION"]],
     ["PARAMEDICAL", ["BILAN ORTHOPTIQUE"]],
     // Niveau 2 de spécificité : des mots plus ambivalents, mais qui,
@@ -61,16 +62,16 @@ const PdfParserAutoCategoryDefaut = JSON.stringify([
     ["Biologie", ["biologie", "analyse sanguine"]],
     ["Bon de transport", ["bon de transport", "transport médical"]],
     ["Certificat", ["certificat", "attestation"]],
-    ["ECG", ["ecg", "électrocardiogramme"]],
     ["EFR", ["exploration fonctionnelle respiratoire"]],
     ["LABORATOIRE/BIO", ["laboratoire"]],
     ["MT", ["Déclaration de Médecin Traitant", "déclaration médecin traitant"]],
     ["PARAMEDICAL", ["paramédical", "soins"]],
     ["SPECIALISTE", ["spécialiste", "consultation spécialisée"]],
     ["Consultation", ["consultation", "visite médicale"]],
-    ["Ordonnance", ["ordonnance", "prescription", "60-3937"]], // 60-3937 est le cerfa des bizones
     // Niveau 3 de spécificité : des mots plus génériques, qui peuvent être présents dans plusieurs types de documents
     ["Compte Rendu", ["compte rendu", "compte-rendu", "automesure"]],
+    ["Ordonnance", ["ordonnance", "prescription", "60-3937"]], // 60-3937 est le cerfa des bizones
+    ["ECG", ["ecg", "électrocardiogramme"]],
     ["Administratif", []], // sans aucun mot-clé devient par défaut un document administratif
 
 ]);
@@ -78,6 +79,7 @@ const PdfParserAutoCategoryDefaut = JSON.stringify([
 
 const PdfParserAutoSpecialite = JSON.stringify([
     // Spécialités médicales avec mots-clés associés
+    ["Urgences", ["Compte rendu des Urgences"]],
     ["Médecine Interne", ["Médecine Interne"]],
     ["Orthopédie", ["Orthopédie", "Orthopédique", "Traumatologie"]],
     ["Gynécologie", ["Gynécologie", "Obstétrique", "Gynéco"]],
@@ -104,6 +106,7 @@ const PdfParserAutoSpecialite = JSON.stringify([
     ["Allergologie", ["Allergologie", "Allergie", "Allergique"]],
     ["Gériatrie", ["Gériatrie", "Gérontologie", "Personnes âgées"]],
     ["Anesthésiologie", ["Anesthésiologie", "Anesthésie", "Réanimation"]],
+    ["Urgences", ["Urgences", "Service d'Urgence"]],
     ["Chirurgie", ["Chirurgie", "Chirurgical", "Opération"]],
 ]);
 
@@ -148,7 +151,9 @@ const titleCreator = JSON.stringify([
     ["Consultation", ["Cons. [specialite] - [doctorName] - [lieu]"]],
     ["Courrier", ["Cons. [specialite] - [doctorName] - [lieu]"]],
     ["IMAGERIE", ["Imagerie [specialite] - [doctorName]"]],
-    ["*", ["[category] - [doctorName] - [lieu]"]]
+    ["CRO/CRH", ["[typeCR] - [specialite] - [doctorName] - [lieu]"]],
+    ["Compte-rendu", ["[typeCR] - [specialite] - [doctorName] - [lieu]"]],
+    ["*", ["[category] - [specialite] - [doctorName] - [lieu]"]]
 ]);
 
 // Définition des règles de classification de destination pour le PDF Parser
@@ -175,17 +180,20 @@ const PdfParserAutoDestinationClass = JSON.stringify([
 
 const PdfParserAutoLieu = JSON.stringify([
     // Établissements de santé avec mots-clés associés
-    ["CHU", ["CHU", "Centre Hospitalier Universitaire"]],
-    ["CH", ["CH", "Centre Hospitalier de", "Hôpital de", "Hôpital"]],
-    ["Clinique", ["Clinique", "Polyclinique"]],
+    ["Cabinet", ["Cabinet médical", "Cabinet de radiologie"]],
+    ["CHU", ["Centre Hospitalier Universitaire"]],
+    ["CH", ["Centre Hospitalier de", "Hôpital de", "Hôpital"]],
+    ["Clinique", ["Clinique", "Polyclinique", "-Chef de clinique"]],
     ["Centre", ["Centre médical", "Centre de radiologie", "Centre d'imagerie"]],
-    ["Cabinet", ["Cabinet médical", "Cabinet de radiologie"]]
+    ["Cabinet", ["Cabinet"]],
+    ["CHU", ["CHU"]]
 ]);
 
 const PdfParserAutoTypeCR = JSON.stringify([
     // Types de compte-rendu avec mots-clés associés
-    ["consultation", ["Consultation", "CS", "Cs", "consultation"]],
-    ["hospitalisation", ["Hospitalisation", "CRH", "compte rendu d'hospitalisation"]],
+    ["hospitalisation", ["CRH", "compte rendu d'hospitalisation"]],
+    ["consultation", ["Consultation", "consultation"]],
+    ["hospitalisation", ["Hospitalisation"]],
     ["examen", ["Compte rendu d'examen", "CR d'examen", "compte-rendu d'examen"]],
     ["opération", ["Compte rendu opératoire", "CRO", "opération"]]
 ]);
@@ -405,7 +413,7 @@ var advancedDefaultSettings = [{
                         "name": "PdfParserAutoTitleFormat",
                         "type": TYPE_JSON,
                         "description": "Format du titre pour les documents importés.",
-                        "longDescription": "crée un titre à partir des données extraite du document.\nChaque ligne doit commencer par une catégorie (cf. champ d'option ci-dessous) ou par * pour n'importe quelle catégorie et être suivi après \":\" d’une phrase.\nVous pouvez utiliser les variables suivantes :\n- [specialite] : la spécialité médicale détectée\n- [imagerie] : le type d'imagerie détecté\n- [region] : la région anatomique détectée\n- [lieu] : le type d'établissement détecté\n- [typeCR] : le type de compte-rendu détecté\n- [doctorName] : le nom du médecin expéditeur détecté",
+                        "longDescription": "crée un titre à partir des données extraite du document.\nChaque ligne doit commencer par une catégorie (cf. champ d'option ci-dessous) ou par * pour n'importe quelle catégorie et être suivi après \":\" d’une phrase.\nVous pouvez utiliser les variables suivantes :\n- [specialite] : la spécialité médicale détectée\n- [imagerie] : le type d'imagerie détecté\n- [region] : la région anatomique détectée\n- [lieu] : le type d'établissement détecté\n- [typeCR] : le type de compte-rendu détecté\n- [doctorName] : le nom du médecin expéditeur détecté\n- [category] : la catégorie détectée",
                         "default": titleCreator
                     }
                 ]

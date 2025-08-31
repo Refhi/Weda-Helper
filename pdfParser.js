@@ -1329,13 +1329,13 @@ async function extractRelevantData(fullText) {
  * @returns {string|null} - La première catégorie trouvée (selon l’ordre des règles) ou null si aucune correspondance.
  */
 async function extractCategoryFromOptions(fullText, optionSelector, possibleCats = null, perfectRuleMatchingNeeded = false) {
-    console.log("[pdfParser] Extraction de la catégorie à partir des options", optionSelector);
+    // console.log("[pdfParser] Extraction de la catégorie à partir des options", optionSelector);
     // 1 - récupérer le tableau via getOption et le convertir en format exploitable
     // On utilise un tableau de tableaux pour permettre de parcourir les types de documents par ordre de spécificité
     // Et de mettre plusieurs fois la même clé, avec des valeurs de moins en moins exigeantes
     let categoryMatchingRules = await getOptionPromise(optionSelector);
     categoryMatchingRules = properArrayOfCategoryMatchingRules(categoryMatchingRules);
-    console.log("[pdfParser] Règles de correspondance pour l'extraction de catégorie :", categoryMatchingRules);
+    // console.log("[pdfParser] Règles de correspondance pour l'extraction de catégorie :", categoryMatchingRules);
     if (categoryMatchingRules === false) {
         console.warn("[pdfParser] Règles de correspondance invalides pour l'extraction de catégorie.");
         dealWithInvalidRules(optionSelector);
@@ -1362,12 +1362,13 @@ async function extractCategoryFromOptions(fullText, optionSelector, possibleCats
                 // Remplacer les espaces par \s* pour permettre les espaces optionnels
                 const regex = new RegExp(keyword.replace(/\s+/g, '\\s*'), 'i');
                 if (regex.test(fullText)) {
-                    console.log('[pdfParser] type de document trouvé', type, 'car présence de', keyword);
+                    const lineNumber = fullText.substr(0, fullText.match(regex).index).split("\n").length;
+                    console.log(`[pdfParser] ${optionSelector} trouvé : `, type, 'car présence de "', keyword, '"', "en ligne", lineNumber);
                     return type;
                 }
             }
         }
-        console.log('[pdfParser] type de document non trouvé');
+        console.log(`[pdfParser] ${optionSelector} : aucune correspondance trouvée`);
         return null;
     }
 
@@ -2072,7 +2073,7 @@ function extractDoctorName(fullText) {
 
         if (isAnAddress(line)) continue; // Passer à la ligne suivante si c'est une adresse
 
-        console.log(`[pdfParser] Analyse de la ligne ${i}:`, line);
+        // console.log(`[pdfParser] Analyse de la ligne ${i}:`, line);
 
         for (const pattern of doctorPatterns) {
             const match = line.match(pattern);
@@ -2093,7 +2094,7 @@ function extractDoctorName(fullText) {
                         }
                     }
                     if (hasOtherOccurrence) {
-                        console.log(`[pdfParser] Autre occurrence trouvée dans les lignes précédentes : ${prevLine}, ligne ${j}`);
+                        // console.log(`[pdfParser] Autre occurrence trouvée dans les lignes précédentes : ${prevLine}, ligne ${j}`);
                     }
                 }
 
@@ -2131,13 +2132,13 @@ function extractDoctorName(fullText) {
     function isAnAddress(line) {
         // vérifier qu’il ne s’agisse pas non plus d’une rue, avenue etc
         const streetPatterns = [
-            /\b(rue|avenue|boulevard|impasse|chemin|place)\b/i
+            /\b(rue|avenue|boulevard|impasse|chemin|place|cedex)\b/i
         ];
 
         for (const streetPattern of streetPatterns) {
             if (streetPattern.test(line)) {
                 hasOtherOccurrence = true;
-                console.log(`[pdfParser] cette ligne semble être une adresse : ${line}`);
+                // console.log(`[pdfParser] cette ligne semble être une adresse : ${line}`);
                 return true;
             }
         }
