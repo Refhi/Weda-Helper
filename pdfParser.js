@@ -1267,8 +1267,8 @@ async function extractRelevantData(fullText) {
     const addressedTo = await extractAddressedTo(fullText); // Retourne l'id du choix du dropdown
 
     // Catégorisation générale : recherche via contexte et heuristiques
-    const destinationClass = await extractDestinationClass(fullText);
-    const documentType = await determineDocumentType(fullText);
+    const destinationClass = await extractDestinationClass(fullText); // 1-consultation, 2-résultat d’examen ou 3-courrier
+    const documentType = await determineDocumentType(fullText); // type de document (ex: compte rendu, ordonnance selon la liste d’import de l’utilisateur
 
     // Extraction en parallèle des caractéristiques basées sur les options
     const specialite = await extractCategoryFromOptions(fullText, categoryExtractorsOptions.specialite);

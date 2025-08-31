@@ -141,11 +141,12 @@ const PdfParserAutoRegion = JSON.stringify([
 // en principe il va générer un titre différent selon la catégorisation prévue.
 // en l’absence de correspondance, il renvoie seulement le titre de la catégorie
 const titleCreator = JSON.stringify([
-    ["LABORATOIRE/BIO",["Bilan biologique"]],
-    ["Arrêt de travail",["Avis d'arrêt de travail"]],
-    ["Consultation",["Cons. [specialite] - [doctorName]"]],
-    ["Courrier",["Cons. [specialite] - [doctorName]"]],
-    ["IMAGERIE",["Imagerie [specialite] - [doctorName]"]]
+    ["LABORATOIRE/BIO", ["Bilan biologique"]],
+    ["Arrêt de travail", ["Avis d'arrêt de travail"]],
+    ["Consultation", ["Cons. [specialite] - [doctorName] - [lieu]"]],
+    ["Courrier", ["Cons. [specialite] - [doctorName] - [lieu]"]],
+    ["IMAGERIE", ["Imagerie [specialite] - [doctorName]"]],
+    ["*", ["[category] - [doctorName] - [lieu]"]]
 ]);
 
 // Définition des règles de classification de destination pour le PDF Parser
@@ -390,13 +391,22 @@ var advancedDefaultSettings = [{
             "name": "autoPdfParser",
             "type": TYPE_BOOL,
             "description": "Analyse automatiquement les pdfs en attente d'import et essaie d'en extraire les informations (date, nom patient, etc.).",
-            "longDescription": "Pour les PDFs scannés il est recommandé d'avoir une OCR de qualité. Pour les geeks vous pouvez regarder https://github.com/Refhi/pdf_ocr_pdf (fonctionne bien mais nécessite pas mal de compétences pour l'installer). Pour l'instant ne fonctionne que dans https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx (la fenêtre d'imports de masse).",
+            "longDescription": "Pour les PDFs scannés il est recommandé d'avoir une OCR de qualité. Pour les geeks vous pouvez regarder https://github.com/Refhi/pdf_ocr_pdf (fonctionne bien mais nécessite pas mal de compétences pour l'installer).",
             "default": true,
             "subOptions": [{
                 "name": "PdfParserAutoTitle",
                 "type": TYPE_BOOL,
                 "description": "Crée automatiquement un titre pour les documents importés.",
-                "default": true
+                "default": true,
+                "subOptions": [
+                    {
+                        "name": "PdfParserAutoTitleFormat",
+                        "type": TYPE_JSON,
+                        "description": "Format du titre pour les documents importés.",
+                        "longDescription": "crée un titre à partir des données extraite du document.\nChaque ligne doit commencer par une catégorie (cf. champ d'option ci-dessous) ou par * pour n'importe quelle catégorie et être suivi après \":\" d’une phrase.\nVous pouvez utiliser les variables suivantes :\n- [specialite] : la spécialité médicale détectée\n- [imagerie] : le type d'imagerie détecté\n- [region] : la région anatomique détectée\n- [lieu] : le type d'établissement détecté\n- [typeCR] : le type de compte-rendu détecté\n- [doctorName] : le nom du médecin expéditeur détecté\n\nExemple :\nLABORATOIRE/BIO : Bilan biologique\nArrêt de travail : Avis d\'arrêt de travail\nConsultation : Cons. [specialite] - [doctorName] - [lieu]\nCourrier : Cons. [specialite] - [doctorName] - [lieu]\nIMAGERIE : Imagerie [specialite] - [doctorName]\n* : [category] - [doctorName] - [lieu]",
+                        "default": titleCreator
+                    }
+                ]
             }, {
                 "name": "PdfParserAutoCategoryDict",
                 "type": TYPE_JSON,
