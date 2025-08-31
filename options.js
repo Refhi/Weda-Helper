@@ -228,6 +228,20 @@ function createLabel(option) {
       
       .info-icon:hover .info-tooltip {
         display: block;
+      }
+      
+      .default-value-btn {
+        margin-left: 10px;
+        padding: 2px 8px;
+        font-size: 12px;
+        background: #ff8888ff;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+      
+      .default-value-btn:hover {
+        background: #e0e0e0;
       }`;
     document.head.appendChild(styles);
   }
@@ -237,21 +251,18 @@ function createLabel(option) {
   label.setAttribute('for', option.name);
 
   // Pour les options JSON ou si longDescription existe, ajouter l'icône d'information
-  if (option.longDescription) {
+  if (option.longDescription || option.type === 'json') {
     const infoIcon = document.createElement('span');
     infoIcon.innerHTML = ' ℹ️';
     infoIcon.className = 'info-icon';
-    infoIcon.style.fontFamily = 'Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"'; // Ensure emoji font
-
+    infoIcon.style.fontFamily = 'Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"';
 
     const tooltip = document.createElement('div');
     tooltip.className = 'info-tooltip';
 
     let tooltipContent = '';
 
-
     if (option.longDescription) {
-      // Sinon, juste afficher la longDescription
       tooltipContent += option.longDescription.replace(/\n/g, '<br>');
     }
 
@@ -261,17 +272,48 @@ function createLabel(option) {
       tooltipContent += displayCategories(option.default).replace(/\n/g, '<br>');
     }
 
-
-
     tooltip.innerHTML = tooltipContent;
-
     infoIcon.appendChild(tooltip);
     label.appendChild(infoIcon);
   }
 
+  // Ajouter un bouton "Valeur par défaut" pour certains types d'options
+  if (['text', 'json', 'smalltext'].includes(option.type)) {
+    const defaultBtn = document.createElement('button');
+    defaultBtn.textContent = '↻';
+    defaultBtn.title = 'Restaurer la valeur par défaut';
+    defaultBtn.className = 'default-value-btn';
+    defaultBtn.type = 'button'; // Empêcher la soumission du formulaire
+
+    defaultBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      const inputElement = document.getElementById(option.name);
+
+      // Demander confirmation à l'utilisateur
+      const confirmMessage = `Êtes-vous sûr de vouloir restaurer la valeur par défaut ?`;
+      if (!confirm(confirmMessage)) {
+        return;
+      }
+
+      if (inputElement) {
+        if (option.type === 'json') {
+          // Pour les options JSON, utiliser displayCategories pour formater
+          inputElement.value = displayCategories(option.default);
+        } else {
+          // Pour les autres types, utiliser directement la valeur par défaut
+          inputElement.value = option.default;
+        }
+
+        // Déclencher l'événement change si nécessaire
+        inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+
+    label.appendChild(defaultBtn);
+  }
+
   return label;
 }
-
 function createOptionElement(option) { // Création des éléments de l'option
   const optionDiv = document.createElement('div');
   optionDiv.classList.add('option');
