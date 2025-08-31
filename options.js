@@ -325,7 +325,7 @@ function createOptionElement(option) { // Création des éléments de l'option
 
     if (option.description) {
       const subtitle = document.createElement('p');
-      subtitle.textContent = option.description;
+      subtitle.innerHTML = option.description.replace(/\n/g, '<br>'); // Remplacer \n par <br>
       subtitle.classList.add('subtitle');
       optionDiv.appendChild(subtitle);
     }

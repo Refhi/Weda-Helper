@@ -420,43 +420,45 @@ var advancedDefaultSettings = [{
             }, {
                 "name": "Règles de catégorisation",
                 "type": TYPE_TITLE,
-                "description": "Lors d’une tentative de classification, Weda-Helper parcourt chacune des listes ci-dessous et valide à chaque fois la première catégorie trouvée dans la ligne.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple. Une phrase-clé débutant par - (ex. -chef de clinique) permet d’éviter les faux positifs. Par exemple si vous mettez dans les mots-clés «clinique» et «-chef de clinique», le mot-clé «clinique» ne sera pas pris en compte si le mot est dans la phrase «chef de clinique».",
-            },{
-                "name": "PdfParserAutoCategoryDict",
-                "type": TYPE_JSON,
-                "description": "Règles de catégorisation : catégorisation du document importé",
-                "longDescription": "Parcours la liste et valide la première catégorie qui correspond.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple. Vous devez initialiser la votre depuis la fenêtre des imports avec la petite icone ⚙️.",
-                "default": PdfParserAutoCategoryDefaut
-            }, {
-                "name": "PdfParserAutoSpecialiteDict",
-                "type": TYPE_JSON,
-                "description": "Règles de catégorisation : spécialités médicale de la source du document importé",
-                "longDescription": "Liste des spécialités médicales avec leurs mots-clés associés pour la détection automatique.",
-                "default": PdfParserAutoSpecialite
-            }, {
-                "name": "PdfParserAutoImagerieDict",
-                "type": TYPE_JSON,
-                "description": "Règles de catégorisation : types d'imagerie",
-                "longDescription": "Liste des types d'imagerie avec leurs mots-clés associés pour la détection automatique.",
-                "default": PdfParserAutoImagerie
-            }, {
-                "name": "PdfParserAutoRegionDict",
-                "type": TYPE_JSON,
-                "description": "Règles de catégorisation : régions anatomiques (utilisé en cas d’imagerie)",
-                "longDescription": "Liste des régions anatomiques avec leurs mots-clés associés pour la détection automatique.",
-                "default": PdfParserAutoRegion
-            }, {
-                "name": "PdfParserAutoLieuDict",
-                "type": TYPE_JSON,
-                "description": "Règles de catégorisation : types d'établissements de santé",
-                "longDescription": "Liste des établissements de santé avec leurs mots-clés associés pour la détection automatique.",
-                "default": PdfParserAutoLieu
-            }, {
-                "name": "PdfParserAutoTypeCRDict",
-                "type": TYPE_JSON,
-                "description": "Règles de catégorisation : type de compte-rendu",
-                "longDescription": "Liste des types de compte-rendu avec leurs mots-clés associés pour la détection automatique.",
-                "default": PdfParserAutoTypeCR
+                "description": "Lors d’une tentative de classification, Weda-Helper parcourt chacune des listes ci-dessous et valide pour chaque type de catégorisation la première catégorie trouvée dans la ligne.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple. Une phrase-clé débutant par - (ex. -chef de clinique) permet d’éviter les faux positifs. Par exemple si vous mettez dans les mots-clés «clinique» et «-chef de clinique», le mot-clé «clinique» ne sera pas pris en compte si le mot est dans la phrase «chef de clinique».",
+                "subOptions": [
+                    {
+                        "name": "PdfParserAutoCategoryDict",
+                        "type": TYPE_JSON,
+                        "description": "Catégorie de classement du document importé",
+                        "longDescription": "Parcours la liste et valide la première catégorie qui correspond.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple. Vous devez initialiser la votre depuis la fenêtre des imports avec la petite icone ⚙️.",
+                        "default": PdfParserAutoCategoryDefaut
+                    }, {
+                        "name": "PdfParserAutoSpecialiteDict",
+                        "type": TYPE_JSON,
+                        "description": "Spécialités médicale de la source du document importé",
+                        "longDescription": "Liste des spécialités médicales avec leurs mots-clés associés pour la détection automatique.",
+                        "default": PdfParserAutoSpecialite
+                    }, {
+                        "name": "PdfParserAutoImagerieDict",
+                        "type": TYPE_JSON,
+                        "description": "Types d'imagerie",
+                        "longDescription": "Liste des types d'imagerie avec leurs mots-clés associés pour la détection automatique.",
+                        "default": PdfParserAutoImagerie
+                    }, {
+                        "name": "PdfParserAutoRegionDict",
+                        "type": TYPE_JSON,
+                        "description": "Régions anatomiques (par exemple en cas d’imagerie)",
+                        "longDescription": "Liste des régions anatomiques avec leurs mots-clés associés pour la détection automatique.",
+                        "default": PdfParserAutoRegion
+                    }, {
+                        "name": "PdfParserAutoLieuDict",
+                        "type": TYPE_JSON,
+                        "description": "Types d'établissements de santé",
+                        "longDescription": "Liste des établissements de santé avec leurs mots-clés associés pour la détection automatique.",
+                        "default": PdfParserAutoLieu
+                    }, {
+                        "name": "PdfParserAutoTypeCRDict",
+                        "type": TYPE_JSON,
+                        "description": "Type de compte-rendu",
+                        "longDescription": "Liste des types de compte-rendu avec leurs mots-clés associés pour la détection automatique.",
+                        "default": PdfParserAutoTypeCR
+                    }]
             }, {
                 "name": "PdfParserAutoDate",
                 "type": TYPE_BOOL,
