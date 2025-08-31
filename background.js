@@ -57,7 +57,6 @@ const PdfParserAutoCategoryDefaut = JSON.stringify([
     // parcouru dans l'ordre devraient permettre de déterminer le type de document
     ["Courrier", ["Chère Consœur", "chère consoeur", "Cher confrère", "chère amie", "cher ami", "Cherconfrére", "Chèreconsoeur", "Chèreconsœur"]],
     ["IMAGERIE", ["imagerie", "radiographie", "scanner", "IRM", "radiologie"]],
-    ["Administratif", []],
     ["Arrêt de travail", ["arrêt de travail", "congé maladie"]],
     ["Biologie", ["biologie", "analyse sanguine"]],
     ["Bon de transport", ["bon de transport", "transport médical"]],
@@ -72,6 +71,8 @@ const PdfParserAutoCategoryDefaut = JSON.stringify([
     ["Ordonnance", ["ordonnance", "prescription", "60-3937"]], // 60-3937 est le cerfa des bizones
     // Niveau 3 de spécificité : des mots plus génériques, qui peuvent être présents dans plusieurs types de documents
     ["Compte Rendu", ["compte rendu", "compte-rendu", "automesure"]],
+    ["Administratif", []], // sans aucun mot-clé devient par défaut un document administratif
+
 ]);
 
 
@@ -87,8 +88,9 @@ const PdfParserAutoSpecialite = JSON.stringify([
     ["Ophtalmologie", ["Ophtalmologie", "Ophtalmo", "Oculaire"]],
     ["Pneumologie", ["Pneumologie", "Pneumo", "Respiratoire", "Pulmonaire"]],
     ["Dermatologie", ["Dermatologie", "Dermato", "Cutané"]],
+    ["Vasculaire", ["Vasculaire"]],
+    ["Thoracique", ["Thoracique"]],
     ["Urologie", ["Urologie", "Uro"]],
-    ["Chirurgie", ["Chirurgie", "Chirurgical", "Opération"]],
     ["Rhumatologie", ["Rhumatologie", "Rhumato"]],
     ["Endocrinologie", ["Endocrinologie", "Endocrino", "Diabète", "Diabétologie"]],
     ["Gastro-entérologie", ["Gastro-entérologie", "Gastro", "Digestif"]],
@@ -101,7 +103,8 @@ const PdfParserAutoSpecialite = JSON.stringify([
     ["ORL", ["ORL", "Otologie", "Rhinologie", "Laryngologie", "Otorhinolaryngologie"]],
     ["Allergologie", ["Allergologie", "Allergie", "Allergique"]],
     ["Gériatrie", ["Gériatrie", "Gérontologie", "Personnes âgées"]],
-    ["Anesthésiologie", ["Anesthésiologie", "Anesthésie", "Réanimation"]]
+    ["Anesthésiologie", ["Anesthésiologie", "Anesthésie", "Réanimation"]],
+    ["Chirurgie", ["Chirurgie", "Chirurgical", "Opération"]],
 ]);
 
 const PdfParserAutoImagerie = JSON.stringify([
@@ -136,7 +139,6 @@ const PdfParserAutoRegion = JSON.stringify([
 ]);
 
 
-// TODO - poursuite du travail de personnalisation
 // champ permettant la personnalisation des titres
 // en principe il va générer un titre différent selon la catégorisation prévue.
 // en l’absence de correspondance, il renvoie seulement le titre de la catégorie
@@ -403,7 +405,7 @@ var advancedDefaultSettings = [{
                         "name": "PdfParserAutoTitleFormat",
                         "type": TYPE_JSON,
                         "description": "Format du titre pour les documents importés.",
-                        "longDescription": "crée un titre à partir des données extraite du document.\nChaque ligne doit commencer par une catégorie (cf. champ d'option ci-dessous) ou par * pour n'importe quelle catégorie et être suivi après \":\" d’une phrase.\nVous pouvez utiliser les variables suivantes :\n- [specialite] : la spécialité médicale détectée\n- [imagerie] : le type d'imagerie détecté\n- [region] : la région anatomique détectée\n- [lieu] : le type d'établissement détecté\n- [typeCR] : le type de compte-rendu détecté\n- [doctorName] : le nom du médecin expéditeur détecté\n\nExemple :\nLABORATOIRE/BIO : Bilan biologique\nArrêt de travail : Avis d\'arrêt de travail\nConsultation : Cons. [specialite] - [doctorName] - [lieu]\nCourrier : Cons. [specialite] - [doctorName] - [lieu]\nIMAGERIE : Imagerie [specialite] - [doctorName]\n* : [category] - [doctorName] - [lieu]",
+                        "longDescription": "crée un titre à partir des données extraite du document.\nChaque ligne doit commencer par une catégorie (cf. champ d'option ci-dessous) ou par * pour n'importe quelle catégorie et être suivi après \":\" d’une phrase.\nVous pouvez utiliser les variables suivantes :\n- [specialite] : la spécialité médicale détectée\n- [imagerie] : le type d'imagerie détecté\n- [region] : la région anatomique détectée\n- [lieu] : le type d'établissement détecté\n- [typeCR] : le type de compte-rendu détecté\n- [doctorName] : le nom du médecin expéditeur détecté",
                         "default": titleCreator
                     }
                 ]
@@ -411,37 +413,37 @@ var advancedDefaultSettings = [{
                 "name": "PdfParserAutoCategoryDict",
                 "type": TYPE_JSON,
                 "description": "Règles de catégorisation : catégorisation du document importé",
-                "longDescription": "Parcours la liste et valide la première catégorie qui correspond.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple. Vous devez initialiser la votre depuis la fenêtre des imports avec la petite icone ⚙️.\n\nLABORATOIRE/BIO : BIOCEANE , LABORATOIRE\nArrêt de travail : avis d'arrêt de travail\nCRO/CRH : Compte Rendu Opératoire , Compte Rendu Hospitalier , Compte Rendu d'Hospitalisation , COMPTE RENDU OPERATOIRE\nConsultation : COMPTE-RENDU DE CONSULTATION\nPARAMEDICAL : BILAN ORTHOPTIQUE\nCourrier : Chère Consœur , chère consoeur , Cher confrère , chère amie , cher ami , Cherconfrére , Chèreconsoeur , Chèreconsœur\nIMAGERIE : imagerie , radiographie , scanner , IRM , radiologie\nAdministratif : \nArrêt de travail : arrêt de travail , congé maladie\nBiologie : biologie , analyse sanguine\nBon de transport : bon de transport , transport médical\nCertificat : certificat , attestation\nECG : ecg , électrocardiogramme\nEFR : exploration fonctionnelle respiratoire\nLABORATOIRE/BIO : laboratoire\nMT : Déclaration de Médecin Traitant , déclaration médecin traitant\nPARAMEDICAL : paramédical , soins\nSPECIALISTE : spécialiste , consultation spécialisée\nConsultation : consultation , visite médicale\nOrdonnance : ordonnance , prescription , 60-3937\nCompte Rendu : compte rendu , compte-rendu , automesure",
+                "longDescription": "Parcours la liste et valide la première catégorie qui correspond.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple. Vous devez initialiser la votre depuis la fenêtre des imports avec la petite icone ⚙️.",
                 "default": PdfParserAutoCategoryDefaut
             }, {
                 "name": "PdfParserAutoSpecialiteDict",
                 "type": TYPE_JSON,
                 "description": "Règles de catégorisation : spécialités médicale de la source du document importé",
-                "longDescription": "Liste des spécialités médicales avec leurs mots-clés associés pour la détection automatique.\n\nMédecine Interne : Médecine Interne\nOrthopédie : Orthopédie , Orthopédique , Traumatologie\nGynécologie : Gynécologie , Obstétrique , Gynéco\nCardiologie : Cardiologie , Cardio , Cardiovasculaire\nNeurologie : Neurologie , Neuro , Neurochirurgie\nPédiatrie : Pédiatrie , Pédiatre , Enfant\nRadiologie : Radiologie , Radio\nOphtalmologie : Ophtalmologie , Ophtalmo , Oculaire\nPneumologie : Pneumologie , Pneumo , Respiratoire , Pulmonaire\nDermatologie : Dermatologie , Dermato , Cutané\nUrologie : Urologie , Uro\nChirurgie : Chirurgie , Chirurgical , Opération\nRhumatologie : Rhumatologie , Rhumato\nEndocrinologie : Endocrinologie , Endocrino , Diabète , Diabétologie\nGastro-entérologie : Gastro-entérologie , Gastro , Digestif\nHématologie : Hématologie , Hémato\nNéphrologie : Néphrologie , Néphro , Rénale\nOncologie : Oncologie , Onco , Cancer\nPsychiatrie : Psychiatrie , Psy , Psychologie\nStomatologie : Stomatologie , Stomato , Maxillo-facial\nAddictologie : Addictologie , Addiction\nORL : ORL , Otologie , Rhinologie , Laryngologie , Otorhinolaryngologie\nAllergologie : Allergologie , Allergie , Allergique\nGériatrie : Gériatrie , Gérontologie , Personnes âgées\nAnesthésiologie : Anesthésiologie , Anesthésie , Réanimation",
+                "longDescription": "Liste des spécialités médicales avec leurs mots-clés associés pour la détection automatique.",
                 "default": PdfParserAutoSpecialite
             }, {
                 "name": "PdfParserAutoImagerieDict",
                 "type": TYPE_JSON,
                 "description": "Règles de catégorisation : types d'imagerie",
-                "longDescription": "Liste des types d'imagerie avec leurs mots-clés associés pour la détection automatique.\n\nscanner : scanner , TDM , tomodensitométrie\néchographie : échographie , écho , doppler , échodoppler\nradiographie : radiographie , radio , rx\nmammographie : mammographie , mammo\nscintigraphie : scintigraphie , scinti\nostéodensitométrie : ostéodensitométrie , densitométrie osseuse\nIRM : IRM , imagerie par résonance magnétique",
+                "longDescription": "Liste des types d'imagerie avec leurs mots-clés associés pour la détection automatique.",
                 "default": PdfParserAutoImagerie
             }, {
                 "name": "PdfParserAutoRegionDict",
                 "type": TYPE_JSON,
                 "description": "Règles de catégorisation : régions anatomiques (utilisé en cas d’imagerie)",
-                "longDescription": "Liste des régions anatomiques avec leurs mots-clés associés pour la détection automatique.\n\nthoracique : thorax , thoracique , pulmonaire , poumon\nabdominal : abdomen , abdominal , abdominale\ncrânien : crâne , crânien , cérébral , cerveau , tête\nrachis : rachis , colonne vertébrale , lombaire , cervical , dorsal , vertèbre\ngenou : genou , fémoro-tibial\nhanche : hanche , coxo-fémoral\népaule : épaule , scapulo-huméral\npoignet : poignet , radio-carpien\ncoude : coude\ncheville : cheville , tibio-tarsien\npied : pied , tarsien\nmain : main , métacarpien\nbassin : bassin , pelvien\nsinus : sinus , facial\nartère : artère , artériel , aorte , carotide , fémorale\ncardiaque : cardiaque , cœur , coronaire",
+                "longDescription": "Liste des régions anatomiques avec leurs mots-clés associés pour la détection automatique.",
                 "default": PdfParserAutoRegion
             }, {
                 "name": "PdfParserAutoLieuDict",
                 "type": TYPE_JSON,
                 "description": "Règles de catégorisation : types d'établissements de santé",
-                "longDescription": "Liste des établissements de santé avec leurs mots-clés associés pour la détection automatique.\n\nCHU : CHU , Centre Hospitalier Universitaire\nCH : CH , Centre Hospitalier de , Hôpital de , Hôpital\nClinique : Clinique , Polyclinique\nCentre : Centre médical , Centre de radiologie , Centre d'imagerie\nCabinet : Cabinet médical , Cabinet de radiologie",
+                "longDescription": "Liste des établissements de santé avec leurs mots-clés associés pour la détection automatique.",
                 "default": PdfParserAutoLieu
             }, {
                 "name": "PdfParserAutoTypeCRDict",
                 "type": TYPE_JSON,
                 "description": "Règles de catégorisation : type de compte-rendu",
-                "longDescription": "Liste des types de compte-rendu avec leurs mots-clés associés pour la détection automatique.\n\nconsultation : Consultation , CS , Cs , consultation\nhospitalisation : Hospitalisation , CRH , compte rendu d'hospitalisation\nexamen : Compte rendu d'examen , CR d'examen , compte-rendu d'examen\nopération : Compte rendu opératoire , CRO , opération",
+                "longDescription": "Liste des types de compte-rendu avec leurs mots-clés associés pour la détection automatique.",
                 "default": PdfParserAutoTypeCR
             }, {
                 "name": "PdfParserAutoDate",
@@ -458,7 +460,7 @@ var advancedDefaultSettings = [{
                     "name": "PdfParserAutoDestinationClassDict",
                     "type": TYPE_JSON,
                     "description": "Règles de classification : destination du document importé",
-                    "longDescription": "Règles pour déterminer automatiquement si un document doit être classé en :\n- 1 : Consultation\n- 2 : Résultats d'examens\n- 3 : Courrier\n\nL'ordre définit la priorité de détection.\n\n1 : consultation.*du\\s+\\d{1,2}[\\/\\-.\\d{1,2}[\\/\\-.\\d{4} , examen clinique , anamnèse\n2 : Résultats? d[''](examen|analyse)s? , valeurs? de référence\n3 : Je vous remercie de m\\'avoir adressé , Je reçois , courrier , lettre\n1 : consultation , prise en charge , visite médicale , Motif : , histoire de la maladie , SOAP , auscultation , Antécédents : , Au terme de ce bilan , à l\\'examen clinique\n2 : examen , résultat , biologie , bilan , analyse , laboratoire , scanner , imagerie , radiographie , échographie , irm , tdm , tep , doppler , mammographie , scintigraphie , echodoppler , renseignements cliniques , technique , conclusion\n3 : correspondance , avis , compte rendu , compte-rendu , CR.{0,5}consult , adressé(?:e)? par , adressé(?:e)? pour , Cher Confrère , chère consoeur , chère consœur , nous a consulté , nous a été adressé , information destinée , spécialiste",
+                    "longDescription": "Règles pour déterminer automatiquement si un document doit être classé en :\n1 : Consultation\n2 : Résultats d'examens\n3 : Courrier\n\nL'ordre définit la priorité de détection.",
                     "default": PdfParserAutoDestinationClass
                 }]
             }, {

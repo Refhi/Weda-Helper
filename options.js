@@ -100,7 +100,7 @@ function createInput(option) { // gestion des différents types d'input
         input.addEventListener('blur', function () {
           this.style.height = '20px';
         });
-        
+
         break;
       case 'smalltext':
         input.type = 'text';
@@ -236,6 +236,7 @@ function createLabel(option) {
   label.innerHTML = option.description;
   label.setAttribute('for', option.name);
 
+  // Pour les options JSON ou si longDescription existe, ajouter l'icône d'information
   if (option.longDescription) {
     const infoIcon = document.createElement('span');
     infoIcon.innerHTML = ' ℹ️';
@@ -245,9 +246,24 @@ function createLabel(option) {
 
     const tooltip = document.createElement('div');
     tooltip.className = 'info-tooltip';
-    // tooltip.textContent = option.longDescription;
-    tooltip.innerHTML = option.longDescription.replace(/\n/g, '<br>');
 
+    let tooltipContent = '';
+
+
+    if (option.longDescription) {
+      // Sinon, juste afficher la longDescription
+      tooltipContent += option.longDescription.replace(/\n/g, '<br>');
+    }
+
+    // Si c'est une option JSON, afficher la valeur par défaut formatée
+    if (option.type === 'json') {
+      tooltipContent += '<br><br><strong>Valeur par défaut :</strong><br>';
+      tooltipContent += displayCategories(option.default).replace(/\n/g, '<br>');
+    }
+
+
+
+    tooltip.innerHTML = tooltipContent;
 
     infoIcon.appendChild(tooltip);
     label.appendChild(infoIcon);

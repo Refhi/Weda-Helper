@@ -1300,7 +1300,7 @@ async function extractRelevantData(fullText) {
     };
 
     // Titrage
-    extractedData.documentTitle = buildTitle(extractedData);
+    extractedData.documentTitle = await buildTitle(extractedData);
 
 
     return extractedData;
@@ -1371,32 +1371,6 @@ async function extractCategoryFromOptions(fullText, optionSelector, possibleCats
         return null;
     }
 
-    function properArrayOfCategoryMatchingRules(rawOptionOutput) {
-        let jsonOptionOutput = rawOptionOutput;
-        // normalement le raw est au format json
-        if (typeof rawOptionOutput === "string") {
-            try {
-                jsonOptionOutput = JSON.parse(rawOptionOutput);
-            } catch (error) {
-                console.error("[pdfParser] Erreur lors de l'analyse du JSON pour les règles de correspondance :", error);
-                return false;
-            }
-        }
-
-        // On s'assure que le format est un tableau de tableaux
-        if (!Array.isArray(jsonOptionOutput)) {
-            console.warn("[pdfParser] Format inattendu pour les règles de correspondance, attendu un tableau.");
-            return false;
-        }
-
-        // On s’assure que chaque règle a bien un mot-clé et une catégorie
-        if (jsonOptionOutput.some(rule => !Array.isArray(rule) || rule.length !== 2)) {
-            console.warn("[pdfParser] Certaines règles de correspondance sont invalides, elles seront ignorées.");
-            jsonOptionOutput = jsonOptionOutput.filter(rule => Array.isArray(rule) && rule.length === 2);
-        }
-
-        return jsonOptionOutput;
-    }
 
     function dealWithInvalidRules(optionSelector) {
         // la réponse à apporter va varier selon le type d’options
@@ -1970,52 +1944,101 @@ function addDocumentTypesButton() {
 
 
 
-function buildTitle(caracteristics) {
-    let documentTitle = caracteristics.documentType || "";
+async function buildTitle(caracteristics) {
+    // Récupérer le format de titre depuis les options et le formater
+    let titleFormat = await getOptionPromise('PdfParserAutoTitleFormat');
+    titleFormat = properArrayOfCategoryMatchingRules(titleFormat);
 
-    // Pour les documents d'imagerie
-    if (caracteristics.documentType === "IMAGERIE") {
-        if (caracteristics.imagerie) {
-            documentTitle = caracteristics.imagerie.charAt(0).toUpperCase() + caracteristics.imagerie.slice(1);
-            if (caracteristics.region) {
-                documentTitle += ` ${caracteristics.region}`;
+
+    // Chercher le format correspondant au type de document
+    let selectedFormat = null;
+
+    // D'abord chercher une correspondance exacte avec le type de document
+    for (const [category, format] of titleFormat) {
+        if (category === caracteristics.documentType) {
+            selectedFormat = format;
+            break;
+        }
+    }
+
+    // Si pas trouvé, chercher un format générique (*)
+    if (!selectedFormat) {
+        for (const [category, format] of titleFormat) {
+            if (category === '*') {
+                selectedFormat = format;
+                break;
             }
-        } else if (caracteristics.specialite === "Radiologie") {
-            documentTitle = "Examen radiologique";
-            if (caracteristics.region) {
-                documentTitle += ` ${caracteristics.region}`;
-            }
         }
-    }
-    // Pour les consultations
-    else if (caracteristics.documentType === "CONSULTATION" || caracteristics.typeCR === "consultation") {
-        documentTitle = "Consultation";
-        if (caracteristics.doctorName) {
-            documentTitle += ` ${caracteristics.doctorName}`;
-        } else if (caracteristics.specialite) {
-            documentTitle += ` ${caracteristics.specialite}`;
-        }
-    }
-    // Pour les hospitalisations
-    else if (caracteristics.typeCR === "hospitalisation") {
-        documentTitle = "CRH";
-        if (caracteristics.specialite) {
-            documentTitle += ` ${caracteristics.specialite}`;
-        }
-    }
-    // Pour les autres types de documents
-    else if (caracteristics.specialite) {
-        documentTitle += documentTitle ? ` - ${caracteristics.specialite}` : caracteristics.specialite;
     }
 
-    // Ajouter le lieu en dernier si présent
-    if (caracteristics.lieu) {
-        documentTitle += ` (${caracteristics.lieu})`;
+    // Si toujours pas trouvé, envoyer une erreur à l’utilisateur
+    if (!selectedFormat) {
+        console.error('[pdfParser] Aucun format de titre trouvé pour le type de document:', caracteristics.documentType);
+        sendWedaNotifAllTabs({
+            message: 'Aucun format de titre trouvé pour le type de document: ' + caracteristics.documentType + ', vous devez définir au moins une ligne * dans les options de weda-helper.',
+            icon: 'error',
+            type: 'undefined'
+        });
+        return "";
     }
 
-    console.log('[pdfParser] Titre du document déterminé', documentTitle, "caractéristiques:", caracteristics);
+    // Remplacer les variables dans le format
+    let documentTitle = selectedFormat[0]; 
+    
+    // Variables disponibles avec leurs valeurs
+    const variables = {
+        '[specialite]': caracteristics.specialite || '',
+        '[imagerie]': caracteristics.imagerie || '',
+        '[region]': caracteristics.region || '',
+        '[lieu]': caracteristics.lieu || '',
+        '[typeCR]': caracteristics.typeCR || '',
+        '[doctorName]': caracteristics.doctorName || '',
+        '[category]': caracteristics.documentType || ''
+    };
+
+    // Remplacer chaque variable par sa valeur
+    for (const [variable, value] of Object.entries(variables)) {
+        documentTitle = documentTitle.replace(new RegExp(escapeRegExp(variable), 'g'), value);
+    }
+
+    // Nettoyer le titre : supprimer les espaces multiples et les séparateurs en trop
+    documentTitle = cleanTitle(documentTitle);
+
+    console.log('[pdfParser] Titre du document déterminé:', documentTitle, "caractéristiques:", caracteristics);
 
     return documentTitle;
+}
+
+/**
+ * Échappe les caractères spéciaux pour utilisation dans une RegExp
+ * @param {string} string - La chaîne à échapper
+ * @returns {string} - La chaîne échappée
+ */
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Nettoie le titre en supprimant les espaces multiples, les séparateurs orphelins, etc.
+ * @param {string} title - Le titre à nettoyer
+ * @returns {string} - Le titre nettoyé
+ */
+function cleanTitle(title) {
+    return title
+        // Supprimer les espaces multiples
+        .replace(/\s+/g, ' ')
+        // Supprimer les séparateurs orphelins au début ou à la fin
+        .replace(/^[\s\-–—:,]+|[\s\-–—:,]+$/g, '')
+        // Supprimer les séparateurs multiples
+        .replace(/[\s]*[\-–—:,][\s]*[\-–—:,]+[\s]*/g, ' - ')
+        // Supprimer les parenthèses vides
+        .replace(/\(\s*\)/g, '')
+        // Nettoyer les espaces autour des parenthèses
+        .replace(/\s+\(/g, ' (')
+        .replace(/\(\s+/g, '(')
+        .replace(/\s+\)/g, ')')
+        // Supprimer les espaces en début et fin
+        .trim();
 }
 
 function extractDoctorName(fullText) {
@@ -2380,4 +2403,33 @@ async function customHash(str, urlPDF) {
     // console.timeEnd('customHash'); // Arrêter le chronomètre et afficher le temps écoulé
     // console.log('[pdfParser] hash', hash.toString(16)); // Afficher le hash en hexadécimal
     return hash.toString(16); // Retourner en chaîne hexadécimale
+}
+
+
+
+function properArrayOfCategoryMatchingRules(rawOptionOutput) {
+    let jsonOptionOutput = rawOptionOutput;
+    // normalement le raw est au format json
+    if (typeof rawOptionOutput === "string") {
+        try {
+            jsonOptionOutput = JSON.parse(rawOptionOutput);
+        } catch (error) {
+            console.error("[pdfParser] Erreur lors de l'analyse du JSON pour les règles de correspondance :", error);
+            return false;
+        }
+    }
+
+    // On s'assure que le format est un tableau de tableaux
+    if (!Array.isArray(jsonOptionOutput)) {
+        console.warn("[pdfParser] Format inattendu pour les règles de correspondance, attendu un tableau.");
+        return false;
+    }
+
+    // On s’assure que chaque règle a bien un mot-clé et une catégorie
+    if (jsonOptionOutput.some(rule => !Array.isArray(rule) || rule.length !== 2)) {
+        console.warn("[pdfParser] Certaines règles de correspondance sont invalides, elles seront ignorées.");
+        jsonOptionOutput = jsonOptionOutput.filter(rule => Array.isArray(rule) && rule.length === 2);
+    }
+
+    return jsonOptionOutput;
 }
