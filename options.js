@@ -360,28 +360,16 @@ function createOptionElement(option) { // Création des éléments de l'option
     optionDiv.appendChild(label);
   }
 
-  if (option.isSubOption) {
-    optionDiv.classList.add('sub-option');
-  }
-
   return optionDiv;
 }
 
 function generateOptionsHTML(settings) {
-  // initialisation de la zone d’injection des options
   const container = document.getElementById('advanced-options');
   container.innerHTML = '';
 
-  let lastParentOption = null;
-
   parseSettings(settings, option => {
     const optionElement = createOptionElement(option);
-    if (option.isSubOption) {
-      lastParentOption.appendChild(optionElement);
-    } else {
-      container.appendChild(optionElement);
-      lastParentOption = optionElement;
-    }
+    container.appendChild(optionElement);
   });
 }
 

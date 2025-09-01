@@ -200,6 +200,70 @@ const PdfParserAutoTypeCR = JSON.stringify([
 
 
 var advancedDefaultSettings = [{
+//     "name": "Options de test - Nesting profond",
+//     "description": "Options fictives pour tester l'affichage des niveaux d'imbrication",
+//     "type": TYPE_TITLE,
+//     "options": [{
+//         "name": "testNiveau1",
+//         "type": TYPE_BOOL,
+//         "description": "Option de niveau 1",
+//         "default": true,
+//         "subOptions": [{
+//             "name": "testNiveau2a",
+//             "type": TYPE_BOOL,
+//             "description": "Première sous-option de niveau 2",
+//             "default": false,
+//             "subOptions": [{
+//                 "name": "testNiveau3a",
+//                 "type": TYPE_BOOL,
+//                 "description": "Sous-option de niveau 3a",
+//                 "default": true,
+//                 "subOptions": [{
+//                     "name": "testNiveau4a",
+//                     "type": TYPE_SMALLTEXT,
+//                     "description": "Option de niveau 4a (très profonde)",
+//                     "default": "42"
+//                 }]
+//             }, {
+//                 "name": "testNiveau3b",
+//                 "type": TYPE_TEXT,
+//                 "description": "Sous-option de niveau 3b",
+//                 "default": "Texte par défaut niveau 3"
+//             }]
+//         }, {
+//             "name": "testNiveau2b",
+//             "type": TYPE_JSON,
+//             "description": "Deuxième sous-option de niveau 2 (JSON)",
+//             "default": JSON.stringify([["test", ["mot1", "mot2"]]]),
+//             "subOptions": [{
+//                 "name": "testNiveau3c",
+//                 "type": TYPE_BOOL,
+//                 "description": "Sous-option de niveau 3c sous JSON",
+//                 "default": false,
+//                 "subOptions": [{
+//                     "name": "testNiveau4b",
+//                     "type": TYPE_RADIO,
+//                     "description": "Option radio de niveau 4b",
+//                     "default": "option1",
+//                     "radioOptions": [{
+//                         "value": "option1",
+//                         "description": "Première option"
+//                     }, {
+//                         "value": "option2",
+//                         "description": "Deuxième option"
+//                     }],
+//                     "subOptions": [{
+//                         "name": "testNiveau5",
+//                         "type": TYPE_BOOL,
+//                         "description": "Option de niveau 5 (extrêmement profonde)",
+//                         "default": true
+//                     }]
+//                 }]
+//             }]
+//         }]
+//     }]
+// },
+// {
     "name": "Options générales",
     "description": "Des options générales valables partout",
     "type": TYPE_TITLE,
