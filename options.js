@@ -15,7 +15,7 @@ function parseSettings(settings, callback) {
       // console.log(`Option: ${option.name}, Niveau: ${option.level}, Sous-option: ${option.isSubOption}`);
       callback(option);
       if (option.subOptions) {
-        traverse(option.subOptions, level, true);
+        traverse(option.subOptions, level + 1, true);
       }
     });
   }
@@ -318,6 +318,12 @@ function createOptionElement(option) { // Création des éléments de l'option
   const optionDiv = document.createElement('div');
   optionDiv.classList.add('option');
 
+  // Ajouter la classe de niveau et l'attribut data-level pour le débogage
+  optionDiv.classList.add(`level-${option.level}`);
+  optionDiv.setAttribute('data-level', option.level);
+  optionDiv.setAttribute('data-is-sub-option', option.isSubOption);
+  optionDiv.setAttribute('data-option-name', option.name || 'unnamed');
+
   if (option.type === 'title') {
     const title = document.createElement(`h${Math.min(6, 1 + option.level)}`);
     title.textContent = option.name;
@@ -346,21 +352,18 @@ function createOptionElement(option) { // Création des éléments de l'option
 
     const input = createInput(option);
     optionDiv.appendChild(input);
-
-
-
   } else {
     const input = createInput(option);
     optionDiv.appendChild(input);
 
     const label = createLabel(option);
     optionDiv.appendChild(label);
-
-
   }
+
   if (option.isSubOption) {
     optionDiv.classList.add('sub-option');
   }
+
   return optionDiv;
 }
 
