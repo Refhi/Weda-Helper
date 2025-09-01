@@ -89,7 +89,7 @@ function createInput(option) { // gestion des différents types d'input
       case 'json':
         input.classList.add('json-input');
         input.value = displayCategories(optionValue);
-        input.style.height = '20px'; // Hauteur par défaut
+        input.style.height = '40px'; // Hauteur par défaut
         input.style.width = '100%';
 
         // Ajouter les événements focus et blur
@@ -98,7 +98,7 @@ function createInput(option) { // gestion des différents types d'input
         });
 
         input.addEventListener('blur', function () {
-          this.style.height = '20px';
+          this.style.height = '40px';
         });
 
         break;
@@ -323,6 +323,11 @@ function createOptionElement(option) { // Création des éléments de l'option
   optionDiv.setAttribute('data-level', option.level);
   optionDiv.setAttribute('data-is-sub-option', option.isSubOption);
   optionDiv.setAttribute('data-option-name', option.name || 'unnamed');
+
+  // Encapsuler dans une carte pour les niveaux principaux
+  if (option.level <= 1 && option.type === 'title') {
+    optionDiv.classList.add('option-card');
+  }
 
   if (option.type === 'title') {
     const title = document.createElement(`h${Math.min(6, 1 + option.level)}`);

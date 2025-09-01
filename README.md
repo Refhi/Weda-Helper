@@ -85,6 +85,7 @@ Cf. ci-dessous pour les retours et les contributions.
 - Automatisation du contrôle du MT + ouvre un nouvel onglet pour ne pas avoir à patienter. Un message vous indique si cela a fonctionné ou non. Vous pourrez retourner dans le premier onglet si vous souhaitez enregistrer le MT.
 - Automatisation partielle de la déclaration de MT : sélectionne automatiquement le patient en cours, pré-coche les cases de consentement. Vous n'avez plus qu'à cliquer sur "Transmettre" pour valider.
 - Alerte en cas de retard ou d'absence du VSM et ajout d'un bouton pour le réaliser en un clic. (ne fonctionne que si 70%+ est en CIM-10)
+- Recherche d’un patient grâce au contenu du presse-papiers en un clic.
 
 ## Consultations
 - Affichage automatique de l'historique dans une colonne à gauche : ouvre automatiquement un historique simplifié (pas de recettes notamment) dans une colonne à gauche de l'écran, uniquement dans les pages de Consultation, de Courrier, de Certificat, de Formulaire et Demandes.

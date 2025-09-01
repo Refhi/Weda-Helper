@@ -14,6 +14,8 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#466](https://github.com/Refhi/Weda-Helper/issues/466) - Les antécédents s'affichent de nouveau à gauche si l'option dédiée est activée.
 - [#471](https://github.com/Refhi/Weda-Helper/issues/471) - Ajout du mot "kinésithérapeute" dans les mots-clés de classification automatique des ordonnances numériques.
 
+## Améliorations :
+- La page des options a été remaniée pour être plus conviviale et intuitive.
 
 # [2.13.1] - Correctifs
 ## Fix :
