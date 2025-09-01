@@ -6,11 +6,11 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 
 # [2.13.2] - Correctifs
 ## Ajouts :
-- Ajout de l'option "autoSelectLonePatient" pour sélectionner automatiquement le patient s'il est seul dans la liste de recherche.
-- Ajout d’un bouton pour coller et rechercher un patient/nir présent dans le presse-papiers.
+- Lors de la recherche d’un patient, si un unique résultat est trouvé, il est automatiquement sélectionné.
+- À côté du champ de recherche, un bouton permet de coller et rechercher un patient/nir présent dans le presse-papiers.
 
 ## Fix :
-- [#468](https://github.com/Refhi/Weda-Helper/issues/468) - fix de la non-fermeture de la prévisu de l'arrêt de travail.
+- [#468](https://github.com/Refhi/Weda-Helper/issues/468) - l’impression de l’arrêt de travail est plus rapide et se termine correctement.
 - [#466](https://github.com/Refhi/Weda-Helper/issues/466) - Les antécédents s'affichent de nouveau à gauche si l'option dédiée est activée.
 - [#471](https://github.com/Refhi/Weda-Helper/issues/471) - Ajout du mot "kinésithérapeute" dans les mots-clés de classification automatique des ordonnances numériques.
 
