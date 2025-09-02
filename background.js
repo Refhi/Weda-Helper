@@ -150,7 +150,7 @@ const titleCreator = JSON.stringify([
     ["Arrêt de travail", ["Avis d'arrêt de travail"]],
     ["Consultation", ["Cons. [specialite] - [doctorName] - [lieu]"]],
     ["Courrier", ["Cons. [specialite] - [doctorName] - [lieu]"]],
-    ["IMAGERIE", ["Imagerie [specialite] - [doctorName]"]],
+    ["IMAGERIE", ["[imagerie] - [region]"]],
     ["CRO/CRH", ["[typeCR] - [specialite] - [doctorName] - [lieu]"]],
     ["Compte-rendu", ["[typeCR] - [specialite] - [doctorName] - [lieu]"]],
     ["*", ["[category] - [specialite] - [doctorName] - [lieu]"]]
