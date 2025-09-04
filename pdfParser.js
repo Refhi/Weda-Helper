@@ -2496,6 +2496,12 @@ function normalizeString(str) {
         .normalize('NFD')
         // Supprime les marques diacritiques (accents)
         .replace(/[\u0300-\u036f]/g, '')
+        // Normalise les ligatures
+        .replace(/œ/g, 'oe')
+        .replace(/Œ/g, 'OE')
+        .replace(/æ/g, 'ae')
+        .replace(/Æ/g, 'AE')
+        .replace(/ß/g, 'ss')
         // Normalise les apostrophes et guillemets
         .replace(/[''`´]/g, "'")
         .replace(/[""«»]/g, '"')
