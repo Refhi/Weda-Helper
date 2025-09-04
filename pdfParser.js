@@ -930,11 +930,15 @@ function getPatientsList() {
 }
 
 function searchProperPatient(patientElements, nameMatches) {
+    // Normaliser tous les noms de correspondance une seule fois
+    const normalizedNameMatches = nameMatches.map(name => normalizeString(name));
+
     // Première passe : chercher le nom complet
     for (let i = 0; i < patientElements.length; i++) {
         let patientElement = patientElements[i];
-        let patientName = patientElement.innerText.toLowerCase();
-        if (nameMatches.map(name => name.toLowerCase()).includes(patientName)) {
+        let normalizedPatientName = normalizeString(patientElement.innerText);
+
+        if (normalizedNameMatches.includes(normalizedPatientName)) {
             return patientElement;
         }
     }
@@ -942,11 +946,12 @@ function searchProperPatient(patientElements, nameMatches) {
     // Deuxième passe : chercher chaque mot indépendamment
     for (let i = 0; i < patientElements.length; i++) {
         let patientElement = patientElements[i];
-        let patientName = patientElement.innerText.toLowerCase();
-        for (let j = 0; j < nameMatches.length; j++) {
-            let nameParts = nameMatches[j].toLowerCase().split(' ');
+        let normalizedPatientName = normalizeString(patientElement.innerText);
+
+        for (let j = 0; j < normalizedNameMatches.length; j++) {
+            let nameParts = normalizedNameMatches[j].split(' ');
             for (let k = 0; k < nameParts.length; k++) {
-                if (patientName.includes(nameParts[k])) {
+                if (normalizedPatientName.includes(nameParts[k])) {
                     return patientElement;
                 }
             }
@@ -956,12 +961,13 @@ function searchProperPatient(patientElements, nameMatches) {
     // Troisième passe : comparaison des parties
     for (let i = 0; i < patientElements.length; i++) {
         let patientElement = patientElements[i];
-        let patientNameParts = patientElement.innerText.toLowerCase().split(' ');
-        for (let j = 0; j < nameMatches.length; j++) {
-            let nameParts = nameMatches[j].toLowerCase().split(' ');
+        let normalizedPatientNameParts = normalizeString(patientElement.innerText).split(' ');
+
+        for (let j = 0; j < normalizedNameMatches.length; j++) {
+            let nameParts = normalizedNameMatches[j].split(' ');
             for (let k = 0; k < nameParts.length; k++) {
-                for (let l = 0; l < patientNameParts.length; l++) {
-                    if (nameParts[k].includes(patientNameParts[l])) {
+                for (let l = 0; l < normalizedPatientNameParts.length; l++) {
+                    if (nameParts[k].includes(normalizedPatientNameParts[l])) {
                         return patientElement;
                     }
                 }
@@ -1356,42 +1362,45 @@ async function extractCategoryFromOptions(fullText, optionSelector, possibleCats
 
 
     function lookForMatch(fullText, categoryMatchingRules) {
+        // Normaliser le texte complet une seule fois
+        const normalizedFullText = normalizeString(fullText);
+
         for (const [type, keywords] of categoryMatchingRules) {
-            // console.log('[pdfParser] recherche du type de document', type);
-            
             // Séparer les mots-clés d'inclusion et d'exclusion
             const inclusionKeywords = keywords.filter(keyword => !keyword.startsWith('-'));
             const exclusionKeywords = keywords.filter(keyword => keyword.startsWith('-')).map(keyword => keyword.substring(1));
-            
+
             for (const keyword of inclusionKeywords) {
+                // Normaliser le mot-clé
+                const normalizedKeyword = normalizeString(keyword);
+
                 // Remplacer les espaces par \s* pour permettre les espaces optionnels
-                const regex = new RegExp(keyword.replace(/\s+/g, '\\s*'), 'i');
-                const match = fullText.match(regex);
-                
+                const regex = new RegExp(normalizedKeyword.replace(/\s+/g, '\\s*'), 'i');
+                const match = normalizedFullText.match(regex);
+
                 if (match) {
-                    // Vérifier les exclusions dans un contexte adapté à chaque mot-clé d'exclusion
+                    // Vérifier les exclusions avec le texte normalisé
                     const matchIndex = match.index;
                     const matchLength = match[0].length;
-                    
+
                     let isExcluded = false;
-                    
+
                     for (const exclusionKeyword of exclusionKeywords) {
-                        // Calculer la taille de contexte pour ce mot-clé d'exclusion spécifique
-                        const contextSize = exclusionKeyword.length;
-                        
-                        // Définir une zone de contexte autour du match adaptée à ce mot-clé d'exclusion
+                        const normalizedExclusionKeyword = normalizeString(exclusionKeyword);
+                        const contextSize = normalizedExclusionKeyword.length;
+
                         const contextStart = Math.max(0, matchIndex - contextSize);
-                        const contextEnd = Math.min(fullText.length, matchIndex + matchLength + contextSize);
-                        const contextText = fullText.substring(contextStart, contextEnd);
-                        
-                        const exclusionRegex = new RegExp(exclusionKeyword.replace(/\s+/g, '\\s*'), 'i');
+                        const contextEnd = Math.min(normalizedFullText.length, matchIndex + matchLength + contextSize);
+                        const contextText = normalizedFullText.substring(contextStart, contextEnd);
+
+                        const exclusionRegex = new RegExp(normalizedExclusionKeyword.replace(/\s+/g, '\\s*'), 'i');
                         if (exclusionRegex.test(contextText)) {
                             console.log(`[pdfParser] ${optionSelector} : match trouvé pour "${keyword}" mais exclu par "${exclusionKeyword}" dans le contexte`);
                             isExcluded = true;
                             break;
                         }
                     }
-                    
+
                     if (!isExcluded) {
                         const lineNumber = fullText.substr(0, match.index).split("\n").length;
                         console.log(`[pdfParser] ${optionSelector} trouvé : `, type, 'car présence de "', keyword, '"', "en ligne", lineNumber);
@@ -1499,24 +1508,29 @@ async function extractAddressedTo(fullText) {
 
     // Recherche dans le texte pour chaque médecin
     for (const doctor of doctors) {
-        // Créer différentes variations pour la recherche (en tenant compte des possibles sauts de ligne ou caractères entre nom et prénom)
+        // Normaliser les noms du médecin
+        const normalizedLastName = normalizeString(doctor.lastName);
+        const normalizedFirstName = normalizeString(doctor.firstName.split('-')[0]);
+        const normalizedFullText = normalizeString(fullText);
+
+        // Créer différentes variations pour la recherche
         const patterns = [
             // Format NOM Prénom (tolère des caractères entre les deux)
-            new RegExp(`${doctor.lastName}[\\s\\S]{0,5}${doctor.firstName.split('-')[0]}`, 'i'),
+            new RegExp(`${normalizedLastName}[\\s\\S]{0,5}${normalizedFirstName}`, 'i'),
 
             // Format Prénom NOM (tolère des caractères entre les deux)
-            new RegExp(`${doctor.firstName.split('-')[0]}[\\s\\S]{0,5}${doctor.lastName}`, 'i'),
+            new RegExp(`${normalizedFirstName}[\\s\\S]{0,5}${normalizedLastName}`, 'i'),
 
             // Recherche seulement le nom de famille s'il est assez distinctif (>= 5 caractères)
-            ...(doctor.lastName.length >= 5 ? [new RegExp(`\\b${doctor.lastName}\\b`, 'i')] : []),
+            ...(normalizedLastName.length >= 5 ? [new RegExp(`\\b${normalizedLastName}\\b`, 'i')] : []),
 
             // Recherche seulement le prénom s'il est assez distinctif (>= 5 caractères)
-            ...(doctor.firstName.length >= 5 ? [new RegExp(`\\b${doctor.firstName.split('-')[0]}\\b`, 'i')] : [])
+            ...(normalizedFirstName.length >= 5 ? [new RegExp(`\\b${normalizedFirstName}\\b`, 'i')] : [])
         ];
 
-        // Tester chaque pattern
+        // Tester chaque pattern sur le texte normalisé
         for (const pattern of patterns) {
-            if (pattern.test(fullText)) {
+            if (pattern.test(normalizedFullText)) {
                 console.log(`[pdfParser] Médecin trouvé dans le texte: ${doctor.fullName} avec le pattern ${pattern}`);
                 return doctor.id;
             }
@@ -2016,8 +2030,8 @@ async function buildTitle(caracteristics) {
     }
 
     // Remplacer les variables dans le format
-    let documentTitle = selectedFormat[0]; 
-    
+    let documentTitle = selectedFormat[0];
+
     // Variables disponibles avec leurs valeurs
     const variables = {
         '[specialite]': caracteristics.specialite || '',
@@ -2076,7 +2090,8 @@ function cleanTitle(title) {
 
 function extractDoctorName(fullText) {
     // Diviser le texte en lignes pour analyser ligne par ligne
-    const lines = fullText.split('\n');
+    const normalizedFullText = normalizeString(fullText);
+    const lines = normalizedFullText.split('\n');
 
     // Patterns simplifiés pour les noms de médecins, sans distinction de casse
     const doctorPatterns = [
@@ -2465,4 +2480,29 @@ function properArrayOfCategoryMatchingRules(rawOptionOutput) {
     }
 
     return jsonOptionOutput;
+}
+
+
+/**
+ * Normalise une chaîne de caractères en remplaçant les accents et caractères spéciaux
+ * @param {string} str - La chaîne à normaliser
+ * @returns {string} - La chaîne normalisée
+ */
+function normalizeString(str) {
+    if (!str || typeof str !== 'string') return str;
+
+    return str
+        // Normalisation Unicode (décompose les caractères accentués)
+        .normalize('NFD')
+        // Supprime les marques diacritiques (accents)
+        .replace(/[\u0300-\u036f]/g, '')
+        // Normalise les apostrophes et guillemets
+        .replace(/[''`´]/g, "'")
+        .replace(/[""«»]/g, '"')
+        // Normalise les tirets
+        .replace(/[–—]/g, '-')
+        // Normalise les espaces (espaces insécables, etc.)
+        .replace(/[\u00A0\u2000-\u200B\u2028\u2029]/g, ' ')
+        .toLowerCase()
+        .trim();
 }
