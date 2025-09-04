@@ -733,6 +733,7 @@ function addResetButton(hashId) {
     resetButton.innerText = '🔄'; // Emoji de réinitialisation
     resetButton.style.marginLeft = '10px';
     resetButton.title = "Weda-Helper : Réinitialiser les données d'analyse automatique du PDF"; // Texte lors du survol de la souris
+    resetButton.id = "pdfParserResetButton";
     resetButton.onclick = function () {
         sessionStorage.removeItem(hashId);
         console.log("[pdfParser] Données réinitialisées pour le PDF.");
@@ -1403,7 +1404,7 @@ async function extractCategoryFromOptions(fullText, optionSelector, possibleCats
 
                     if (!isExcluded) {
                         const lineNumber = fullText.substr(0, match.index).split("\n").length;
-                        console.log(`[pdfParser] ${optionSelector} trouvé : `, type, 'car présence de "', keyword, '"', "en ligne", lineNumber);
+                        console.log(`[pdfParser] ${optionSelector} trouvé : ${type}, car présence de "${keyword}" en ligne ${lineNumber}`);
                         return type;
                     }
                 }
