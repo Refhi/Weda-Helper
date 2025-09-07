@@ -2078,6 +2078,7 @@ async function buildTitle(caracteristics) {
 
     // Remplacer les variables dans le format
     let documentTitle = selectedFormat[0];
+    console.log('[pdfParser] Format de titre sélectionné:', documentTitle);
 
     // Variables disponibles avec leurs valeurs
     const variables = {
@@ -2142,6 +2143,8 @@ function extractDoctorName(fullText) {
     // Diviser le texte en lignes pour analyser ligne par ligne
     const normalizedFullText = normalizeString(fullText);
     const lines = normalizedFullText.split('\n');
+    const originalLines = fullText.split('\n'); // Garder les lignes originales pour préserver la casse
+
 
     // Patterns simplifiés pour les noms de médecins, sans distinction de casse
     const doctorPatterns = [
@@ -2167,6 +2170,7 @@ function extractDoctorName(fullText) {
     // Parcourir toutes les lignes
     for (let i = lines.length - 1; i >= 0; i--) {
         const line = lines[i];
+        const originalLine = originalLines[i]; // Ligne originale avec la casse préservée
 
         if (isAnAddress(line)) continue; // Passer à la ligne suivante si c'est une adresse
 
@@ -2174,11 +2178,11 @@ function extractDoctorName(fullText) {
 
         for (const pattern of doctorPatterns) {
             const match = line.match(pattern);
-            if (match && match[1]) {
+            const originalMatch = originalLine.match(pattern); // Chercher aussi dans la ligne originale
+            if (match && match[1] && originalMatch && originalMatch[1]) {
                 const vicinityCheckNumber = 4;
                 // Vérifier s'il y a une autre occurrence dans les x lignes précédentes et suivantes
                 let hasOtherOccurrence = false;
-
 
                 // Vérifier les x lignes précédentes
                 for (let j = Math.max(0, i - vicinityCheckNumber); j < i; j++) {
@@ -2212,18 +2216,17 @@ function extractDoctorName(fullText) {
                     }
                 }
 
-
-
                 // Si pas d'autre occurrence trouvée dans les x lignes précédentes ET suivantes, retourner ce nom
                 if (!hasOtherOccurrence) {
-                    console.log(`[pdfParser] Nom de médecin trouvé: ${match[1].trim()} dans la ligne ${i}`);
-                    return match[1].trim();
+                    console.log(`[pdfParser] Nom de médecin trouvé: ${originalMatch[1].trim()} dans la ligne ${i}`);
+                    return originalMatch[1].trim(); // Utiliser la version originale avec la casse préservée
                 }
             }
         }
     }
 
     return null;
+
 
 
     function isAnAddress(line) {
