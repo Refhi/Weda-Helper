@@ -9,6 +9,14 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - Lors de la recherche d’un patient, si un unique résultat est trouvé, il est automatiquement sélectionné.
 - À côté du champ de recherche, un bouton permet de coller et rechercher un patient/nir présent dans le presse-papiers.
 
+## Imports automatisés :
+- Les champs de catégorisation automatique sont plus facilement personnalisables
+- Le constructeur de titre est désormais personnalisable (cf. page des options)
+- Un survol du bouton de réinitialisation affiche désormais le log d’extraction (utile pour affiner les mots-clés de catégorisation automatique)
+
+## Améliorations diverses :
+- La page des options est plus ergonomique
+
 ## Fix :
 - [#468](https://github.com/Refhi/Weda-Helper/issues/468) - l’impression de l’arrêt de travail est plus rapide et se termine correctement.
 - [#466](https://github.com/Refhi/Weda-Helper/issues/466) - Les antécédents s'affichent de nouveau à gauche si l'option dédiée est activée.

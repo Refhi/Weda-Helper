@@ -101,6 +101,7 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
                 resetButton.style.marginLeft = '10px';
                 resetButton.title = "Weda-Helper : Réinitialise les données d'analyse automatique du PDF. Utile lorsque vous testez différents mots-clés de classement automatique dans les options."; // Texte lors du survol de la souris
                 resetButton.type = 'button'; // Assure que c'est un bouton cliquable
+                resetButton.id = 'pdfParserResetButton';
                 resetButton.onclick = function () {
                     sessionStorage.clear();
                     console.log("[pdfParser] Toutes les données d'analyse automatique du PDF ont été réinitialisées.");
@@ -732,7 +733,7 @@ function addResetButton(hashId) {
     let resetButton = document.createElement('button');
     resetButton.innerText = '🔄'; // Emoji de réinitialisation
     resetButton.style.marginLeft = '10px';
-    resetButton.title = "Weda-Helper : Réinitialiser les données d'analyse automatique du PDF"; // Texte lors du survol de la souris
+    resetButton.title = "Weda-Helper : Réinitialiser les données d'analyse automatique du PDF. En cliquant vous pourrez visualiser le log de l’extraction.";
     resetButton.id = "pdfParserResetButton";
     resetButton.onclick = function () {
         sessionStorage.removeItem(hashId);
@@ -1266,6 +1267,7 @@ async function extractRelevantData(fullText) {
         custom3: "PdfParserAutoCustom3Dict"
     };
 
+    sessionStorage.setItem('logExtraction', ""); // Pour debug
     // Dates et NIR : recherche via regex pur et priorisation
     const dateMatches = await extractDates(fullText, regexPatterns.dateRegexes);
     const documentDate = await determineDocumentDate(fullText, dateMatches, regexPatterns.documentDateRegexes);
@@ -1318,6 +1320,17 @@ async function extractRelevantData(fullText) {
 
     // Titrage
     extractedData.documentTitle = await buildTitle(extractedData);
+
+    const resetButtonExists = document.querySelector("#pdfParserResetButton");
+    if (!resetButtonExists) {
+        console.warn("[pdfParser] erreur : le bouton de réinitialisation n'existe pas");
+    } else {
+        console.log("[pdfParser] Le bouton de réinitialisation existe.");
+        const logToShow = sessionStorage.getItem('logExtraction');
+        resetButtonExists.title += "\n\n=== Log d'extraction ===\n" + logToShow;
+    }
+
+
 
 
     return extractedData;
@@ -1373,6 +1386,9 @@ async function extractCategoryFromOptions(fullText, optionSelector, possibleCats
 
 
     function lookForMatch(fullText, categoryMatchingRules) {
+        let toBeReturned = null;
+        let toBeLogged = null;
+        let extractionLog = sessionStorage.getItem('logExtraction') || "";
         // Normaliser le texte complet une seule fois
         const normalizedFullText = normalizeString(fullText);
 
@@ -1406,7 +1422,9 @@ async function extractCategoryFromOptions(fullText, optionSelector, possibleCats
 
                         const exclusionRegex = new RegExp(normalizedExclusionKeyword.replace(/\s+/g, '\\s*'), 'i');
                         if (exclusionRegex.test(contextText)) {
-                            console.log(`[pdfParser] ${optionSelector} : match trouvé pour "${keyword}" mais exclu par "${exclusionKeyword}" dans le contexte`);
+                            toBeLogged = `[pdfParser] ${optionSelector} : match trouvé pour "${keyword}" mais exclu par "${exclusionKeyword}" dans le contexte`;
+                            console.log(toBeLogged);
+                            extractionLog += toBeLogged + "\n";
                             isExcluded = true;
                             break;
                         }
@@ -1414,13 +1432,31 @@ async function extractCategoryFromOptions(fullText, optionSelector, possibleCats
 
                     if (!isExcluded) {
                         const lineNumber = fullText.substr(0, match.index).split("\n").length;
-                        console.log(`[pdfParser] ${optionSelector} trouvé : ${type}, car présence de "${keyword}" en ligne ${lineNumber}`);
-                        return type;
+                        if (!toBeReturned) {
+                            toBeReturned = type;
+                            toBeLogged = `[pdfParser] ${optionSelector} trouvé : ${type}, car présence de "${keyword}" en ligne ${lineNumber}`;
+                        } else {
+                            toBeLogged = `[pdfParser] ${optionSelector} : autre correspondance trouvée pour ${type}, car présence de "${keyword}" en ligne ${lineNumber} (mais on garde ${toBeReturned})`;
+                        }
+                        console.log(toBeLogged);
+                        extractionLog += toBeLogged + "\n";
+
                     }
                 }
             }
         }
-        console.log(`[pdfParser] ${optionSelector} : aucune correspondance trouvée`);
+
+        if (toBeReturned) {
+            sessionStorage.setItem('logExtraction', extractionLog); // Pour debug
+            return toBeReturned;
+        }
+
+        // Si on arrive ici, c'est qu'aucune correspondance n'a été trouvée
+
+        toBeLogged = `[pdfParser] ${optionSelector} : aucune correspondance trouvée`;
+        console.log(toBeLogged);
+        extractionLog += toBeLogged + "\n";
+        sessionStorage.setItem('logExtraction', extractionLog); // Pour debug
         return null;
     }
 
