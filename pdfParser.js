@@ -1260,7 +1260,10 @@ async function extractRelevantData(fullText) {
         imagerie: "PdfParserAutoImagerieDict",
         region: "PdfParserAutoRegionDict",
         lieu: "PdfParserAutoLieuDict",
-        typeCR: "PdfParserAutoTypeCRDict"
+        typeCR: "PdfParserAutoTypeCRDict",
+        custom1: "PdfParserAutoCustom1Dict",
+        custom2: "PdfParserAutoCustom2Dict",
+        custom3: "PdfParserAutoCustom3Dict"
     };
 
     // Dates et NIR : recherche via regex pur et priorisation
@@ -1284,6 +1287,10 @@ async function extractRelevantData(fullText) {
     const lieu = await extractCategoryFromOptions(fullText, categoryExtractorsOptions.lieu);
     const typeCR = await extractCategoryFromOptions(fullText, categoryExtractorsOptions.typeCR);
     const doctorName = extractDoctorName(fullText);
+    const custom1 = await extractCategoryFromOptions(fullText, categoryExtractorsOptions.custom1);
+    const custom2 = await extractCategoryFromOptions(fullText, categoryExtractorsOptions.custom2);
+    const custom3 = await extractCategoryFromOptions(fullText, categoryExtractorsOptions.custom3);
+
 
 
     // ASSEMBLAGE DES DONNÉES EXTRAITES
@@ -1303,7 +1310,10 @@ async function extractRelevantData(fullText) {
         region: region,
         lieu: lieu,
         typeCR: typeCR,
-        doctorName: doctorName
+        doctorName: doctorName,
+        custom1: custom1,
+        custom2: custom2,
+        custom3: custom3
     };
 
     // Titrage
@@ -2041,7 +2051,10 @@ async function buildTitle(caracteristics) {
         '[lieu]': caracteristics.lieu || '',
         '[typeCR]': caracteristics.typeCR || '',
         '[doctorName]': caracteristics.doctorName || '',
-        '[category]': caracteristics.documentType || ''
+        '[category]': caracteristics.documentType || '',
+        '[custom1]': caracteristics.custom1 || '',
+        '[custom2]': caracteristics.custom2 || '',
+        '[custom3]': caracteristics.custom3 || '',
     };
 
     // Remplacer chaque variable par sa valeur
@@ -2463,14 +2476,19 @@ function properArrayOfCategoryMatchingRules(rawOptionOutput) {
         try {
             jsonOptionOutput = JSON.parse(rawOptionOutput);
         } catch (error) {
-            console.error("[pdfParser] Erreur lors de l'analyse du JSON pour les règles de correspondance :", error);
+            console.error("[pdfParser] Erreur lors de l'analyse du JSON pour les règles de correspondance :", rawOptionOutput, error);
             return false;
         }
     }
 
+    // si le tableau est vide, on renvoie un tableau vide
+    if ((Array.isArray(jsonOptionOutput) && jsonOptionOutput.length === 0) || !jsonOptionOutput) {
+        return [];
+    }
+
     // On s'assure que le format est un tableau de tableaux
     if (!Array.isArray(jsonOptionOutput)) {
-        console.warn("[pdfParser] Format inattendu pour les règles de correspondance, attendu un tableau.");
+        console.warn("[pdfParser] Format inattendu pour les règles de correspondance, attendu un tableau et j’ai reçu :", jsonOptionOutput, "pour rawOptionOutput :", rawOptionOutput);
         return false;
     }
 
