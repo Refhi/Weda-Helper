@@ -22,6 +22,8 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#466](https://github.com/Refhi/Weda-Helper/issues/466) - Les antécédents s'affichent de nouveau à gauche si l'option dédiée est activée.
 - [#471](https://github.com/Refhi/Weda-Helper/issues/471) - Ajout du mot "kinésithérapeute" dans les mots-clés de classification automatique des ordonnances numériques.
 - [#472](https://github.com/Refhi/Weda-Helper/issues/472) - L’inversion du nom du document importé et du corps du message fonctionne également si il y a plusieures pièces jointes.
+- [#478](https://github.com/Refhi/Weda-Helper/issues/478) - Le nom et la date de naissance du patient s’affichent en cas de clic sur "Importer le message" dans les échanges sécurisés.
+- [#479](https://github.com/Refhi/Weda-Helper/issues/479) - La classification automatique s’active également si le "Importer le message" est en 2e position ou plus dans les échanges sécurisés.
 
 ## Améliorations :
 - La page des options a été remaniée pour être plus conviviale et intuitive.

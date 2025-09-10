@@ -61,10 +61,21 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
         selector: "div.docImportBody td a",
         text: "Importer le message",
         callback: function (elements) {
-            // Ajout d'un listener sur le bouton "Importer le message"
-            elements[0].addEventListener("click", function () {
-                console.log("[pdfParser] Importation du message cliqué, je vais traiter le PDF présent dans l'iframe.");
-                processFoundPdfIframeEchanges(true);
+            // Ajout d'un listener sur tous les boutons "Importer le message"
+            elements.forEach(function(element) {
+                element.addEventListener("click", function () {
+                    console.log("[pdfParser] Importation du message cliqué, je vais traiter le PDF présent dans l'iframe.");
+                    
+                    // Récupérer l'élément frère en troisième position vers le haut
+                    let gdParrentElement = element.parentNode.parentNode;
+                    let nameElement = gdParrentElement.querySelector("td:nth-child(2) a");
+                    let nameText = nameElement ? nameElement.innerText : "Élément non trouvé";
+                    let ddnElement = gdParrentElement.querySelector("td:nth-child(3)");
+                    nameText += ddnElement ? ` ${ddnElement.innerText}` : "";
+                    console.log("[pdfParser] Nom du document importé :", nameText);
+                    addPatientNameDisplay(nameText);
+                    processFoundPdfIframeEchanges(true);
+                });
             });
         }
     });
@@ -381,16 +392,9 @@ async function showClickedPatient() {
                 const patientData = `${nomPrenom} ${dateNaiss}`.trim();
 
                 console.log("[pdfParser] Patient cliqué :", patientData);
-                // Ajouter le nom du patient à côté du bouton de validation
-                if (document.querySelector("#pdfParserPatientName")) {
-                    document.querySelector("#pdfParserPatientName").remove();
-                }
-                const patientNameSpan = document.createElement('span');
-                patientNameSpan.innerText = `Vers dossier : ${patientData}`;
-                patientNameSpan.style.marginLeft = '10px';
-                patientNameSpan.id = 'pdfParserPatientName';
-                const validationButton = document.querySelector("#messageContainer .button.valid");
-                validationButton.insertAdjacentElement('afterend', patientNameSpan)
+
+                addPatientNameDisplay(patientData);
+
                 // On retire les listeners pour éviter les doublons
                 possibleClickablePatient.forEach((p) => {
                     p.removeEventListener("click", arguments.callee);
@@ -400,6 +404,19 @@ async function showClickedPatient() {
     }
 }
 
+
+function addPatientNameDisplay(patientName) {
+    // Ajouter le nom du patient à côté du bouton de validation
+    if (document.querySelector("#pdfParserPatientName")) {
+        document.querySelector("#pdfParserPatientName").remove();
+    }
+    const patientNameSpan = document.createElement('span');
+    patientNameSpan.innerText = `Vers dossier : ${patientName}`;
+    patientNameSpan.style.marginLeft = '10px';
+    patientNameSpan.id = 'pdfParserPatientName';
+    const validationButton = document.querySelector("#messageContainer .button.valid");
+    validationButton.insertAdjacentElement('afterend', patientNameSpan)
+}
 
 
 
