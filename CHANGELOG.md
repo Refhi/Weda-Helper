@@ -21,6 +21,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#468](https://github.com/Refhi/Weda-Helper/issues/468) - l’impression de l’arrêt de travail est plus rapide et se termine correctement.
 - [#466](https://github.com/Refhi/Weda-Helper/issues/466) - Les antécédents s'affichent de nouveau à gauche si l'option dédiée est activée.
 - [#471](https://github.com/Refhi/Weda-Helper/issues/471) - Ajout du mot "kinésithérapeute" dans les mots-clés de classification automatique des ordonnances numériques.
+- [#472](https://github.com/Refhi/Weda-Helper/issues/472) - L’inversion du nom du document importé et du corps du message fonctionne également si il y a plusieures pièces jointes.
 
 ## Améliorations :
 - La page des options a été remaniée pour être plus conviviale et intuitive.

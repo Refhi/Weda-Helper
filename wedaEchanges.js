@@ -47,7 +47,7 @@ addTweak('/FolderMedical/WedaEchanges/', 'swapTitrePJetCorpsMessage', function (
     waitForElement({
         selector: selecteurTitres,
         callback: function (elements) {
-            if (elements.length == 2) {
+            if (elements.length >= 2) {
                 let titreCorpsMessage = elements[0].value;
                 let titrePieceJointe = elements[1].value;
                 console.log('[swapTitrePJetCorpsMessage] titreCorpsMessage', titreCorpsMessage, 'titrePieceJointe', titrePieceJointe);
