@@ -1344,13 +1344,109 @@ async function extractRelevantData(fullText) {
     } else {
         console.log("[pdfParser] Le bouton de réinitialisation existe.");
         const logToShow = sessionStorage.getItem('logExtraction');
-        resetButtonExists.title += "\n\n=== Log d'extraction ===\n" + logToShow;
+        // resetButtonExists.title += "\n\n=== Log d'extraction ===\n" + logToShow;
+        addLogMessageOnMouseOver("#pdfParserResetButton", "\n\n=== Log d'extraction ===\n" + logToShow);
     }
 
 
 
 
     return extractedData;
+}
+
+function addLogMessageOnMouseOver(elementSelector, message) {
+    const element = document.querySelector(elementSelector);
+    if (element) {
+        let leaveTimeout;
+        
+        // Créer la popup
+        const popup = document.createElement('div');
+        popup.id = 'pdfParserLogPopup';
+        popup.innerHTML = `<pre>${message}</pre>`;
+        popup.style.cssText = `
+            position: fixed;
+            background: #333;
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            max-width: 80vw;
+            max-height: 80vh;
+            overflow: auto;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            z-index: 10000;
+            display: none;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            width: fit-content;
+            height: fit-content;
+        `;
+        document.body.appendChild(popup);
+
+        // Gestionnaires d'événements
+        element.addEventListener('mouseenter', (e) => {
+            // Annuler le timeout de disparition si il existe
+            if (leaveTimeout) {
+                clearTimeout(leaveTimeout);
+                leaveTimeout = null;
+            }
+            
+            popup.style.display = 'block';
+            
+            // Attendre que le navigateur calcule les dimensions
+            requestAnimationFrame(() => {
+                // Positionner la popup près de l'élément
+                const rect = element.getBoundingClientRect();
+                const popupRect = popup.getBoundingClientRect();
+                
+                let left = rect.left + 10;
+                let top = rect.bottom + 5;
+                
+                // Ajuster si la popup dépasse de l'écran
+                if (left + popupRect.width > window.innerWidth) {
+                    left = window.innerWidth - popupRect.width - 10;
+                }
+                if (top + popupRect.height > window.innerHeight) {
+                    top = rect.top - popupRect.height - 5;
+                }
+                
+                // S'assurer que la popup reste dans les limites de l'écran
+                left = Math.max(10, left);
+                top = Math.max(10, top);
+                
+                popup.style.left = `${left}px`;
+                popup.style.top = `${top}px`;
+            });
+        });
+
+        element.addEventListener('mouseleave', () => {
+            // Programmer la disparition après 1000ms
+            leaveTimeout = setTimeout(() => {
+                popup.style.display = 'none';
+                leaveTimeout = null;
+            }, 1000);
+        });
+
+        // Optionnel : annuler le timeout si on survole la popup elle-même
+        popup.addEventListener('mouseenter', () => {
+            if (leaveTimeout) {
+                clearTimeout(leaveTimeout);
+                leaveTimeout = null;
+            }
+        });
+
+        popup.addEventListener('mouseleave', () => {
+            leaveTimeout = setTimeout(() => {
+                popup.style.display = 'none';
+                leaveTimeout = null;
+            }, 1000);
+        });
+
+        console.log(`[pdfParser] Popup de log ajoutée à l'élément : ${elementSelector}`);
+    }
+    else {
+        console.warn(`[pdfParser] Élément non trouvé pour l'ajout du log : ${elementSelector}`);
+    }
 }
 
 /**
