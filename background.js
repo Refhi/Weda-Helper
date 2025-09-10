@@ -72,7 +72,7 @@ const PdfParserAutoCategoryDefaut = JSON.stringify([
     ["Ordonnance", ["ordonnance", "prescription", "60-3937"]], // 60-3937 est le cerfa des bizones
     ["Compte Rendu", ["compte rendu", "compte-rendu", "automesure"]],
     ["PHOTOS", [""]],
-    ["Administratif", [""]],
+    ["Administratif", ["*"]],
 ]);
 
 const PdfParserAutoSpecialite = JSON.stringify([
@@ -172,7 +172,8 @@ const PdfParserAutoDestinationClass = JSON.stringify([
     ["2", ["examen", "résultat", "biologie", "bilan", "analyse", "laboratoire", "scanner", "imagerie", "radiographie", "échographie", "irm", "tdm", "tep", "doppler", "mammographie", "scintigraphie", "echodoppler", "renseignements cliniques", "technique", "conclusion"]],
 
     // Niveau 2 : Mots-clés probables pour les courriers
-    ["3", ["correspondance", "avis", "compte rendu", "compte-rendu", "CR. consult", "adressé par", "adressée pour", "adressée par", "adressée pour", "Cher Confrère", "chère consoeur", "chère consœur", "nous a consulté", "nous a été adressé", "information destinée", "spécialiste"]]
+    ["3", ["correspondance", "avis", "compte rendu", "compte-rendu", "CR. consult", "adressé par", "adressée pour", "adressée par", "adressée pour", "Cher Confrère", "chère consoeur", "chère consœur", "nous a consulté", "nous a été adressé", "information destinée", "spécialiste"]],
+    ["1", ["*"]]  // Par défaut, tout est une consultation
 ]);
 
 const PdfParserAutoLieu = JSON.stringify([
@@ -490,7 +491,7 @@ var advancedDefaultSettings = [{
             }, {
                 "name": "Règles de catégorisation", // cf https://github.com/Refhi/Weda-Helper/blob/ca0b284cc25a7b05b7ffd3052fa51cc9782253be/pdfParser.js#L2037
                 "type": TYPE_TITLE,
-                "description": "Lors d’une tentative de classification, Weda-Helper parcourt chacune des listes ci-dessous et valide pour chaque type de catégorisation la première catégorie trouvée dans la ligne.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple. Une phrase-clé débutant par - (ex. -chef de clinique) permet d’éviter les faux positifs. Par exemple si vous mettez dans les mots-clés «clinique» et «-chef de clinique», le mot-clé «clinique» ne sera pas pris en compte si le mot est dans la phrase «chef de clinique».",
+                "description": "Lors d’une tentative de classification, Weda-Helper parcourt chacune des listes ci-dessous et valide pour chaque type de catégorisation la première catégorie trouvée dans la ligne.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple.\nUne phrase-clé \* valide automatiquement la ligne si aucun autre match n’a été trouvé.\n Une phrase-clé débutant par - (ex. -chef de clinique) permet d’éviter les faux positifs. Par exemple si vous mettez dans les mots-clés «clinique» et «-chef de clinique», le mot-clé «clinique» ne sera pas pris en compte si le mot est dans la phrase «chef de clinique».\n Vous pouvez vérifier le log de l’analyse en mettant (dans les pages d’import) la souris sur 🔄",
                 "subOptions": [
                     {
                         "name": "PdfParserAutoCategoryDict",

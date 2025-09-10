@@ -62,10 +62,10 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
         text: "Importer le message",
         callback: function (elements) {
             // Ajout d'un listener sur tous les boutons "Importer le message"
-            elements.forEach(function(element) {
+            elements.forEach(function (element) {
                 element.addEventListener("click", function () {
                     console.log("[pdfParser] Importation du message cliqué, je vais traiter le PDF présent dans l'iframe.");
-                    
+
                     // Récupérer l'élément frère en troisième position vers le haut
                     let gdParrentElement = element.parentNode.parentNode;
                     let nameElement = gdParrentElement.querySelector("td:nth-child(2) a");
@@ -1358,7 +1358,7 @@ function addLogMessageOnMouseOver(elementSelector, message) {
     const element = document.querySelector(elementSelector);
     if (element) {
         let leaveTimeout;
-        
+
         // Créer la popup
         const popup = document.createElement('div');
         popup.id = 'pdfParserLogPopup';
@@ -1390,18 +1390,18 @@ function addLogMessageOnMouseOver(elementSelector, message) {
                 clearTimeout(leaveTimeout);
                 leaveTimeout = null;
             }
-            
+
             popup.style.display = 'block';
-            
+
             // Attendre que le navigateur calcule les dimensions
             requestAnimationFrame(() => {
                 // Positionner la popup près de l'élément
                 const rect = element.getBoundingClientRect();
                 const popupRect = popup.getBoundingClientRect();
-                
+
                 let left = rect.left + 10;
                 let top = rect.bottom + 5;
-                
+
                 // Ajuster si la popup dépasse de l'écran
                 if (left + popupRect.width > window.innerWidth) {
                     left = window.innerWidth - popupRect.width - 10;
@@ -1409,11 +1409,11 @@ function addLogMessageOnMouseOver(elementSelector, message) {
                 if (top + popupRect.height > window.innerHeight) {
                     top = rect.top - popupRect.height - 5;
                 }
-                
+
                 // S'assurer que la popup reste dans les limites de l'écran
                 left = Math.max(10, left);
                 top = Math.max(10, top);
-                
+
                 popup.style.left = `${left}px`;
                 popup.style.top = `${top}px`;
             });
@@ -1472,6 +1472,19 @@ function addLogMessageOnMouseOver(elementSelector, message) {
  * @returns {string|null} - La première catégorie trouvée (selon l’ordre des règles) ou null si aucune correspondance.
  */
 async function extractCategoryFromOptions(fullText, optionSelector, possibleCats = null, perfectRuleMatchingNeeded = false) {
+    // Dictionnaire des noms d'options pour les wildcards
+    const wildcardOptionsDict = {
+        'PdfParserAutoSpecialiteDict': '[specialite]',
+        'PdfParserAutoImagerieDict': '[imagerie]',
+        'PdfParserAutoRegionDict': '[region]',
+        'PdfParserAutoLieuDict': '[lieu]',
+        'PdfParserAutoTypeCRDict': '[typeCR]',
+        'PdfParserAutoCategoryDict': '[category]',
+        'PdfParserAutoCustom1Dict': '[custom1]',
+        'PdfParserAutoCustom2Dict': '[custom2]',
+        'PdfParserAutoCustom3Dict': '[custom3]',
+        'PdfParserAutoDestinationClassDict': "Destination de classement"
+    };
     // console.log("[pdfParser] Extraction de la catégorie à partir des options", optionSelector);
     // 1 - récupérer le tableau via getOption et le convertir en format exploitable
     // On utilise un tableau de tableaux pour permettre de parcourir les types de documents par ordre de spécificité
@@ -1509,8 +1522,28 @@ async function extractCategoryFromOptions(fullText, optionSelector, possibleCats
             // Séparer les mots-clés d'inclusion et d'exclusion
             const inclusionKeywords = keywords.filter(keyword => !keyword.startsWith('-'));
             const exclusionKeywords = keywords.filter(keyword => keyword.startsWith('-')).map(keyword => keyword.substring(1));
+            let lineNumber = null;
 
             for (const keyword of inclusionKeywords) {
+                // Ignorer les mots-clés vides
+                if (!keyword || keyword.trim() === '') {
+                    continue;
+                }
+
+                // Si le keyword est *, on valide automatiquement
+                if (keyword.trim() === '*') {
+                    lineNumber = '*'; // Ligne arbitraire pour l'astérisque
+                    if (!toBeReturned) {
+                        toBeReturned = type;
+                        toBeLogged = `${wildcardOptionsDict[optionSelector]} : ${type} validé par défaut car présence de "${keyword}" (wildcard match)`;
+                    } else {
+                        toBeLogged = `      ↳ autre correspondance non retenue pour ${type}, car présence de "${keyword}" (wildcard match)`;
+                    }
+                    console.log("[pdfParser]" + optionSelector + toBeLogged);
+                    extractionLog += toBeLogged + "\n";
+                    continue; // Passer au keyword suivant sans faire de regex
+                }
+
                 // Normaliser le mot-clé
                 const normalizedKeyword = normalizeString(keyword);
 
@@ -1535,8 +1568,8 @@ async function extractCategoryFromOptions(fullText, optionSelector, possibleCats
 
                         const exclusionRegex = new RegExp(normalizedExclusionKeyword.replace(/\s+/g, '\\s*'), 'i');
                         if (exclusionRegex.test(contextText)) {
-                            toBeLogged = `[pdfParser] ${optionSelector} : match trouvé pour "${keyword}" mais exclu par "${exclusionKeyword}" dans le contexte`;
-                            console.log(toBeLogged);
+                            toBeLogged = `${wildcardOptionsDict[optionSelector]} : match trouvé pour "${keyword}" mais exclu par "${exclusionKeyword}" dans le contexte`;
+                            console.log("[pdfParser]" + optionSelector + toBeLogged);
                             extractionLog += toBeLogged + "\n";
                             isExcluded = true;
                             break;
@@ -1544,14 +1577,14 @@ async function extractCategoryFromOptions(fullText, optionSelector, possibleCats
                     }
 
                     if (!isExcluded) {
-                        const lineNumber = fullText.substr(0, match.index).split("\n").length;
+                        lineNumber = fullText.substr(0, match.index).split("\n").length;
                         if (!toBeReturned) {
                             toBeReturned = type;
-                            toBeLogged = `[pdfParser] ${optionSelector} trouvé : ${type}, car présence de "${keyword}" en ligne ${lineNumber}`;
+                            toBeLogged = `${wildcardOptionsDict[optionSelector]} trouvé : ${type}, car présence de "${keyword}" en ligne ${lineNumber}`;
                         } else {
-                            toBeLogged = `[pdfParser] ${optionSelector} : autre correspondance trouvée pour ${type}, car présence de "${keyword}" en ligne ${lineNumber} (mais on garde ${toBeReturned})`;
+                            toBeLogged = `      ↳ autre correspondance non retenue pour ${type}, car présence de "${keyword}" en ligne ${lineNumber}`;
                         }
-                        console.log(toBeLogged);
+                        console.log("[pdfParser]" + optionSelector + toBeLogged);
                         extractionLog += toBeLogged + "\n";
 
                     }
@@ -1566,8 +1599,8 @@ async function extractCategoryFromOptions(fullText, optionSelector, possibleCats
 
         // Si on arrive ici, c'est qu'aucune correspondance n'a été trouvée
 
-        toBeLogged = `[pdfParser] ${optionSelector} : aucune correspondance trouvée`;
-        console.log(toBeLogged);
+        toBeLogged = `${wildcardOptionsDict[optionSelector]} : aucune correspondance trouvée`;
+        console.log("[pdfParser]" + optionSelector + toBeLogged);
         extractionLog += toBeLogged + "\n";
         sessionStorage.setItem('logExtraction', extractionLog); // Pour debug
         return null;
