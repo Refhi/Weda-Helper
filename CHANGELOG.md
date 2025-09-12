@@ -6,7 +6,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 
 # [2.13.2] - Correctifs
 ## Ajouts :
-- Lors de la recherche d’un patient, si un unique résultat est trouvé, il est automatiquement sélectionné.
+- Lors de la recherche d’un patient, si un unique résultat est trouvé, il est automatiquement sélectionné. ![Recherche patient](./Images/mises%20a%20jour/2.13.2-autoselectlonepatient.png)
 - À côté du champ de recherche, un bouton permet de coller et rechercher un patient/nir présent dans le presse-papiers.
 
 ## Imports automatisés :
