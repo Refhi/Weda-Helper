@@ -342,7 +342,7 @@ addTweak('/FolderMedical/PrescriptionForm.aspx', '*TweakPrescription', function 
 
 // [Page de recherche patient] Tweaks the search patient page to select the first patient after a search
 addTweak('/FolderMedical/FindPatientForm.aspx', 'TweakTabSearchPatient', function () {
-    chrome.storage.local.get('searchTime', function (result) {
+    chrome.storage.local.get('searchTime', async function (result) {
         var currentTime = Date.now();
         var timeDifference = currentTime - result.searchTime;
         var timeDifferenceInSeconds = timeDifference / 1000;
@@ -359,9 +359,16 @@ addTweak('/FolderMedical/FindPatientForm.aspx', 'TweakTabSearchPatient', functio
             const secondTargetElement = document.getElementById(secondTarget);
             const lastSearch = parseInt(sessionStorage.getItem('lastPatientSearch')) || 0;
             const isRecentSearch = Date.now() - lastSearch < 5000; console.log('isRecentSearch', isRecentSearch, 'lastPatientSearch', sessionStorage.getItem('lastPatientSearch'), "et dateNow", Date.now());
+            const autoSelectLonePatient = await getOptionPromise('autoSelectLonePatient');
 
-            if (elementToFocus && !secondTargetElement && isRecentSearch) {
-                recordMetrics({ clicks: 1, drags: 1 });
+            if (elementToFocus && !secondTargetElement && isRecentSearch && autoSelectLonePatient) {
+                console.log('[storedNotification]');
+                sessionStorage.setItem('storedNotification', JSON.stringify({
+                    message: "Un seul patient a été trouvé, et a donc été automatiquement sélectionné. Allez dans les options de Weda-Helper pour désactiver cette fonctionnalité. Pour éviter une gêne pour appliquer un lien familial passez plutôt par \"Médical\" > \"Dossier Patient\" > \"Recherche\".",
+                    icon: "person_search",
+                    type: "success",
+                    duration: 9000
+                }));
                 clicCSPLockedElement("#" + validTarget);
             } else if (elementToFocus) {
                 elementToFocus.focus();
@@ -374,4 +381,14 @@ addTweak('/FolderMedical/FindPatientForm.aspx', 'TweakTabSearchPatient', functio
             SearchBoxEntryListener(idsSearchBox, validTarget, true);
         }
     });
+});
+
+// récupère la notification stockée et l'affiche depuis la page d’accueil
+addTweak('/FolderMedical/PatientViewForm.aspx', '*storedNotification', function () {
+    const storedNotification = sessionStorage.getItem('storedNotification');
+    if (storedNotification) {
+        const notificationOptions = JSON.parse(storedNotification);
+        sendWedaNotifAllTabs(notificationOptions);
+        sessionStorage.removeItem('storedNotification');
+    }
 });
