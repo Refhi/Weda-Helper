@@ -379,9 +379,13 @@ function insertDate() {
 function startscanning() {
     console.log('startscanning activé');
     const scanButtonSelector = 'a.level2.dynamic[href^="javascript:void(window.weda.actions.startScan"]';
+    const scanButtonSelector2 = '#ContentPlaceHolder1_EvenementUcForm1_MenuScanner ul a';
     let scanButton = document.querySelector(scanButtonSelector);
+    let scanButton2 = document.querySelector(scanButtonSelector2);
     if (scanButton) {
         clicCSPLockedElement(scanButtonSelector);
+    } else if (scanButton2) {
+        clicCSPLockedElement(scanButtonSelector2);
     }
 }
 

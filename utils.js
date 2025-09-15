@@ -23,21 +23,25 @@ let gotDataFromWeda = false;
 var script = document.createElement('script');
 script.src = chrome.runtime.getURL('FW_scripts/FWData.js');
 (document.head || document.documentElement).appendChild(script);
+// certaines pages ne reçoivent pas les données de Weda, donc on la shunte
+if (window.location.href.includes("BinaryData.aspx")) {
+    gotDataFromWeda = true;
+} else {
+    window.addEventListener("message", function (event) {
+        if (event.source === window && event.data.type === "FROM_PAGE") {
+            WedaOverloadOptions = event.data.payload.wedaHelper;
+            gotDataFromWeda = true;
+            if (WedaOverloadOptions == undefined) {
+                WedaOverloadOptions = false;
+            }
 
-window.addEventListener("message", function (event) {
-    if (event.source === window && event.data.type === "FROM_PAGE") {
-        WedaOverloadOptions = event.data.payload.wedaHelper;
-        gotDataFromWeda = true;
-        if (WedaOverloadOptions == undefined) {
-            WedaOverloadOptions = false;
+            // Modification de la clé MoveHistoriqueToLeft_Consultation  à true pour les tests
+            // WedaOverloadOptions.MoveHistoriqueToLeft_Consultation = true;
+
+            console.log('WedahelperOverload', WedaOverloadOptions);
         }
-
-        // Modification de la clé MoveHistoriqueToLeft_Consultation  à true pour les tests
-        // WedaOverloadOptions.MoveHistoriqueToLeft_Consultation = true;
-
-        console.log('WedahelperOverload', WedaOverloadOptions);
-    }
-});
+    });
+}
 
 // Afficher la nouvelle URL
 console.log("[WH] baseUrl = ", baseUrl); // https://secure.weda.fr en général
@@ -255,14 +259,28 @@ function observeDiseapearance(element, callback = null, options = {}) {
     });
 }
 
-function waitForWeda(logWait, callback) {
-    if (gotDataFromWeda === false) {
-        // console.log('[waitForWeda] pas encore de données de Weda', logWait);
-        setTimeout(waitForWeda, 10, logWait, callback); // Vérifie toutes les 100ms
-        return;
-    } else {
-        callback();
-    }
+async function waitForWeda({ timeoutMs = 500, checkEveryMs = 50, logWait } = {}) {
+    if (gotDataFromWeda) return;
+
+    const start = Date.now();
+    return new Promise((resolve) => {
+        const tick = () => {
+            if (gotDataFromWeda) {
+                // console.log('[waitForWedaAsync] Données de Weda reçues, on continue', { logWait, timeoutMs });
+                resolve();
+                return;
+            }
+            const elapsed = Date.now() - start;
+            if (elapsed >= timeoutMs) {
+                console.warn('[waitForWedaAsync] Timeout atteint, on continue sans données de Weda', { logWait, timeoutMs, elapsed });
+                gotDataFromWeda = true; // bypass
+                resolve();
+                return;
+            }
+            setTimeout(tick, checkEveryMs);
+        };
+        tick();
+    });
 }
 
 /**
@@ -309,22 +327,20 @@ function getOptionValues(optionNames, callback) {
         optionNames = [optionNames];
     }
 
-    waitForWeda(optionNames, () => {
+    // Nouvelle version: attend via Promise avant de lire le storage
+    waitForWeda({ logWait: optionNames }).then(() => {
         chrome.storage.local.get([...optionNames, 'defaultSettings'], function (result) {
             let options = [];
             for (let optionName of optionNames) {
                 let optionValue;
-                if (!WedaOverloadOptions) { // Si WedaOverloadOptions est false car non rempli par Weda, on le signale
+                if (!WedaOverloadOptions) { 
                     // console.log('[getOption] WedaOverloadOptions est vide, et de valeur ', WedaOverloadOptions);
                 }
                 if (WedaOverloadOptions && Object.keys(WedaOverloadOptions).length > 0 && WedaOverloadOptions[optionName] !== undefined) {
-                    // console.log('[getOption] WedaOverloadOptions[', optionName, '] est ', WedaOverloadOptions[optionName]);
                     optionValue = WedaOverloadOptions[optionName];
                 } else if (result[optionName] !== undefined) {
-                    // console.log('[getOption] result[', optionName, '] est ', result[optionName]);
                     optionValue = result[optionName];
                 } else {
-                    // console.log('[getOption] result.defaultSettings[', optionName, '] est ', result.defaultSettings[optionName]);
                     optionValue = result.defaultSettings[optionName];
                 }
                 options.push(optionValue);
@@ -346,12 +362,15 @@ function getOptionValues(optionNames, callback) {
  * @example addTweak('/FolderGestion/RecetteForm.aspx', 'TweakRecetteForm', function () {console.log('TweakRecetteForm activé');});
  */
 function addTweak(path, option, callback) {
-    function executeOption(option, callback, invert = false, mandatory = false) {
+    // console.log(`[addTweak] ${path} - ${option} registered`);
+    async function executeOption(option, callback, invert = false, mandatory = false) {
+        // console.log(`[addTweak] ${option} avec inversion ${invert} et mandatory ${mandatory}`);
+        // on attend le retour de weda (avec un timeout)
+        await waitForWeda({ logWait: option });
+
         if (mandatory) {
-            waitForWeda(option, () => {
-                console.log(`[addTweak] ${option} activé`);
-                callback();
-            });
+            console.log(`[addTweak] ${option} activé`);
+            callback();
         } else {
             getOption(option, function (optionValue) {
                 // Considérer comme true si:

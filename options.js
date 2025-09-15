@@ -15,7 +15,7 @@ function parseSettings(settings, callback) {
       // console.log(`Option: ${option.name}, Niveau: ${option.level}, Sous-option: ${option.isSubOption}`);
       callback(option);
       if (option.subOptions) {
-        traverse(option.subOptions, level, true);
+        traverse(option.subOptions, level + 1, true);
       }
     });
   }
@@ -73,7 +73,7 @@ function createInput(option) { // gestion des différents types d'input
   if (option.disabled) {
     input.disabled = true;
   }
-  
+
 
   // Récupération de la valeur de l'option (sauvegardée ou par défaut)
   getOptionValue(option).then(optionValue => {
@@ -89,8 +89,18 @@ function createInput(option) { // gestion des différents types d'input
       case 'json':
         input.classList.add('json-input');
         input.value = displayCategories(optionValue);
-        input.style.height = '300px';
+        input.style.height = '40px'; // Hauteur par défaut
         input.style.width = '100%';
+
+        // Ajouter les événements focus et blur
+        input.addEventListener('focus', function () {
+          this.style.height = '400px';
+        });
+
+        input.addEventListener('blur', function () {
+          this.style.height = '40px';
+        });
+
         break;
       case 'smalltext':
         input.type = 'text';
@@ -218,6 +228,20 @@ function createLabel(option) {
       
       .info-icon:hover .info-tooltip {
         display: block;
+      }
+      
+      .default-value-btn {
+        margin-left: 10px;
+        padding: 2px 8px;
+        font-size: 12px;
+        background: #ff8888ff;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+      
+      .default-value-btn:hover {
+        background: #e0e0e0;
       }`;
     document.head.appendChild(styles);
   }
@@ -226,29 +250,84 @@ function createLabel(option) {
   label.innerHTML = option.description;
   label.setAttribute('for', option.name);
 
-  if (option.longDescription) {
+  // Pour les options JSON ou si longDescription existe, ajouter l'icône d'information
+  if (option.longDescription || option.type === 'json') {
     const infoIcon = document.createElement('span');
     infoIcon.innerHTML = ' ℹ️';
     infoIcon.className = 'info-icon';
-    infoIcon.style.fontFamily = 'Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"'; // Ensure emoji font
+    infoIcon.style.fontFamily = 'Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"';
 
-    
     const tooltip = document.createElement('div');
     tooltip.className = 'info-tooltip';
-    // tooltip.textContent = option.longDescription;
-    tooltip.innerHTML = option.longDescription.replace(/\n/g, '<br>');
 
-    
+    let tooltipContent = '';
+
+    if (option.longDescription) {
+      tooltipContent += option.longDescription.replace(/\n/g, '<br>');
+    }
+
+    // Si c'est une option JSON, afficher la valeur par défaut formatée
+    if (option.type === 'json') {
+      tooltipContent += '<br><br><strong>Valeur par défaut :</strong><br>';
+      tooltipContent += displayCategories(option.default).replace(/\n/g, '<br>');
+    }
+
+    tooltip.innerHTML = tooltipContent;
     infoIcon.appendChild(tooltip);
     label.appendChild(infoIcon);
   }
 
+  // Ajouter un bouton "Valeur par défaut" pour certains types d'options
+  if (['text', 'json', 'smalltext'].includes(option.type)) {
+    const defaultBtn = document.createElement('button');
+    defaultBtn.textContent = '↻';
+    defaultBtn.title = 'Restaurer la valeur par défaut';
+    defaultBtn.className = 'default-value-btn';
+    defaultBtn.type = 'button'; // Empêcher la soumission du formulaire
+
+    defaultBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      const inputElement = document.getElementById(option.name);
+
+      // Demander confirmation à l'utilisateur
+      const confirmMessage = `Êtes-vous sûr de vouloir restaurer la valeur par défaut ?`;
+      if (!confirm(confirmMessage)) {
+        return;
+      }
+
+      if (inputElement) {
+        if (option.type === 'json') {
+          // Pour les options JSON, utiliser displayCategories pour formater
+          inputElement.value = displayCategories(option.default);
+        } else {
+          // Pour les autres types, utiliser directement la valeur par défaut
+          inputElement.value = option.default;
+        }
+
+        // Déclencher l'événement change si nécessaire
+        inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+
+    label.appendChild(defaultBtn);
+  }
+
   return label;
 }
-
 function createOptionElement(option) { // Création des éléments de l'option
   const optionDiv = document.createElement('div');
   optionDiv.classList.add('option');
+
+  // Ajouter la classe de niveau et l'attribut data-level pour le débogage
+  optionDiv.classList.add(`level-${option.level}`);
+  optionDiv.setAttribute('data-level', option.level);
+  optionDiv.setAttribute('data-is-sub-option', option.isSubOption);
+  optionDiv.setAttribute('data-option-name', option.name || 'unnamed');
+
+  // Encapsuler dans une carte pour les niveaux principaux
+  if (option.level <= 1 && option.type === 'title') {
+    optionDiv.classList.add('option-card');
+  }
 
   if (option.type === 'title') {
     const title = document.createElement(`h${Math.min(6, 1 + option.level)}`);
@@ -257,7 +336,7 @@ function createOptionElement(option) { // Création des éléments de l'option
 
     if (option.description) {
       const subtitle = document.createElement('p');
-      subtitle.textContent = option.description;
+      subtitle.innerHTML = option.description.replace(/\n/g, '<br>'); // Remplacer \n par <br>
       subtitle.classList.add('subtitle');
       optionDiv.appendChild(subtitle);
     }
@@ -269,35 +348,33 @@ function createOptionElement(option) { // Création des éléments de l'option
 
     const radioInput = createInput(option);
     optionDiv.appendChild(radioInput);
+  } else if (option.type === 'json') {
+    // Ajouter un retour à la ligne avant l'option
+    optionDiv.appendChild(document.createElement('br'));
+
+    const label = createLabel(option);
+    optionDiv.appendChild(label);
+
+    const input = createInput(option);
+    optionDiv.appendChild(input);
   } else {
     const input = createInput(option);
     optionDiv.appendChild(input);
 
     const label = createLabel(option);
     optionDiv.appendChild(label);
-
-    if (option.isSubOption) {
-      optionDiv.classList.add('sub-option');
-    }
   }
 
   return optionDiv;
 }
 
 function generateOptionsHTML(settings) {
-  const container = document.getElementById('advanced-options'); // Assurez-vous d'avoir un conteneur pour insérer les options
-  container.innerHTML = ''; // Réinitialisez le conteneur avant d'ajouter de nouveaux éléments
-
-  let lastParentOption = null;
+  const container = document.getElementById('advanced-options');
+  container.innerHTML = '';
 
   parseSettings(settings, option => {
     const optionElement = createOptionElement(option);
-    if (option.isSubOption) {
-      lastParentOption.appendChild(optionElement);
-    } else {
-      container.appendChild(optionElement);
-      lastParentOption = optionElement;
-    }
+    container.appendChild(optionElement);
   });
 }
 

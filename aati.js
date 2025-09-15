@@ -27,17 +27,14 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoAATI', function () {
 });
 
 
-urlAATI = [
-    '/FolderMedical/Aati.aspx',
-    '/FolderMedical/PopUpViewBinaryForm.aspx'
-]
 
-addTweak(urlAATI, 'autoAATI', function () {
+addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
     let selecteurBoutonCV = '#mat-dialog-1 > ng-component > div:nth-child(2) > div.footer.weda-row.weda-main-align-around.weda-cross-align-center.ng-star-inserted > button:nth-child(1)'
     let selecteurBoutonEntreeManuelle = '#mat-dialog-1 > ng-component > div:nth-child(2) > div.footer.weda-row.weda-main-align-around.weda-cross-align-center.ng-star-inserted > button:nth-child(2)'
     let selecteurSortieNonLimites = '#form1 > div:nth-child(10) > div > dmp-aati-form > div > div:nth-child(2) > div.ml10 > div > div.frameContent > dmp-aati-leave-permission > div.flexColStart.mt10 > div.flexColStart.mt10.ng-star-inserted > div.flexColStart.pt3.ng-star-inserted > div.flexRow.mt5 > input'
     let selectorExitButton = '.frameback.dmtiForm.ng-star-inserted .imgfixe a'
 
+    // lors de la réalisation d’un arrêt de travail, on considère que le premier patient est le bon
     function clickPremierPatientCV() {
         console.log('clickPremierPatientCV déclenché');
         var boutonPremierPatientCV = document.querySelector('[title="Déclarer l\'AT pour ce bénéficiaire."]');
@@ -73,20 +70,8 @@ addTweak(urlAATI, 'autoAATI', function () {
         }
     }
 
-    function setTimeOfSending(actionName) {
-        // Get the current time as a Unix timestamp (number of milliseconds since the Unix Epoch)
-        let currentTime = Date.now();
-
-        // Create an object to store
-        let obj = {};
-        obj[actionName] = currentTime;
-
-        // Store the object in the local Chrome storage
-        chrome.storage.local.set(obj, function () {
-            console.log('The time of action "' + actionName + '" was stored as "' + currentTime + '".');
-        });
-    }
-
+    // arrivé dans la page AATI, le workflow change si on a cliqué sur la partie "AT sans CV"
+    // par défaut on considère un arrêt de travail avec CV
     function clickProperButton(elements) {
         console.log('clickProperButton déclenché');
         chrome.storage.local.get(['timestampAATIsansCV'], function (result) {
@@ -96,6 +81,7 @@ addTweak(urlAATI, 'autoAATI', function () {
                 console.log('boutonSansCV', boutonSansCV);
                 if (boutonSansCV) {
                     boutonSansCV.click();
+                    // TODO: à réparer
                 }
             } else {
                 console.log('timestampAATIsansCV', result.timestampAATIsansCV, 'is more than 10 seconds ago donc je dois cliquer sur le bouton "AT avec CV"');
@@ -104,127 +90,81 @@ addTweak(urlAATI, 'autoAATI', function () {
         });
     }
 
-    // Fonction pour vérifier la valeur de autoAATIexit
-    let intervalId;
-    function checkAutoAATIexit(elements) {
-        chrome.storage.local.get(['autoAATIexit'], function (result) {
-            console.log('[debug] autoAATIexit', result.autoAATIexit);
-            if (result.autoAATIexit === 0) {
-                // Si autoAATIexit est égal à 0, déclencher le clic et arrêter l'intervalle
-                elements[0].click();
-                clearInterval(intervalId);
-            }
-        });
-    }
-
-
-
-
+    // appuie sur le bouton adéquat selon le type d'arrêt de travail
     waitForElement({
         selector: selecteurBoutonCV,
         callback: clickProperButton,
         justOnce: true
     });
-
-    // waitLegacyForElement('[title="Déclarer l\'AT pour ce bénéficiaire."]', null, 50000, clickPremierPatientCV); // assez long car sinon la demande CPS peux bloquer le processus
+    
+    // guette la liste des patients présents sur la carte vitale pour cliquer sur le premier patient
     waitForElement({
         selector: '[title="Déclarer l\'AT pour ce bénéficiaire."]',
         callback: clickPremierPatientCV,
         justOnce: true
     });
 
-
+    // ajoute la date du jour dans le champ "Sortie non limitée" s’il apparait
     waitForElement({
         selector: selecteurSortieNonLimites,
         callback: fillDateSorties,
         justOnce: true
     });
 
-
+    // on surveille le bouton de sortie pour le cliquer automatiquement
     waitForElement({
         selector: selectorExitButton,
-        callback: function (elements) {
-            // 2.7.2 La nouvelle méthode est d'aller ensuite récupérer le pdf depuis la page d'accueil du dossier patient
-            setTimeOfSending('autoAATIexit'); // A l'ouverure de la page d'accueil on n'ouvrira le pdf seulement si < 10 secondes
-            // Ici on essai de laisser le temps au pdf d'être généré avant de cliquer sur quitter.
-            // Mais on ne pourra pas empêcher la popup de prévisu de s'afficher
-            console.log('autoAATIexit', Date.now(), 'attente de 3 secondes avant de cliquer sur le bouton de sortie');
-            setTimeout(() => {
-                console.log('clicking on the exit button + timestamp');
-                elements[0].click(); // Finalement on quitte direct sans attendre
-                recordMetrics({ clicks: 1, drags: 1 });
-            }, 3000);
-        }
-    });
-
-    function observeLastPrintDateChange(callback) {
-        const originalSetItem = sessionStorage.setItem;
-        sessionStorage.setItem = function(key, value) {
-            originalSetItem.apply(this, arguments);
-            if (key === 'lastPrintDate') {
-                callback(value);
-            }
-        };
-    }
-
-    // Cette partie gère la fermeture de la prévisu de l'AT au moment où on récupère le pdf depuis la page d'accueil du patient    
-    addTweak('/FolderMedical/PopUpViewBinaryForm.aspx', "*sendDocToCompanion", function () {
-        chrome.storage.local.get(['autoAATIexit'], function (result) {
-            getOption('RemoveLocalCompanionPrint', function (RemoveLocalCompanionPrint) {
-                if (Date.now() - result.autoAATIexit < 10000 && RemoveLocalCompanionPrint === false) {
-                    console.log('autoAATIexit', result.autoAATIexit, 'is less than 10 seconds ago');
-                    chrome.storage.local.set({ autoAATIexit: 0 });
-                    let iframeElement = document.querySelector('iframe');
-                    let url = iframeElement.src;
-                    console.log('url', url);
-                    fetch(url)
-                        .then(response => response.blob())
-                        .then(getLastPageFromBlob)
-                        .then(blob => {
-                            console.log('blob', blob);
-                            return sendToCompanion(`print`, blob);
-                        })
-                        .then(() => {
-                            // The blob has been successfully transferred
-                            console.log('The blob has been successfully transferred.');
-                            recordMetrics({ clicks: 3, drags: 3 });
-                            observeLastPrintDateChange(async (newValue) => {
-                                let printTime = Date.parse(newValue);
-                                if (Date.now() - printTime < 10000) {
-                                    sendWedaNotifAllTabs({
-                                        message: 'Page 3 de l\'arrêt de travail imprimé avec succès.',
-                                        type: 'success',
-                                        icon: 'print'
-                                    });
-                                    // D'abord on ferme la prévisu blob de l'AT
-                                    const tabs = await getAllTabs();
-                                    for (const tab of tabs) {
-                                        if (tab.url.includes('blob:')) {
-                                            await closeTab(tab.id);
-                                            console.log('Fermeture de l\'onglet', tab.id, 'car il s\'agit d\'un blob');
-                                        }
-                                    }
-                                    // On ferme la page en cours (la prévisu iframe pdf de l'AT)
-                                    window.close(); // Pas la peine d'utiliser les permissions tab car cette page est ouverte par le script
-                                }
-                            });
-                        })
-                        .catch(error => {
-                            console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error, 'Problème de Firewall ?');
-                            if (!errortype.includes('[focus]')) {
-                                sendWedaNotifAllTabs({
-                                    message: 'Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error + 'Problème de Firewall ?',
-                                    type: 'fail',
-                                    icon: 'print'
-                                })
-                                // alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
-                            }
-                        });
-                }
-            });
-        });
+        callback: async function (elements) {
+            console.log('selectorExitButton', elements);
+            // on enregistre le timestamp de sortie dans le local storage
+            await chrome.storage.local.set({autoAATIexit: Date.now()});
+            console.log('autoAATIexit set to', Date.now());
+            setTimeout(function () {
+                elements[0].click();
+            }, 500); // essai avec un délai de 500ms
+            recordMetrics({ clicks: 1, drags: 1 });
+        },
+        justOnce: true
     });
 });
+
+// Envoi de la page 3 (la seule page visible) de l'arrêt de travail à Companion
+// depuis la page de prévisualisation de l'arrêt de travail
+addTweak('/BinaryData.aspx', "*sendDocToCompanion", async function () {
+    console.log("[sendDocToCompanion] called");
+    // récupération des valeurs et options importantes
+    const autoAATIexitTimestamp = await chrome.storage.local.get(['autoAATIexit']);
+    const isRecentExit = Date.now() - autoAATIexitTimestamp.autoAATIexit < 10000;
+    const companionPrintEnabled = !(await getOptionPromise('RemoveLocalCompanionPrint'));
+    console.log('[sendDocToCompanion] variables : autoAATIexit', autoAATIexitTimestamp.autoAATIexit, 'isRecentExit', isRecentExit, 'companionPrintEnabled', companionPrintEnabled);
+    // tout d’abord on vérifie qu’on a bien un arrêt de travail récent
+    if (!isRecentExit) {
+        console.log('autoAATIexit is not recent, skipping Companion print');
+        return;
+    }
+    // ensuite on vérifie que l’option Companion print est activée, sinon on utilise la méthode classique window.print()
+    if (!companionPrintEnabled) {
+        console.log("Companion print is disabled, simple window.print() will be used");
+        window.print();
+        return;
+    }
+
+    console.log('autoAATIexit is recent and Companion print is enabled, proceeding with Companion print');
+    // réinitialisation de la valeur autoAATIexit
+    await chrome.storage.local.set({autoAATIexit: 0});
+
+    // l’url de la page est censée être la page 3 de l'arrêt de travail, on va l'envoyer à Companion
+    let url = window.location.href;
+    const pdfBlob = await fetchBlobFromUrl(url);
+    sendToCompanion('print', pdfBlob, function (response) {
+        console.log('The blob has been successfully transferred to Companion.');
+        recordMetrics({clicks: 3, drags: 3});
+        setTimeout(function () {
+            window.close();
+        }, 1000);
+    })
+});
+
 
 
 // Cochage automatique de " Mon patient accepte que je transmette le présent avis d'arrêt de travail pour son compte et [...]"

@@ -45,7 +45,7 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
     });
 });
 
-// 2.b. Dans la page des Echanges Sécurisés
+// 1.b. Dans la page des Echanges Sécurisés
 addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
     console.log('[pdfParser] Chargement de la page d\'échanges');
     waitForElement({
@@ -61,10 +61,21 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
         selector: "div.docImportBody td a",
         text: "Importer le message",
         callback: function (elements) {
-            // Ajout d'un listener sur le bouton "Importer le message"
-            elements[0].addEventListener("click", function () {
-                console.log("[pdfParser] Importation du message cliqué, je vais traiter le PDF présent dans l'iframe.");
-                processFoundPdfIframeEchanges(true);
+            // Ajout d'un listener sur tous les boutons "Importer le message"
+            elements.forEach(function (element) {
+                element.addEventListener("click", function () {
+                    console.log("[pdfParser] Importation du message cliqué, je vais traiter le PDF présent dans l'iframe.");
+
+                    // Récupérer l'élément frère en troisième position vers le haut
+                    let gdParrentElement = element.parentNode.parentNode;
+                    let nameElement = gdParrentElement.querySelector("td:nth-child(2) a");
+                    let nameText = nameElement ? nameElement.innerText : "Élément non trouvé";
+                    let ddnElement = gdParrentElement.querySelector("td:nth-child(3)");
+                    nameText += ddnElement ? ` ${ddnElement.innerText}` : "";
+                    console.log("[pdfParser] Nom du document importé :", nameText);
+                    addPatientNameDisplay(nameText);
+                    processFoundPdfIframeEchanges(true);
+                });
             });
         }
     });
@@ -101,6 +112,7 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
                 resetButton.style.marginLeft = '10px';
                 resetButton.title = "Weda-Helper : Réinitialise les données d'analyse automatique du PDF. Utile lorsque vous testez différents mots-clés de classement automatique dans les options."; // Texte lors du survol de la souris
                 resetButton.type = 'button'; // Assure que c'est un bouton cliquable
+                resetButton.id = 'pdfParserResetButton';
                 resetButton.onclick = function () {
                     sessionStorage.clear();
                     console.log("[pdfParser] Toutes les données d'analyse automatique du PDF ont été réinitialisées.");
@@ -115,6 +127,52 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
     });
 
 });
+
+// 1.c. Ajout d’un champ de debug pour le PDF Parser
+addTweak('/FolderMedical/UpLoaderForm.aspx', 'debugModePdfParser', function () {
+    // Création du champ d’input texte (textarea)
+    const debugMode = document.createElement('textarea');
+    debugMode.placeholder = "Mode debug PDF Parser";
+    debugMode.style.width = "100%";
+    debugMode.style.marginTop = "10px";
+    debugMode.style.minHeight = "80px"; // ou plus selon le besoin
+
+    // Création du bouton pour lancer le debug
+    const debugButton = document.createElement('button');
+    debugButton.innerText = 'Lancer le debug';
+    debugButton.style.marginTop = "10px";
+    debugButton.style.display = "block";
+
+    // Création du champ output (readonly)
+    const debugOutput = document.createElement('textarea');
+    debugOutput.placeholder = "Résultat du debug";
+    debugOutput.style.width = "100%";
+    debugOutput.style.marginTop = "10px";
+    debugOutput.style.minHeight = "250px";
+    debugOutput.readOnly = true;
+
+    // Ajout de la logique du bouton
+    debugButton.onclick = async function () {
+        const destinations = {
+            '1': "Consultation",
+            '2': "Résultats d'examens",
+            '3': "Courrier"
+        };
+
+        const debugValue = debugMode.value;
+        const extractedData = await extractRelevantData(debugValue);
+        extractedData.readeableDestination = destinations[extractedData.destinationClass] || "Inconnue";
+        // Affichage lisible de l'objet
+        debugOutput.value = JSON.stringify(extractedData, null, 2);
+        console.log("[pdfParser] Mode debug activé avec la valeur : ", debugValue, extractedData);
+    };
+
+    // Insertion dans le DOM : textarea, puis bouton, puis output (dans l'ordre)
+    document.body.prepend(debugOutput);
+    document.body.prepend(debugButton);
+    document.body.prepend(debugMode);
+});
+
 
 
 
@@ -254,7 +312,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
                     type: 'undefined',
                     icon: 'search_off',
                     duration: 10000
-                });                    
+                });
             } else if (handlePatientSearchReturn.action === 'refresh') {
                 console.log("[pdfParser] handlePatientSearchReturn nécessite une action:", handlePatientSearchReturn.message);
                 // On attend un peu pour que les changements DOM se produisent
@@ -334,16 +392,9 @@ async function showClickedPatient() {
                 const patientData = `${nomPrenom} ${dateNaiss}`.trim();
 
                 console.log("[pdfParser] Patient cliqué :", patientData);
-                // Ajouter le nom du patient à côté du bouton de validation
-                if (document.querySelector("#pdfParserPatientName")) {
-                    document.querySelector("#pdfParserPatientName").remove();
-                }
-                const patientNameSpan = document.createElement('span');
-                patientNameSpan.innerText = `Vers dossier : ${patientData}`;
-                patientNameSpan.style.marginLeft = '10px';
-                patientNameSpan.id = 'pdfParserPatientName';
-                const validationButton = document.querySelector("#messageContainer .button.valid");
-                validationButton.insertAdjacentElement('afterend', patientNameSpan)
+
+                addPatientNameDisplay(patientData);
+
                 // On retire les listeners pour éviter les doublons
                 possibleClickablePatient.forEach((p) => {
                     p.removeEventListener("click", arguments.callee);
@@ -353,6 +404,19 @@ async function showClickedPatient() {
     }
 }
 
+
+function addPatientNameDisplay(patientName) {
+    // Ajouter le nom du patient à côté du bouton de validation
+    if (document.querySelector("#pdfParserPatientName")) {
+        document.querySelector("#pdfParserPatientName").remove();
+    }
+    const patientNameSpan = document.createElement('span');
+    patientNameSpan.innerText = `Vers dossier : ${patientName}`;
+    patientNameSpan.style.marginLeft = '10px';
+    patientNameSpan.id = 'pdfParserPatientName';
+    const validationButton = document.querySelector("#messageContainer .button.valid");
+    validationButton.insertAdjacentElement('afterend', patientNameSpan)
+}
 
 
 
@@ -511,7 +575,7 @@ async function handleDataExtraction(fullText, urlPDF, hashId) {
     } else {
         console.log("[pdfParser] Données non extraites pour ce PDF. Extraction des données.");
         // Extraction des informations pertinentes
-        extractedData = await extractRelevantData(fullText, urlPDF);
+        extractedData = await extractRelevantData(fullText);
 
         // Si on n'a pas de nirMatches, on se rabattra sur la DDN et le nom
         if (!extractedData.nirMatches || extractedData.nirMatches.length === 0) {
@@ -632,21 +696,21 @@ function handlePatientSearch(extractedData, hashId) {
                 const clicPatientReturn = clicPatient(extractedData);
                 console.log("[pdfParser] clicPatientReturn", clicPatientReturn.status, clicPatientReturn.message);
                 if (clicPatientReturn.status === 'success') {
-                    return { status : 'success', action: 'refresh', message: 'Patient trouvé et cliqué' };
+                    return { status: 'success', action: 'refresh', message: 'Patient trouvé et cliqué' };
                 } else if (clicPatientReturn.status === 'error') {
                     extractedData.failedSearches.push(search.type);
                     setPdfData(hashId, extractedData); // permet la rémanence des données
                 } else if (clicPatientReturn.status === 'continue') {
                     console.log("[pdfParser] Patient non trouvé ou correctement sélectionné, je continue la procédure.");
-                    return { status : 'success', action: 'continue', message: 'Patient non trouvé ou correctement sélectionné' };
+                    return { status: 'success', action: 'continue', message: 'Patient non trouvé ou correctement sélectionné' };
                 } else {
                     console.error("[pdfParser] Erreur inconnue lors de la recherche du patient, je continue la procédure.");
-                    return { status : 'error', action: 'continue', message: 'Erreur inconnue lors de la recherche du patient' };
+                    return { status: 'error', action: 'continue', message: 'Erreur inconnue lors de la recherche du patient' };
                 }
             } else if (properSearched.status === 'refresh') {
                 console.log(`[pdfParser] arrêt de la procédure car :`, properSearched.message);
                 // On attends aussi un rafraichissement de la page
-                return { status : 'ongoing', action: 'refresh', message: properSearched.message };
+                return { status: 'ongoing', action: 'refresh', message: properSearched.message };
             } else {
                 // On marque l'échec de cette méthode de recherche => la boucle suivante l'écartera
                 console.error(`[pdfParser] Echec de la méthode de recherche :`, properSearched.message, `pour ${search.type}`, "je la marque comme un échec et je continue la procédure.");
@@ -657,7 +721,7 @@ function handlePatientSearch(extractedData, hashId) {
     }
 
     console.log("[pdfParser] Aucune donnée permettant de trouver le patient. Arrêt de la recherche de patient.");
-    return { status : 'error', action: 'continue', message: 'Aucune donnée permettant de trouver le patient. Merci de chercher manuellement le patient.' };
+    return { status: 'error', action: 'continue', message: 'Aucune donnée permettant de trouver le patient. Merci de chercher manuellement le patient.' };
 }
 
 
@@ -686,7 +750,8 @@ function addResetButton(hashId) {
     let resetButton = document.createElement('button');
     resetButton.innerText = '🔄'; // Emoji de réinitialisation
     resetButton.style.marginLeft = '10px';
-    resetButton.title = "Weda-Helper : Réinitialiser les données d'analyse automatique du PDF"; // Texte lors du survol de la souris
+    resetButton.title = "Weda-Helper : Réinitialiser les données d'analyse automatique du PDF. En cliquant vous pourrez visualiser le log de l’extraction.";
+    resetButton.id = "pdfParserResetButton";
     resetButton.onclick = function () {
         sessionStorage.removeItem(hashId);
         console.log("[pdfParser] Données réinitialisées pour le PDF.");
@@ -884,11 +949,15 @@ function getPatientsList() {
 }
 
 function searchProperPatient(patientElements, nameMatches) {
+    // Normaliser tous les noms de correspondance une seule fois
+    const normalizedNameMatches = nameMatches.map(name => normalizeString(name));
+
     // Première passe : chercher le nom complet
     for (let i = 0; i < patientElements.length; i++) {
         let patientElement = patientElements[i];
-        let patientName = patientElement.innerText.toLowerCase();
-        if (nameMatches.map(name => name.toLowerCase()).includes(patientName)) {
+        let normalizedPatientName = normalizeString(patientElement.innerText);
+
+        if (normalizedNameMatches.includes(normalizedPatientName)) {
             return patientElement;
         }
     }
@@ -896,11 +965,12 @@ function searchProperPatient(patientElements, nameMatches) {
     // Deuxième passe : chercher chaque mot indépendamment
     for (let i = 0; i < patientElements.length; i++) {
         let patientElement = patientElements[i];
-        let patientName = patientElement.innerText.toLowerCase();
-        for (let j = 0; j < nameMatches.length; j++) {
-            let nameParts = nameMatches[j].toLowerCase().split(' ');
+        let normalizedPatientName = normalizeString(patientElement.innerText);
+
+        for (let j = 0; j < normalizedNameMatches.length; j++) {
+            let nameParts = normalizedNameMatches[j].split(' ');
             for (let k = 0; k < nameParts.length; k++) {
-                if (patientName.includes(nameParts[k])) {
+                if (normalizedPatientName.includes(nameParts[k])) {
                     return patientElement;
                 }
             }
@@ -910,12 +980,13 @@ function searchProperPatient(patientElements, nameMatches) {
     // Troisième passe : comparaison des parties
     for (let i = 0; i < patientElements.length; i++) {
         let patientElement = patientElements[i];
-        let patientNameParts = patientElement.innerText.toLowerCase().split(' ');
-        for (let j = 0; j < nameMatches.length; j++) {
-            let nameParts = nameMatches[j].toLowerCase().split(' ');
+        let normalizedPatientNameParts = normalizeString(patientElement.innerText).split(' ');
+
+        for (let j = 0; j < normalizedNameMatches.length; j++) {
+            let nameParts = normalizedNameMatches[j].split(' ');
             for (let k = 0; k < nameParts.length; k++) {
-                for (let l = 0; l < patientNameParts.length; l++) {
-                    if (nameParts[k].includes(patientNameParts[l])) {
+                for (let l = 0; l < normalizedPatientNameParts.length; l++) {
+                    if (nameParts[k].includes(normalizedPatientNameParts[l])) {
                         return patientElement;
                     }
                 }
@@ -1164,7 +1235,7 @@ async function extractLines(textItems) {
  *   nirMatches: ["123456789012345"]
  * }
  */
-async function extractRelevantData(fullText, pdfUrl) {
+async function extractRelevantData(fullText) {
     const regexPatterns = {
         dateRegexes: [
             /[0-9]{2}[\/\-.][0-9]{2}[\/\-.][0-9]{4}/g, // Match dates dd/mm/yyyy ou dd-mm-yyyy
@@ -1202,31 +1273,405 @@ async function extractRelevantData(fullText, pdfUrl) {
         ]
     };
 
-    // Extraction de l'ensemble des dates présentes dans le texte
+    const categoryExtractorsOptions = {
+        specialite: "PdfParserAutoSpecialiteDict",
+        imagerie: "PdfParserAutoImagerieDict",
+        region: "PdfParserAutoRegionDict",
+        lieu: "PdfParserAutoLieuDict",
+        typeCR: "PdfParserAutoTypeCRDict",
+        custom1: "PdfParserAutoCustom1Dict",
+        custom2: "PdfParserAutoCustom2Dict",
+        custom3: "PdfParserAutoCustom3Dict"
+    };
+
+    sessionStorage.setItem('logExtraction', ""); // Pour debug
+    // Dates et NIR : recherche via regex pur et priorisation
     const dateMatches = await extractDates(fullText, regexPatterns.dateRegexes);
-    // Extraction des éléments pertinents
     const documentDate = await determineDocumentDate(fullText, dateMatches, regexPatterns.documentDateRegexes);
     const dateOfBirth = determineDateOfBirth(fullText, dateMatches, regexPatterns.dateOfBirthRegexes);
-    const nameMatches = extractNames(fullText, regexPatterns.nameRegexes);
-    const documentType = await determineDocumentType(fullText);
-    const documentTitle = determineDocumentTitle(fullText, documentType);
     const nirMatches = extractNIR(fullText, regexPatterns.nirRegexes);
-    const addressedTo = extractAddressedTo(fullText); // Retourne l'id du choix du dropdown
-    const destinationClass = extractDestinationClass(fullText);
+
+    // Noms : recherche via contexte des mots avant/après et place théorique dans le document
+    const nameMatches = extractNames(fullText, regexPatterns.nameRegexes);
+    const addressedTo = await extractAddressedTo(fullText); // Retourne l'id du choix du dropdown
+
+    // Catégorisation générale : recherche via contexte et heuristiques
+    const destinationClass = await extractDestinationClass(fullText); // 1-consultation, 2-résultat d’examen ou 3-courrier
+    const documentType = await determineDocumentType(fullText); // type de document (ex: compte rendu, ordonnance selon la liste d’import de l’utilisateur
+
+    // Extraction en parallèle des caractéristiques basées sur les options
+    const specialite = await extractCategoryFromOptions(fullText, categoryExtractorsOptions.specialite);
+    const imagerie = await extractCategoryFromOptions(fullText, categoryExtractorsOptions.imagerie);
+    const region = await extractCategoryFromOptions(fullText, categoryExtractorsOptions.region);
+    const lieu = await extractCategoryFromOptions(fullText, categoryExtractorsOptions.lieu);
+    const typeCR = await extractCategoryFromOptions(fullText, categoryExtractorsOptions.typeCR);
+    const doctorName = extractDoctorName(fullText);
+    const custom1 = await extractCategoryFromOptions(fullText, categoryExtractorsOptions.custom1);
+    const custom2 = await extractCategoryFromOptions(fullText, categoryExtractorsOptions.custom2);
+    const custom3 = await extractCategoryFromOptions(fullText, categoryExtractorsOptions.custom3);
 
 
+
+    // ASSEMBLAGE DES DONNÉES EXTRAITES
+    // =================================
     let extractedData = {
         documentDate: documentDate ? formatDate(documentDate) : null,
         dateOfBirth: dateOfBirth ? formatDate(dateOfBirth) : null,
         nameMatches: nameMatches,
         documentType: documentType,
-        documentTitle: documentTitle,
+        documentTitle: null,
         nirMatches: nirMatches,
         addressedTo: addressedTo,
-        destinationClass: destinationClass
+        destinationClass: destinationClass,
+        // Caractéristiques spécialisées
+        specialite: specialite,
+        imagerie: imagerie,
+        region: region,
+        lieu: lieu,
+        typeCR: typeCR,
+        doctorName: doctorName,
+        custom1: custom1,
+        custom2: custom2,
+        custom3: custom3
     };
+
+    // Titrage
+    extractedData.documentTitle = await buildTitle(extractedData);
+
+    const resetButtonExists = document.querySelector("#pdfParserResetButton");
+    if (!resetButtonExists) {
+        console.warn("[pdfParser] erreur : le bouton de réinitialisation n'existe pas");
+    } else {
+        console.log("[pdfParser] Le bouton de réinitialisation existe.");
+        const logToShow = sessionStorage.getItem('logExtraction');
+        // resetButtonExists.title += "\n\n=== Log d'extraction ===\n" + logToShow;
+        addLogMessageOnMouseOver("#pdfParserResetButton", "\n\n=== Log d'extraction ===\n" + logToShow);
+    }
+
+
+
+
     return extractedData;
 }
+
+function addLogMessageOnMouseOver(elementSelector, message) {
+    const element = document.querySelector(elementSelector);
+    if (element) {
+        let leaveTimeout;
+
+        // Créer la popup
+        const popup = document.createElement('div');
+        popup.id = 'pdfParserLogPopup';
+        popup.innerHTML = `<pre>${message}</pre>`;
+        popup.style.cssText = `
+            position: fixed;
+            background: #333;
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            max-width: 80vw;
+            max-height: 80vh;
+            overflow: auto;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            z-index: 10000;
+            display: none;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            width: fit-content;
+            height: fit-content;
+        `;
+        document.body.appendChild(popup);
+
+        // Gestionnaires d'événements
+        element.addEventListener('mouseenter', (e) => {
+            // Annuler le timeout de disparition si il existe
+            if (leaveTimeout) {
+                clearTimeout(leaveTimeout);
+                leaveTimeout = null;
+            }
+
+            popup.style.display = 'block';
+
+            // Attendre que le navigateur calcule les dimensions
+            requestAnimationFrame(() => {
+                // Positionner la popup près de l'élément
+                const rect = element.getBoundingClientRect();
+                const popupRect = popup.getBoundingClientRect();
+
+                let left = rect.left + 10;
+                let top = rect.bottom + 5;
+
+                // Ajuster si la popup dépasse de l'écran
+                if (left + popupRect.width > window.innerWidth) {
+                    left = window.innerWidth - popupRect.width - 10;
+                }
+                if (top + popupRect.height > window.innerHeight) {
+                    top = rect.top - popupRect.height - 5;
+                }
+
+                // S'assurer que la popup reste dans les limites de l'écran
+                left = Math.max(10, left);
+                top = Math.max(10, top);
+
+                popup.style.left = `${left}px`;
+                popup.style.top = `${top}px`;
+            });
+        });
+
+        element.addEventListener('mouseleave', () => {
+            // Programmer la disparition après 1000ms
+            leaveTimeout = setTimeout(() => {
+                popup.style.display = 'none';
+                leaveTimeout = null;
+            }, 1000);
+        });
+
+        // Optionnel : annuler le timeout si on survole la popup elle-même
+        popup.addEventListener('mouseenter', () => {
+            if (leaveTimeout) {
+                clearTimeout(leaveTimeout);
+                leaveTimeout = null;
+            }
+        });
+
+        popup.addEventListener('mouseleave', () => {
+            leaveTimeout = setTimeout(() => {
+                popup.style.display = 'none';
+                leaveTimeout = null;
+            }, 1000);
+        });
+
+        console.log(`[pdfParser] Popup de log ajoutée à l'élément : ${elementSelector}`);
+    }
+    else {
+        console.warn(`[pdfParser] Élément non trouvé pour l'ajout du log : ${elementSelector}`);
+    }
+}
+
+/**
+ * Extrait la catégorie d'un document à partir de règles de correspondance utilisateur.
+ *
+ * @param {string} fullText - Le texte complet du PDF à analyser.
+ * @param {string} optionSelector - Clé de l'option (dans le stockage) contenant les règles de classification au format JSON.
+ * @param {string[]} possibleCats - Tableau des catégories possibles (ex : ["COURRIER", "IMAGERIE"]).
+ * @param {boolean} [perfectRuleMatchingNeeded=false] - Si true, exige que toutes les catégories/règles soient strictement cohérentes avec possibleCats.
+ *
+ * Le format attendu pour la configuration est un tableau de tableaux :
+ * [
+ *   ["LABORATOIRE/BIO", ["BIOCEANE", "LABORATOIRE"]],
+ *   ["Arrêt de travail", ["avis d’arrêt de travail"]],
+ *   ["LABORATOIRE", ["mots-clés moins spécifiques"]],
+ *   ["IMAGERIE", ["autresmots-clés moins spécifiques"]]
+ * ]
+ *
+ * - Chaque sous-tableau contient : [nom_catégorie, [liste de mots-clés]]
+ * - L’ordre du tableau définit la priorité de détection.
+ * - Une même catégorie peut apparaître plusieurs fois avec des mots-clés différents.
+ *
+ * @returns {string|null} - La première catégorie trouvée (selon l’ordre des règles) ou null si aucune correspondance.
+ */
+async function extractCategoryFromOptions(fullText, optionSelector, possibleCats = null, perfectRuleMatchingNeeded = false) {
+    // Dictionnaire des noms d'options pour les wildcards
+    const wildcardOptionsDict = {
+        'PdfParserAutoSpecialiteDict': '[specialite]',
+        'PdfParserAutoImagerieDict': '[imagerie]',
+        'PdfParserAutoRegionDict': '[region]',
+        'PdfParserAutoLieuDict': '[lieu]',
+        'PdfParserAutoTypeCRDict': '[typeCR]',
+        'PdfParserAutoCategoryDict': '[category]',
+        'PdfParserAutoCustom1Dict': '[custom1]',
+        'PdfParserAutoCustom2Dict': '[custom2]',
+        'PdfParserAutoCustom3Dict': '[custom3]',
+        'PdfParserAutoDestinationClassDict': "Destination de classement"
+    };
+    // console.log("[pdfParser] Extraction de la catégorie à partir des options", optionSelector);
+    // 1 - récupérer le tableau via getOption et le convertir en format exploitable
+    // On utilise un tableau de tableaux pour permettre de parcourir les types de documents par ordre de spécificité
+    // Et de mettre plusieurs fois la même clé, avec des valeurs de moins en moins exigeantes
+    let categoryMatchingRules = await getOptionPromise(optionSelector);
+    categoryMatchingRules = properArrayOfCategoryMatchingRules(categoryMatchingRules);
+    // console.log("[pdfParser] Règles de correspondance pour l'extraction de catégorie :", categoryMatchingRules);
+    if (categoryMatchingRules === false) {
+        console.warn("[pdfParser] Règles de correspondance invalides pour l'extraction de catégorie.");
+        dealWithInvalidRules(optionSelector);
+        return null;
+    }
+
+    // 2 - Vérifier que toutes les options présentes dans categoryMatchingRules sont bien présente dans possibleCats
+    // et vice-versa si une correspondance parfaite est nécessaire
+    if (possibleCats && !matchingRulesAreLegit(categoryMatchingRules, possibleCats, perfectRuleMatchingNeeded)) {
+        console.warn("[pdfParser] Les règles de correspondance ne correspondent pas aux catégories possibles.");
+        dealWithInvalidRules(optionSelector);
+        return null;
+    }
+
+    // 3 - parcourir chaque ligne de règle et confronter les mots/phrases-clés.
+    // En cas de match, faire un return de la catégorie retrouvée
+    return lookForMatch(fullText, categoryMatchingRules);
+
+
+    function lookForMatch(fullText, categoryMatchingRules) {
+        let toBeReturned = null;
+        let toBeLogged = null;
+        let extractionLog = sessionStorage.getItem('logExtraction') || "";
+        // Normaliser le texte complet une seule fois
+        const normalizedFullText = normalizeString(fullText);
+
+        for (const [type, keywords] of categoryMatchingRules) {
+            // Séparer les mots-clés d'inclusion et d'exclusion
+            const inclusionKeywords = keywords.filter(keyword => !keyword.startsWith('-'));
+            const exclusionKeywords = keywords.filter(keyword => keyword.startsWith('-')).map(keyword => keyword.substring(1));
+            let lineNumber = null;
+
+            for (const keyword of inclusionKeywords) {
+                // Ignorer les mots-clés vides
+                if (!keyword || keyword.trim() === '') {
+                    continue;
+                }
+
+                // Si le keyword est *, on valide automatiquement
+                if (keyword.trim() === '*') {
+                    lineNumber = '*'; // Ligne arbitraire pour l'astérisque
+                    if (!toBeReturned) {
+                        toBeReturned = type;
+                        toBeLogged = `${wildcardOptionsDict[optionSelector]} : ${type} validé par défaut car présence de "${keyword}" (wildcard match)`;
+                    } else {
+                        toBeLogged = `      ↳ autre correspondance non retenue pour ${type}, car présence de "${keyword}" (wildcard match)`;
+                    }
+                    console.log("[pdfParser]" + optionSelector + toBeLogged);
+                    extractionLog += toBeLogged + "\n";
+                    continue; // Passer au keyword suivant sans faire de regex
+                }
+
+                // Normaliser le mot-clé
+                const normalizedKeyword = normalizeString(keyword);
+
+                // Remplacer les espaces par \s* pour permettre les espaces optionnels
+                const regex = new RegExp(normalizedKeyword.replace(/\s+/g, '\\s*'), 'i');
+                const match = normalizedFullText.match(regex);
+
+                if (match) {
+                    // Vérifier les exclusions avec le texte normalisé
+                    const matchIndex = match.index;
+                    const matchLength = match[0].length;
+
+                    let isExcluded = false;
+
+                    for (const exclusionKeyword of exclusionKeywords) {
+                        const normalizedExclusionKeyword = normalizeString(exclusionKeyword);
+                        const contextSize = normalizedExclusionKeyword.length;
+
+                        const contextStart = Math.max(0, matchIndex - contextSize);
+                        const contextEnd = Math.min(normalizedFullText.length, matchIndex + matchLength + contextSize);
+                        const contextText = normalizedFullText.substring(contextStart, contextEnd);
+
+                        const exclusionRegex = new RegExp(normalizedExclusionKeyword.replace(/\s+/g, '\\s*'), 'i');
+                        if (exclusionRegex.test(contextText)) {
+                            toBeLogged = `${wildcardOptionsDict[optionSelector]} : match trouvé pour "${keyword}" mais exclu par "${exclusionKeyword}" dans le contexte`;
+                            console.log("[pdfParser]" + optionSelector + toBeLogged);
+                            extractionLog += toBeLogged + "\n";
+                            isExcluded = true;
+                            break;
+                        }
+                    }
+
+                    if (!isExcluded) {
+                        lineNumber = fullText.substr(0, match.index).split("\n").length;
+                        if (!toBeReturned) {
+                            toBeReturned = type;
+                            toBeLogged = `${wildcardOptionsDict[optionSelector]} trouvé : ${type}, car présence de "${keyword}" en ligne ${lineNumber}`;
+                        } else {
+                            toBeLogged = `      ↳ autre correspondance non retenue pour ${type}, car présence de "${keyword}" en ligne ${lineNumber}`;
+                        }
+                        console.log("[pdfParser]" + optionSelector + toBeLogged);
+                        extractionLog += toBeLogged + "\n";
+
+                    }
+                }
+            }
+        }
+
+        if (toBeReturned) {
+            sessionStorage.setItem('logExtraction', extractionLog); // Pour debug
+            return toBeReturned;
+        }
+
+        // Si on arrive ici, c'est qu'aucune correspondance n'a été trouvée
+
+        toBeLogged = `${wildcardOptionsDict[optionSelector]} : aucune correspondance trouvée`;
+        console.log("[pdfParser]" + optionSelector + toBeLogged);
+        extractionLog += toBeLogged + "\n";
+        sessionStorage.setItem('logExtraction', extractionLog); // Pour debug
+        return null;
+    }
+
+
+    function dealWithInvalidRules(optionSelector) {
+        // la réponse à apporter va varier selon le type d’options
+        const invalidRulesDictionary = {
+            "PdfParserAutoCategoryDict": handleDocumentTypesConsent,
+        };
+
+        // on gère d’abord les cas de figure connus
+        const invalidRuleHandler = invalidRulesDictionary[optionSelector];
+        if (invalidRuleHandler) {
+            invalidRuleHandler();
+            return;
+        }
+
+        // on gère ensuite les cas génériques
+        sendWedaNotifAllTabs({
+            message: `Des règles de correspondance invalides ont été détectées pour ${optionSelector}. Merci de les vérifier dans les options de Weda-Helper.`,
+            type: "undefined",
+            icon: "error"
+        });
+    }
+
+    /**
+     * Vérifie si les règles de correspondance sont légitimes par rapport aux catégories possibles.
+     * @param {Array} categoryMatchingRules - Règles de correspondance au format [[catégorie, [mots-clés]], ...]
+     * @param {Array} possibleCats - Catégories possibles au format [catégorie1, catégorie2, ...]
+     * @param {boolean} perfectRuleMatchingNeeded - Si true, exige une correspondance parfaite
+     * @returns {boolean} - True si les règles sont valides
+     */
+    function matchingRulesAreLegit(categoryMatchingRules, possibleCats, perfectRuleMatchingNeeded = false) {
+        // Validation des paramètres d'entrée
+        if (!Array.isArray(categoryMatchingRules)) {
+            console.error(`[pdfParser] categoryMatchingRules doit être un tableau ${categoryMatchingRules}`);
+            return false;
+        }
+
+        if (!Array.isArray(possibleCats)) {
+            console.error(`[pdfParser] possibleCats doit être un tableau ${possibleCats}`);
+            return false;
+        }
+
+        // Vérifier que toutes les catégories des règles sont dans possibleCats
+        const ruleCategories = categoryMatchingRules.map(rule => rule[0]);
+        const uniqueRuleCategories = [...new Set(ruleCategories)];
+
+        for (const category of uniqueRuleCategories) {
+            if (!possibleCats.includes(category)) {
+                console.warn(`[pdfParser] Catégorie '${category}' des règles n'est pas dans les catégories possibles`);
+                return false;
+            }
+        }
+
+        // Si correspondance parfaite requise, vérifier que toutes les catégories possibles sont couvertes
+        if (perfectRuleMatchingNeeded) {
+            for (const possibleCat of possibleCats) {
+                if (!uniqueRuleCategories.includes(possibleCat)) {
+                    console.warn(`[pdfParser] Catégorie possible '${possibleCat}' n'est pas couverte par les règles`);
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+}
+
 
 // Extraction du médecin à qui est adressé le document
 async function extractAddressedTo(fullText) {
@@ -1256,24 +1701,29 @@ async function extractAddressedTo(fullText) {
 
     // Recherche dans le texte pour chaque médecin
     for (const doctor of doctors) {
-        // Créer différentes variations pour la recherche (en tenant compte des possibles sauts de ligne ou caractères entre nom et prénom)
+        // Normaliser les noms du médecin
+        const normalizedLastName = normalizeString(doctor.lastName);
+        const normalizedFirstName = normalizeString(doctor.firstName.split('-')[0]);
+        const normalizedFullText = normalizeString(fullText);
+
+        // Créer différentes variations pour la recherche
         const patterns = [
             // Format NOM Prénom (tolère des caractères entre les deux)
-            new RegExp(`${doctor.lastName}[\\s\\S]{0,5}${doctor.firstName.split('-')[0]}`, 'i'),
+            new RegExp(`${normalizedLastName}[\\s\\S]{0,5}${normalizedFirstName}`, 'i'),
 
             // Format Prénom NOM (tolère des caractères entre les deux)
-            new RegExp(`${doctor.firstName.split('-')[0]}[\\s\\S]{0,5}${doctor.lastName}`, 'i'),
+            new RegExp(`${normalizedFirstName}[\\s\\S]{0,5}${normalizedLastName}`, 'i'),
 
             // Recherche seulement le nom de famille s'il est assez distinctif (>= 5 caractères)
-            ...(doctor.lastName.length >= 5 ? [new RegExp(`\\b${doctor.lastName}\\b`, 'i')] : []),
+            ...(normalizedLastName.length >= 5 ? [new RegExp(`\\b${normalizedLastName}\\b`, 'i')] : []),
 
             // Recherche seulement le prénom s'il est assez distinctif (>= 5 caractères)
-            ...(doctor.firstName.length >= 5 ? [new RegExp(`\\b${doctor.firstName.split('-')[0]}\\b`, 'i')] : [])
+            ...(normalizedFirstName.length >= 5 ? [new RegExp(`\\b${normalizedFirstName}\\b`, 'i')] : [])
         ];
 
-        // Tester chaque pattern
+        // Tester chaque pattern sur le texte normalisé
         for (const pattern of patterns) {
-            if (pattern.test(fullText)) {
+            if (pattern.test(normalizedFullText)) {
                 console.log(`[pdfParser] Médecin trouvé dans le texte: ${doctor.fullName} avec le pattern ${pattern}`);
                 return doctor.id;
             }
@@ -1284,8 +1734,14 @@ async function extractAddressedTo(fullText) {
     return null;
 }
 
-// Extraction de la classe de destination
-function extractDestinationClass(fullText) {
+/**
+ * Extrait la classe de destination d'un document à partir du texte complet.
+ * Utilise extractCategoryFromOptions avec les règles configurées dans les options.
+ * 
+ * @param {string} fullText - Le texte complet du PDF à analyser.
+ * @returns {Promise<string>} - L'ID de la destination détectée ('1', '2', ou '3').
+ */
+async function extractDestinationClass(fullText) {
     // Les trois destinations possibles 
     const destinations = {
         '1': "Consultation",
@@ -1293,118 +1749,33 @@ function extractDestinationClass(fullText) {
         '3': "Courrier"
     };
 
-    // Mots-clés pour chaque destination
-    const keywordsByDestination = {
-        '1': [
-            /consultation/i,
-            /prise en charge/i,
-            /examen clinique/i,
-            /visite médicale/i,
-            /Motif :/i,
-            /histoire de la maladie/i,
-            /SOAP/i,
-            /anamnèse/i,
-            /auscultation/i,
-            /Antécédents :/i,
-            /Au terme de ce bilan/i,
-            /à l'examen clinique/i
-        ],
-        '2': [
-            /examen/i,
-            /résultat/i,
-            /biologie/i,
-            /bilan/i,
-            /analyse/i,
-            /laboratoire/i,
-            /scanner/i,
-            /imagerie/i,
-            /radiographie/i,
-            /échographie/i,
-            /irm/i,
-            /tdm/i,
-            /tep/i,
-            /doppler/i,
-            /mammographie/i,
-            /scintigraphie/i,
-            /echodoppler/i,
-            /renseignements cliniques/i,
-            /technique/i,
-            /conclusion/i
-        ],
-        '3': [
-            /courrier/i,
-            /lettre/i,
-            /correspondance/i,
-            /avis/i,
-            /compte rendu/i,
-            /compte-rendu/i,
-            /CR.{0,5}consult/i,
-            /adressé(?:e)? par/i,
-            /adressé(?:e)? pour/i,
-            /Cher Confrère/i,
-            /chère consoeur/i,
-            /chère consœur/i,
-            /Je vous remercie/i,
-            /nous a consulté/i,
-            /nous a été adressé/i,
-            /information destinée/i,
-            /spécialiste/i
-        ]
-    };
+    // Les destinations possibles avec leurs IDs
+    const possibleDestinations = ['1', '2', '3'];
 
-    // Compteur de correspondances pour chaque destination
-    const matchCounts = {
-        '1': 0,
-        '2': 0,
-        '3': 0
-    };
+    try {
+        // Utiliser extractCategoryFromOptions pour faire la classification
+        const detectedDestination = await extractCategoryFromOptions(
+            fullText,
+            'PdfParserAutoDestinationClassDict',
+            possibleDestinations,
+            true // perfectRuleMatchingNeeded = true car nous définissons toutes les destinations
+        );
 
-    // Vérifier chaque destination
-    for (const [destId, patterns] of Object.entries(keywordsByDestination)) {
-        for (const pattern of patterns) {
-            const matches = fullText.match(pattern);
-            if (matches) {
-                matchCounts[destId] += matches.length;
-            }
-        }
+        // Si aucune destination n'est détectée, privilégier "Consultation" par défaut
+        const selectedDestination = detectedDestination || '1';
+
+        console.log(`[pdfParser] Classe de destination détectée: ${destinations[selectedDestination]} (ID: ${selectedDestination})`);
+        return selectedDestination;
+
+    } catch (error) {
+        console.error('[pdfParser] Erreur lors de la classification de destination:', error);
+
+        // Retourner "Consultation" par défaut en cas d'erreur
+        console.log('[pdfParser] Classe de destination par défaut: Consultation (ID: 1)');
+        return '1';
     }
-
-    console.log('[pdfParser] Correspondances de classe par destination:', matchCounts);
-
-    // Vérifier s'il y a des correspondances spécifiques qui augmentent fortement la probabilité
-    const specificPatterns = {
-        '1': [/consultation.*du\s+\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{4}/i],
-        '2': [/Résultats? d[''](?:examen|analyse)s?/i, /valeurs? de référence/i],
-        '3': [/Je vous remercie de m'avoir adressé/i]
-    };
-
-    for (const [destId, patterns] of Object.entries(specificPatterns)) {
-        for (const pattern of patterns) {
-            if (pattern.test(fullText)) {
-                matchCounts[destId] += 5; // Ajoute un poids plus fort
-            }
-        }
-    }
-
-    // Sélectionner la destination avec le plus grand nombre de correspondances
-    let maxCount = 0;
-    let selectedDestination = null;
-
-    for (const [destId, count] of Object.entries(matchCounts)) {
-        if (count > maxCount) {
-            maxCount = count;
-            selectedDestination = destId;
-        }
-    }
-
-    // Si aucune correspondance ou égalité, on privilégie "Courrier" qui est souvent la catégorie par défaut
-    if (maxCount === 0 || (matchCounts['3'] === matchCounts['2'] && matchCounts['2'] === maxCount)) {
-        selectedDestination = '3';
-    }
-
-    console.log(`[pdfParser] Classe de destination détectée: ${destinations[selectedDestination]} (ID: ${selectedDestination})`);
-    return selectedDestination;
 }
+
 
 // Extraction du datamatrix des pages du PDF
 async function extractDatamatrixFromPDF(pdfUrl) {
@@ -1692,21 +2063,6 @@ function visualizeBinaryBitmap(binaryBitmap) {
 }
 
 async function determineDocumentType(fullText) {
-    // console.log('[pdfParser] determineDocumentType');
-    // On utilise un tableau de tableaux pour permettre de parcourir les types de documents par ordre de spécificité
-    // Et de mettre plusieurs fois la même clé, avec des valeurs de moins en moins exigeantes
-    const PdfParserAutoCategoryDict = await getOptionPromise('PdfParserAutoCategoryDict');
-    let documentTypes;
-    try {
-        documentTypes = JSON.parse(PdfParserAutoCategoryDict);
-    } catch (error) {
-        console.error('[pdfParser] Erreur lors de l\'analyse du JSON pour PdfParserAutoCategoryDict:', error, PdfParserAutoCategoryDict);
-        if (confirm('Erreur de syntaxe pour la catégorisation automatique du document. Vérifiez dans les options de Weda-Helper. Cliquez sur OK pour réinitialiser ce paramètre.')) {
-            handleDocumentTypesConsent();
-        }
-        return null;
-    }
-
     // Vérifier que tous les types de documents sont bien définis
     const possibleDocumentTypes = initDocumentTypes();
 
@@ -1717,41 +2073,7 @@ async function determineDocumentType(fullText) {
         return null;
     }
 
-    // Vérifier que chaque type de document dans documentTypes est présent dans possibleDocumentTypes
-    for (const [type, _] of documentTypes) {
-        if (!possibleDocumentTypes.some(possibleType => possibleType[0] === type)) {
-            console.error(`[pdfParser] Type de document ${type} non défini dans les catégories possibles. Veuillez mettre à jour les catégories.`);
-            if (confirm(`Type de document ${type} non défini dans les catégories possibles. Voulez-vous mettre à jour les catégories ?`)) {
-                handleDocumentTypesConsent();
-            }
-            return null;
-        }
-    }
-
-    // Vérifier que chaque type de document dans possibleDocumentTypes est présent dans documentTypes
-    for (const [possibleType, _] of possibleDocumentTypes) {
-        if (!documentTypes.some(([type, _]) => type === possibleType)) {
-            console.error(`[pdfParser] Catégorie possible ${possibleType} non définie dans les types de documents. Veuillez mettre à jour les types de documents.`);
-            if (confirm(`Catégorie possible ${possibleType} non définie dans les types de documents. Voulez-vous mettre à jour les types de documents ?`)) {
-                handleDocumentTypesConsent();
-            }
-            return null;
-        }
-    }
-
-    for (const [type, keywords] of documentTypes) {
-        // console.log('[pdfParser] recherche du type de document', type);
-        for (const keyword of keywords) {
-            // Remplacer les espaces par \s* pour permettre les espaces optionnels
-            const regex = new RegExp(keyword.replace(/\s+/g, '\\s*'), 'i');
-            if (regex.test(fullText)) {
-                console.log('[pdfParser] type de document trouvé', type, 'car présence de', keyword);
-                return type;
-            }
-        }
-    }
-    console.log('[pdfParser] type de document non trouvé');
-    return null;
+    return extractCategoryFromOptions(fullText, 'PdfParserAutoCategoryDict', possibleDocumentTypes, true);
 }
 
 // Fonction pour initialiser les catégories possibles de classification
@@ -1770,14 +2092,14 @@ function initDocumentTypes() {
     }
     const options = dropDownCats.options;
 
-    // Créer un tableau pour stocker les catégories
+    // Créer un tableau pour stocker les catégories (simple tableau de chaînes)
     const categories = [];
 
     // Parcourir les options et ajouter les catégories au tableau
     for (let i = 0; i < options.length; i++) {
         const option = options[i];
         if (option.value !== "0") { // Ignorer l'option par défaut
-            categories.push([option.text, []]); // Initialiser les valeurs à un tableau vide
+            categories.push(option.text); // Ajouter seulement le nom de la catégorie
         }
     }
 
@@ -1791,8 +2113,18 @@ function storeDocumentTypes(categories) {
         console.log('[pdfParser] Catégories de classification existantes:', PdfParserAutoCategoryDict);
         let existingCategories = PdfParserAutoCategoryDict ? JSON.parse(PdfParserAutoCategoryDict) : [];
 
+        // Transformer les catégories simples en format [catégorie, []] si nécessaire
+        const formattedCategories = categories.map(category => {
+            // Si c'est déjà un tableau avec le bon format, le garder tel quel
+            if (Array.isArray(category) && category.length === 2 && Array.isArray(category[1])) {
+                return category;
+            }
+            // Sinon, créer le format attendu avec un tableau vide de mots-clés
+            return [category, []];
+        });
+
         // Ajouter les nouvelles catégories
-        categories.forEach(category => {
+        formattedCategories.forEach(category => {
             if (!existingCategories.some(existingCategory => existingCategory[0] === category[0])) {
                 existingCategories.push(category);
             }
@@ -1800,7 +2132,7 @@ function storeDocumentTypes(categories) {
 
         // Supprimer les catégories qui ne sont pas dans la variable
         existingCategories = existingCategories.filter(existingCategory =>
-            categories.some(category => category[0] === existingCategory[0])
+            formattedCategories.some(category => category[0] === existingCategory[0])
         );
 
         const updatedCategories = JSON.stringify(existingCategories);
@@ -1809,7 +2141,7 @@ function storeDocumentTypes(categories) {
             console.log('[pdfParser] Catégories de classification mises à jour:', updatedCategories);
             // Contrôle de ce qui a été stocké
             chrome.storage.local.get('PdfParserAutoCategoryDict', function (result) {
-                console.log('[pdfParser] Catégories de classification stockées:', PdfParserAutoCategoryDict);
+                console.log('[pdfParser] Catégories de classification stockées:', result.PdfParserAutoCategoryDict);
             });
         });
     });
@@ -1819,6 +2151,7 @@ function storeDocumentTypes(categories) {
 function handleDocumentTypesConsent() {
     if (confirm("Initialiser les catégories de classification ? Pensez ensuite à compléter les mots-clés dans les options de l'extension.")) {
         const categories = initDocumentTypes();
+        console.log('[pdfParser] Catégories de classification initialisées:', categories);
         storeDocumentTypes(categories);
     }
 }
@@ -1850,304 +2183,214 @@ function addDocumentTypesButton() {
 
 
 
-// Fonction pour trouver la spécialité dans le texte
-function findSpecialite(fullText, specialites) {
-    for (const [specialite, keywords] of Object.entries(specialites)) {
-        for (const keyword of keywords) {
-            if (fullText.toLowerCase().includes(keyword.toLowerCase())) {
-                console.log('[pdfParser] spécialité trouvée', specialite);
-                return specialite;
+
+async function buildTitle(caracteristics) {
+    // Récupérer le format de titre depuis les options et le formater
+    let titleFormat = await getOptionPromise('PdfParserAutoTitleFormat');
+    titleFormat = properArrayOfCategoryMatchingRules(titleFormat);
+
+
+    // Chercher le format correspondant au type de document
+    let selectedFormat = null;
+
+    // D'abord chercher une correspondance exacte avec le type de document
+    for (const [category, format] of titleFormat) {
+        if (category === caracteristics.documentType) {
+            selectedFormat = format;
+            break;
+        }
+    }
+
+    // Si pas trouvé, chercher un format générique (*)
+    if (!selectedFormat) {
+        for (const [category, format] of titleFormat) {
+            if (category === '*') {
+                selectedFormat = format;
+                break;
             }
         }
     }
-    return null;
-}
 
-// Fonction pour trouver le type d'imagerie dans le texte
-function findImagerie(fullText, imageries) {
-    const lines = fullText.split('\n');
-    
-    for (const line of lines) {
-        const lineText = line.toLowerCase();
-        let matchesInLine = [];
-        
-        // Compter combien de types d'imagerie matchent dans cette ligne
-        for (const [imagerie, keywords] of Object.entries(imageries)) {
-            for (const keyword of keywords) {
-                if (lineText.includes(keyword.toLowerCase())) {
-                    matchesInLine.push(imagerie);
-                    break; // Sortir de la boucle keywords pour cette imagerie
-                }
-            }
-        }
-        
-        // Si exactement un match dans cette ligne, c'est probablement le bon
-        if (matchesInLine.length === 1) {
-            console.log('[pdfParser] type d\'imagerie trouvé', matchesInLine[0], 'dans la ligne:', line.substring(0, 50) + '...');
-            return matchesInLine[0];
-        }
-        // Si plusieurs matches, on ignore cette ligne (probablement une liste de services)
-        else if (matchesInLine.length > 1) {
-            console.log('[pdfParser] Ligne ignorée (multiples types d\'imagerie):', line.substring(0, 50) + '...');
-        }
+    // Si toujours pas trouvé, envoyer une erreur à l’utilisateur
+    if (!selectedFormat) {
+        console.error('[pdfParser] Aucun format de titre trouvé pour le type de document:', caracteristics.documentType);
+        sendWedaNotifAllTabs({
+            message: 'Aucun format de titre trouvé pour le type de document: ' + caracteristics.documentType + ', vous devez définir au moins une ligne * dans les options de weda-helper.',
+            icon: 'error',
+            type: 'undefined'
+        });
+        return "";
     }
-    
-    console.log('[pdfParser] Aucun type d\'imagerie trouvé dans une ligne unique');
-    return null;
-}
 
-// Fonction pour déterminer le titre du document
-function determineDocumentTitle(fullText, documentType) {
-    // Phrases-clés prioritaires avec leurs titres associés
-    const phrasesPrioritaires = {
-        "Frottis": ["Frottis gynécologique de dépistage", "papilloma", "Frottis cervico-vaginal"],
-        "Prescription de transport": ["transport pour patient"],
-        "Arrêt de travail": ["ARRET DE TRAVAIL", "D’ARRET DE TRAVAIL"],
-        "Protocole de soin": ["PROTOCOLE DE SOINS ELECTRONIQUE"],
+    // Remplacer les variables dans le format
+    let documentTitle = selectedFormat[0];
+    console.log('[pdfParser] Format de titre sélectionné:', documentTitle);
+
+    // Variables disponibles avec leurs valeurs
+    const variables = {
+        '[specialite]': caracteristics.specialite || '',
+        '[imagerie]': caracteristics.imagerie || '',
+        '[region]': caracteristics.region || '',
+        '[lieu]': caracteristics.lieu || '',
+        '[typeCR]': caracteristics.typeCR || '',
+        '[doctorName]': caracteristics.doctorName || '',
+        '[category]': caracteristics.documentType || '',
+        '[custom1]': caracteristics.custom1 || '',
+        '[custom2]': caracteristics.custom2 || '',
+        '[custom3]': caracteristics.custom3 || '',
     };
 
-    // Vérifier d'abord s'il y a une phrase prioritaire dans le texte
-    for (const [titre, phrases] of Object.entries(phrasesPrioritaires)) {
-        for (const phrase of phrases) {
-            // Rechercher la phrase avec une regex insensible à la casse
-            const regex = new RegExp(phrase, 'i');
-            if (regex.test(fullText)) {
-                console.log(`[pdfParser] Phrase prioritaire trouvée: "${phrase}" => Titre: "${titre}"`);
-                let documentTitle = titre;
+    // Remplacer chaque variable par sa valeur
+    for (const [variable, value] of Object.entries(variables)) {
+        documentTitle = documentTitle.replace(new RegExp(escapeRegExp(variable), 'g'), value);
+    }
 
-                // Si un lieu est présent, on peut l'ajouter
-                for (const [nom, mots] of Object.entries(lieux)) {
-                    for (const mot of mots) {
-                        const lieuRegex = new RegExp(`(^|\\s|\\n)${mot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|\\n|$)`, 'i');
-                        if (lieuRegex.test(fullText)) {
-                            documentTitle += ` (${nom})`;
+    // Nettoyer le titre : supprimer les espaces multiples et les séparateurs en trop
+    documentTitle = cleanTitle(documentTitle);
+
+    console.log('[pdfParser] Titre du document déterminé:', documentTitle, "caractéristiques:", caracteristics);
+
+    return documentTitle;
+}
+
+/**
+ * Échappe les caractères spéciaux pour utilisation dans une RegExp
+ * @param {string} string - La chaîne à échapper
+ * @returns {string} - La chaîne échappée
+ */
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Nettoie le titre en supprimant les espaces multiples, les séparateurs orphelins, etc.
+ * @param {string} title - Le titre à nettoyer
+ * @returns {string} - Le titre nettoyé
+ */
+function cleanTitle(title) {
+    return title
+        // Supprimer les espaces multiples
+        .replace(/\s+/g, ' ')
+        // Supprimer les séparateurs orphelins au début ou à la fin
+        .replace(/^[\s\-–—:,]+|[\s\-–—:,]+$/g, '')
+        // Supprimer les séparateurs multiples
+        .replace(/[\s]*[\-–—:,][\s]*[\-–—:,]+[\s]*/g, ' - ')
+        // Supprimer les parenthèses vides
+        .replace(/\(\s*\)/g, '')
+        // Nettoyer les espaces autour des parenthèses
+        .replace(/\s+\(/g, ' (')
+        .replace(/\(\s+/g, '(')
+        .replace(/\s+\)/g, ')')
+        // Supprimer les espaces en début et fin
+        .trim();
+}
+
+function extractDoctorName(fullText) {
+    // Diviser le texte en lignes pour analyser ligne par ligne
+    const normalizedFullText = normalizeString(fullText);
+    const lines = normalizedFullText.split('\n');
+    const originalLines = fullText.split('\n'); // Garder les lignes originales pour préserver la casse
+
+
+    // Patterns simplifiés pour les noms de médecins, sans distinction de casse
+    const doctorPatterns = [
+        // Format "Dr" ou "Docteur" suivi de 1-4 mots (pour nom/prénom potentiellement composés)
+        // Détail de la regex :
+        // (?:dr\.?|docteur|professeur|pr\.?) - Groupe non-capturant pour "Dr" (avec point optionnel), "Docteur", "Professeur" ou "Pr" (avec point optionnel)
+        // \s+ - Un ou plusieurs espaces blancs
+        // ( - Début du groupe de capture principal
+        //   (?:[A-Z]\.?\s*)* - Zéro ou plusieurs initiales : lettre majuscule, point optionnel, espaces optionnels (ex: "B. " ou "A.C. ")
+        //   [A-ZÀ-ÿ] - Première lettre du nom principal (majuscule, avec accents français)
+        //   [A-Za-zÀ-ÿ\-]+ - Reste du nom principal (lettres avec accents et traits d'union, ex: "Anne-Claire")
+        //   (?:\s+[A-ZÀ-ÿ][A-Za-zÀ-ÿ\-]+)* - Zéro ou plusieurs noms/prénoms supplémentaires (même format)
+        // ) - Fin du groupe de capture
+        // /i - Flag insensible à la casse
+        //
+        // Exemples de correspondances :
+        // "Dr. B. AUBERT" → "B. AUBERT"
+        // "Professeur Anne-Claire Vançon" → "Anne-Claire Vançon"
+        // "Pr François Müller" → "François Müller"
+        /((?:dr\.?|docteur|professeur|pr\.?)\s+(?:[A-Z]\.?\s*)*[A-ZÀ-ÿ][A-Za-zÀ-ÿ\-]+(?:\s+[A-ZÀ-ÿ][A-Za-zÀ-ÿ\-]+)*)/i
+    ];
+
+    // Parcourir toutes les lignes
+    for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i];
+        const originalLine = originalLines[i]; // Ligne originale avec la casse préservée
+
+        if (isAnAddress(line)) continue; // Passer à la ligne suivante si c'est une adresse
+
+        // console.log(`[pdfParser] Analyse de la ligne ${i}:`, line);
+
+        for (const pattern of doctorPatterns) {
+            const match = line.match(pattern);
+            const originalMatch = originalLine.match(pattern); // Chercher aussi dans la ligne originale
+            if (match && match[1] && originalMatch && originalMatch[1]) {
+                const vicinityCheckNumber = 4;
+                // Vérifier s'il y a une autre occurrence dans les x lignes précédentes et suivantes
+                let hasOtherOccurrence = false;
+
+                // Vérifier les x lignes précédentes
+                for (let j = Math.max(0, i - vicinityCheckNumber); j < i; j++) {
+                    const prevLine = lines[j];
+                    if (isAnAddress(prevLine)) continue; // Passer à la ligne suivante si c'est une adresse
+                    for (const checkPattern of doctorPatterns) {
+                        if (checkPattern.test(prevLine)) {
+                            hasOtherOccurrence = true;
                             break;
+                        }
+                    }
+                    if (hasOtherOccurrence) {
+                        // console.log(`[pdfParser] Autre occurrence trouvée dans les lignes précédentes : ${prevLine}, ligne ${j}`);
+                    }
+                }
+
+                // Vérifier les x lignes suivantes si pas encore trouvé d'occurrence
+                if (!hasOtherOccurrence) {
+                    for (let j = i + 1; j <= i + vicinityCheckNumber && j < lines.length; j++) {
+                        const nextLine = lines[j];
+                        if (isAnAddress(nextLine)) continue; // Passer à la ligne suivante si c'est une adresse
+                        for (const checkPattern of doctorPatterns) {
+                            if (checkPattern.test(nextLine)) {
+                                hasOtherOccurrence = true;
+                                break;
+                            }
+                        }
+                        if (hasOtherOccurrence) {
+                            console.log(`[pdfParser] Autre occurrence trouvée dans les lignes suivantes : ${nextLine}, ligne ${j}`);
                         }
                     }
                 }
 
-                return documentTitle;
-            }
-        }
-    }
-
-    const specialites = {
-        "Médecine Interne": ["Médecine Interne"],
-        "Orthopédie": ["Orthopédie", "Orthopédique", "Traumatologie"],
-        "Gynécologie": ["Gynécologie", "Obstétrique", "Gynéco"],
-        "Cardiologie": ["Cardiologie", "Cardio", "Cardiovasculaire"],
-        "Neurologie": ["Neurologie", "Neuro", "Neurochirurgie"],
-        "Pédiatrie": ["Pédiatrie", "Pédiatre", "Enfant"],
-        "Radiologie": ["Radiologie", "Radio"],
-        "Ophtalmologie": ["Ophtalmologie", "Ophtalmo", "Oculaire"],
-        "Pneumologie": ["Pneumologie", "Pneumo", "Respiratoire", "Pulmonaire"],
-        "Dermatologie": ["Dermatologie", "Dermato", "Cutané"],
-        "Urologie": ["Urologie", "Uro"],
-        "Chirurgie": ["Chirurgie", "Chirurgical", "Opération"],
-        "Rhumatologie": ["Rhumatologie", "Rhumato"],
-        "Endocrinologie": ["Endocrinologie", "Endocrino", "Diabète", "Diabétologie"],
-        "Gastro-entérologie": ["Gastro-entérologie", "Gastro", "Digestif"],
-        "Hématologie": ["Hématologie", "Hémato"],
-        "Néphrologie": ["Néphrologie", "Néphro", "Rénale"],
-        "Oncologie": ["Oncologie", "Onco", "Cancer"],
-        "Psychiatrie": ["Psychiatrie", "Psy", "Psychologie"],
-        "Stomatologie": ["Stomatologie", "Stomato", "Maxillo-facial"],
-        "Addictologie": ["Addictologie", "Addiction"],
-        "ORL": ["ORL", "Otologie", "Rhinologie", "Laryngologie", "Otorhinolaryngologie"],
-        "Allergologie": ["Allergologie", "Allergie", "Allergique"],
-        "Gériatrie": ["Gériatrie", "Gérontologie", "Personnes âgées"],
-        "Anesthésiologie": ["Anesthésiologie", "Anesthésie", "Réanimation"]
-    };
-
-    const imageries = {
-        "scanner": ["scanner", "TDM", "tomodensitométrie"],
-        "échographie": ["échographie", "écho", "doppler", "échodoppler"],
-        "radiographie": ["radiographie", "radio", "rx"],
-        "mammographie": ["mammographie", "mammo"],
-        "scintigraphie": ["scintigraphie", "scinti"],
-        "ostéodensitométrie": ["ostéodensitométrie", "densitométrie osseuse"],
-        "IRM": ["IRM", "imagerie par résonance magnétique"]
-    };
-
-    // Organes/régions anatomiques fréquents pour préciser l'examen
-    const regions = {
-        "thoracique": ["thorax", "thoracique", "pulmonaire", "poumon"],
-        "abdominal": ["abdomen", "abdominal", "abdominale"],
-        "crânien": ["crâne", "crânien", "cérébral", "cerveau", "tête"],
-        "rachis": ["rachis", "colonne vertébrale", "lombaire", "cervical", "dorsal", "vertèbre"],
-        "genou": ["genou", "fémoro-tibial"],
-        "hanche": ["hanche", "coxo-fémoral"],
-        "épaule": ["épaule", "scapulo-huméral"],
-        "poignet": ["poignet", "radio-carpien"],
-        "coude": ["coude"],
-        "cheville": ["cheville", "tibio-tarsien"],
-        "pied": ["pied", "tarsien"],
-        "main": ["main", "métacarpien"],
-        "bassin": ["bassin", "pelvien"],
-        "sinus": ["sinus", "facial"],
-        "artère": ["artère", "artériel", "aorte", "carotide", "fémorale"],
-        "cardiaque": ["cardiaque", "cœur", "coronaire"]
-    };
-
-    // Établissements de santé ou lieux
-    const lieux = {
-        "CHU": ["CHU", "Centre Hospitalier Universitaire"],
-        "CH": ["CH", "Centre Hospitalier de", "Hôpital de", "Hôpital"],
-        "Clinique": ["Clinique", "Polyclinique"],
-        "Centre": ["Centre médical", "Centre de radiologie", "Centre d'imagerie"],
-        "Cabinet": ["Cabinet médical", "Cabinet de radiologie"]
-    };
-
-    // Type de compte-rendu
-    const typesCR = {
-        "consultation": ["Consultation", "CS", "Cs", "consultation"],
-        "hospitalisation": ["Hospitalisation", "CRH", "compte rendu d'hospitalisation"],
-        "examen": ["Compte rendu d'examen", "CR d'examen", "compte-rendu d'examen"],
-        "opération": ["Compte rendu opératoire", "CRO", "opération"]
-    };
-
-    // Trouver la spécialité médicale
-    let specialite = findSpecialite(fullText, specialites);
-
-    // Trouver le type d'imagerie si présent
-    let imagerie = findImagerie(fullText, imageries);
-
-    // Trouver la région anatomique si présente
-    let region = null;
-    for (const [nom, mots] of Object.entries(regions)) {
-        for (const mot of mots) {
-            if (fullText.toLowerCase().includes(mot.toLowerCase())) {
-                region = nom;
-                break;
-            }
-        }
-        if (region) break;
-    }
-
-    // Trouver le lieu si présent
-    let lieu = null;
-    for (const [nom, mots] of Object.entries(lieux)) {
-        for (const mot of mots) {
-            // Utiliser une regex avec des limites de mots pour garantir des correspondances exactes
-            const regex = new RegExp(`(^|\\s|\\n)${mot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|\\n|$)`, 'i');
-            if (regex.test(fullText)) {
-                lieu = nom;
-                break;
-            }
-        }
-        if (lieu) break;
-    }
-
-    // Trouver le type de compte-rendu
-    let typeCR = null;
-    for (const [nom, mots] of Object.entries(typesCR)) {
-        for (const mot of mots) {
-            if (fullText.toLowerCase().includes(mot.toLowerCase())) {
-                typeCR = nom;
-                break;
-            }
-        }
-        if (typeCR) break;
-    }
-
-    const extractDoctorName = (fullText) => {
-        // Diviser le texte en lignes pour analyser ligne par ligne
-        const lines = fullText.split('\n');
-
-        // Patterns simplifiés pour les noms de médecins, sans distinction de casse
-        const doctorPatterns = [
-            // Format "Dr" ou "Docteur" suivi de 1-4 mots (pour nom/prénom potentiellement composés)
-            /^(?:dr\.?|docteur|médecin|praticien)\s+(\w+(?:\s+\w+){0,3})/i,
-            // Même format mais n'importe où dans la ligne
-            /(?:dr\.?|docteur|médecin|praticien)\s+(\w+(?:\s+\w+){0,3})/i
-        ];
-
-        // Diviser le document en tiers
-        const thirds = [
-            { start: Math.floor(lines.length * 2 / 3), end: lines.length, name: 'signature' },  // Dernier tiers
-            { start: Math.floor(lines.length * 1 / 3), end: Math.floor(lines.length * 2 / 3), name: 'corps' },  // Tiers du milieu
-            { start: 0, end: Math.floor(lines.length * 1 / 3), name: 'entête' }  // Premier tiers
-        ];
-
-        // Parcourir les tiers dans l'ordre: dernier, milieu, premier
-        for (const third of thirds) {
-            for (let i = third.start; i < third.end; i++) {
-                const line = lines[i];
-                
-                // Pour le dernier tiers (signature), ignorer tout après "destinataire" ou "destinataires"
-                if (third.name === 'signature' && /destinataires?/i.test(line)) {
-                    break;
-                }
-                
-                for (const pattern of doctorPatterns) {
-                    const match = line.match(pattern);
-                    if (match && match[1]) {
-                        return {
-                            fullName: match[1].trim(),
-                            location: third.name
-                        };
-                    }
+                // Si pas d'autre occurrence trouvée dans les x lignes précédentes ET suivantes, retourner ce nom
+                if (!hasOtherOccurrence) {
+                    console.log(`[pdfParser] Nom de médecin trouvé: ${originalMatch[1].trim()} dans la ligne ${i}`);
+                    return originalMatch[1].trim(); // Utiliser la version originale avec la casse préservée
                 }
             }
         }
+    }
 
-        return null;
-    };    // Utiliser la fonction pour extraire le nom du médecin
-    const doctorInfo = extractDoctorName(fullText);
-    const medecin = doctorInfo ? doctorInfo.fullName : null;
-    // Construire le titre du document en fonction du contexte
-    let documentTitle = documentType || "";
+    return null;
 
-    // Pour les documents d'imagerie
-    if (documentType === "IMAGERIE") {
-        if (imagerie) {
-            documentTitle = imagerie.charAt(0).toUpperCase() + imagerie.slice(1);
-            if (region) {
-                documentTitle += ` ${region}`;
-            }
-        } else if (specialite === "Radiologie") {
-            documentTitle = "Examen radiologique";
-            if (region) {
-                documentTitle += ` ${region}`;
+
+
+    function isAnAddress(line) {
+        // vérifier qu’il ne s’agisse pas non plus d’une rue, avenue etc
+        const streetPatterns = [
+            /\b(rue|avenue|boulevard|impasse|chemin|place|cedex)\b/i
+        ];
+
+        for (const streetPattern of streetPatterns) {
+            if (streetPattern.test(line)) {
+                hasOtherOccurrence = true;
+                // console.log(`[pdfParser] cette ligne semble être une adresse : ${line}`);
+                return true;
             }
         }
-    }
-    // Pour les consultations
-    else if (documentType === "CONSULTATION" || typeCR === "consultation") {
-        documentTitle = "Consultation";
-        if (medecin) {
-            documentTitle += ` Dr. ${medecin}`;
-        } else if (specialite) {
-            documentTitle += ` ${specialite}`;
-        }
-    }
-    // Pour les hospitalisations
-    else if (typeCR === "hospitalisation") {
-        documentTitle = "CRH";
-        if (specialite) {
-            documentTitle += ` ${specialite}`;
-        }
-    }
-    // Pour les autres types de documents
-    else if (specialite) {
-        documentTitle += documentTitle ? ` - ${specialite}` : specialite;
-    }
 
-    // Ajouter le lieu en dernier si présent
-    if (lieu) {
-        documentTitle += ` (${lieu})`;
+        return false;
     }
-
-    console.log('[pdfParser] Titre du document déterminé', documentTitle,
-        'avec type:', documentType,
-        'spécialité:', specialite,
-        'imagerie:', imagerie,
-        'région:', region,
-        'médecin:', medecin,
-        'lieu:', lieu,
-        'type CR:', typeCR);
-
-    return documentTitle;
 }
 
 // Extraction des dates du texte
@@ -2407,4 +2650,69 @@ async function customHash(str, urlPDF) {
     // console.timeEnd('customHash'); // Arrêter le chronomètre et afficher le temps écoulé
     // console.log('[pdfParser] hash', hash.toString(16)); // Afficher le hash en hexadécimal
     return hash.toString(16); // Retourner en chaîne hexadécimale
+}
+
+
+
+function properArrayOfCategoryMatchingRules(rawOptionOutput) {
+    let jsonOptionOutput = rawOptionOutput;
+    // normalement le raw est au format json
+    if (typeof rawOptionOutput === "string") {
+        try {
+            jsonOptionOutput = JSON.parse(rawOptionOutput);
+        } catch (error) {
+            console.error("[pdfParser] Erreur lors de l'analyse du JSON pour les règles de correspondance :", rawOptionOutput, error);
+            return false;
+        }
+    }
+
+    // si le tableau est vide, on renvoie un tableau vide
+    if ((Array.isArray(jsonOptionOutput) && jsonOptionOutput.length === 0) || !jsonOptionOutput) {
+        return [];
+    }
+
+    // On s'assure que le format est un tableau de tableaux
+    if (!Array.isArray(jsonOptionOutput)) {
+        console.warn("[pdfParser] Format inattendu pour les règles de correspondance, attendu un tableau et j’ai reçu :", jsonOptionOutput, "pour rawOptionOutput :", rawOptionOutput);
+        return false;
+    }
+
+    // On s’assure que chaque règle a bien un mot-clé et une catégorie
+    if (jsonOptionOutput.some(rule => !Array.isArray(rule) || rule.length !== 2)) {
+        console.warn("[pdfParser] Certaines règles de correspondance sont invalides, elles seront ignorées.");
+        jsonOptionOutput = jsonOptionOutput.filter(rule => Array.isArray(rule) && rule.length === 2);
+    }
+
+    return jsonOptionOutput;
+}
+
+
+/**
+ * Normalise une chaîne de caractères en remplaçant les accents et caractères spéciaux
+ * @param {string} str - La chaîne à normaliser
+ * @returns {string} - La chaîne normalisée
+ */
+function normalizeString(str) {
+    if (!str || typeof str !== 'string') return str;
+
+    return str
+        // Normalisation Unicode (décompose les caractères accentués)
+        .normalize('NFD')
+        // Supprime les marques diacritiques (accents)
+        .replace(/[\u0300-\u036f]/g, '')
+        // Normalise les ligatures
+        .replace(/œ/g, 'oe')
+        .replace(/Œ/g, 'OE')
+        .replace(/æ/g, 'ae')
+        .replace(/Æ/g, 'AE')
+        .replace(/ß/g, 'ss')
+        // Normalise les apostrophes et guillemets
+        .replace(/[''`´]/g, "'")
+        .replace(/[""«»]/g, '"')
+        // Normalise les tirets
+        .replace(/[–—]/g, '-')
+        // Normalise les espaces (espaces insécables, etc.)
+        .replace(/[\u00A0\u2000-\u200B\u2028\u2029]/g, ' ')
+        .toLowerCase()
+        .trim();
 }

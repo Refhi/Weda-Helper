@@ -21,6 +21,20 @@ function simpleMarkdownToHtml(markdown) {
     html = html.replace(/^## (.*?)$/gm, '<h3>$1</h3>'); // on met max h3 pour éviter les gros titre
     html = html.replace(/^# (.*?)$/gm, '<h3>$1</h3>');
 
+    // Convertir les images AVANT les liens (important pour éviter les conflits)
+    html = html.replace(/!\[(.*?)\]\((.*?)\)/g, function (match, alt, src) {
+        // Convertir le chemin relatif en URL d'extension
+        let extensionUrl;
+        if (src.startsWith('./')) {
+            // Enlever le './' du début et convertir les espaces encodés
+            let cleanPath = src.substring(2).replace(/%20/g, ' ');
+            extensionUrl = chrome.runtime.getURL(cleanPath);
+        } else {
+            extensionUrl = src;
+        }
+        return `<img src="${extensionUrl}" alt="${alt}" style="max-width: 100%; height: auto; border: 1px solid #ccc; border-radius: 5px; margin: 10px 0;">`;
+    });
+
     // Convertir les listes
     html = html.replace(/^\* (.*?)$/gm, '<li>$1</li>');
     html = html.replace(/^- (.*?)$/gm, '<li>$1</li>');
@@ -58,19 +72,19 @@ function extractChangelogContent() {
             const h1Pattern = /^# .+$/gm;
             const h1Matches = [...markdownText.matchAll(h1Pattern)];
             console.log(h1Matches);
-            
+
             // S'il y a moins de 3 titres de niveau 1, utiliser un message par défaut
             if (h1Matches.length < 3) {
                 return `<h3>Version ${currentVersion}</h3><p>Consultez le changelog complet pour plus de détails.</p>`;
             }
-            
+
             // Extraire les indices des 2e et 3e titres de niveau 1
             const secondH1Index = h1Matches[1].index;
             const thirdH1Index = h1Matches[2].index;
-            
+
             // Extraire le contenu entre le 2e et le 3e titre de niveau 1
             const changelogSection = markdownText.substring(secondH1Index, thirdH1Index).trim();
-            
+
             // Convertir le markdown en HTML
             return simpleMarkdownToHtml(changelogSection);
         })
@@ -307,16 +321,16 @@ chrome.storage.local.get(['lastExtensionVersion', 'firstStart'], function (resul
     extractChangelogContent().then(changelogContent => {
         // Mettre à jour la variable nouveautes avec le contenu extrait
         nouveautes = changelogContent;
-        
+
         // Insérer les nouveautés dans le message de mise à jour
         var updateMessage = updateMessageTemplate.replace('NOUVEAUTES_PLACEHOLDER', nouveautes);
-        
+
         if (result.lastExtensionVersion !== currentVersion) {
             // If the last version is different from the current version, there was an update
             showPopup(updateMessage);
             chrome.storage.local.set({ lastExtensionVersion: currentVersion });
         }
-        
+
         if (!result.firstStart) {
             // If there's no last version, this is the first launch
             showPopup(firstStartMessage);

@@ -533,12 +533,9 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'AutoOpenHistory_Consultation',
 // // Définir les pages pour lesquelles l'historique doit être déplacé à gauche et leur cible
 let pagesToLeftPannel_ = [
     // Depreciated car l'historique est maintenant géré par Weda pour les consultations
-    // {
-    //     url: '/FolderMedical/ConsultationForm.aspx',
-    //     targetElementSelector: '#form1 > div:nth-child(14) > div > table > tbody > tr > td:nth-child(1) > table',
-    //     option: 'MoveHistoriqueToLeft_Consultation',
-    //     pageType: 'Consultation'
-    // },
+    {
+        url: '/FolderMedical/ConsultationForm.aspx',
+    },
     {
         url: '/FolderMedical/CertificatForm.aspx',
         targetElementSelector: 'table[onmouseover="ForceCloseListBoxGlossaire();"] > tbody > tr',
@@ -671,19 +668,22 @@ function historyToLeft() {
     let previsuPanel = document.querySelector('#ContentPlaceHolder1_EvenementUcForm1_ViewPdfDocumentUCForm1_PanelViewDocument');
     if (!previsuPanel) {
         pagesToLeftPannel_.forEach(page => {
-            addTweak(page.url, page.option, () => {
-                // On récupère la zone de texte qui doit être déplacée (targetElement)
-                const targetElement = document.querySelector(page.targetElementSelector);
-                const iframe = createIframe(targetElement); // ici targetElement est nécessaire comme référence pour l'insertion de l'iframe
-                iframe.addEventListener('load', () => {
-                    removeElements(iframe.contentDocument);
-                    // Ici on ajoute l'appuis automatique de filtre (en url libre car ne sera appelée que si l'histoire est à gauche)
-                    actionFilter(iframe.contentDocument);
+            // On vérifie que la page a les propriétés nécessaires pour ajouter l'historique à gauche
+            if (page.url && page.option && page.pageType && page.targetElementSelector) {
+                addTweak(page.url, page.option, () => {
+                    // On récupère la zone de texte qui doit être déplacée (targetElement)
+                    const targetElement = document.querySelector(page.targetElementSelector);
+                    const iframe = createIframe(targetElement); // ici targetElement est nécessaire comme référence pour l'insertion de l'iframe
+                    iframe.addEventListener('load', () => {
+                        removeElements(iframe.contentDocument);
+                        // Ici on ajoute l'appuis automatique de filtre (en url libre car ne sera appelée que si l'histoire est à gauche)
+                        actionFilter(iframe.contentDocument);
+                    });
+                    // On ajuste le layout pour que l'iframe et le targetElement soient bien positionnés
+                    adjustLayout(page.pageType, iframe, targetElement);
+                    recordMetrics({ clicks: 1, drags: 1 });
                 });
-                // On ajuste le layout pour que l'iframe et le targetElement soient bien positionnés
-                adjustLayout(page.pageType, iframe, targetElement);
-                recordMetrics({ clicks: 1, drags: 1 });
-            });
+            }
         });
     }
 }

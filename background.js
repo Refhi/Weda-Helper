@@ -44,18 +44,19 @@ const TYPE_HTML = "html";
 const TYPE_RADIO = "radio";
 const TYPE_TITLE = "title";
 
+
+// Définition de catégories par défaut pour le PDF Parser
 const PdfParserAutoCategoryDefaut = JSON.stringify([
     // Niveau 1 de spécificité : la présence du mot-clé signe directement le type de document sans ambiguïté
     ["LABORATOIRE/BIO", ["BIOCEANE", "LABORATOIRE"]],
-    ["Arrêt de travail", ["avis d’arrêt de travail"]],
+    ["Arrêt de travail", ["avis d'arrêt de travail"]],
     ["CRO/CRH", ["Compte Rendu Opératoire", "Compte Rendu Hospitalier", "Compte Rendu d'Hospitalisation", "COMPTE RENDU OPERATOIRE"]],
     ["Consultation", ["COMPTE-RENDU DE CONSULTATION"]],
     ["PARAMEDICAL", ["BILAN ORTHOPTIQUE"]],
     // Niveau 2 de spécificité : des mots plus ambivalents, mais qui,
     // parcouru dans l'ordre devraient permettre de déterminer le type de document
     ["Courrier", ["Chère Consœur", "chère consoeur", "Cher confrère", "chère amie", "cher ami", "Cherconfrére", "Chèreconsoeur", "Chèreconsœur"]],
-    ["IMAGERIE", ["imagerie", "radiographie", "scanner", "IRM", "radiologie"]],
-    ["Administratif", []],
+    ["IMAGERIE", ["imagerie", "radiographie", "scanner", "IRM", "radiologie", "mammographie"]],
     ["Arrêt de travail", ["arrêt de travail", "congé maladie"]],
     ["Biologie", ["biologie", "analyse sanguine"]],
     ["Bon de transport", ["bon de transport", "transport médical"]],
@@ -67,13 +68,209 @@ const PdfParserAutoCategoryDefaut = JSON.stringify([
     ["PARAMEDICAL", ["paramédical", "soins"]],
     ["SPECIALISTE", ["spécialiste", "consultation spécialisée"]],
     ["Consultation", ["consultation", "visite médicale"]],
-    ["Ordonnance", ["ordonnance", "prescription", "60-3937"]], // 60-3937 est le cerfa des bizones
     // Niveau 3 de spécificité : des mots plus génériques, qui peuvent être présents dans plusieurs types de documents
+    ["Ordonnance", ["ordonnance", "prescription", "60-3937"]], // 60-3937 est le cerfa des bizones
     ["Compte Rendu", ["compte rendu", "compte-rendu", "automesure"]],
+    ["PHOTOS", [""]],
+    ["Administratif", ["*"]],
+]);
+
+const PdfParserAutoSpecialite = JSON.stringify([
+    // Spécialités médicales avec mots-clés associés
+    ["Urgences", ["Compte rendu des Urgences"]],
+    ["Médecine Interne", ["Médecine Interne"]],
+    ["Orthopédie", ["Orthopédie", "Orthopédique", "Traumatologie"]],
+    ["Gynécologie", ["Gynécologie", "Obstétrique", "Gynéco"]],
+    ["Cardiologie", ["Cardiologie", "Cardio", "Cardiovasculaire"]],
+    ["Neurologie", ["Neurologie", "Neuro", "Neurochirurgie"]],
+    ["Pédiatrie", ["Pédiatrie", "Pédiatre"]],
+    ["Radiologie", ["Radiologie", "Radio", "mammographie"]],
+    ["Ophtalmologie", ["Ophtalmologie", "Ophtalmo", "Oculaire"]],
+    ["Pneumologie", ["Pneumologie", "Pneumo", "Respiratoire", "Pulmonaire"]],
+    ["Dermatologie", ["Dermatologie", "Dermato", "Cutané"]],
+    ["Vasculaire", ["Vasculaire"]],
+    ["Thoracique", ["Thoracique"]],
+    ["Urologie", ["Urologie", "Uro"]],
+    ["Rhumatologie", ["Rhumatologie", "Rhumato"]],
+    ["Endocrinologie", ["Endocrinologie", "Endocrino", "Diabète", "Diabétologie"]],
+    ["Gastro-entérologie", ["Gastro-entérologie", "Gastro", "Digestif"]],
+    ["Hématologie", ["Hématologie", "Hémato"]],
+    ["Néphrologie", ["Néphrologie", "Néphro", "Rénale"]],
+    ["Oncologie", ["Oncologie", "Onco", "Cancer"]],
+    ["Psychiatrie", ["Psychiatrie", "Psy", "Psychologie"]],
+    ["Stomatologie", ["Stomatologie", "Stomato", "Maxillo-facial"]],
+    ["Addictologie", ["Addictologie", "Addiction"]],
+    ["ORL", ["ORL", "Otologie", "Rhinologie", "Laryngologie", "Otorhinolaryngologie"]],
+    ["Allergologie", ["Allergologie", "Allergie", "Allergique"]],
+    ["Gériatrie", ["Gériatrie", "Gérontologie", "Personnes âgées"]],
+    ["Anesthésiologie", ["Anesthésiologie", "Anesthésie", "Réanimation"]],
+    ["Urgences", ["Urgences", "Service d'Urgence"]],
+    ["Chirurgie", ["Chirurgie", "Chirurgical", "Opération"]],
+]);
+
+const PdfParserAutoImagerie = JSON.stringify([
+    // Types d'imagerie avec mots-clés associés
+    ["scanner", ["scanner", "TDM", "tomodensitométrie"]],
+    ["échographie", ["échographie", "écho", "doppler", "échodoppler"]],
+    ["radiographie", ["radiographie", "radio", "rx"]],
+    ["mammographie", ["mammographie", "mammo"]],
+    ["scintigraphie", ["scintigraphie", "scinti"]],
+    ["ostéodensitométrie", ["ostéodensitométrie", "densitométrie osseuse"]],
+    ["IRM", ["IRM", "imagerie par résonance magnétique"]]
+]);
+
+const PdfParserAutoRegion = JSON.stringify([
+    // Régions anatomiques avec mots-clés associés
+    ["thoracique", ["thorax", "thoracique", "pulmonaire", "poumon"]],
+    ["abdominal", ["abdomen", "abdominal", "abdominale"]],
+    ["crânien", ["crâne", "crânien", "cérébral", "cerveau", "tête", "tete", "crane", "cranien", "cerebral"]],
+    ["rachis", ["rachis", "colonne vertébrale", "lombaire", "cervical", "dorsal", "vertèbre", "colonne vertebrale", "vertebre"]],
+    ["genou", ["genou", "fémoro-tibial", "femoro-tibial"]],
+    ["hanche", ["hanche", "coxo-fémoral", "coxo-femoral"]],
+    ["épaule", ["épaule", "epaule", "scapulo-huméral", "scapulo-humeral"]],
+    ["poignet", ["poignet", "radio-carpien"]],
+    ["coude", ["coude"]],
+    ["cheville", ["cheville", "tibio-tarsien"]],
+    ["pied", ["pied", "tarsien"]],
+    ["main", ["main", "métacarpien", "metacarpien"]],
+    ["bassin", ["bassin", "pelvien"]],
+    ["sinus", ["sinus", "facial"]],
+    ["artère", ["artère", "artériel", "aorte", "carotide", "fémorale", "artere", "arteriel", "femorale"]],
+    ["cardiaque", ["cardiaque", "cœur", "coronaire", "coeur"]],
+    ["mammographie", ["mammographie"]]
+]);
+
+// champ permettant la personnalisation des titres
+// en principe il va générer un titre différent selon la catégorisation prévue.
+// en l'absence de correspondance, il renvoie seulement le titre de la catégorie
+const titleCreator = JSON.stringify([
+    ["LABORATOIRE/BIO", ["Bilan biologique"]],
+    ["Arrêt de travail", ["Avis d'arrêt de travail"]],
+    ["Consultation", ["Cons. [specialite] - [doctorName] - [lieu]"]],
+    ["Courrier", ["Cons. [specialite] - [doctorName] - [lieu]"]],
+    ["IMAGERIE", ["[imagerie] - [region]"]],
+    ["CRO/CRH", ["[typeCR] - [specialite] - [doctorName] - [lieu]"]],
+    ["Compte-rendu", ["[typeCR] - [specialite] - [doctorName] - [lieu]"]],
+    ["*", ["[category] - [specialite] - [doctorName] - [lieu]"]]
+]);
+
+// Définition des règles de classification de destination pour le PDF Parser
+const PdfParserAutoDestinationClass = JSON.stringify([
+    // Niveau 1 : Mots-clés absolus pour les consultations
+    ["1", ["consultation du", "examen clinique", "anamnèse", "consultation"]],
+
+    // Niveau 1 : Mots-clés absolus pour les résultats d'examens
+    ["2", ["Résultats d'examen", "Résultats d'analyse", "valeurs? de référence"]],
+
+    // Niveau 1 : Mots-clés absolus pour les courriers
+    ["3", ["Je vous remercie de m'avoir adressé", "Je reçois", "courrier", "lettre"]],
+
+    // Niveau 2 : Mots-clés probables pour les consultations (moins spécifiques)
+    ["1", ["consultation", "prise en charge", "visite médicale", "Motif"]],
+
+    // Niveau 2 : Mots-clés probables pour les résultats d'examens
+    ["2", ["examen", "résultat", "biologie", "bilan", "analyse", "laboratoire", "scanner", "imagerie", "radiographie", "échographie", "irm", "tdm", "tep", "doppler", "mammographie", "scintigraphie", "echodoppler", "renseignements cliniques", "technique", "conclusion"]],
+
+    // Niveau 2 : Mots-clés probables pour les courriers
+    ["3", ["correspondance", "avis", "compte rendu", "compte-rendu", "CR. consult", "adressé par", "adressée pour", "adressée par", "adressée pour", "Cher Confrère", "chère consoeur", "chère consœur", "nous a consulté", "nous a été adressé", "information destinée", "spécialiste"]],
+    ["1", ["*"]]  // Par défaut, tout est une consultation
+]);
+
+const PdfParserAutoLieu = JSON.stringify([
+    // Établissements de santé avec mots-clés associés
+    ["Cabinet", ["Cabinet médical", "Cabinet de radiologie"]],
+    ["CHU", ["Centre Hospitalier Universitaire"]],
+    ["CH", ["Centre Hospitalier de", "Hôpital de", "Hôpital"]],
+    ["Clinique", ["Clinique", "Polyclinique", "-Chef de clinique"]],
+    ["Centre", ["Centre médical", "Centre de radiologie", "Centre d'imagerie"]],
+    ["Cabinet", ["Cabinet"]],
+    ["CHU", ["CHU"]]
+]);
+
+const PdfParserAutoTypeCR = JSON.stringify([
+    // Types de compte-rendu avec mots-clés associés
+    ["hospitalisation", ["CRH", "compte rendu d'hospitalisation"]],
+    ["consultation", ["Consultation", "consultation"]],
+    ["hospitalisation", ["Hospitalisation"]],
+    ["examen", ["Compte rendu d'examen", "CR d'examen", "compte-rendu d'examen"]],
+    ["opération", ["Compte rendu opératoire", "CRO", "opération"]]
+]);
+
+const customFieldsDefault1 = JSON.stringify([
+]);
+
+const customFieldsDefault2 = JSON.stringify([
+]);
+
+const customFieldsDefault3 = JSON.stringify([
 ]);
 
 
 var advancedDefaultSettings = [{
+//     "name": "Options de test - Nesting profond",
+//     "description": "Options fictives pour tester l'affichage des niveaux d'imbrication",
+//     "type": TYPE_TITLE,
+//     "options": [{
+//         "name": "testNiveau1",
+//         "type": TYPE_BOOL,
+//         "description": "Option de niveau 1",
+//         "default": true,
+//         "subOptions": [{
+//             "name": "testNiveau2a",
+//             "type": TYPE_BOOL,
+//             "description": "Première sous-option de niveau 2",
+//             "default": false,
+//             "subOptions": [{
+//                 "name": "testNiveau3a",
+//                 "type": TYPE_BOOL,
+//                 "description": "Sous-option de niveau 3a",
+//                 "default": true,
+//                 "subOptions": [{
+//                     "name": "testNiveau4a",
+//                     "type": TYPE_SMALLTEXT,
+//                     "description": "Option de niveau 4a (très profonde)",
+//                     "default": "42"
+//                 }]
+//             }, {
+//                 "name": "testNiveau3b",
+//                 "type": TYPE_TEXT,
+//                 "description": "Sous-option de niveau 3b",
+//                 "default": "Texte par défaut niveau 3"
+//             }]
+//         }, {
+//             "name": "testNiveau2b",
+//             "type": TYPE_JSON,
+//             "description": "Deuxième sous-option de niveau 2 (JSON)",
+//             "default": JSON.stringify([["test", ["mot1", "mot2"]]]),
+//             "subOptions": [{
+//                 "name": "testNiveau3c",
+//                 "type": TYPE_BOOL,
+//                 "description": "Sous-option de niveau 3c sous JSON",
+//                 "default": false,
+//                 "subOptions": [{
+//                     "name": "testNiveau4b",
+//                     "type": TYPE_RADIO,
+//                     "description": "Option radio de niveau 4b",
+//                     "default": "option1",
+//                     "radioOptions": [{
+//                         "value": "option1",
+//                         "description": "Première option"
+//                     }, {
+//                         "value": "option2",
+//                         "description": "Deuxième option"
+//                     }],
+//                     "subOptions": [{
+//                         "name": "testNiveau5",
+//                         "type": TYPE_BOOL,
+//                         "description": "Option de niveau 5 (extrêmement profonde)",
+//                         "default": true
+//                     }]
+//                 }]
+//             }]
+//         }]
+//     }]
+// },
+// {
     "name": "Options générales",
     "description": "Des options générales valables partout",
     "type": TYPE_TITLE,
@@ -86,12 +283,18 @@ var advancedDefaultSettings = [{
         "name": "TweakTabSearchPatient",
         "type": TYPE_BOOL,
         "description": "Activer les modifications de la fenêtre recherche patient (navigation facilitée avec la touche Tab).",
-        "default": true
-    }, {
-        "name": "autoSelectPatientCV",
-        "type": TYPE_BOOL,
-        "description": "Lit automatiquement la carte vitale après insertion (nécessite Weda Connect 3) et sélectionne automatiquement le patient s'il est seul.",
-        "default": true
+        "default": true,
+        "subOptions": [{
+            "name": "autoSelectLonePatient",
+            "type": TYPE_BOOL,
+            "description": "Sélectionne automatiquement le patient s'il est seul dans la liste de recherche.",
+            "default": true
+        }, {
+            "name": "pastePatient",
+            "type": TYPE_BOOL,
+            "description": "Colle automatiquement le patient depuis le presse-papiers et lance la recherche.",
+            "default": true
+        }]
     }, {
         "name": "WarpButtons",
         "type": TYPE_BOOL,
@@ -155,7 +358,7 @@ var advancedDefaultSettings = [{
         "description": "Permet l'édition d'un atcd depuis la page d'accueil.",
         "default": true,
         "longDescription": "En cliquant sur un antécédent depuis la page d'accueil, cela ouvre la fenêtre d'édition directement.",
-    },{
+    }, {
         "name": "autoAATI",
         "type": TYPE_BOOL,
         "description": "Automatise la réalisation des arrêts de travail (lecture CV auto, sélection patient auto, impression auto etc. Nécessite le Companion pour fonctionner totalement).",
@@ -269,18 +472,83 @@ var advancedDefaultSettings = [{
             "name": "autoPdfParser",
             "type": TYPE_BOOL,
             "description": "Analyse automatiquement les pdfs en attente d'import et essaie d'en extraire les informations (date, nom patient, etc.).",
-            "longDescription": "Pour les PDFs scannés il est recommandé d'avoir une OCR de qualité. Pour les geeks vous pouvez regarder https://github.com/Refhi/pdf_ocr_pdf (fonctionne bien mais nécessite pas mal de compétences pour l'installer). Pour l'instant ne fonctionne que dans https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx (la fenêtre d'imports de masse).",
+            "longDescription": "Pour les PDFs scannés il est recommandé d'avoir une OCR de qualité. Pour les geeks vous pouvez regarder https://github.com/Refhi/pdf_ocr_pdf (fonctionne bien mais nécessite pas mal de compétences pour l'installer).",
             "default": true,
             "subOptions": [{
                 "name": "PdfParserAutoTitle",
                 "type": TYPE_BOOL,
                 "description": "Crée automatiquement un titre pour les documents importés.",
-                "default": true
+                "default": true,
+                "subOptions": [
+                    {
+                        "name": "PdfParserAutoTitleFormat",
+                        "type": TYPE_JSON,
+                        "description": "Format du titre pour les documents importés.",
+                        "longDescription": "crée un titre à partir des données extraite du document.\nChaque ligne doit commencer par une catégorie (cf. champ d'option ci-dessous) ou par * pour n'importe quelle catégorie et être suivi après \":\" d’une phrase.\nVous pouvez utiliser les variables suivantes :\n- [specialite] : la spécialité médicale détectée\n- [imagerie] : le type d'imagerie détecté\n- [region] : la région anatomique détectée\n- [lieu] : le type d'établissement détecté\n- [typeCR] : le type de compte-rendu détecté\n- [doctorName] : le nom du médecin expéditeur détecté\n- [category] : la catégorie détectée",
+                        "default": titleCreator
+                    }
+                ]
             }, {
-                "name": "PdfParserAutoCategoryDict",
-                "type": TYPE_JSON,
-                "description": "=> Catégorise les documents importés dans les catégories",
-                "longDescription": "Parcours la liste et valide la première catégorie qui correspond.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple. Vous devez initialiser la votre depuis la fenêtre des imports avec la petite icone ⚙️.\n\nLABORATOIRE/BIO : BIOCEANE , LABORATOIRE\nArrêt de travail : avis d'arrêt de travail\nCRO/CRH : Compte Rendu Opératoire , Compte Rendu Hospitalier , Compte Rendu d'Hospitalisation , COMPTE RENDU OPERATOIRE\nConsultation : COMPTE-RENDU DE CONSULTATION\nPARAMEDICAL : BILAN ORTHOPTIQUE\nCourrier : Chère Consœur , chère consoeur , Cher confrère , chère amie , cher ami , Cherconfrére , Chèreconsoeur , Chèreconsœur\nIMAGERIE : imagerie , radiographie , scanner , IRM , radiologie\nAdministratif : \nArrêt de travail : arrêt de travail , congé maladie\nBiologie : biologie , analyse sanguine\nBon de transport : bon de transport , transport médical\nCertificat : certificat , attestation\nECG : ecg , électrocardiogramme\nEFR : exploration fonctionnelle respiratoire\nLABORATOIRE/BIO : laboratoire\nMT : Déclaration de Médecin Traitant , déclaration médecin traitant\nPARAMEDICAL : paramédical , soins\nSPECIALISTE : spécialiste , consultation spécialisée\nConsultation : consultation , visite médicale\nOrdonnance : ordonnance , prescription , 60-3937\nCompte Rendu : compte rendu , compte-rendu , automesure",                "default": PdfParserAutoCategoryDefaut
+                "name": "Règles de catégorisation", // cf https://github.com/Refhi/Weda-Helper/blob/ca0b284cc25a7b05b7ffd3052fa51cc9782253be/pdfParser.js#L2037
+                "type": TYPE_TITLE,
+                "description": "Lors d’une tentative de classification, Weda-Helper parcourt chacune des listes ci-dessous et valide pour chaque type de catégorisation la première catégorie trouvée dans la ligne.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple.\nUne phrase-clé \* valide automatiquement la ligne si aucun autre match n’a été trouvé.\n Une phrase-clé débutant par - (ex. -chef de clinique) permet d’éviter les faux positifs. Par exemple si vous mettez dans les mots-clés «clinique» et «-chef de clinique», le mot-clé «clinique» ne sera pas pris en compte si le mot est dans la phrase «chef de clinique».\n Vous pouvez vérifier le log de l’analyse en mettant (dans les pages d’import) la souris sur 🔄",
+                "subOptions": [
+                    {
+                        "name": "PdfParserAutoCategoryDict",
+                        "type": TYPE_JSON,
+                        "description": "Catégorie de classement du document importé [category]",
+                        "longDescription": "Parcours la liste et valide la première catégorie qui correspond.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple. Vous devez initialiser la votre depuis la fenêtre des imports avec la petite icone ⚙️.",
+                        "default": PdfParserAutoCategoryDefaut
+                    }, {
+                        "name": "PdfParserAutoSpecialiteDict",
+                        "type": TYPE_JSON,
+                        "description": "Spécialités médicale de la source du document importé [specialite]",
+                        "longDescription": "Liste des spécialités médicales avec leurs mots-clés associés pour la détection automatique.",
+                        "default": PdfParserAutoSpecialite
+                    }, {
+                        "name": "PdfParserAutoImagerieDict",
+                        "type": TYPE_JSON,
+                        "description": "Types d'imagerie [imagerie]",
+                        "longDescription": "Liste des types d'imagerie avec leurs mots-clés associés pour la détection automatique.",
+                        "default": PdfParserAutoImagerie
+                    }, {
+                        "name": "PdfParserAutoRegionDict",
+                        "type": TYPE_JSON,
+                        "description": "Régions anatomiques (par exemple en cas d’imagerie) [region]",
+                        "longDescription": "Liste des régions anatomiques avec leurs mots-clés associés pour la détection automatique.",
+                        "default": PdfParserAutoRegion
+                    }, {
+                        "name": "PdfParserAutoLieuDict",
+                        "type": TYPE_JSON,
+                        "description": "Types d'établissements de santé [lieu]",
+                        "longDescription": "Liste des établissements de santé avec leurs mots-clés associés pour la détection automatique.",
+                        "default": PdfParserAutoLieu
+                    }, {
+                        "name": "PdfParserAutoTypeCRDict",
+                        "type": TYPE_JSON,
+                        "description": "Type de compte-rendu [typeCR]",
+                        "longDescription": "Liste des types de compte-rendu avec leurs mots-clés associés pour la détection automatique.",
+                        "default": PdfParserAutoTypeCR
+                    }, {
+                        "name": "PdfParserAutoCustom1Dict",
+                        "type": TYPE_JSON,
+                        "description": "Champs personnalisés 1 [custom1]",
+                        "longDescription": "Liste de champs personnalisés avec leurs mots-clés associés pour la détection automatique.",
+                        "default": customFieldsDefault1
+                    }, {
+                        "name": "PdfParserAutoCustom2Dict",
+                        "type": TYPE_JSON,
+                        "description": "Champs personnalisés 2 [custom2]",
+                        "longDescription": "Liste de champs personnalisés avec leurs mots-clés associés pour la détection automatique.",
+                        "default": customFieldsDefault2
+                    }, {
+                        "name": "PdfParserAutoCustom3Dict",
+                        "type": TYPE_JSON,
+                        "description": "Champs personnalisés 3 [custom3]",
+                        "longDescription": "Liste de champs personnalisés avec leurs mots-clés associés pour la détection automatique.",
+                        "default": customFieldsDefault3
+                    }
+                ]
             }, {
                 "name": "PdfParserAutoDate",
                 "type": TYPE_BOOL,
@@ -292,7 +560,14 @@ var advancedDefaultSettings = [{
                 "description": "Détermine automatiquement la destination du document importé (Consultation/Résultats d'examen/Courrier).",
                 "default": false,
                 "longDescription": "Si vous souhaitez classer les imports dans les parties Consultation/Résultats d'examen/Courrier, vous pouvez activer cette option pour le faire automatiquement.",
-            },{
+                "subOptions": [{
+                    "name": "PdfParserAutoDestinationClassDict",
+                    "type": TYPE_JSON,
+                    "description": "Règles de classification : destination du document importé",
+                    "longDescription": "Règles pour déterminer automatiquement si un document doit être classé en :\n1 : Consultation\n2 : Résultats d'examens\n3 : Courrier\n\nL'ordre définit la priorité de détection.",
+                    "default": PdfParserAutoDestinationClass
+                }]
+            }, {
                 "name": "PdfParserDateAlphabetique",
                 "type": TYPE_BOOL,
                 "description": "Recherche également les dates type 15 novembre 2021.",
@@ -489,7 +764,7 @@ var advancedDefaultSettings = [{
         "description": "Type de recherche par défaut (1 à 14). 0 pour désactiver.",
         "default": 0,
         "longDescription": "Par défaut, Weda reviens au dernier type de recherche utilisée. Vous pouvez définir le type de recherche médicamenteuse à utiliser systématiquement au chargement :\n\n1 - Médicaments\n14 - Recherche par produits\n8 - Dénomination commune (DCI)\n2 - Molécules (principes actifs)\n10 - Recherche par U.C.D.\n3 - Recherche par A.T.C.\n13 - Recherche par Vidal\n4 - Indications\n5 - Groupe d'indications\n6 - Laboratoires\n7 - Vos favoris et perso.\n9 - Le Top 50"
-    },{
+    }, {
         "name": "TweakRecetteForm",
         "type": TYPE_BOOL,
         "description": "Appuie automatiquement sur le bouton \"rechercher\" après avoir sélectionné la page des recettes (permet d’afficher les recettes du jour directement en arrivant sur la page).",
@@ -671,6 +946,12 @@ var advancedDefaultSettings = [{
         "description": "La touche Alt ne met plus le focus sur le menu du navigateur",
         "default": true,
         "longDescription": "Cela règle deux problèmes : le focus était perdu lors de l'usage de Alt pour afficher l'aide, et lorsque le Companion tente de rendre le focus au navigateur (via un appuis simulé sur la touche Alt) cela entrainait parfois un focus sur le menu du navigateur."
+    }, {
+        "name": "debugModePdfParser",
+        "type": TYPE_BOOL,
+        "description": "Active le mode debug du PDF Parser.",
+        "default": false,
+        "longDescription": "Affiche un champ de test dans la page des imports pour tester rapidement l’algorithme d’anayse des PDF. Utile pour les développeurs.",
     }],
 }];
 

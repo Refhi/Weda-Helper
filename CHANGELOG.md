@@ -4,6 +4,28 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.13.2] - Améliorations et correctifs - imports automatisés nettement améliorés !
+## Ajouts :
+- Lors de la recherche d’un patient, si un unique résultat est trouvé, il est automatiquement validé. ![Recherche patient](./Images/mises%20a%20jour/2.13.2-autopast.gif)
+- À côté du champ de recherche, un bouton permet de coller et rechercher un patient/nir présent dans le presse-papiers. ![Coller et rechercher](./Images/mises%20a%20jour/2.13.2-autopaste.png)
+
+## Imports automatisés :
+- Les champs de catégorisation automatique sont plus facilement personnalisables ![Personnalisation des champs](./Images/mises%20a%20jour/2.13.2-autocat.png)
+- Le constructeur de titre est désormais personnalisable (cf. page des options) ![Personnalisation du titre](./Images/mises%20a%20jour/2.13.2-autotitle.png)
+- Un survol du bouton de réinitialisation affiche désormais le log d’extraction (utile pour affiner les mots-clés de catégorisation automatique) ![Log d'extraction](./Images/mises%20a%20jour/2.13.2-logclassement.png)
+
+## Améliorations diverses :
+- La page des options est plus ergonomique ![Ergonomie de la page des options](./Images/mises%20a%20jour/2.13.2-ergoOptionPage.png)
+
+## Fix :
+- [#468](https://github.com/Refhi/Weda-Helper/issues/468) - l’impression de l’arrêt de travail est plus rapide et se termine correctement.
+- [#466](https://github.com/Refhi/Weda-Helper/issues/466) - Les antécédents s'affichent de nouveau à gauche si l'option dédiée est activée. ![Antécédents à gauche](./Images/mises%20a%20jour/2.13.2-leftAtcd.gif)
+- [#471](https://github.com/Refhi/Weda-Helper/issues/471) - Ajout du mot "kinésithérapeute" dans les mots-clés de classification automatique des ordonnances numériques.
+- [#472](https://github.com/Refhi/Weda-Helper/issues/472) - L’inversion du nom du document importé et du corps du message fonctionne également si il y a plusieures pièces jointes.
+- [#478](https://github.com/Refhi/Weda-Helper/issues/478) - Le nom et la date de naissance du patient s’affichent en cas de clic sur "Importer le message" dans les échanges sécurisés. ![Nom et date de naissance du patient](./Images/mises%20a%20jour/2.13.2-destinationName.gif)
+- [#479](https://github.com/Refhi/Weda-Helper/issues/479) - La classification automatique s’active également si le "Importer le message" est en 2e position ou plus dans les échanges sécurisés. ![Multi-imports](./Images/mises%20a%20jour/2.13.2-multi-imports.png)
+
+
 # [2.13.1] - Correctifs
 ## Fix :
 - [#465](https://github.com/Refhi/Weda-Helper/issues/465) - L'historique gauche est de nouveau affiché avec 30% de largeur par défaut au lieu des 50% proposé de base par Weda. (actif si l'historique gauche est activé automatiquement dans les consultations)
