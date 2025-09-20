@@ -4,6 +4,12 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+
+# [2.13.2.1] - Correctifs
+## Fix :
+- [#487](https://github.com/Refhi/Weda-Helper/issues/487) - Le bouton "Réinitialiser les auto-imports" n’est plus caché par le "log d’extraction".
+
+
 # [2.13.2] - Améliorations et correctifs - imports automatisés nettement améliorés !
 ## Ajouts :
 - Lors de la recherche d’un patient, si un unique résultat est trouvé, il est automatiquement validé. ![Recherche patient](./Images/mises%20a%20jour/2.13.2-autopast.gif)
