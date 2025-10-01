@@ -4,6 +4,10 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.13.3] - Correctifs
+## Nettoyage :
+- Suppression de la fonctionnalité "Tout mettre en consultation" dans le popup (obsolète avec les imports automatisés)
+- Suppression de la fonctionnalité "Envoyer une notification Weda" dans le popup (inutile, était surtout utile pour le développement)
 
 # [2.13.2.1] - Correctifs
 ## Fix :
