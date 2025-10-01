@@ -5,9 +5,17 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
 # [2.13.3] - Correctifs
+## Fix :
+- [#491](https://github.com/Refhi/Weda-Helper/issues/491) - Les raccourcis ne créent un nouveau document que si aucun n’existe ou qu’il est appelé depuis le document en cours.
+
+
 ## Nettoyage :
 - Suppression de la fonctionnalité "Tout mettre en consultation" dans le popup (obsolète avec les imports automatisés)
 - Suppression de la fonctionnalité "Envoyer une notification Weda" dans le popup (inutile, était surtout utile pour le développement)
+
+## Divers :
+- [#492](https://github.com/Refhi/Weda-Helper/issues/492) - Ajout d’émojis dans les titres des onglets pour mieux repérer les onglets en cours (impression, envoi MSSanté, etc.)
+
 
 # [2.13.2.1] - Correctifs
 ## Fix :

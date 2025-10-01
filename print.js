@@ -656,7 +656,7 @@ function closeWindow() {
         justOnce: true,
         callback: function () {
             console.log('[InstantPrint] progress bar detected, attente de sa disparition');
-            document.title = "Envoi DMP en cours";
+            document.title = "📤⏳ Envoi DMP en cours";
             // Inhibition du lastPrintDate pour limiter les risques de fermeture d'un autre onglet
             sessionStorage.removeItem('lastPrintDate');
             let startTime = Date.now();
@@ -673,6 +673,7 @@ function closeWindow() {
                 // vérifiant la date de la dernière impression => cf. plus bas
                 if (!progressBarElement) {
                     console.log('[InstantPrint] progress bar disparue, je ferme la fenêtre');
+                    document.title = "👋 Fermeture de l'onglet";
                     clearInterval(interval);
                     // window.close();
                     closeCurrentTab();
@@ -680,6 +681,7 @@ function closeWindow() {
                     watchForClose();
                 } else if (Date.now() - startTime > 40000) {
                     clearInterval(interval);
+                    document.title = "🖨️⚠️ Erreur impression";
                     sendWedaNotifAllTabs({
                         message: '[Weda-Helper] Erreur DMP: La barre de progression n\'a pas disparu après 40 secondes. Merci de vérifier l\'onglet qui a initié l\'impression instantanée.',
                         type: 'fail',
@@ -714,16 +716,16 @@ async function tabAndPrintHandler(mustSend = false, massPrint = false) {
         if (!massPrint) {
             await newPatientTab();
         }
-        document.title = "Impression démarrée";
+        document.title = "🖨️⏳ Impression démarrée";
 
         // 2. Attente de la confirmation d'impression par le Companion
         await companionPrintDone();
-        document.title = "Impression terminée";
+        document.title = "🖨️✅ Impression terminée";
 
         // 3. Action post-impression selon le mode
         if (mustSend) {
             // Mode envoi : on maintient l'onglet ouvert et on signale l'impression
-            document.title = "Envoi MSSanté en cours";
+            document.title = "📤⏳ Envoi MSSanté en cours";
             await handleSendAfterPrintFlags();
         } else {
             // Mode impression simple : on ferme l'onglet original en attendant l'éventuelle complétion de l'envoi au DMP

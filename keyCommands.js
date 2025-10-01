@@ -57,55 +57,55 @@ const keyCommands = {
     },
     'shortcut_consult': function () {
         console.log('shortcut_consult activé');
-        submenuW(' Consultation');
+        submenuW('Consultation');
     },
     'shortcut_consult_bis': function () {
         console.log('shortcut_consult_bis activé');
-        submenuW(' Consultation', true);
+        submenuW('Consultation', true);
     },
     'shortcut_certif': function () {
         console.log('shortcut_certif activé');
-        submenuW(' Certificat');
+        submenuW('Certificat');
     },
     'shortcut_certif_bis': function () {
         console.log('shortcut_certif_bis activé');
-        submenuW(' Certificat', true);
+        submenuW('Certificat', true);
     },
     'shortcut_demande': function () {
         console.log('shortcut_demande activé');
-        submenuW(' Demande');
+        submenuW('Demande');
     },
     'shortcut_demande_bis': function () {
         console.log('shortcut_demande_bis activé');
-        submenuW(' Demande', true);
+        submenuW('Demande', true);
     },
     'shortcut_prescription': function () {
         console.log('shortcut_prescription activé');
-        submenuW(' Prescription');
+        submenuW('Prescription');
     },
     'shortcut_prescription_bis': function () {
         console.log('shortcut_prescription_bis activé');
-        submenuW(' Prescription', true);
+        submenuW('Prescription', true);
     },
     'shortcut_formulaire': function () {
         console.log('shortcut_formulaire activé');
-        submenuW(' Formulaire');
+        submenuW('Formulaire');
     },
     'shortcut_formulaire_bis': function () {
         console.log('shortcut_formulaire_bis activé');
-        submenuW(' Formulaire', true);
+        submenuW('Formulaire', true);
     },
     'shortcut_courrier': function () {
         console.log('shortcut_courrier activé');
-        submenuW(' Courrier');
+        submenuW('Courrier');
     },
     'shortcut_courrier_bis': function () {
         console.log('shortcut_courrier_bis activé');
-        submenuW(' Courrier', true);
+        submenuW('Courrier', true);
     },
     'shortcut_fse': function () {
         console.log('shortcut_fse activé');
-        submenuW(' FSE');
+        submenuW('FSE');
     },
     'shortcut_carte_vitale': function () {
         console.log('shortcut_carte_vitale activé');
@@ -447,73 +447,6 @@ function clickCarteVitale() {
     }
 }
 
-/**
- * Trouve un élément de niveau 3 du menu qui correspond à la description donnée
- * @param {HTMLElement} baseMenuLvl1 - L'élément de base du menu de niveau 1
- * @param {string} description - La description à rechercher
- * @returns {HTMLElement|null} - L'élément trouvé ou null si non trouvé
- */
-function findLevel3Element(baseMenuLvl1, description) {
-    if (!baseMenuLvl1) {
-        console.log('[findLevel3Element] Menu de base (level 1) non trouvé');
-        return null;
-    }
-    
-    // Récupère tous les éléments de niveau 3
-    const level3Elements = Array.from(baseMenuLvl1.getElementsByClassName('level3 dynamic'));
-    
-    if (level3Elements.length === 0) {
-        console.log('[findLevel3Element] Aucun élément de niveau 3 trouvé dans le menu');
-        return null;
-    }
-    
-    console.log(`[findLevel3Element] Recherche de "${description}" parmi ${level3Elements.length} éléments de niveau 3`);
-    
-    // On va éviter de cliquer sur les éléments suivants qui sont systématiquement inappropriés
-    const blackList = [
-        " Courrier à établir",
-        " Demande laboratoire",
-        " Demande imagerie",
-        " Demande paramédicale"
-    ];
-
-
-    // Recherche l'élément correspondant aux critères
-    const matchingElement = level3Elements.find(function (element) {
-        const includesText = element.innerText.includes(description);
-        const hasTabIndex = element.hasAttribute('tabindex');
-        const isNotBlacklisted = !blackList.some(blacklistedText => element.innerText.includes(blacklistedText));
-        
-        console.log(`[findLevel3Element] Élément: "${element.innerText}" - ` +
-                    `contient "${description}": ${includesText ? 'oui' : 'non'}, ` +
-                    `tabindex: ${hasTabIndex ? 'oui' : 'non'}, ` +
-                    `n'est pas alerte courrier: ${isNotBlacklisted ? 'oui' : 'non'}`);
-        
-        return includesText && hasTabIndex && isNotBlacklisted;
-    });
-    
-    if (matchingElement) {
-        console.log(`[findLevel3Element] Élément trouvé pour "${description}":`, matchingElement.innerText);
-    } else {
-        console.log(`[findLevel3Element] Aucun élément correspondant à "${description}" trouvé`);
-    }
-    
-    return matchingElement;
-}
-
-/**
- * Trouve un élément de niveau 2 du menu qui correspond à la description donnée
- * @param {HTMLElement} baseMenuLvl1 - L'élément de base du menu de niveau 1
- * @param {string} description - La description à rechercher
- * @returns {HTMLElement|null} - L'élément trouvé ou null si non trouvé
- */
-function findLevel2Element(baseMenuLvl1, description) {
-    if (!baseMenuLvl1) return null;
-
-    return Array.from(baseMenuLvl1.getElementsByClassName('level2 dynamic')).find(function (element) {
-        return element.innerText.includes(description) && element.hasAttribute('tabindex');
-    });
-}
 
 
 /** Clique sur un élément du menu selon sa description
@@ -531,31 +464,58 @@ function submenuW(description, shiftOn = false) {
         return false;
     }
 
+    // On recherche l'élément de niveau 2 et on ne garde que celui qui correspond à la description
+    let level2Element = Array.from(baseMenuLvl1.querySelectorAll(`a.level2`)).find(a => a.textContent.trim().startsWith(description.trim()));
+    console.log('level2Element', level2Element);
 
-    // D'abord on cherche si un document existe déjà
-    // On le cherche dans les elements de niveau 3
-    var level3Element = findLevel3Element(baseMenuLvl1, description);
+    // On liste les éléments de niveau 3 sous le parent de level2Element
+    let level3Elements = level2Element.parentElement.querySelectorAll('a.level3');
+    console.log('level3Elements', level3Elements);
 
-    console.log('level3Element', level3Element);
-    if (level3Element && !shiftOn) {
-        level3Element.click();
-        recordMetrics({ clicks: 1, drags: 3 });
-        console.log('Element clicked:', level3Element);
-        return true;
-    } else {
-        // Si la création d'un nouveau document est requise, on va cliquer dans les éléments de niveau 2
-        var level2Element = findLevel2Element(baseMenuLvl1, description);
-        console.log('level2Element', level2Element);
+    // Filtre des éléments "parasitaires" qui ne sont pas des documents
+    const blackList = [
+        " Courrier à établir",
+        " Demande laboratoire",
+        " Demande imagerie",
+        " Demande paramédicale"
+    ];
 
-        if (level2Element) {
-            level2Element.click();
-            recordMetrics({ clicks: 1, drags: 2 });
-            console.log('Element clicked:', level2Element);
+    // On retire les éléments qui sont dans la blackList
+    level3Elements = Array.from(level3Elements).filter(el => !blackList.includes(el.textContent.trim()));
+    console.log('level3Elements après filtrage', level3Elements, "de taille", level3Elements.length);
+
+
+    function clicLvlElement(element) {
+        if (element) {
+            element.click();
+            recordMetrics({ clicks: 1, drags: 1 });
             return true;
         }
+        return false;
     }
-    console.log('No elements found', description);
-    return false;
+
+    console.log('shiftOn', shiftOn);
+    if (shiftOn) {
+        console.log('Shift est enfoncé, on force la création d\'un nouveau document, je clique sur', level2Element);
+        clicLvlElement(level2Element);
+    } else if (level3Elements.length === 0) {
+        // Si pas d'élément de niveau 3 on clique sur l'élément de niveau 2 pour créer un nouveau document
+        console.log('Aucun élément de niveau 3 trouvé, on clique sur le niveau 2', level2Element);
+        clicLvlElement(level2Element);
+    } else if (level3Elements.length >= 1) {
+        // On cherche le titre du premier élément de niveau 3
+        const level3Title = level3Elements[0].querySelector('span').title;
+        // On a trouvé au moins un élément de niveau 3
+        console.log('Au moins un élément de niveau 3 trouvé', level3Elements, level3Title);
+        // Si un seul élément de niveau 3 on vérifie que ça n’est pas déjà le document courant
+        if (level3Title.includes("Vous êtes actuellement positionné sur ce document")) {
+            console.log('Déjà sur ce document, on force la création d\'un nouveau document', level2Element);
+            clicLvlElement(level2Element);
+        } else {
+            console.log('Un seul élément de niveau 3 trouvé, on clique dessus', level3Elements[0]);
+            clicLvlElement(level3Elements[0]);
+        }
+    }
 }
 
 // Clique sur un élément selon le text de son enfant
