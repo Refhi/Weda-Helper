@@ -474,10 +474,11 @@ function submenuW(description, shiftOn = false) {
 
     // Filtre des éléments "parasitaires" qui ne sont pas des documents
     const blackList = [
-        " Courrier à établir",
-        " Demande laboratoire",
-        " Demande imagerie",
-        " Demande paramédicale"
+        "Courrier à établir",
+        "Demande laboratoire",
+        "Demande imagerie",
+        "Demande paramédicale",
+        "Renouvellement"
     ];
 
     // On retire les éléments qui sont dans la blackList
