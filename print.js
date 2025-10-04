@@ -360,7 +360,7 @@ function awaitIframeUrl(iframe) {
  * Peut être 'doNothing', 'closePreview', ou 'returnToPatient'.
  */
 function postPrintAction(postPrintBehavior, whatToPrint, weDoc = false) {
-    console.log('postPrintAction activé');
+    console.log('[postPrintAction] activé');
 
     /**
      * Ferme la fenêtre d'impression FSE.
@@ -370,14 +370,14 @@ function postPrintAction(postPrintBehavior, whatToPrint, weDoc = false) {
         boutons = document.querySelectorAll('span.mat-button-wrapper');
         let boutonFermer = Array.from(boutons).find(bouton => bouton.innerText === 'Fermer');
         if (boutonFermer) {
-            console.log('boutonFermer', boutonFermer);
+            console.log('[postPrintAction] boutonFermer', boutonFermer);
             boutonFermer.click();
         }
     }
 
     // cas d'une FSE
     if (whatToPrint === 'fse') {
-        console.log('FSE detected, je tente de fermer la fenêtre');
+        console.log('[postPrintAction] FSE detected, je tente de fermer la fenêtre');
         closeFSEPrintWindow();
     } else if (weDoc) {
         // Gestion spécifique pour WeDoc
@@ -397,7 +397,7 @@ function postPrintAction(postPrintBehavior, whatToPrint, weDoc = false) {
             });
             
             if (targetButton) {
-                console.log('clicking on WeDoc button', targetButton);
+                console.log('[postPrintAction] clicking on WeDoc button', targetButton);
                 targetButton.click();
                 recordMetrics({ clicks: 1, drags: 1 });
             }
@@ -409,12 +409,18 @@ function postPrintAction(postPrintBehavior, whatToPrint, weDoc = false) {
             'closePreview': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay',
             'returnToPatient': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
         }
-        console.log('postPrintBehavior is ', postPrintBehavior, 'id to look for ', closebutton[postPrintBehavior])
+        console.log('[postPrintAction] postPrintBehavior is ', postPrintBehavior, 'id to look for ', closebutton[postPrintBehavior])
         let buttonToClick = document.getElementById(closebutton[postPrintBehavior]);
         if (buttonToClick) {
-            console.log('clicking on', buttonToClick)
+            console.log('[postPrintAction] clicking on', buttonToClick)
             buttonToClick.click();
             recordMetrics({ clicks: 1, drags: 1 });
+        } else {
+            console.error('[postPrintAction] no button to click found');
+            // Lister tout les boutons input dont value contiens "Fermer"
+            let buttons = document.querySelectorAll('input[type="button"]');
+            let closeButtons = Array.from(buttons).filter(button => button.value.includes('Fermer'));
+            console.error('[postPrintAction] debug : closeButtons found', closeButtons);
         }
     }
 }
