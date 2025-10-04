@@ -4,6 +4,11 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.13.4]
+## Fix :
+- [#490](https://github.com/Refhi/Weda-Helper/issues/490) - Les modèles WeDoc fonctionnent désormais correctement avec l'impression instantanée et le post-traitement (fermeture de l'onglet, envoi MSSanté, etc.)
+
+
 # [2.13.3] - Correctifs
 ## Fix :
 - [#491](https://github.com/Refhi/Weda-Helper/issues/491) - Les raccourcis ne créent un nouveau document que si aucun n’existe ou qu’il est appelé depuis le document en cours.
