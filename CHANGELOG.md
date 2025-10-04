@@ -7,6 +7,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 # [2.13.4]
 ## Fix :
 - [#490](https://github.com/Refhi/Weda-Helper/issues/490) - Les modèles WeDoc fonctionnent désormais correctement avec l'impression instantanée et le post-traitement (fermeture de l'onglet, envoi MSSanté, etc.)
+- [#496](https://github.com/Refhi/Weda-Helper/issues/496) - Ctrl+E permet de nouveau d'imprimer + envoyer par MSSanté si l'option est activée.
 
 
 # [2.13.3] - Correctifs

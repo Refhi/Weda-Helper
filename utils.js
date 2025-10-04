@@ -781,13 +781,17 @@ chrome.storage.onChanged.addListener(function (changes, namespace) {
 
 
 
-// ** set lastPrintDate
-// * permet de définir la date de la dernière impression et donc de permettre ensuite la fermeture de l'onglet appelant
-// * dans le cadre de la fonction instantPrint
+/** Lors de l'impression instantanée, la page d'impression navigue parfois
+* vers la page d'accueil avant que WH n'ait le temps de fermer l'onglet d'impression.
+* Pour éviter ce problème, on enregistre la date de la dernière impression.
+* Si cette date est récente, on ferme l'onglet appelant.
+* cf. https://github.com/Refhi/Weda-Helper/blob/7c0882e419f689cabb6ec9504a2d85c327082b8b/print.js#L826
+* 
+**/
 function setLastPrintDate() {
     const date = new Date();
     sessionStorage.setItem('lastPrintDate', date.toISOString());
-    console.log('Dernière date d\'impression enregistrée :', date);
+    // console.log('Dernière date d\'impression enregistrée :', date);
 }
 
 

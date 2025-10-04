@@ -266,7 +266,7 @@ function triggerDirectDownload(url) {
  * @returns {boolean} returns.found - Indique si l'élément à cliquer a été trouvé et cliqué avec succès
  */
 function clickPrintModelNumber(modelNumber = 0, send = false) {
-    let stateReturn = {weDoc: false, found: false};
+    let stateReturn = { weDoc: false, found: false };
     var elements = document.querySelectorAll('[onclick*="ctl00$ContentPlaceHolder1$MenuPrint"][class*="popout-dynamic level2"]');
     console.log('Voici les modeles d impression trouvés', elements);
     if (elements[modelNumber]) {
@@ -286,6 +286,15 @@ function clickPrintModelNumber(modelNumber = 0, send = false) {
                     console.log('clicking on send element', sendElement);
                     stateReturn.found = true;
                     sendElement.click();
+                    return stateReturn;
+                } else {
+                    console.warn('Aucun élément "Envoyer" trouvé parmi les éléments enfants.');
+                    sendWedaNotifAllTabs({
+                        message:"une demande d'envoi a été fait, mais aucune possibilité d'envoi n'a été trouvée. Êtes-vous bien dans une page Courrier ?",
+                        type:'undefined',
+                        icon:'warning'}
+                    );
+                    document.title = "📤⚠️ Erreur Envoi";
                 }
             }, 500); // Attendre un peu pour que les éléments enfants soient chargés
         } else {
@@ -386,7 +395,7 @@ function postPrintAction(postPrintBehavior, whatToPrint, weDoc = false) {
             'closePreview': 'Fermer',
             'returnToPatient': 'Retourner au dossier patient'
         };
-        
+
         const buttonText = weDocButtons[postPrintBehavior];
         if (buttonText) {
             // Chercher le bouton par son texte dans les boutons WeDoc
@@ -395,7 +404,7 @@ function postPrintAction(postPrintBehavior, whatToPrint, weDoc = false) {
                 const wrapper = button.querySelector('.mat-button-wrapper');
                 return wrapper && wrapper.innerText.trim() === buttonText;
             });
-            
+
             if (targetButton) {
                 console.log('[postPrintAction] clicking on WeDoc button', targetButton);
                 targetButton.click();
@@ -594,22 +603,28 @@ async function startPrinting(printConfig) {
         const DMPManuel = (instantPrint || sendAfterPrint) && DMPCheckBox && DMPCheckBox.checked && DMPSendButton;
 
         // Arrêter si l'envoi au DMP n'est pas applicable
-        if (!DMPManuel) { return; }
+        if (DMPManuel) {
+            // Envoyer au DMP
+            console.log('[startPrinting] Je dois envoyer manuellement au DMP', DMPSendButton);
+            DMPSendButton.click();
 
-        // Envoyer au DMP
-        console.log('[startPrinting] Je dois envoyer manuellement au DMP', DMPSendButton);
-        DMPSendButton.click();
-
-        // 4. Gestion de l'envoi du document après DMP (si demandé)
-        if (sendAfterPrint) {
-            waitForDMPCompletion(() => {
-                console.log('[startPrinting] Envoi du document au DMP terminé, je clique sur le bouton Envoyer');
-                setTimeout(() => {
-                    clickPrintModelNumber(modelNumber, true); // C'est Weda qui renvoie vers l'accueil après l'envoi
-                }, 500);
-            });
+            // 4. Gestion de l'envoi du document après DMP (si demandé)
+            if (sendAfterPrint) {
+                console.log('[startPrinting] sendAfterPrint activé, j\'attends la fin de l\'envoi au DMP avant d\'envoyer le document');
+                waitForDMPCompletion(() => {
+                    console.log('[startPrinting] Envoi du document au DMP terminé, je clique sur le bouton Envoyer');
+                    setTimeout(() => {
+                        clickPrintModelNumber(modelNumber, true); // C'est Weda qui renvoie vers l'accueil après l'envoi
+                    }, 500);
+                });
+            }
         }
 
+        // 4. Gestion de la fermeture de l'onglet pour l'impression instantanée
+        if (sendAfterPrint) {
+            console.log("[startPrinting] sendAfterPrint activé sans DMP, je demande l'envoi du document directement");
+            clickPrintModelNumber(modelNumber, true); // C'est Weda qui renvoie vers l'accueil après l'envoi
+        }
     }
 }
 
@@ -646,7 +661,7 @@ function watchForClose() {
 
 
 /**
- * Attend la fin de l'impression par l'application compagnon
+ * Attend la fin de l'impression par l'application Companion
  * Retourne une promesse qui se résout lorsque l'impression est terminée avec succès
  * ou qui est rejetée lorsque le délai est dépassé
  * 
@@ -789,8 +804,11 @@ async function tabAndPrintHandler(mustSend = false, massPrint = false) {
 }
 
 /**
- * Configure les drapeaux de signalisation pour le mode "envoi après impression"
- * 
+ * Le mode "envoi après impression" entraine un retard du retour à la page d'accueil
+ * la page d'accueil risque donc de ne pas se fermer alors qu'elle devrait.
+ * Afin d'éviter cela, on spam le timestamp de dernière impression
+ * du coup après retour à la page d'accueil, le timestamp étant < 5s
+ * l'onglet sait qu'il doit se fermer. @see {@link #recoverInstantPrintClose}
  * @async
  * @returns {Promise<void>}
  */
@@ -823,9 +841,12 @@ async function handleSendAfterPrintFlags() {
 
 
 
-// Rattrapage de la fermeture de l'onglet
-// => Parfois la progressBar reste affichée après l'impression, ce qui empêche la fermeture de la fenêtre
-// => On doit donc se rattraper après le chargement d'une nouvelle page dans la même session
+/** Rattrapage de la fermeture de l'onglet
+ * @anchor recoverInstantPrintClose
+ * => Parfois la progressBar reste affichée après l'impression, ce qui empêche la fermeture de la fenêtre
+ * => On doit donc se rattraper après le chargement d'une nouvelle page dans la même session
+ * 
+ */
 addTweak('/FolderMedical/PatientViewForm.aspx', 'instantPrint', function () {
     const DELAY = 5000;
     console.log('[InstantPrint] debug démarré suite retour à dossier patient');
@@ -906,12 +927,12 @@ const tabTaskStore = {
         // Purge des tâches trop anciennes
         this.purgeOldTasks();
     },
-    
+
     // Purge les tâches qui sont trop anciennes
     purgeOldTasks: function (maxAgeMs = 300000) { // Par défaut: 5 minutes
         const now = Date.now();
         let purgedCount = 0;
-        
+
         // Parcourir toutes les tâches
         for (const tabId in this.tasks) {
             const task = this.tasks[tabId];
@@ -921,19 +942,19 @@ const tabTaskStore = {
                 purgedCount++;
             }
         }
-        
+
         // Si au moins une tâche a été purgée, mettre à jour le localStorage
         if (purgedCount > 0) {
             localStorage.setItem('tabTasks', JSON.stringify(this.tasks));
-            console.log(`${purgedCount} tâches anciennes ont été purgées (> ${maxAgeMs/60000} minutes)`);
+            console.log(`${purgedCount} tâches anciennes ont été purgées (> ${maxAgeMs / 60000} minutes)`);
         }
-        
+
         return purgedCount;
     }
 };
 
 
-// Ajout d'une icone d'imprimange pour lancer startPrintAll sans forcément passer par Ctrl+P
+// Ajout d'une icone d'imprimante pour lancer startPrintAll sans forcément passer par Ctrl+P
 addTweak('/FolderMedical/PatientViewForm.aspx', PRINTALLFUNCTION, async function () {
     const elementTitreConsultation = document.querySelector('#ContentPlaceHolder1_DivScrollHistorique .sm');
     console.log('[PRINTALLFUNCTION] elementTitreConsultation', elementTitreConsultation);
