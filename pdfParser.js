@@ -1398,22 +1398,26 @@ function addLogMessageOnMouseOver(elementSelector, message) {
                 // Positionner la popup près de l'élément
                 const rect = element.getBoundingClientRect();
                 const popupRect = popup.getBoundingClientRect();
-
+            
                 let left = rect.left + 10;
                 let top = rect.bottom + 5;
-
-                // Ajuster si la popup dépasse de l'écran
+            
+                // Calculer l'espace disponible sous l'élément
+                const spaceBelow = window.innerHeight - rect.bottom;
+            
+                // Ajuster si la popup dépasse de l'écran horizontalement
                 if (left + popupRect.width > window.innerWidth) {
                     left = window.innerWidth - popupRect.width - 10;
                 }
-                if (top + popupRect.height > window.innerHeight) {
-                    top = rect.top - popupRect.height - 5;
-                }
+                
+                top = rect.bottom + 5;
+                popup.style.maxHeight = `${spaceBelow - 40}px`; // 50px de marge
+                popup.style.overflow = 'auto';
 
                 // S'assurer que la popup reste dans les limites de l'écran
                 left = Math.max(10, left);
                 top = Math.max(10, top);
-
+            
                 popup.style.left = `${left}px`;
                 popup.style.top = `${top}px`;
             });
@@ -2357,7 +2361,7 @@ function extractDoctorName(fullText) {
                             }
                         }
                         if (hasOtherOccurrence) {
-                            console.log(`[pdfParser] Autre occurrence trouvée dans les lignes suivantes : ${nextLine}, ligne ${j}`);
+                            //console.log(`[pdfParser] Autre occurrence trouvée dans les lignes suivantes : ${nextLine}, ligne ${j}`);
                         }
                     }
                 }

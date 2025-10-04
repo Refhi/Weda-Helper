@@ -705,16 +705,6 @@ function addUrlLink() {
 }
 
 
-/* === implementation de la fonction sendWedaNotif === */
-// utilisé pour l'envoi depuis le popup
-chrome.runtime.onMessage.addListener(
-    function (request, sender, sendResponse) {
-        if (request.action === "sendWedaNotif") {
-            sendWedaNotif(request.options);
-            sendResponse({ message: "Notification envoyée !" });
-        }
-    }
-);
 
 /**
  * Envoie une notification Weda à tous les onglets en utilisant le stockage local de Chrome.
