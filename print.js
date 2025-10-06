@@ -596,6 +596,8 @@ async function startPrinting(printConfig) {
         // Exécuter l'action post-impression configurée
         postPrintAction(postPrintBehavior, whatToPrint, isWeDoc);
 
+        await sleep(5000); // Petit délai pour s'assurer que tout est en place avant de continuer
+
         // 3. Gestion de l'envoi au DMP (si nécessaire)
         // Vérifier si l'envoi au DMP est requis et possible
         const DMPSendButton = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelShareDocToDMP span.mat-button-wrapper');
@@ -731,7 +733,6 @@ function closeWindow() {
                 // vérifiant la date de la dernière impression => cf. plus bas
                 if (!progressBarElement) {
                     console.log('[InstantPrint] progress bar disparue, je ferme la fenêtre');
-                    document.title = "👋 Fermeture de l'onglet";
                     clearInterval(interval);
                     // window.close();
                     closeCurrentTab();
@@ -753,9 +754,11 @@ function closeWindow() {
 
 
 function sendToDMPisSelected() {
-    const selecteurCaseDMP = '#ContentPlaceHolder1_DocVersionUserControl_PanelShareDocToDMP #mat-checkbox-1-input';
+    const selecteurCaseDMP = '#ContentPlaceHolder1_DocVersionUserControl_PanelShareDocToDMP input.mat-checkbox-input';
     const caseDMP = document.querySelector(selecteurCaseDMP);
-    return caseDMP && caseDMP.checked;
+    const result = caseDMP && caseDMP.checked;
+    console.log('[sendToDMPisSelected] result', result);
+    return result;
 }
 
 /**
