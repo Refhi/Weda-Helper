@@ -598,8 +598,8 @@ async function startPrinting(printConfig) {
 
         // 3. Gestion de l'envoi au DMP (si nécessaire)
         // Vérifier si l'envoi au DMP est requis et possible
-        const DMPSendButton = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelPrescriptionDmp span.mat-button-wrapper');
-        const DMPCheckBox = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelPrescriptionDmp #mat-checkbox-1-input');
+        const DMPSendButton = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelShareDocToDMP span.mat-button-wrapper');
+        const DMPCheckBox = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelShareDocToDMP #mat-checkbox-1-input');
         const DMPManuel = (instantPrint || sendAfterPrint) && DMPCheckBox && DMPCheckBox.checked && DMPSendButton;
 
         // Arrêter si l'envoi au DMP n'est pas applicable
