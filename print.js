@@ -596,7 +596,7 @@ async function startPrinting(printConfig) {
         // Exécuter l'action post-impression configurée
         postPrintAction(postPrintBehavior, whatToPrint, isWeDoc);
 
-        await sleep(5000); // Petit délai pour s'assurer que tout est en place avant de continuer
+        await sleep(5000); // Petit délai pour s'assurer que tout est en place avant de continuer TODO : à optimiser
 
         // 3. Gestion de l'envoi au DMP (si nécessaire)
         // Vérifier si l'envoi au DMP est requis et possible
@@ -621,11 +621,14 @@ async function startPrinting(printConfig) {
             }
         }
 
-        // 4. Gestion de la fermeture de l'onglet pour l'impression instantanée
+        // 4. Gestion de l’envoi du document directement (si demandé et pas d'envoi DMP)
         if (sendAfterPrint) {
             console.log("[startPrinting] sendAfterPrint activé sans DMP, je demande l'envoi du document directement");
             clickPrintModelNumber(modelNumber, true); // C'est Weda qui renvoie vers l'accueil après l'envoi
         }
+
+        // 5. Fermeture de l’onglet actuel si impression instantanée
+        // cette étape est gérée dans tabAndPrintHandler via closeWindow()
     }
 }
 
