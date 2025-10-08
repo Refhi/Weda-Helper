@@ -290,9 +290,10 @@ function clickPrintModelNumber(modelNumber = 0, send = false) {
                 } else {
                     console.warn('Aucun élément "Envoyer" trouvé parmi les éléments enfants.');
                     sendWedaNotifAllTabs({
-                        message:"une demande d'envoi a été fait, mais aucune possibilité d'envoi n'a été trouvée. Êtes-vous bien dans une page Courrier ?",
-                        type:'undefined',
-                        icon:'warning'}
+                        message: "une demande d'envoi a été fait, mais aucune possibilité d'envoi n'a été trouvée. Êtes-vous bien dans une page Courrier ?",
+                        type: 'undefined',
+                        icon: 'warning'
+                    }
                     );
                     document.title = "📤⚠️ Erreur Envoi";
                 }
@@ -596,16 +597,15 @@ async function startPrinting(printConfig) {
         // Exécuter l'action post-impression configurée
         postPrintAction(postPrintBehavior, whatToPrint, isWeDoc);
 
-        await sleep(5000); // Petit délai pour s'assurer que tout est en place avant de continuer TODO : à optimiser
-
         // 3. Gestion de l'envoi au DMP (si nécessaire)
         // Vérifier si l'envoi au DMP est requis et possible
-        const DMPSendButton = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelShareDocToDMP span.mat-button-wrapper');
-        const DMPManuel = (instantPrint || sendAfterPrint) && sendToDMPisSelected() && DMPSendButton;
+        // La partie await n'est executée que si instantPrint ou sendAfterPrint est vrai
+        const DMPManuel = (instantPrint || sendAfterPrint) && await sendToDMPSelectedAndAvailable(5000);
 
         // Arrêter si l'envoi au DMP n'est pas applicable
         if (DMPManuel) {
             // Envoyer au DMP
+            const DMPSendButton = DMPSendButtonElement();
             console.log('[startPrinting] Je dois envoyer manuellement au DMP', DMPSendButton);
             DMPSendButton.click();
 
@@ -708,8 +708,8 @@ function companionPrintDone(delay = 20000) {
 function closeWindow() {
     console.log('closeWindow activé');
     // Si l'envoi au DMP est décoché, on ferme l'onglet directement
-    if (!sendToDMPisSelected()) {
-        console.log('[InstantPrint] envoi au DMP non sélectionné, je ferme la fenêtre');
+    if (!sendToDMPSelectedAndAvailable()) {
+        console.log('[InstantPrint] envoi au DMP non sélectionné ou non disponible, je ferme la fenêtre');
         closeCurrentTab();
     }
     // Sinon on surveille que l'envoi au DMP soit terminé via la surveillance
@@ -720,6 +720,16 @@ function closeWindow() {
         callback: function () {
             console.log('[InstantPrint] progress bar detected, attente de sa disparition');
             document.title = "📤⏳ Envoi DMP en cours";
+            waitForElement({
+                selector: 'mat-label',
+                textContent: 'Code porteur',
+                justOnce: false,
+                triggerOnInit: true,
+                callback: function () {
+                    // On a détecté une demande de code CPS
+                    document.title = "🖨️⚠️🔑 Saisie Code requis";
+                }
+            });
             // Inhibition du lastPrintDate pour limiter les risques de fermeture d'un autre onglet
             sessionStorage.removeItem('lastPrintDate');
             let startTime = Date.now();
@@ -756,12 +766,40 @@ function closeWindow() {
 }
 
 
-function sendToDMPisSelected() {
-    const selecteurCaseDMP = '#ContentPlaceHolder1_DocVersionUserControl_PanelShareDocToDMP input.mat-checkbox-input';
-    const caseDMP = document.querySelector(selecteurCaseDMP);
-    const result = caseDMP && caseDMP.checked;
-    console.log('[sendToDMPisSelected] result', result);
-    return result;
+async function sendToDMPSelectedAndAvailable(timeout = null) {
+    const startTime = Date.now();
+
+    return new Promise((resolve) => {
+        const checkElements = () => {
+            const selecteurCaseDMP = '#ContentPlaceHolder1_DocVersionUserControl_PanelShareDocToDMP input.mat-checkbox-input';
+            const caseDMP = document.querySelector(selecteurCaseDMP);
+            const result = caseDMP && caseDMP.checked && DMPSendButtonElement();
+
+            console.log('[sendToDMPSelectedAndAvailable] result', result);
+
+            // Si on trouve un résultat ou si pas de timeout défini, on retourne immédiatement
+            if (result || timeout === null) {
+                resolve(result);
+                return;
+            }
+
+            // Vérifier le timeout
+            if (Date.now() - startTime > timeout) {
+                console.warn('[sendToDMPSelectedAndAvailable] Timeout atteint:', timeout, 'ms');
+                resolve(false);
+                return;
+            }
+
+            // Réessayer après un court délai
+            setTimeout(checkElements, 100);
+        };
+
+        checkElements();
+    });
+}
+
+function DMPSendButtonElement() {
+    return document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelShareDocToDMP span.mat-button-wrapper');
 }
 
 /**
