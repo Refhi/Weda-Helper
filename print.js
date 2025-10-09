@@ -767,6 +767,7 @@ function closeWindow() {
 
 
 async function sendToDMPSelectedAndAvailable(timeout = null) {
+    console.log('[sendToDMPSelectedAndAvailable] Démarrage de la vérification, timeout de ', timeout, 'ms');
     const startTime = Date.now();
 
     return new Promise((resolve) => {
@@ -799,7 +800,10 @@ async function sendToDMPSelectedAndAvailable(timeout = null) {
 }
 
 function DMPSendButtonElement() {
-    return document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelShareDocToDMP span.mat-button-wrapper');
+    const buttonSpan = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelShareDocToDMP span.mat-button-wrapper');
+    const button = buttonSpan ? buttonSpan.parentElement : null;
+    // On vérifie que le bouton n'est pas .mat-button-disabled
+    return button && !button.classList.contains('mat-button-disabled') ? button : null;
 }
 
 /**
