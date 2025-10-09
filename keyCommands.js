@@ -165,15 +165,23 @@ function throttleWithPersistence(func, limit) {
 
 // // Gestion des raccourcis claviers via hotkeys.js
 // Pour ajouter les raccourcis sur un élément spécifique
-function addHotkeyToDocument(scope, element, shortcut, action) {
-    if (shortcut != undefined)
+function addHotkeyToDocument(scope, element, shortcut, action, noThrottle = false) {
+    if (shortcut != undefined) {
+        const handler = noThrottle 
+            ? function (event, handler) {
+                event.preventDefault();  // Empêche le comportement par défaut
+                action();  // Exécute l'action associée au raccourci
+            }
+            : throttleWithPersistence(function (event, handler) {
+                event.preventDefault();  // Empêche le comportement par défaut
+                action();  // Exécute l'action associée au raccourci
+            }, 300);
+            
         hotkeys(shortcut, {
             scope: scope,
             element: element
-        }, throttleWithPersistence(function (event, handler) {
-            event.preventDefault();  // Empêche le comportement par défaut
-            action();  // Exécute l'action associée au raccourci
-        }, 300));
+        }, handler);
+    }
 }
 
 // Renvoie le raccourcis pertinent (personnalisé ou par défaut) pour une action donnée
