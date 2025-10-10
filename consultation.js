@@ -15,14 +15,25 @@ function removeExceedingSpaces(iframe) {
     removeSpacesFromElement(iframe.contentDocument.body);
 }
 
-function getEditorIframeNumber(iframe) {
+function getEditorIframeNumber(iframe, iframes) {
     let match = iframe.id.match(/CE_ContentPlaceHolder1_EditorConsultation(\d+)_ID_Frame/);
-    return match ? parseInt(match[1], 10) : null;
+    return match ? parseInt(match[1], 10) : iframes.length ; // si pas trouvé, on est dans le champ confidentiel, on retourne le dernier numéro
 }
 
 function getEditorIframeByNumber(number, iframes) {
-    return Array.from(iframes).find(iframe => getEditorIframeNumber(iframe) === number);
+    // Essayer d'abord le pattern de consultation standard
+    let iframe = Array.from(iframes).find(iframe => getEditorIframeNumber(iframe, iframes) === number);
+    
+    // Si pas trouvé, essayer le champ confidentiel
+    if (!iframe) {
+        iframe = Array.from(iframes).find(iframe => 
+            iframe.id === 'CE_ContentPlaceHolder1_EvenementInformationFiltreUCForm1_EditorZoneUserTextInEvement_ID_Frame'
+        );
+    }
+    
+    return iframe;
 }
+
 function editorIframeLenght() {
     let iframes = document.querySelectorAll('iframe');
     let relevantIframes = Array.from(iframes).filter(iframe => iframe.id.includes('EditorConsultation'));
@@ -33,25 +44,25 @@ function editorIframeLenght() {
 function addTabsToIframe(scopeName, iframe, iframes) { // est appelé depuis keyCommands.js
     // chaque iframe a un id CE_ContentPlaceHolder1_EditorConsultation*_ID_Frame ou * est un nombre
     function handleTabNavigation(isShift) {
-        let currentIframeNumber = getEditorIframeNumber(iframe);
+        let currentIframeNumber = getEditorIframeNumber(iframe, iframes);
         removeExceedingSpaces(iframe);
-        console.log('CurrentIframeNumber', currentIframeNumber, 'iframeLength', iframes.length);
+        console.log('[addTabsToIframe] CurrentIframeNumber', currentIframeNumber, 'iframeLength', iframes.length);
 
         let iframeNumToFocus = isShift ? currentIframeNumber - 1 : currentIframeNumber + 1;
-        console.log('iframeToFocus', iframeNumToFocus);
+        console.log('[addTabsToIframe] iframeToFocus', iframeNumToFocus);
 
         if (iframeNumToFocus >= 1 && iframeNumToFocus <= iframes.length) {
             recordMetrics({ clicks: 1, drags: 1 });
             let iframeToFocus = getEditorIframeByNumber(iframeNumToFocus, iframes);
-            console.log('iframeToFocus', iframeToFocus);
+            console.log('[addTabsToIframe] iframeToFocus', iframeToFocus);
             iframeToFocus.focus();
         } else {
             // Si c'est le dernier iframe, mettre le focus sur l'élément spécifié
             if (isShift) {
-                console.log('focus sur le premier élément de suivi');
+                console.log('[addTabsToIframe] focus sur le premier élément de suivi');
                 document.querySelector('#TextBoxDocumentTitre').focus();
             } else {
-                console.log('focus sur le premier élément de suivi');
+                console.log('[addTabsToIframe] focus sur le premier élément de suivi');
                 document.querySelector('#ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_0').focus();
             }
         }
@@ -59,11 +70,11 @@ function addTabsToIframe(scopeName, iframe, iframes) { // est appelé depuis key
 
     addHotkeyToDocument(scopeName, iframe.contentDocument, 'tab', function () {
         handleTabNavigation(false);
-    });
+    }, true);
 
     addHotkeyToDocument(scopeName, iframe.contentDocument, 'shift+tab', function () {
         handleTabNavigation(true);
-    });
+    }, true);
 }
 
 addTweak('/FolderMedical/ConsultationForm.aspx', 'TweakTabConsultation', function () {

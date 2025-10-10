@@ -163,6 +163,7 @@ async function getAllTabs() {
  * @returns {Promise<any>} - Résultat de l'opération
  */
 function closeCurrentTab(info = 'Fermeture d\'onglet') {
+    document.title = "👋 Fermeture de l'onglet";
     return handleTabsFeature({
         action: 'closeCurrentTab',
         info

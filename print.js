@@ -255,15 +255,25 @@ function triggerDirectDownload(url) {
 /**
  * Clique sur un modèle d'impression spécifique basé sur son numéro.
  *
- * @param {number} [modelNumber=0] - Le numéro du modèle d'impression à cliquer. Par défaut, 0.
- * @returns {boolean} - Retourne true si le modèle d'impression a été trouvé et cliqué, sinon false.
+ * Cette fonction recherche les modèles d'impression disponibles dans le DOM,
+ * sélectionne le modèle correspondant au numéro fourni, et effectue le clic.
+ * Elle peut également déclencher l'envoi du document si spécifié.
+ *
+ * @param {number} [modelNumber=0] - Le numéro du modèle d'impression à cliquer (index dans la liste des modèles disponibles)
+ * @param {boolean} [send=false] - Si true, clique également sur le bouton "Envoyer" après avoir sélectionné le modèle
+ * @returns {Object} Objet contenant l'état de l'opération
+ * @returns {boolean} returns.weDoc - Indique si le modèle sélectionné est un document WeDoc (contient "Printer-wdc.png")
+ * @returns {boolean} returns.found - Indique si l'élément à cliquer a été trouvé et cliqué avec succès
  */
 function clickPrintModelNumber(modelNumber = 0, send = false) {
+    let stateReturn = { weDoc: false, found: false };
     var elements = document.querySelectorAll('[onclick*="ctl00$ContentPlaceHolder1$MenuPrint"][class*="popout-dynamic level2"]');
     console.log('Voici les modeles d impression trouvés', elements);
     if (elements[modelNumber]) {
         console.log('clicking on model number', modelNumber, elements[modelNumber]);
-
+        const imgElement = elements[modelNumber].querySelector('img');
+        const isWeDoc = imgElement && imgElement.src && imgElement.src.includes("Printer-wdc.png");
+        stateReturn.weDoc = isWeDoc;
 
         if (send) {
             setTimeout(function () {
@@ -274,17 +284,26 @@ function clickPrintModelNumber(modelNumber = 0, send = false) {
                 });
                 if (sendElement) {
                     console.log('clicking on send element', sendElement);
+                    stateReturn.found = true;
                     sendElement.click();
+                    return stateReturn;
+                } else {
+                    console.warn('Aucun élément "Envoyer" trouvé parmi les éléments enfants.');
+                    sendWedaNotifAllTabs({
+                        message: "une demande d'envoi a été fait, mais aucune possibilité d'envoi n'a été trouvée. Êtes-vous bien dans une page Courrier ?",
+                        type: 'undefined',
+                        icon: 'warning'
+                    }
+                    );
+                    document.title = "📤⚠️ Erreur Envoi";
                 }
             }, 500); // Attendre un peu pour que les éléments enfants soient chargés
         } else {
+            stateReturn.found = true;
             elements[modelNumber].click();
         }
-
-        return true;
-    } else {
-        return false;
     }
+    return stateReturn;
 }
 
 /**
@@ -294,6 +313,7 @@ function clickPrintModelNumber(modelNumber = 0, send = false) {
  * @returns {Promise<HTMLIFrameElement>} - Une promesse qui se résout avec l'iframe chargé.
  */
 async function awaitIframeLoad(iframeSelector, whatToPrint) {
+    console.log('[awaitIframeLoad] activé pour', iframeSelector);
     return new Promise((resolve, reject) => {
         // Dans le cas d'une FSE, l'iframe est déjà présent dans le DOM car
         // on appelle cette fonction alors que l'iframe est déjà chargée
@@ -349,8 +369,8 @@ function awaitIframeUrl(iframe) {
  * @param {string} postPrintBehavior - Le comportement à adopter après l'impression. 
  * Peut être 'doNothing', 'closePreview', ou 'returnToPatient'.
  */
-function postPrintAction(postPrintBehavior, whatToPrint) {
-    console.log('postPrintAction activé');
+function postPrintAction(postPrintBehavior, whatToPrint, weDoc = false) {
+    console.log('[postPrintAction] activé');
 
     /**
      * Ferme la fenêtre d'impression FSE.
@@ -360,27 +380,57 @@ function postPrintAction(postPrintBehavior, whatToPrint) {
         boutons = document.querySelectorAll('span.mat-button-wrapper');
         let boutonFermer = Array.from(boutons).find(bouton => bouton.innerText === 'Fermer');
         if (boutonFermer) {
-            console.log('boutonFermer', boutonFermer);
+            console.log('[postPrintAction] boutonFermer', boutonFermer);
             boutonFermer.click();
         }
     }
 
     // cas d'une FSE
     if (whatToPrint === 'fse') {
-        console.log('FSE detected, je tente de fermer la fenêtre');
+        console.log('[postPrintAction] FSE detected, je tente de fermer la fenêtre');
         closeFSEPrintWindow();
+    } else if (weDoc) {
+        // Gestion spécifique pour WeDoc
+        const weDocButtons = {
+            'doNothing': null,
+            'closePreview': 'Fermer',
+            'returnToPatient': 'Retourner au dossier patient'
+        };
+
+        const buttonText = weDocButtons[postPrintBehavior];
+        if (buttonText) {
+            // Chercher le bouton par son texte dans les boutons WeDoc
+            const buttons = document.querySelectorAll('.wdc-print-buttons button');
+            const targetButton = Array.from(buttons).find(button => {
+                const wrapper = button.querySelector('.mat-button-wrapper');
+                return wrapper && wrapper.innerText.trim() === buttonText;
+            });
+
+            if (targetButton) {
+                console.log('[postPrintAction] clicking on WeDoc button', targetButton);
+                targetButton.click();
+                recordMetrics({ clicks: 1, drags: 1 });
+            }
+        }
     } else {
+        // Gestion classique pour les autres types de documents
         let closebutton = {
             'doNothing': null,
             'closePreview': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonCloseStay',
             'returnToPatient': 'ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
         }
-        console.log('postPrintBehavior is ', postPrintBehavior, 'id to look for ', closebutton[postPrintBehavior])
+        console.log('[postPrintAction] postPrintBehavior is ', postPrintBehavior, 'id to look for ', closebutton[postPrintBehavior])
         let buttonToClick = document.getElementById(closebutton[postPrintBehavior]);
         if (buttonToClick) {
-            console.log('clicking on', buttonToClick)
+            console.log('[postPrintAction] clicking on', buttonToClick)
             buttonToClick.click();
             recordMetrics({ clicks: 1, drags: 1 });
+        } else {
+            console.error('[postPrintAction] no button to click found');
+            // Lister tout les boutons input dont value contiens "Fermer"
+            let buttons = document.querySelectorAll('input[type="button"]');
+            let closeButtons = Array.from(buttons).filter(button => button.value.includes('Fermer'));
+            console.error('[postPrintAction] debug : closeButtons found', closeButtons);
         }
     }
 }
@@ -394,6 +444,7 @@ function postPrintAction(postPrintBehavior, whatToPrint) {
  * @param {string} postPrintBehavior - Le comportement à adopter après l'impression. Peut être 'doNothing', 'closePreview', ou 'returnToPatient'.
  */
 async function printIframeWhenAvailable(selector, handlingType, whatToPrint, postPrintBehavior) {
+    console.log('[printIframeWhenAvailable] activé avec', { selector, handlingType, whatToPrint, postPrintBehavior });
     try {
         // Attendre que l'iframe soit chargée
         const iframe = await awaitIframeLoad(selector, whatToPrint);
@@ -439,7 +490,7 @@ async function printIframeWhenAvailable(selector, handlingType, whatToPrint, pos
  * @param {boolean} [printConfig.sendAfterPrint=false] - Indique si le document doit être envoyé après impression
  */
 async function startPrinting(printConfig) {
-    console.log('startPrinting activé');
+    console.log('[startPrinting] activé');
 
     // Exemple de printConfig : { handlingType: 'print', whatToPrint: 'model', massPrint: false, sendAfterPrint: false, postPrintBehavior: 'doNothing', modelNumber: 0, instantPrint: false }
     // Extraction des propriétés de la configuration
@@ -463,7 +514,7 @@ async function startPrinting(printConfig) {
             triggerDirectDownload(url);
         }
     } else if (whatToPrint === 'fse') {
-        console.log('printing FSE');
+        console.log('[startPrinting] printing FSE');
         // Cherche l'élément avec class 'mat-button-wrapper' et texte 'Imprimer'
         let boutons = document.querySelectorAll('span.mat-button-wrapper');
         let boutonImprimer = Array.from(boutons).find(bouton => bouton.innerText === 'Imprimer');
@@ -474,9 +525,9 @@ async function startPrinting(printConfig) {
             const startTime = Date.now(); // Enregistre le moment du début            
             function checkConditionAndRetry() {
                 chrome.storage.local.get('FSEPrintGreenLightTimestamp', function (result) {
-                    console.log('FSEPrintGreenLightTimestamp', result.FSEPrintGreenLightTimestamp);
+                    console.log('[startPrinting] FSEPrintGreenLightTimestamp', result.FSEPrintGreenLightTimestamp);
                     if (Date.now() - result.FSEPrintGreenLightTimestamp < 10000) {
-                        console.log('FSEPrintGreenLightTimestamp is less than 10 seconds ago, je lance l\'impression');
+                        console.log('[startPrinting] FSEPrintGreenLightTimestamp is less than 10 seconds ago, je lance l\'impression');
                         // Quand l'iframe est chargée, lancer l'impression
                         printIframeWhenAvailable("iframe", handlingType, whatToPrint, postPrintBehavior)
                             .then((result) => {
@@ -486,10 +537,10 @@ async function startPrinting(printConfig) {
                             });
 
                     } else if (Date.now() - startTime > 10000) {
-                        console.log('Timeout while waiting for FSEPrintGreenLightTimestamp');
+                        console.log('[startPrinting] Timeout while waiting for FSEPrintGreenLightTimestamp');
                         return
                     } else {
-                        console.log('FSEPrintGreenLightTimestamp is more than 10 seconds ago, je réessaie dans 100ms');
+                        console.log('[startPrinting] FSEPrintGreenLightTimestamp is more than 10 seconds ago, je réessaie dans 100ms');
                         setTimeout(checkConditionAndRetry, 100); // Rappelle checkConditionAndRetry après 100 ms
                     }
                 });
@@ -500,9 +551,7 @@ async function startPrinting(printConfig) {
         waitForFSEPrintGreenLight();
 
 
-    }
-    // cas des modèles d'impression
-    else {
+    } else { // cas des modèles d'impression
         // 1. Configuration du comportement post-impression
         if (instantPrint && !massPrint) {
             console.log('[startPrinting] instantPrint activé');
@@ -527,11 +576,16 @@ async function startPrinting(printConfig) {
 
         // 2. Processus d'impression principal
         // Sélectionner le modèle d'impression
-        clickPrintModelNumber(modelNumber);
+        const { weDoc: isWeDoc, found: modelFound } = clickPrintModelNumber(modelNumber);
+        if (!modelFound) { return; }
+
+        const selectorPrintIframe = isWeDoc ?
+            "wedoc-pdf-preview iframe" :
+            "#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile";
 
         // Préparer et exécuter l'impression
         const result = await printIframeWhenAvailable(
-            "#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile",
+            selectorPrintIframe,
             handlingType,
             whatToPrint,
             postPrintBehavior
@@ -541,42 +595,51 @@ async function startPrinting(printConfig) {
         if (!result) { return; }
 
         // Exécuter l'action post-impression configurée
-        postPrintAction(postPrintBehavior, whatToPrint);
+        postPrintAction(postPrintBehavior, whatToPrint, isWeDoc);
 
         // 3. Gestion de l'envoi au DMP (si nécessaire)
         // Vérifier si l'envoi au DMP est requis et possible
-        const DMPSendButton = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelPrescriptionDmp span.mat-button-wrapper');
-        const DMPCheckBox = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelPrescriptionDmp #mat-checkbox-1-input');
-        const DMPManuel = (instantPrint || sendAfterPrint) && DMPCheckBox && DMPCheckBox.checked && DMPSendButton;
+        // La partie await n'est executée que si instantPrint ou sendAfterPrint est vrai
+        const DMPManuel = (instantPrint || sendAfterPrint) && await sendToDMPSelectedAndAvailable(5000);
 
         // Arrêter si l'envoi au DMP n'est pas applicable
-        if (!DMPManuel) { return; }
+        if (DMPManuel) {
+            // Envoyer au DMP
+            const DMPSendButton = DMPSendButtonElement();
+            console.log('[startPrinting] Je dois envoyer manuellement au DMP', DMPSendButton);
+            DMPSendButton.click();
 
-        // Envoyer au DMP
-        console.log('[startPrinting] Je dois envoyer manuellement au DMP', DMPSendButton);
-        DMPSendButton.click();
-
-        // 4. Gestion de l'envoi du document après DMP (si demandé)
-        if (sendAfterPrint) {
-            waitForDMPCompletion(() => {
-                console.log('[startPrinting] Envoi du document au DMP terminé, je clique sur le bouton Envoyer');
-                setTimeout(() => {
-                    clickPrintModelNumber(modelNumber, true); // C'est Weda qui renvoie vers l'accueil après l'envoi
-                }, 500);
-            });
+            // 4. Gestion de l'envoi du document après DMP (si demandé)
+            if (sendAfterPrint) {
+                console.log('[startPrinting] sendAfterPrint activé, j\'attends la fin de l\'envoi au DMP avant d\'envoyer le document');
+                waitForDMPCompletion(() => {
+                    console.log('[startPrinting] Envoi du document au DMP terminé, je clique sur le bouton Envoyer');
+                    setTimeout(() => {
+                        clickPrintModelNumber(modelNumber, true); // C'est Weda qui renvoie vers l'accueil après l'envoi
+                    }, 500);
+                });
+            }
         }
 
+        // 4. Gestion de l’envoi du document directement (si demandé et pas d'envoi DMP)
+        if (sendAfterPrint && !DMPManuel) {
+            console.log("[startPrinting] sendAfterPrint activé sans DMP, je demande l'envoi du document directement");
+            clickPrintModelNumber(modelNumber, true); // C'est Weda qui renvoie vers l'accueil après l'envoi
+        }
+
+        // 5. Fermeture de l’onglet actuel si impression instantanée
+        // cette étape est gérée dans tabAndPrintHandler via closeWindow()
     }
 }
 
 function waitForDMPCompletion(callback) {
-    console.log('waitForDMPCompletion activé');
+    console.log('[startPrinting] waitForDMPCompletion activé');
     waitForElement({
         selector: 'svg circle',
         justOnce: true,
         callback: function (circles) {
             let circle = circles[0];
-            console.log('circle', circle);
+            console.log('[startPrinting] circle', circle);
             observeDiseapearance(circle, callback);
         }
     });
@@ -602,7 +665,7 @@ function watchForClose() {
 
 
 /**
- * Attend la fin de l'impression par l'application compagnon
+ * Attend la fin de l'impression par l'application Companion
  * Retourne une promesse qui se résout lorsque l'impression est terminée avec succès
  * ou qui est rejetée lorsque le délai est dépassé
  * 
@@ -645,8 +708,8 @@ function companionPrintDone(delay = 20000) {
 function closeWindow() {
     console.log('closeWindow activé');
     // Si l'envoi au DMP est décoché, on ferme l'onglet directement
-    if (!sendToDMPisSelected()) {
-        console.log('[InstantPrint] envoi au DMP non sélectionné, je ferme la fenêtre');
+    if (!sendToDMPSelectedAndAvailable()) {
+        console.log('[InstantPrint] envoi au DMP non sélectionné ou non disponible, je ferme la fenêtre');
         closeCurrentTab();
     }
     // Sinon on surveille que l'envoi au DMP soit terminé via la surveillance
@@ -657,6 +720,16 @@ function closeWindow() {
         callback: function () {
             console.log('[InstantPrint] progress bar detected, attente de sa disparition');
             document.title = "📤⏳ Envoi DMP en cours";
+            waitForElement({
+                selector: 'mat-label',
+                textContent: 'Code porteur',
+                justOnce: false,
+                triggerOnInit: true,
+                callback: function () {
+                    // On a détecté une demande de code CPS
+                    document.title = "🖨️⚠️🔑 Saisie Code requis";
+                }
+            });
             // Inhibition du lastPrintDate pour limiter les risques de fermeture d'un autre onglet
             sessionStorage.removeItem('lastPrintDate');
             let startTime = Date.now();
@@ -673,7 +746,6 @@ function closeWindow() {
                 // vérifiant la date de la dernière impression => cf. plus bas
                 if (!progressBarElement) {
                     console.log('[InstantPrint] progress bar disparue, je ferme la fenêtre');
-                    document.title = "👋 Fermeture de l'onglet";
                     clearInterval(interval);
                     // window.close();
                     closeCurrentTab();
@@ -694,10 +766,44 @@ function closeWindow() {
 }
 
 
-function sendToDMPisSelected() {
-    const selecteurCaseDMP = '#mat-checkbox-1-input';
-    const caseDMP = document.querySelector(selecteurCaseDMP);
-    return caseDMP && caseDMP.checked;
+async function sendToDMPSelectedAndAvailable(timeout = null) {
+    console.log('[sendToDMPSelectedAndAvailable] Démarrage de la vérification, timeout de ', timeout, 'ms');
+    const startTime = Date.now();
+
+    return new Promise((resolve) => {
+        const checkElements = () => {
+            const selecteurCaseDMP = '#ContentPlaceHolder1_DocVersionUserControl_PanelShareDocToDMP input.mat-checkbox-input';
+            const caseDMP = document.querySelector(selecteurCaseDMP);
+            const result = caseDMP && caseDMP.checked && DMPSendButtonElement();
+
+            console.log('[sendToDMPSelectedAndAvailable] result', result);
+
+            // Si on trouve un résultat ou si pas de timeout défini, on retourne immédiatement
+            if (result || timeout === null) {
+                resolve(result);
+                return;
+            }
+
+            // Vérifier le timeout
+            if (Date.now() - startTime > timeout) {
+                console.warn('[sendToDMPSelectedAndAvailable] Timeout atteint:', timeout, 'ms');
+                resolve(false);
+                return;
+            }
+
+            // Réessayer après un court délai
+            setTimeout(checkElements, 100);
+        };
+
+        checkElements();
+    });
+}
+
+function DMPSendButtonElement() {
+    const buttonSpan = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelShareDocToDMP span.mat-button-wrapper');
+    const button = buttonSpan ? buttonSpan.parentElement : null;
+    // On vérifie que le bouton n'est pas .mat-button-disabled
+    return button && !button.classList.contains('mat-button-disabled') ? button : null;
 }
 
 /**
@@ -735,6 +841,7 @@ async function tabAndPrintHandler(mustSend = false, massPrint = false) {
         console.log('[tabAndPrintHandler] Processus d\'impression instantanée terminé avec succès');
     } catch (error) {
         console.error('[tabAndPrintHandler] Erreur durant le processus d\'impression instantanée:', error);
+        document.title = "🖨️⚠️ Erreur impression";
         sendWedaNotifAllTabs({
             message: 'L\'impression instantanée a rencontré un problème.',
             type: 'fail',
@@ -744,8 +851,11 @@ async function tabAndPrintHandler(mustSend = false, massPrint = false) {
 }
 
 /**
- * Configure les drapeaux de signalisation pour le mode "envoi après impression"
- * 
+ * Le mode "envoi après impression" entraine un retard du retour à la page d'accueil
+ * la page d'accueil risque donc de ne pas se fermer alors qu'elle devrait.
+ * Afin d'éviter cela, on spam le timestamp de dernière impression
+ * du coup après retour à la page d'accueil, le timestamp étant < 5s
+ * l'onglet sait qu'il doit se fermer. @see {@link #recoverInstantPrintClose}
  * @async
  * @returns {Promise<void>}
  */
@@ -778,9 +888,12 @@ async function handleSendAfterPrintFlags() {
 
 
 
-// Rattrapage de la fermeture de l'onglet
-// => Parfois la progressBar reste affichée après l'impression, ce qui empêche la fermeture de la fenêtre
-// => On doit donc se rattraper après le chargement d'une nouvelle page dans la même session
+/** Rattrapage de la fermeture de l'onglet
+ * @anchor recoverInstantPrintClose
+ * => Parfois la progressBar reste affichée après l'impression, ce qui empêche la fermeture de la fenêtre
+ * => On doit donc se rattraper après le chargement d'une nouvelle page dans la même session
+ * 
+ */
 addTweak('/FolderMedical/PatientViewForm.aspx', 'instantPrint', function () {
     const DELAY = 5000;
     console.log('[InstantPrint] debug démarré suite retour à dossier patient');
@@ -861,12 +974,12 @@ const tabTaskStore = {
         // Purge des tâches trop anciennes
         this.purgeOldTasks();
     },
-    
+
     // Purge les tâches qui sont trop anciennes
     purgeOldTasks: function (maxAgeMs = 300000) { // Par défaut: 5 minutes
         const now = Date.now();
         let purgedCount = 0;
-        
+
         // Parcourir toutes les tâches
         for (const tabId in this.tasks) {
             const task = this.tasks[tabId];
@@ -876,19 +989,19 @@ const tabTaskStore = {
                 purgedCount++;
             }
         }
-        
+
         // Si au moins une tâche a été purgée, mettre à jour le localStorage
         if (purgedCount > 0) {
             localStorage.setItem('tabTasks', JSON.stringify(this.tasks));
-            console.log(`${purgedCount} tâches anciennes ont été purgées (> ${maxAgeMs/60000} minutes)`);
+            console.log(`${purgedCount} tâches anciennes ont été purgées (> ${maxAgeMs / 60000} minutes)`);
         }
-        
+
         return purgedCount;
     }
 };
 
 
-// Ajout d'une icone d'imprimange pour lancer startPrintAll sans forcément passer par Ctrl+P
+// Ajout d'une icone d'imprimante pour lancer startPrintAll sans forcément passer par Ctrl+P
 addTweak('/FolderMedical/PatientViewForm.aspx', PRINTALLFUNCTION, async function () {
     const elementTitreConsultation = document.querySelector('#ContentPlaceHolder1_DivScrollHistorique .sm');
     console.log('[PRINTALLFUNCTION] elementTitreConsultation', elementTitreConsultation);

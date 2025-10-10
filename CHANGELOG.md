@@ -4,6 +4,18 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.13.4]
+## Divers :
+- amélioration des messages d'onglet pour le suivi des impressions instantanées
+
+## Fix :
+- [#490](https://github.com/Refhi/Weda-Helper/issues/490) - Les modèles WeDoc fonctionnent désormais correctement avec l'impression instantanée et le post-traitement (fermeture de l'onglet, envoi MSSanté, etc.)
+- [#496](https://github.com/Refhi/Weda-Helper/issues/496) - Ctrl+E permet de nouveau d'imprimer + envoyer par MSSanté si l'option est activée.
+- [#481](https://github.com/Refhi/Weda-Helper/issues/481) - Dans la messagerie Sécurisée, les pdfs accompagnés d'un message sont de nouveau évalués correctement.
+- l’envoi au DMP lors de l’impression instantanée fonctionne de nouveau correctement. (un id d’élement avait changé dans Weda)
+- [#500](https://github.com/Refhi/Weda-Helper/issues/500) - La navigation par tabulation entre les champs de saisie de la consultation est beaucoup plus rapide, et réparée quand on passe sur le champ confidentiel.
+
+
 # [2.13.3] - Correctifs
 ## Fix :
 - [#491](https://github.com/Refhi/Weda-Helper/issues/491) - Les raccourcis ne créent un nouveau document que si aucun n’existe ou qu’il est appelé depuis le document en cours.

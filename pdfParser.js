@@ -253,11 +253,16 @@ async function processFoundPdfIframeImport(elements) {
 // va suivre une logique similaire à celle de la page d'import
 async function processFoundPdfIframeEchanges(isINSValidated = false) {
     console.log("[pdfParser] processFoundPdfIframeEchanges avec isINSValidated", isINSValidated);
-    iframeDocToImport = document.querySelectorAll('#PanelViewDocument iframe');
+    let iframesElements = document.querySelectorAll('#PanelViewDocument iframe');
+    if (iframesElements.length === 0) {
+        // On n'a pas trouvé d'iframe, on est donc peut-être dans le cadre d'un pdf mis dans un embed (c'est le cas
+        // quand les pdfs sont accompagnés d'un corps de message dans les échanges sécurisés)
+        iframesElements = document.querySelectorAll('.mssAttachment embed');
+    }
 
     // Setup de la procédure
     // Extraction des données de base
-    const baseData = await extractBasePdfData(iframeDocToImport);
+    const baseData = await extractBasePdfData(iframesElements);
     if (!baseData) return;
 
     const { urlPDF, fullText, hashId } = baseData;
@@ -524,10 +529,10 @@ async function selectDestinationIfNeededES(destinationNumber) {
 
 /**
  * Extrait les données de base communes à partir d'un PDF (url, texte, hash).
- * @param {Element[]} elements - Les éléments DOM contenant l'iframe.
+ * @param {Element[]} iframesElements - Les éléments DOM contenant l'iframe.
  * @returns {Promise<Object|null>} - Les données de base extraites ou null si échec.
  */
-async function extractBasePdfData(elements) {
+async function extractBasePdfData(iframesElements) {
     console.log('[pdfParser] ----------------- Nouvelle boucle --------------------------------');
     // Initialisation des variables
     let urlPDF = null;
@@ -535,9 +540,9 @@ async function extractBasePdfData(elements) {
     let hashId = null;
 
     // 1. Trouver l'URL du PDF
-    urlPDF = await findPdfUrl(elements);
+    urlPDF = await findPdfUrl(iframesElements);
     if (!urlPDF) {
-        console.log("[pdfParser] l'url du PDF n'a pas été trouvée. Arrêt de l'extraction.");
+        console.log("[pdfParser] l'url du PDF n'a pas été trouvée. On va se baser sur le corps du texte.");
         urlPDF = null;
         fullText = returnMessageBodyES();
         hashId = await customHash(fullText, urlPDF);
@@ -1116,9 +1121,11 @@ function isValidSearchType(searchType) {
 
 
 // Renvoie l'URL du PDF de l'iframe quand elle est chargée 
-async function findPdfUrl(elements) {
-    let iframe = elements[0];
-    if (!iframe) {
+async function findPdfUrl(iframesElements) {
+    let iframe = iframesElements[0];
+    console.log('[pdfParser/findPdfUrl] iframe', iframe);
+
+    if (!iframe) { // Pas certain que cette partie soit encore utile, mais je laisse dans le doute
         let base64 = document.querySelector('.attachmentContainer object[type="application/pdf"]'); //Bypass pour les pages Echanges Sécurisés sans iframe PDF
         if (!base64) {
             console.warn("[pdfParser] iframe et base64 non trouvés. Arrêt de l'extraction du pdf.");
@@ -1126,6 +1133,7 @@ async function findPdfUrl(elements) {
         }
         return base64.data;
     }
+
 
     return new Promise((resolve, reject) => {
         let intervalId = setInterval(() => {
@@ -1136,6 +1144,10 @@ async function findPdfUrl(elements) {
                     clearInterval(intervalId);
                     resolve(url);
                 }
+            } else if (iframe.src && iframe.src !== 'about:blank') {
+                let url = iframe.src;
+                clearInterval(intervalId);
+                resolve(url);
             }
         }, 100);
 
@@ -1148,13 +1160,20 @@ async function findPdfUrl(elements) {
 
 // Extraction du texte du PDF en 2 parties
 async function extractTextFromPDF(pdfUrl) {
+    console.log('[pdfParser] Début de l\'extraction du texte du PDF depuis', pdfUrl);
     let pdf;
-    if (pdfUrl.includes('base64')) {
+    if (pdfUrl.includes('base64')) { // Pas certain que cette partie soit encore utile, mais je laisse dans le doute
         pdfUrl = pdfUrl.replace('data:application/pdf;base64,', '');
         pdfUrl = atob(pdfUrl);
         pdf = await pdfjsLib.getDocument({ data: pdfUrl }).promise;
-    }
-    else {
+    } else if (pdfUrl.includes('downloadAttachment')) { // Pour les échanges sécurisés dans certains cas
+        console.log('[pdfParser] pdfUrl downloadAttachment détecté');
+        pdf = await pdfjsLib.getDocument({
+            url: pdfUrl,
+            withCredentials: true, // Indispensable pour les échanges sécurisés
+        }).promise;
+
+    } else {
         pdf = await pdfjsLib.getDocument(pdfUrl).promise;
     }
     const maxPages = pdf.numPages;
@@ -1398,18 +1417,18 @@ function addLogMessageOnMouseOver(elementSelector, message) {
                 // Positionner la popup près de l'élément
                 const rect = element.getBoundingClientRect();
                 const popupRect = popup.getBoundingClientRect();
-            
+
                 let left = rect.left + 10;
                 let top = rect.bottom + 5;
-            
+
                 // Calculer l'espace disponible sous l'élément
                 const spaceBelow = window.innerHeight - rect.bottom;
-            
+
                 // Ajuster si la popup dépasse de l'écran horizontalement
                 if (left + popupRect.width > window.innerWidth) {
                     left = window.innerWidth - popupRect.width - 10;
                 }
-                
+
                 top = rect.bottom + 5;
                 popup.style.maxHeight = `${spaceBelow - 40}px`; // 50px de marge
                 popup.style.overflow = 'auto';
@@ -1417,7 +1436,7 @@ function addLogMessageOnMouseOver(elementSelector, message) {
                 // S'assurer que la popup reste dans les limites de l'écran
                 left = Math.max(10, left);
                 top = Math.max(10, top);
-            
+
                 popup.style.left = `${left}px`;
                 popup.style.top = `${top}px`;
             });
