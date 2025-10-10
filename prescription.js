@@ -563,7 +563,7 @@ addTweak(prescriptionUrl, 'autoContinueWithoutNumPres', function () {
     waitForElement({
         selector: 'button > span',
         justOnce: true,
-        textContent: 'Continuez sans l\'ordonnance numérique',
+        textContent: "Continuez sans l'ordonnance numérique",
         callback: function (elements) {
             console.log('autoContinueWithoutNumPres déclenché');
             elements[0].click();
