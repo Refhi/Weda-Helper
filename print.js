@@ -1025,7 +1025,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', PRINTALLFUNCTION, async function
 
         // On crée un bouton d'impression simple à côté du titre
         const printButton = document.createElement('span');
-        printButton.innerHTML = ' 🖨️ <small style="font-size:80%;color:#666">(Imprime tout les documents du jour)</small>';
+        printButton.innerHTML = ' 🖨️ <small style="font-size:80%;color:#666">(Imprime tous les documents du jour)</small>';
         // Le curseur devient une main au survol
         printButton.style.cursor = 'pointer';
         printButton.title = "Weda-Helper - Imprimez tous les documents du jour en cliquant ici ou avec le raccourci : " + raccourcisImpression;

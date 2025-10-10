@@ -161,7 +161,7 @@ Suite à la fermeture du site de la communauté Weda, l'espace de discussion de 
 - [#381](https://github.com/Refhi/Weda-Helper/issues/381) - Refonte du système de titre automatique (vos retours sont les bienvenus !)
 
 ## Raccourcis :
-- [#397](https://github.com/Refhi/Weda-Helper/issues/397) - **Impression de masse** : Vous pouvez désormais appeler Ctrl+P (et seulement celui-ci !) pour imprimer TOUT les documents du jour depuis l'accueil du dossier patient. Cela fonctionne surtout si vous avez activé l'impression complète en 1 clic via le Companion. Au passage les onglets affichent l'étape d'impression en cours.
+- [#397](https://github.com/Refhi/Weda-Helper/issues/397) - **Impression de masse** : Vous pouvez désormais appeler Ctrl+P (et seulement celui-ci !) pour imprimer TOUS les documents du jour depuis l'accueil du dossier patient. Cela fonctionne surtout si vous avez activé l'impression complète en 1 clic via le Companion. Au passage les onglets affichent l'étape d'impression en cours.
 - [#393](https://github.com/Refhi/Weda-Helper/issues/393) - Meilleurs raccourcis pour les documents : Alt+chiffre ouvre le dernier document, et Alt+Maj+chiffre en crée un nouveau (ex. Pour les ordonnances, les prescriptions, les consultations, etc.). Les demandes de nouvelles prescriptions sont mieux prises en compte.
 
 ## Automatismes :
