@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper",
-  "version": "2.13.4",
-  "version_name": "2.13.4",
+  "version": "2.13.5",
+  "version_name": "2.13.5",
   "options_page": "options.html",
   "permissions": [
     "storage"
