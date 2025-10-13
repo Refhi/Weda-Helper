@@ -7,6 +7,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 # [2.13.5] - Correctifs
 ## Fix :
 - correction d’une faute d’orthographe dans "(Imprime tous les documents du jour)" (merci à @CecilePRLN pour la remarque !)
+- [#506](https://github.com/Refhi/Weda-Helper/issues/506) - Les icones imprimante dans les "Documents du cabinet" fonctionnent de nouveau correctement.
 
 
 # [2.13.4]

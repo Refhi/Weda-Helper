@@ -96,7 +96,7 @@ function validatePrintConfig(printConfig) {
     }
 
     // Validation des types de contenu
-    const whatToPrintTypes = ['courbe', 'fse', 'model'];
+    const whatToPrintTypes = ['courbe', 'fse', 'model', 'documentCabinet'];
     if (!whatToPrintTypes.includes(printConfig.whatToPrint)) {
         console.error('[validatePrintConfig] Type de contenu non reconnu:', printConfig.whatToPrint);
         return false;
@@ -141,6 +141,7 @@ function deduceWhatToPrint() {
     const scenarios = {
         'courbe': () => window.location.href.startsWith(`${baseUrl}/FolderMedical/ConsultationForm.aspx`),
         'fse': () => window.location.href.startsWith(`${baseUrl}/vitalzen/fse.aspx`),
+        'documentCabinet': () => window.location.href.startsWith(`${baseUrl}/FolderTools/BiblioForm.aspx`),
         'model': () => true // Par défaut, si aucun autre scénario ne correspond
     };
 
@@ -550,6 +551,17 @@ async function startPrinting(printConfig) {
         }
         waitForFSEPrintGreenLight();
 
+
+    } else if (whatToPrint === 'documentCabinet') { // cas des documents cabinet
+        console.log('[startPrinting] printing document cabinet');
+        const iframeSelector = "#ContentPlaceHolder1_ViewPdfDocumentUCForm1_iFrameViewFile";
+
+        await printIframeWhenAvailable(
+            iframeSelector,
+            handlingType,
+            whatToPrint,
+            postPrintBehavior
+        );
 
     } else { // cas des modèles d'impression
         // 1. Configuration du comportement post-impression
