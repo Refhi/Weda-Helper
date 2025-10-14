@@ -570,13 +570,6 @@ async function startPrinting(printConfig) {
         if (!modelFound) { return; }
         if (instantPrint) {
             // si on est dans le cadre d’instantPrint, ouvrir un nouvel onglet sur l’url de base
-            console.log('[startPrinting] instantPrint activé, j\'ouvre un nouvel onglet sur l\'url de base');
-            sendWedaNotifAllTabs({
-                message: "Impression Instantanée en cours. Un nouvel onglet a été ouvert sur la page d'accueil. Vous pouvez fermer l'onglet ayant lancé l'impression.",
-                type: 'info',
-                icon: 'print',
-                duration: 5000
-            });
             await newPatientTab();
         }
 
