@@ -54,8 +54,8 @@ async function handlePrint({ printType, modelNumber = 0, massPrint = false, send
             // Numéro du modèle d'impression
             modelNumber: modelNumber,
 
-            // Impression instantanée (uniquement si companion est activé)
-            instantPrint: instantPrint && !RemoveLocalCompanionPrint && !massPrint // instantPrint n'est pertinent que si on utilise le Companion et si on n'est pas en massPrint
+            // Impression instantanée (uniquement si companion est activé et si on n'est pas en massPrint)
+            instantPrint: instantPrint && !RemoveLocalCompanionPrint && !massPrint
         };
 
         // Validation de la configuration
