@@ -9,6 +9,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - correction d’une faute d’orthographe dans "(Imprime tous les documents du jour)" (merci à @CecilePRLN pour la remarque !)
 - [#506](https://github.com/Refhi/Weda-Helper/issues/506) - Les icones imprimante dans les "Documents du cabinet" fonctionnent de nouveau correctement.
 - [#493](https://github.com/Refhi/Weda-Helper/issues/493) - Amélioration du flux d’impression : permet de limiter les cas de blocage et de faciliter le débogage.
+- [#501](https://github.com/Refhi/Weda-Helper/issues/501) - La navigation par tabulation depuis les champ de suivi vers les saisie de texte n’ignore plus les champs confidentiels.
 
 
 # [2.13.4]

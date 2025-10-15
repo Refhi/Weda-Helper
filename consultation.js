@@ -36,7 +36,10 @@ function getEditorIframeByNumber(number, iframes) {
 
 function editorIframeLenght() {
     let iframes = document.querySelectorAll('iframe');
-    let relevantIframes = Array.from(iframes).filter(iframe => iframe.id.includes('EditorConsultation'));
+    let relevantIframes = Array.from(iframes).filter(iframe => 
+        iframe.id.includes('EditorConsultation') || 
+        iframe.id === 'CE_ContentPlaceHolder1_EvenementInformationFiltreUCForm1_EditorZoneUserTextInEvement_ID_Frame'
+    );
     return relevantIframes.length;
 }
 
