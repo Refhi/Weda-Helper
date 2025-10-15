@@ -378,3 +378,15 @@ document.getElementById('tipeeeLink').addEventListener('click', function () {
     // Ouvrir la page Tipeee dans un nouvel onglet
     chrome.tabs.create({ url: 'https://fr.tipeee.com/weda-helper' });
 });
+
+// Lien vers la communauté (https://github.com/Refhi/Weda-Helper/discussions)
+document.getElementById('communityLink').addEventListener('click', function () {
+    // Ouvrir la page de la communauté dans un nouvel onglet
+    chrome.tabs.create({ url: 'https://github.com/Refhi/Weda-Helper/discussions' });
+});
+
+// Lien vers le Wiki (https://github.com/Refhi/Weda-Helper/wiki)
+document.getElementById('wikiLink').addEventListener('click', function () {
+    // Ouvrir la page du Wiki dans un nouvel onglet
+    chrome.tabs.create({ url: 'https://github.com/Refhi/Weda-Helper/wiki' });
+});

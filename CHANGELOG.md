@@ -11,6 +11,9 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#493](https://github.com/Refhi/Weda-Helper/issues/493) - Amélioration du flux d’impression : permet de limiter les cas de blocage et de faciliter le débogage.
 - [#501](https://github.com/Refhi/Weda-Helper/issues/501) - La navigation par tabulation depuis les champ de suivi vers les saisie de texte n’ignore plus les champs confidentiels.
 
+## Améliorations :
+- [#503](https://github.com/Refhi/Weda-Helper/issues/503) - La fenêtre popup de l’extension affiche plus clairement les différents liens, et ajout d’un lien vers le forum de discussion et le wiki.
+
 
 # [2.13.4]
 ## Divers :
