@@ -563,6 +563,10 @@ async function startPrinting(printConfig) {
             postPrintBehavior
         );
 
+        await companionPrintDone();
+        document.title = "🖨️✅ Impression terminée";
+
+
     } else { // cas des modèles d'impression
         // 1 - Cliquer sur le modèle d'impression
         const { weDoc: isWeDoc, found: modelFound } = clickPrintModelNumber(modelNumber);
