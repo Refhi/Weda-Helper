@@ -619,7 +619,8 @@ async function startPrinting(printConfig) {
 
 
         // 5 - Gestion de l'envoi au DMP : est requis et possible ?
-        const DMPManuel = (instantPrint || sendAfterPrint) && await sendToDMPSelectedAndAvailable(5000);
+        const DMPManuel = (instantPrint || massPrint) && await sendToDMPSelectedAndAvailable(5000);
+        console.log('[startPrinting] DMPManuel', DMPManuel, 'instantPrint', instantPrint, 'massPrint', massPrint);
         if (DMPManuel) {
             // Envoyer au DMP
             const DMPSendButton = DMPSendButtonElement();
