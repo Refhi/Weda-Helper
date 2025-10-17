@@ -568,6 +568,8 @@ async function startPrinting(printConfig) {
 
 
     } else { // cas des modèles d'impression
+        // 0 - Surveiller les demandes de code CPS
+        watchForCPSCodeRequest();
         // 1 - Cliquer sur le modèle d'impression
         const { weDoc: isWeDoc, found: modelFound } = clickPrintModelNumber(modelNumber);
         document.title = "🖨️⏳ Impression démarrée";
@@ -747,6 +749,14 @@ function companionPrintDone(delay = 20000) {
 
 function closeWindow() {
     console.log('closeWindow activé');
+    // Inhibition du lastPrintDate pour limiter les risques de fermeture d'un autre onglet
+    sessionStorage.removeItem('lastPrintDate');
+    closeCurrentTab();
+    // Normalement la fenêtre est fermée. Mais si jamais elle ne l'est pas, on le signale
+    watchForClose();
+}
+
+function watchForCPSCodeRequest() {
     waitForElement({
         // Préviens si un code CPS est demandé
         selector: 'mat-label',
@@ -758,13 +768,7 @@ function closeWindow() {
             document.title = "🖨️⚠️🔑 Saisie Code requis";
         }
     });
-    // Inhibition du lastPrintDate pour limiter les risques de fermeture d'un autre onglet
-    sessionStorage.removeItem('lastPrintDate');
-    closeCurrentTab();
-    // Normalement la fenêtre est fermée. Mais si jamais elle ne l'est pas, on le signale
-    watchForClose();
 }
-
 
 async function sendToDMPSelectedAndAvailable(timeout = null) {
     console.log('[sendToDMPSelectedAndAvailable] Démarrage de la vérification, timeout de ', timeout, 'ms');
