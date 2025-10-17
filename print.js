@@ -619,6 +619,7 @@ async function startPrinting(printConfig) {
 
 
         // 5 - Gestion de l'envoi au DMP : est requis et possible ?
+        // nécessite instantPrint ou massPrint car dans les autres cas c’est Weda qui gère l’envoi
         const DMPManuel = (instantPrint || massPrint) && await sendToDMPSelectedAndAvailable(5000);
         console.log('[startPrinting] DMPManuel', DMPManuel, 'instantPrint', instantPrint, 'massPrint', massPrint);
         if (DMPManuel) {
