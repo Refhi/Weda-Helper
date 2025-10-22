@@ -49,6 +49,7 @@ async function handlePrint({ printType, modelNumber = 0, massPrint = false, send
             sendAfterPrint: sendAfterPrint,
 
             // // Comportement après impression (avec priorité à forcedPostPrintBehavior)
+            // (doNothing, closePreview, returnToPatient, send)
             postPrintBehavior: postPrintBehavior,
 
             // Numéro du modèle d'impression
@@ -605,12 +606,19 @@ async function startPrinting(printConfig) {
             console.log('[startPrinting] instantPrint, massPrint ou sendAfterPrint activé, je modifie le comportement post-impression');
             postPrintBehavior = 'closePreview';
         }
-        postPrintAction(postPrintBehavior, whatToPrint, isWeDoc);
+
         if (!specificPostPrintBehavior) {
             // Arrêter ici si on n’est pas dans instantPrint, massPrint ou sendAfterPrint
             // en effet dans ces cas c’est Weda qui gère le retour à la page patient ou la fermeture de l’onglet
+            sendWedaNotifAllTabs({
+                message: 'Impression simple terminée. Pour gagner plus de temps, installez le Companion et activez l’impression instantanée.',
+            });
+            document.title = "🖨️✅ Impression terminée";
             return;
         }
+
+        postPrintAction(postPrintBehavior, whatToPrint, isWeDoc);
+
 
         // ---- cette partie ne s’execute que si on est dans massPrint, instantPrint ou sendAfterPrint ----
         // ---- dans les autres cas, le processus s’arrête à postPrintAction() ----
