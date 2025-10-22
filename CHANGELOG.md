@@ -4,6 +4,11 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.13.5.1] - Hotfix impressions
+## Fix :
+- [#511](https://github.com/Refhi/Weda-Helper/issues/511) - Lors d’une impression simple via Ctrl+P, l’onglet ne se ferme plus indument avant que l’impression n’ait été validée. Ajout d’un message incitant à l’installation du Companion et à l’activation des impressions instantanées lors des impressions simples.
+
+
 # [2.13.5] - Correctifs impressions
 ## Fix :
 - correction d’une faute d’orthographe dans "(Imprime tous les documents du jour)" (merci à @CecilePRLN pour la remarque !)
