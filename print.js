@@ -607,20 +607,21 @@ async function startPrinting(printConfig) {
             postPrintBehavior = 'closePreview';
         }
 
-        if (!specificPostPrintBehavior) {
-            // Arrêter ici si on n’est pas dans instantPrint, massPrint ou sendAfterPrint
+        if (!specificPostPrintBehavior && handlingType === 'print') {
+            // Arrêter ici si on n’est pas dans instantPrint, massPrint, sendAfterPrint ou companion
             // en effet dans ces cas c’est Weda qui gère le retour à la page patient ou la fermeture de l’onglet
             sendWedaNotifAllTabs({
                 message: 'Impression simple terminée. Pour gagner plus de temps, installez le Companion et activez l’impression instantanée.',
             });
             document.title = "🖨️✅ Impression terminée";
+            console.log('[startPrinting] impression simple terminée, j\'arrête le processus');
             return;
         }
 
         postPrintAction(postPrintBehavior, whatToPrint, isWeDoc);
 
 
-        // ---- cette partie ne s’execute que si on est dans massPrint, instantPrint ou sendAfterPrint ----
+        // ---- cette partie ne s’execute que si on est dans massPrint, instantPrint, sendAfterPrint ou une impression via le Companion ----
         // ---- dans les autres cas, le processus s’arrête à postPrintAction() ----
 
         // 4 - Attente de la confirmation d'impression par le Companion
@@ -657,6 +658,14 @@ async function startPrinting(printConfig) {
         }
 
         // 7 - Fermeture de l'onglet
+        if (!instantPrint && !massPrint && !sendAfterPrint) {
+            // Si on est pas en instantPrint, massPrint ou sendAfterPrint, on n’a rien à faire ici
+            // en effet le script aura cliqué sur returnToPatient ou closePreview (ou rien fait car doNothing)
+            // ce qui est suffisant
+            console.log('[startPrinting] Pas d\'instantPrint, massPrint ou sendAfterPrint, j\'arrête le processus');
+            return;
+        }
+        
         document.title = "🖨️⏳ Fermeture en cours";
         await sleep(1000); // Attendre un peu pour que l'utilisateur voie le message
         closeWindow();
