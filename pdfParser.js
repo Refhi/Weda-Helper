@@ -307,12 +307,12 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
             } else if (handlePatientSearchReturn.status === 'error') {
                 console.error("[pdfParser] Erreur lors de la recherche de patient :", handlePatientSearchReturn.message);
                 continueSearching = false;
-                sendWedaNotifAllTabs({
-                    message: "Erreur lors de la recherche de patient : " + handlePatientSearchReturn.message,
-                    type: 'undefined',
-                    icon: 'search_off',
-                    duration: 10000
-                });
+                // sendWedaNotifAllTabs({
+                //     message: "Erreur lors de la recherche de patient : " + handlePatientSearchReturn.message,
+                //     type: 'undefined',
+                //     icon: 'search_off',
+                //     duration: 10000
+                // });
             } else if (handlePatientSearchReturn.action === 'refresh') {
                 console.log("[pdfParser] handlePatientSearchReturn nécessite une action:", handlePatientSearchReturn.message);
                 // On attend un peu pour que les changements DOM se produisent
@@ -358,11 +358,11 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     if (validationButton) {
         console.log("[pdfParser] Mise au focus sur le bouton de validation");
         validationButton.focus();
-        sendWedaNotifAllTabs({
-            message: "Sélection du patient et des données d'import terminée. Vous pouvez valider l'import en appuyant sur Enter. Maj+Tab pour effectuer des corrections.",
-            type: 'success',
-            icon: 'success'
-        });
+        // sendWedaNotifAllTabs({
+        //     message: "Sélection du patient et des données d'import terminée. Vous pouvez valider l'import en appuyant sur Enter. Maj+Tab pour effectuer des corrections.",
+        //     type: 'success',
+        //     icon: 'success'
+        // });
         // Supprimer #iFrameViewFile du taborder
         const iframe = document.querySelector("#iFrameViewFile");
         if (iframe) {
