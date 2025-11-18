@@ -280,6 +280,11 @@ var advancedDefaultSettings = [{
         "description": "Affiche l'aide en appuyant sur Alt de manière prolongée.",
         "default": true
     }, {
+        "name": "autoSelectPatientCV",
+        "type": TYPE_BOOL,
+        "description": "Lit automatiquement la carte vitale et sélectionne le patient lié à la carte vitale s'il est seul.",
+        "default": true
+    }, {
         "name": "TweakTabSearchPatient",
         "type": TYPE_BOOL,
         "description": "Activer les modifications de la fenêtre recherche patient (navigation facilitée avec la touche Tab).",

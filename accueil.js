@@ -4,191 +4,181 @@ let homePageUrls = [
     '/FolderMedical/PatientViewForm.aspx'
 ];
 
-let homePageFunctions = [
-    {
-        option: '*preAlertATCD',
-        callback: function () {
-            waitForElement({
-                selector: '[title="Date d\'alerte"]',
-                callback: function (elements) {
-                    elements.forEach(alertElement => {
-                        // ici le texte est au format Alerte : 01/01/2011.
-                        // Donc d'abord retirer le point final
-                        alertElement.textContent = alertElement.textContent.replace('.', '');
-                        let alertDateText = alertElement.textContent.split(' : ')[1];
-                        if (!alertDateText) {
-                            return;
-                        }
-
-                        // Vérifier que alertDateText est bien au format xx/xx/xxxx
-                        const datePattern = /^\d{2}\/\d{2}\/\d{4}$/;
-                        if (!datePattern.test(alertDateText)) {
-                            return;
-                        }
-                        // Conversion manuelle de la date
-                        let [day, month, year] = alertDateText.split('/');
-                        let alertDate = new Date(`${year}-${month}-${day}`);
-
-                        // Ne continuer que si la date est valide
-                        if (isNaN(alertDate)) {
-                            return;
-                        }
-                        let today = new Date();
-                        let fiveMonthsLater = new Date();
-                        console.log('alertDate', alertDate, 'today', today);
-                        getOption('preAlertATCD', function (preAlertATCD) {
-                            preAlertATCD = parseInt(preAlertATCD);
-                            fiveMonthsLater.setMonth(today.getMonth() + preAlertATCD);
-                            if (alertDate <= fiveMonthsLater && alertDate > today) {
-                                // Mettre l'élément en orange et en gras
-                                alertElement.style.color = 'orange';
-                                alertElement.style.fontWeight = 'bold';
-
-                            }
-                        });
-                    });
+addTweak(homePageUrls, '*preAlertATCD', function () {
+    waitForElement({
+        selector: '[title="Date d\'alerte"]',
+        callback: function (elements) {
+            elements.forEach(alertElement => {
+                // ici le texte est au format Alerte : 01/01/2011.
+                // Donc d'abord retirer le point final
+                alertElement.textContent = alertElement.textContent.replace('.', '');
+                let alertDateText = alertElement.textContent.split(' : ')[1];
+                if (!alertDateText) {
+                    return;
                 }
-            });
-        }
-    },
-    {
-        option: 'autoSelectPatientCV',
-        callback: function () {
-            // lit automatiquement la carte vitale elle est insérée
-            // selecteur de ttt131 : body > weda-notification-container > ng-component > mat-card > div > p
-            // selecteur ce jour : body > weda-notification-container > ng-component:nth-child(2) > mat-card > div > p
-            let cvSelectors = 'weda-notification-container ng-component mat-card div p';
 
-            waitForElement({
-                selector: cvSelectors,
-                callback: function (elements) {
-                    console.log('cvSelectors', elements, 'found');
-                    elements.forEach(cvElement => {
-                        console.log('cvElement text', cvElement.textContent);
-                        if (cvElement.textContent.includes('Vitale insérée')) {
-                            console.log('cvElement', cvElement, 'found');
-                            recordMetrics({ clicks: 1, drags: 1 });
-                            clickCarteVitale();
-                        }
-                    });
+                // Vérifier que alertDateText est bien au format xx/xx/xxxx
+                const datePattern = /^\d{2}\/\d{2}\/\d{4}$/;
+                if (!datePattern.test(alertDateText)) {
+                    return;
                 }
-            });
+                // Conversion manuelle de la date
+                let [day, month, year] = alertDateText.split('/');
+                let alertDate = new Date(`${year}-${month}-${day}`);
 
+                // Ne continuer que si la date est valide
+                if (isNaN(alertDate)) {
+                    return;
+                }
+                let today = new Date();
+                let fiveMonthsLater = new Date();
+                console.log('alertDate', alertDate, 'today', today);
+                getOption('preAlertATCD', function (preAlertATCD) {
+                    preAlertATCD = parseInt(preAlertATCD);
+                    fiveMonthsLater.setMonth(today.getMonth() + preAlertATCD);
+                    if (alertDate <= fiveMonthsLater && alertDate > today) {
+                        // Mettre l'élément en orange et en gras
+                        alertElement.style.color = 'orange';
+                        alertElement.style.fontWeight = 'bold';
 
-            // sélectionne automatiquement le dossier patient lié s'il est seul sur la carte
-            let patientSelector = '#mat-dialog-0 > vz-lecture-cv table .grid-item'
-            const lookForPatient = () => {
-                var elements = document.querySelectorAll(patientSelector);
-                // remove from the elements all without only capital letters or spaces in the text
-                elements = Array.from(elements).filter(element => element.textContent.match(/^[A-Z\s-]+$/));
-                // remove any .patientLink.pointer.ng-star-inserted
-                elements = Array.from(elements).filter(element => !element.querySelector('.patientLink.pointer.ng-star-inserted'));
-                // remove any NOT containing a space in the text
-                elements = Array.from(elements).filter(element => element.textContent.match(/\s/));
-
-                console.log('les patients trouvés sont', elements);
-                if (elements.length === 1) {
-                    console.log('Patient seul trouvé, je clique dessus', elements[0]);
-                    // target the next element in the DOM on the same level, with .grid-item as class
-                    var nextElement = elements[0].nextElementSibling;
-                    console.log('nextElement', nextElement);
-                    // if it have a direct child with .mat-tooltip-trigger.sign click it
-                    let linkedDossier = nextElement.querySelector('.mat-tooltip-trigger.sign');
-                    if (linkedDossier) {
-                        console.log('nextElement', linkedDossier, 'found and clickable');
-                        linkedDossier.click();
-                        recordMetrics({ clicks: 1, drags: 1 });
-                    } else {
-                        console.log('nextElement', nextElement, 'not found or not clickable');
                     }
+                });
+            });
+        }
+    });
+});
 
-                } else if (elements.length >= 2) {
-                    console.log(elements.length, 'trop de patients trouvé, je ne clique pas', elements);
-                } else {
-                    console.log('Aucun patient trouvé', elements);
-                }
-            };
+addTweak(homePageUrls, 'autoSelectPatientCV', function () {
+    // lit automatiquement la carte vitale elle est insérée
+    // selecteur de ttt131 : body > weda-notification-container > ng-component > mat-card > div > p
+    // selecteur ce jour : body > weda-notification-container > ng-component:nth-child(2) > mat-card > div > p
+    let cvSelectors = 'weda-notification-container ng-component mat-card div p';
 
-            waitForElement({
-                selector: patientSelector,
-                justOnce: true,
-                callback: function () {
-                    setTimeout(lookForPatient, 100);
+    waitForElement({
+        selector: cvSelectors,
+        callback: function (elements) {
+            console.log('cvSelectors', elements, 'found');
+            elements.forEach(cvElement => {
+                console.log('cvElement text', cvElement.textContent);
+                if (cvElement.textContent.includes('Vitale insérée')) {
+                    console.log('cvElement', cvElement, 'found');
+                    recordMetrics({ clicks: 1, drags: 1 });
+                    clickCarteVitale();
                 }
             });
-
-
         }
-    },
-    {
-        option: 'TweakNIR',
-        callback: function () {
-            function addCopySymbol(element, copyText) {
-                // Define the id for the copySymbol
-                var copySymbolId = 'copySymbol-' + element.id;
+    });
 
-                // Check if an element with the same id already exists
-                if (!document.getElementById(copySymbolId)) {
-                    console.log('copySymbolId', copySymbolId, 'not found, creating it');
-                    // Create a new element for the copy symbol
-                    var copySymbol = document.createElement('span');
-                    copySymbol.textContent = '📋'; // Use clipboard emoji as copy symbol
-                    copySymbol.style.cursor = 'pointer'; // Change cursor to pointer when hovering over the copy symbol
-                    copySymbol.title = 'Cliquez ici pour copier le NIR dans le presse-papiers'; // Add tooltip text
-                    copySymbol.id = copySymbolId;
 
-                    // Add a click event handler to the copy symbol
-                    copySymbol.addEventListener('click', function () {
-                        console.log(copyText);
-                        navigator.clipboard.writeText(copyText);
-                        recordMetrics({ clicks: 3, drags: 2 });
-                    });
+    // sélectionne automatiquement le dossier patient lié s'il est seul sur la carte
+    let patientSelector = '#mat-dialog-0 > vz-lecture-cv table .grid-item'
+    const lookForPatient = () => {
+        var elements = document.querySelectorAll(patientSelector);
+        // remove from the elements all without only capital letters or spaces in the text
+        elements = Array.from(elements).filter(element => element.textContent.match(/^[A-Z\s-]+$/));
+        // remove any .patientLink.pointer.ng-star-inserted
+        elements = Array.from(elements).filter(element => !element.querySelector('.patientLink.pointer.ng-star-inserted'));
+        // remove any NOT containing a space in the text
+        elements = Array.from(elements).filter(element => element.textContent.match(/\s/));
 
-                    // Add the copy symbol next to the element
-                    console.log('copySymbol', copySymbol, 'added next to element', element);
-                    element.parentNode.insertBefore(copySymbol, element.nextSibling);
-                } else {
-                    console.log('copySymbolId', copySymbolId, 'already exists');
-                }
+        console.log('les patients trouvés sont', elements);
+        if (elements.length === 1) {
+            console.log('Patient seul trouvé, je clique dessus', elements[0]);
+            // target the next element in the DOM on the same level, with .grid-item as class
+            var nextElement = elements[0].nextElementSibling;
+            console.log('nextElement', nextElement);
+            // if it have a direct child with .mat-tooltip-trigger.sign click it
+            let linkedDossier = nextElement.querySelector('.mat-tooltip-trigger.sign');
+            if (linkedDossier) {
+                console.log('nextElement', linkedDossier, 'found and clickable');
+                linkedDossier.click();
+                recordMetrics({ clicks: 1, drags: 1 });
+            } else {
+                console.log('nextElement', nextElement, 'not found or not clickable');
             }
 
-
-            waitForElement({
-                selector: '#ContentPlaceHolder1_EtatCivilUCForm1_insiContainer span.label',
-                callback: (elements) => {
-                    console.log('element', elements[0]);
-                    var nir = elements[0].textContent.match(/(\d{13} \d{2})/)[1];
-                    nir = nir.replace(/\s/g, ''); // Supprime tous les espaces de la chaîne
-                    addCopySymbol(elements[0], nir);
-                    elements[0].addEventListener('click', function () {
-                        console.log('nir', nir);
-                        navigator.clipboard.writeText(nir);
-                        recordMetrics({ clicks: 3, drags: 2 });
-                    });
-                }
-            });
-
-
-
-            waitForElement({
-                selector: '#ContentPlaceHolder1_EtatCivilUCForm1_LabelPatientSecuriteSocial',
-                callback: (elements) => {
-                    var secu = elements[0].textContent.match(/(\d{1} \d{2} \d{2} \d{2} \d{3} \d{3} \d{2})/)[1];
-                    secu = secu.replace(/\s/g, ''); // Supprime tous les espaces de la chaîne
-                    addCopySymbol(elements[0], secu);
-                    elements[0].addEventListener('click', function () {
-                        console.log('secu', secu);
-                        navigator.clipboard.writeText(secu);
-                        recordMetrics({ clicks: 3, drags: 2 });
-                    });
-                }
-            });
-
+        } else if (elements.length >= 2) {
+            console.log(elements.length, 'trop de patients trouvé, je ne clique pas', elements);
+        } else {
+            console.log('Aucun patient trouvé', elements);
         }
-    },
-];
+    };
 
-addTweak(homePageUrls, homePageFunctions);
+    waitForElement({
+        selector: patientSelector,
+        justOnce: true,
+        callback: function () {
+            setTimeout(lookForPatient, 100);
+        }
+    });
+});
+
+addTweak(homePageUrls,'TweakNIR', function () {
+    function addCopySymbol(element, copyText) {
+        // Define the id for the copySymbol
+        var copySymbolId = 'copySymbol-' + element.id;
+
+        // Check if an element with the same id already exists
+        if (!document.getElementById(copySymbolId)) {
+            console.log('copySymbolId', copySymbolId, 'not found, creating it');
+            // Create a new element for the copy symbol
+            var copySymbol = document.createElement('span');
+            copySymbol.textContent = '📋'; // Use clipboard emoji as copy symbol
+            copySymbol.style.cursor = 'pointer'; // Change cursor to pointer when hovering over the copy symbol
+            copySymbol.title = 'Cliquez ici pour copier le NIR dans le presse-papiers'; // Add tooltip text
+            copySymbol.id = copySymbolId;
+
+            // Add a click event handler to the copy symbol
+            copySymbol.addEventListener('click', function () {
+                console.log(copyText);
+                navigator.clipboard.writeText(copyText);
+                recordMetrics({ clicks: 3, drags: 2 });
+            });
+
+            // Add the copy symbol next to the element
+            console.log('copySymbol', copySymbol, 'added next to element', element);
+            element.parentNode.insertBefore(copySymbol, element.nextSibling);
+        } else {
+            console.log('copySymbolId', copySymbolId, 'already exists');
+        }
+    }
+
+
+    waitForElement({
+        selector: '#ContentPlaceHolder1_EtatCivilUCForm1_insiContainer span.label',
+        callback: (elements) => {
+            console.log('element', elements[0]);
+            var nir = elements[0].textContent.match(/(\d{13} \d{2})/)[1];
+            nir = nir.replace(/\s/g, ''); // Supprime tous les espaces de la chaîne
+            addCopySymbol(elements[0], nir);
+            elements[0].addEventListener('click', function () {
+                console.log('nir', nir);
+                navigator.clipboard.writeText(nir);
+                recordMetrics({ clicks: 3, drags: 2 });
+            });
+        }
+    });
+
+
+
+    waitForElement({
+        selector: '#ContentPlaceHolder1_EtatCivilUCForm1_LabelPatientSecuriteSocial',
+        callback: (elements) => {
+            var secu = elements[0].textContent.match(/(\d{1} \d{2} \d{2} \d{2} \d{3} \d{3} \d{2})/)[1];
+            secu = secu.replace(/\s/g, ''); // Supprime tous les espaces de la chaîne
+            addCopySymbol(elements[0], secu);
+            elements[0].addEventListener('click', function () {
+                console.log('secu', secu);
+                navigator.clipboard.writeText(secu);
+                recordMetrics({ clicks: 3, drags: 2 });
+            });
+        }
+    });
+});
+
+
+        
+
 
 
 // Retirer le caractère "gras" du prénom du patient dans la page d'accueil pour plus facilement distinguer le nom du prénom
