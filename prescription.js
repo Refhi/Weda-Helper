@@ -1000,3 +1000,79 @@ function removeBracketsFromIframe(iframe) {
         console.error(`[removeBracketsFromIframe] erreur d'accès à l'iframe ${iframe.id}:`, e);
     }
 }
+
+
+// Amélioration de l'interface de choix des pharmacies
+addTweak(prescriptionUrl, '*improvePharmacySelection', function () {
+    waitForElement({
+        selector: '#ContentPlaceHolder1_PharmaciesGrid',
+        callback: function (elements) {
+            const pharmacyList = elements[0].parentElement;
+            pharmacyList.style.height = '250px';
+            pharmacyList.style.overflowY = 'auto';
+            
+            // Ajouter le champ de filtre
+            addPharmacyFilter(elements[0]);
+        }
+    });
+});
+
+function addPharmacyFilter(pharmacyGrid) {
+    // Vérifier si le filtre existe déjà
+    if (document.getElementById('wh-pharmacy-filter')) {
+        return;
+    }
+    
+    // Créer le conteneur du filtre
+    const filterContainer = document.createElement('div');
+    filterContainer.id = 'wh-pharmacy-filter-container';
+    filterContainer.style.marginBottom = '10px';
+    
+    // Créer le label
+    const filterLabel = document.createElement('label');
+    filterLabel.textContent = 'Filtrer les pharmacies : ';
+    filterLabel.style.fontWeight = 'bold';
+    filterLabel.style.marginRight = '5px';
+    
+    // Créer le champ de saisie
+    const filterInput = document.createElement('input');
+    filterInput.type = 'text';
+    filterInput.id = 'wh-pharmacy-filter';
+    filterInput.placeholder = 'Tapez pour filtrer...';
+    filterInput.style.padding = '5px';
+    filterInput.style.width = '200px';
+    filterInput.style.border = '1px solid #ccc';
+    filterInput.style.borderRadius = '3px';
+    
+    // Ajouter les éléments au conteneur
+    filterContainer.appendChild(filterLabel);
+    filterContainer.appendChild(filterInput);
+    
+    // Insérer le filtre avant la grille
+    pharmacyGrid.parentElement.insertBefore(filterContainer, pharmacyGrid.parentElement.firstChild);
+    
+    // Ajouter l'événement de filtrage
+    filterInput.addEventListener('input', function() {
+        filterPharmacies(this.value.toLowerCase(), pharmacyGrid);
+    });
+    
+    // Focus automatique sur le champ
+    filterInput.focus();
+}
+
+function filterPharmacies(searchText, pharmacyGrid) {
+    // Récupérer toutes les lignes de pharmacies
+    const rows = pharmacyGrid.querySelectorAll('tr.grid-item_tr');
+    
+    rows.forEach(row => {
+        // Récupérer tout le texte de la ligne
+        const rowText = row.textContent.toLowerCase();
+        
+        // Afficher ou masquer la ligne selon si elle contient le texte recherché
+        if (rowText.includes(searchText)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}

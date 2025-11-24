@@ -4,8 +4,10 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.14] - Correctifs divers et améliorations
+## Améliorations :
+- [#519](https://github.com/Refhi/Weda-Helper/issues/519) - Ajout d’un champ de recherche pour filtrer les pharmacies dans la sélection de pharmacie lors de la création d’une prescription.
 
-# [2.13.6] - Correctifs
 ## Fix :
 - [#517](https://github.com/Refhi/Weda-Helper/issues/517) - La lecture automatique de la carte vitale fonctionne de nouveau correctement pour les nouvelles installations.
 

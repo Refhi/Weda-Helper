@@ -130,6 +130,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - Sélection automatique du type d'ordonnance numérique quand il s'agit d'une Demande, et qu'un mot-clé est détecté (cf. https://github.com/Refhi/Weda-Helper/blob/main/CHANGELOG.md pour le détail des mots-clés)
 - mettre la souris sur "Ordonnance numérique" dans les prescriptions affiche un choix Oui/Non pour sélectionner le "consentement à la consultation de l'ordonnance numérique". Utile dans le cadre de l'impression automatisée.
 - Clique automatiquement sur "Continuer sans l'ordonnance numérique" si le message d'erreur est détecté (désactivé par défaut).
+- ajout d’un champ de filtre pour rechercher rapidement une pharmacie lors de la sélection de pharmacie dans la création d’une prescription.
 
 ### Mise en forme :
 - Suppression automatique des {mots entre accolades} dans les documents générés par formulaire où l'option a été ignorée (ex. "Certificat de santé de {Nom du patient}" devient "Certificat de santé").
