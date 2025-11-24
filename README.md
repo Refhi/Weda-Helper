@@ -202,6 +202,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Vaccination "instantanée" :
 - si activée, toute ouverture de dossier patient amène immédiatement sur le scan du datamatrix d'un vaccin, permettant aux vaccineurs en série de gagner du temps (particulièrement pensée pour les pharmaciens). Ce paramètre est facilement accessible depuis la popup de l'extension (clic sur l'icône de l'extension).
+- le champ de date d’expiration du vaccin est automatiquement formatté (ex. "0512" devient "05/12/2025")
 
 
 

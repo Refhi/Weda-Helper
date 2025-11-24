@@ -50,3 +50,24 @@ function instantVaccineAlreadyProcessed() {
     console.log('lastPatient', lastPatient, 'currentPatient', currentPatient)
     return lastPatient === currentPatient
 }
+
+
+
+// autoformatage du champ de date
+addTweak('/FolderMedical/VaccinForm.aspx', "*autoFormatDateVaccineField", function () {
+    waitForElement({
+        selector: '#ContentPlaceHolder1_TextBoxVaccinExpirationDate',
+        justOnce: false,
+        triggerOnInit: true,
+        callback: function (elem) {
+            // Ajout d'un écouteur d'événement pour le formatage automatique à la sortie du champ
+            elem[0].addEventListener('blur', function (event) {
+                let value = elem[0].value;
+                let formattedValue = convertDate(value);
+                if (formattedValue !== value) {
+                    elem[0].value = formattedValue;
+                }
+            });
+        }
+    });
+});

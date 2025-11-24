@@ -225,46 +225,6 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'TweakImports', async function () {
 
     }
 
-    // Convert a truncated date to a full date
-    function convertDate(truncatedDate) {
-        let parts = truncatedDate.split('/');
-        let day = parts[0];
-        let month = parts[1] || new Date().getMonth() + 1;
-        let year = new Date().getFullYear();
-        let length = day.length;
-        let validDayLengths = [1, 2, 4, 6, 8];
-
-        if (length === 4) {
-            // If truncatedDate is 4 digits, assume the first 2 digits are the day and the last 2 digits are the month
-            day = truncatedDate.substring(0, 2);
-            month = truncatedDate.substring(2, 4);
-        } else if (length === 6) {
-            // If truncatedDate is 6 digits, assume the first 2 digits are the day, the next 2 digits are the month, and the last 2 digits are the year
-            day = truncatedDate.substring(0, 2);
-            month = truncatedDate.substring(2, 4);
-            year = '20' + truncatedDate.substring(4, 6); // Add '20' to the beginning of the year to make it 4 digits
-        } else if (length === 8) {
-            // If truncatedDate is 8 digits, assume the first 2 digits are the day, the next 2 digits are the month, and the last 4 digits are the year
-            day = truncatedDate.substring(0, 2);
-            month = truncatedDate.substring(2, 4);
-            year = truncatedDate.substring(4, 8);
-        } else if (!validDayLengths.includes(length)) {
-            // If truncatedDate is not 4, 6, or 8 digits, return it without modification
-            console.log('Invalid date format:', truncatedDate);
-            return truncatedDate;
-        }
-
-        // Add leading zeros to day and month if needed
-        if (day < 10 && day.length < 2) {
-            day = '0' + day;
-        }
-
-        if (month < 10 && month.length < 2) {
-            month = '0' + month;
-        }
-
-        return day + '/' + month + '/' + year;
-    }
 
     // Function to handle the 'keydown' event
     function handleKeyDown(event) {
