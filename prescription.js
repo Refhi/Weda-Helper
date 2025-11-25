@@ -1008,7 +1008,7 @@ addTweak(prescriptionUrl, '*improvePharmacySelection', function () {
         selector: '#ContentPlaceHolder1_PharmaciesGrid',
         callback: function (elements) {
             const pharmacyList = elements[0].parentElement;
-            pharmacyList.style.height = '250px';
+            // pharmacyList.style.height = '250px'; // pose problème sur les petits écrans ou résolutions
             pharmacyList.style.overflowY = 'auto';
             
             // Ajouter le champ de filtre
