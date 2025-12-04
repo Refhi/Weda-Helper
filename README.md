@@ -112,8 +112,9 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - touche "/" pour préparer une fraction de dose
 - touche "retour arrière" pour effacer les valeurs numériques
 
-### Ordonnances-types
+### Ordonnances
 - Option pour afficher automatiquement les ordonnances-type à l'ouverture des pages de prescription.
+- Un champ de filtre est ajouté pour rechercher rapidement une pharmacie.
 
 ### Demandes
 - Cliquer sur "Basculer en mode prescription bi-zone" déplace aussi le texte présent dans le champ ALD
