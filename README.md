@@ -112,8 +112,9 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - touche "/" pour préparer une fraction de dose
 - touche "retour arrière" pour effacer les valeurs numériques
 
-### Ordonnances-types
+### Ordonnances
 - Option pour afficher automatiquement les ordonnances-type à l'ouverture des pages de prescription.
+- Un champ de filtre est ajouté pour rechercher rapidement une pharmacie.
 
 ### Demandes
 - Cliquer sur "Basculer en mode prescription bi-zone" déplace aussi le texte présent dans le champ ALD
@@ -130,6 +131,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - Sélection automatique du type d'ordonnance numérique quand il s'agit d'une Demande, et qu'un mot-clé est détecté (cf. https://github.com/Refhi/Weda-Helper/blob/main/CHANGELOG.md pour le détail des mots-clés)
 - mettre la souris sur "Ordonnance numérique" dans les prescriptions affiche un choix Oui/Non pour sélectionner le "consentement à la consultation de l'ordonnance numérique". Utile dans le cadre de l'impression automatisée.
 - Clique automatiquement sur "Continuer sans l'ordonnance numérique" si le message d'erreur est détecté (désactivé par défaut).
+- ajout d’un champ de filtre pour rechercher rapidement une pharmacie lors de la sélection de pharmacie dans la création d’une prescription.
 
 ### Mise en forme :
 - Suppression automatique des {mots entre accolades} dans les documents générés par formulaire où l'option a été ignorée (ex. "Certificat de santé de {Nom du patient}" devient "Certificat de santé").
@@ -201,6 +203,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Vaccination "instantanée" :
 - si activée, toute ouverture de dossier patient amène immédiatement sur le scan du datamatrix d'un vaccin, permettant aux vaccineurs en série de gagner du temps (particulièrement pensée pour les pharmaciens). Ce paramètre est facilement accessible depuis la popup de l'extension (clic sur l'icône de l'extension).
+- le champ de date d’expiration du vaccin est automatiquement formatté (ex. "0512" devient "05/12/2025")
 
 
 

@@ -4,6 +4,14 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.14] - Correctifs divers et améliorations
+## Améliorations :
+- [#519](https://github.com/Refhi/Weda-Helper/issues/519) - Ajout d’un champ de recherche pour filtrer les pharmacies dans la sélection de pharmacie lors de la création d’une prescription.
+- [#520](https://github.com/Refhi/Weda-Helper/issues/520) - Le champ de date d’expiration du vaccin est désormais automatiquement formaté.
+
+## Fix :
+- [#517](https://github.com/Refhi/Weda-Helper/issues/517) - La lecture automatique de la carte vitale fonctionne de nouveau correctement pour les nouvelles installations.
+
 # [2.13.5.1] - Hotfix impressions
 ## Fix :
 - [#511](https://github.com/Refhi/Weda-Helper/issues/511) - Lors d’une impression simple via Ctrl+P, l’onglet ne se ferme plus indument avant que l’impression n’ait été validée. Ajout d’un message incitant à l’installation du Companion et à l’activation des impressions instantanées lors des impressions simples.
