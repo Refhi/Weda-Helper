@@ -4,6 +4,10 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.15] - 
+## Refactory :
+- refactory des options
+
 # [2.14] - Correctifs divers et améliorations
 ## Améliorations :
 - [#519](https://github.com/Refhi/Weda-Helper/issues/519) - Ajout d’un champ de recherche pour filtrer les pharmacies dans la sélection de pharmacie lors de la création d’une prescription.

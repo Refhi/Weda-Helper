@@ -205,760 +205,779 @@ const customFieldsDefault2 = JSON.stringify([
 const customFieldsDefault3 = JSON.stringify([
 ]);
 
+const atcdAlertsDefault = JSON.stringify([
+    // Recherche les valeurs dans l’ensemble des antécédents.
+    // Si trouvé, affiche une alerte basée sur la clé.
+    ["ETP Diabète - ce patient peut être éligible à une ETP Diabète", ["diabète", "diabetes"]],
+    ["ETP Asthme - ce patient peut être éligible à une ETP Asthme", ["asthme", "asthma"]],
+]);
 
-var advancedDefaultSettings = [{
-//     "name": "Options de test - Nesting profond",
-//     "description": "Options fictives pour tester l'affichage des niveaux d'imbrication",
-//     "type": TYPE_TITLE,
-//     "options": [{
-//         "name": "testNiveau1",
-//         "type": TYPE_BOOL,
-//         "description": "Option de niveau 1",
-//         "default": true,
-//         "subOptions": [{
-//             "name": "testNiveau2a",
-//             "type": TYPE_BOOL,
-//             "description": "Première sous-option de niveau 2",
-//             "default": false,
-//             "subOptions": [{
-//                 "name": "testNiveau3a",
-//                 "type": TYPE_BOOL,
-//                 "description": "Sous-option de niveau 3a",
-//                 "default": true,
-//                 "subOptions": [{
-//                     "name": "testNiveau4a",
-//                     "type": TYPE_SMALLTEXT,
-//                     "description": "Option de niveau 4a (très profonde)",
-//                     "default": "42"
-//                 }]
-//             }, {
-//                 "name": "testNiveau3b",
-//                 "type": TYPE_TEXT,
-//                 "description": "Sous-option de niveau 3b",
-//                 "default": "Texte par défaut niveau 3"
-//             }]
-//         }, {
-//             "name": "testNiveau2b",
-//             "type": TYPE_JSON,
-//             "description": "Deuxième sous-option de niveau 2 (JSON)",
-//             "default": JSON.stringify([["test", ["mot1", "mot2"]]]),
-//             "subOptions": [{
-//                 "name": "testNiveau3c",
-//                 "type": TYPE_BOOL,
-//                 "description": "Sous-option de niveau 3c sous JSON",
-//                 "default": false,
-//                 "subOptions": [{
-//                     "name": "testNiveau4b",
-//                     "type": TYPE_RADIO,
-//                     "description": "Option radio de niveau 4b",
-//                     "default": "option1",
-//                     "radioOptions": [{
-//                         "value": "option1",
-//                         "description": "Première option"
-//                     }, {
-//                         "value": "option2",
-//                         "description": "Deuxième option"
-//                     }],
-//                     "subOptions": [{
-//                         "name": "testNiveau5",
-//                         "type": TYPE_BOOL,
-//                         "description": "Option de niveau 5 (extrêmement profonde)",
-//                         "default": true
-//                     }]
-//                 }]
-//             }]
-//         }]
-//     }]
-// },
-// {
-    "name": "Options générales",
-    "description": "Des options générales valables partout",
-    "type": TYPE_TITLE,
-    "options": [{
-        "name": "EnableHelp",
-        "type": TYPE_BOOL,
-        "description": "Affiche l'aide en appuyant sur Alt de manière prolongée.",
-        "default": true
-    }, {
-        "name": "autoSelectPatientCV",
-        "type": TYPE_BOOL,
-        "description": "Lit automatiquement la carte vitale et sélectionne le patient lié à la carte vitale s'il est seul.",
-        "default": true
-    }, {
-        "name": "TweakTabSearchPatient",
-        "type": TYPE_BOOL,
-        "description": "Activer les modifications de la fenêtre recherche patient (navigation facilitée avec la touche Tab).",
-        "default": true,
-        "subOptions": [{
-            "name": "autoSelectLonePatient",
-            "type": TYPE_BOOL,
-            "description": "Sélectionne automatiquement le patient s'il est seul dans la liste de recherche.",
-            "default": true
-        }, {
-            "name": "pastePatient",
-            "type": TYPE_BOOL,
-            "description": "Colle automatiquement le patient depuis le presse-papiers et lance la recherche.",
-            "default": true
-        }]
-    }, {
-        "name": "WarpButtons",
-        "type": TYPE_BOOL,
-        "description": "Activer les raccourcis claviers sur les popups type DMP/IMTI/ordo numérique etc.",
-        "default": true
-    }, {
-        "name": "MoveHistoriqueToLeft",
-        "type": TYPE_BOOL,
-        "description": "Ouvrir automatiquement l'historique dans les pages sélectionnées ci-dessous et l'afficher dans une colonne à gauche.",
-        "default": true,
-        "subOptions": [{
-            "name": "AutoOpenHistory_Consultation",
-            "type": TYPE_BOOL,
-            "description": "Consultation",
-            "default": true
-        }, {
-            // Deprecated, remplacé par l'option de Weda
-            //     "name": "MoveHistoriqueToLeft_Consultation",
-            //     "type": TYPE_BOOL,
-            //     "description": "Consultation",
-            //     "default": true
-            // }, {
-            "name": "MoveHistoriqueToLeft_Certificat",
-            "type": TYPE_BOOL,
-            "description": "Certificat",
-            "default": true
-        }, {
-            "name": "MoveHistoriqueToLeft_Demande",
-            "type": TYPE_BOOL,
-            "description": "Demande",
-            "default": true
-        }, {
-            "name": "MoveHistoriqueToLeft_Courrier",
-            "type": TYPE_BOOL,
-            "description": "Courrier (beta)",
-            "default": false
-        }, {
-            "name": "MoveHistoriqueToLeft_Formulaire",
-            "type": TYPE_BOOL,
-            "description": "Formulaire",
-            "default": false
-        }]
-    }, {
-        "name": "autoFilterLeftHistory",
-        "type": TYPE_BOOL,
-        "description": "Filtre automatiquement l'historique gauche pour n'afficher que date et titre.",
-        "default": false
-    }, {
-        "name": "autoATCD",
-        "type": TYPE_BOOL,
-        "description": "Ouvre automatiquement les ATCD.",
-        "default": false
-    }, {
-        "name": "ATCDLeft",
-        "type": TYPE_BOOL,
-        "description": "Ouvre les ATCD sur la partie gauche de l'écran quand possible (attention l'affichage est un peu approximatif).",
-        "default": false
-    }, {
-        "name": "simplifyATCD",
-        "type": TYPE_BOOL,
-        "description": "Permet l'édition d'un atcd depuis la page d'accueil.",
-        "default": true,
-        "longDescription": "En cliquant sur un antécédent depuis la page d'accueil, cela ouvre la fenêtre d'édition directement.",
-    }, {
-        "name": "autoAATI",
-        "type": TYPE_BOOL,
-        "description": "Automatise la réalisation des arrêts de travail (lecture CV auto, sélection patient auto, impression auto etc. Nécessite le Companion pour fonctionner totalement).",
-        "default": true,
-        subOptions: [{
-            "name": "aatiTermsExcerpt",
-            "type": TYPE_BOOL,
-            "description": "Coche automatiquement la case du consentement pour les arrêts de travail.",
-            "default": true
-        }]
-    }, {
-        "name": "trimCIM10",
-        "type": TYPE_BOOL,
-        "description": "Nettoie l'arbre des ATCD CIM-10 pour ne garder que les ATCD principaux (on peut toujours les déployer pour les sous-ATCD).",
-        "default": true
-    }, {
-        "name": "sortCIM10",
-        "type": TYPE_BOOL,
-        "description": "Trie les ATCD CIM-10 par ordre alphabétique.",
-        "default": true
-    }, {
-        "name": "removeBoldPatientFirstName",
-        "type": TYPE_BOOL,
-        "description": "Met le prénom du patient en non-gras pour plus facilement distinguer le nom de famille.",
-        "default": false
-    }, {
-        "name": "preAlertATCD",
-        "type": TYPE_SMALLTEXT,
-        "description": "Affiche la date d'alerte de l'antécédent en orange si la date est dans moins de x mois (6 par défaut, 0 pour désactiver).",
-        "default": 6
-    }, {
-        "name": "preAlertVSM",
-        "type": TYPE_SMALLTEXT,
-        "description": "Alerte si le VSM est échu (rouge) ou bientôt échu (orange).",
-        "longDescription": "Affiche la date d'alerte de la VSM en orange si la date est dans moins de x mois (6 par défaut, -1 pour désactiver), puis en rouge une fois l'année dépassée.",
-        "default": 4,
-        "subOptions": [{
-            "name": "oneClickVSM",
-            "type": TYPE_BOOL,
-            "description": "Permet de faire la déclaration de VSM en un clic.",
-            "default": true,
-            "subOptions": [{
-                "name": "oneClickVSMToleranceLevel",
-                "type": TYPE_SMALLTEXT,
-                "description": "Niveau de tolérance pour la déclaration de VSM (0-100).",
-                "default": 70,
-                "longDescription": "Pour que le ROSP soit reconnu au mieux il faut au moins 70% des antécédents codés en CIM-10. Weda-Helper arrête la procédure s'il en détecte moins. Vous pouvez le mettre à 0 pour ne pas être bloqué, mais vous risquez de ne pas toucher le ROSP entièrement.",
-            }]
-        }]
-    }, {
-        "name": "instantVaccine",
-        "type": TYPE_BOOL,
-        "description": "Ouverture immédiate du scan du datamatrix d'un vaccin à l'ouverture des dossiers. Aussi accessible depuis la Popup en cliquant sur l'icone de l'extension.",
-        "longDescription": "permet de faciliter l'enregistrement des vaccins pour les pharmaciens par exemple : on met la CV => lue automatiquement => ouverture immédiate du scan du datamatrix.",
-        "default": false
-    }],
-    "sections": [{
-        "name": "Médecin Traitant",
-        "description": "Permet d'automatiser certaines tâches liées au médecin traitant.",
+
+var advancedDefaultSettings = [
+    {
+        //     "name": "Options de test - Nesting profond",
+        //     "description": "Options fictives pour tester l'affichage des niveaux d'imbrication",
+        //     "type": TYPE_TITLE,
+        //     "options": [{
+        //         "name": "testNiveau1",
+        //         "type": TYPE_BOOL,
+        //         "description": "Option de niveau 1",
+        //         "default": true,
+        //         "subOptions": [{
+        //             "name": "testNiveau2a",
+        //             "type": TYPE_BOOL,
+        //             "description": "Première sous-option de niveau 2",
+        //             "default": false,
+        //             "subOptions": [{
+        //                 "name": "testNiveau3a",
+        //                 "type": TYPE_BOOL,
+        //                 "description": "Sous-option de niveau 3a",
+        //                 "default": true,
+        //                 "subOptions": [{
+        //                     "name": "testNiveau4a",
+        //                     "type": TYPE_SMALLTEXT,
+        //                     "description": "Option de niveau 4a (très profonde)",
+        //                     "default": "42"
+        //                 }]
+        //             }, {
+        //                 "name": "testNiveau3b",
+        //                 "type": TYPE_TEXT,
+        //                 "description": "Sous-option de niveau 3b",
+        //                 "default": "Texte par défaut niveau 3"
+        //             }]
+        //         }, {
+        //             "name": "testNiveau2b",
+        //             "type": TYPE_JSON,
+        //             "description": "Deuxième sous-option de niveau 2 (JSON)",
+        //             "default": JSON.stringify([["test", ["mot1", "mot2"]]]),
+        //             "subOptions": [{
+        //                 "name": "testNiveau3c",
+        //                 "type": TYPE_BOOL,
+        //                 "description": "Sous-option de niveau 3c sous JSON",
+        //                 "default": false,
+        //                 "subOptions": [{
+        //                     "name": "testNiveau4b",
+        //                     "type": TYPE_RADIO,
+        //                     "description": "Option radio de niveau 4b",
+        //                     "default": "option1",
+        //                     "radioOptions": [{
+        //                         "value": "option1",
+        //                         "description": "Première option"
+        //                     }, {
+        //                         "value": "option2",
+        //                         "description": "Deuxième option"
+        //                     }],
+        //                     "subOptions": [{
+        //                         "name": "testNiveau5",
+        //                         "type": TYPE_BOOL,
+        //                         "description": "Option de niveau 5 (extrêmement profonde)",
+        //                         "default": true
+        //                     }]
+        //                 }]
+        //             }]
+        //         }]
+        //     }]
+        // },
+        // {
+        "name": "Options générales",
+        "description": "Des options générales valables partout",
         "type": TYPE_TITLE,
         "options": [{
-            "name": "autoControlMT",
+            "name": "EnableHelp",
             "type": TYPE_BOOL,
-            "description": "Automatise le procédé de vérification du MT.",
+            "description": "Affiche l'aide en appuyant sur Alt de manière prolongée.",
+            "default": true
+        }, {
+            "name": "autoSelectPatientCV",
+            "type": TYPE_BOOL,
+            "description": "Lit automatiquement la carte vitale et sélectionne le patient lié à la carte vitale s'il est seul.",
+            "default": true
+        }, {
+            "name": "TweakTabSearchPatient",
+            "type": TYPE_BOOL,
+            "description": "Activer les modifications de la fenêtre recherche patient (navigation facilitée avec la touche Tab).",
             "default": true,
             "subOptions": [{
-                "name": "autoMTnewTab",
+                "name": "autoSelectLonePatient",
                 "type": TYPE_BOOL,
-                "description": "Ouvre un nouvel onglet pour éviter de patienter pendant la récupération des informations.",
+                "description": "Sélectionne automatiquement le patient s'il est seul dans la liste de recherche.",
+                "default": true
+            }, {
+                "name": "pastePatient",
+                "type": TYPE_BOOL,
+                "description": "Colle automatiquement le patient depuis le presse-papiers et lance la recherche.",
+                "default": true
+            }]
+        }, {
+            "name": "WarpButtons",
+            "type": TYPE_BOOL,
+            "description": "Activer les raccourcis claviers sur les popups type DMP/IMTI/ordo numérique etc.",
+            "default": true
+        }, {
+            "name": "MoveHistoriqueToLeft",
+            "type": TYPE_BOOL,
+            "description": "Ouvrir automatiquement l'historique dans les pages sélectionnées ci-dessous et l'afficher dans une colonne à gauche.",
+            "default": true,
+            "subOptions": [{
+                "name": "AutoOpenHistory_Consultation",
+                "type": TYPE_BOOL,
+                "description": "Consultation",
+                "default": true
+            }, {
+                // Deprecated, remplacé par l'option de Weda
+                //     "name": "MoveHistoriqueToLeft_Consultation",
+                //     "type": TYPE_BOOL,
+                //     "description": "Consultation",
+                //     "default": true
+                // }, {
+                "name": "MoveHistoriqueToLeft_Certificat",
+                "type": TYPE_BOOL,
+                "description": "Certificat",
+                "default": true
+            }, {
+                "name": "MoveHistoriqueToLeft_Demande",
+                "type": TYPE_BOOL,
+                "description": "Demande",
+                "default": true
+            }, {
+                "name": "MoveHistoriqueToLeft_Courrier",
+                "type": TYPE_BOOL,
+                "description": "Courrier (beta)",
                 "default": false
             }, {
-                "name": "autoMTIncludeAndCheckContact",
+                "name": "MoveHistoriqueToLeft_Formulaire",
                 "type": TYPE_BOOL,
-                "description": "Ajoute un lien pour qu'ajouter le MT récupéré initie la récupération de l'adresse sécurisée. Compatible avec l'option précédente.",
-                "default": true
-            }, {
-                "name": "oneClickMT",
-                "type": TYPE_BOOL,
-                "description": "Permet de faire la déclaration de MT en un clic.",
-                "default": true
+                "description": "Formulaire",
+                "default": false
             }]
-        }],
-    }, {
-        "name": "Weda Echanges",
-        "type": TYPE_TITLE,
-        "options": [{
-            "name": "secureExchangeAutoRefresh",
-            "type": TYPE_BOOL,
-            "description": "Rafraîchis automatiquement la messagerie sécurisée (vous devez laisser un onglet ouvert).",
-            "default": true
         }, {
-            "name": "secureExchangeUncheckIHEMessage",
+            "name": "autoFilterLeftHistory",
             "type": TYPE_BOOL,
-            "description": "Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée.",
+            "description": "Filtre automatiquement l'historique gauche pour n'afficher que date et titre.",
             "default": false
         }, {
-            "name": "swapTitrePJetCorpsMessage",
+            "name": "autoAATI",
             "type": TYPE_BOOL,
-            "description": "Permuter le titre du corps du message et de la pièce jointe dans la messagerie sécurisée.",
+            "description": "Automatise la réalisation des arrêts de travail (lecture CV auto, sélection patient auto, impression auto etc. Nécessite le Companion pour fonctionner totalement).",
+            "default": true,
+            "subOptions": [{
+                "name": "aatiTermsExcerpt",
+                "type": TYPE_BOOL,
+                "description": "Coche automatiquement la case du consentement pour les arrêts de travail.",
+                "default": true
+            }]
+        }, {
+            "name": "removeBoldPatientFirstName",
+            "type": TYPE_BOOL,
+            "description": "Met le prénom du patient en non-gras pour plus facilement distinguer le nom de famille.",
+            "default": false
+        }, {
+            "name": "preAlertVSM",
+            "type": TYPE_SMALLTEXT,
+            "description": "Alerte si le VSM est échu (rouge) ou bientôt échu (orange).",
+            "longDescription": "Affiche la date d'alerte de la VSM en orange si la date est dans moins de x mois (6 par défaut, -1 pour désactiver), puis en rouge une fois l'année dépassée.",
+            "default": 4,
+            "subOptions": [{
+                "name": "oneClickVSM",
+                "type": TYPE_BOOL,
+                "description": "Permet de faire la déclaration de VSM en un clic.",
+                "default": true,
+                "subOptions": [{
+                    "name": "oneClickVSMToleranceLevel",
+                    "type": TYPE_SMALLTEXT,
+                    "description": "Niveau de tolérance pour la déclaration de VSM (0-100).",
+                    "default": 70,
+                    "longDescription": "Pour que le ROSP soit reconnu au mieux il faut au moins 70% des antécédents codés en CIM-10. Weda-Helper arrête la procédure s'il en détecte moins. Vous pouvez le mettre à 0 pour ne pas être bloqué, mais vous risquez de ne pas toucher le ROSP entièrement.",
+                }]
+            }]
+        }, {
+            "name": "instantVaccine",
+            "type": TYPE_BOOL,
+            "description": "Ouverture immédiate du scan du datamatrix d'un vaccin à l'ouverture des dossiers. Aussi accessible depuis la Popup en cliquant sur l'icone de l'extension.",
+            "longDescription": "permet de faciliter l'enregistrement des vaccins pour les pharmaciens par exemple : on met la CV => lue automatiquement => ouverture immédiate du scan du datamatrix.",
+            "default": false
+        }],
+        "sections": [{
+            "name": "Antécédents",
+            "type": TYPE_TITLE,
+            "description": "Options liées aux antécédents médicaux.",
+            "options": [{
+                "name": "preAlertATCD",
+                "type": TYPE_SMALLTEXT,
+                "description": "Affiche la date d'alerte de l'antécédent en orange si la date est dans moins de x mois (6 par défaut, 0 pour désactiver).",
+                "default": 6
+            }, {
+                "name": "sortCIM10",
+                "type": TYPE_BOOL,
+                "description": "Trie les ATCD CIM-10 par ordre alphabétique.",
+                "default": true
+            }, {
+                "name": "trimCIM10",
+                "type": TYPE_BOOL,
+                "description": "Nettoie l'arbre des ATCD CIM-10 pour ne garder que les ATCD principaux (on peut toujours les déployer pour les sous-ATCD).",
+                "default": true
+            }, {
+                "name": "autoATCD",
+                "type": TYPE_BOOL,
+                "description": "Ouvre automatiquement les ATCD.",
+                "default": false
+            }, {
+                "name": "ATCDLeft",
+                "type": TYPE_BOOL,
+                "description": "Ouvre les ATCD sur la partie gauche de l'écran quand possible (attention l'affichage est un peu approximatif).",
+                "default": false
+            }, {
+                "name": "simplifyATCD",
+                "type": TYPE_BOOL,
+                "description": "Permet l'édition d'un atcd depuis la page d'accueil.",
+                "default": true,
+                "longDescription": "En cliquant sur un antécédent depuis la page d'accueil, cela ouvre la fenêtre d'édition directement.",
+            }, {
+                "name": "atcdAlerts",
+                "type": TYPE_JSON,
+                "description": "Liste des alertes à afficher en fonction des mots-clés trouvés dans les antécédents.",
+                "default": atcdAlertsDefault
+            }
+        ]
+        },{
+            "name": "Médecin Traitant",
+            "description": "Permet d'automatiser certaines tâches liées au médecin traitant.",
+            "type": TYPE_TITLE,
+            "options": [{
+                "name": "autoControlMT",
+                "type": TYPE_BOOL,
+                "description": "Automatise le procédé de vérification du MT.",
+                "default": true,
+                "subOptions": [{
+                    "name": "autoMTnewTab",
+                    "type": TYPE_BOOL,
+                    "description": "Ouvre un nouvel onglet pour éviter de patienter pendant la récupération des informations.",
+                    "default": false
+                }, {
+                    "name": "autoMTIncludeAndCheckContact",
+                    "type": TYPE_BOOL,
+                    "description": "Ajoute un lien pour qu'ajouter le MT récupéré initie la récupération de l'adresse sécurisée. Compatible avec l'option précédente.",
+                    "default": true
+                }, {
+                    "name": "oneClickMT",
+                    "type": TYPE_BOOL,
+                    "description": "Permet de faire la déclaration de MT en un clic.",
+                    "default": true
+                }]
+            }],
+        }, {
+            "name": "Weda Echanges",
+            "type": TYPE_TITLE,
+            "options": [{
+                "name": "secureExchangeAutoRefresh",
+                "type": TYPE_BOOL,
+                "description": "Rafraîchis automatiquement la messagerie sécurisée (vous devez laisser un onglet ouvert).",
+                "default": true
+            }, {
+                "name": "secureExchangeUncheckIHEMessage",
+                "type": TYPE_BOOL,
+                "description": "Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée.",
+                "default": false
+            }, {
+                "name": "swapTitrePJetCorpsMessage",
+                "type": TYPE_BOOL,
+                "description": "Permuter le titre du corps du message et de la pièce jointe dans la messagerie sécurisée.",
+                "default": false
+            }]
+        }, {
+            "name": "Options d'importation",
+            "type": TYPE_TITLE,
+            "options": [{
+                "name": "TweakImports",
+                "type": TYPE_BOOL,
+                "description": "Activer les modifications pour la fenêtre d'importations (page télécharger des documents). : modification de l'odre des tabulations et agrandissement de la fenêtre de visualisation des documents.",
+                "default": true
+            }, {
+                "name": "autoPdfParser",
+                "type": TYPE_BOOL,
+                "description": "Analyse automatiquement les pdfs en attente d'import et essaie d'en extraire les informations (date, nom patient, etc.).",
+                "longDescription": "Pour les PDFs scannés il est recommandé d'avoir une OCR de qualité. Pour les geeks vous pouvez regarder https://github.com/Refhi/pdf_ocr_pdf (fonctionne bien mais nécessite pas mal de compétences pour l'installer).",
+                "default": true,
+                "subOptions": [{
+                    "name": "PdfParserAutoTitle",
+                    "type": TYPE_BOOL,
+                    "description": "Crée automatiquement un titre pour les documents importés.",
+                    "default": true,
+                    "subOptions": [
+                        {
+                            "name": "PdfParserAutoTitleFormat",
+                            "type": TYPE_JSON,
+                            "description": "Format du titre pour les documents importés.",
+                            "longDescription": "crée un titre à partir des données extraite du document.\nChaque ligne doit commencer par une catégorie (cf. champ d'option ci-dessous) ou par * pour n'importe quelle catégorie et être suivi après \":\" d’une phrase.\nVous pouvez utiliser les variables suivantes :\n- [specialite] : la spécialité médicale détectée\n- [imagerie] : le type d'imagerie détecté\n- [region] : la région anatomique détectée\n- [lieu] : le type d'établissement détecté\n- [typeCR] : le type de compte-rendu détecté\n- [doctorName] : le nom du médecin expéditeur détecté\n- [category] : la catégorie détectée",
+                            "default": titleCreator
+                        }
+                    ]
+                }, {
+                    "name": "Règles de catégorisation", // cf https://github.com/Refhi/Weda-Helper/blob/ca0b284cc25a7b05b7ffd3052fa51cc9782253be/pdfParser.js#L2037
+                    "type": TYPE_TITLE,
+                    "description": "Lors d’une tentative de classification, Weda-Helper parcourt chacune des listes ci-dessous et valide pour chaque type de catégorisation la première catégorie trouvée dans la ligne.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple.\nUne phrase-clé \* valide automatiquement la ligne si aucun autre match n’a été trouvé.\n Une phrase-clé débutant par - (ex. -chef de clinique) permet d’éviter les faux positifs. Par exemple si vous mettez dans les mots-clés «clinique» et «-chef de clinique», le mot-clé «clinique» ne sera pas pris en compte si le mot est dans la phrase «chef de clinique».\n Vous pouvez vérifier le log de l’analyse en mettant (dans les pages d’import) la souris sur 🔄",
+                    "subOptions": [
+                        {
+                            "name": "PdfParserAutoCategoryDict",
+                            "type": TYPE_JSON,
+                            "description": "Catégorie de classement du document importé [category]",
+                            "longDescription": "Parcours la liste et valide la première catégorie qui correspond.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple. Vous devez initialiser la votre depuis la fenêtre des imports avec la petite icone ⚙️.",
+                            "default": PdfParserAutoCategoryDefaut
+                        }, {
+                            "name": "PdfParserAutoSpecialiteDict",
+                            "type": TYPE_JSON,
+                            "description": "Spécialités médicale de la source du document importé [specialite]",
+                            "longDescription": "Liste des spécialités médicales avec leurs mots-clés associés pour la détection automatique.",
+                            "default": PdfParserAutoSpecialite
+                        }, {
+                            "name": "PdfParserAutoImagerieDict",
+                            "type": TYPE_JSON,
+                            "description": "Types d'imagerie [imagerie]",
+                            "longDescription": "Liste des types d'imagerie avec leurs mots-clés associés pour la détection automatique.",
+                            "default": PdfParserAutoImagerie
+                        }, {
+                            "name": "PdfParserAutoRegionDict",
+                            "type": TYPE_JSON,
+                            "description": "Régions anatomiques (par exemple en cas d’imagerie) [region]",
+                            "longDescription": "Liste des régions anatomiques avec leurs mots-clés associés pour la détection automatique.",
+                            "default": PdfParserAutoRegion
+                        }, {
+                            "name": "PdfParserAutoLieuDict",
+                            "type": TYPE_JSON,
+                            "description": "Types d'établissements de santé [lieu]",
+                            "longDescription": "Liste des établissements de santé avec leurs mots-clés associés pour la détection automatique.",
+                            "default": PdfParserAutoLieu
+                        }, {
+                            "name": "PdfParserAutoTypeCRDict",
+                            "type": TYPE_JSON,
+                            "description": "Type de compte-rendu [typeCR]",
+                            "longDescription": "Liste des types de compte-rendu avec leurs mots-clés associés pour la détection automatique.",
+                            "default": PdfParserAutoTypeCR
+                        }, {
+                            "name": "PdfParserAutoCustom1Dict",
+                            "type": TYPE_JSON,
+                            "description": "Champs personnalisés 1 [custom1]",
+                            "longDescription": "Liste de champs personnalisés avec leurs mots-clés associés pour la détection automatique.",
+                            "default": customFieldsDefault1
+                        }, {
+                            "name": "PdfParserAutoCustom2Dict",
+                            "type": TYPE_JSON,
+                            "description": "Champs personnalisés 2 [custom2]",
+                            "longDescription": "Liste de champs personnalisés avec leurs mots-clés associés pour la détection automatique.",
+                            "default": customFieldsDefault2
+                        }, {
+                            "name": "PdfParserAutoCustom3Dict",
+                            "type": TYPE_JSON,
+                            "description": "Champs personnalisés 3 [custom3]",
+                            "longDescription": "Liste de champs personnalisés avec leurs mots-clés associés pour la détection automatique.",
+                            "default": customFieldsDefault3
+                        }
+                    ]
+                }, {
+                    "name": "PdfParserAutoDate",
+                    "type": TYPE_BOOL,
+                    "description": "Extrait automatiquement la date du document importé.",
+                    "default": true,
+                }, {
+                    "name": "PdfParserAutoClassification",
+                    "type": TYPE_BOOL,
+                    "description": "Détermine automatiquement la destination du document importé (Consultation/Résultats d'examen/Courrier).",
+                    "default": false,
+                    "longDescription": "Si vous souhaitez classer les imports dans les parties Consultation/Résultats d'examen/Courrier, vous pouvez activer cette option pour le faire automatiquement.",
+                    "subOptions": [{
+                        "name": "PdfParserAutoDestinationClassDict",
+                        "type": TYPE_JSON,
+                        "description": "Règles de classification : destination du document importé",
+                        "longDescription": "Règles pour déterminer automatiquement si un document doit être classé en :\n1 : Consultation\n2 : Résultats d'examens\n3 : Courrier\n\nL'ordre définit la priorité de détection.",
+                        "default": PdfParserAutoDestinationClass
+                    }]
+                }, {
+                    "name": "PdfParserDateAlphabetique",
+                    "type": TYPE_BOOL,
+                    "description": "Recherche également les dates type 15 novembre 2021.",
+                    "default": false,
+                    "longDescription": "Cette option est utile si vous recevez des courriers avec des dates à ce format, mais peut interférer avec les addresses si elles contiennent une date",
+                }]
+            }]
+        }]
+    }, {
+        "name": "Options de consultation",
+        "description": "Des options spécifiques aux consultations",
+        "type": TYPE_TITLE,
+        "options": [{
+            "name": "TweakTabConsultation",
+            "type": TYPE_BOOL,
+            "description": "Activer la navigation entre les champs de texte dans les consultations via Tab et Shift+Tab.",
+            "default": true
+        }, {
+            "name": "FocusOnTitleInConsultation",
+            "type": TYPE_BOOL,
+            "description": "Mettre le focus dans le champ de titre à l'ouverture d'une nouvelle consultation.",
+            "default": false
+        }, {
+            "name": "ShowExplanatoryText",
+            "type": TYPE_BOOL,
+            "description": "Affiche le texte d'explication à droite des courbes pédiatriques dans la page des consultations.",
+            "default": true
+        }, {
+            "name": "RemoveTitleSuggestions",
+            "type": TYPE_BOOL,
+            "description": "Retire le panneau de suggestion dans les Titres (ex. de Consultation).",
+            "default": true
+        }, {
+            "name": "defautDataType",
+            "type": TYPE_TEXT,
+            "description": "⤷ Types de données automatique (vider pour désactiver. Pas d'espaces. Sensible à la Case.) Défaut = TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%",
+            "default": "TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%,Z-IMC:ds"
+        }]
+    }, {
+        "name": "Options de prescription",
+        "description": "Des options spécifiques aux prescriptions",
+        "type": TYPE_TITLE,
+        "options": [{
+            "name": "TweakTabPrescription",
+            "type": TYPE_BOOL,
+            "description": "Activer les modifications de la fenêtre recherche médicaments (navigation facilitée avec la touche Tab).",
+            "default": true
+        }, {
+            "name": "KeyPadPrescription",
+            "type": TYPE_BOOL,
+            "description": "Activer l'utilisation du clavier numérique lors de prescription d'un médicament.",
+            "default": true
+        }, {
+            "name": "autoOpenOrdoType",
+            "type": TYPE_BOOL,
+            "description": "Ouvre automatiquement la fenêtre des ordonnances-types lors des prescriptions médicamenteuses.",
+            "default": false
+        }, {
+            "name": "AlertOnMedicationInteraction",
+            "type": TYPE_BOOL,
+            "description": "Affiche un message d'alerte lorsqu'une prescription de médicaments présente une contre-indication absolue.",
+            "default": true
+        }]
+    }, {
+        "name": "Options d'ordonnance numérique",
+        "description": "Des options spécifiques aux ordonnances numériques",
+        "type": TYPE_TITLE,
+        "options": [{
+            "name": "autoSelectTypeOrdoNum",
+            "type": TYPE_BOOL,
+            "description": "Sélectionner automatiquement le type d'ordonnance numérique selon le contenu de la prescription (biologie, kinésithérapie, infirmier, pédicure, orthoptie, orthophonie, etc.).",
+            "default": true
+        }, {
+            "name": "autoConsentNumPres",
+            "type": TYPE_BOOL,
+            "description": "Coche automatiquement une case de consentement de l'ordonnance numérique. Attention vous êtes toujours tenu de demander l'autorisation au patient systématiquement.",
+            "default": false,
+            "subOptions": [{
+                "name": "autoConsentNumPres_Oui",
+                "type": TYPE_BOOL,
+                "description": "Sélectionne \"non\" (si décocoché), \"oui\" si coché.",
+                "default": true
+            }]
+        }, {
+            "name": "autoValidateOrdoNum",
+            "type": TYPE_BOOL,
+            "description": "Valider automatiquement une ordonnance numérique de médicaments lors de l'impression (nécessite d'activer l'option \"Coche automatiquement la case de consentement\" ci-dessus).",
+            "default": false
+        }, {
+            "name": "uncheckDMPIfImagerie",
+            "type": TYPE_BOOL,
+            "description": "Décoche automatiquement l'ordonnance numérique si \"Imagerie\" est sélectionné dans une Demande.",
+            "default": true
+        }, {
+            "name": "autoContinueWithoutNumPres",
+            "type": TYPE_BOOL,
+            "description": "Clique automatiquement \"Continuer automatiquement sans ordonnance numérique\" si le message d'erreur s'affiche.",
             "default": false
         }]
     }, {
-        "name": "Options d'importation",
+        "name": "Options de cochage/décochage automatique",
+        "description": "Pour que le décochage fonctionne, au moins une des deux options doit être activée. Cf. https://secure.weda.fr/FolderSetting/PreferenceForm.aspx pour activer/désactiver l'ensemble",
         "type": TYPE_TITLE,
         "options": [{
-            "name": "TweakImports",
+            "name": "NumPresPrescription",
             "type": TYPE_BOOL,
-            "description": "Activer les modifications pour la fenêtre d'importations (page télécharger des documents). : modification de l'odre des tabulations et agrandissement de la fenêtre de visualisation des documents.",
+            "description": "Cocher/Décocher automatiquement la case « ordonnance numérique » pour les prescriptions de médicaments.",
             "default": true
         }, {
-            "name": "autoPdfParser",
+            "name": "NumPresDemande",
             "type": TYPE_BOOL,
-            "description": "Analyse automatiquement les pdfs en attente d'import et essaie d'en extraire les informations (date, nom patient, etc.).",
-            "longDescription": "Pour les PDFs scannés il est recommandé d'avoir une OCR de qualité. Pour les geeks vous pouvez regarder https://github.com/Refhi/pdf_ocr_pdf (fonctionne bien mais nécessite pas mal de compétences pour l'installer).",
+            "description": "Cocher/Décocher automatiquement la case « ordonnance numérique » pour les ordonnances de demandes numériques (labo/imagerie/paramédical)",
+            "default": true
+        }]
+    }, {
+        "name": "Options de recherche médicale",
+        "description": "Des options spécifiques à la recherche médicale",
+        "type": TYPE_TITLE,
+        "options": [{
+            "name": "keepMedSearch",
+            "type": TYPE_BOOL,
+            "description": "Garder la recherche médicale.",
+            "default": true
+        }, {
+            "name": "addMedSearchButtons",
+            "type": TYPE_BOOL,
+            "description": "Ajouter des boutons de raccourcis pour la recherche de médicaments.",
             "default": true,
             "subOptions": [{
-                "name": "PdfParserAutoTitle",
+                "name": "boutonRecherche-1",
                 "type": TYPE_BOOL,
-                "description": "Crée automatiquement un titre pour les documents importés.",
+                "description": "Médicaments",
+                "default": true
+            }, {
+                "name": "boutonRecherche-14",
+                "type": TYPE_BOOL,
+                "description": "Recherche par produits",
+                "default": false
+            }, {
+                "name": "boutonRecherche-8",
+                "type": TYPE_BOOL,
+                "description": "Dénomination commune (DCI)",
+                "default": true
+            }, {
+                "name": "boutonRecherche-2",
+                "type": TYPE_BOOL,
+                "description": "Molécules (principes actifs)",
+                "default": true
+            }, {
+                "name": "boutonRecherche-10",
+                "type": TYPE_BOOL,
+                "description": "Recherche par U.C.D.",
+                "default": false
+            }, {
+                "name": "boutonRecherche-3",
+                "type": TYPE_BOOL,
+                "description": "Recherche par A.T.C.",
+                "default": false
+            }, {
+                "name": "boutonRecherche-13",
+                "type": TYPE_BOOL,
+                "description": "Recherche par Vidal",
+                "default": false
+            }, {
+                "name": "boutonRecherche-4",
+                "type": TYPE_BOOL,
+                "description": "Indications",
+                "default": false
+            }, {
+                "name": "boutonRecherche-5",
+                "type": TYPE_BOOL,
+                "description": "Groupe d'indications",
+                "default": false
+            }, {
+                "name": "boutonRecherche-6",
+                "type": TYPE_BOOL,
+                "description": "Laboratoires",
+                "default": false
+            }, {
+                "name": "boutonRecherche-7",
+                "type": TYPE_BOOL,
+                "description": "Vos favoris et perso.",
+                "default": false
+            }, {
+                "name": "boutonRecherche-9",
+                "type": TYPE_BOOL,
+                "description": "Le Top 50",
+                "default": false
+            }]
+        },
+        {
+            "name": "defautSearchType",
+            "type": TYPE_SMALLTEXT,
+            "description": "Type de recherche par défaut (1 à 14). 0 pour désactiver.",
+            "default": 0,
+            "longDescription": "Par défaut, Weda reviens au dernier type de recherche utilisée. Vous pouvez définir le type de recherche médicamenteuse à utiliser systématiquement au chargement :\n\n1 - Médicaments\n14 - Recherche par produits\n8 - Dénomination commune (DCI)\n2 - Molécules (principes actifs)\n10 - Recherche par U.C.D.\n3 - Recherche par A.T.C.\n13 - Recherche par Vidal\n4 - Indications\n5 - Groupe d'indications\n6 - Laboratoires\n7 - Vos favoris et perso.\n9 - Le Top 50"
+        }, {
+            "name": "TweakRecetteForm",
+            "type": TYPE_BOOL,
+            "description": "Appuie automatiquement sur le bouton \"rechercher\" après avoir sélectionné la page des recettes (permet d’afficher les recettes du jour directement en arrivant sur la page).",
+            "default": true
+        }, {
+            "name": "TweakNIR",
+            "type": TYPE_BOOL,
+            "description": "Ajoute la possibilité de copier le NIR en cliquant dessus sur la page d'accueil.",
+            "default": true
+        }]
+    }, {
+        "name": "Options de Courrier",
+        "description": "Des options spécifiques aux courriers",
+        "type": TYPE_TITLE,
+        "options": [{
+            "name": "autoSelectMT",
+            "type": TYPE_BOOL,
+            "description": "Sélectionne automatiquement les médecins traitants comme destinataires.",
+            "default": false
+        }]
+    }, {
+        "name": "Options de FSE",
+        "description": "Des options spécifiques aux FSE",
+        "type": TYPE_TITLE,
+        "options": [{
+            "name": "defaultCotation",
+            "type": TYPE_BOOL,
+            "description": "Activer les cotations par défaut dans la FDS, comme 'Défaut'",
+            "longDescription": "Nécessite de mettre une cotation favorite nommée 'Défaut', 'DéfautPédia', 'DéfautMOP', 'DéfautALD', 'DéfautTC",
+            "default": true
+        }, {
+            "name": "TweakFSECreation",
+            "type": TYPE_BOOL,
+            "description": "Active les raccourcis clavier de la création de FSE ainsi que la lecture automatique de la carte vitale.",
+            "default": true
+        }, {
+            "name": "TweakFSEDetectMT",
+            "type": TYPE_BOOL,
+            "description": "Sélectionne automatiquement l'option \"Je suis le médecin traitant\" si vous êtes le médecin traitant du patient.",
+            "default": false
+        }, {
+            "name": "TweakFSEGestionUnique",
+            "type": TYPE_BOOL,
+            "description": "Cocher automatiquement la case \"Réaliser une FSE en gestion unique\" pour les patients C2S.",
+            "default": false
+        }, {
+            "name": "TweakFSEAccident",
+            "type": TYPE_BOOL,
+            "description": "Coche automatiquement la case \"Non\" pour un accident de droit commun.",
+            "default": false
+        }, {
+            "name": "TweakSCORDegradee",
+            "type": TYPE_BOOL,
+            "description": "Sélectionne automatiquement \"Feuille de soins dégradée\" lors de l'importation d'une pièce jointe SCOR.",
+            "default": false
+        }, {
+            "name": "SCORAutoSelectPJ",
+            "type": TYPE_BOOL,
+            "description": "Sélectionne automatiquement \"Inclure la FSP en SCOR\".",
+            "default": true
+        }, {
+            "name": "autoValidateSCOR",
+            "type": TYPE_BOOL,
+            "description": "Valide automatiquement l'inclusion du PDF de la FSE dégradée",
+            "default": false
+        }, {
+            "name": "showBillingHistory",
+            "type": TYPE_BOOL,
+            "description": "[En attente du feu vert de Weda] Affiche l'historique des facturations dans la page de télétransmission.",
+            "default": false,
+            "disabled": true,
+            "subOptions": [{
+                "name": "billingDataFilter",
+                "type": TYPE_TEXT,
+                "description": "Filtre les données affichées dans l'historique des facturations",
+                "longDescription": "Filtre les données affichées dans l'historique des facturations  en excluant les cotations notées. Ex. (G, GS, VL). IK correspond à n'importe quel nombre d'IK (ex. IK filtre aussi bien 9IK que 1IK ou IK).",
+                "default": "G,GS,VG+MD+IK, VGS+MD+IK, VG+MD, VGS+MD, COD, GS+MEG, G+MEG"
+            }]
+        }, {
+            "name": "cotationHelper2",
+            "type": TYPE_TEXT,
+            "description": "Propose des notifications pour suggérer des cotations selon le contexte (SHE, MCG, etc.). Supprimez celles qui ne vous intéressent pas.",
+            "longDescription": "Nous sommes parfois confronté à des cotations modificatrices très faciles à oublier en fonction du contexte.\nCette petite aide vous permettra peut-être d'en rattraper certaines.\nPar exemple s'il détecte que vous êtes en train de faire des consultations aux horaires du SAS, il vous suggerera d'ajouter la cotation SHE.\nSi vous voyez un patient hors résidence, il vous proposera la cotation MCG.\nA chaque fois un clic sur la cotation vous permettra de consulter la source parlant de cette cotation.\nPour l'instant les aides concernent les cotations suivantes :\nMCG, SHE, MHP, RDV, MOP, PAV, APC, APY, APU, MCS",
+            "default": "MCG, SHE, MHP, RDV, MOP, PAV, APC, APY, APU, MCS"
+        }]
+    }, {
+        "name": "Lien avec Weda-Helper-Companion",
+        "description": "Options de connexion et d'impression automatique via le Companion",
+        "type": TYPE_TITLE,
+        "options": [{
+            "name": "log vers le companion",
+            "type": TYPE_HTML,
+            "description": '<a href="URL_DU_LOG_DU_COMPANION" id="companionLogLing" target="_blank">Voir le log du Companion</a>'
+        }],
+        "sections": [{
+            "name": "Options de connexion",
+            "type": TYPE_TITLE,
+            "options": [{
+                "name": "portCompanion",
+                "type": TYPE_SMALLTEXT,
+                "description": "Port Weda-Helper-Companion (default 4821) cf. https://github.com/Refhi/Weda-Helper-Companion doit être le même ici et dans le Companion.",
+                "default": "4821"
+            }, {
+                "name": "apiKey",
+                "type": TYPE_SMALLTEXT,
+                "description": "Clé API. Doit être identique à celle du Companion (normalement fait automatiquement lors de la première requête au Companion).",
+                "default": "votre clé API par défaut"
+            }],
+        }, {
+            "name": "Options d'impression automatique",
+            "type": TYPE_TITLE,
+            "options": [{
+                "name": "RemoveLocalCompanionPrint",
+                "type": TYPE_BOOL,
+                "description": "<em><strong>Désactiver</strong></em> l'impression automatique complète via le companion <strong>(décocher pour l'activer)</strong>.",
                 "default": true,
-                "subOptions": [
-                    {
-                        "name": "PdfParserAutoTitleFormat",
-                        "type": TYPE_JSON,
-                        "description": "Format du titre pour les documents importés.",
-                        "longDescription": "crée un titre à partir des données extraite du document.\nChaque ligne doit commencer par une catégorie (cf. champ d'option ci-dessous) ou par * pour n'importe quelle catégorie et être suivi après \":\" d’une phrase.\nVous pouvez utiliser les variables suivantes :\n- [specialite] : la spécialité médicale détectée\n- [imagerie] : le type d'imagerie détecté\n- [region] : la région anatomique détectée\n- [lieu] : le type d'établissement détecté\n- [typeCR] : le type de compte-rendu détecté\n- [doctorName] : le nom du médecin expéditeur détecté\n- [category] : la catégorie détectée",
-                        "default": titleCreator
-                    }
-                ]
-            }, {
-                "name": "Règles de catégorisation", // cf https://github.com/Refhi/Weda-Helper/blob/ca0b284cc25a7b05b7ffd3052fa51cc9782253be/pdfParser.js#L2037
-                "type": TYPE_TITLE,
-                "description": "Lors d’une tentative de classification, Weda-Helper parcourt chacune des listes ci-dessous et valide pour chaque type de catégorisation la première catégorie trouvée dans la ligne.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple.\nUne phrase-clé \* valide automatiquement la ligne si aucun autre match n’a été trouvé.\n Une phrase-clé débutant par - (ex. -chef de clinique) permet d’éviter les faux positifs. Par exemple si vous mettez dans les mots-clés «clinique» et «-chef de clinique», le mot-clé «clinique» ne sera pas pris en compte si le mot est dans la phrase «chef de clinique».\n Vous pouvez vérifier le log de l’analyse en mettant (dans les pages d’import) la souris sur 🔄",
-                "subOptions": [
-                    {
-                        "name": "PdfParserAutoCategoryDict",
-                        "type": TYPE_JSON,
-                        "description": "Catégorie de classement du document importé [category]",
-                        "longDescription": "Parcours la liste et valide la première catégorie qui correspond.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple. Vous devez initialiser la votre depuis la fenêtre des imports avec la petite icone ⚙️.",
-                        "default": PdfParserAutoCategoryDefaut
-                    }, {
-                        "name": "PdfParserAutoSpecialiteDict",
-                        "type": TYPE_JSON,
-                        "description": "Spécialités médicale de la source du document importé [specialite]",
-                        "longDescription": "Liste des spécialités médicales avec leurs mots-clés associés pour la détection automatique.",
-                        "default": PdfParserAutoSpecialite
-                    }, {
-                        "name": "PdfParserAutoImagerieDict",
-                        "type": TYPE_JSON,
-                        "description": "Types d'imagerie [imagerie]",
-                        "longDescription": "Liste des types d'imagerie avec leurs mots-clés associés pour la détection automatique.",
-                        "default": PdfParserAutoImagerie
-                    }, {
-                        "name": "PdfParserAutoRegionDict",
-                        "type": TYPE_JSON,
-                        "description": "Régions anatomiques (par exemple en cas d’imagerie) [region]",
-                        "longDescription": "Liste des régions anatomiques avec leurs mots-clés associés pour la détection automatique.",
-                        "default": PdfParserAutoRegion
-                    }, {
-                        "name": "PdfParserAutoLieuDict",
-                        "type": TYPE_JSON,
-                        "description": "Types d'établissements de santé [lieu]",
-                        "longDescription": "Liste des établissements de santé avec leurs mots-clés associés pour la détection automatique.",
-                        "default": PdfParserAutoLieu
-                    }, {
-                        "name": "PdfParserAutoTypeCRDict",
-                        "type": TYPE_JSON,
-                        "description": "Type de compte-rendu [typeCR]",
-                        "longDescription": "Liste des types de compte-rendu avec leurs mots-clés associés pour la détection automatique.",
-                        "default": PdfParserAutoTypeCR
-                    }, {
-                        "name": "PdfParserAutoCustom1Dict",
-                        "type": TYPE_JSON,
-                        "description": "Champs personnalisés 1 [custom1]",
-                        "longDescription": "Liste de champs personnalisés avec leurs mots-clés associés pour la détection automatique.",
-                        "default": customFieldsDefault1
-                    }, {
-                        "name": "PdfParserAutoCustom2Dict",
-                        "type": TYPE_JSON,
-                        "description": "Champs personnalisés 2 [custom2]",
-                        "longDescription": "Liste de champs personnalisés avec leurs mots-clés associés pour la détection automatique.",
-                        "default": customFieldsDefault2
-                    }, {
-                        "name": "PdfParserAutoCustom3Dict",
-                        "type": TYPE_JSON,
-                        "description": "Champs personnalisés 3 [custom3]",
-                        "longDescription": "Liste de champs personnalisés avec leurs mots-clés associés pour la détection automatique.",
-                        "default": customFieldsDefault3
-                    }
-                ]
-            }, {
-                "name": "PdfParserAutoDate",
-                "type": TYPE_BOOL,
-                "description": "Extrait automatiquement la date du document importé.",
-                "default": true,
-            }, {
-                "name": "PdfParserAutoClassification",
-                "type": TYPE_BOOL,
-                "description": "Détermine automatiquement la destination du document importé (Consultation/Résultats d'examen/Courrier).",
-                "default": false,
-                "longDescription": "Si vous souhaitez classer les imports dans les parties Consultation/Résultats d'examen/Courrier, vous pouvez activer cette option pour le faire automatiquement.",
                 "subOptions": [{
-                    "name": "PdfParserAutoDestinationClassDict",
-                    "type": TYPE_JSON,
-                    "description": "Règles de classification : destination du document importé",
-                    "longDescription": "Règles pour déterminer automatiquement si un document doit être classé en :\n1 : Consultation\n2 : Résultats d'examens\n3 : Courrier\n\nL'ordre définit la priorité de détection.",
-                    "default": PdfParserAutoDestinationClass
+                    "name": "instantPrint",
+                    "type": TYPE_BOOL,
+                    "description": "Impression instantanée",
+                    "longDescription": "dès l'envoi de l'impression via le Companion, ouvre un nouvel onglet. Ferme ensuite l'onglet originel quand l'impression est terminée. Utile pour faire DMP et ordonnances numériques sans ralentir le flux de la consultation. Attention les pdfs des impressions ne seront pas immédiatement visible car pas encore terminé au moment du retour vers le dossier patient.",
+                    "default": false
+                }, {
+                    "name": "sendAndPrint",
+                    "type": TYPE_BOOL,
+                    "description": "Imprimer le courrier avant de l'envoyer lors de l'usage de Ctrl+E ou Ctrl+Shift+E ",
+                    "default": false
                 }]
             }, {
-                "name": "PdfParserDateAlphabetique",
+                "name": "KeepFocus",
                 "type": TYPE_BOOL,
-                "description": "Recherche également les dates type 15 novembre 2021.",
-                "default": false,
-                "longDescription": "Cette option est utile si vous recevez des courriers avec des dates à ce format, mais peut interférer avec les addresses si elles contiennent une date",
-            }]
-        }]
-    }]
-}, {
-    "name": "Options de consultation",
-    "description": "Des options spécifiques aux consultations",
-    "type": TYPE_TITLE,
-    "options": [{
-        "name": "TweakTabConsultation",
-        "type": TYPE_BOOL,
-        "description": "Activer la navigation entre les champs de texte dans les consultations via Tab et Shift+Tab.",
-        "default": true
-    }, {
-        "name": "FocusOnTitleInConsultation",
-        "type": TYPE_BOOL,
-        "description": "Mettre le focus dans le champ de titre à l'ouverture d'une nouvelle consultation.",
-        "default": false
-    }, {
-        "name": "ShowExplanatoryText",
-        "type": TYPE_BOOL,
-        "description": "Affiche le texte d'explication à droite des courbes pédiatriques dans la page des consultations.",
-        "default": true
-    }, {
-        "name": "RemoveTitleSuggestions",
-        "type": TYPE_BOOL,
-        "description": "Retire le panneau de suggestion dans les Titres (ex. de Consultation).",
-        "default": true
-    }, {
-        "name": "defautDataType",
-        "type": TYPE_TEXT,
-        "description": "⤷ Types de données automatique (vider pour désactiver. Pas d'espaces. Sensible à la Case.) Défaut = TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%",
-        "default": "TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%,Z-IMC:ds"
-    }]
-}, {
-    "name": "Options de prescription",
-    "description": "Des options spécifiques aux prescriptions",
-    "type": TYPE_TITLE,
-    "options": [{
-        "name": "TweakTabPrescription",
-        "type": TYPE_BOOL,
-        "description": "Activer les modifications de la fenêtre recherche médicaments (navigation facilitée avec la touche Tab).",
-        "default": true
-    }, {
-        "name": "KeyPadPrescription",
-        "type": TYPE_BOOL,
-        "description": "Activer l'utilisation du clavier numérique lors de prescription d'un médicament.",
-        "default": true
-    }, {
-        "name": "autoOpenOrdoType",
-        "type": TYPE_BOOL,
-        "description": "Ouvre automatiquement la fenêtre des ordonnances-types lors des prescriptions médicamenteuses.",
-        "default": false
-    }, {
-        "name": "AlertOnMedicationInteraction",
-        "type": TYPE_BOOL,
-        "description": "Affiche un message d'alerte lorsqu'une prescription de médicaments présente une contre-indication absolue.",
-        "default": true
-    }]
-}, {
-    "name": "Options d'ordonnance numérique",
-    "description": "Des options spécifiques aux ordonnances numériques",
-    "type": TYPE_TITLE,
-    "options": [{
-        "name": "autoSelectTypeOrdoNum",
-        "type": TYPE_BOOL,
-        "description": "Sélectionner automatiquement le type d'ordonnance numérique selon le contenu de la prescription (biologie, kinésithérapie, infirmier, pédicure, orthoptie, orthophonie, etc.).",
-        "default": true
-    }, {
-        "name": "autoConsentNumPres",
-        "type": TYPE_BOOL,
-        "description": "Coche automatiquement une case de consentement de l'ordonnance numérique. Attention vous êtes toujours tenu de demander l'autorisation au patient systématiquement.",
-        "default": false,
-        "subOptions": [{
-            "name": "autoConsentNumPres_Oui",
-            "type": TYPE_BOOL,
-            "description": "Sélectionne \"non\" (si décocoché), \"oui\" si coché.",
-            "default": true
+                "description": "Active la récupération du focus en cas de vol par l'application d'impression.",
+                "default": true
+            }, {
+                "name": "postPrintBehavior",
+                "type": TYPE_RADIO,
+                "description": "Comportement après une impression automatique par le Companion.",
+                "default": "returnToPatient",
+                // Ici on devrait avoir 'closePreview', 'returnToPatient' et 'doNothing' avec les descriptions associées :
+                // "Fermer la fenêtre de prévisualisation", "Retourner au dossier", "Ne rien faire"
+                "radioOptions": [{
+                    "value": "closePreview",
+                    "description": "Fermer la fenêtre de prévisualisation"
+                }, {
+                    "value": "returnToPatient",
+                    "description": "Retourner au dossier"
+                }, {
+                    "value": "doNothing",
+                    "description": "Ne rien faire"
+                }]
+            }],
+        }, {
+            "name": "Lien avec le TPE",
+            "type": TYPE_TITLE,
+            "options": [{
+                "name": "RemoveLocalCompanionTPE",
+                "type": TYPE_BOOL,
+                "description": "<em><strong>Désactiver</strong></em> la communication avec le TPE et l'option TPE dans les fse <strong>(décocher pour l'activer)</strong>.",
+                "default": true
+            }],
         }]
     }, {
-        "name": "autoValidateOrdoNum",
-        "type": TYPE_BOOL,
-        "description": "Valider automatiquement une ordonnance numérique de médicaments lors de l'impression (nécessite d'activer l'option \"Coche automatiquement la case de consentement\" ci-dessus).",
-        "default": false
-    }, {
-        "name": "uncheckDMPIfImagerie",
-        "type": TYPE_BOOL,
-        "description": "Décoche automatiquement l'ordonnance numérique si \"Imagerie\" est sélectionné dans une Demande.",
-        "default": true
-    }, {
-        "name": "autoContinueWithoutNumPres",
-        "type": TYPE_BOOL,
-        "description": "Clique automatiquement \"Continuer automatiquement sans ordonnance numérique\" si le message d'erreur s'affiche.",
-        "default": false
-    }]
-}, {
-    "name": "Options de cochage/décochage automatique",
-    "description": "Pour que le décochage fonctionne, au moins une des deux options doit être activée. Cf. https://secure.weda.fr/FolderSetting/PreferenceForm.aspx pour activer/désactiver l'ensemble",
-    "type": TYPE_TITLE,
-    "options": [{
-        "name": "NumPresPrescription",
-        "type": TYPE_BOOL,
-        "description": "Cocher/Décocher automatiquement la case « ordonnance numérique » pour les prescriptions de médicaments.",
-        "default": true
-    }, {
-        "name": "NumPresDemande",
-        "type": TYPE_BOOL,
-        "description": "Cocher/Décocher automatiquement la case « ordonnance numérique » pour les ordonnances de demandes numériques (labo/imagerie/paramédical)",
-        "default": true
-    }]
-}, {
-    "name": "Options de recherche médicale",
-    "description": "Des options spécifiques à la recherche médicale",
-    "type": TYPE_TITLE,
-    "options": [{
-        "name": "keepMedSearch",
-        "type": TYPE_BOOL,
-        "description": "Garder la recherche médicale.",
-        "default": true
-    }, {
-        "name": "addMedSearchButtons",
-        "type": TYPE_BOOL,
-        "description": "Ajouter des boutons de raccourcis pour la recherche de médicaments.",
-        "default": true,
-        "subOptions": [{
-            "name": "boutonRecherche-1",
-            "type": TYPE_BOOL,
-            "description": "Médicaments",
-            "default": true
-        }, {
-            "name": "boutonRecherche-14",
-            "type": TYPE_BOOL,
-            "description": "Recherche par produits",
-            "default": false
-        }, {
-            "name": "boutonRecherche-8",
-            "type": TYPE_BOOL,
-            "description": "Dénomination commune (DCI)",
-            "default": true
-        }, {
-            "name": "boutonRecherche-2",
-            "type": TYPE_BOOL,
-            "description": "Molécules (principes actifs)",
-            "default": true
-        }, {
-            "name": "boutonRecherche-10",
-            "type": TYPE_BOOL,
-            "description": "Recherche par U.C.D.",
-            "default": false
-        }, {
-            "name": "boutonRecherche-3",
-            "type": TYPE_BOOL,
-            "description": "Recherche par A.T.C.",
-            "default": false
-        }, {
-            "name": "boutonRecherche-13",
-            "type": TYPE_BOOL,
-            "description": "Recherche par Vidal",
-            "default": false
-        }, {
-            "name": "boutonRecherche-4",
-            "type": TYPE_BOOL,
-            "description": "Indications",
-            "default": false
-        }, {
-            "name": "boutonRecherche-5",
-            "type": TYPE_BOOL,
-            "description": "Groupe d'indications",
-            "default": false
-        }, {
-            "name": "boutonRecherche-6",
-            "type": TYPE_BOOL,
-            "description": "Laboratoires",
-            "default": false
-        }, {
-            "name": "boutonRecherche-7",
-            "type": TYPE_BOOL,
-            "description": "Vos favoris et perso.",
-            "default": false
-        }, {
-            "name": "boutonRecherche-9",
-            "type": TYPE_BOOL,
-            "description": "Le Top 50",
-            "default": false
-        }]
-    },
-    {
-        "name": "defautSearchType",
-        "type": TYPE_SMALLTEXT,
-        "description": "Type de recherche par défaut (1 à 14). 0 pour désactiver.",
-        "default": 0,
-        "longDescription": "Par défaut, Weda reviens au dernier type de recherche utilisée. Vous pouvez définir le type de recherche médicamenteuse à utiliser systématiquement au chargement :\n\n1 - Médicaments\n14 - Recherche par produits\n8 - Dénomination commune (DCI)\n2 - Molécules (principes actifs)\n10 - Recherche par U.C.D.\n3 - Recherche par A.T.C.\n13 - Recherche par Vidal\n4 - Indications\n5 - Groupe d'indications\n6 - Laboratoires\n7 - Vos favoris et perso.\n9 - Le Top 50"
-    }, {
-        "name": "TweakRecetteForm",
-        "type": TYPE_BOOL,
-        "description": "Appuie automatiquement sur le bouton \"rechercher\" après avoir sélectionné la page des recettes (permet d’afficher les recettes du jour directement en arrivant sur la page).",
-        "default": true
-    }, {
-        "name": "TweakNIR",
-        "type": TYPE_BOOL,
-        "description": "Ajoute la possibilité de copier le NIR en cliquant dessus sur la page d'accueil.",
-        "default": true
-    }]
-}, {
-    "name": "Options de Courrier",
-    "description": "Des options spécifiques aux courriers",
-    "type": TYPE_TITLE,
-    "options": [{
-        "name": "autoSelectMT",
-        "type": TYPE_BOOL,
-        "description": "Sélectionne automatiquement les médecins traitants comme destinataires.",
-        "default": false
-    }]
-}, {
-    "name": "Options de FSE",
-    "description": "Des options spécifiques aux FSE",
-    "type": TYPE_TITLE,
-    "options": [{
-        "name": "defaultCotation",
-        "type": TYPE_BOOL,
-        "description": "Activer les cotations par défaut dans la FDS, comme 'Défaut'",
-        "longDescription": "Nécessite de mettre une cotation favorite nommée 'Défaut', 'DéfautPédia', 'DéfautMOP', 'DéfautALD', 'DéfautTC",
-        "default": true
-    }, {
-        "name": "TweakFSECreation",
-        "type": TYPE_BOOL,
-        "description": "Active les raccourcis clavier de la création de FSE ainsi que la lecture automatique de la carte vitale.",
-        "default": true
-    }, {
-        "name": "TweakFSEDetectMT",
-        "type": TYPE_BOOL,
-        "description": "Sélectionne automatiquement l'option \"Je suis le médecin traitant\" si vous êtes le médecin traitant du patient.",
-        "default": false
-    }, {
-        "name": "TweakFSEGestionUnique",
-        "type": TYPE_BOOL,
-        "description": "Cocher automatiquement la case \"Réaliser une FSE en gestion unique\" pour les patients C2S.",
-        "default": false
-    }, {
-        "name": "TweakFSEAccident",
-        "type": TYPE_BOOL,
-        "description": "Coche automatiquement la case \"Non\" pour un accident de droit commun.",
-        "default": false
-    }, {
-        "name": "TweakSCORDegradee",
-        "type": TYPE_BOOL,
-        "description": "Sélectionne automatiquement \"Feuille de soins dégradée\" lors de l'importation d'une pièce jointe SCOR.",
-        "default": false
-    }, {
-        "name": "SCORAutoSelectPJ",
-        "type": TYPE_BOOL,
-        "description": "Sélectionne automatiquement \"Inclure la FSP en SCOR\".",
-        "default": true
-    }, {
-        "name": "autoValidateSCOR",
-        "type": TYPE_BOOL,
-        "description": "Valide automatiquement l'inclusion du PDF de la FSE dégradée",
-        "default": false
-    }, {
-        "name": "showBillingHistory",
-        "type": TYPE_BOOL,
-        "description": "[En attente du feu vert de Weda] Affiche l'historique des facturations dans la page de télétransmission.",
-        "default": false,
-        "disabled": true,
-        "subOptions": [{
-            "name": "billingDataFilter",
-            "type": TYPE_TEXT,
-            "description": "Filtre les données affichées dans l'historique des facturations",
-            "longDescription": "Filtre les données affichées dans l'historique des facturations  en excluant les cotations notées. Ex. (G, GS, VL). IK correspond à n'importe quel nombre d'IK (ex. IK filtre aussi bien 9IK que 1IK ou IK).",
-            "default": "G,GS,VG+MD+IK, VGS+MD+IK, VG+MD, VGS+MD, COD, GS+MEG, G+MEG"
-        }]
-    }, {
-        "name": "cotationHelper2",
-        "type": TYPE_TEXT,
-        "description": "Propose des notifications pour suggérer des cotations selon le contexte (SHE, MCG, etc.). Supprimez celles qui ne vous intéressent pas.",
-        "longDescription": "Nous sommes parfois confronté à des cotations modificatrices très faciles à oublier en fonction du contexte.\nCette petite aide vous permettra peut-être d'en rattraper certaines.\nPar exemple s'il détecte que vous êtes en train de faire des consultations aux horaires du SAS, il vous suggerera d'ajouter la cotation SHE.\nSi vous voyez un patient hors résidence, il vous proposera la cotation MCG.\nA chaque fois un clic sur la cotation vous permettra de consulter la source parlant de cette cotation.\nPour l'instant les aides concernent les cotations suivantes :\nMCG, SHE, MHP, RDV, MOP, PAV, APC, APY, APU, MCS",
-        "default": "MCG, SHE, MHP, RDV, MOP, PAV, APC, APY, APU, MCS"
-    }]
-}, {
-    "name": "Lien avec Weda-Helper-Companion",
-    "description": "Options de connexion et d'impression automatique via le Companion",
-    "type": TYPE_TITLE,
-    "options": [{
-        "name": "log vers le companion",
-        "type": TYPE_HTML,
-        "description": '<a href="URL_DU_LOG_DU_COMPANION" id="companionLogLing" target="_blank">Voir le log du Companion</a>'
-    }],
-    "sections": [{
-        "name": "Options de connexion",
+        "name": "Options avancées",
+        "description": "Ces options servent des usages très spécifiques, possiblement seulement utile pour les développeurs.",
         "type": TYPE_TITLE,
         "options": [{
-            "name": "portCompanion",
-            "type": TYPE_SMALLTEXT,
-            "description": "Port Weda-Helper-Companion (default 4821) cf. https://github.com/Refhi/Weda-Helper-Companion doit être le même ici et dans le Companion.",
-            "default": "4821"
-        }, {
-            "name": "apiKey",
-            "type": TYPE_SMALLTEXT,
-            "description": "Clé API. Doit être identique à celle du Companion (normalement fait automatiquement lors de la première requête au Companion).",
-            "default": "votre clé API par défaut"
-        }],
-    }, {
-        "name": "Options d'impression automatique",
-        "type": TYPE_TITLE,
-        "options": [{
-            "name": "RemoveLocalCompanionPrint",
+            "name": "headLessSetup",
             "type": TYPE_BOOL,
-            "description": "<em><strong>Désactiver</strong></em> l'impression automatique complète via le companion <strong>(décocher pour l'activer)</strong>.",
+            "description": "shunte le message de mise à jour de Weda sur les postes où vous souhaitez automatiser l'ouverture de Weda (désactivé par défaut). Cela ne correspond qu'à des usages très spécifiques, merci de ne pas l'activer sans en comprendre les implications.",
+            "default": false
+        }, {
+            "name": "initTabPermissionTests",
+            "type": TYPE_BOOL,
+            "description": "Affiche l'interface de test des permissions des onglets.",
+            "default": false
+        }, {
+            "name": "inhitAltKey",
+            "type": TYPE_BOOL,
+            "description": "La touche Alt ne met plus le focus sur le menu du navigateur",
             "default": true,
-            "subOptions": [{
-                "name": "instantPrint",
-                "type": TYPE_BOOL,
-                "description": "Impression instantanée",
-                "longDescription": "dès l'envoi de l'impression via le Companion, ouvre un nouvel onglet. Ferme ensuite l'onglet originel quand l'impression est terminée. Utile pour faire DMP et ordonnances numériques sans ralentir le flux de la consultation. Attention les pdfs des impressions ne seront pas immédiatement visible car pas encore terminé au moment du retour vers le dossier patient.",
-                "default": false
-            }, {
-                "name": "sendAndPrint",
-                "type": TYPE_BOOL,
-                "description": "Imprimer le courrier avant de l'envoyer lors de l'usage de Ctrl+E ou Ctrl+Shift+E ",
-                "default": false
-            }]
+            "longDescription": "Cela règle deux problèmes : le focus était perdu lors de l'usage de Alt pour afficher l'aide, et lorsque le Companion tente de rendre le focus au navigateur (via un appuis simulé sur la touche Alt) cela entrainait parfois un focus sur le menu du navigateur."
         }, {
-            "name": "KeepFocus",
+            "name": "debugModePdfParser",
             "type": TYPE_BOOL,
-            "description": "Active la récupération du focus en cas de vol par l'application d'impression.",
-            "default": true
-        }, {
-            "name": "postPrintBehavior",
-            "type": TYPE_RADIO,
-            "description": "Comportement après une impression automatique par le Companion.",
-            "default": "returnToPatient",
-            // Ici on devrait avoir 'closePreview', 'returnToPatient' et 'doNothing' avec les descriptions associées :
-            // "Fermer la fenêtre de prévisualisation", "Retourner au dossier", "Ne rien faire"
-            "radioOptions": [{
-                "value": "closePreview",
-                "description": "Fermer la fenêtre de prévisualisation"
-            }, {
-                "value": "returnToPatient",
-                "description": "Retourner au dossier"
-            }, {
-                "value": "doNothing",
-                "description": "Ne rien faire"
-            }]
+            "description": "Active le mode debug du PDF Parser.",
+            "default": false,
+            "longDescription": "Affiche un champ de test dans la page des imports pour tester rapidement l’algorithme d’anayse des PDF. Utile pour les développeurs.",
         }],
-    }, {
-        "name": "Lien avec le TPE",
-        "type": TYPE_TITLE,
-        "options": [{
-            "name": "RemoveLocalCompanionTPE",
-            "type": TYPE_BOOL,
-            "description": "<em><strong>Désactiver</strong></em> la communication avec le TPE et l'option TPE dans les fse <strong>(décocher pour l'activer)</strong>.",
-            "default": true
-        }],
-    }]
-}, {
-    "name": "Options avancées",
-    "description": "Ces options servent des usages très spécifiques, possiblement seulement utile pour les développeurs.",
-    "type": TYPE_TITLE,
-    "options": [{
-        "name": "headLessSetup",
-        "type": TYPE_BOOL,
-        "description": "shunte le message de mise à jour de Weda sur les postes où vous souhaitez automatiser l'ouverture de Weda (désactivé par défaut). Cela ne correspond qu'à des usages très spécifiques, merci de ne pas l'activer sans en comprendre les implications.",
-        "default": false
-    }, {
-        "name": "initTabPermissionTests",
-        "type": TYPE_BOOL,
-        "description": "Affiche l'interface de test des permissions des onglets.",
-        "default": false
-    }, {
-        "name": "inhitAltKey",
-        "type": TYPE_BOOL,
-        "description": "La touche Alt ne met plus le focus sur le menu du navigateur",
-        "default": true,
-        "longDescription": "Cela règle deux problèmes : le focus était perdu lors de l'usage de Alt pour afficher l'aide, et lorsque le Companion tente de rendre le focus au navigateur (via un appuis simulé sur la touche Alt) cela entrainait parfois un focus sur le menu du navigateur."
-    }, {
-        "name": "debugModePdfParser",
-        "type": TYPE_BOOL,
-        "description": "Active le mode debug du PDF Parser.",
-        "default": false,
-        "longDescription": "Affiche un champ de test dans la page des imports pour tester rapidement l’algorithme d’anayse des PDF. Utile pour les développeurs.",
-    }],
-}];
+    }];
 
 /**
  * Traverse les options, sous-options et sous-sections d'un ensemble de paramètres et applique une fonction de rappel à chaque option.
@@ -1008,13 +1027,14 @@ function validateSettings(settings) {
         if (!option.name || typeof option.name !== 'string') {
             errors.push(`Erreur dans l'option: 'name' est manquant ou n'est pas une chaîne de caractères.`);
         }
-        if (!option.type || ![TYPE_BOOL, TYPE_TEXT, TYPE_HTML, TYPE_RADIO, TYPE_SMALLTEXT, TYPE_JSON].includes(option.type)) {
+        if (!option.type || ![TYPE_BOOL, TYPE_TEXT, TYPE_HTML, TYPE_RADIO, TYPE_SMALLTEXT, TYPE_JSON, TYPE_TITLE].includes(option.type)) {
             errors.push(`Erreur dans l'option '${option.name}': 'type' est manquant ou invalide.`);
         }
         if (!option.description || typeof option.description !== 'string') {
             errors.push(`Erreur dans l'option '${option.name}': 'description' est manquant ou n'est pas une chaîne de caractères.`);
         }
-        if (option.type !== TYPE_HTML && option.default === undefined) {
+        // Les TYPE_TITLE et TYPE_HTML n'ont pas besoin de valeur par défaut
+        if (option.type !== TYPE_HTML && option.type !== TYPE_TITLE && option.default === undefined) {
             errors.push(`Erreur dans l'option '${option.name}': 'default' est manquant.`);
         }
     });
