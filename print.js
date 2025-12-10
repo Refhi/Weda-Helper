@@ -913,7 +913,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'instantPrint', function () {
 /** Impression de l'ensemble des documents du jour
  * passe forcément par les tabs
  */
-const PRINTALLFUNCTION = '*printAll';
+const PRINTALLFUNCTION = 'printAllOption';
 
 // Ajout d'un store pour les tâches associées aux onglets
 const tabTaskStore = {

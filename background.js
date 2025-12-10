@@ -916,6 +916,12 @@ var advancedDefaultSettings = [
                     "type": TYPE_BOOL,
                     "description": "Imprimer le courrier avant de l'envoyer lors de l'usage de Ctrl+E ou Ctrl+Shift+E ",
                     "default": false
+                }, {
+                    "name": "printAllOption",
+                    "type": TYPE_BOOL,
+                    "description": "Permet l'impression en un clic/raccourcis de tout les documents du jour",
+                    "longDescription": "Ajoute un bouton dans la page d'impression pour imprimer en un clic tous les documents du jour (ordonnances, courriers, certificats, etc.). Egalement accessible en utilisant le raccourcis d'impression depuis l'accueil du patient.",
+                    "default": true
                 }]
             }, {
                 "name": "KeepFocus",
