@@ -113,7 +113,7 @@ addTweak(homePageUrls, 'autoSelectPatientCV', function () {
     });
 });
 
-addTweak(homePageUrls,'TweakNIR', function () {
+addTweak(homePageUrls, 'TweakNIR', function () {
     function addCopySymbol(element, copyText) {
         // Define the id for the copySymbol
         var copySymbolId = 'copySymbol-' + element.id;
@@ -177,7 +177,7 @@ addTweak(homePageUrls,'TweakNIR', function () {
 });
 
 
-        
+
 
 
 
@@ -548,7 +548,7 @@ addTweak('*', 'pastePatient', function () {
             recordMetrics({ clicks: 1, drags: 1 });
         });
     });
-    
+
     // Insérer directement dans le panel, à côté de l'input
     champRecherche.appendChild(emoticoneColle);
 });
@@ -563,5 +563,52 @@ addTweak('*', '*watchPatientSearchBox', function () {
         // On met à jour le timestamp à chaque saisie
         sessionStorage.setItem('lastPatientSearch', Date.now());
         // console.log('[watchPatientSearchBox] lastPatientSearch', sessionStorage.getItem('lastPatientSearch'));
+    });
+});
+
+
+// Gestion des alertes Antécédents
+// Cette partie recherche dans l'option atcdAlerts une valeur pour chaque clé
+// Si une des valeurs est présente dans les antécédents du patient, une alerte est affichée correspondant à la clé
+addTweak('/FolderMedical/PatientViewForm.aspx', '*atcdAlerts', async function () {
+    const panelSelector = "#ContentPlaceHolder1_PanelPatient" // Un peu large, car englobe aussi l'identité, mais c'est acceptable
+    const panelElement = document.querySelector(panelSelector);
+    // On y cherche le div ayant "Cliquez ici pour modifier le volet médical du patient" comme title
+    const atcdDiv = Array.from(panelElement.querySelectorAll('div')).find(div => div.title === "Cliquez ici pour modifier le volet médical du patient");
+    if (!atcdDiv) return;
+    const atcdAlertsOption = await getOptionPromise('atcdAlerts');
+    if (!atcdAlertsOption) return;
+    const atcdAlerts = JSON.parse(atcdAlertsOption);
+    // On liste d'abord tout les span du panel
+    const spanElements = atcdDiv.querySelectorAll('span');
+    spanElements.forEach(spanElement => {
+        const spanText = spanElement.textContent.toLowerCase();
+        // On vérifie chaque alerte
+        atcdAlerts.forEach(alert => {
+            const message = alert[0];
+            const keysToParse = alert[1];
+            keysToParse.forEach(key => {
+                const alertKey = key.toLowerCase();
+                if (spanText.includes(alertKey)) {
+                    console.log('[atcdAlerts] Alerte trouvée pour la clé', alertKey, 'dans le texte', spanText);
+                    // On affiche une alerte
+                    sendWedaNotifAllTabs({
+                        message: `Alerte ATCD: ${message} (mot-clé: "${alertKey}")`,
+                        type: 'success',
+                        duration: 10000,
+                        icon: 'warning',
+                    });
+
+                    // On met l'élément en vert
+                    spanElement.style.color = 'green';
+                    spanElement.style.fontWeight = 'bold';
+
+                    // On y ajoute un tooltip
+                    spanElement.title = `Alerte ATCD: ${message} (mot-clé: "${alertKey}")`;
+                    
+
+                }
+            });
+        });
     });
 });
