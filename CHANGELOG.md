@@ -10,6 +10,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#532](https://github.com/Refhi/Weda-Helper/issues/532) - L'impression de masse peut être désactivée dans les options (utile si le raccourci vous gène).
 - [#521](https://github.com/Refhi/Weda-Helper/issues/521) - Ajout de raccourcis pour scanner directement le datamatrix d'un vaccin depuis l’arborescence des vaccins.
 - La case "x ième injection effectuée" se coche automatiquement.
+- [#534](https://github.com/Refhi/Weda-Helper/issues/534) - Ajout d'un bouton "+1clickVSM" dans la page des antécédents pour créer un VSM en un clic.
 
 
 ## Refactory :

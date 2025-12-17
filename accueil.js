@@ -264,7 +264,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*preAlertVSM', async function (
 });
 
 // -------------------------- +1click VSM -------------------------------------
-addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', '/FolderMedical/DMP/view'], 'oneClickVSM', async function () {
+addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', '/FolderMedical/DMP/view', '/FolderMedical/AntecedentForm.aspx'], 'oneClickVSM', async function () {
     let pourcentageUtilisateur = await getOptionPromise('oneClickVSMToleranceLevel'); // Au format 70 pour 70% pour 0.3 de ratio
     // Conversion au format numérique
     pourcentageUtilisateur = parseFloat(pourcentageUtilisateur);
@@ -277,6 +277,34 @@ addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', 
     waitForElement({
         selector: '#ContentPlaceHolder1_EtatCivilUCForm1_HyperLinkOpenVSM',
         callback: function () { setupPatientViewButton() }
+    });
+
+    // On ajoute également un bouton sur la page d’édition des antécédents
+    waitForElement({
+        selector: '#ContentPlaceHolder1_ButtonExitVsm',
+        callback: function (elements) {
+            const exitVSMButton = elements[0];
+            if (!document.querySelector('#oneClickVSMButton')) {
+                const oneClickVSMButton = document.createElement('button');
+                oneClickVSMButton.textContent = '+1clickVSM';
+                oneClickVSMButton.title = 'Weda-Helper : Créer un VSM en un clic. Ne fonctionne que si au moins 70% des champs sont au format CIM-10';
+
+                // Copier le style du bouton de référence
+                const referenceButton = document.querySelector('#ContentPlaceHolder1_ButtonFind');
+                if (referenceButton) {
+                    oneClickVSMButton.className = referenceButton.className;
+                    // Ajouter uniquement la marge gauche en plus
+                    oneClickVSMButton.style.marginLeft = '10px';
+                }
+
+                oneClickVSMButton.id = 'oneClickVSMButton';
+                oneClickVSMButton.addEventListener('click', function () {
+                    setOneClickVSMTimestamp();
+                    VSMButton.click();
+                });
+                exitVSMButton.parentNode.appendChild(oneClickVSMButton);
+            }
+        }
     });
 
     // Depuis la page de vérification du VSM (on attends l'apparition du titre avant de vérifier les erreurs)
@@ -605,7 +633,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*atcdAlerts', async function ()
 
                     // On y ajoute un tooltip
                     spanElement.title = `Alerte ATCD: ${message} (mot-clé: "${alertKey}")`;
-                    
+
 
                 }
             });

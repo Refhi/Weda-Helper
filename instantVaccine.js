@@ -60,6 +60,7 @@ addTweak('/FolderMedical/VaccinForm.aspx', '*quickVaccineShortcut', function () 
             // On met un marqueur pour indiquer qu'on est en mode ajout rapide
             sessionStorage.setItem('quickVaccineAdd', 'true')
             // on clique sur le bouton existant pour ouvrir le formulaire d'ajout
+            recordMetrics({ clicks: 1, drags: 1 });
             clicCSPLockedElement('#' + button.id)
         })
         button.parentElement.insertBefore(quickButton, button.nextSibling)
@@ -75,6 +76,7 @@ addTweak('/FolderMedical/VaccinForm.aspx', '*quickVaccineProcess', function () {
         if (datamatrixButton) {
             // On enlève le marqueur
             sessionStorage.removeItem('quickVaccineAdd')
+            recordMetrics({ clicks: 1, drags: 1 });
             datamatrixButton.click()
         }
     }
