@@ -48,7 +48,7 @@ addTweak('/FolderMedical/VaccinForm.aspx', instantVaccineOption, function () {
 // depuis la page de l’arborescence des vaccins
 addTweak('/FolderMedical/VaccinForm.aspx', '*quickVaccineShortcut', function () {
     // tout d’abord on ajoute les boutons de raccourcis sur les boutons existants
-    const existingAddVaccineButtons = document.querySelectorAll('.buttonheader')
+    const existingAddVaccineButtons = document.querySelectorAll('#ContentPlaceHolder1_TreeViewVaccinn0Nodes .buttonheader')
     existingAddVaccineButtons.forEach(buttonHeader => {
         const button = buttonHeader.parentElement
         const quickButton = document.createElement('button')
@@ -108,6 +108,20 @@ addTweak('/FolderMedical/VaccinForm.aspx', "*autoFormatDateVaccineField", functi
                     elem[0].value = formattedValue;
                 }
             });
+        }
+    });
+});
+
+
+// Coche automatique de la case "x injection effectuée"
+addTweak('/FolderMedical/VaccinForm.aspx', "*autoCheckInjectionDone", function () {
+    waitForElement({
+        selector: '#ContentPlaceHolder1_CheckBoxVaccinEffectue',
+        justOnce: true,
+        triggerOnInit: true,
+        callback: function (elem) {
+            elem[0].checked = true;
+            elem[0].dispatchEvent(new Event('change'));
         }
     });
 });
