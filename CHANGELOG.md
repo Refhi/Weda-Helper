@@ -8,6 +8,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 ## Ajout :
 - [#528](https://github.com/Refhi/Weda-Helper/issues/528) - Ajout d'un système d'alerte si un antécédent contiens un mot-clé précisé dans les options de Weda-Helper. Utile pour mettre en lumière les patients éligibles à un suivi spécifique comme l'inscription à un ETP.
 - [#532](https://github.com/Refhi/Weda-Helper/issues/532) - L'impression de masse peut être désactivée dans les options (utile si le raccourci vous gène).
+- [#521](https://github.com/Refhi/Weda-Helper/issues/521) - Ajout de raccourcis pour scanner directement le datamatrix d'un vaccin depuis l’arborescence des vaccins.
 
 
 ## Refactory :

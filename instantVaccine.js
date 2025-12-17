@@ -11,7 +11,7 @@ const instantVaccineOption = 'instantVaccine'
 
 
 addTweak('/FolderMedical/PatientViewForm.aspx', instantVaccineOption, function () {
-    if (instantVaccineAlreadyProcessed()) {return}
+    if (instantVaccineAlreadyProcessed()) { return }
     // On repère le bouton de vaccination
     let possibleVaccineButton = document.querySelectorAll('a.level2')
     // On recherche le texte " Vaccination et rappel"
@@ -26,7 +26,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', instantVaccineOption, function (
 
 // La suite se passe sur une autre page
 addTweak('/FolderMedical/VaccinForm.aspx', instantVaccineOption, function () {
-    if (instantVaccineAlreadyProcessed()) {return}
+    if (instantVaccineAlreadyProcessed()) { return }
     // Pour accéder à la page d'enregistrement de la vaccination
     let vaccineButton = document.querySelector('#ContentPlaceHolder1_ButtonNewSerieVaccin')
     if (vaccineButton) {
@@ -38,11 +38,47 @@ addTweak('/FolderMedical/VaccinForm.aspx', instantVaccineOption, function () {
     if (datamatrixButton) {
         datamatrixButton.click()
         // On enregistre le patient actuel pour ne pas relancer le processus
-        sessionStorage.setItem('patientRecord', getCurrentPatientId())
+        setCurrentPatientAsProcessed()
     }
 
-    
+
 });
+
+// On fait une fonction similaire pour les raccourcis lors de l’ajout rapide d’une vaccination
+// depuis la page de l’arborescence des vaccins
+addTweak('/FolderMedical/VaccinForm.aspx', '*quickVaccineShortcut', function () {
+    // tout d’abord on ajoute les boutons de raccourcis sur les boutons existants
+    const existingAddVaccineButtons = document.querySelectorAll('.buttonheader')
+    existingAddVaccineButtons.forEach(buttonHeader => {
+        const button = buttonHeader.parentElement
+        const quickButton = document.createElement('button')
+        quickButton.innerText = '📷 Scan Datamatrix'
+        quickButton.style.marginLeft = '10px'
+        quickButton.className = 'buttonheader'
+        quickButton.addEventListener('click', function (event) {
+            event.preventDefault()
+            // On met un marqueur pour indiquer qu'on est en mode ajout rapide
+            sessionStorage.setItem('quickVaccineAdd', 'true')
+            // on clique sur le bouton existant pour ouvrir le formulaire d'ajout
+            clicCSPLockedElement('#' + button.id)
+        })
+        button.parentElement.insertBefore(quickButton, button.nextSibling)
+    })
+})
+
+// Une fois sur la page d’ajout de vaccination on vérifie si on est en mode ajout rapide
+addTweak('/FolderMedical/VaccinForm.aspx', '*quickVaccineProcess', function () {
+    const isQuickAdd = sessionStorage.getItem('quickVaccineAdd')
+    if (isQuickAdd === 'true') {
+        // On clique sur le bouton de scan du datamatrix
+        const datamatrixButton = document.querySelector('#ContentPlaceHolder1_btnScanDatamatrix')
+        if (datamatrixButton) {
+            // On enlève le marqueur
+            sessionStorage.removeItem('quickVaccineAdd')
+            datamatrixButton.click()
+        }
+    }
+})
 
 function instantVaccineAlreadyProcessed() {
     const lastPatient = sessionStorage.getItem('patientRecord')
@@ -51,6 +87,10 @@ function instantVaccineAlreadyProcessed() {
     return lastPatient === currentPatient
 }
 
+function setCurrentPatientAsProcessed() {
+    const currentPatient = getCurrentPatientId()
+    sessionStorage.setItem('patientRecord', currentPatient)
+}
 
 
 // autoformatage du champ de date
