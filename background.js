@@ -208,8 +208,9 @@ const customFieldsDefault3 = JSON.stringify([
 const atcdAlertsDefault = JSON.stringify([
     // Recherche les valeurs dans l’ensemble des antécédents.
     // Si trouvé, affiche une alerte basée sur la clé.
-    ["ETP Diabète - ce patient peut être éligible à une ETP Diabète", ["diabète", "diabetes"]],
-    ["ETP Asthme - ce patient peut être éligible à une ETP Asthme", ["asthme", "asthma"]],
+    ["ETP Diabète - ce patient peut être éligible à une ETP Diabète", ["diabètexxx", "diabetesxxx"]],
+    ["ETP Asthme - ce patient peut être éligible à une ETP Asthme", ["asthmexxx", "asthmaxxx"]],
+    ["les alertes présentes dans cette liste sont fictives, merci de les personnaliser selon vos besoins", ["alertexxx"]]
 ]);
 
 
