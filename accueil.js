@@ -599,14 +599,36 @@ addTweak('*', '*watchPatientSearchBox', function () {
 // Cette partie recherche dans l'option atcdAlerts une valeur pour chaque clé
 // Si une des valeurs est présente dans les antécédents du patient, une alerte est affichée correspondant à la clé
 addTweak('/FolderMedical/PatientViewForm.aspx', '*atcdAlerts', async function () {
-    const panelSelector = "#ContentPlaceHolder1_PanelPatient" // Un peu large, car englobe aussi l'identité, mais c'est acceptable
+    const panelSelector = "#ContentPlaceHolder1_PanelPatient"
     const panelElement = document.querySelector(panelSelector);
-    // On y cherche le div ayant "Cliquez ici pour modifier le volet médical du patient" comme title
+    if (!panelElement) return;
     const atcdDiv = Array.from(panelElement.querySelectorAll('div')).find(div => div.title === "Cliquez ici pour modifier le volet médical du patient");
     if (!atcdDiv) return;
+
+    // On récupère les alertes de l'utilisateur depuis les options
     const atcdAlertsOption = await getOptionPromise('atcdAlerts');
     if (!atcdAlertsOption) return;
     const atcdAlerts = JSON.parse(atcdAlertsOption);
+
+    // On récupère les alertes du cabinet/Pôle depuis alertesAtcd.js
+    // Les alertes ne doivent concerner que le cabinet en cours.
+    const cabinetId = function() {
+        const cabinetElement = document.querySelector('#LinkButtonUserLog');
+        // Le Title de cet élément contiens plusieurs infos séparées par des retours à la lignes.
+        // On s'intéresse à la ligne "CabinetID : xxxx"
+        const cabinetInfoLines = cabinetElement.title.split('\n');
+        for (let line of cabinetInfoLines) {
+            if (line.startsWith('CabinetID : ')) {
+                return line.replace('CabinetID : ', '').trim();
+            }
+        }
+        return null;
+    }();
+    console.log('[atcdAlerts] cabinetId', cabinetId);
+    const atcdAlertsCabinet = alertesAtcd[cabinetId];
+    console.log('[atcdAlerts] atcdAlertsCabinet', atcdAlertsCabinet);
+    // TODO : reprendre ici, on doit croiser atcdAlertsCabinet et atcdAlerts de l'utilisateur, ou peut-être étendre les possibilités des alertes utilisateurs ?
+
     // On liste d'abord tout les span du panel
     const spanElements = atcdDiv.querySelectorAll('span');
     spanElements.forEach(spanElement => {

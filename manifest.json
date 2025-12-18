@@ -26,6 +26,7 @@
         "*://secure.weda.fr/*"
       ],
       "js": [
+        "alertesAtcd.js",
         "metrics.js",
         "lib/hotkeys.js",
         "lib/pdf-lib.js",
