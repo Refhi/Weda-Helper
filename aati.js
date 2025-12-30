@@ -298,7 +298,7 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
 });
 
 // Ajout d'un champ de recherche rapide pour les motifs d'arrêt de travail
-addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
+addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
     const selecteurCategories = '.flexColumn select.entry';
     const selecteurSousCategories = '.flexColumn select.entry.ml10';
 
@@ -350,22 +350,21 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
         return score;
     }
 
-    // Fonction pour rechercher dans les motifs
+    // Fonction pour rechercher dans les motifs et retourner les 5 meilleurs résultats
     async function searchMotifs(searchTerm) {
         if (!searchTerm || searchTerm.trim().length < 2) {
-            return null;
+            return [];
         }
 
         // Récupérer les motifs depuis le storage
         const result = await chrome.storage.local.get(['motifsAATI']);
         if (!result.motifsAATI) {
             console.log('[AATI Search] Aucun motif disponible');
-            return null;
+            return [];
         }
 
         const motifs = result.motifsAATI;
-        let bestMatch = null;
-        let bestScore = 0;
+        let matches = [];
 
         // Parcourir toutes les catégories et sous-catégories
         for (const [categorieValue, categorieData] of Object.entries(motifs)) {
@@ -374,21 +373,24 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
                 const searchText = `${sousCategorie.label} ${sousCategorie.title}`;
                 const score = fuzzyMatch(searchTerm, searchText);
 
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestMatch = {
+                if (score > 0) {
+                    matches.push({
                         categorieValue: categorieValue,
                         categorieLabel: categorieData.label,
                         sousCategorieValue: sousCategorie.value,
                         sousCategorieLabel: sousCategorie.label,
                         score: score
-                    };
+                    });
                 }
             }
         }
 
-        console.log('[AATI Search] Meilleur résultat:', bestMatch);
-        return bestMatch;
+        // Trier par score décroissant et prendre les 5 premiers
+        matches.sort((a, b) => b.score - a.score);
+        const topMatches = matches.slice(0, 5);
+
+        console.log('[AATI Search] Top 5 résultats:', topMatches);
+        return topMatches;
     }
 
     // Fonction pour sélectionner un motif
@@ -431,6 +433,7 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
 
             const searchLabel = document.createElement('label');
             searchLabel.textContent = '🔍 Recherche rapide de motif : ';
+            searchLabel.title = 'Recherche rapide et floue (essaye d’être tolérant aux fautes de frappe) parmi les motifs d’arrêt de travail AATI.';
             searchLabel.style.cssText = 'font-weight: bold; margin-right: 10px; color: #333;';
 
             const searchInput = document.createElement('input');
@@ -438,10 +441,11 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
             searchInput.type = 'text';
             searchInput.placeholder = 'Ex: fracture cote, grippe, lombalgie...';
             searchInput.style.cssText = 'width: 400px; padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px;';
+            searchInput.tabIndex = 1;
 
-            const resultInfo = document.createElement('span');
-            resultInfo.id = 'aati-search-result';
-            resultInfo.style.cssText = 'margin-left: 15px; font-size: 12px; color: #666; font-style: italic;';
+            const resultsContainer = document.createElement('div');
+            resultsContainer.id = 'aati-search-results';
+            resultsContainer.style.cssText = 'margin-top: 10px;';
 
             // Gestionnaire de recherche avec debounce
             let searchTimeout;
@@ -450,24 +454,97 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
                 const searchTerm = e.target.value;
 
                 if (searchTerm.trim().length < 2) {
-                    resultInfo.textContent = '';
+                    resultsContainer.innerHTML = '';
                     return;
                 }
 
-                resultInfo.textContent = '⏳ Recherche...';
-                resultInfo.style.color = '#999';
+                resultsContainer.innerHTML = '<span style="color: #999; font-style: italic;">⏳ Recherche...</span>';
 
                 searchTimeout = setTimeout(async () => {
-                    const match = await searchMotifs(searchTerm);
+                    const matches = await searchMotifs(searchTerm);
 
-                    if (match && match.score > 0) {
-                        resultInfo.textContent = `✓ Trouvé: ${match.sousCategorieLabel}`;
-                        resultInfo.style.color = '#28a745';
-                        selectMotif(match.categorieValue, match.sousCategorieValue);
+                    if (matches.length > 0) {
+                        // Créer la liste des résultats
+                        resultsContainer.innerHTML = '';
+                        
+                        matches.forEach((match, index) => {
+                            const resultItem = document.createElement('div');
+                            resultItem.tabIndex = 2 + index;
+                            resultItem.style.cssText = `
+                                padding: 8px 12px;
+                                margin: 5px 0;
+                                background: ${index === 0 ? '#d4edda' : '#ffffff'};
+                                border: 2px solid ${index === 0 ? '#28a745' : '#ccc'};
+                                border-radius: 4px;
+                                cursor: pointer;
+                                transition: all 0.2s;
+                                font-size: 13px;
+                            `;
+                            
+                            resultItem.innerHTML = `
+                                <strong>${index === 0 ? '✓ ' : ''}${match.sousCategorieLabel}</strong>
+                                <span style="color: #666; font-size: 11px; margin-left: 10px;">(${match.categorieLabel})</span>
+                            `;
+                            
+                            // Effet hover
+                            resultItem.addEventListener('mouseenter', function() {
+                                this.style.background = '#e3f2fd';
+                                this.style.borderColor = '#4a90e2';
+                            });
+                            
+                            resultItem.addEventListener('mouseleave', function() {
+                                this.style.background = index === 0 ? '#d4edda' : '#ffffff';
+                                this.style.borderColor = index === 0 ? '#28a745' : '#ccc';
+                            });
+                            
+                            // Effet focus (pour navigation clavier)
+                            resultItem.addEventListener('focus', function() {
+                                this.style.background = '#e3f2fd';
+                                this.style.borderColor = '#4a90e2';
+                                this.style.outline = '3px solid #4a90e2';
+                            });
+                            
+                            resultItem.addEventListener('blur', function() {
+                                const isSelected = this.querySelector('strong').textContent.startsWith('✓');
+                                this.style.background = isSelected ? '#d4edda' : '#ffffff';
+                                this.style.borderColor = isSelected ? '#28a745' : '#ccc';
+                                this.style.outline = 'none';
+                            });
+                            
+                            // Gestionnaire de clic et touche Entrée
+                            const selectThisMotif = function() {
+                                selectMotif(match.categorieValue, match.sousCategorieValue);
+                                recordMetrics({ clicks: 2, drags: 2 });
+                                
+                                // Mise à jour visuelle
+                                resultsContainer.querySelectorAll('div').forEach(div => {
+                                    div.style.background = '#ffffff';
+                                    div.style.borderColor = '#ccc';
+                                    div.querySelector('strong').textContent = div.querySelector('strong').textContent.replace('✓ ', '');
+                                });
+                                resultItem.style.background = '#d4edda';
+                                resultItem.style.borderColor = '#28a745';
+                                resultItem.querySelector('strong').textContent = '✓ ' + match.sousCategorieLabel;
+                            };
+                            
+                            resultItem.addEventListener('click', selectThisMotif);
+                            
+                            resultItem.addEventListener('keydown', function(e) {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    selectThisMotif();
+                                }
+                            });
+                            
+                            resultsContainer.appendChild(resultItem);
+                        });
+                        
+                        // Sélectionner automatiquement le premier résultat
+                        selectMotif(matches[0].categorieValue, matches[0].sousCategorieValue);
                         recordMetrics({ clicks: 2, drags: 2 });
+                        
                     } else {
-                        resultInfo.textContent = '✗ Aucun résultat';
-                        resultInfo.style.color = '#dc3545';
+                        resultsContainer.innerHTML = '<span style="color: #dc3545; font-style: italic;">✗ Aucun résultat</span>';
                     }
                 }, 300); // Debounce de 300ms
             });
@@ -475,7 +552,7 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
             // Assembler les éléments
             searchContainer.appendChild(searchLabel);
             searchContainer.appendChild(searchInput);
-            searchContainer.appendChild(resultInfo);
+            searchContainer.appendChild(resultsContainer);
 
             // Insérer avant les sélecteurs de catégories
             const flexColumn = selectCategories.closest('.flexColumn');

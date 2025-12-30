@@ -366,6 +366,11 @@ var advancedDefaultSettings = [
                 "type": TYPE_BOOL,
                 "description": "Coche automatiquement la case du consentement pour les arrêts de travail.",
                 "default": true
+            }, {
+                "name": "speedSearchAATI",
+                "type": TYPE_BOOL,
+                "description": "Ajoute un champ de recherche rapide pour les motifs d'arrêt de travail.",
+                "default": true
             }]
         }, {
             "name": "removeBoldPatientFirstName",
