@@ -31,6 +31,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoAATI', function () {
 addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
     let selecteurBoutonCV = '#mat-dialog-1 > ng-component > div:nth-child(2) > div.footer.weda-row.weda-main-align-around.weda-cross-align-center.ng-star-inserted > button:nth-child(1)'
     let selecteurBoutonEntreeManuelle = '#mat-dialog-1 > ng-component > div:nth-child(2) > div.footer.weda-row.weda-main-align-around.weda-cross-align-center.ng-star-inserted > button:nth-child(2)'
+    let boutonEnvoyerEntreeManuelle = '#mat-dialog-2 > ng-component > div:nth-child(2) > div.footer.weda-row.weda-main-align-around.weda-cross-align-center > button.mat-focus-indicator.color-purple-bold.mat-raised-button.mat-button-base'
     let selecteurSortieNonLimites = '#form1 > div:nth-child(10) > div > dmp-aati-form > div > div:nth-child(2) > div.ml10 > div > div.frameContent > dmp-aati-leave-permission > div.flexColStart.mt10 > div.flexColStart.mt10.ng-star-inserted > div.flexColStart.pt3.ng-star-inserted > div.flexRow.mt5 > input'
     let selectorExitButton = '.frameback.dmtiForm.ng-star-inserted .imgfixe a'
 
@@ -81,7 +82,6 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
                 console.log('boutonSansCV', boutonSansCV);
                 if (boutonSansCV) {
                     boutonSansCV.click();
-                    // TODO: à réparer
                 }
             } else {
                 console.log('timestampAATIsansCV', result.timestampAATIsansCV, 'is more than 10 seconds ago donc je dois cliquer sur le bouton "AT avec CV"');
@@ -93,10 +93,26 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
     // appuie sur le bouton adéquat selon le type d'arrêt de travail
     waitForElement({
         selector: selecteurBoutonCV,
-        callback: clickProperButton,
+        callback: function (elements) {
+            clickProperButton(elements);
+            // appuie sur le bouton "Envoyer" de la saisie manuelle si on est dans ce mode
+            console.log('waitForElement pour boutonEnvoyerEntreeManuelle déclenché');
+            waitForElement({
+                selector: boutonEnvoyerEntreeManuelle,
+                callback: function (elements) {
+                    console.log('boutonEnvoyerEntreeManuelle détecté, on clique dessus', elements);
+                    elements[0].click();
+                    recordMetrics({ clicks: 1, drags: 1 });
+                },
+                justOnce: true,
+                triggerOnInit: true
+            });
+        },
         justOnce: true
     });
-    
+
+
+
     // guette la liste des patients présents sur la carte vitale pour cliquer sur le premier patient
     waitForElement({
         selector: '[title="Déclarer l\'AT pour ce bénéficiaire."]',
@@ -117,7 +133,7 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
         callback: async function (elements) {
             console.log('selectorExitButton', elements);
             // on enregistre le timestamp de sortie dans le local storage
-            await chrome.storage.local.set({autoAATIexit: Date.now()});
+            await chrome.storage.local.set({ autoAATIexit: Date.now() });
             console.log('autoAATIexit set to', Date.now());
             setTimeout(function () {
                 elements[0].click();
@@ -151,14 +167,14 @@ addTweak('/BinaryData.aspx', "*sendDocToCompanion", async function () {
 
     console.log('autoAATIexit is recent and Companion print is enabled, proceeding with Companion print');
     // réinitialisation de la valeur autoAATIexit
-    await chrome.storage.local.set({autoAATIexit: 0});
+    await chrome.storage.local.set({ autoAATIexit: 0 });
 
     // l’url de la page est censée être la page 3 de l'arrêt de travail, on va l'envoyer à Companion
     let url = window.location.href;
     const pdfBlob = await fetchBlobFromUrl(url);
     sendToCompanion('print', pdfBlob, function (response) {
         console.log('The blob has been successfully transferred to Companion.');
-        recordMetrics({clicks: 3, drags: 3});
+        recordMetrics({ clicks: 3, drags: 3 });
         setTimeout(function () {
             window.close();
         }, 1000);
@@ -193,5 +209,5 @@ addTweak('/FolderMedical/Aati.aspx', 'aatiTermsExcerpt', function () {
         icon: 'check'
     });
 
-    recordMetrics({ clicks: 1, drags: 1 });    
+    recordMetrics({ clicks: 1, drags: 1 });
 });
