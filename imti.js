@@ -147,16 +147,125 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'oneClickMT', async function () 
  * @description
  * Cette partie est assez complexe car elle s'étale sur plusieurs pages et nécessite de surveiller
  * l'état de la page et des actions précédentes pour valider la suite du processus.
- * D'où l'utilisation de la mémoire de session pour stocker l'état de l'opération.
+ * D'où l'utilisation de la mémoire de session pour stocker l'état de l'opération via un système de checklist.
  * J'ai essayé de commenter au mieux chaque étape pour faciliter la compréhension.
  */
 
+// Configuration du workflow
+const MT_WORKFLOW_KEY = 'autoMTIncludeAndCheckContact_workflow';
+const MT_WORKFLOW_TIMEOUT = 15000; // 15 secondes de timeout global
+
+const MT_STEPS = {
+    INIT: 'INIT',
+    CONTACT_PAGE_OPENED: 'CONTACT_PAGE_OPENED',
+    MT_EXTRACTED: 'MT_EXTRACTED',
+    SPECIALTY_UPDATED: 'SPECIALTY_UPDATED',
+    SEARCH_UPDATED: 'SEARCH_UPDATED',
+    CONTACT_SELECTED: 'CONTACT_SELECTED',
+    ASIP_UPDATE_CLICKED: 'ASIP_UPDATE_CLICKED',
+    CONTACT_SELECTED_FROM_ASIP: 'CONTACT_SELECTED_FROM_ASIP',
+    REPLACEMENT_VALIDATED: 'REPLACEMENT_VALIDATED',
+    FINAL_VALIDATED: 'FINAL_VALIDATED'
+};
+
+// Fonctions de gestion du workflow
+function initWorkflow() {
+    const workflow = {
+        startTime: Date.now(),
+        completed: [MT_STEPS.INIT],
+        currentStep: MT_STEPS.INIT,
+        mtInfo: null
+    };
+    sessionStorage.setItem(MT_WORKFLOW_KEY, JSON.stringify(workflow));
+    console.log('[MT Workflow] Initialisé', workflow);
+    return workflow;
+}
+
+function getWorkflow() {
+    const data = sessionStorage.getItem(MT_WORKFLOW_KEY);
+    if (!data) return null;
+    try {
+        return JSON.parse(data);
+    } catch (e) {
+        console.error('[MT Workflow] Erreur de parsing', e);
+        return null;
+    }
+}
+
+function updateWorkflow(updates) {
+    const workflow = getWorkflow();
+    if (!workflow) {
+        console.error('[MT Workflow] Tentative de mise à jour sur workflow inexistant');
+        return null;
+    }
+    
+    const updated = { ...workflow, ...updates };
+    sessionStorage.setItem(MT_WORKFLOW_KEY, JSON.stringify(updated));
+    console.log('[MT Workflow] Mis à jour', updated);
+    return updated;
+}
+
+function completeStep(step, additionalData = {}) {
+    const workflow = getWorkflow();
+    if (!workflow) {
+        console.error('[MT Workflow] Tentative de complétion sur workflow inexistant');
+        return null;
+    }
+    
+    if (!workflow.completed.includes(step)) {
+        workflow.completed.push(step);
+    }
+    workflow.currentStep = step;
+    
+    const updated = { ...workflow, ...additionalData };
+    sessionStorage.setItem(MT_WORKFLOW_KEY, JSON.stringify(updated));
+    console.log(`[MT Workflow] Étape complétée: ${step}`, updated);
+    return updated;
+}
+
+function isStepCompleted(step) {
+    const workflow = getWorkflow();
+    return workflow && workflow.completed.includes(step);
+}
+
+function isWorkflowValid() {
+    const workflow = getWorkflow();
+    if (!workflow) {
+        console.log('[MT Workflow] Aucun workflow trouvé');
+        return false;
+    }
+    
+    const elapsed = Date.now() - workflow.startTime;
+    const isValid = elapsed < MT_WORKFLOW_TIMEOUT;
+    
+    if (!isValid) {
+        console.log(`[MT Workflow] Expiré (${elapsed}ms > ${MT_WORKFLOW_TIMEOUT}ms)`);
+    }
+    
+    return isValid;
+}
+
+function cleanWorkflow() {
+    const workflow = getWorkflow();
+    console.log('[MT Workflow] Nettoyage', workflow);
+    sessionStorage.removeItem(MT_WORKFLOW_KEY);
+}
+
+function handleWorkflowError(message) {
+    sendWedaNotifAllTabs({
+        message: message,
+        type: 'undefined',
+        icon: 'help_outline'
+    });
+    console.error('[MT Workflow] ' + message);
+    cleanWorkflow();
+    return false;
+}
+
 
 // I. Fonction d'entrée !
-// Comportement non modifié = ajoute le médecin retrouvé par IMTi aux contacts du patient dans la page d’accueil
-// semble déclencher un rechargement de la page
 // Comportement modifié = ajoute un lien à côté du bouton "Ajouter aux contacts du patient" qui
-// clique sur ce bouton mais ajoute en plus un timestamp dans la mémoire de session
+// clique sur ce bouton et initialise le workflow
 addTweak('/FolderMedical/PatientViewForm.aspx', 'autoMTIncludeAndCheckContact', function () {
     console.log('[addMtToContacts] débuté');
     waitForElement({
@@ -173,8 +282,8 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoMTIncludeAndCheckContact', 
                 recordMetrics({ clicks: 1, drags: 1 });
                 // Clic sur le bouton "Ajouter aux contacts du patient"
                 console.log('[addMtToContacts] lien cliqué', elements[0]);
-                // Ajout d'un timestamp dans la mémoire de session pour rediriger vers le bon onglet
-                sessionStorage.setItem('autoMTIncludeAndCheckContact', Date.now());
+                // Initialisation du workflow
+                initWorkflow();
                 elements[0].click();
                 recordMetrics({ clicks: 1, drags: 1 });
             });
@@ -182,7 +291,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoMTIncludeAndCheckContact', 
     });
 });
 
-// II. Renvoi vers la page de contact si la récupération du MT a été faite récemment
+// II. Renvoi vers la page de contact si le workflow a été initialisé
 addTweak('/FolderMedical/PatientViewForm.aspx', 'autoMTIncludeAndCheckContact', function () {
     function openContactPage() {
         let elementToClick = document.querySelector('div[title="Cliquez ici pour renseigner les contacts du patient"]')
@@ -191,15 +300,12 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoMTIncludeAndCheckContact', 
             elementToClick.click();
         }
     }
-    if (sessionStorage.getItem('autoMTIncludeAndCheckContact')) {
-        // Vérifier le timestamp : s'il est récent (moins de 5 secondes), alors on clique sur le bouton
-        let timestamp = parseInt(sessionStorage.getItem('autoMTIncludeAndCheckContact'));
-        if (Date.now() - timestamp < 5000) {
-            // mettre à jour le timestamp
-            sessionStorage.setItem('autoMTIncludeAndCheckContact', Date.now());
-            recordMetrics({ clicks: 1, drags: 1 });
-            openContactPage();
-        }
+    
+    const workflow = getWorkflow();
+    if (workflow && isWorkflowValid() && workflow.currentStep === MT_STEPS.INIT) {
+        console.log('[MT Workflow] Redirection vers page de contact');
+        completeStep(MT_STEPS.CONTACT_PAGE_OPENED);
+        openContactPage();
     }
 });
 
@@ -207,80 +313,85 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoMTIncludeAndCheckContact', 
 /**
  * Déclenché depuis l'accueil du ContactForm
  * Cherche le contact du médecin traitant et le sélectionne pour édition
- * S'arrête si plus de 5 secondes se sont écoulées
  */
 addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', function () {
-    if (!verifierTimestamp()) {
-        nettoyerTimestamp();
+    if (!isWorkflowValid()) {
+        cleanWorkflow();
         return;
     }
-    waitForElement({ // On attend que les contacts à droite de la page soient chargés
+    
+    waitForElement({
         selector: '[id^="ContentPlaceHolder1_PatientContactsGrid_LabelIsContactWeda_"]',
         triggerOnInit: true,
         callback: function (contacts) {
-            console.log('[autoMTIncludeAndCheckContact] Contacts trouvés : ', contacts);
-            // Si le timestamp est toujours valide, on continue
-            if (!verifierTimestamp()) {
+            console.log('[MT Workflow] Contacts trouvés : ', contacts);
+            
+            if (!isWorkflowValid()) {
+                cleanWorkflow();
                 return;
             }
-            console.log('[autoMTIncludeAndCheckContact] Timestamp valide');
-
-            const mtInfo = extractMTInfo(contacts); // Récupération nom/prénom du MT dans la liste de contact à droite
-            recordMetrics({ clicks: 1, drags: 1 });
-            if (!mtInfo) {
-                nettoyerTimestamp();
-                return;
+            
+            const workflow = getWorkflow();
+            console.log('[MT Workflow] État actuel:', workflow);
+            
+            // Extraction des infos MT si pas déjà fait
+            if (!isStepCompleted(MT_STEPS.MT_EXTRACTED)) {
+                const mtInfo = extractMTInfo(contacts);
+                recordMetrics({ clicks: 1, drags: 1 });
+                if (!mtInfo) {
+                    cleanWorkflow();
+                    return;
+                }
+                
+                console.log('[MT Workflow] MT trouvé : ', mtInfo);
+                completeStep(MT_STEPS.MT_EXTRACTED, { mtInfo });
             }
-
-            console.log('[autoMTIncludeAndCheckContact] MT trouvé : ', mtInfo);
-            // Mise à jour de la spécialité - arrêt si échec
-            recordMetrics({ clicks: 1, drags: 1 });
-            if (!updateSpeciality()) {
-                nettoyerTimestamp();
-                return;
+            
+            // Mise à jour de la spécialité si pas déjà fait
+            if (!isStepCompleted(MT_STEPS.SPECIALTY_UPDATED)) {
+                recordMetrics({ clicks: 1, drags: 1 });
+                if (!updateSpeciality()) {
+                    cleanWorkflow();
+                    return;
+                }
+                console.log('[MT Workflow] Spécialité mise à jour');
+                completeStep(MT_STEPS.SPECIALTY_UPDATED);
             }
-
-            console.log('[autoMTIncludeAndCheckContact] Spécialité mise à jour');
-
-            // Mise à jour du champ de recherche avec le nom du MT
-            recordMetrics({ clicks: 1, drags: 1 });
-            if (!updateSearchField(mtInfo.nom)) {
-                return;
+            
+            // Mise à jour du champ de recherche si pas déjà fait
+            if (!isStepCompleted(MT_STEPS.SEARCH_UPDATED)) {
+                const currentWorkflow = getWorkflow();
+                recordMetrics({ clicks: 1, drags: 1 });
+                if (!updateSearchField(currentWorkflow.mtInfo.nom)) {
+                    return;
+                }
+                console.log('[MT Workflow] Champ de recherche mis à jour');
+                completeStep(MT_STEPS.SEARCH_UPDATED);
             }
-
-            console.log('[autoMTIncludeAndCheckContact] Champ de recherche mis à jour');
-
-            // Sélection du contact du MT pour édition
-            timeStampUpdate();
-            recordMetrics({ clicks: 1, drags: 1 });
-
-            console.log('[autoMTIncludeAndCheckContact] Contact sélectionné : ', mtInfo.prenom);
-            selectMTContact(mtInfo.prenom);
+            
+            // Sélection du contact si pas déjà fait
+            if (!isStepCompleted(MT_STEPS.CONTACT_SELECTED)) {
+                const currentWorkflow = getWorkflow();
+                recordMetrics({ clicks: 1, drags: 1 });
+                console.log('[MT Workflow] Sélection du contact : ', currentWorkflow.mtInfo.prenom);
+                selectMTContact(currentWorkflow.mtInfo.prenom);
+                completeStep(MT_STEPS.CONTACT_SELECTED);
+            }
         }
     });
 
-    // III.d. Intégration du MT
+    // III.d. Intégration du MT depuis ASIP
     /**
      * Intégration automatique des informations du MT depuis le carnet d'addresses
-     * 
-     * @Note
-     * Les ids des sélecteurs sont spécifiques aux pages pertinentes, d'où la simplification du flux
      */
-
-    const GREENLIGHT_MT = 'GreenLightForContactMT';
-    const GREENLIGHT_STATES = {
-        READY_FOR_ASIP_UPDATE: 'READY_FOR_ASIP_UPDATE',
-        READY_FOR_CONTACT_SELECTION: 'READY_FOR_CONTACT_SELECTION',
-        READY_FOR_REPLACEMENT_VALIDATION: 'READY_FOR_REPLACEMENT_VALIDATION',
-        READY_FOR_FINAL_VALIDATION: 'READY_FOR_FINAL_VALIDATION'
-    };
 
     // III.d.1 - ASIP Update Button
     waitForElement({
         selector: '#ContentPlaceHolder1_ButtonMiseAJourAsip',
         callback: function (elements) {
-            if (verifierTimestamp()) {
-                sessionStorage.setItem(GREENLIGHT_MT, GREENLIGHT_STATES.READY_FOR_CONTACT_SELECTION);
+            if (isWorkflowValid() && isStepCompleted(MT_STEPS.CONTACT_SELECTED) && 
+                !isStepCompleted(MT_STEPS.ASIP_UPDATE_CLICKED)) {
+                completeStep(MT_STEPS.ASIP_UPDATE_CLICKED);
                 recordMetrics({ clicks: 1, drags: 1 });
                 elements[0].click();
             }
@@ -292,9 +403,10 @@ addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', functi
         selector: '[id^="ContentPlaceHolder1_NewUserAsipUCForm1_AsipCAT18ToutePopulationsGrid_AsipCAT18ToutePopulationShowID_"]',
         callback: function (elements) {
             if (elements.length === 1 &&
-                sessionStorage.getItem(GREENLIGHT_MT) === GREENLIGHT_STATES.READY_FOR_CONTACT_SELECTION &&
-                verifierTimestamp()) {
-                sessionStorage.setItem(GREENLIGHT_MT, GREENLIGHT_STATES.READY_FOR_REPLACEMENT_VALIDATION);
+                isStepCompleted(MT_STEPS.ASIP_UPDATE_CLICKED) &&
+                !isStepCompleted(MT_STEPS.CONTACT_SELECTED_FROM_ASIP) &&
+                isWorkflowValid()) {
+                completeStep(MT_STEPS.CONTACT_SELECTED_FROM_ASIP);
                 recordMetrics({ clicks: 1, drags: 1 });
                 elements[0].click();
             }
@@ -305,9 +417,10 @@ addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', functi
     waitForElement({
         selector: '#ContentPlaceHolder1_ButtonValidRemplacement',
         callback: function (elements) {
-            if (sessionStorage.getItem(GREENLIGHT_MT) === GREENLIGHT_STATES.READY_FOR_REPLACEMENT_VALIDATION &&
-                verifierTimestamp()) {
-                sessionStorage.setItem(GREENLIGHT_MT, GREENLIGHT_STATES.READY_FOR_FINAL_VALIDATION);
+            if (isStepCompleted(MT_STEPS.CONTACT_SELECTED_FROM_ASIP) &&
+                !isStepCompleted(MT_STEPS.REPLACEMENT_VALIDATED) &&
+                isWorkflowValid()) {
+                completeStep(MT_STEPS.REPLACEMENT_VALIDATED);
                 recordMetrics({ clicks: 1, drags: 1 });
                 elements[0].click();
             }
@@ -318,17 +431,17 @@ addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', functi
     waitForElement({
         selector: '#ContentPlaceHolder1_ButtonValid',
         callback: function (elements) {
-            if (sessionStorage.getItem(GREENLIGHT_MT) === GREENLIGHT_STATES.READY_FOR_FINAL_VALIDATION &&
-                verifierTimestamp()) {
-                sessionStorage.removeItem(GREENLIGHT_MT);
+            if (isStepCompleted(MT_STEPS.REPLACEMENT_VALIDATED) &&
+                !isStepCompleted(MT_STEPS.FINAL_VALIDATED) &&
+                isWorkflowValid()) {
+                completeStep(MT_STEPS.FINAL_VALIDATED);
                 elements[0].click();
                 recordMetrics({ clicks: 1, drags: 1 });
-                nettoyerTimestamp();
+                cleanWorkflow();
             }
         }
     });
 });
-
 
 
 // Fonctions support
