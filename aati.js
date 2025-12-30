@@ -206,3 +206,93 @@ addTweak('/FolderMedical/Aati.aspx', 'aatiTermsExcerpt', function () {
 
     recordMetrics({ clicks: 1, drags: 1 });
 });
+
+
+addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
+    // Cette partie tente de récupérer les différents motifs d'arrêt de travail.
+    async function extractAATIMotifs() {
+        const selecteurCategories = '.flexColumn select.entry';
+        const selecteurSousCategories = '.flexColumn select.entry.ml10';
+
+        const selectCategories = document.querySelector(selecteurCategories);
+
+        if (!selectCategories) {
+            console.error('[AATI] Sélecteurs de catégories non trouvés');
+            return;
+        }
+
+        const motifsAATI = {};
+        const categories = selectCategories.querySelectorAll('option');
+
+        console.log(`[AATI] Extraction de ${categories.length} catégories...`);
+
+        for (let i = 0; i < categories.length; i++) {
+            const categorie = categories[i];
+            const categorieValue = categorie.value;
+            const categorieLabel = categorie.textContent.trim();
+
+            // Sélectionner la catégorie
+            selectCategories.value = categorieValue;
+            selectCategories.dispatchEvent(new Event('change', { bubbles: true }));
+
+            // Attendre que le contenu du select des sous-catégories soit mis à jour
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Extraire les sous-catégories
+            const selectSousCategories = document.querySelector(selecteurSousCategories);
+            const sousCategories = selectSousCategories.querySelectorAll('option');
+            const sousCategoriesData = [];
+
+            for (let j = 0; j < sousCategories.length; j++) {
+                const sousCategorie = sousCategories[j];
+                sousCategoriesData.push({
+                    value: sousCategorie.value,
+                    label: sousCategorie.textContent.trim(),
+                    title: sousCategorie.getAttribute('title') || ''
+                });
+            }
+
+            motifsAATI[categorieValue] = {
+                label: categorieLabel,
+                sousCategories: sousCategoriesData
+            };
+
+            console.log(`[AATI] Catégorie "${categorieLabel}" : ${sousCategoriesData.length} sous-catégories`);
+        }
+
+        console.log('[AATI] Extraction terminée:', motifsAATI);
+
+        // Stocker les données dans le localStorage Chrome pour une utilisation future
+        await chrome.storage.local.set({
+            motifsAATI: motifsAATI,
+            motifsAATITimestamp: Date.now()
+        });
+        console.log('[AATI] Données stockées dans chrome.storage.local avec timestamp');
+
+
+        return motifsAATI;
+    }
+
+    waitForElement({
+        selector: '.flexColumn > div:first-child > select.entry',
+        callback: async function () {
+            setTimeout(async () => {
+                const result = await chrome.storage.local.get(['motifsAATI', 'motifsAATITimestamp']);
+                const dataAge = Date.now() - (result.motifsAATITimestamp || 0);
+                const maxAge = 7 //* 24 * 60 * 60 * 1000; // 7 jours en millisecondes
+
+                if (result.motifsAATI && dataAge < maxAge) {
+                    console.log(`[AATI] motifsAATI présents (âge: ${Math.floor(dataAge / (24 * 60 * 60 * 1000))} jours), extraction sautée.`);
+                    return;
+                }
+                console.log('[AATI] Données absentes ou trop anciennes, extraction lancée.');
+                sendWedaNotifAllTabs({
+                    message: "Extraction des motifs d'arrêt de travail AATI en cours... (a lieu une seule fois toutes les semaines pour faciliter la recherche de motifs rapide)",
+                });
+
+                extractAATIMotifs();
+            }, 500);
+        },
+        justOnce: true
+    });
+});
