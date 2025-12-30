@@ -300,9 +300,13 @@ addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', 
                 }
 
                 oneClickVSMButton.id = 'oneClickVSMButton';
-                oneClickVSMButton.addEventListener('click', function () {
+                oneClickVSMButton.addEventListener('click', async function () {
                     setOneClickVSMTimestamp();
-                    VSMButton.click();
+                    await sleep(500);
+                    const refreshedVSMButton = document.querySelector('#ContentPlaceHolder1_ButtonExitVsm');
+                    console.log('refreshedVSMButton', refreshedVSMButton);
+                    recordMetrics({ clicks: 1, drags: 1 });
+                    refreshedVSMButton.click();
                 });
                 exitVSMButton.parentNode.parentNode.appendChild(oneClickVSMButton);
             }
