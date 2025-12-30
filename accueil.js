@@ -291,8 +291,10 @@ addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', 
 
                 // Copier le style du bouton de référence
                 const referenceButton = document.querySelector('#ContentPlaceHolder1_ButtonFind');
+                // Lui retirer les classes button et valid pour éviter les conflits de raccourcis clavier
                 if (referenceButton) {
                     oneClickVSMButton.className = referenceButton.className;
+                    oneClickVSMButton.classList.remove('button');
                     // Ajouter uniquement la marge gauche en plus
                     oneClickVSMButton.style.marginLeft = '10px';
                 }
@@ -302,7 +304,7 @@ addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', 
                     setOneClickVSMTimestamp();
                     VSMButton.click();
                 });
-                exitVSMButton.parentNode.appendChild(oneClickVSMButton);
+                exitVSMButton.parentNode.parentNode.appendChild(oneClickVSMButton);
             }
         }
     });
