@@ -279,7 +279,7 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
             setTimeout(async () => {
                 const result = await chrome.storage.local.get(['motifsAATI', 'motifsAATITimestamp']);
                 const dataAge = Date.now() - (result.motifsAATITimestamp || 0);
-                const maxAge = 7 //* 24 * 60 * 60 * 1000; // 7 jours en millisecondes
+                const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 jours en millisecondes
 
                 if (result.motifsAATI && dataAge < maxAge) {
                     console.log(`[AATI] motifsAATI présents (âge: ${Math.floor(dataAge / (24 * 60 * 60 * 1000))} jours), extraction sautée.`);
@@ -292,6 +292,200 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
 
                 extractAATIMotifs();
             }, 500);
+        },
+        justOnce: true
+    });
+});
+
+// Ajout d'un champ de recherche rapide pour les motifs d'arrêt de travail
+addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
+    const selecteurCategories = '.flexColumn select.entry';
+    const selecteurSousCategories = '.flexColumn select.entry.ml10';
+
+    // Fonction pour normaliser une chaîne (supprime accents, met en minuscule)
+    function normalizeString(str) {
+        return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    }
+
+    // Fonction de recherche floue - calcule un score de correspondance
+    function fuzzyMatch(needle, haystack) {
+        needle = normalizeString(needle);
+        haystack = normalizeString(haystack);
+
+        // Si correspondance exacte
+        if (haystack.includes(needle)) {
+            return 1000 - haystack.indexOf(needle); // Priorité aux matches au début
+        }
+
+        // Recherche avec mots séparés
+        const needleWords = needle.split(/\s+/).filter(w => w.length > 0);
+        let score = 0;
+
+        for (const word of needleWords) {
+            if (haystack.includes(word)) {
+                score += 100;
+            } else {
+                // Recherche fuzzy lettre par lettre
+                let lastIndex = -1;
+                let consecutiveMatches = 0;
+                let wordScore = 0;
+
+                for (const char of word) {
+                    const index = haystack.indexOf(char, lastIndex + 1);
+                    if (index > lastIndex) {
+                        consecutiveMatches++;
+                        wordScore += consecutiveMatches * 2; // Bonus pour lettres consécutives
+                        lastIndex = index;
+                    } else {
+                        consecutiveMatches = 0;
+                    }
+                }
+
+                if (wordScore > 0) {
+                    score += wordScore;
+                }
+            }
+        }
+
+        return score;
+    }
+
+    // Fonction pour rechercher dans les motifs
+    async function searchMotifs(searchTerm) {
+        if (!searchTerm || searchTerm.trim().length < 2) {
+            return null;
+        }
+
+        // Récupérer les motifs depuis le storage
+        const result = await chrome.storage.local.get(['motifsAATI']);
+        if (!result.motifsAATI) {
+            console.log('[AATI Search] Aucun motif disponible');
+            return null;
+        }
+
+        const motifs = result.motifsAATI;
+        let bestMatch = null;
+        let bestScore = 0;
+
+        // Parcourir toutes les catégories et sous-catégories
+        for (const [categorieValue, categorieData] of Object.entries(motifs)) {
+            for (const sousCategorie of categorieData.sousCategories) {
+                // Rechercher dans le label et le title
+                const searchText = `${sousCategorie.label} ${sousCategorie.title}`;
+                const score = fuzzyMatch(searchTerm, searchText);
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMatch = {
+                        categorieValue: categorieValue,
+                        categorieLabel: categorieData.label,
+                        sousCategorieValue: sousCategorie.value,
+                        sousCategorieLabel: sousCategorie.label,
+                        score: score
+                    };
+                }
+            }
+        }
+
+        console.log('[AATI Search] Meilleur résultat:', bestMatch);
+        return bestMatch;
+    }
+
+    // Fonction pour sélectionner un motif
+    function selectMotif(categorieValue, sousCategorieValue) {
+        const selectCategories = document.querySelector(selecteurCategories);
+
+        if (!selectCategories) {
+            console.error('[AATI Search] Sélecteurs non trouvés');
+            return false;
+        }
+
+        // Sélectionner la catégorie
+        selectCategories.value = categorieValue;
+        selectCategories.dispatchEvent(new Event('change', { bubbles: true }));
+
+        // Attendre un court instant puis sélectionner la sous-catégorie
+        setTimeout(() => {
+            const selectSousCategories = document.querySelector(selecteurSousCategories);
+            selectSousCategories.value = sousCategorieValue;
+            selectSousCategories.dispatchEvent(new Event('change', { bubbles: true }));
+            console.log('[AATI Search] Sélection effectuée');
+        }, 150);
+
+        return true;
+    }
+
+    // Créer et insérer le champ de recherche
+    waitForElement({
+        selector: '#form1 > div.flex-box > div > dmp-aati-form > div > div:nth-child(2) > div.flexColStart > div:nth-child(1) > div.frameContent > div.flexColStart.mt10 > div.chapter.mt10',
+        callback: function () {
+            const selectCategories = document.querySelector(selecteurCategories);
+            if (!selectCategories) return;
+
+            // Vérifier si le champ existe déjà
+            if (document.getElementById('aati-quick-search')) return;
+
+            // Créer le conteneur du champ de recherche
+            const searchContainer = document.createElement('div');
+            searchContainer.style.cssText = 'margin-bottom: 10px; padding: 10px; background: #f0f8ff; border-radius: 5px; border: 2px solid #4a90e2;';
+
+            const searchLabel = document.createElement('label');
+            searchLabel.textContent = '🔍 Recherche rapide de motif : ';
+            searchLabel.style.cssText = 'font-weight: bold; margin-right: 10px; color: #333;';
+
+            const searchInput = document.createElement('input');
+            searchInput.id = 'aati-quick-search';
+            searchInput.type = 'text';
+            searchInput.placeholder = 'Ex: fracture cote, grippe, lombalgie...';
+            searchInput.style.cssText = 'width: 400px; padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px;';
+
+            const resultInfo = document.createElement('span');
+            resultInfo.id = 'aati-search-result';
+            resultInfo.style.cssText = 'margin-left: 15px; font-size: 12px; color: #666; font-style: italic;';
+
+            // Gestionnaire de recherche avec debounce
+            let searchTimeout;
+            searchInput.addEventListener('input', async function (e) {
+                clearTimeout(searchTimeout);
+                const searchTerm = e.target.value;
+
+                if (searchTerm.trim().length < 2) {
+                    resultInfo.textContent = '';
+                    return;
+                }
+
+                resultInfo.textContent = '⏳ Recherche...';
+                resultInfo.style.color = '#999';
+
+                searchTimeout = setTimeout(async () => {
+                    const match = await searchMotifs(searchTerm);
+
+                    if (match && match.score > 0) {
+                        resultInfo.textContent = `✓ Trouvé: ${match.sousCategorieLabel}`;
+                        resultInfo.style.color = '#28a745';
+                        selectMotif(match.categorieValue, match.sousCategorieValue);
+                        recordMetrics({ clicks: 2, drags: 2 });
+                    } else {
+                        resultInfo.textContent = '✗ Aucun résultat';
+                        resultInfo.style.color = '#dc3545';
+                    }
+                }, 300); // Debounce de 300ms
+            });
+
+            // Assembler les éléments
+            searchContainer.appendChild(searchLabel);
+            searchContainer.appendChild(searchInput);
+            searchContainer.appendChild(resultInfo);
+
+            // Insérer avant les sélecteurs de catégories
+            const flexColumn = selectCategories.closest('.flexColumn');
+            if (flexColumn && flexColumn.parentElement) {
+                flexColumn.parentElement.insertBefore(searchContainer, flexColumn);
+                console.log('[AATI Search] Champ de recherche ajouté');
+
+                // Auto-focus sur le champ de recherche
+                setTimeout(() => searchInput.focus(), 200);
+            }
         },
         justOnce: true
     });
