@@ -153,6 +153,10 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'oneClickMT', async function () 
 
 
 // I. Fonction d'entrée !
+// Comportement non modifié = ajoute le médecin retrouvé par IMTi aux contacts du patient dans la page d’accueil
+// semble déclencher un rechargement de la page
+// Comportement modifié = ajoute un lien à côté du bouton "Ajouter aux contacts du patient" qui
+// clique sur ce bouton mais ajoute en plus un timestamp dans la mémoire de session
 addTweak('/FolderMedical/PatientViewForm.aspx', 'autoMTIncludeAndCheckContact', function () {
     console.log('[addMtToContacts] débuté');
     waitForElement({
@@ -212,6 +216,7 @@ addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', functi
     }
     waitForElement({ // On attend que les contacts à droite de la page soient chargés
         selector: '[id^="ContentPlaceHolder1_PatientContactsGrid_LabelIsContactWeda_"]',
+        triggerOnInit: true,
         callback: function (contacts) {
             console.log('[autoMTIncludeAndCheckContact] Contacts trouvés : ', contacts);
             // Si le timestamp est toujours valide, on continue
