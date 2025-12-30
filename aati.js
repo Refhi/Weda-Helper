@@ -93,19 +93,14 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
     // appuie sur le bouton adéquat selon le type d'arrêt de travail
     waitForElement({
         selector: selecteurBoutonCV,
-        callback: function (elements) {
+        callback: async function (elements) {
             clickProperButton(elements);
             // appuie sur le bouton "Envoyer" de la saisie manuelle si on est dans ce mode
             console.log('waitForElement pour boutonEnvoyerEntreeManuelle déclenché');
-            waitForElement({
-                selector: boutonEnvoyerEntreeManuelle,
-                callback: function (elements) {
-                    console.log('boutonEnvoyerEntreeManuelle détecté, on clique dessus', elements);
-                    elements[0].click();
-                    recordMetrics({ clicks: 1, drags: 1 });
-                },
-                justOnce: true,
-                triggerOnInit: true
+            waitLegacyForElement("#mat-dialog-2 button span.mat-button-wrapper", "Envoyer", 5000, function (elements) {
+                console.log('trouvé boutonEnvoyerEntreeManuelle', elements);
+                recordMetrics({ clicks: 1, drags: 1 });
+                elements.click();
             });
         },
         justOnce: true
