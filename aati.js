@@ -222,7 +222,23 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
         }
 
         const motifsAATI = {};
-        const categories = selectCategories.querySelectorAll('option');
+        let categories = selectCategories.querySelectorAll('option');
+
+        // Dans certains cas, categories peut être vide si la liste n'est pas encore chargée, on surveille pendant 20 secondes
+        let attempts = 0;
+        const maxAttempts = 40; // 20 secondes à 500ms d'intervalle
+        while (categories.length === 0 && attempts < maxAttempts) {
+            console.log(`[AATI] Liste des catégories vide, tentative ${attempts + 1}/${maxAttempts}...`);
+            await sleep(500);
+            categories = selectCategories.querySelectorAll('option');
+            attempts++;
+        }
+
+        if (categories.length === 0) {
+            console.error('[AATI] Impossible de charger la liste des catégories après 20 secondes d\'attente');
+            return;
+        }
+
 
         console.log(`[AATI] Extraction de ${categories.length} catégories...`);
 
@@ -281,7 +297,7 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
                 const dataAge = Date.now() - (result.motifsAATITimestamp || 0);
                 const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 jours en millisecondes
 
-                if (result.motifsAATI && dataAge < maxAge) {
+                if (result.motifsAATI && dataAge < maxAge && Object.keys(result.motifsAATI).length > 0) {
                     console.log(`[AATI] motifsAATI présents (âge: ${Math.floor(dataAge / (24 * 60 * 60 * 1000))} jours), extraction sautée.`);
                     return;
                 }
