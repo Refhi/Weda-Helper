@@ -226,9 +226,9 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
 
         // Dans certains cas, categories peut être vide si la liste n'est pas encore chargée, on surveille pendant 20 secondes
         let attempts = 0;
-        const maxAttempts = 40; // 20 secondes à 500ms d'intervalle
+        const maxAttempts = 100; // 20 secondes à 500ms d'intervalle
         while (categories.length === 0 && attempts < maxAttempts) {
-            console.log(`[AATI] Liste des catégories vide, tentative ${attempts + 1}/${maxAttempts}...`);
+            // console.log(`[AATI] Liste des catégories vide, tentative ${attempts + 1}/${maxAttempts}...`);
             await sleep(500);
             categories = selectCategories.querySelectorAll('option');
             attempts++;
@@ -580,6 +580,7 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
                 setTimeout(() => searchInput.focus(), 200);
             }
         },
-        justOnce: true
+        justOnce: true,
+        triggerOnInit: true
     });
 });
