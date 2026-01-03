@@ -204,13 +204,12 @@ const customFieldsDefault2 = JSON.stringify([
 
 const customFieldsDefault3 = JSON.stringify([
 ]);
-
 const alertesAtcdOptionDefault = JSON.stringify([
-    // Recherche les valeurs dans l’ensemble des antécédents.
-    // Si trouvé, affiche une alerte basée sur la clé.
-    ["ETP Diabète - ce patient peut être éligible à une ETP Diabète", ["diabètexxx", "diabetesxxx"]],
-    ["ETP Asthme - ce patient peut être éligible à une ETP Asthme", ["asthmexxx", "asthmaxxx"]],
-    ["les alertes présentes dans cette liste sont fictives, merci de les personnaliser selon vos besoins", ["alertexxx"]]
+    // Format : ["Titre de l'alerte", coloration (true/false), alerte prioritaire (true/false), "icône Material", ["mots", "clés"]]
+    ["ETP Diabète - ce patient peut être éligible à une ETP Diabète", "true", "true", "diversity_3", ["diabete_", "diabete_"]],
+    ["ETP Asthme - ce patient peut être éligible à une ETP Asthme", "true", "true", "diversity_3", ["asthme_", "asthma_"]],
+    ["ETP Alimentation - ce patient peut être éligible à une ETP Alimentation", "true", "false", "diversity_3", ["obesite_", "surpoids_", "anorexie_", "boulimie_", "TCA_"]],
+    ["ETP Cardiovasculaire - ce patient peut être éligible à une ETP Maladies Cardiovasculaires", "true", "true", "diversity_3", ["HTA_", "hypertension artérielle_", "infarctus_", "insuffisance cardiaque_"]]
 ]);
 
 
@@ -442,7 +441,15 @@ var advancedDefaultSettings = [
                 "name": "alertesAtcdOption",
                 "type": TYPE_JSON,
                 "description": "Liste des alertes à afficher en fonction des mots-clés trouvés dans les antécédents.",
-                "default": alertesAtcdOptionDefault
+                "default": alertesAtcdOptionDefault,
+                "longDescription": "Format : \"Titre de l'alerte\", coloration (true/false), alerte prioritaire (true/false), \"icône Material\", \"mots\", \"clés\".\n cf. https://fonts.google.com/icons pour la liste des icônes disponibles.\n les mots-clés de valeurs par défaut sont suivis d'un underscore (_) pour les neutraliser. Vous pouvez les enlever pour réactiver l'alerte sur ces mots-clés.",
+                "subOptions": [{
+                    "name": "alertesAtcdOptionGlobal",
+                    "type": TYPE_BOOL,
+                    "description": "Afficher les alertes ATCD globales (non personnalisées).",
+                    "longDescription": "Ces alertes doivent être définies à l’échelle du cabinet Weda auquel appartient l'utilisateur. Elle sont pensées pour diffuser au sein d’un Pôle de Santé des alertes communes à tous les praticiens, pour encourager la mise en place de programmes d’éducation thérapeutique du patient (ETP) par exemple ou certains protocoles. Pour les mettre en place ouvrez un ticket sur le github avec le contenu des alertes que vous aurez préparé et testées dans le champ ci-dessus. (je les mettrai à jour manuellement, aussi cela peut prendre un peu de temps).",
+                    "default": true
+                }]
             }
         ]
         },{

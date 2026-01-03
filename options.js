@@ -155,12 +155,23 @@ function displayCategories(jsonStr) {
   try {
     const categories = JSON.parse(jsonStr);
     categories.forEach(category => {
-      const [name, keywords] = category;
-      display += `${name} : ${keywords.join(' , ')}\n`;
+      // Détecter le format selon la longueur du tableau
+      if (category.length === 2) {
+        // Ancien format : [nom, [mots-clés]]
+        const [name, keywords] = category;
+        display += `${name} : ${keywords.join(', ')}\n`;
+      } else if (category.length === 5) {
+        // Nouveau format alertes : [titre, coloration, alerte, icône, [mots-clés]]
+        const [titre, coloration, alerte, matIcon, keywords] = category;
+        display += `${titre}, ${coloration}, ${alerte}, ${matIcon} : ${keywords.join(', ')}\n`;
+      } else {
+        // Format non reconnu, afficher tel quel
+        console.warn('Format de catégorie non reconnu:', category);
+        display += JSON.stringify(category) + '\n';
+      }
     });
   } catch (error) {
     console.error('Erreur lors de l\'analyse du JSON:', error);
-    // Mettre une erreur pour l'utilisateur
     alert('Les paramètres pour la gestion des catégories ne sont pas valides, merci de les corriger');
     display = jsonStr;
   }
@@ -172,19 +183,81 @@ function displayCategories(jsonStr) {
 function getCategoriesFromJsonInput(input) {
   const categories = [];
   const lines = input.value.split('\n');
-  lines.forEach(line => {
+  let hasError = false; // Flag pour détecter les erreurs
+  
+  lines.forEach((line, lineIndex) => {
     if (line.trim()) { // Vérifier que la ligne n'est pas vide
-      const [name, keywords] = line.split(':');
-      if (name.trim()) { // Vérifier que le nom de la catégorie n'est pas vide
-        const category = [name.trim(), keywords ? keywords.split(',').map(keyword => keyword.trim()) : []];
-        categories.push(category);
+      // Séparer par le dernier ':' pour gérer les titres avec ':'
+      const lastColonIndex = line.lastIndexOf(':');
+      if (lastColonIndex === -1) {
+        console.warn(`Ligne ${lineIndex + 1}: Pas de ':' trouvé, ligne ignorée`);
+        alert(`Erreur ligne ${lineIndex + 1}: Pas de ':' trouvé. Format attendu:\n- "nom : mot1, mot2" (ancien format)\n- "titre, true/false, true/false, icône : mot1, mot2" (nouveau format)`);
+        hasError = true;
+        return; // Pas de ':', ligne invalide
+      }
+      
+      const beforeColon = line.substring(0, lastColonIndex).trim();
+      const afterColon = line.substring(lastColonIndex + 1).trim();
+      
+      // Compter les virgules avant les ':'
+      const parts = beforeColon.split(',').map(p => p.trim());
+      
+      if (parts.length === 1) {
+        // Ancien format : "nom : mot1, mot2, mot3"
+        const name = parts[0];
+        const keywords = afterColon ? afterColon.split(',').map(keyword => keyword.trim()) : [];
+        if (name) {
+          categories.push([name, keywords]);
+        }
+      } else if (parts.length === 4) {
+        // Nouveau format : "titre, true, false, icône : mot1, mot2, mot3"
+        const [titre, coloration, alerte, matIcon] = parts;
+        
+        // Validation des booléens
+        const colorationLower = coloration.toLowerCase();
+        const alerteLower = alerte.toLowerCase();
+        
+        if (colorationLower !== 'true' && colorationLower !== 'false') {
+          alert(`Erreur ligne ${lineIndex + 1}: Le paramètre de coloration doit être "true" ou "false", valeur trouvée: "${coloration}"`);
+          console.error(`Ligne ${lineIndex + 1}: Valeur de coloration invalide: "${coloration}"`);
+          hasError = true;
+          return;
+        }
+        
+        if (alerteLower !== 'true' && alerteLower !== 'false') {
+          alert(`Erreur ligne ${lineIndex + 1}: Le paramètre d'alerte doit être "true" ou "false", valeur trouvée: "${alerte}"`);
+          console.error(`Ligne ${lineIndex + 1}: Valeur d'alerte invalide: "${alerte}"`);
+          hasError = true;
+          return;
+        }
+        
+        const keywords = afterColon ? afterColon.split(',').map(keyword => keyword.trim()) : [];
+        if (titre) {
+          categories.push([
+            titre,
+            colorationLower === 'true',
+            alerteLower === 'true',
+            matIcon,
+            keywords
+          ]);
+        }
+      } else {
+        console.warn(`Ligne ${lineIndex + 1}: Format de ligne non reconnu (${parts.length} parties trouvées avant ':')`);
+        alert(`Erreur ligne ${lineIndex + 1}: Format non reconnu. Attendu:\n- "nom : mot1, mot2" (ancien format)\n- "titre, true/false, true/false, icône : mot1, mot2" (nouveau format)`);
+        hasError = true;
       }
     }
   });
+  
+  // Si une erreur a été détectée, retourner null au lieu d'un tableau vide
+  if (hasError) {
+    console.error('❌ Validation échouée, aucune donnée ne sera sauvegardée');
+    return null;
+  }
+  
   console.log(JSON.stringify(categories));
   return categories;
 }
-
 
 function createLabel(option) {
   // Ajouter les styles si pas déjà présents
@@ -486,12 +559,21 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
   document.getElementById('save').addEventListener('click', function () {
     var options = Object.keys(defaultSettings);
     var valuesToSave = {};
+    let hasValidationError = false; // Flag pour détecter les erreurs de validation
+    
     options.forEach(function (option) {
       let element = document.getElementById(option);
       if (element.classList.contains('radio-group')) {
         valuesToSave[option] = getSelectedRadioValue(option);
       } else if (element.classList.contains('json-input')) {
-        valuesToSave[option] = JSON.stringify(getCategoriesFromJsonInput(element));
+        const jsonData = getCategoriesFromJsonInput(element);
+        // Si la conversion retourne null, il y a eu une erreur
+        if (jsonData === null) {
+          console.error('❌ Erreur lors de la validation pour l\'option', option);
+          hasValidationError = true;
+          return; // On arrête le traitement de cette option
+        }
+        valuesToSave[option] = JSON.stringify(jsonData);
       } else if (element) { // Vérifiez si l'élément existe
         var value = element.type === 'checkbox' ? element.checked : element.value;
         valuesToSave[option] = value;
@@ -499,6 +581,12 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
         console.log('Aucun élément trouvé avec l\'ID', option);
       }
     });
+
+    // Si une erreur de validation a été détectée, on arrête la sauvegarde
+    if (hasValidationError) {
+      alert('❌ Sauvegarde annulée : des erreurs de validation ont été détectées. Veuillez corriger les erreurs et réessayer.');
+      return;
+    }
 
     let defaultShortcuts = result.defaultShortcuts;
     var shortcuts = {};
@@ -514,8 +602,8 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
     valuesToSave["shortcuts"] = shortcuts;
 
     chrome.storage.local.set(valuesToSave, function () {
-      console.log('Sauvegardé avec succès');
-      alert('Les options ont été sauvegardées avec succès');
+      console.log('✅ Sauvegardé avec succès');
+      alert('✅ Les options ont été sauvegardées avec succès');
       console.log(valuesToSave);
     });
   });
