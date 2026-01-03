@@ -309,7 +309,8 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
                 extractAATIMotifs();
             }, 500);
         },
-        justOnce: true
+        justOnce: true,
+        triggerOnInit: true
     });
 });
 
@@ -321,97 +322,84 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
     // Dictionnaire de synonymes médicaux pour améliorer la recherche
     const synonymesMedicaux = {
         // Système nerveux
-        'avc': ['accident vasculaire cérébral', 'attaque cérébrale', 'infarctus cérébral'],
-        'canal carpien': ['syndrome du canal carpien', 'compression nerf médian'],
-        
+        'avc': ['accident', 'vasculaire', 'cérébral'],
+        'ulnaire': ['nerf', 'compression', 'libération', 'coude'],
+        'algodystrophie': ['algoneurodystrophie'],
+
         // Appareil respiratoire
-        'pulmonaire': ['poumon', 'bronches', 'respiratoire'],
-        'poumon': ['pulmonaire', 'bronches', 'respiratoire'],
-        'grippe': ['syndrome grippal', 'influenza'],
-        'rhume': ['rhinopharyngite', 'coryza'],
-        'bronchite': ['infection bronchique', 'inflammation bronches'],
-        'pneumonie': ['pneumopathie', 'infection pulmonaire'],
-        'asthme': ['crise asthmatique', 'bronchospasme'],
-        'plèvre': ['pleural', 'inflammation plèvre'],
-        'pnp': ['pneumopathie', 'infection pulmonaire'],
-        
+        'rhume': ['rhinopharyngite'],
+        'laryngite': ['trachéite', 'aigües'],
+        'grippe': ['grippal', 'saisonnière', 'syndrome'],
+        'pneumonie': ['pneumopathie'],
+        'pnp': ['pneumopathie'],
+        'allergie': ['allergique'],
+        'poumon': ['bronches'],
+        'pulmonaire': ['bronche', 'bronchique'],
+        'bronche': ['pulmonaire', 'poumon'],
+
         // Traumatismes
-        'fracture': ['cassure', 'rupture osseuse', 'bris osseux'],
-        'entorse': ['foulure', 'distension ligamentaire'],
-        'luxation': ['déboitement', 'dislocation'],
-        'plaie': ['blessure', 'coupure', 'lacération'],
-        'cote': ['côte', 'costale'],
-        
+        'genou': ['arthroplastie', 'prothèse', 'totale', 'arthrose'],
+        'côte': ['costal'],
+        'omoplate': ['scapula'],
+        'ménisque': ['méniscales'],
+
         // Tumeurs
-        'cancer': ['tumeur maligne', 'néoplasie', 'carcinome'],
-        'tumeur': ['néoplasie', 'cancer', 'masse'],
-        'sein': ['mammaire', 'glande mammaire'],
-        
-        // Digestif
-        'gastro': ['gastro-entérite', 'gastroentérite', 'diarrhée virale'],
-        'intestin': ['intestinal', 'entérique', 'digestif'],
-        'hernie': ['éventration', 'rupture paroi'],
-        'hémorroïdes': ['hémorroïdaire', 'maladie hémorroïdaire'],
-        'appendice': ['appendicite', 'inflammation appendice'],
-        'foie': ['hépatique', 'hépatite'],
-        
-        // Système ostéoarticulaire
-        'arthrose': ['gonarthrose', 'coxarthrose', 'dégénérescence articulaire'],
-        'genou': ['patella', 'rotulien', 'fémoro-patellaire'],
-        'hanche': ['coxo-fémoral', 'articulaire hanche'],
-        'dos': ['rachis', 'colonne vertébrale', 'vertébral'],
-        'lombaire': ['lombalgie', 'lumbago', 'bas du dos'],
-        'cervical': ['cervicalgie', 'nuque', 'cou'],
-        'sciatique': ['sciatalgie', 'névralgie sciatique', 'cruralgie'],
-        'hernie discale': ['discopathie', 'protrusion discale'],
-        'menisque': ['méniscal', 'lésion méniscale'],
-        'tendon': ['tendinite', 'tendinopathie', 'ténosynovite'],
-        'épaule': ['scapulo-huméral', 'gléno-huméral', 'coiffe rotateurs'],
-        'poignet': ['carpe', 'carpien'],
-        'cheville': ['talo-crural', 'malléolaire'],
-        
+        'cancer': ['tumeur', 'maligne'],
+        'mammaire': ['sein'],
+        'colon': ['polypes', 'rectum'],
+        'col': ['utérus'],
+        'ovaire': ['kystectomie', 'ovariectomie'],
+
+
         // Troubles mentaux
-        'dépression': ['dépressif', 'trouble dépressif', 'syndrome dépressif'],
-        'anxiété': ['anxieux', 'trouble anxieux', 'angoisse'],
-        'burnout': ['épuisement professionnel', 'syndrome d\'épuisement'],
-        
+        'bipolaire': ['dépression', 'maniaque'],
+        'toc': ['trouble', 'obsessionnel', 'compulsif'],
+        'stress': ['angoisse', 'anxiété'],
+        'burnout': ['dépressif', 'anxiété', 'stress'],
+
+        // Appareil digestif
+        'gastro': ['gastro-entérite', 'virale'],
+        'gea': ['gastro-entérite'],
+        'surpoids': ['obésité'],
+        'bariatrie': ['obésité'],
+        'dentaire': ['abcès', 'extraction', 'chirurgies'],
+        'appendice': ['appendicectomie'],
+        'rch': ['reco-colite'],
+
+        // Système ostéoarticulaire
+        'hanche': ['arthroplastie', 'prothèse', 'totale', 'coxarthrose'],
+        'coxarthrose': ['hanche'],
+        'ncb': ['cervico-brachiale'],
         // Appareil génito-urinaire
-        'rein': ['rénal', 'néphrétique'],
-        'vessie': ['vésical', 'cystite'],
-        'prostate': ['prostatique', 'prostatite'],
-        'utérus': ['utérin', 'hystérectomie'],
-        'ovaire': ['ovarien', 'annexe'],
-        
+        'ovaire': ['genito-urinaire'],
+        'pelvien': ['symptômes', 'invalidants', 'douleurs', 'hémorragies'],
+
+        // Symptômes généraux
+        'aeg': ['altération', 'baisse', 'état', 'général'],
+
         // Appareil circulatoire
-        'cœur': ['cardiaque', 'myocarde', 'coronaire'],
-        'infarctus': ['crise cardiaque', 'syndrome coronarien aigu', 'sca'],
-        'varice': ['variqueux', 'insuffisance veineuse'],
-        'phlébite': ['thrombose veineuse', 'thrombophlébite'],
-        'hypertension': ['tension artérielle élevée', 'hta'],
-        
-        // Œil
-        'oeil': ['œil', 'oculaire', 'ophtalmique'],
-        'cataracte': ['opacification cristallin'],
-        
-        // Peau
-        'abcès': ['collection purulente', 'suppuration'],
-        'furoncle': ['anthrax', 'infection cutanée'],
-        'eczéma': ['dermatite', 'inflammation cutanée'],
-        'brulure': ['brûlure', 'lésion thermique']
+        'hta': ['hypertension'],
+        'sca': ['syndrome', 'coronarien', 'aigu', 'traitement', 'invasif'],
+        'aomi': ['artériopathie'],
+        'rétrecissement': ['valvulopathie'],
+
+        // Oreille
+        'vppb': ['vertiges'],
+        'nez': ['septoplastie', 'nasale'],
     };
 
     // Fonction pour enrichir le terme de recherche avec les synonymes
     function enrichirRecherche(searchTerm) {
         const termsToSearch = [searchTerm];
         const normalizedTerm = searchTerm.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        
+
         // Ajouter les synonymes si trouvés
         for (const [key, synonyms] of Object.entries(synonymesMedicaux)) {
             if (normalizedTerm.includes(key) || key.includes(normalizedTerm)) {
                 termsToSearch.push(...synonyms);
             }
         }
-        
+
         return [...new Set(termsToSearch)]; // Supprimer les doublons
     }
 
@@ -429,7 +417,7 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
         }
 
         const motifs = result.motifsAATI;
-        
+
         // Transformer les données pour Fuse.js
         const searchableData = [];
         for (const [categorieValue, categorieData] of Object.entries(motifs)) {
@@ -461,10 +449,10 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
 
         // Initialiser Fuse
         const fuse = new Fuse(searchableData, fuseOptions);
-        
+
         // Effectuer la recherche avec tous les termes enrichis
         const allResults = new Map(); // Utiliser une Map pour éviter les doublons
-        
+
         for (const term of enrichedTerms) {
             const fuseResults = fuse.search(term);
             fuseResults.forEach(result => {
@@ -475,11 +463,11 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
                 }
             });
         }
-        
+
         // Convertir en tableau et trier par score
         const sortedResults = Array.from(allResults.values())
             .sort((a, b) => a.score - b.score);
-        
+
         // Extraire les 5 meilleurs résultats
         const topMatches = sortedResults.slice(0, 5).map(result => ({
             categorieValue: result.item.categorieValue,
@@ -566,7 +554,7 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
                     if (matches.length > 0) {
                         // Créer la liste des résultats
                         resultsContainer.innerHTML = '';
-                        
+
                         matches.forEach((match, index) => {
                             const resultItem = document.createElement('div');
                             resultItem.tabIndex = 2 + index;
@@ -580,42 +568,42 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
                                 transition: all 0.2s;
                                 font-size: 13px;
                             `;
-                            
+
                             resultItem.innerHTML = `
                                 <strong>${index === 0 ? '✓ ' : ''}${match.sousCategorieLabel}</strong>
                                 <span style="color: #666; font-size: 11px; margin-left: 10px;">(${match.categorieLabel})</span>
                             `;
-                            
+
                             // Effet hover
-                            resultItem.addEventListener('mouseenter', function() {
+                            resultItem.addEventListener('mouseenter', function () {
                                 this.style.background = '#e3f2fd';
                                 this.style.borderColor = '#4a90e2';
                             });
-                            
-                            resultItem.addEventListener('mouseleave', function() {
+
+                            resultItem.addEventListener('mouseleave', function () {
                                 this.style.background = index === 0 ? '#d4edda' : '#ffffff';
                                 this.style.borderColor = index === 0 ? '#28a745' : '#ccc';
                             });
-                            
+
                             // Effet focus (pour navigation clavier)
-                            resultItem.addEventListener('focus', function() {
+                            resultItem.addEventListener('focus', function () {
                                 this.style.background = '#e3f2fd';
                                 this.style.borderColor = '#4a90e2';
                                 this.style.outline = '3px solid #4a90e2';
                             });
-                            
-                            resultItem.addEventListener('blur', function() {
+
+                            resultItem.addEventListener('blur', function () {
                                 const isSelected = this.querySelector('strong').textContent.startsWith('✓');
                                 this.style.background = isSelected ? '#d4edda' : '#ffffff';
                                 this.style.borderColor = isSelected ? '#28a745' : '#ccc';
                                 this.style.outline = 'none';
                             });
-                            
+
                             // Gestionnaire de clic et touche Entrée
-                            const selectThisMotif = function() {
+                            const selectThisMotif = function () {
                                 selectMotif(match.categorieValue, match.sousCategorieValue);
                                 recordMetrics({ clicks: 2, drags: 2 });
-                                
+
                                 // Mise à jour visuelle
                                 resultsContainer.querySelectorAll('div').forEach(div => {
                                     div.style.background = '#ffffff';
@@ -626,23 +614,23 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
                                 resultItem.style.borderColor = '#28a745';
                                 resultItem.querySelector('strong').textContent = '✓ ' + match.sousCategorieLabel;
                             };
-                            
+
                             resultItem.addEventListener('click', selectThisMotif);
-                            
-                            resultItem.addEventListener('keydown', function(e) {
+
+                            resultItem.addEventListener('keydown', function (e) {
                                 if (e.key === 'Enter' || e.key === ' ') {
                                     e.preventDefault();
                                     selectThisMotif();
                                 }
                             });
-                            
+
                             resultsContainer.appendChild(resultItem);
                         });
-                        
+
                         // Sélectionner automatiquement le premier résultat
                         selectMotif(matches[0].categorieValue, matches[0].sousCategorieValue);
                         recordMetrics({ clicks: 2, drags: 2 });
-                        
+
                     } else {
                         resultsContainer.innerHTML = '<span style="color: #dc3545; font-style: italic;">✗ Aucun résultat</span>';
                     }
@@ -673,32 +661,32 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
 addTweak('/FolderMedical/Aati.aspx', '*aatiSortMotifsAlphabetically', function () {
     const selecteurCategories = '.flexColumn select.entry';
     const selecteurSousCategories = '.flexColumn select.entry.ml10';
-    
+
     // Fonction de tri des sous-catégories
     function trierSousCategories(selectSousCategories) {
         // Sauvegarder la valeur actuellement sélectionnée
         const selectedValue = selectSousCategories.value;
-        
+
         // Extraire et trier les options
         const optionsArray = Array.from(selectSousCategories.options);
         optionsArray.sort((a, b) => a.text.localeCompare(b.text));
-        
+
         // Méthode non-destructive : retirer les options une par une
         while (selectSousCategories.options.length > 0) {
             selectSousCategories.remove(0);
         }
-        
+
         // Réajouter les options triées
         optionsArray.forEach(option => selectSousCategories.add(option));
-        
+
         // Restaurer la valeur sélectionnée si elle existe toujours
         if (selectedValue && Array.from(selectSousCategories.options).some(opt => opt.value === selectedValue)) {
             selectSousCategories.value = selectedValue;
         }
-        
+
         console.log('[aatiSortMotifsAlphabetically] Sous-catégories triées alphabétiquement');
     }
-    
+
     // Observer les changements du select des sous-catégories (ajout initial)
     waitForElement({
         selector: selecteurSousCategories,
@@ -707,14 +695,14 @@ addTweak('/FolderMedical/Aati.aspx', '*aatiSortMotifsAlphabetically', function (
         },
         justOnce: false
     });
-    
+
     // Observer les changements du select des catégories pour retrier après changement
     waitForElement({
         selector: selecteurCategories,
         callback: function (elements) {
             const selectCategories = elements[0];
-            
-            selectCategories.addEventListener('change', function() {
+
+            selectCategories.addEventListener('change', function () {
                 // Attendre que les sous-catégories soient rechargées
                 setTimeout(() => {
                     const selectSousCategories = document.querySelector(selecteurSousCategories);
