@@ -30,6 +30,7 @@
         "metrics.js",
         "lib/hotkeys.js",
         "lib/pdf-lib.js",
+        "lib/fuse.js",
         "utils.js",
         "content.js",
         "tooltip.js",

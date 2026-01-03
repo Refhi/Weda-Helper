@@ -298,7 +298,7 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
                 const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 jours en millisecondes
 
                 if (result.motifsAATI && dataAge < maxAge && Object.keys(result.motifsAATI).length > 0) {
-                    console.log(`[AATI] motifsAATI présents (âge: ${Math.floor(dataAge / (24 * 60 * 60 * 1000))} jours), extraction sautée.`);
+                    console.log(`[AATI] motifsAATI présents (âge: ${Math.floor(dataAge / (24 * 60 * 60 * 1000))} jours), extraction sautée.`, result.motifsAATI);
                     return;
                 }
                 console.log('[AATI] Données absentes ou trop anciennes, extraction lancée.');
@@ -318,54 +318,6 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
     const selecteurCategories = '.flexColumn select.entry';
     const selecteurSousCategories = '.flexColumn select.entry.ml10';
 
-    // Fonction pour normaliser une chaîne (supprime accents, met en minuscule)
-    function normalizeString(str) {
-        return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    }
-
-    // Fonction de recherche floue - calcule un score de correspondance
-    function fuzzyMatch(needle, haystack) {
-        needle = normalizeString(needle);
-        haystack = normalizeString(haystack);
-
-        // Si correspondance exacte
-        if (haystack.includes(needle)) {
-            return 1000 - haystack.indexOf(needle); // Priorité aux matches au début
-        }
-
-        // Recherche avec mots séparés
-        const needleWords = needle.split(/\s+/).filter(w => w.length > 0);
-        let score = 0;
-
-        for (const word of needleWords) {
-            if (haystack.includes(word)) {
-                score += 100;
-            } else {
-                // Recherche fuzzy lettre par lettre
-                let lastIndex = -1;
-                let consecutiveMatches = 0;
-                let wordScore = 0;
-
-                for (const char of word) {
-                    const index = haystack.indexOf(char, lastIndex + 1);
-                    if (index > lastIndex) {
-                        consecutiveMatches++;
-                        wordScore += consecutiveMatches * 2; // Bonus pour lettres consécutives
-                        lastIndex = index;
-                    } else {
-                        consecutiveMatches = 0;
-                    }
-                }
-
-                if (wordScore > 0) {
-                    score += wordScore;
-                }
-            }
-        }
-
-        return score;
-    }
-
     // Fonction pour rechercher dans les motifs et retourner les 5 meilleurs résultats
     async function searchMotifs(searchTerm) {
         if (!searchTerm || searchTerm.trim().length < 2) {
@@ -380,30 +332,46 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
         }
 
         const motifs = result.motifsAATI;
-        let matches = [];
-
-        // Parcourir toutes les catégories et sous-catégories
+        
+        // Transformer les données pour Fuse.js
+        const searchableData = [];
         for (const [categorieValue, categorieData] of Object.entries(motifs)) {
             for (const sousCategorie of categorieData.sousCategories) {
-                // Rechercher dans le label et le title
-                const searchText = `${sousCategorie.label} ${sousCategorie.title}`;
-                const score = fuzzyMatch(searchTerm, searchText);
-
-                if (score > 0) {
-                    matches.push({
-                        categorieValue: categorieValue,
-                        categorieLabel: categorieData.label,
-                        sousCategorieValue: sousCategorie.value,
-                        sousCategorieLabel: sousCategorie.label,
-                        score: score
-                    });
-                }
+                searchableData.push({
+                    categorieValue: categorieValue,
+                    categorieLabel: categorieData.label,
+                    sousCategorieValue: sousCategorie.value,
+                    sousCategorieLabel: sousCategorie.label,
+                    // Combinaison de label et title pour la recherche
+                    searchText: `${sousCategorie.label} ${sousCategorie.title}`
+                });
             }
         }
 
-        // Trier par score décroissant et prendre les 5 premiers
-        matches.sort((a, b) => b.score - a.score);
-        const topMatches = matches.slice(0, 5);
+        // Configuration de Fuse.js
+        const fuseOptions = {
+            keys: ['searchText', 'sousCategorieLabel', 'categorieLabel'],
+            threshold: 0.4, // 0 = correspondance parfaite, 1 = correspondance très lâche
+            ignoreLocation: true, // Ignore la position des mots dans le texte
+            minMatchCharLength: 2,
+            includeScore: true,
+            useExtendedSearch: false
+        };
+
+        // Initialiser Fuse
+        const fuse = new Fuse(searchableData, fuseOptions);
+        
+        // Effectuer la recherche
+        const fuseResults = fuse.search(searchTerm);
+        
+        // Extraire les 5 meilleurs résultats
+        const topMatches = fuseResults.slice(0, 5).map(result => ({
+            categorieValue: result.item.categorieValue,
+            categorieLabel: result.item.categorieLabel,
+            sousCategorieValue: result.item.sousCategorieValue,
+            sousCategorieLabel: result.item.sousCategorieLabel,
+            score: result.score // Score Fuse (plus bas = meilleur)
+        }));
 
         console.log('[AATI Search] Top 5 résultats:', topMatches);
         return topMatches;
@@ -449,7 +417,7 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
 
             const searchLabel = document.createElement('label');
             searchLabel.textContent = '🔍 Recherche rapide de motif : ';
-            searchLabel.title = 'Recherche rapide et floue (essaye d’être tolérant aux fautes de frappe) parmi les motifs d’arrêt de travail AATI.';
+            searchLabel.title = 'Recherche rapide et floue (essaye d\'être tolérant aux fautes de frappe) parmi les motifs d\'arrêt de travail AATI.';
             searchLabel.style.cssText = 'font-weight: bold; margin-right: 10px; color: #333;';
 
             const searchInput = document.createElement('input');
