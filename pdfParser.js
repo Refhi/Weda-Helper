@@ -902,10 +902,21 @@ function clicPatient(extractedData) {
     let patientToClickName = patientToClick.innerText;
     let patientSelectionneText = selectedPatientName();
     if (patientSelectionneText !== 'Patient à définir...' && patientSelectionneText !== null) {
-        // Ici le bon patient est déjà sélectionné pour import.
-        // On en déduis que la procédure a déjà aboutie et qu'il faut s'arrêter.
-        console.log("[pdfParser] Un patient est déjà sélectionné, arrêt de la recherche.");
-        return { status: 'continue', message: "Un patient est déjà sélectionné" };
+        // Vérifier que le patient sélectionné est bien celui qu'on cherche
+        const normalizedSelected = normalizeString(patientSelectionneText);
+        const matchesExpectedPatient = extractedData["nameMatches"].some(name => {
+            const normalizedExpected = normalizeString(name);
+            return normalizedSelected.includes(normalizedExpected) ||
+                normalizedExpected.includes(normalizedSelected);
+        });
+
+        if (matchesExpectedPatient) {
+            console.log("[pdfParser] Le bon patient est déjà sélectionné, arrêt.");
+            return { status: 'continue', message: "Le bon patient est déjà sélectionné" };
+        } else {
+            console.log("[pdfParser] Un patient est sélectionné mais ce n'est pas le bon, on continue");
+            // Ne pas return ici, continuer avec la sélection du bon patient
+        }
     } else {
         let patientToClicSelector = "#" + patientToClick.id;
         // patientToClick.click(); => ne fonctionne pas à cause du CSP en milieu ISOLATED

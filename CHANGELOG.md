@@ -19,6 +19,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - le bouton "AT sans CV" dans la page d'accueil du dossier patient fonctionne de nouveau correctement.
 - [#504](https://github.com/Refhi/Weda-Helper/issues/504) - Le titre automatique d’un document importé depuis la messagerie sécurisée fonctionne de nouveau correctement si un commentaire est ajouté par l’utilisateur avant l’import.
 - [#505](https://github.com/Refhi/Weda-Helper/issues/505) - Lors des intégrations dans la messagerie sécurisée, le corps du message est correctement pris en compte si le pdf ne contien pas suffisamment de texte (moins de 3 lignes).
+- [#494](https://github.com/Refhi/Weda-Helper/issues/494) - Tentative de fix pour un problème de persistance intermittente du nom du précédent patient lors de l’importation automatique dans la messagerie sécurisée.
 
 
 ## Refactory :
