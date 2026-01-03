@@ -1097,7 +1097,7 @@ async function autoAddToOption({
         if (modified) {
             addedValues = [newValue.toString()];
         }
-    } else if (isJSON) {
+        } else if (isJSON) {
         // Type JSON : parser, merger et re-stringifier
         try {
             let currentData = currentValue ? JSON.parse(currentValue) : [];
@@ -1105,10 +1105,49 @@ async function autoAddToOption({
             
             if (Array.isArray(currentData)) {
                 valuesToAddArray.forEach(val => {
-                    if (!currentData.includes(val)) {
-                        currentData.push(val);
-                        addedValues.push(val);
-                        modified = true;
+                    // Pour les tableaux à deux dimensions [clé, [valeurs]], vérifier si la clé existe déjà
+                    if (Array.isArray(val) && val.length >= 2 && Array.isArray(val[1])) {
+                        const key = val[0];
+                        const newValues = val[1];
+                        const existingIndex = currentData.findIndex(item => 
+                            Array.isArray(item) && item.length >= 1 && item[0] === key
+                        );
+                        
+                        if (existingIndex === -1) {
+                            // La clé n'existe pas, on ajoute l'entrée complète
+                            currentData.push(val);
+                            addedValues.push(val);
+                            modified = true;
+                            console.log(`[${logPrefix}] Clé "${key}" ajoutée avec valeurs:`, newValues);
+                        } else {
+                            // La clé existe, on fusionne les valeurs
+                            const existingEntry = currentData[existingIndex];
+                            const existingValues = Array.isArray(existingEntry[1]) ? existingEntry[1] : [];
+                            const valuesToMerge = [];
+                            
+                            newValues.forEach(newVal => {
+                                if (!existingValues.includes(newVal)) {
+                                    existingValues.push(newVal);
+                                    valuesToMerge.push(newVal);
+                                    modified = true;
+                                }
+                            });
+                            
+                            if (valuesToMerge.length > 0) {
+                                currentData[existingIndex] = [key, existingValues];
+                                addedValues.push([key, valuesToMerge]);
+                                console.log(`[${logPrefix}] Clé "${key}" existe, valeurs ajoutées:`, valuesToMerge);
+                            } else {
+                                console.log(`[${logPrefix}] Clé "${key}" existe avec toutes les valeurs déjà présentes`);
+                            }
+                        }
+                    } else {
+                        // Pour les valeurs simples (non-tableaux), utiliser includes()
+                        if (!currentData.includes(val)) {
+                            currentData.push(val);
+                            addedValues.push(val);
+                            modified = true;
+                        }
                     }
                 });
                 newValue = JSON.stringify(currentData);
