@@ -12,6 +12,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - La case "x ième injection effectuée" se coche automatiquement.
 - [#534](https://github.com/Refhi/Weda-Helper/issues/534) - Ajout d'un bouton "+1clickVSM" dans la page des antécédents pour créer un VSM en un clic.
 - [#527](https://github.com/Refhi/Weda-Helper/issues/527) - Ajout d’un système de recherche rapide et floue (tolérant aux fautes de frappe) dans les motifs d’arrêt de travail AATI.
+- Les motifs d’arrêt de travail AATI sont désormais classés par ordre alphabétique.
 
 ## Fix :
 - le bouton "AT sans CV" dans la page d'accueil du dossier patient fonctionne de nouveau correctement.

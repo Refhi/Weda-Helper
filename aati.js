@@ -668,3 +668,62 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
         triggerOnInit: true
     });
 });
+
+
+addTweak('/FolderMedical/Aati.aspx', '*aatiSortMotifsAlphabetically', function () {
+    const selecteurCategories = '.flexColumn select.entry';
+    const selecteurSousCategories = '.flexColumn select.entry.ml10';
+    
+    // Fonction de tri des sous-catégories
+    function trierSousCategories(selectSousCategories) {
+        // Sauvegarder la valeur actuellement sélectionnée
+        const selectedValue = selectSousCategories.value;
+        
+        // Extraire et trier les options
+        const optionsArray = Array.from(selectSousCategories.options);
+        optionsArray.sort((a, b) => a.text.localeCompare(b.text));
+        
+        // Méthode non-destructive : retirer les options une par une
+        while (selectSousCategories.options.length > 0) {
+            selectSousCategories.remove(0);
+        }
+        
+        // Réajouter les options triées
+        optionsArray.forEach(option => selectSousCategories.add(option));
+        
+        // Restaurer la valeur sélectionnée si elle existe toujours
+        if (selectedValue && Array.from(selectSousCategories.options).some(opt => opt.value === selectedValue)) {
+            selectSousCategories.value = selectedValue;
+        }
+        
+        console.log('[aatiSortMotifsAlphabetically] Sous-catégories triées alphabétiquement');
+    }
+    
+    // Observer les changements du select des sous-catégories (ajout initial)
+    waitForElement({
+        selector: selecteurSousCategories,
+        callback: function (elements) {
+            trierSousCategories(elements[0]);
+        },
+        justOnce: false
+    });
+    
+    // Observer les changements du select des catégories pour retrier après changement
+    waitForElement({
+        selector: selecteurCategories,
+        callback: function (elements) {
+            const selectCategories = elements[0];
+            
+            selectCategories.addEventListener('change', function() {
+                // Attendre que les sous-catégories soient rechargées
+                setTimeout(() => {
+                    const selectSousCategories = document.querySelector(selecteurSousCategories);
+                    if (selectSousCategories && selectSousCategories.options.length > 0) {
+                        trierSousCategories(selectSousCategories);
+                    }
+                }, 200); // Délai pour laisser le temps au DOM de se mettre à jour
+            });
+        },
+        justOnce: true
+    });
+});
