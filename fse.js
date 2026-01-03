@@ -1295,6 +1295,17 @@ const cotationHelper = [
         },
         conseil: "N'oubliez pas d'ajouter la majoration MCS si vous êtes le spécialiste correspondant. Elle est applicable avec les cotations CS et CNP.",
         link: "https://www.ameli.fr/medecin/exercice-liberal/facturation-remuneration/consultations-actes/tarifs/tarifs-conventionnels-medecins-generalistes-specialistes"
+    }, {
+        titre: 'rappel cotation gl',
+        cotation: ['GL1', 'GL2', 'GL3'],
+        test: function (context) { // dès que l’âge est >= 80 ans et que c’est le médecin traitant
+            let ageOK = patientAgeInFSE() >= 80;
+            let isMT = estMTdeclareOuReferent(loggedInUser());
+            let hasGL = context.cotation.some(cot => cot.includes('GL1') || cot.includes('GL2') || cot.includes('GL3'));
+            return ageOK && isMT && !hasGL;
+        },
+        conseil: "Le patient a plus de 80 ans et vous êtes le médecin traitant. Vous pouvez côter GL1 (sortie d’hospit < 45 jours), GLP2 (déprescription suite cs. Pharma), ou GLP3 (dossier ADA). 1/an chaque, maximum.",
+        link: "https://www.fmfpro.org/les-nouveautes-conventionnelles-tarifaires-du-1er-janvier-2026/"
     }
 ];
 

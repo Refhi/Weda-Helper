@@ -350,6 +350,55 @@ function getOptionValues(optionNames, callback) {
     });
 }
 
+/**
+ * Récupère la valeur par défaut d'une ou plusieurs options depuis le stockage local de Chrome.
+ * Fonctionne avec callback ou promesse selon le mode de sollicitation.
+ *
+ * @param {string|string[]} optionNames - Le nom de l'option ou un tableau de noms d'options à récupérer.
+ * @param {function} [callback] - La fonction de rappel optionnelle à exécuter avec les valeurs par défaut récupérées.
+ * @returns {Promise|undefined} - Retourne une promesse si aucun callback n'est fourni, sinon undefined.
+ *
+ * @example <caption>Récupération avec callback</caption>
+ * getDefaultOption('trimCIM10', function (defaultValue) {
+ *     console.log('Valeur par défaut de trimCIM10:', defaultValue);
+ * });
+ *
+ * @example <caption>Récupération avec async/await</caption>
+ * const defaultValue = await getDefaultOption('trimCIM10');
+ * console.log('Valeur par défaut:', defaultValue);
+ *
+ * @example <caption>Récupération de plusieurs options avec promesse</caption>
+ * const [default1, default2] = await getDefaultOption(['option1', 'option2']);
+ */
+function getDefaultOption(optionNames, callback) {
+    // Si aucun callback n'est fourni, retourner une promesse
+    if (!callback) {
+        return new Promise((resolve) => {
+            getDefaultOption(optionNames, resolve);
+        });
+    }
+
+    let isInputArray = Array.isArray(optionNames);
+
+    if (!isInputArray) {
+        optionNames = [optionNames];
+    }
+
+    chrome.storage.local.get('defaultSettings', function (result) {
+        let options = [];
+        for (let optionName of optionNames) {
+            let optionValue;
+            if (result.defaultSettings && result.defaultSettings[optionName] !== undefined) {
+                optionValue = result.defaultSettings[optionName];
+            } else {
+                console.warn(`[getDefaultOption] Valeur par défaut non trouvée pour "${optionName}"`);
+                optionValue = undefined;
+            }
+            options.push(optionValue);
+        }
+        callback(isInputArray ? options : options[0]);
+    });
+}
 
 /**
  * Ajoute une modification (tweak) en fonction de l'URL et des options spécifiées.
@@ -877,3 +926,530 @@ function convertDate(truncatedDate) {
 
     return day + '/' + month + '/' + year;
 }
+
+
+
+/**
+ * Ajoute automatiquement des valeurs à une option si la date limite n'est pas dépassée
+ * et si l'opération n'a pas déjà été effectuée.
+ * 
+ * @param {Object} options - Options de configuration
+ * @param {string} options.updateId - Identifiant unique de cette mise à jour (ex: "cotation-jan-2026")
+ * @param {string} options.optionName - Nom de l'option à modifier
+ * @param {string|string[]} [options.valuesToAdd] - Valeur(s) à ajouter (requis si resetToDefault est false)
+ * @param {string} options.deadline - Date limite au format ISO (ex: '2026-02-01')
+ * @param {boolean} [options.resetToDefault=false] - Si true, réinitialise l'option à sa valeur par défaut
+ * 
+ * @returns {Promise<boolean>} - Retourne true si l'opération a été effectuée, false sinon
+ * 
+ * @example
+ * // Ajouter des valeurs à une liste (détection automatique du type)
+ * await autoAddToOption({
+ *     updateId: 'cotation-jan-2026',
+ *     optionName: 'cotationHelper2',
+ *     valuesToAdd: ['GL1', 'GL2', 'GL3'],
+ *     deadline: '2026-02-01'
+ * });
+ * 
+ * @example
+ * // Réinitialiser une option à sa valeur par défaut
+ * await autoAddToOption({
+ *     updateId: 'reset-cotation-mars-2026',
+ *     optionName: 'cotationHelper2',
+ *     deadline: '2026-03-01',
+ *     resetToDefault: true
+ * });
+ * 
+ * @example
+ * // Remplacer complètement une valeur booléenne
+ * await autoAddToOption({
+ *     updateId: 'activation-feature-x',
+ *     optionName: 'myBoolOption',
+ *     valuesToAdd: true,
+ *     deadline: '2026-02-01'
+ * });
+ */
+async function autoAddToOption({
+    updateId,
+    optionName,
+    valuesToAdd,
+    deadline,
+    resetToDefault = false
+}) {
+    // Validation des paramètres obligatoires
+    if (!updateId) {
+        console.error(`[autoAddToOption] Erreur: updateId est obligatoire`);
+        return false;
+    }
+    
+    if (!optionName) {
+        console.error(`[autoAddToOption] Erreur: optionName est obligatoire`);
+        return false;
+    }
+    
+    const now = new Date();
+    const deadlineDate = new Date(deadline);
+    const trackingKey = `autoAddToOption_${updateId}`;
+    const logPrefix = `autoAddOption:${updateId}`;
+    
+    // Validation des paramètres
+    if (!resetToDefault && (valuesToAdd === undefined || valuesToAdd === null)) {
+        console.error(`[${logPrefix}] Erreur: valuesToAdd est requis si resetToDefault n'est pas activé`);
+        return false;
+    }
+    
+    if (resetToDefault && valuesToAdd !== undefined) {
+        console.warn(`[${logPrefix}] Attention: valuesToAdd est ignoré quand resetToDefault est activé`);
+    }
+    
+    // Log de démarrage
+    console.log(`[${logPrefix}] Démarrage pour l'option "${optionName}"`);
+    
+    // Vérifier si on est avant la date limite
+    if (now >= deadlineDate) {
+        console.log(`[${logPrefix}] Date limite dépassée (${deadline}), pas d'ajout automatique`);
+        return false;
+    }
+    
+    // Vérifier si le contrôle a déjà été effectué
+    const alreadyDone = await getOptionPromise(trackingKey);
+    if (alreadyDone) {
+        console.log(`[${logPrefix}] Opération déjà effectuée précédemment`);
+        return false;
+    }
+    
+    // Cas de réinitialisation à la valeur par défaut
+    if (resetToDefault) {
+        const defaultValue = await getDefaultOption(optionName);
+        
+        if (defaultValue !== undefined) {
+            const currentValue = await getOptionPromise(optionName);
+            
+            return new Promise((resolve) => {
+                chrome.storage.local.set({ 
+                    [optionName]: defaultValue,
+                    [trackingKey]: true 
+                }, function() {
+                    console.log(`[${logPrefix}] Réinitialisation | Avant: "${currentValue}" | Après: "${defaultValue}"`);
+                    sendWedaNotif({
+                        message: `L'option "${optionName}" a été réinitialisée à sa valeur par défaut.`,
+                        icon: 'refresh',
+                        type: 'success',
+                        duration: 8000
+                    });
+                    resolve(true);
+                });
+            });
+        } else {
+            console.warn(`[${logPrefix}] Valeur par défaut non trouvée`);
+            return false;
+        }
+    }
+    
+    // Récupérer la valeur par défaut pour déterminer le type
+    const defaultValue = await getDefaultOption(optionName);
+    
+    // Détecter le type d'option automatiquement
+    let optionType = 'unknown';
+    let isList = false;
+    let isBoolean = false;
+    let isJSON = false;
+    
+    if (defaultValue !== undefined) {
+        if (typeof defaultValue === 'boolean') {
+            optionType = 'bool';
+            isBoolean = true;
+        } else if (typeof defaultValue === 'string') {
+            // Tenter de parser en JSON pour détecter les types JSON
+            try {
+                JSON.parse(defaultValue);
+                optionType = 'json';
+                isJSON = true;
+            } catch {
+                // Si ce n'est pas du JSON, vérifier si c'est une liste séparée par des virgules
+                if (defaultValue.includes(',')) {
+                    optionType = 'text-list';
+                    isList = true;
+                } else {
+                    optionType = 'text';
+                    isList = false;
+                }
+            }
+        }
+    }
+    
+    console.log(`[${logPrefix}] Type détecté: ${optionType}`);
+    
+    // Récupérer la valeur actuelle de l'option
+    let currentValue = await getOptionPromise(optionName);
+    if (currentValue === undefined || currentValue === null) {
+        currentValue = isList ? '' : (isBoolean ? false : '');
+    }
+    
+    let newValue;
+    let modified = false;
+    let addedValues = [];
+    
+    if (isBoolean) {
+        // Type booléen : remplacer directement
+        newValue = valuesToAdd;
+        modified = (newValue !== currentValue);
+        if (modified) {
+            addedValues = [newValue.toString()];
+        }
+    } else if (isJSON) {
+        // Type JSON : parser, merger et re-stringifier
+        try {
+            let currentData = currentValue ? JSON.parse(currentValue) : [];
+            const valuesToAddArray = Array.isArray(valuesToAdd) ? valuesToAdd : [valuesToAdd];
+            
+            if (Array.isArray(currentData)) {
+                valuesToAddArray.forEach(val => {
+                    if (!currentData.includes(val)) {
+                        currentData.push(val);
+                        addedValues.push(val);
+                        modified = true;
+                    }
+                });
+                newValue = JSON.stringify(currentData);
+            } else {
+                console.warn(`[${logPrefix}] Structure JSON non gérée, modification impossible`);
+                return false;
+            }
+        } catch (error) {
+            console.error(`[${logPrefix}] Erreur lors du parsing JSON:`, error);
+            return false;
+        }
+    } else if (isList) {
+        // Type liste séparée par virgules
+        let currentList = currentValue ? 
+            currentValue.split(',').map(item => item.trim()).filter(item => item !== '') : 
+            [];
+        
+        const valuesToAddArray = Array.isArray(valuesToAdd) ? valuesToAdd : [valuesToAdd];
+        
+        valuesToAddArray.forEach(val => {
+            if (!currentList.includes(val)) {
+                currentList.push(val);
+                addedValues.push(val);
+                modified = true;
+            }
+        });
+        
+        newValue = currentList.join(', ');
+    } else {
+        // Type texte simple : vérifier si c'est une liste ou une valeur unique
+        if (defaultValue && defaultValue.includes(',')) {
+            // C'est une liste séparée par des virgules
+            let currentList = currentValue ? 
+                currentValue.split(',').map(item => item.trim()).filter(item => item !== '') : 
+                [];
+            
+            const valuesToAddArray = Array.isArray(valuesToAdd) ? valuesToAdd : [valuesToAdd];
+            
+            valuesToAddArray.forEach(val => {
+                if (!currentList.includes(val)) {
+                    currentList.push(val);
+                    addedValues.push(val);
+                    modified = true;
+                }
+            });
+            
+            newValue = currentList.join(', ');
+        } else {
+            // Valeur texte simple : remplacer complètement
+            const values = Array.isArray(valuesToAdd) ? valuesToAdd : [valuesToAdd];
+            newValue = values.length > 0 ? values[0] : '';
+            modified = (newValue !== currentValue);
+            if (modified) {
+                addedValues = [newValue];
+            }
+        }
+    }
+    
+    // Sauvegarder si des modifications ont été faites
+    if (modified) {
+        return new Promise((resolve) => {
+            chrome.storage.local.set({ 
+                [optionName]: newValue,
+                [trackingKey]: true 
+            }, function() {
+                const addedStr = addedValues.join(', ');
+                const typeLabel = isBoolean ? 'booléen' : (isJSON ? 'JSON' : (isList ? 'liste' : 'texte'));
+                console.log(`[${logPrefix}] Modification effectuée (${typeLabel}) | Avant: "${currentValue}" | Ajouté: "${addedStr}" | Après: "${newValue}"`);
+                
+                const actionWord = isBoolean ? 'défini' : (isList || isJSON ? 'ajouté(s)' : 'défini');
+                sendWedaNotif({
+                    message: `Mise à jour automatique de "${optionName}": ${addedStr} ${actionWord}.`,
+                    icon: 'info',
+                    type: 'success',
+                    duration: 8000
+                });
+                resolve(true);
+            });
+        });
+    } else {
+        // Marquer comme fait même si rien n'a été modifié
+        return new Promise((resolve) => {
+            chrome.storage.local.set({ [trackingKey]: true }, function() {
+                console.log(`[${logPrefix}] Aucune modification | Valeur actuelle: "${currentValue}"`);
+                resolve(false);
+            });
+        });
+    }
+}
+
+
+
+/**
+ * @file utils.js
+ * @description Ce fichier contient des fonctions utilitaires utilisées massivement dans toute l'extension Chrome.
+ * Ces fonctions incluent des méthodes pour manipuler le DOM, observer les mutations, gérer les options de stockage,
+ * et d'autres utilitaires communs nécessaires au bon fonctionnement de l'extension.
+ */
+
+// ========== INTERFACE DE TEST autoAddToOption ==========
+// Interface de développement pour tester autoAddToOption
+(function createAutoAddToOptionTestUI() {
+    // Vérifier si on est en mode développement (décommenter pour activer)
+    const DEV_MODE = true; // Mettre à false en production
+    
+    if (!DEV_MODE) return;
+    
+    // Attendre que le DOM soit chargé
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTestUI);
+    } else {
+        initTestUI();
+    }
+    
+    function initTestUI() {
+        // Créer l'overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'wh-test-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 400px;
+            background: white;
+            border: 2px solid #4285f4;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 999999;
+            font-family: monospace;
+            font-size: 12px;
+        `;
+        
+        // Bouton pour masquer/afficher
+        const toggleBtn = document.createElement('button');
+        toggleBtn.textContent = '−';
+        toggleBtn.style.cssText = `
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 25px;
+            height: 25px;
+            border: none;
+            background: #4285f4;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        `;
+        
+        // Titre
+        const title = document.createElement('div');
+        title.textContent = '🧪 Test autoAddToOption';
+        title.style.cssText = `
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 14px;
+        `;
+        
+        // Textarea pour le JSON
+        const textarea = document.createElement('textarea');
+        textarea.id = 'wh-test-input';
+        textarea.style.cssText = `
+            width: 100%;
+            height: 150px;
+            margin-bottom: 10px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 11px;
+            resize: vertical;
+        `;
+        textarea.placeholder = `Exemple:
+{
+    "optionName": "myBoolOption",
+    "valuesToAdd": true,
+    "deadline": "2026-02-01"
+}
+
+ou
+
+{
+    "optionName": "cotationHelper2",
+    "valuesToAdd": ["GL1", "GL2"],
+    "deadline": "2026-03-01"
+}`;
+        
+        // Boutons d'action
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.cssText = `
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        `;
+        
+        const testBtn = document.createElement('button');
+        testBtn.textContent = '▶ Tester';
+        testBtn.style.cssText = `
+            flex: 1;
+            padding: 8px;
+            background: #34a853;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        `;
+        
+        const clearBtn = document.createElement('button');
+        clearBtn.textContent = '🗑 Effacer';
+        clearBtn.style.cssText = `
+            padding: 8px 12px;
+            background: #ea4335;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        `;
+        
+        const resetTrackingBtn = document.createElement('button');
+        resetTrackingBtn.textContent = '↻ Reset tracking';
+        resetTrackingBtn.style.cssText = `
+            padding: 8px 12px;
+            background: #fbbc04;
+            color: #333;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+        `;
+        
+        // Zone de résultat
+        const resultDiv = document.createElement('div');
+        resultDiv.id = 'wh-test-result';
+        resultDiv.style.cssText = `
+            padding: 8px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 11px;
+            display: none;
+        `;
+        
+        // Container de contenu (pour le toggle)
+        const contentDiv = document.createElement('div');
+        contentDiv.id = 'wh-test-content';
+        
+        // Assemblage
+        buttonContainer.appendChild(testBtn);
+        buttonContainer.appendChild(clearBtn);
+        buttonContainer.appendChild(resetTrackingBtn);
+        
+        contentDiv.appendChild(textarea);
+        contentDiv.appendChild(buttonContainer);
+        contentDiv.appendChild(resultDiv);
+        
+        overlay.appendChild(toggleBtn);
+        overlay.appendChild(title);
+        overlay.appendChild(contentDiv);
+        
+        document.body.appendChild(overlay);
+        
+        // Événements
+        let isCollapsed = false;
+        toggleBtn.addEventListener('click', () => {
+            isCollapsed = !isCollapsed;
+            contentDiv.style.display = isCollapsed ? 'none' : 'block';
+            toggleBtn.textContent = isCollapsed ? '+' : '−';
+        });
+        
+        testBtn.addEventListener('click', async () => {
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#f5f5f5';
+            resultDiv.style.color = '#333';
+            resultDiv.textContent = '⏳ Exécution en cours...';
+            
+            try {
+                const input = textarea.value.trim();
+                if (!input) {
+                    throw new Error('Veuillez entrer un JSON');
+                }
+                
+                const params = JSON.parse(input);
+                
+                // Validation basique
+                if (!params.optionName || !params.deadline) {
+                    throw new Error('optionName et deadline sont requis');
+                }
+                
+                console.log('[TEST autoAddToOption] Paramètres:', params);
+                
+                const result = await autoAddToOption(params);
+                
+                resultDiv.style.background = result ? '#d4edda' : '#fff3cd';
+                resultDiv.style.color = result ? '#155724' : '#856404';
+                resultDiv.innerHTML = `
+                    <strong>✅ Résultat:</strong> ${result}<br>
+                    <strong>optionName:</strong> ${params.optionName}<br>
+                    <strong>Opération:</strong> ${params.resetToDefault ? 'Reset' : 'Ajout'}<br>
+                    ${!params.resetToDefault ? `<strong>Valeurs:</strong> ${JSON.stringify(params.valuesToAdd)}` : ''}
+                    <br><em>Voir console pour plus de détails</em>
+                `;
+            } catch (error) {
+                console.error('[TEST autoAddToOption] Erreur:', error);
+                resultDiv.style.background = '#f8d7da';
+                resultDiv.style.color = '#721c24';
+                resultDiv.innerHTML = `<strong>❌ Erreur:</strong><br>${error.message}`;
+            }
+        });
+        
+        clearBtn.addEventListener('click', () => {
+            textarea.value = '';
+            resultDiv.style.display = 'none';
+        });
+        
+        resetTrackingBtn.addEventListener('click', async () => {
+            const input = textarea.value.trim();
+            if (!input) {
+                alert('Entrez d\'abord un JSON pour identifier l\'option');
+                return;
+            }
+            
+            try {
+                const params = JSON.parse(input);
+                const trackingKey = `${params.optionName}_autoAdded`;
+                
+                chrome.storage.local.remove(trackingKey, () => {
+                    resultDiv.style.display = 'block';
+                    resultDiv.style.background = '#cfe2ff';
+                    resultDiv.style.color = '#084298';
+                    resultDiv.innerHTML = `<strong>🔄 Tracking reset:</strong> ${trackingKey}<br>Vous pouvez maintenant retester l'opération.`;
+                    console.log('[TEST] Tracking key supprimée:', trackingKey);
+                });
+            } catch (error) {
+                alert('Erreur: ' + error.message);
+            }
+        });
+        
+        console.log('[WH] Interface de test autoAddToOption chargée');
+    }
+})();
