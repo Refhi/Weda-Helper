@@ -194,26 +194,28 @@ var updateMessageTemplate = `
         <h2 style="color: #2c3e50;"><strong>✨ Weda-Helper vient d'être mis à jour en version ${currentVersion} !</strong></h2>
     </div>
 
-    <!-- Section 2: Tipee et support -->
-    <div style="display: flex; align-items: center; background-color: #fff9e6; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-        <span style="font-size: 2.5em; margin-right: 20px;">💰</span> 
-        <div style="flex-grow: 1;">
-            <strong style="font-size: 1.1em; display: block; margin-bottom: 10px;">Soutenez le développement de Weda-Helper sur Tipeee !</strong> 
-            <p style="margin-bottom: 10px; color: #555;">Si Weda-Helper épargne votre temps et vous aide à mieux coter, pensez à me soutenir !</p>
+    <!-- Section 2 & 3: Tipeee et Configuration côte à côte -->
+    <div style="display: flex; gap: 15px; margin-bottom: 20px; align-items: stretch;">
+        <!-- Section 2: Tipeee et support -->
+        <div style="flex: 1; background-color: #fff9e6; padding: 15px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;">
+            <div style="text-align: center; width: 100%;">
+                <strong style="font-size: 1.1em; display: block; margin-bottom: 10px;">Soutenez le développement de Weda-Helper sur Tipeee !</strong> 
+                <p style="margin-bottom: 10px; color: #555;">Si Weda-Helper épargne votre temps et vous aide à mieux coter, pensez à me soutenir !</p>
+            </div>
             <a href="https://fr.tipeee.com/weda-helper" target="_blank">
                 <img src="${chrome.runtime.getURL('Images/logoTipeee.png')}" alt="Soutenez-moi sur Tipeee" style="height: 60px; width: auto; border: none;">
             </a>
         </div>
-    </div>
 
-    <!-- Section 3: Options et configuration -->
-    <div style="background-color: #e8f5e9; padding: 15px; border-radius: 10px; margin-bottom: 20px; display: flex; align-items: center;">
-        <div style="flex-grow: 1;">
-            <h3 style="margin-top: 0; color: #2e7d32;"><strong>🔧 Configuration et paramètres</strong></h3>
-            <p style="color: #555;">Parcourez les <strong>options ⚙️</strong>, le <strong>Changelog 📋</strong>, et la <strong>Documentation ℹ️</strong> pour explorer toutes les possibilités.</p>
-        </div>
-        <div style="margin-left: 15px;">
-            <img src="${chrome.runtime.getURL('Images/tutoPopupExplained.png')}" alt="Comment voir la popup" style="max-width: 200px; height: auto; border: 1px solid #ccc; border-radius: 5px;">
+        <!-- Section 3: Options et configuration -->
+        <div style="flex: 1; background-color: #e8f5e9; padding: 15px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;">
+            <div style="text-align: center; width: 100%;">
+                <h3 style="margin-top: 0; color: #2e7d32;"><strong>🔧 Configuration et paramètres</strong></h3>
+                <p style="color: #555;">Parcourez les <strong>options ⚙️</strong>, le <strong>Changelog 📋</strong>, et la <strong>Documentation ℹ️</strong> pour explorer toutes les possibilités. <br><br> Pour y accéder, cliquez en haut à droite de votre navigateur : </p>
+            </div>
+            <div style="margin-top: 10px; font-size: 2em;">
+                🧩 ➜ 🆆 ➜ ⚙️ / 📋 / ℹ️
+            </div>
         </div>
     </div>
 
@@ -237,6 +239,7 @@ var updateMessageTemplate = `
     </div>
 </div>
 `;
+
 
 function showPopup(text) {
     function createOverlay() {

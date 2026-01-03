@@ -4,26 +4,37 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
-# [2.15] - 
-## Ajout :
-- [#528](https://github.com/Refhi/Weda-Helper/issues/528) - Ajout d'un système d'alerte si un antécédent contiens un mot-clé précisé dans les options de Weda-Helper. Utile pour mettre en lumière les patients éligibles à un suivi spécifique comme l'inscription à un ETP.
-- [#532](https://github.com/Refhi/Weda-Helper/issues/532) - L'impression de masse peut être désactivée dans les options (utile si le raccourci vous gène).
-- [#521](https://github.com/Refhi/Weda-Helper/issues/521) - Ajout de raccourcis pour scanner directement le datamatrix d'un vaccin depuis l’arborescence des vaccins.
-- La case "x ième injection effectuée" se coche automatiquement.
-- [#534](https://github.com/Refhi/Weda-Helper/issues/534) - Ajout d'un bouton "+1clickVSM" dans la page des antécédents pour créer un VSM en un clic.
-- [#527](https://github.com/Refhi/Weda-Helper/issues/527) - Ajout d’un système de recherche rapide et floue (tolérant aux fautes de frappe) dans les motifs d’arrêt de travail AATI.
-- Les motifs d’arrêt de travail AATI sont désormais classés par ordre alphabétique.
-- [#535](https://github.com/Refhi/Weda-Helper/issues/535) - Ajout d’un message d’aide à la cotation pour GL1, GL2 et GL3 dans la page des FSE.
+# [2.15] - Bonne année 2026 à toustes ! 🎉🎊
 
-## Fix :
-- le bouton "AT sans CV" dans la page d'accueil du dossier patient fonctionne de nouveau correctement.
-- [#504](https://github.com/Refhi/Weda-Helper/issues/504) - Le titre automatique d’un document importé depuis la messagerie sécurisée fonctionne de nouveau correctement si un commentaire est ajouté par l’utilisateur avant l’import.
-- [#505](https://github.com/Refhi/Weda-Helper/issues/505) - Lors des intégrations dans la messagerie sécurisée, le corps du message est correctement pris en compte si le pdf ne contien pas suffisamment de texte (moins de 3 lignes).
-- [#494](https://github.com/Refhi/Weda-Helper/issues/494) - Tentative de fix pour un problème de persistance intermittente du nom du précédent patient lors de l’importation automatique dans la messagerie sécurisée.
+## 🎯 Vos Pôles et Cabinets peuvent désormais créer des alertes personnalisées communes sur les antécédents ! 
+- ⚕️ Particulièrement utile pour repérer facilement les patients éligibles à un suivi spécifique comme l'inscription à un atelier ETP.
+- 🔬 Si vous avez des protocoles ou études à appliquer auprès de patients avec des antécédents spécifiques, vous pouvez désormais les repérer en un coup d'œil !
+- 📧 Pensez à nous les envoyer avec votre numéro de cabinet/pôle pour que nous puissions les intégrer par défaut dans la prochaine version.
+- 🧪 Testez dès maintenant en ajoutant vos propres mots-clés dans les options de Weda-Helper !
+- [#528](https://github.com/Refhi/Weda-Helper/issues/528) - Ajout d'un système d'alerte si un antécédent contient un mot-clé précisé dans les options de Weda-Helper.
 
 
-## Refactory :
-- refactory des options
+## 🔍 La recherche des motifs d'arrêt de travail est désormais grandement simplifiée !
+- 🎯 [#527](https://github.com/Refhi/Weda-Helper/issues/527) - Recherche rapide et floue (tolérant aux fautes de frappe) dans les motifs d'arrêt de travail AATI.
+- 📋 Les motifs d'arrêt de travail AATI sont désormais classés par ordre alphabétique.
+
+
+## ✨ Autres ajouts :
+- 🖨️ [#532](https://github.com/Refhi/Weda-Helper/issues/532) - L'impression de masse peut être désactivée dans les options (utile si le raccourci vous gêne).
+- 💉 [#521](https://github.com/Refhi/Weda-Helper/issues/521) - Ajout de raccourcis pour scanner directement le datamatrix d'un vaccin depuis l'arborescence des vaccins.
+- ✅ La case "x ième injection effectuée" se coche automatiquement.
+- 🩺 [#534](https://github.com/Refhi/Weda-Helper/issues/534) - Ajout d'un bouton "+1clickVSM" dans la page des antécédents pour créer un VSM en un clic.
+- 💰 [#535](https://github.com/Refhi/Weda-Helper/issues/535) - Ajout d'un message d'aide à la cotation pour GL1, GL2 et GL3 dans la page des FSE.
+
+## 🔧 Corrections :
+- 📄 Le bouton "AT sans CV" dans la page d'accueil du dossier patient fonctionne de nouveau correctement.
+- 📝 [#504](https://github.com/Refhi/Weda-Helper/issues/504) - Le titre automatique d'un document importé depuis la messagerie sécurisée fonctionne de nouveau correctement si un commentaire est ajouté par l'utilisateur avant l'import.
+- 📨 [#505](https://github.com/Refhi/Weda-Helper/issues/505) - Lors des intégrations dans la messagerie sécurisée, le corps du message est correctement pris en compte si le PDF ne contient pas suffisamment de texte (moins de 3 lignes).
+- 🔄 [#494](https://github.com/Refhi/Weda-Helper/issues/494) - Tentative de correction d'un problème de persistance intermittente du nom du précédent patient lors de l'importation automatique dans la messagerie sécurisée.
+
+
+## 🏗️ Refactorisation :
+- 🔨 Refactorisation des options
 
 # [2.14] - Correctifs divers et améliorations
 ## Améliorations :

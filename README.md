@@ -85,7 +85,8 @@ Cf. ci-dessous pour les retours et les contributions.
 - Automatisation du contrôle du MT + ouvre un nouvel onglet pour ne pas avoir à patienter. Un message vous indique si cela a fonctionné ou non. Vous pourrez retourner dans le premier onglet si vous souhaitez enregistrer le MT.
 - Automatisation partielle de la déclaration de MT : sélectionne automatiquement le patient en cours, pré-coche les cases de consentement. Vous n'avez plus qu'à cliquer sur "Transmettre" pour valider.
 - Alerte en cas de retard ou d'absence du VSM et ajout d'un bouton pour le réaliser en un clic. (ne fonctionne que si 70%+ est en CIM-10)
-- Recherche d’un patient grâce au contenu du presse-papiers en un clic.
+- Recherche d'un patient grâce au contenu du presse-papiers en un clic.
+- Bouton "AT sans CV" pour créer un arrêt de travail sans lecture de carte vitale.
 
 ## Consultations
 - Affichage automatique de l'historique dans une colonne à gauche : ouvre automatiquement un historique simplifié (pas de recettes notamment) dans une colonne à gauche de l'écran, uniquement dans les pages de Consultation, de Courrier, de Certificat, de Formulaire et Demandes.
@@ -170,8 +171,10 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - rafraichissement automatique des messages Mssanté. Il vérifiera 30 secondes après le chargement de la page, puis toutes les 15 minutes. Il vaut donc mieux laisser un onglet ouvert sur cette page.
 
 ### AT
-- simplification de la réalisation des arrêts de travail intégrés à Weda (lecture auto CV, selection auto de l'assuré, impression automatique, autofill de la date en cas de sorties libres, fermeture automatique)
+- simplification de la réalisation des arrêts de travail intégrés à Weda (lecture auto CV, selection auto de l'assuré, impression automatique, autofill de la date en cas de sorties libres, fermeture automatique).
 - La case "Mon patient accepte que je transmette le présent avis d'arrêt de travail pour son compte [...]" se coche automatiquement.
+- Ajout d’un champ de recherche de motif d’arrêt de travail (tolérant aux fautes de frappe et aux acronymes courants).
+- Classement des motifs d’arrêt de travail par ordre alphabétique.
 
 
 ### Métrique
@@ -193,6 +196,8 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 ### Antécédents :
 - ajout d'options pour limiter le nombre d'atcd affichés en CIM 10 et de les trier par ordre alphabétique
 - implémentation d'une pré-alerte : si la date de l'alerte est dans moins de 6 mois (paramétrable), l'alerte est affichée en orange
+- système d'alerte si un antécédent contient un mot-clé précisé dans les options (utile pour mettre en lumière les patients éligibles à un suivi spécifique comme l'inscription à un ETP).
+- bouton "+1clickVSM" pour créer un VSM en un clic depuis la page des antécédents.
 
 ### Navigation :
 - Un clic du milieu sur le W du Menu W ouvre un nouvel onglet vers l'accueil du dossier patient, et non le module en cours.
@@ -204,6 +209,8 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 ### Vaccination "instantanée" :
 - si activée, toute ouverture de dossier patient amène immédiatement sur le scan du datamatrix d'un vaccin, permettant aux vaccineurs en série de gagner du temps (particulièrement pensée pour les pharmaciens). Ce paramètre est facilement accessible depuis la popup de l'extension (clic sur l'icône de l'extension).
 - le champ de date d’expiration du vaccin est automatiquement formatté (ex. "0512" devient "05/12/2025")
+- raccourcis pour scanner directement le datamatrix d'un vaccin depuis l'arborescence des vaccins.
+- la case "x ième injection effectuée" se coche automatiquement.
 
 
 
