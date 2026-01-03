@@ -32,6 +32,7 @@
         "lib/pdf-lib.js",
         "lib/fuse.js",
         "utils.js",
+        "optionValuesUpdates.js",
         "content.js",
         "tooltip.js",
         "popupFunctions.js",
