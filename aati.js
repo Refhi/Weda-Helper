@@ -379,7 +379,7 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
 
         // Appareil circulatoire
         'hta': ['hypertension'],
-        'sca': ['syndrome', 'coronarien', 'aigu', 'traitement', 'invasif'],
+        'sca': ['coronaropathie', 'infarctus', 'thoracique'],
         'aomi': ['artériopathie'],
         'rétrecissement': ['valvulopathie'],
 
