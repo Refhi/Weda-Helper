@@ -318,6 +318,103 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
     const selecteurCategories = '.flexColumn select.entry';
     const selecteurSousCategories = '.flexColumn select.entry.ml10';
 
+    // Dictionnaire de synonymes médicaux pour améliorer la recherche
+    const synonymesMedicaux = {
+        // Système nerveux
+        'avc': ['accident vasculaire cérébral', 'attaque cérébrale', 'infarctus cérébral'],
+        'canal carpien': ['syndrome du canal carpien', 'compression nerf médian'],
+        
+        // Appareil respiratoire
+        'pulmonaire': ['poumon', 'bronches', 'respiratoire'],
+        'poumon': ['pulmonaire', 'bronches', 'respiratoire'],
+        'grippe': ['syndrome grippal', 'influenza'],
+        'rhume': ['rhinopharyngite', 'coryza'],
+        'bronchite': ['infection bronchique', 'inflammation bronches'],
+        'pneumonie': ['pneumopathie', 'infection pulmonaire'],
+        'asthme': ['crise asthmatique', 'bronchospasme'],
+        'plèvre': ['pleural', 'inflammation plèvre'],
+        'pnp': ['pneumopathie', 'infection pulmonaire'],
+        
+        // Traumatismes
+        'fracture': ['cassure', 'rupture osseuse', 'bris osseux'],
+        'entorse': ['foulure', 'distension ligamentaire'],
+        'luxation': ['déboitement', 'dislocation'],
+        'plaie': ['blessure', 'coupure', 'lacération'],
+        'cote': ['côte', 'costale'],
+        
+        // Tumeurs
+        'cancer': ['tumeur maligne', 'néoplasie', 'carcinome'],
+        'tumeur': ['néoplasie', 'cancer', 'masse'],
+        'sein': ['mammaire', 'glande mammaire'],
+        
+        // Digestif
+        'gastro': ['gastro-entérite', 'gastroentérite', 'diarrhée virale'],
+        'intestin': ['intestinal', 'entérique', 'digestif'],
+        'hernie': ['éventration', 'rupture paroi'],
+        'hémorroïdes': ['hémorroïdaire', 'maladie hémorroïdaire'],
+        'appendice': ['appendicite', 'inflammation appendice'],
+        'foie': ['hépatique', 'hépatite'],
+        
+        // Système ostéoarticulaire
+        'arthrose': ['gonarthrose', 'coxarthrose', 'dégénérescence articulaire'],
+        'genou': ['patella', 'rotulien', 'fémoro-patellaire'],
+        'hanche': ['coxo-fémoral', 'articulaire hanche'],
+        'dos': ['rachis', 'colonne vertébrale', 'vertébral'],
+        'lombaire': ['lombalgie', 'lumbago', 'bas du dos'],
+        'cervical': ['cervicalgie', 'nuque', 'cou'],
+        'sciatique': ['sciatalgie', 'névralgie sciatique', 'cruralgie'],
+        'hernie discale': ['discopathie', 'protrusion discale'],
+        'menisque': ['méniscal', 'lésion méniscale'],
+        'tendon': ['tendinite', 'tendinopathie', 'ténosynovite'],
+        'épaule': ['scapulo-huméral', 'gléno-huméral', 'coiffe rotateurs'],
+        'poignet': ['carpe', 'carpien'],
+        'cheville': ['talo-crural', 'malléolaire'],
+        
+        // Troubles mentaux
+        'dépression': ['dépressif', 'trouble dépressif', 'syndrome dépressif'],
+        'anxiété': ['anxieux', 'trouble anxieux', 'angoisse'],
+        'burnout': ['épuisement professionnel', 'syndrome d\'épuisement'],
+        
+        // Appareil génito-urinaire
+        'rein': ['rénal', 'néphrétique'],
+        'vessie': ['vésical', 'cystite'],
+        'prostate': ['prostatique', 'prostatite'],
+        'utérus': ['utérin', 'hystérectomie'],
+        'ovaire': ['ovarien', 'annexe'],
+        
+        // Appareil circulatoire
+        'cœur': ['cardiaque', 'myocarde', 'coronaire'],
+        'infarctus': ['crise cardiaque', 'syndrome coronarien aigu', 'sca'],
+        'varice': ['variqueux', 'insuffisance veineuse'],
+        'phlébite': ['thrombose veineuse', 'thrombophlébite'],
+        'hypertension': ['tension artérielle élevée', 'hta'],
+        
+        // Œil
+        'oeil': ['œil', 'oculaire', 'ophtalmique'],
+        'cataracte': ['opacification cristallin'],
+        
+        // Peau
+        'abcès': ['collection purulente', 'suppuration'],
+        'furoncle': ['anthrax', 'infection cutanée'],
+        'eczéma': ['dermatite', 'inflammation cutanée'],
+        'brulure': ['brûlure', 'lésion thermique']
+    };
+
+    // Fonction pour enrichir le terme de recherche avec les synonymes
+    function enrichirRecherche(searchTerm) {
+        const termsToSearch = [searchTerm];
+        const normalizedTerm = searchTerm.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        
+        // Ajouter les synonymes si trouvés
+        for (const [key, synonyms] of Object.entries(synonymesMedicaux)) {
+            if (normalizedTerm.includes(key) || key.includes(normalizedTerm)) {
+                termsToSearch.push(...synonyms);
+            }
+        }
+        
+        return [...new Set(termsToSearch)]; // Supprimer les doublons
+    }
+
     // Fonction pour rechercher dans les motifs et retourner les 5 meilleurs résultats
     async function searchMotifs(searchTerm) {
         if (!searchTerm || searchTerm.trim().length < 2) {
@@ -348,6 +445,10 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
             }
         }
 
+        // Enrichir la recherche avec les synonymes
+        const enrichedTerms = enrichirRecherche(searchTerm);
+        console.log('[AATI Search] Termes enrichis:', enrichedTerms);
+
         // Configuration de Fuse.js
         const fuseOptions = {
             keys: ['searchText', 'sousCategorieLabel', 'categorieLabel'],
@@ -361,11 +462,26 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
         // Initialiser Fuse
         const fuse = new Fuse(searchableData, fuseOptions);
         
-        // Effectuer la recherche
-        const fuseResults = fuse.search(searchTerm);
+        // Effectuer la recherche avec tous les termes enrichis
+        const allResults = new Map(); // Utiliser une Map pour éviter les doublons
+        
+        for (const term of enrichedTerms) {
+            const fuseResults = fuse.search(term);
+            fuseResults.forEach(result => {
+                const key = `${result.item.categorieValue}-${result.item.sousCategorieValue}`;
+                // Garder le meilleur score pour chaque résultat
+                if (!allResults.has(key) || allResults.get(key).score > result.score) {
+                    allResults.set(key, result);
+                }
+            });
+        }
+        
+        // Convertir en tableau et trier par score
+        const sortedResults = Array.from(allResults.values())
+            .sort((a, b) => a.score - b.score);
         
         // Extraire les 5 meilleurs résultats
-        const topMatches = fuseResults.slice(0, 5).map(result => ({
+        const topMatches = sortedResults.slice(0, 5).map(result => ({
             categorieValue: result.item.categorieValue,
             categorieLabel: result.item.categorieLabel,
             sousCategorieValue: result.item.sousCategorieValue,
@@ -417,13 +533,13 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
 
             const searchLabel = document.createElement('label');
             searchLabel.textContent = '🔍 Recherche rapide de motif : ';
-            searchLabel.title = 'Recherche rapide et floue (essaye d\'être tolérant aux fautes de frappe) parmi les motifs d\'arrêt de travail AATI.';
+            searchLabel.title = 'Recherche rapide et floue (essaye d\'être tolérant aux fautes de frappe) parmi les motifs d\'arrêt de travail AATI. Utilise également des synonymes médicaux.';
             searchLabel.style.cssText = 'font-weight: bold; margin-right: 10px; color: #333;';
 
             const searchInput = document.createElement('input');
             searchInput.id = 'aati-quick-search';
             searchInput.type = 'text';
-            searchInput.placeholder = 'Ex: fracture cote, grippe, lombalgie...';
+            searchInput.placeholder = 'Ex: fracture cote, grippe, lombalgie, poumon...';
             searchInput.style.cssText = 'width: 400px; padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px;';
             searchInput.tabIndex = 1;
 
