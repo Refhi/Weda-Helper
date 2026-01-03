@@ -206,10 +206,10 @@ const customFieldsDefault3 = JSON.stringify([
 ]);
 const alertesAtcdOptionDefault = JSON.stringify([
     // Format : ["Titre de l'alerte", coloration (true/false), alerte prioritaire (true/false), "icône Material", ["mots", "clés"]]
-    ["ETP Diabète - ce patient peut être éligible à une ETP Diabète", "true", "true", "diversity_3", ["diabete_", "diabete_"]],
-    ["ETP Asthme - ce patient peut être éligible à une ETP Asthme", "true", "true", "diversity_3", ["asthme_", "asthma_"]],
-    ["ETP Alimentation - ce patient peut être éligible à une ETP Alimentation", "true", "false", "diversity_3", ["obesite_", "surpoids_", "anorexie_", "boulimie_", "TCA_"]],
-    ["ETP Cardiovasculaire - ce patient peut être éligible à une ETP Maladies Cardiovasculaires", "true", "true", "diversity_3", ["HTA_", "hypertension artérielle_", "infarctus_", "insuffisance cardiaque_"]]
+    ["ETP Diabète - ce patient peut être éligible à une ETP Diabète", "true", "true", "groups", ["diabete_", "diabete_"]],
+    ["ETP Asthme - ce patient peut être éligible à une ETP Asthme", "true", "true", "groups", ["asthme_", "asthma_"]],
+    ["ETP Alimentation - ce patient peut être éligible à une ETP Alimentation", "true", "false", "groups", ["obesite_", "surpoids_", "anorexie_", "boulimie_", "TCA_"]],
+    ["ETP Cardiovasculaire - ce patient peut être éligible à une ETP Maladies Cardiovasculaires", "true", "true", "groups", ["HTA_", "hypertension artérielle_", "infarctus_", "insuffisance cardiaque_"]]
 ]);
 
 

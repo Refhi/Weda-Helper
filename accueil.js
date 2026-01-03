@@ -32,7 +32,7 @@ addTweak(homePageUrls, '*preAlertATCD', function () {
                 }
                 let today = new Date();
                 let fiveMonthsLater = new Date();
-                console.log('alertDate', alertDate, 'today', today);
+                // console.log('alertDate', alertDate, 'today', today);
                 getOption('preAlertATCD', function (preAlertATCD) {
                     preAlertATCD = parseInt(preAlertATCD);
                     fiveMonthsLater.setMonth(today.getMonth() + preAlertATCD);
@@ -661,7 +661,10 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
     }
 
     // Récupération des alertes du cabinet/Pôle depuis alertesAtcd.js
-    const cabinetId = function() {
+    const cabinetId = await (async function() {
+        // On vérifie que l'option alertesAtcdOptionGlobal est true
+        const alertesAtcdOptionGlobal = await getOptionPromise('alertesAtcdOptionGlobal');
+        if (!alertesAtcdOptionGlobal) return null
         const cabinetElement = document.querySelector('#LinkButtonUserLog');
         if (!cabinetElement) return null;
         const cabinetInfoLines = cabinetElement.title.split('\n');
@@ -671,7 +674,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
             }
         }
         return null;
-    }();
+    })();
     
     console.log('[alertesAtcd] cabinetId', cabinetId);
     
@@ -705,15 +708,16 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
             alert.motsCles.forEach(motCle => {
                 const motCleLower = motCle.toLowerCase();
                 if (spanText.includes(motCleLower)) {
-                    console.log('[alertesAtcd] Alerte trouvée:', alert.titre, 'pour le mot-clé:', motCle);
-                    
+                    console.log('[alertesAtcd] Alerte validée pour :', alert.titre, 'avec les caractéristiques', alert, 'mot-clé trouvé:', motCle);                    
                     // Clé unique pour éviter les doublons
                     const cleElement = spanElement.textContent + alert.titre;
                     if (alertesAffichees.has(cleElement)) return;
                     alertesAffichees.set(cleElement, true);
 
                     // Afficher une notification si le flag alerte est activé
+                    console.log('[alertesAtcd] Traitement de l\'alerte:', alert.titre, 'alerte flag:', alert.alerte);
                     if (alert.alerte) {
+                        console.log('[alertesAtcd] Envoi de la notification pour l\'alerte:', alert.titre, 'mot-clé:', motCle, "matIcon:", alert.matIcon);
                         sendWedaNotifAllTabs({
                             message: `${alert.titre}: ${alert.longDescription}`,
                             type: 'success',
@@ -735,4 +739,202 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
             });
         });
     });
+});
+
+// Panneau de test pour les notifications
+addTweak('*', 'testNotifPanel', function () {
+    // Créer le panneau de test
+    const testPanel = document.createElement('div');
+    testPanel.id = 'wedaHelperNotifTestPanel';
+    testPanel.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: white;
+        border: 2px solid #333;
+        padding: 15px;
+        z-index: 10000;
+        max-width: 400px;
+        display: none;
+    `;
+
+    // Titre
+    const title = document.createElement('h3');
+    title.textContent = 'Test Notifications Weda-Helper';
+    title.style.marginTop = '0';
+    testPanel.appendChild(title);
+
+    // Bouton pour fermer
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕ Fermer';
+    closeBtn.style.cssText = 'float: right; margin-top: -30px;';
+    closeBtn.addEventListener('click', () => {
+        testPanel.style.display = 'none';
+    });
+    testPanel.appendChild(closeBtn);
+
+    // Champ de texte pour le message
+    const messageLabel = document.createElement('label');
+    messageLabel.textContent = 'Message:';
+    messageLabel.style.display = 'block';
+    messageLabel.style.marginTop = '10px';
+    testPanel.appendChild(messageLabel);
+
+    const messageInput = document.createElement('input');
+    messageInput.type = 'text';
+    messageInput.value = 'Test de notification';
+    messageInput.style.cssText = 'width: 100%; padding: 5px; margin: 5px 0;';
+    testPanel.appendChild(messageInput);
+
+    // Sélecteur de type
+    const typeLabel = document.createElement('label');
+    typeLabel.textContent = 'Type:';
+    typeLabel.style.display = 'block';
+    typeLabel.style.marginTop = '10px';
+    testPanel.appendChild(typeLabel);
+
+    const typeSelect = document.createElement('select');
+    typeSelect.style.cssText = 'width: 100%; padding: 5px; margin: 5px 0;';
+    ['success', 'fail', 'undefined'].forEach(type => {
+        const option = document.createElement('option');
+        option.value = type;
+        option.textContent = type;
+        typeSelect.appendChild(option);
+    });
+    testPanel.appendChild(typeSelect);
+
+    // Sélecteur d'icône avec une liste étendue
+    const iconLabel = document.createElement('label');
+    iconLabel.textContent = 'Icône (Material Icon):';
+    iconLabel.style.display = 'block';
+    iconLabel.style.marginTop = '10px';
+    testPanel.appendChild(iconLabel);
+
+    const iconInput = document.createElement('input');
+    iconInput.type = 'text';
+    iconInput.value = 'info';
+    iconInput.style.cssText = 'width: 100%; padding: 5px; margin: 5px 0;';
+    testPanel.appendChild(iconInput);
+
+    // Liste d'icônes communes
+    const iconSuggestions = document.createElement('div');
+    iconSuggestions.style.cssText = 'margin: 10px 0; font-size: 12px;';
+    iconSuggestions.innerHTML = '<strong>Icônes courantes:</strong><br>';
+    
+    const commonIcons = [
+        'info', 'warning', 'error', 'check_circle', 'cancel',
+        'home', 'settings', 'search', 'favorite', 'star',
+        'person', 'group', 'diversity_3', 'notifications', 'campaign',
+        'medical_services', 'medication', 'vaccines', 'local_hospital', 'healing',
+        'assignment', 'description', 'folder', 'schedule', 'event',
+        'help', 'lightbulb', 'verified', 'celebration', 'psychology'
+    ];
+
+    commonIcons.forEach(icon => {
+        const iconBtn = document.createElement('button');
+        iconBtn.textContent = icon;
+        iconBtn.style.cssText = 'margin: 2px; padding: 3px 6px; font-size: 11px;';
+        iconBtn.addEventListener('click', () => {
+            iconInput.value = icon;
+        });
+        iconSuggestions.appendChild(iconBtn);
+    });
+    testPanel.appendChild(iconSuggestions);
+
+    // Durée
+    const durationLabel = document.createElement('label');
+    durationLabel.textContent = 'Durée (ms):';
+    durationLabel.style.display = 'block';
+    durationLabel.style.marginTop = '10px';
+    testPanel.appendChild(durationLabel);
+
+    const durationInput = document.createElement('input');
+    durationInput.type = 'number';
+    durationInput.value = '5000';
+    durationInput.style.cssText = 'width: 100%; padding: 5px; margin: 5px 0;';
+    testPanel.appendChild(durationInput);
+
+    // Boutons d'envoi
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.style.cssText = 'margin-top: 15px;';
+
+    const sendBtn = document.createElement('button');
+    sendBtn.textContent = 'Envoyer (onglet actuel)';
+    sendBtn.style.cssText = 'padding: 8px 12px; margin-right: 5px;';
+    sendBtn.addEventListener('click', () => {
+        sendWedaNotif({
+            message: messageInput.value,
+            type: typeSelect.value,
+            icon: iconInput.value,
+            duration: parseInt(durationInput.value)
+        });
+        console.log('[TestNotif] Notification envoyée:', {
+            message: messageInput.value,
+            type: typeSelect.value,
+            icon: iconInput.value,
+            duration: parseInt(durationInput.value)
+        });
+    });
+    buttonsContainer.appendChild(sendBtn);
+
+    const sendAllBtn = document.createElement('button');
+    sendAllBtn.textContent = 'Envoyer (tous onglets)';
+    sendAllBtn.style.cssText = 'padding: 8px 12px;';
+    sendAllBtn.addEventListener('click', () => {
+        sendWedaNotifAllTabs({
+            message: messageInput.value,
+            type: typeSelect.value,
+            icon: iconInput.value,
+            duration: parseInt(durationInput.value)
+        });
+        console.log('[TestNotif] Notification envoyée à tous les onglets:', {
+            message: messageInput.value,
+            type: typeSelect.value,
+            icon: iconInput.value,
+            duration: parseInt(durationInput.value)
+        });
+    });
+    buttonsContainer.appendChild(sendAllBtn);
+
+    testPanel.appendChild(buttonsContainer);
+
+    // Lien vers la documentation Material Icons
+    const docLink = document.createElement('div');
+    docLink.style.cssText = 'margin-top: 15px; font-size: 11px; color: #666;';
+    docLink.innerHTML = 'Liste complète: <a href="https://fonts.google.com/icons?icon.set=Material+Icons" target="_blank">Material Icons</a>';
+    testPanel.appendChild(docLink);
+
+    // Ajouter au DOM
+    document.body.appendChild(testPanel);
+
+    // Créer un bouton flottant pour ouvrir/fermer le panneau
+    const toggleBtn = document.createElement('button');
+    toggleBtn.textContent = '🔔 Test';
+    toggleBtn.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 10px 15px;
+        background: #4285f4;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        z-index: 9999;
+        font-weight: bold;
+    `;
+    toggleBtn.addEventListener('click', () => {
+        if (testPanel.style.display === 'none') {
+            testPanel.style.display = 'block';
+            toggleBtn.style.display = 'none';
+        }
+    });
+    document.body.appendChild(toggleBtn);
+
+    // Permettre de fermer en affichant le bouton
+    closeBtn.addEventListener('click', () => {
+        toggleBtn.style.display = 'block';
+    });
+
+    console.log('[TestNotif] Panneau de test des notifications chargé. Cliquez sur le bouton "🔔 Test" en bas à droite.');
 });

@@ -20,7 +20,7 @@ const alertesAtcdGlobal = {
       titre: "Atelier diabète",
       coloration: true,
       alerte: true,
-      matIcon: "diversity_3",
+      matIcon: "groups",
       longDescription: "Un atelier Diabète peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans les conseils de prescription ou imprimer un Flyer depuis les documents du cabinet",
       motsCles: ["diabète"]
     },
@@ -28,7 +28,7 @@ const alertesAtcdGlobal = {
       titre: "Atelier alimentation",
       coloration: true,
       alerte: false,
-      matIcon: "diversity_3",
+      matIcon: "groups",
       longDescription: "Un atelier Alimentation peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans les conseils de prescription ou imprimer un Flyer depuis les documents du cabinet",
       motsCles: [
         "obésité",
@@ -46,7 +46,7 @@ const alertesAtcdGlobal = {
       titre: "Atelier traitement CV",
       coloration: true,
       alerte: true,
-      matIcon: "diversity_3",
+      matIcon: "groups",
       longDescription: "Un atelier Maladies Cardiovasculaires peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans les conseils de prescription ou imprimer un Flyer depuis les documents du cabinet",
       motsCles: [
         "HTA",
