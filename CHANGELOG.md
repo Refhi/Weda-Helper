@@ -17,6 +17,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 
 ## Fix :
 - le bouton "AT sans CV" dans la page d'accueil du dossier patient fonctionne de nouveau correctement.
+- [#504](https://github.com/Refhi/Weda-Helper/issues/504) - Le titre automatique d’un document importé depuis la messagerie sécurisée fonctionne de nouveau correctement si un commentaire est ajouté par l’utilisateur avant l’import.
 
 
 ## Refactory :

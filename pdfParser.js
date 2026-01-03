@@ -490,6 +490,7 @@ async function setTitleIfNeededES(Titre) {
         console.log("[pdfParser] Titre trouvé, on le met dans le champ de titre", Titre);
         titleInput.value = Titre;
         titleInput.dispatchEvent(new Event('change'));
+        titleInput.dispatchEvent(new Event('input')); // dans certains cas, l'input est écouté via un listener 'input'
         return;
     }
     console.error("[pdfParser] Titre non trouvé, impossible de le mettre dans le champ de titre");
