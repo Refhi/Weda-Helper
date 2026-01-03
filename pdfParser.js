@@ -555,14 +555,27 @@ async function extractBasePdfData(iframesElements) {
 
     // 2. Extraire le texte du PDF
     fullText = await extractTextFromPDF(urlPDF);
+
+    // 3. Ajouter le corps du message à la fin du texte du PDF si disponible et si le PDF contient moins de 3 lignes
+    const messageBody = returnMessageBodyES();
+    if (messageBody) {
+        const pdfLineCount = fullText.split('\n').length;
+        if (pdfLineCount < 3) {
+            console.log(`[pdfParser] Le PDF ne contient que ${pdfLineCount} ligne(s), ajout du corps du message`);
+            fullText += "\n\n=== Corps du message ===\n" + messageBody;
+        } else {
+            console.log(`[pdfParser] Le PDF contient ${pdfLineCount} lignes, pas d'ajout du corps du message`);
+        }
+    }
+
     console.log('[pdfParser] fullText', [fullText]);
 
-    // 3. Créer un identifiant unique pour ce PDF
+    // 4. Créer un identifiant unique pour ce PDF
     hashId = await customHash(fullText, urlPDF);
+
 
     return { urlPDF, fullText, hashId };
 }
-
 /**
  * Gère l'extraction des données à partir du PDF (texte ou datamatrix).
  * @param {string} fullText - Le texte extrait du PDF.
