@@ -205,7 +205,7 @@ const customFieldsDefault2 = JSON.stringify([
 const customFieldsDefault3 = JSON.stringify([
 ]);
 
-const atcdAlertsDefault = JSON.stringify([
+const alertesAtcdOptionDefault = JSON.stringify([
     // Recherche les valeurs dans l’ensemble des antécédents.
     // Si trouvé, affiche une alerte basée sur la clé.
     ["ETP Diabète - ce patient peut être éligible à une ETP Diabète", ["diabètexxx", "diabetesxxx"]],
@@ -439,10 +439,10 @@ var advancedDefaultSettings = [
                 "default": true,
                 "longDescription": "En cliquant sur un antécédent depuis la page d'accueil, cela ouvre la fenêtre d'édition directement.",
             }, {
-                "name": "atcdAlerts",
+                "name": "alertesAtcdOption",
                 "type": TYPE_JSON,
                 "description": "Liste des alertes à afficher en fonction des mots-clés trouvés dans les antécédents.",
-                "default": atcdAlertsDefault
+                "default": alertesAtcdOptionDefault
             }
         ]
         },{

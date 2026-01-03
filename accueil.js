@@ -602,9 +602,9 @@ addTweak('*', '*watchPatientSearchBox', function () {
 
 
 // Gestion des alertes Antécédents
-// Cette partie recherche dans l'option atcdAlerts une valeur pour chaque clé
+// Cette partie recherche dans l'option alertesAtcd une valeur pour chaque clé
 // Si une des valeurs est présente dans les antécédents du patient, une alerte est affichée correspondant à la clé
-addTweak('/FolderMedical/PatientViewForm.aspx', '*atcdAlerts', async function () {
+addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async function () {
     const panelSelector = "#ContentPlaceHolder1_PanelPatient"
     const panelElement = document.querySelector(panelSelector);
     if (!panelElement) return;
@@ -612,9 +612,9 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*atcdAlerts', async function ()
     if (!atcdDiv) return;
 
     // On récupère les alertes de l'utilisateur depuis les options
-    const atcdAlertsOption = await getOptionPromise('atcdAlerts');
-    if (!atcdAlertsOption) return;
-    const atcdAlerts = JSON.parse(atcdAlertsOption);
+    const alertesAtcdOption = await getOptionPromise('alertesAtcdOption');
+    if (!alertesAtcdOption) return;
+    const alertesAtcdDict = JSON.parse(alertesAtcdOption);
 
     // On récupère les alertes du cabinet/Pôle depuis alertesAtcd.js
     // Les alertes ne doivent concerner que le cabinet en cours.
@@ -630,23 +630,23 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*atcdAlerts', async function ()
         }
         return null;
     }();
-    console.log('[atcdAlerts] cabinetId', cabinetId);
-    const atcdAlertsCabinet = alertesAtcd[cabinetId];
-    console.log('[atcdAlerts] atcdAlertsCabinet', atcdAlertsCabinet);
-    // TODO : reprendre ici, on doit croiser atcdAlertsCabinet et atcdAlerts de l'utilisateur, ou peut-être étendre les possibilités des alertes utilisateurs ?
+    console.log('[alertesAtcd] cabinetId', cabinetId);
+    const alertesAtcdCabinet = alertesAtcdGlobal[cabinetId]; // alertesAtcdGlobal est défini dans alertesAtcd.js
+    console.log('[alertesAtcd] alertesAtcdCabinet', alertesAtcdCabinet);
+    // TODO : reprendre ici, on doit croiser alertesAtcdCabinet et alertesAtcd de l'utilisateur, ou peut-être étendre les possibilités des alertes utilisateurs ?
 
     // On liste d'abord tout les span du panel
     const spanElements = atcdDiv.querySelectorAll('span');
     spanElements.forEach(spanElement => {
         const spanText = spanElement.textContent.toLowerCase();
         // On vérifie chaque alerte
-        atcdAlerts.forEach(alert => {
+        alertesAtcdCabinet.forEach(alert => {
             const message = alert[0];
             const keysToParse = alert[1];
             keysToParse.forEach(key => {
                 const alertKey = key.toLowerCase();
                 if (spanText.includes(alertKey)) {
-                    console.log('[atcdAlerts] Alerte trouvée pour la clé', alertKey, 'dans le texte', spanText);
+                    console.log('[alertesAtcd] Alerte trouvée pour la clé', alertKey, 'dans le texte', spanText);
                     // On affiche une alerte
                     sendWedaNotifAllTabs({
                         message: `Alerte ATCD: ${message} (mot-clé: "${alertKey}")`,

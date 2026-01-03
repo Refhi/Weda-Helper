@@ -14,7 +14,7 @@
 // }
 
 
-const alertesAtcd = {
+const alertesAtcdGlobal = {
   4341: [
     {
       titre: "Atelier diabète",
@@ -135,4 +135,4 @@ function validerStructureAlertes(alertes) {
   // console.log('✅ Validation des alertes terminée');
 }
 
-validerStructureAlertes(alertesAtcd);
+validerStructureAlertes(alertesAtcdGlobal);
