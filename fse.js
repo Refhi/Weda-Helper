@@ -1304,7 +1304,7 @@ const cotationHelper = [
             let hasGL = context.cotation.some(cot => cot.includes('GL1') || cot.includes('GL2') || cot.includes('GL3'));
             return ageOK && isMT && !hasGL;
         },
-        conseil: "Le patient a plus de 80 ans et vous êtes le médecin traitant. Vous pouvez côter GL1 (sortie d’hospit < 45 jours), GLP2 (déprescription suite cs. Pharma), ou GLP3 (dossier ADA). 1/an chaque, maximum.",
+        conseil: "Le patient a plus de 80 ans et vous êtes le médecin traitant. Vous pouvez côter GL1 (sortie d’hospit < 45 jours), GL2 (déprescription suite cs. Pharma), ou GL3 (dossier APA). 1/an chaque, maximum.",
         link: "https://www.fmfpro.org/les-nouveautes-conventionnelles-tarifaires-du-1er-janvier-2026/"
     }
 ];
