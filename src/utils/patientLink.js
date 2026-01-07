@@ -92,7 +92,12 @@ async function getPatientInfo(patientId) {
         .catch(error => console.error('There has been a problem with your fetch operation:', error));
 }
 
-// Fonction pour récupérer l'Id du patient en cours depuis l'url de la page en cours
+/**
+ * Récupère l'ID du patient actuel depuis l'URL de la page.
+ * Parse les paramètres d'URL pour extraire PatDk.
+ * 
+ * @returns {string|null} - ID du patient (PatDk) ou null si non trouvé
+ */
 function getCurrentPatientId() {
     let patientId = window.location.search.match(/PatDk=(\d+)/);
     if (patientId) {

@@ -175,9 +175,11 @@ async function getAllTabs() {
 }
 
 /**
- * Ferme l'onglet courant
- * @param {string} [info] - Information sur la fermeture
- * @returns {Promise<any>} - Résultat de l'opération
+ * Ferme l'onglet actuel en vérifiant d'abord les permissions.
+ * Demande la permission tabs si nécessaire avant de fermer.
+ * 
+ * @param {string} [info='Fermeture d\'onglet'] - Message d'information pour l'utilisateur
+ * @returns {Promise<void>}
  */
 function closeCurrentTab(info = 'Fermeture d\'onglet') {
     document.title = "👋 Fermeture de l'onglet";
@@ -200,8 +202,10 @@ async function closeTab(tabId) {
 // Permet de tester les fonctionnalités d'onglets et les permissions
 // Désactivée (cf. tout en bas pour l'activer)
 /**
- * Crée une interface de test pour les fonctionnalités de gestion des onglets
- * @param {HTMLElement} container - Élément DOM où ajouter les boutons de test
+ * Crée une interface de test complète pour les permissions d'onglets.
+ * Génère des boutons pour tester toutes les opérations sur les onglets.
+ * 
+ * @param {HTMLElement} [container=document.body] - Conteneur où ajouter l'interface
  */
 function createTabsPermissionTestUI(container = document.body) {
     // Créer un conteneur pour les tests
@@ -379,7 +383,10 @@ function createTabsPermissionTestUI(container = document.body) {
     container.appendChild(testContainer);
 }
 
-// Fonction pour initialiser l'interface de test
+/**
+ * Initialise l'interface de test des permissions d'onglets.
+ * Crée un bouton pour afficher/masquer l'interface de test.
+ */
 function initTabPermissionTests() {
     // Créer un bouton pour afficher/masquer l'interface de test
     const toggleButton = document.createElement('button');

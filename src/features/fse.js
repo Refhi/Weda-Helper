@@ -15,8 +15,10 @@
  * @requires metrics.js (recordMetrics)
  */
 
-// Tweak the FSE page (Add a button in the FSE page to send the amount to the TPE, implement shortcuts)
-// Vérifie la présence de l'élément avec title="Prénom du patient"
+/**
+ * Vérifie et sélectionne automatiquement le patient correspondant dans le widget de lecture CV.
+ * Compare le prénom du patient avec les éléments affichés et clique sur la correspondance.
+ */
 function checkPatientName() {
     waitForElement({
         selector: '[title="Prénom du patient"]', timeout: 5000,
@@ -47,8 +49,11 @@ function checkPatientName() {
 
 
 
-// Définition de la fonction principale
-// (tableau et bouche après)
+/**
+ * Fonction principale de gestion des améliorations de la page FSE.
+ * Gère les raccourcis clavier, les indices visuels, et la validation automatique.
+ * Configure les écouteurs d'événements pour la navigation et l'aide à la saisie.
+ */
 function tweakFSECreation() {
     // Make a dictionnary with keystrokes and their corresponding actions
     var index = {
@@ -657,6 +662,12 @@ addTweak('/vitalzen/fse.aspx', '*keepPrintDegradeeParameters', function () {
 
 // Utilitaires pour la FSE
 
+/**
+ * Calcule et retourne l'âge du patient depuis la FSE.
+ * Extrait la date de naissance de l'interface et calcule l'âge en années.
+ * 
+ * @returns {number|null} - Âge du patient en années, ou null si indisponible
+ */
 function patientAgeInFSE() {
     // Étape 1: Sélectionner le span et extraire la date de naissance du title
     let spanWithTitle = document.querySelector('#LabelInfoPatientNom > span > span:last-child');
@@ -681,6 +692,12 @@ function patientAgeInFSE() {
     return age;
 }
 
+/**
+ * Vérifie si l'utilisateur connecté est le médecin traitant déclaré ou le référent.
+ * 
+ * @param {string} userName - Nom de l'utilisateur connecté
+ * @returns {boolean} - True si MT déclaré ou référent, false sinon
+ */
 function estMTdeclareOuReferent(userName) {
     // Recherche dans les éléments .ng-star-inserted si le nom du MT est présent en text
     let elements = document.querySelectorAll('.ng-star-inserted');
@@ -692,6 +709,12 @@ function estMTdeclareOuReferent(userName) {
     return false;
 }
 
+/**
+ * Récupère le nom de l'utilisateur actuellement connecté.
+ * Recherche dans l'interface Weda l'élément contenant le nom d'utilisateur.
+ * 
+ * @returns {string|null} - Nom de l'utilisateur, ou null si non trouvé
+ */
 function loggedInUser() {
     // Récupère le nom de l'utilisateur connecté
     let userName = document.getElementById('LabelUserLog').innerText;
@@ -790,7 +813,10 @@ addTweak('/vitalzen/fse.aspx', '*autoSelectRienAMO', function () {
 });
 
 
-// Ajout d'un écouteur de click sur le bouton "Sécuriser" pour déclencher tpesender
+/**
+ * Envoie automatiquement le montant au TPE après sécurisationou facturation FSE.
+ * Surveille les boutons de sécurisation et facturation pour déclencher l'envoi TPE.
+ */
 function tpesender() {
     console.log('tpe_sender activé');
     var montantElement = document.querySelector('input[placeholder="Montant"]');
@@ -928,12 +954,29 @@ function getSelectedUser(userSelect) {
     return userSelect.options[userSelect.selectedIndex].textContent;
 }
 
+/**
+ * Récupère l'utilisateur actuellement sélectionné dans un iframe.
+ * 
+ * @param {string} iframeId - ID de l'iframe contenant le sélecteur d'utilisateur
+ * @param {string} selector - Sélecteur CSS du menu déroulant utilisateur
+ * @returns {string|null} - Nom de l'utilisateur sélectionné, ou null
+ */
 function getCurrentUser(iframeId, selector) {
     console.log('[showBillingHistory] getCurrentUser');
     const userSelect = getUserSelect(iframeId, selector);
     return userSelect ? getSelectedUser(userSelect) : null;
 }
 
+/**
+ * Sélectionne l'utilisateur approprié dans l'historique des facturations.
+ * Cherche et sélectionne l'utilisateur correspondant au nom donné.
+ * 
+ * @async
+ * @param {string} iframeId - ID de l'iframe contenant l'historique
+ * @param {string} nom - Nom de l'utilisateur à sélectionner
+ * @param {string} selector - Sélecteur CSS du menu déroulant
+ * @returns {Promise<boolean>} - True si sélection réussie, false sinon
+ */
 async function selectProperUser(iframeId, nom, selector) {
     nom = nom.trim();
     console.log('[showBillingHistory] selectProperUser on cherche à sélectionner :', nom);
@@ -982,6 +1025,13 @@ function swapNomPrenom(loggedInUser) {
     return `${lastName} ${firstName}`;
 }
 
+/**
+ * Extrait les données de facturation depuis l'historique FSE.
+ * Parse le tableau d'historique et retourne un tableau structuré de facturations.
+ * 
+ * @param {Document} iframeDocument - Document de l'iframe contenant l'historique
+ * @returns {Array<Object>} - Tableau d'objets de facturation avec date, cotation, etc.
+ */
 function extractBillingData(iframeDocument) {
     const elements = iframeDocument.querySelectorAll('[name=dh9]');
     const billingData = [];
@@ -1146,6 +1196,14 @@ function greenLightRefractoryPeriodCotationHelper(customKey = '') {
 }
 
 
+/**
+ * Vérifie si une aide à la cotation peut être proposée.
+ * Analyse l'âge du patient, la situation MT, et l'historique de facturation
+ * pour suggérer automatiquement des cotations appropriées.
+ * 
+ * @async
+ * @returns {Promise<void>}
+ */
 async function checkPossibleHelp() {
     const cotationContext = {
         cotation: getActualCotation(), // retourne un array de cotation

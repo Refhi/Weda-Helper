@@ -29,6 +29,11 @@ if (PrescriptionForm) {
     getOption(['keepMedSearch', 'addMedSearchButtons'], function ([keepMedSearch, addMedSearchButtons]) {
         console.log('keepMedSearch', keepMedSearch, 'addMedSearchButtons', addMedSearchButtons);
 
+        /**
+         * Stocke le texte de recherche de médicament dans le storage local.
+         * Permet de conserver la recherche entre différents changements de type de recherche.
+         * @inner
+         */
         function storeSearchSelection() {
             var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
             if (inputField) {
@@ -39,6 +44,11 @@ if (PrescriptionForm) {
             }
         }
 
+        /**
+         * Ajoute un écouteur d'événement au champ de recherche pour sauvegarder automatiquement.
+         * Évite les écouteurs multiples via un attribut data-hasListener.
+         * @inner
+         */
         function searchTextKeeper() {
             // il semble nécessaire de répéter la recherche de l'élément pour éviter les erreurs
             waitForElement({
@@ -61,7 +71,11 @@ if (PrescriptionForm) {
             });
         }
 
-        // Fonction pour trier le texte de recherche
+        /**
+         * Récupère et restaure le texte de recherche sauvegardé lors du changement de type.
+         * Compare le type de recherche actuel avec celui sauvegardé pour décider de la restauration.
+         * @inner
+         */
         function textSorter() {
             var inputField = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_TextBoxFindPack');
             var selectMenu = document.getElementById('ContentPlaceHolder1_BaseVidalUcForm1_DropDownListRecherche');
@@ -85,6 +99,11 @@ if (PrescriptionForm) {
             });
         }
 
+        /**
+         * Tape automatiquement le texte sauvegardé dans le champ de recherche et lance la recherche.
+         * @param {string} savedValue - Texte à restaurer dans le champ
+         * @inner
+         */
         function typeText(savedValue) {
             console.log('typeText started');
             if (savedValue !== undefined) {
@@ -101,6 +120,11 @@ if (PrescriptionForm) {
             }
         }
 
+        /**
+         * Ajoute des boutons de recherche rapide pour chaque type de recherche médicament.
+         * Génère des boutons selon les préférences utilisateur : Méd, DCI, PA, etc.
+         * @inner
+         */
         function addMedSearchButtonsFunction() {
             console.log('addMedSearchButtons started');
             var dropDownList = {
@@ -162,6 +186,11 @@ if (PrescriptionForm) {
             });
         }
 
+        /**
+         * Gère les changements du DOM pour activer les fonctionnalités de recherche.
+         * Active searchTextKeeper et addMedSearchButtons selon l'état de l'interface.
+         * @inner
+         */
         function onDOMChange() {
             var panneau = document.querySelector('.paneltransparentpopup');
             var panneau2 = document.querySelector('.panelpopup');
@@ -257,6 +286,10 @@ addTweak(prescriptionUrl, 'KeyPadPrescription', function () {
     });
 });
 
+/**
+ * Gère l'auto-validation du consentement pour l'ordonnance numérique.
+ * Vérifie les options utilisateur et valide automatiquement selon configuration.
+ */
 function validateOrdoNumIfOptionActivated() {
     console.log('[validateOrdoNumIfOptionActivated] started');
     getOption('autoValidateOrdoNum', function (autoValidateOrdoNum) {
@@ -624,6 +657,14 @@ addTweak(prescriptionUrl, '*changeDureePrescription', async function () {
 });
 
 
+/**
+ * Change la durée de traitement pour toutes les lignes de prescription.
+ * Traite chaque ligne séquentiellement en sauvegardant la progression.
+ * 
+ * @async
+ * @param {number|null} [duration=null] - Durée du traitement (nombre)
+ * @param {string|null} [durationType=null] - Type de durée ('jour', 'semaine', 'mois')
+ */
 async function changePrescriptionDurationCore(duration = null, durationType = null) {
     console.log('[changeDureePrescription] started', duration, durationType);
     const storageKeys = {
@@ -717,14 +758,23 @@ async function changePrescriptionDurationCore(duration = null, durationType = nu
     }
 }
 
-// Récupère l'état actuel du traitement depuis sessionStorage
+/**
+ * Récupère l'état de progression du traitement des prescriptions depuis le storage.
+ * 
+ * @param {string[]} storageKeys - Clés de storage à récupérer
+ * @returns {Promise<Object>} - Objet contenant les valeurs du storage
+ */
 function getPrescriptionProcessState(storageKeys) {
     const processedLines = JSON.parse(sessionStorage.getItem(storageKeys.processed) || '[]');
     const isProcessing = sessionStorage.getItem(storageKeys.processing) === 'true';
     return { processedLines, isProcessing };
 }
 
-// Nettoie les données de session liées au traitement
+/**
+ * Efface l'état de progression du traitement des prescriptions.
+ * 
+ * @param {string[]} storageKeys - Clés de storage à supprimer
+ */
 function clearProcessState(storageKeys) {
     sessionStorage.removeItem(storageKeys.processed);
     sessionStorage.removeItem(storageKeys.processing);

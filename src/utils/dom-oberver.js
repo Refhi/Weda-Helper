@@ -38,7 +38,24 @@ function waitLegacyForElement(selector, text = null, timeout, callback) {
 }
 
 
-// // Sorte de post-chargement pour les pages, car le onload fonctionne mal, et après une mutation c'est pas toujours évident
+/**
+ * Détecte la fin des mutations DOM et exécute un callback après un délai sans mutation.
+ * Utile pour détecter quand une page a fini de se charger/modifier dynamiquement.
+ * 
+ * @param {Object} options - Options de configuration
+ * @param {number} options.delay - Délai en ms sans mutation avant d'exécuter le callback
+ * @param {Function} options.callback - Fonction à exécuter après le délai sans mutation
+ * @param {string} [options.callBackId="callback id undefined"] - Identifiant pour le debug
+ * @param {boolean} [options.preventMultiple=false] - Si vrai, déconnecte l'observateur après le premier appel
+ * 
+ * @example
+ * afterMutations({
+ *   delay: 500,
+ *   callback: () => { console.log('Page chargée'); },
+ *   callBackId: 'Page principale',
+ *   preventMultiple: true
+ * });
+ */
 function afterMutations({ delay, callback, callBackId = "callback id undefined", preventMultiple = false }) {
     let timeoutId = null;
     const action = () => {
@@ -224,6 +241,21 @@ function observeDiseapearance(element, callback = null, options = {}) {
     });
 }
 
+/**
+ * Attend de manière asynchrone la réception des données de configuration Weda.
+ * Vérifie périodiquement si les données sont disponibles avec un timeout configurable.
+ * 
+ * @async
+ * @param {Object} [options={}] - Options de configuration
+ * @param {number} [options.timeoutMs=500] - Délai maximum d'attente en ms avant timeout
+ * @param {number} [options.checkEveryMs=50] - Intervalle de vérification en ms
+ * @param {string} [options.logWait] - Identifiant optionnel pour les logs
+ * @returns {Promise<void>} - Promesse résolue quand les données sont reçues ou après timeout
+ * 
+ * @example
+ * await waitForWeda({ timeoutMs: 1000 });
+ * console.log('Données Weda disponibles');
+ */
 async function waitForWeda({ timeoutMs = 500, checkEveryMs = 50, logWait } = {}) {
     if (gotDataFromWeda) return;
 
@@ -265,7 +297,17 @@ document.addEventListener('visibilitychange', function () {
 });
 
 
-// Renvoie uniquement la dernière page d'un pdf présent dans un blob
+/**
+ * Extrait uniquement la dernière page d'un document PDF contenu dans un Blob.
+ * Utilise la bibliothèque PDFLib pour manipuler le PDF.
+ * 
+ * @async
+ * @param {Blob} blob - Le Blob contenant le document PDF source
+ * @returns {Promise<Blob>} - Un nouveau Blob contenant uniquement la dernière page du PDF
+ * 
+ * @example
+ * const lastPageBlob = await getLastPageFromBlob(pdfBlob);
+ */
 async function getLastPageFromBlob(blob) {
     const pdfBytes = await blob.arrayBuffer();
     const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);

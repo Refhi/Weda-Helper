@@ -54,7 +54,17 @@ chrome.storage.local.get('apiKey', function (result) {
     }
 });
 
-// Fonction pour générer une clé API aléatoire
+/**
+ * Génère une clé API aléatoire composée de caractères alphanumériques.
+ * Utilisée pour sécuriser la communication entre l'extension et le Companion.
+ * 
+ * @param {number} length - Longueur de la clé API à générer
+ * @returns {string} - Clé API générée
+ * 
+ * @example
+ * const apiKey = generateApiKey(32);
+ * // Retourne une chaîne de 32 caractères aléatoires
+ */
 function generateApiKey(length) {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let apiKey = '';
@@ -64,6 +74,24 @@ function generateApiKey(length) {
     return apiKey;
 }
 
+/**
+ * Envoie une commande au Weda-Helper-Companion via HTTP.
+ * Gère l'envoi d'instructions variées : impression, TPE, focus, etc.
+ * 
+ * @param {string} urlCommand - Commande à envoyer ('print', 'tpe/{amount}', 'focus', 'latestFile', etc.)
+ * @param {Blob|null} [blob=null] - Blob à envoyer (pour l'impression de PDF)
+ * @param {Function|null} [callback=null] - Fonction appelée après l'envoi (sans paramètre)
+ * @param {Function|null} [callbackWithData=null] - Fonction appelée avec les données de réponse du Companion
+ * @param {boolean} [testing=false] - Mode test pour vérifier la présence du Companion
+ * 
+ * @example
+ * // Envoi d'un PDF à l'impression
+ * sendToCompanion('print', pdfBlob, () => console.log('Envoyé'));
+ * 
+ * @example
+ * // Test de présence du Companion
+ * sendToCompanion('', null, (isPresent) => console.log(isPresent), null, true);
+ */
 function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithData = null, testing = false) {
     let isSuccess = true;
     getOption(['portCompanion', 'apiKey', 'version'], function ([portCompanion, apiKey, version]) {
@@ -143,7 +171,16 @@ function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithD
     });
 }
 
-// envoi d'instruction au TPE via Weda-Helper-Companion
+/**
+ * Envoie un montant au Terminal de Paiement Électronique (TPE) via le Companion.
+ * Le montant est exprimé en centimes d'euros et est sauvegardé pour réutilisation.
+ * 
+ * @param {number|string} amount - Montant en centimes d'euros à envoyer au TPE
+ * 
+ * @example
+ * // Envoi de 25,50€ au TPE
+ * sendtpeinstruction(2550);
+ */
 function sendtpeinstruction(amount) {
     // store the amount in chrome.storage.local
     chrome.storage.local.set({ 'lastTPEamount': amount }, function () {
@@ -166,7 +203,13 @@ function sendtpeinstruction(amount) {
     });
 }
 
-// envoi du dernier montant au TPE dans Weda-Helper-Companion
+/**
+ * Renvoie le dernier montant utilisé au TPE.
+ * Si aucun montant n'a été enregistré, envoie 1€ par défaut pour test.
+ * 
+ * @example
+ * sendLastTPEamount(); // Renvoie le dernier montant sauvegardé
+ */
 function sendLastTPEamount() {
     chrome.storage.local.get('lastTPEamount', function (result) {
         const lastTPEamount = result.lastTPEamount;
@@ -184,7 +227,19 @@ function sendLastTPEamount() {
 }
 
 
+/**
+ * Surveille la perte de focus de la fenêtre et tente de le récupérer automatiquement.
+ * Utilisé après impression pour ramener l'utilisateur sur Weda.
+ * L'écoute est active pendant 2 secondes après l'appel.
+ * 
+ * @example
+ * watchForFocusLoss(); // Active la surveillance du focus pendant 2s
+ */
 function watchForFocusLoss() {
+    /**
+     * Récupère le focus de la fenêtre en envoyant une commande au Companion.
+     * @inner
+     */
     function getFocus() {
         console.log('[getFocus] je tente de récupérer le focus');
         sendToCompanion(`focus`);
@@ -203,8 +258,20 @@ function watchForFocusLoss() {
     });
 }
 
-// // vérification de la présence du Companion
+/**
+ * Vérifie la présence du Companion et propose d'activer les fonctionnalités si détecté.
+ * Teste la connexion après 1 seconde et affiche un message si le Companion est présent
+ * mais que les options de liaison sont désactivées.
+ * 
+ * @example
+ * testCompanion(); // Lancé automatiquement au chargement du script
+ */
 function testCompanion() {
+    /**
+     * Demande à l'utilisateur s'il souhaite activer le lien avec le Companion.
+     * Affiche une confirmation pour activer l'impression automatique.
+     * @inner
+     */
     function askLinkActivation() {
         chrome.storage.local.get('promptCompanionMessage', function (result) {
             if (result.promptCompanionMessage !== false) {

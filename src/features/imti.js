@@ -185,6 +185,11 @@ const MT_STEPS = {
 };
 
 // Fonctions de gestion du workflow
+
+/**
+ * Initialise un nouveau workflow de déclaration MT dans le sessionStorage.
+ * Crée la structure de données pour suivre la progression.
+ */
 function initWorkflow() {
     const workflow = {
         startTime: Date.now(),
@@ -197,6 +202,11 @@ function initWorkflow() {
     return workflow;
 }
 
+/**
+ * Récupère le workflow actuel depuis le sessionStorage.
+ * 
+ * @returns {Object|null} - Objet workflow ou null si inexistant
+ */
 function getWorkflow() {
     const data = sessionStorage.getItem(MT_WORKFLOW_KEY);
     if (!data) return null;
@@ -208,6 +218,12 @@ function getWorkflow() {
     }
 }
 
+/**
+ * Met à jour le workflow avec de nouvelles données.
+ * Fusionne les données existantes avec les nouvelles.
+ * 
+ * @param {Object} updates - Données à fusionner dans le workflow
+ */
 function updateWorkflow(updates) {
     const workflow = getWorkflow();
     if (!workflow) {
@@ -221,6 +237,12 @@ function updateWorkflow(updates) {
     return updated;
 }
 
+/**
+ * Marque une étape du workflow comme complétée.
+ * 
+ * @param {string} step - Nom de l'étape à marquer comme complétée
+ * @param {Object} [additionalData={}] - Données supplémentaires à stocker
+ */
 function completeStep(step, additionalData = {}) {
     const workflow = getWorkflow();
     if (!workflow) {
@@ -239,11 +261,23 @@ function completeStep(step, additionalData = {}) {
     return updated;
 }
 
+/**
+ * Vérifie si une étape spécifique a été complétée.
+ * 
+ * @param {string} step - Nom de l'étape à vérifier
+ * @returns {boolean} - True si l'étape est complétée
+ */
 function isStepCompleted(step) {
     const workflow = getWorkflow();
     return workflow && workflow.completed.includes(step);
 }
 
+/**
+ * Vérifie si le workflow est valide (non expiré).
+ * Un workflow est invalide après 5 minutes.
+ * 
+ * @returns {boolean} - True si le workflow est valide
+ */
 function isWorkflowValid() {
     const workflow = getWorkflow();
     if (!workflow) {
@@ -261,12 +295,20 @@ function isWorkflowValid() {
     return isValid;
 }
 
+/**
+ * Nettoie le workflow en le supprimant du sessionStorage.
+ */
 function cleanWorkflow() {
     const workflow = getWorkflow();
     console.log('[MT Workflow] Nettoyage', workflow);
     sessionStorage.removeItem(MT_WORKFLOW_KEY);
 }
 
+/**
+ * Gère les erreurs du workflow en affichant un message et nettoyant.
+ * 
+ * @param {string} message - Message d'erreur à afficher
+ */
 function handleWorkflowError(message) {
     sendWedaNotifAllTabs({
         message: message,
@@ -472,6 +514,13 @@ function handleError(message) {
     return false;
 }
 
+/**
+ * Extrait les informations du médecin traitant depuis la liste des contacts.
+ * Recherche le contact avec la spécialité "Médecin généraliste".
+ * 
+ * @param {Array} contacts - Liste des contacts du patient
+ * @returns {Object|null} - Informations du MT ou null si non trouvé
+ */
 function extractMTInfo(contacts) {
     const mtList = contacts
         .map(contact => {
@@ -495,6 +544,9 @@ function extractMTInfo(contacts) {
     };
 }
 
+/**
+ * Met à jour le champ de spécialité avec "Médecin généraliste".
+ */
 function updateSpeciality() {
     const dropDown = document.querySelector('#ContentPlaceHolder1_DropDownListUserSpecialiteSVFind');
     if (dropDown.value === '01') return true;

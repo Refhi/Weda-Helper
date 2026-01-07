@@ -143,7 +143,12 @@ function validatePrintConfig(printConfig) {
 
 
 /**
- * Détermine le type de demande d'impression ou de téléchargement.
+ * Détermine le type de traitement d'impression selon le type demandé et la configuration Companion.
+ * 
+ * @param {string} printType - Type d'action demandée ('print' ou 'download')
+ * @param {boolean} RemoveLocalCompanionPrint - True si le Companion est désactivé
+ * @returns {string} - Type de traitement ('print', 'download' ou 'companion')
+ * @throws {Error} - Si le type de demande n'est pas valide
  */
 function deduceHandlingType(printType, RemoveLocalCompanionPrint) {
     if (printType === 'print') {
@@ -156,7 +161,10 @@ function deduceHandlingType(printType, RemoveLocalCompanionPrint) {
 }
 
 /**
- * Déduit le type de contenu à imprimer ou télécharger en fonction de l'URL actuelle.
+ * Déduit le type de contenu à traiter (pour futur téléchargement ou impression) en fonction de l'URL actuelle.
+ * Analyse l'URL pour déterminer s'il s'agit d'une courbe, FSE, document cabinet ou modèle.
+ * 
+ * @returns {string|null} - Type de contenu ('courbe', 'fse', 'documentCabinet', 'model') ou null
  */
 function deduceWhatToPrint() {
     // Dictionnaire des scénarios
@@ -395,7 +403,8 @@ function postPrintAction(postPrintBehavior, whatToPrint, weDoc = false) {
     console.log('[postPrintAction] activé');
 
     /**
-     * Ferme la fenêtre d'impression FSE.
+     * Ferme la fenêtre d'impression FSE en cliquant sur le bouton Fermer.
+     * @inner
      */
     function closeFSEPrintWindow() {
         // Puis fermer la fenêtre
@@ -458,12 +467,15 @@ function postPrintAction(postPrintBehavior, whatToPrint, weDoc = false) {
 }
 
 /**
- * Gère l'impression ou le téléchargement d'un document à partir d'un iframe.
- *
- * @param {string} selector - Le sélecteur CSS de l'iframe à traiter.
- * @param {string} handlingType - Le type de traitement à effectuer. Peut être 'print', 'companion', ou 'download'.
- * @param {string} whatToPrint - Le type de contenu à imprimer ou télécharger. Peut être 'courbe', 'fse', ou 'model'.
- * @param {string} postPrintBehavior - Le comportement à adopter après l'impression. Peut être 'doNothing', 'closePreview', ou 'returnToPatient'.
+ * Attend la disponibilité d'un iframe puis déclenche l'impression ou le téléchargement.
+ * Gère les trois modes de traitement : impression navigateur, Companion, téléchargement.
+ * 
+ * @async
+ * @param {string} selector - Sélecteur CSS de l'iframe à surveiller
+ * @param {string} handlingType - Type de traitement ('print', 'companion', 'download')
+ * @param {string} whatToPrint - Type de contenu ('courbe', 'fse', 'model')
+ * @param {string} postPrintBehavior - Comportement post-impression
+ * @returns {Promise<Object|null>} - Objet avec postPrintBehavior et whatToPrint, ou null en cas d'erreur
  */
 async function printIframeWhenAvailable(selector, handlingType, whatToPrint, postPrintBehavior) {
     console.log('[printIframeWhenAvailable] activé avec', { selector, handlingType, whatToPrint, postPrintBehavior });
@@ -725,12 +737,11 @@ function waitForDMPCompletion() {
 }
 
 
-// **
-// * Gestion de l'impression instantanée : Ouvre un nouvel onglet sur l'url de base dès l'impression.
-// * Ensuite, une fois l'impression terminée avec succès, on ferme l'onglet originel via un window.close()
-// * Le succès de l'impression est déterminé par la mise à jour de la clé 'lastPrintDate' dans le local storage.
-// */
-
+/**
+* Gestion de l'impression instantanée : Ouvre un nouvel onglet sur l'url de base dès l'impression.
+* Ensuite, une fois l'impression terminée avec succès, on ferme l'onglet originel via un window.close()
+* Le succès de l'impression est déterminé par la mise à jour de la clé 'lastPrintDate' dans le local storage.
+*/
 function watchForClose() {
     setTimeout(() => {
         sendWedaNotifAllTabs({
@@ -785,6 +796,10 @@ function companionPrintDone(delay = 20000) {
     });
 }
 
+/**
+ * Ferme l'onglet actuel après nettoyage du timestamp d'impression.
+ * Supprime le flag lastPrintDate pour éviter les fermetures intempestives d'autres onglets.
+ */
 function closeWindow() {
     console.log('closeWindow activé');
     // Inhibition du lastPrintDate pour limiter les risques de fermeture d'un autre onglet
@@ -794,6 +809,10 @@ function closeWindow() {
     watchForClose();
 }
 
+/**
+ * Surveille les demandes de saisie de code CPS et met à jour le titre de l'onglet.
+ * Permet d'alerter visuellement l'utilisateur qu'une action est requise.
+ */
 function watchForCPSCodeRequest() {
     waitForElement({
         // Préviens si un code CPS est demandé
@@ -808,6 +827,14 @@ function watchForCPSCodeRequest() {
     });
 }
 
+/**
+ * Vérifie si l'envoi au DMP est sélectionné et que le bouton d'envoi est disponible.
+ * Attend jusqu'à ce que le bouton soit actif ou jusqu'au timeout.
+ * 
+ * @async
+ * @param {number|null} [timeout=null] - Délai maximum d'attente en ms, null pour attente infinie
+ * @returns {Promise<boolean>} - True si DMP sélectionné et bouton disponible, false sinon
+ */
 async function sendToDMPSelectedAndAvailable(timeout = null) {
     console.log('[sendToDMPSelectedAndAvailable] Démarrage de la vérification, timeout de ', timeout, 'ms');
     const selecteurCaseDMP = '#ContentPlaceHolder1_DocVersionUserControl_PanelShareDocToDMP input.mat-checkbox-input';
@@ -848,6 +875,12 @@ async function sendToDMPSelectedAndAvailable(timeout = null) {
     });
 }
 
+/**
+ * Récupère l'élément bouton d'envoi au DMP s'il est actif.
+ * Vérifie que le bouton n'est pas désactivé.
+ * 
+ * @returns {HTMLElement|null} - Élément bouton si disponible, null sinon
+ */
 function DMPSendButtonElement() {
     const buttonSpan = document.querySelector('#ContentPlaceHolder1_DocVersionUserControl_PanelShareDocToDMP span.mat-button-wrapper');
     const button = buttonSpan ? buttonSpan.parentElement : null;
@@ -1194,7 +1227,13 @@ addTweak(["/FolderMedical/CertificatForm.aspx", "/FolderMedical/DemandeForm.aspx
 
 
 
-// On attends que l'historique mixte soit chargé en surveillant le texte du label
+/**
+ * Attend que l'historique mixte soit complètement chargé.
+ * Surveille le label d'état jusqu'à ce qu'il indique "Historique mixte" ou timeout.
+ * 
+ * @async
+ * @returns {Promise<void>} - Promesse résolue quand l'historique est chargé ou après 10s
+ */
 async function waitForUpdateProgressToHide() {
     return new Promise((resolve) => {
         const startTime = Date.now();
@@ -1227,6 +1266,12 @@ async function waitForUpdateProgressToHide() {
     });
 }
 
+/**
+ * Liste tous les documents modifiables créés aujourd'hui dans l'historique patient.
+ * Filtre les documents par type : Certificat, Demande, Prescription, Courrier.
+ * 
+ * @returns {HTMLElement[]} - Tableau d'éléments DOM cliquables pour chaque document
+ */
 function listAllTodaysDocs() {
     // On va d'abord chercher tous les conteneurs du jour
     let containers = document.querySelectorAll('td[title="Cliquez sur la date pour ouvrir."]')
@@ -1306,6 +1351,13 @@ function listAllTodaysDocs() {
     return allElementsModifier;
 }
 
+/**
+ * Active l'affichage de l'historique mixte et attend qu'il soit chargé.
+ * Clique sur le bouton d'historique mixte puis attend la fin du chargement.
+ * 
+ * @async
+ * @returns {Promise<void>} - Promesse résolue quand l'historique mixte est actif
+ */
 async function goToHistoriqueMixte() {
     console.log('goToHistoriqueMixte activé');
     const mixtHistoryText = document.querySelector('#ContentPlaceHolder1_LabelCommandAffiche');

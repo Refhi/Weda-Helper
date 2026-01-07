@@ -131,8 +131,14 @@ const keyCommands = {
     'shortcut_atcd': toggleAtcd
 };
 
-// Fonction throttle avec persistance via chrome.storage.local
-// Enregistrer le temps de début du chargement de la page
+/**
+ * Fonction throttle avec persistance du dernier appel.
+ * Limite la fréquence d'exécution d'une fonction et ignore les appels pendant le chargement initial.
+ * 
+ * @param {Function} func - Fonction à throttler
+ * @param {number} limit - Délai minimum en ms entre deux exécutions
+ * @returns {Function} - Fonction throttlée
+ */
 const pageLoadStartTime = Date.now();
 let lastRan;
 function throttleWithPersistence(func, limit) {
@@ -176,8 +182,15 @@ function throttleWithPersistence(func, limit) {
     }
 }
 
-// // Gestion des raccourcis claviers via hotkeys.js
-// Pour ajouter les raccourcis sur un élément spécifique
+/**
+ * Ajoute un raccourci clavier à un élément spécifique avec ou sans throttle.
+ * 
+ * @param {string} scope - Portée du raccourci (nom unique pour regrouper les raccourcis)
+ * @param {HTMLElement} element - Élément DOM auquel attacher le raccourci
+ * @param {string} shortcut - Combinaison de touches (ex: 'ctrl+p', 'alt+s')
+ * @param {Function} action - Fonction à exécuter lors de l'activation du raccourci
+ * @param {boolean} [noThrottle=false] - Si true, désactive le throttle
+ */
 function addHotkeyToDocument(scope, element, shortcut, action, noThrottle = false) {
     if (shortcut != undefined) {
         const handler = noThrottle 
@@ -197,7 +210,14 @@ function addHotkeyToDocument(scope, element, shortcut, action, noThrottle = fals
     }
 }
 
-// Renvoie le raccourcis pertinent (personnalisé ou par défaut) pour une action donnée
+/**
+ * Renvoie le raccourci pertinent (personnalisé ou par défaut) pour une action.
+ * 
+ * @param {Object} shortcuts - Raccourcis personnalisés de l'utilisateur
+ * @param {Object} defaultShortcuts - Raccourcis par défaut du système
+ * @param {string} key - Clé de l'action recherchée
+ * @returns {string} - Raccourci clavier à utiliser
+ */
 function shortcutDefaut(shortcuts, defaultShortcuts, key) {
     if (shortcuts == undefined) {
         return defaultShortcuts[key]["default"];
@@ -245,6 +265,13 @@ async function getShortcuts(nomsRaccourcis) {
     });
 }
 
+/**
+ * Ajoute tous les raccourcis d'un scope donné à l'élément document.
+ * 
+ * @param {Object} keyCommands - Objet contenant les commandes et leurs actions
+ * @param {string} scope - Portée des raccourcis (nom du scope)
+ * @param {string} scopeName - Nom du scope pour les logs
+ */
 function addShortcuts(keyCommands, scope, scopeName) {
     chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function (result) {
         hotkeys.filter = function (event) {
@@ -260,16 +287,32 @@ function addShortcuts(keyCommands, scope, scopeName) {
 }
 
 
+/**
+ * Retire les iframes d'historique d'un tableau d'iframes.
+ * 
+ * @param {HTMLIFrameElement[]} iframes - Tableau d'iframes à filtrer
+ * @returns {HTMLIFrameElement[]} - Iframes sans les iframes d'historique
+ */
 function removeHistoryIframe(iframes) {
     iframes = Array.from(iframes).filter(iframe => !iframe.src.startsWith(`${baseUrl}/FolderMedical/FrameHistoriqueForm.aspx`));
     return iframes;
 }
 
+/**
+ * Vérifie si un iframe est un iframe d'historique patient.
+ * 
+ * @param {HTMLIFrameElement} iframe - Iframe à vérifier
+ * @returns {boolean} - True si iframe d'historique, false sinon
+ */
 function isHistoriqueIframe(iframe) {
     let isHistoriqueIframe_bol = iframe.src.startsWith(`${baseUrl}/FolderMedical/FrameHistoriqueForm.aspx`);
     return isHistoriqueIframe_bol;
 }
 
+/**
+ * Ajoute les raccourcis clavier aux iframes de la page.
+ * Exclut les iframes d'historique pour éviter les conflits.
+ */
 function addShortcutsToIframe() {
     var iframes = document.querySelectorAll('iframe');
     if (iframes.length !== 0) {
@@ -288,6 +331,10 @@ function addShortcutsToIframe() {
     }
 }
 
+/**
+ * Ajoute tous les raccourcis clavier à la page et aux iframes.
+ * Configure les raccourcis pour les différents scopes : global, consultation, agenda, etc.
+ */
 function addAllShortcuts() {
     console.log('[addAllShortcuts] activé');
     hotkeys.unbind(); // nécessaire pour éviter les doublons de raccourcis clavier entrainant des doublons de documents...
@@ -305,6 +352,9 @@ afterMutations({ delay: 1000, callback: addAllShortcuts, callBackId: 'ajout racc
 
 
 
+/**
+ * Bascule l'affichage des antécédents en cliquant sur le bouton approprié.
+ */
 function toggleAtcd() {
     console.log('toggleAtcd activé');
     var element = document.getElementById('ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent');
@@ -315,7 +365,10 @@ function toggleAtcd() {
 }
 
 
-// Permet d'appuyer sur le bouton "Valider" ou équivalent
+/**
+ * Appuie sur le bouton Valider de la page actuelle.
+ * Cherche le bouton avec texte 'Valider' ou 'Enregistrer'.
+ */
 function push_valider() {
     console.log('push_valider activé');
     function clickClassExceptIf(class_name, class_exception, id_exception) {
