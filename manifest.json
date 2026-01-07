@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Weda Helper",
+  "name": "Weda Helper Beta",
   "version": "2.15",
   "version_name": "2.15-RC",
   "options_page": "options.html",
