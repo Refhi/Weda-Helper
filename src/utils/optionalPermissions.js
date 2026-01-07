@@ -1,4 +1,21 @@
 /**
+ * @file optionalPermissions.js
+ * @description Gestion des permissions optionnelles Chrome (tabs, etc.).
+ * Fournit des fonctions pour vérifier, demander et révoquer des permissions,
+ * ainsi que des utilitaires pour gérer les onglets (fermeture, création, etc.).
+ * 
+ * @exports checkPermission - Vérifie si une permission est accordée
+ * @exports requestPermission - Demande une permission utilisateur
+ * @exports resetPermission - Révoque une permission
+ * @exports handleTabsFeature - Exécute des actions sur les onglets
+ * @exports closeCurrentTab - Ferme l'onglet actuel
+ * @exports getAllTabs - Récupère tous les onglets
+ * @exports createTabsPermissionTestUI - Interface de test des permissions
+ * 
+ * @requires background.js (communication via chrome.runtime.sendMessage)
+ */
+
+/**
  * Vérifie une permission via le script background
  * @param {string} permission - Permission à vérifier
  * @returns {Promise<boolean>} - True si la permission est accordée

@@ -1,3 +1,16 @@
+/**
+ * @file antecedent.js
+ * @description Fonctionnalités pour la page de gestion des antécédents.
+ * Gère les améliorations de l'interface des ATCD :
+ * - Tri des ATCD CIM-10 par ordre alphabétique
+ * - Masquage des CIM-10 secondaires
+ * - Réduction du texte des favoris
+ * 
+ * @requires tweaks.js (addTweak)
+ * @requires storage.js (getOption)
+ * @requires metrics.js (recordMetrics)
+ */
+
 // Ajoute des cases pour trier les atcds CIM-10 par ordre alphabétique et pour masquer les CIM-10 secondaires
 addTweak('/FolderMedical/AntecedentForm.aspx', '*trimCIM10', function () {
     function addCheckBox() {

@@ -1,3 +1,16 @@
+/**
+ * @file wedaEchanges.js
+ * @description Fonctionnalités pour la page de messagerie sécurisée Weda Echanges.
+ * Gère les améliorations de la messagerie :
+ * - Rafraîchissement automatique de la boîte de réception
+ * - Décochage automatique des messages IHE_XDM.zip
+ * - Permutation titre PJ / corps message
+ * 
+ * @requires tweaks.js (addTweak)
+ * @requires storage.js (getOption)
+ * @requires dom-oberver.js (waitForElement)
+ */
+
 // Page Messagerie sécurisée
 addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeAutoRefresh', function () {
     // clique sur reçu pour rafraichir la liste des messages à intervalle régulier

@@ -1,6 +1,17 @@
 
-
-
+/**
+ * @file dom-oberver.js
+ * @description Observateurs et utilitaires pour la manipulation et l'observation du DOM.
+ * Fournit des fonctions pour attendre l'apparition d'éléments, observer les mutations du DOM,
+ * et gérer les états de chargement des pages.
+ * 
+ * @exports waitForElement - Fonction principale pour observer l'apparition d'éléments
+ * @exports afterMutations - Détecte la fin des mutations DOM
+ * @exports observeDiseapearance - Observe la disparition d'un élément
+ * @exports waitForWeda - Attend la réception des données de configuration Weda
+ * 
+ * @requires configs.js (gotDataFromWeda)
+ */
 
 /**
  * @deprecated Utilisez `waitForElement` à la place.

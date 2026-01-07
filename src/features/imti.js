@@ -1,3 +1,19 @@
+/**
+ * @file imti.js
+ * @description Gestion du contrôle et de la déclaration du Médecin Traitant (IMTI).
+ * Automatise le processus de vérification et déclaration MT :
+ * - Contrôle automatique du MT
+ * - Récupération des infos MT depuis les contacts
+ * - Recherche automatique dans l'annuaire
+ * - Déclaration en un clic
+ * - Gestion du workflow avec session storage
+ * 
+ * @requires tweaks.js (addTweak)
+ * @requires storage.js (getOption)
+ * @requires optionalPermissions.js (handleTabsFeature, closeCurrentTab)
+ * @requires notifications.js (sendWedaNotif)
+ */
+
 // Contrôle de l'IMTi
 
 // Contrôle automatique du MT :

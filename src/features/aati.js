@@ -1,3 +1,20 @@
+/**
+ * @file aati.js
+ * @description Automatisation des Arrêts de Travail (AATI).
+ * Gère l'automatisation complète du processus AATI :
+ * - Bouton "AT sans CV" pour shunter la lecture CV
+ * - Sélection automatique du patient depuis la CV
+ * - Remplissage automatique des dates
+ * - Auto-consentement
+ * - Recherche rapide des motifs d'arrêt avec Fuse.js
+ * - Tri des sous-catégories
+ * 
+ * @requires tweaks.js (addTweak)
+ * @requires storage.js (getOption)
+ * @requires lib/fuse.js (recherche floue)
+ * @requires metrics.js (recordMetrics)
+ */
+
 // Arrêts de travail automatisés
 // Ajout d'un 2e bouton à côté de AT nommé "AT sans CV" pour shunter la lecture automatique de la carte vitale
 addTweak('/FolderMedical/PatientViewForm.aspx', 'autoAATI', function () {

@@ -1,3 +1,20 @@
+/**
+ * @file fse.js
+ * @description Fonctionnalités pour la page de Feuille de Soins Électronique (FSE).
+ * Gère les améliorations de l'interface FSE :
+ * - Envoi automatique du montant au TPE
+ * - Raccourcis clavier pour la navigation
+ * - Aide à la saisie des cotations
+ * - Auto-complétion CCAM et associations
+ * - Configuration personnalisée des cotations courantes
+ * 
+ * @requires tweaks.js (addTweak)
+ * @requires storage.js (getOption)
+ * @requires companionLink.js (sendtpeinstruction)
+ * @requires notifications.js (sendWedaNotif)
+ * @requires metrics.js (recordMetrics)
+ */
+
 // Tweak the FSE page (Add a button in the FSE page to send the amount to the TPE, implement shortcuts)
 // Vérifie la présence de l'élément avec title="Prénom du patient"
 function checkPatientName() {

@@ -1,3 +1,14 @@
+/**
+ * @file configs.js
+ * @description Configuration globale de l'extension Weda-Helper.
+ * Initialise les variables de configuration essentielles : baseUrl, WedaOverloadOptions.
+ * Gère également la réception des données de configuration depuis Weda via FWData.js.
+ * 
+ * @exports baseUrl - URL de base de Weda (ex: https://secure.weda.fr)
+ * @exports WedaOverloadOptions - Options surchargées par Weda pour désactiver certaines fonctionnalités
+ * @exports gotDataFromWeda - Indicateur de réception des données Weda
+ */
+
 // Récupère l'url de base définie dans le manifest.json
 const manifest = chrome.runtime.getManifest();
 const url_star = manifest.content_scripts.flatMap(script => script.matches)[0]; // *://secure.weda.fr/*

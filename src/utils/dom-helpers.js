@@ -1,3 +1,16 @@
+/**
+ * @file dom-helpers.js
+ * @description Fonctions d'aide pour la manipulation DOM et contournement CSP.
+ * Fournit des utilitaires pour cliquer sur des éléments protégés par CSP
+ * en passant par des scripts injectés dans le contexte de la page.
+ * 
+ * @exports startClicScript - Initialise le script de clic CSP
+ * @exports clicCSPLockedElement - Clique sur un élément protégé par CSP
+ * @exports clickElementByOnclick - Clique via l'attribut onclick
+ * 
+ * @requires metrics.js (recordMetrics)
+ */
+
 // Clic sur certains éléments où le CSP bloque le clic quand on est en isolated
 // Passe par un script injecté pour contourner le problème
 

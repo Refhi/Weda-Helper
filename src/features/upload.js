@@ -1,3 +1,15 @@
+/**
+ * @file upload.js
+ * @description Gestion de l'upload automatique de fichiers depuis le Companion.
+ * Permet l'upload automatique de documents transmis par Weda-Helper-Companion :
+ * - Récupération du dernier fichier depuis le Companion
+ * - Upload automatique dans Weda
+ * - Nettoyage des flags après traitement
+ * 
+ * @requires tweaks.js (addTweak)
+ * @requires companionLink.js (sendToCompanion)
+ */
+
 // Fonctions permettant l'upload automatique d'un fichier transmis par le Companion
 addTweak('/FolderMedical/PopUpUploader.aspx', '*hotkeyUpload', function () {
     chrome.storage.local.get('automaticUpload', function (result) { //On vérifie que le flag automaticUpload est bien présent

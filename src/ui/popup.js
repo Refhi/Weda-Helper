@@ -1,3 +1,16 @@
+/**
+ * @file popup.js
+ * @description Interface principale de la popup de l'extension.
+ * Gère l'affichage, les interactions et la communication avec le script de fond
+ * pour les actions rapides (TPE, scan vaccin, métriques, etc.).
+ * 
+ * @exports updateUI - Met à jour l'interface de la popup
+ * @exports sendMessage - Envoie un message au script de fond
+ * 
+ * @requires popupFunctions.js
+ * @requires storage.js (getOption)
+ */
+
 const buttons = {
     'tpebis': 'tpebis',
     'sendCustomAmount': 'sendCustomAmount',

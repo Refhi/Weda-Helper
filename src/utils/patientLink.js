@@ -1,9 +1,17 @@
 /**
  * @file patientLink.js
- * @description Ce fichier contient des fonctions et des utilitaires pour gérer les liens et les informations des patients
- * dans l'extension Chrome. Il inclut des fonctions pour récupérer les informations des patients via l'API de Weda,
- * ajouter des raccourcis pour accéder aux antécédents et aux notes des patients, et observer les éléments du DOM
- * pour appliquer ces fonctionnalités.
+ * @description Gestion des liens et informations patients via l'API Weda.
+ * Fournit des fonctions pour récupérer les informations des patients,
+ * ajouter des raccourcis pour accéder aux antécédents et aux notes,
+ * et observer les éléments du DOM liés aux patients.
+ * 
+ * @exports getCurrentPatientId - Récupère l'ID du patient actuel
+ * @exports getPatientInfo - Récupère les informations d'un patient
+ * @exports addPatientUrlParams - Ajoute les paramètres URL patient
+ * @exports processElementsWithMiddleClick - Gestion du clic molette
+ * 
+ * @requires configs.js (baseUrl)
+ * @requires storage.js (getOption)
  */
 
 

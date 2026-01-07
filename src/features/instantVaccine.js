@@ -1,11 +1,17 @@
 /**
- * Permet de faciliter la vaccination pour les vaccineurs de masse.
- * Il permet d'ouvrir automatiquement la partie "scan du datamatrix" dès l'ouverture
- * du dossier patient.
- * Afin de limiter les risques d'inconfort il ne s'actionne qu'à la première ouverture du dossier
- * et ne se relancera que si un autre dossier patient a été ouvert.
+ * @file instantVaccine.js
+ * @description Facilitation de la vaccination de masse.
+ * Ouvre automatiquement le scan du datamatrix de vaccin dès l'ouverture
+ * du dossier patient, idéal pour les vaccinateurs de masse.
+ * S'actionne uniquement à la première ouverture du dossier pour limiter
+ * les inconvénients.
  * 
+ * @requires tweaks.js (addTweak)
+ * @requires storage.js (getOption)
+ * @requires dom-oberver.js (waitForElement)
+ * @requires keyCommands.js (startscanning)
  */
+
 
 const instantVaccineOption = 'instantVaccine'
 

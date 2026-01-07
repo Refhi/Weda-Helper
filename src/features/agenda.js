@@ -1,3 +1,14 @@
+/**
+ * @file agenda.js
+ * @description Fonctionnalités pour la page de l'agenda.
+ * Améliore l'interface de l'agenda :
+ * - Clic droit sur un RDV pour ouvrir directement le dossier patient
+ * 
+ * @requires tweaks.js (addTweak)
+ * @requires dom-oberver.js (waitForElement)
+ * @requires metrics.js (recordMetrics)
+ */
+
 addTweak('/FolderAgenda/AgendaForm.aspx', '*RightClickAgenda', function () {
 	function openPatient(rdvElement) {
 		rdvElement.click(); // Clic sur l'élement

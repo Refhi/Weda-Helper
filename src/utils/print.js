@@ -1,4 +1,25 @@
 /**
+ * @file print.js
+ * @description Système complet de gestion de l'impression et du téléchargement.
+ * Gère l'impression directe, le téléchargement de PDF, l'envoi au Companion,
+ * et la gestion des modèles d'impression avec configuration personnalisée.
+ * 
+ * @exports handlePrint - Fonction principale d'impression/téléchargement
+ * @exports send_document - Envoie un document avec un modèle spécifique
+ * @exports getPrintModels - Récupère les modèles d'impression disponibles
+ * 
+ * @requires storage.js (getOption)
+ * @requires companionLink.js (sendToCompanion)
+ * @requires notifications.js (sendWedaNotif)
+ * @requires date-time-helpers.js (setLastPrintDate, sleep)
+ * @requires optionalPermissions.js (handleTabsFeature)
+ * 
+ * @typedef {Object} PrintOptions
+ * @property {string} printType - Type d'action : 'print', 'download', 'both'
+ * @property {number} [printModel] - Numéro du modèle d'impression (0-9)
+ */
+
+/**
  * Fonction d'entrée pour l'impression ou le téléchargement.
  * Les arguments dépendent du raccourci clavier utilisé :
  * - `ctrl+P` => Impression, si pertinent du modèle 0

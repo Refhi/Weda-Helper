@@ -1,4 +1,17 @@
 /**
+ * @file tweaks.js
+ * @description Système de gestion des modifications (tweaks) conditionnelles.
+ * Permet d'activer des fonctionnalités spécifiques selon l'URL de la page
+ * et les options de configuration de l'utilisateur.
+ * 
+ * @exports addTweak - Enregistre un tweak conditionnel
+ * 
+ * @requires storage.js (getOption)
+ * @requires dom-oberver.js (waitForWeda)
+ * @requires configs.js (baseUrl)
+ */
+
+/**
  * Ajoute une modification (tweak) en fonction de l'URL et des options spécifiées.
  *
  * @param {string|string[]} path - Le chemin ou les chemins auxquels la modification doit s'appliquer. Peut être une chaîne ou un tableau de chaînes.

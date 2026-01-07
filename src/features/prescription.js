@@ -1,3 +1,21 @@
+/**
+ * @file prescription.js
+ * @description Fonctionnalités pour la page de prescription médicamenteuse.
+ * Gère les améliorations de l'interface de prescription :
+ * - Maintien du texte de recherche médicament entre recherches
+ * - Boutons de recherche rapide (Méd, DCI, PA, etc.)
+ * - Ouverture automatique des types d'ordonnance
+ * - Alertes interactions médicamenteuses
+ * - Pavé numérique pour posologie
+ * - Auto-consentement ordonnance numérique
+ * - Configuration posologie auto-complétée
+ * 
+ * @requires tweaks.js (addTweak)
+ * @requires storage.js (getOption)
+ * @requires dom-helpers.js (clickElementByOnclick)
+ * @requires metrics.js (recordMetrics)
+ */
+
 // // Page de prescription
 let demandeUrl = '/FolderMedical/DemandeForm.aspx'
 let prescriptionUrl = '/FolderMedical/PrescriptionForm.aspx'

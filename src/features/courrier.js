@@ -1,3 +1,15 @@
+/**
+ * @file courrier.js
+ * @description Fonctionnalités pour la page de courrier.
+ * Gère les améliorations de l'interface de courrier :
+ * - Sélection automatique du médecin traitant comme destinataire
+ * - Coche automatique comme destinataire principal
+ * 
+ * @requires tweaks.js (addTweak)
+ * @requires dom-oberver.js (waitForElement)
+ * @requires metrics.js (recordMetrics)
+ */
+
 // Coche automatiquement le médecin traitant comme destinataire et destinataire principal
 addTweak("/FolderMedical/CourrierForm.aspx", "autoSelectMT", function () {
     function listDestinataires() {

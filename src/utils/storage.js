@@ -1,4 +1,17 @@
-
+/**
+ * @file storage.js
+ * @description Gestion du stockage local Chrome et des options utilisateur.
+ * Fournit des fonctions pour récupérer, stocker et gérer les options de configuration,
+ * avec support des valeurs par défaut et surcharges depuis Weda.
+ * 
+ * @exports getOption - Récupère une option avec callback
+ * @exports getOptionPromise - Récupère une option via Promise
+ * @exports getDefaultOption - Récupère la valeur par défaut d'une option
+ * 
+ * @requires dom-oberver.js (waitForWeda)
+ * @requires configs.js (WedaOverloadOptions)
+ * @requires background.js (defaultSettings, advancedDefaultSettings)
+ */
 
 /**
  * Récupère la valeur d'une ou plusieurs options depuis le stockage local de Chrome.

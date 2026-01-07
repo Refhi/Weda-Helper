@@ -1,8 +1,30 @@
-/** pdfParser est un script qui permet d'extraire les informations d'un PDF et de les insérer dans les fenêtres d'import.
- * En premier lieu on va travailler sur https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx mais il a vocation à être généralisé.
+/**
+ * @file pdfParser.js
+ * @description Système complet d'analyse et extraction de données depuis les PDF.
+ * Extrait automatiquement les informations des PDF importés :
+ * - Date du document
+ * - Nom et date de naissance du patient
+ * - NIR du patient
+ * - Catégorisation automatique (type de document, spécialité, etc.)
+ * - Génération automatique de titres
+ * - Classification destination (Consultation/Résultats/Courrier)
  * 
+ * Utilisé sur les pages d'import (UpLoaderForm) et de messagerie (WedaEchanges).
+ * 
+ * @requires lib/pdf.mjs (pdfjsLib)
+ * @requires lib/ZXing (lecture datamatrix)
+ * @requires tweaks.js (addTweak)
+ * @requires storage.js (getOption)
+ * @requires notifications.js (sendWedaNotif)
+ * 
+ * @typedef {Object} ExtractedData
+ * @property {string} documentDate - Date du document
+ * @property {string} dateOfBirth - Date de naissance patient
+ * @property {Array<string>} nameMatches - Noms correspondants trouvés
+ * @property {Array<string>} nirMatches - NIR correspondants trouvés
+ * @property {string} category - Catégorie du document
+ * @property {string} destinationClass - Classe de destination (1/2/3)
  */
-
 
 // IMPORTATION DES MODULES
 // -----------------------

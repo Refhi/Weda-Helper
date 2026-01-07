@@ -1,5 +1,13 @@
-
-
+/**
+ * @file date-time-helpers.js
+ * @description Utilitaires pour la manipulation et conversion de dates et temps.
+ * Fournit des fonctions pour convertir des dates tronquées, gérer les délais,
+ * et enregistrer des timestamps pour diverses opérations (impression, etc.).
+ * 
+ * @exports sleep - Fonction de délai asynchrone
+ * @exports convertDate - Convertit une date tronquée en format complet
+ * @exports setLastPrintDate - Enregistre la date de dernière impression
+ */
 
 // Fonction utilitaire pour attendre un certain nombre de millisecondes
 function sleep(ms) {

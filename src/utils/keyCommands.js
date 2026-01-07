@@ -1,6 +1,19 @@
 /**
- * Fichier contenant les commandes clés pour l'application.
- * Les commandes clés sont définies comme des objets avec une description, une combinaison de touches et une action associée.
+ * @file keyCommands.js
+ * @description Système de gestion des raccourcis clavier et commandes globales.
+ * Définit et gère tous les raccourcis clavier de l'extension,
+ * avec support du throttling, des scopes, et de l'injection dans les iframes.
+ * 
+ * @exports addHotkeyToDocument - Ajoute un raccourci clavier à un document
+ * @exports getShortcuts - Récupère les raccourcis configurés
+ * @exports addShortcuts - Ajoute des raccourcis à un scope
+ * @exports addShortcutsToIframe - Injecte les raccourcis dans une iframe
+ * @exports warpButtons - Ajoute des indicateurs de raccourcis aux boutons
+ * 
+ * @requires storage.js (getOption)
+ * @requires metrics.js (recordMetrics)
+ * @requires dom-oberver.js (waitForElement)
+ * 
  * @typedef {Object} KeyCommand
  * @property {Function} action - La fonction exécutée lorsque la commande clé est activée.
  */

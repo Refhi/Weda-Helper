@@ -1,4 +1,13 @@
 /**
+ * @file metrics.js
+ * @description Système de collecte et d'enregistrement des métriques d'utilisation.
+ * Enregistre les clics évités, les déplacements de souris économisés et les frappes clavier
+ * pour mesurer l'efficacité de l'extension.
+ * 
+ * @exports recordMetrics - Enregistre des métriques d'utilisation
+ */
+
+/**
  * Records metrics about avoided clicks and mouse actions.
  * @param {{clicks: number, drags: number, keyStrokes: number}} metrics - The metrics to record.
  */

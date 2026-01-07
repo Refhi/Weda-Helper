@@ -1,3 +1,19 @@
+/**
+ * @file accueil.js
+ * @description Fonctionnalités pour la page d'accueil patient.
+ * Gère les améliorations de la page d'accueil et de vue patient :
+ * - Alertes de dates ATCD et VSM
+ * - Lecture automatique carte vitale et sélection patient
+ * - Copie NIR et numéro sécu
+ * - One-click VSM
+ * - Edition simplifiée des antécédents
+ * 
+ * @requires tweaks.js (addTweak)
+ * @requires storage.js (getOption)
+ * @requires keyCommands.js (clickCarteVitale)
+ * @requires notifications.js (sendWedaNotif)
+ */
+
 // // [page d'accueil]
 let homePageUrls = [
     '/FolderMedical/FindPatientForm.aspx',

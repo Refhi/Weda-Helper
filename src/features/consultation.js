@@ -1,3 +1,18 @@
+/**
+ * @file consultation.js
+ * @description Fonctionnalités pour la page de consultation.
+ * Gère les améliorations de l'interface de consultation :
+ * - Navigation entre champs de texte avec Tab
+ * - Auto-focus sur le titre
+ * - Affichage courbes pédiatriques (taille, poids, IMC, PC)
+ * - Raccourcis clavier dans les iframes
+ * 
+ * @requires tweaks.js (addTweak)
+ * @requires keyCommands.js (addHotkeyToDocument, addTabsToIframe)
+ * @requires metrics.js (recordMetrics)
+ * @requires configs.js (baseUrl)
+ */
+
 // [Page de Consultation]
 // addTabsToIframe est appelé depuis keyCommands.js au moment où on injecte les raccourcis clavier via addShortcutsToIframe
 

@@ -1,3 +1,16 @@
+/**
+ * @file update.js
+ * @description Gestion des messages de mise à jour et de premier lancement.
+ * Affiche des notifications et pages d'information lors de l'installation
+ * ou de la mise à jour de l'extension, avec historique des changements.
+ * 
+ * @exports displayUpdateMessage - Affiche le message de mise à jour
+ * @exports getChangelogContent - Récupère le contenu du changelog
+ * 
+ * @requires notifications.js (sendWedaNotif, addUrlLink)
+ * @requires storage.js (getOption)
+ */
+
 // // gestion des affichages en cas de mise à jour.
 // // variables contenant le message à afficher en cas de premier lancement et de mise à jour
 let currentVersion = chrome.runtime.getManifest().version;

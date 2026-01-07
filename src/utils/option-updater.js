@@ -1,4 +1,16 @@
 /**
+ * @file option-updater.js
+ * @description Système de mise à jour automatique des options utilisateur.
+ * Permet d'ajouter ou de modifier automatiquement des valeurs d'options
+ * pour les utilisateurs existants, avec gestion de dates limites et tracking.
+ * 
+ * @exports autoAddToOption - Met à jour automatiquement une option
+ * 
+ * @requires storage.js (getOptionPromise, getDefaultOption)
+ * @requires notifications.js (sendWedaNotif)
+ */
+
+/**
  * Ajoute automatiquement des valeurs à une option si la date limite n'est pas dépassée
  * et si l'opération n'a pas déjà été effectuée.
  * 

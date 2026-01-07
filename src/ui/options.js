@@ -1,3 +1,18 @@
+/**
+ * @file options.js
+ * @description Interface de configuration complète de l'extension.
+ * Gère l'affichage et la modification de toutes les options (avancées et raccourcis),
+ * avec support des sous-options, validation, import/export et recherche.
+ * 
+ * @exports traverseOptions - Parcourt les options récursivement
+ * @exports generateOptionsPage - Génère l'interface des options
+ * @exports saveOptions - Sauvegarde les options modifiées
+ * @exports loadOptions - Charge les options depuis le storage
+ * 
+ * @requires storage.js (getOption)
+ * @requires background.js (advancedDefaultSettings, defaultShortcuts)
+ */
+
 // // --------- Page de gestion des options de l'extension----------
 // L'ajout et la modification d'options existantes se fait dans le fichier background.js
 // => variables advancedDefaultSettings et defaultShortcuts

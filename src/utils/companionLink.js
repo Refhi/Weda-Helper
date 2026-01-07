@@ -1,3 +1,19 @@
+/**
+ * @file companionLink.js
+ * @description Communication avec l'application Weda-Helper-Companion.
+ * Gère l'envoi d'instructions au Companion (impression, paiement TPE),
+ * la vérification de sa présence et la gestion de la clé API.
+ * 
+ * @exports generateApiKey - Génère une clé API aléatoire
+ * @exports sendToCompanion - Envoie une commande au Companion
+ * @exports sendtpeinstruction - Envoie un montant au TPE
+ * @exports resendTPELastAmount - Renvoie le dernier montant TPE
+ * @exports getFocus - Récupère le focus fenêtre
+ * 
+ * @requires storage.js (getOption)
+ * @requires notifications.js (sendWedaNotif)
+ */
+
 // // lien avec Weda-Helper-Companion
 // Cette partie s'occupe d'envoyer les instructions, quelles qu'elles soient, à Weda-Helper-Companion.
 // Donc le montant tpe et l'impression.

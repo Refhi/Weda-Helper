@@ -1,3 +1,14 @@
+/**
+ * @file popupFunctions.js
+ * @description Fonctions et gestionnaires pour la popup de l'extension.
+ * Gère la communication avec le script de fond et les actions disponibles
+ * depuis la popup (scan vaccin, onglet TPE, etc.).
+ * 
+ * @exports actions - Dictionnaire des actions disponibles dans la popup
+ * 
+ * @requires storage.js (getOption)
+ */
+
 // // Boutons du popup
 // Celui pour renvoyer le dernier paiement TPE est dans fse.js
 

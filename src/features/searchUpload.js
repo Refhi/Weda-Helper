@@ -1,4 +1,21 @@
 /**
+ * @file searchUpload.js
+ * @description Gestion de la recherche patient et interface d'upload.
+ * Améliore la navigation et l'ergonomie des pages de recherche patient
+ * et d'upload de documents :
+ * - Réorganisation de l'ordre de tabulation
+ * - Sélection automatique du patient seul
+ * - Redimensionnement des éléments
+ * - Raccourcis clavier pour la navigation
+ * - Auto-paste depuis le presse-papiers
+ * 
+ * @requires tweaks.js (addTweak)
+ * @requires storage.js (getOption)
+ * @requires dom-oberver.js (waitForElement, afterMutations)
+ * @requires metrics.js (recordMetrics)
+ */
+
+/**
  * Modifie l'ordre de tabulation des éléments d'une liste en fonction d'un identifiant cible.
  *
  * Cette fonction ajuste l'attribut `tabIndex` des éléments DOM dont l'identifiant commence par une chaîne donnée.

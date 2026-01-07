@@ -1,3 +1,17 @@
+/**
+ * @file alertesAtcd.js
+ * @description Système d'alertes personnalisées basées sur les antécédents.
+ * Affiche des alertes contextuelles (ETP, protocoles) selon les ATCD du patient.
+ * Chaque cabinet/pôle peut avoir ses propres alertes configurées.
+ * 
+ * Format des alertes :
+ * ["Titre", coloration (true/false), prioritaire (true/false), "icône", ["mots", "clés"]]
+ * 
+ * @requires tweaks.js (addTweak)
+ * @requires storage.js (getOption)
+ * @requires dom-oberver.js (waitForElement)
+ */
+
 // Fichier contenant les paramètres d'alerte, initialement pour les ETP.
 // Le nombre 4341 correspond à l'ID du cabinet médical dans la base de données.
 // Chaque Pôle peut demander à avoir ses propres alertes en envoyant un ticket avec la liste des alertes souhaitées et l'ID du cabinet.

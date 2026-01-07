@@ -1,3 +1,16 @@
+/**
+ * @file tooltip.js
+ * @description Système d'aide contextuelle avec tooltips.
+ * Affiche des infobulles d'aide à côté des entrées lors de l'appui prolongé sur Alt,
+ * montrant les raccourcis clavier disponibles pour les sous-menus Weda.
+ * 
+ * @exports tooltipshower - Affiche les tooltips d'aide
+ * @exports displayTooltips - Gère l'affichage des tooltips
+ * 
+ * @requires keyCommands.js (submenuDict)
+ * @requires storage.js (getOption)
+ */
+
 // // Gestion de l'affichage de l'aide
 // afficher une infobulle à côté des entrées W avec la clé de submenuDict
 function tooltipshower() {

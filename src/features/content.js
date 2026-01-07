@@ -1,3 +1,19 @@
+/**
+ * @file content.js
+ * @description Tweaks et modifications diverses pour améliorer l'interface Weda.
+ * Contient des petites améliorations ne justifiant pas un fichier dédié :
+ * - Bouton de recherche auto sur page recettes
+ * - Envoi automatique au TPE pour recettes manuelles
+ * - Suppression des suggestions de titre
+ * - Sticky list HPRIM
+ * - Sélection automatique type document courrier DMP
+ * - Ajout icône imprimante documents cabinet
+ * 
+ * @requires tweaks.js (addTweak)
+ * @requires companionLink.js (sendtpeinstruction)
+ * @requires print.js (handlePrint)
+ */
+
 // // Différentes petites fonctions ajoutées ou supprimées de Weda
 // // Ne justifiant pas la création d'un fichier séparé
 

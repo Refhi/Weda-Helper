@@ -1,4 +1,16 @@
-
+/**
+ * @file notifications.js
+ * @description Système de notifications Weda et popups de confirmation.
+ * Fournit des fonctions pour afficher des notifications via l'interface Weda,
+ * gérer les confirmations utilisateur, et ajouter des liens vers la documentation.
+ * 
+ * @exports sendWedaNotif - Envoie une notification via l'interface Weda
+ * @exports sendWedaNotifAllTabs - Envoie une notification à tous les onglets
+ * @exports confirmationPopup - Affiche une popup de confirmation
+ * @exports addUrlLink - Ajoute un lien URL à une page
+ * 
+ * @requires FW_scripts/FWNotif.js (script d'écoute des notifications)
+ */
 
 // // Lien avec les notifications de Weda
 // Exemple de load de notification
