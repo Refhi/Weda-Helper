@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Weda Helper Beta",
   "version": "2.15",
-  "version_name": "2.15-RC",
+  "version_name": "2.15-RC1",
   "options_page": "src/ui/options.html",
   "permissions": [
     "storage"
@@ -39,10 +39,13 @@
         "src/utils/tweaks.js",
         "src/utils/option-updater.js",
         "src/utils/optionValuesUpdates.js",
+        "src/utils/print.js",
+        "src/utils/optionalPermissions.js",
         "src/utils/patientLink.js",
         "src/utils/companionLink.js",
         "src/utils/keyCommands.js",
         "src/ui/tooltip.js",
+        "src/ui/update.js",
         "src/ui/popupFunctions.js",
         "src/features/alertesAtcd.js",
         "src/features/content.js",
@@ -60,10 +63,7 @@
         "src/features/wedaEchanges.js",
         "src/features/pdfParser.js",
         "src/features/headlessSetup.js",
-        "src/features/instantVaccine.js",
-        "src/utils/print.js",
-        "src/utils/optionalPermissions.js",
-        "src/ui/update.js"
+        "src/features/instantVaccine.js"
       ]
     }
   ],
