@@ -140,9 +140,10 @@ function tweakFSECreation() {
             carteVitaleLue = true; // Indique que la carte vitale a été lue
         });
         setTimeout(function () {
-            waitLegacyForElement('span', 'Carte Vitale non lue', 5000, function (spanElement) {
+            waitLegacyForElement('span', 'Carte Vitale non lue', 5000, async function (spanElement) {
                 if (carteVitaleLue) return; // Si la carte vitale a déjà été lue, arrête la surveillance
                 console.log('Détecté : Carte Vitale non lue. Je clique sur le bouton de lecture de la carte vitale');
+                await sleep(200); // petit délai pour laisser le temps au système de se stabiliser
                 clickCarteVitale(); // cf. keyCommands.js
                 checkPatientName();
                 addFSEVariantButtons();
