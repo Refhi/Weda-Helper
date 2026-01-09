@@ -93,6 +93,7 @@ function afterMutations({ delay, callback, callBackId = "callback id undefined",
  * @param {boolean} [options.debug=false] - Si vrai, affiche des messages de debug dans la console.
  * @param {string|null} [options.textContent=null] - Filtre les éléments par leur contenu textuel.
  * @param {boolean} [options.triggerOnInit=false] - Si vrai, déclenche le callback immédiatement si les éléments existent déjà.
+ * @param {string} [options.observerId="default"] - Identifiant unique pour cet observateur (permet de distinguer différentes observations du même élément).
  * @returns {Promise|MutationObserver} - Retourne une promesse si aucun callback n'est fourni, sinon l'observateur.
  *
  * @example
@@ -103,7 +104,8 @@ function afterMutations({ delay, callback, callBackId = "callback id undefined",
  *   parentElement: document.body,
  *   justOnce: true,
  *   debug: true,
- *   textContent: 'Hello'
+ *   textContent: 'Hello',
+ *   observerId: 'myCustomObserver'
  * });
  * 
  * @example
@@ -117,7 +119,7 @@ function afterMutations({ delay, callback, callBackId = "callback id undefined",
  */
 
 let observedElements = new WeakMap();
-function waitForElement({ selector, callback, parentElement = document, justOnce = false, debug = false, textContent = null, triggerOnInit = false }) {
+function waitForElement({ selector, callback, parentElement = document, justOnce = false, debug = false, textContent = null, triggerOnInit = false, observerId = "default" }) {
     // Si aucun callback n'est fourni, retourne une promesse
     if (!callback) {
         return new Promise(resolve => {
@@ -128,7 +130,8 @@ function waitForElement({ selector, callback, parentElement = document, justOnce
                 justOnce,
                 debug,
                 textContent,
-                triggerOnInit
+                triggerOnInit,
+                observerId
             });
         });
     }
@@ -147,12 +150,14 @@ function waitForElement({ selector, callback, parentElement = document, justOnce
                 let newElements = [];
                 for (let j = 0; j < elements.length; j++) {
                     let element = elements[j];
-                    if (!observedElements.has(element)) {
-                        if (debug) { console.log('[waitForElement] Element', element, ' has appeared'); }
-                        observedElements.set(element, true); // Add the element to the WeakMap
+                    let observers = observedElements.get(element) || new Set();
+                    if (!observers.has(observerId)) {
+                        if (debug) { console.log(`[waitForElement] Element`, element, ` has appeared for observer "${observerId}"`); }
+                        observers.add(observerId);
+                        observedElements.set(element, observers);
                         newElements.push(element);
                     } else {
-                        if (debug) { console.log('[waitForElement] Element', element, ' already observed'); }
+                        if (debug) { console.log(`[waitForElement] Element`, element, ` already observed by "${observerId}"`); }
                     }
                 }
                 if (newElements.length > 0) {
@@ -177,12 +182,14 @@ function waitForElement({ selector, callback, parentElement = document, justOnce
         let newElements = [];
         for (let j = 0; j < elements.length; j++) {
             let element = elements[j];
-            if (!observedElements.has(element)) {
-                if (debug) { console.log('[waitForElement] Element', element, ' has appeared'); }
-                observedElements.set(element, true); // Ajoute l'élément au WeakMap
+            let observers = observedElements.get(element) || new Set();
+            if (!observers.has(observerId)) {
+                if (debug) { console.log(`[waitForElement] Element`, element, ` has appeared for observer "${observerId}"`); }
+                observers.add(observerId);
+                observedElements.set(element, observers);
                 newElements.push(element);
             } else {
-                if (debug) { console.log('[waitForElement] Element', element, ' already observed'); }
+                if (debug) { console.log(`[waitForElement] Element`, element, ` already observed by "${observerId}"`); }
             }
         }
         if (newElements.length > 0) {

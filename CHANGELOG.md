@@ -35,6 +35,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 
 ## 🏗️ Refactorisation :
 - 🔨 Refactorisation des options
+- ajout d’une option d’id pour le waitForElement permettant de multiplier les observateurs sur un même sélecteur sans conflit.
 
 # [2.14] - Correctifs divers et améliorations
 ## Améliorations :

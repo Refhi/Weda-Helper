@@ -338,8 +338,10 @@ addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', 
     // Validation finale, à décommenter si nécessaire
     waitForElement({
         selector: 'div.tab_valid_cancel button.button.valid',
+        observerId: 'oneClickVSMFinalValidation',
         // triggerOnInit: true, => contre-productif
         callback: function (elements) {
+            console.log('[oneClickVSM] Validation finale détectée', elements); 
             if (oneClickVSMwithinTimeRange(CLICK_TIMEOUT)) {
                 recordMetrics({ clicks: 1, drags: 1 });
                 setTimeout(() => {
