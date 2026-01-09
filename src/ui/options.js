@@ -66,6 +66,22 @@ function parseSettings(settings, callback) {
 }
 
 // // Options hors raccourcis
+// 0 - Gestion de la Beta
+// ici nous ajoutons un message spécifique pour les utilisateurs de la version Beta
+const isTestVersion = chrome.runtime.id !== 'dbdodecalholckdneehnejnipbgalami';
+if (isTestVersion) {
+  const betaPlaceholder = document.getElementById('betaPlaceHolder');
+  const betaMessage = document.createElement('div');
+  betaMessage.style.border = '2px solid red';
+  betaMessage.style.padding = '10px';
+  betaMessage.style.marginBottom = '15px';
+  betaMessage.innerHTML = `
+    <strong>⚠️ Vous utilisez une version de test (Beta) de Weda-Helper. Certaines fonctionnalités peuvent être instables ou en cours de développement. Merci de votre compréhension ! ⚠️</strong>
+    <br> allez en bas de la page pour pouvoir exporter et importer vos paramètres depuis la version stable si besoin.
+  `;
+  betaPlaceholder.appendChild(betaMessage);
+}
+
 // 1 - génération de la liste d'option à partir de advancedSettings
 chrome.storage.local.get('advancedDefaultSettings', function (data) {
   if (data.advancedDefaultSettings) {
@@ -199,7 +215,7 @@ function getCategoriesFromJsonInput(input) {
   const categories = [];
   const lines = input.value.split('\n');
   let hasError = false; // Flag pour détecter les erreurs
-  
+
   lines.forEach((line, lineIndex) => {
     if (line.trim()) { // Vérifier que la ligne n'est pas vide
       // Séparer par le dernier ':' pour gérer les titres avec ':'
@@ -210,13 +226,13 @@ function getCategoriesFromJsonInput(input) {
         hasError = true;
         return; // Pas de ':', ligne invalide
       }
-      
+
       const beforeColon = line.substring(0, lastColonIndex).trim();
       const afterColon = line.substring(lastColonIndex + 1).trim();
-      
+
       // Compter les virgules avant les ':'
       const parts = beforeColon.split(',').map(p => p.trim());
-      
+
       if (parts.length === 1) {
         // Ancien format : "nom : mot1, mot2, mot3"
         const name = parts[0];
@@ -227,25 +243,25 @@ function getCategoriesFromJsonInput(input) {
       } else if (parts.length === 4) {
         // Nouveau format : "titre, true, false, icône : mot1, mot2, mot3"
         const [titre, coloration, alerte, matIcon] = parts;
-        
+
         // Validation des booléens
         const colorationLower = coloration.toLowerCase();
         const alerteLower = alerte.toLowerCase();
-        
+
         if (colorationLower !== 'true' && colorationLower !== 'false') {
           alert(`Erreur ligne ${lineIndex + 1}: Le paramètre de coloration doit être "true" ou "false", valeur trouvée: "${coloration}"`);
           console.error(`Ligne ${lineIndex + 1}: Valeur de coloration invalide: "${coloration}"`);
           hasError = true;
           return;
         }
-        
+
         if (alerteLower !== 'true' && alerteLower !== 'false') {
           alert(`Erreur ligne ${lineIndex + 1}: Le paramètre d'alerte doit être "true" ou "false", valeur trouvée: "${alerte}"`);
           console.error(`Ligne ${lineIndex + 1}: Valeur d'alerte invalide: "${alerte}"`);
           hasError = true;
           return;
         }
-        
+
         const keywords = afterColon ? afterColon.split(',').map(keyword => keyword.trim()) : [];
         if (titre) {
           categories.push([
@@ -263,13 +279,13 @@ function getCategoriesFromJsonInput(input) {
       }
     }
   });
-  
+
   // Si une erreur a été détectée, retourner null au lieu d'un tableau vide
   if (hasError) {
     console.error('❌ Validation échouée, aucune donnée ne sera sauvegardée');
     return null;
   }
-  
+
   console.log(JSON.stringify(categories));
   return categories;
 }
@@ -568,19 +584,18 @@ chrome.storage.local.get('defaultShortcuts', function (result) {
   }
 });
 
-// 3 - Enregistrement des valeurs dans le stockage local lors du click sur id=save
-chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (result) {
-  var defaultSettings = result.defaultSettings;
-  document.getElementById('save').addEventListener('click', function () {
+// Fonction mutualisée pour collecter les valeurs des options et raccourcis
+function collectCurrentValues(defaultSettings, defaultShortcuts) {
+  return new Promise((resolve, reject) => {
     var options = Object.keys(defaultSettings);
     var valuesToSave = {};
     let hasValidationError = false; // Flag pour détecter les erreurs de validation
-    
+
     options.forEach(function (option) {
       let element = document.getElementById(option);
-      if (element.classList.contains('radio-group')) {
+      if (element && element.classList.contains('radio-group')) {
         valuesToSave[option] = getSelectedRadioValue(option);
-      } else if (element.classList.contains('json-input')) {
+      } else if (element && element.classList.contains('json-input')) {
         const jsonData = getCategoriesFromJsonInput(element);
         // Si la conversion retourne null, il y a eu une erreur
         if (jsonData === null) {
@@ -597,13 +612,13 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
       }
     });
 
-    // Si une erreur de validation a été détectée, on arrête la sauvegarde
+    // Si une erreur de validation a été détectée, on rejette la promesse
     if (hasValidationError) {
-      alert('❌ Sauvegarde annulée : des erreurs de validation ont été détectées. Veuillez corriger les erreurs et réessayer.');
+      reject(new Error('Erreurs de validation détectées'));
       return;
     }
 
-    let defaultShortcuts = result.defaultShortcuts;
+    // Ajouter les raccourcis
     var shortcuts = {};
     Object.entries(defaultShortcuts).forEach(([key, shortcut]) => {
       let element = document.getElementById(key);
@@ -616,14 +631,30 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
     });
     valuesToSave["shortcuts"] = shortcuts;
 
-    chrome.storage.local.set(valuesToSave, function () {
-      console.log('✅ Sauvegardé avec succès');
-      alert('✅ Les options ont été sauvegardées avec succès');
-      console.log(valuesToSave);
-    });
+    resolve(valuesToSave);
+  });
+}
+
+// 3 - Enregistrement des valeurs dans le stockage local lors du click sur id=save
+chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (result) {
+  var defaultSettings = result.defaultSettings;
+  var defaultShortcuts = result.defaultShortcuts;
+
+  document.getElementById('save').addEventListener('click', function () {
+    collectCurrentValues(defaultSettings, defaultShortcuts)
+      .then(valuesToSave => {
+        chrome.storage.local.set(valuesToSave, function () {
+          console.log('✅ Sauvegardé avec succès');
+          alert('✅ Les options ont été sauvegardées avec succès');
+          console.log(valuesToSave);
+        });
+      })
+      .catch(error => {
+        console.error('❌ Erreur:', error);
+        alert('❌ Sauvegarde annulée : des erreurs de validation ont été détectées. Veuillez corriger les erreurs et réessayer.');
+      });
   });
 });
-
 
 function getSelectedRadioValue(groupId) {
   const radioGroup = document.getElementById(groupId);
@@ -723,6 +754,65 @@ clearSettingsButton.addEventListener('click', function () {
 
 // Ajout du bouton à l'interface utilisateur
 document.body.appendChild(clearSettingsButton);
+
+// Ajout d'un bouton copiant les paramètres actuels dans le presse-papier
+var copySettingsButton = document.createElement('button');
+copySettingsButton.textContent = '📋📤Copier paramètres';
+copySettingsButton.addEventListener('click', function () {
+  chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (result) {
+    collectCurrentValues(result.defaultSettings, result.defaultShortcuts)
+      .then(valuesToSave => {
+        const settingsStr = JSON.stringify(valuesToSave, null, 2);
+        navigator.clipboard.writeText(settingsStr).then(function () {
+          alert('Les paramètres ont été copiés dans le presse-papier');
+        }, function (err) {
+          console.error('Erreur lors de la copie des paramètres : ', err);
+          alert('Erreur lors de la copie des paramètres');
+        });
+      })
+      .catch(error => {
+        console.error('❌ Erreur lors de la collecte des valeurs:', error);
+        alert('❌ Erreur : impossible de copier les paramètres en raison d\'erreurs de validation.');
+      });
+  });
+});
+// Ajout du bouton à l'interface utilisateur
+document.body.appendChild(copySettingsButton);
+
+// Ajout d'un bouton important les paramètres depuis le presse-papier
+var importSettingsButton = document.createElement('button');
+importSettingsButton.textContent = '📋📥Coller paramètres';
+importSettingsButton.addEventListener('click', function () {
+  navigator.clipboard.readText().then(text => {
+    if (text) {
+      try {
+        const settingsObj = JSON.parse(text);
+        
+        // Demander confirmation avant d'importer
+        if (!confirm('Êtes-vous sûr de vouloir importer ces paramètres ? Cela écrasera vos paramètres actuels.')) {
+          return;
+        }
+        
+        chrome.storage.local.set(settingsObj, function () {
+          alert('Les paramètres ont été importés avec succès');
+          location.reload();
+        });
+      } catch (error) {
+        console.error('Erreur lors de l\'importation des paramètres : ', error);
+        alert('Erreur lors de l\'importation des paramètres : format JSON invalide');
+      }
+    } else {
+      alert('Le presse-papier est vide');
+    }
+  }).catch(err => {
+    console.error('Erreur lors de la lecture du presse-papier : ', err);
+    alert('Erreur lors de la lecture du presse-papier. Assurez-vous d\'avoir autorisé l\'accès au presse-papier.');
+  });
+});
+// Ajout du bouton à l'interface utilisateur
+document.body.appendChild(importSettingsButton);
+
+
 
 
 // 6 - Affichage des métriques
