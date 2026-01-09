@@ -897,14 +897,6 @@ async function setExtractedDataInForm(extractedData) {
     });
 }
 
-/**
- * Clic sur le patient trouvé.
- * @param {Object} extractedData - Les données extraites du PDF.
- * @param {Array} extractedData.nameMatches - Les noms correspondants trouvés dans le PDF.
- * @returns {Object} - Objet contenant le statut et un message.
- * @returns {string} status - Statut de l'opération ('success', 'error', 'continue').
- * @returns {string} message - Message décrivant le résultat de l'opération.
- */
 function clicPatient(extractedData) {
     let patientToClick = searchProperPatient(getPatientsList(), extractedData["nameMatches"]);
     if (!patientToClick) {
@@ -924,32 +916,34 @@ function clicPatient(extractedData) {
     let patientToClickName = patientToClick.innerText;
     let patientSelectionneText = selectedPatientName();
     if (patientSelectionneText !== 'Patient à définir...' && patientSelectionneText !== null) {
+        console.log("[pdfParser] Un patient est déjà sélectionné :", patientSelectionneText, "je vérifie si c'est le bon.", patientToClickName);
         // Vérifier que le patient sélectionné est bien celui qu'on cherche
         const normalizedSelected = normalizeString(patientSelectionneText);
-        const matchesExpectedPatient = extractedData["nameMatches"].some(name => {
-            const normalizedExpected = normalizeString(name);
-            return normalizedSelected.includes(normalizedExpected) ||
-                normalizedExpected.includes(normalizedSelected);
-        });
+        const normalizedToClick = normalizeString(patientToClickName);
+        
+        // Comparaison directe entre le patient sélectionné et le patient à cliquer
+        const matchesExpectedPatient = normalizedSelected.includes(normalizedToClick) ||
+            normalizedToClick.includes(normalizedSelected);
 
         if (matchesExpectedPatient) {
             console.log("[pdfParser] Le bon patient est déjà sélectionné, arrêt.");
             return { status: 'continue', message: "Le bon patient est déjà sélectionné" };
         } else {
             console.log("[pdfParser] Un patient est sélectionné mais ce n'est pas le bon, on continue");
-            // Ne pas return ici, continuer avec la sélection du bon patient
+            // Continuer pour cliquer sur le bon patient
         }
+    }
+    
+    // Clic sur le bon patient
+    let patientToClicSelector = "#" + patientToClick.id;
+    // patientToClick.click(); => ne fonctionne pas à cause du CSP en milieu ISOLATED
+    if (patientToClick) {
+        console.log("[pdfParser] Patient à sélectionner :", patientToClickName, patientToClick);
+        clicCSPLockedElement(patientToClicSelector);
+        return { status: 'success', message: "Patient trouvé et cliqué" };
     } else {
-        let patientToClicSelector = "#" + patientToClick.id;
-        // patientToClick.click(); => ne fonctionne pas à cause du CSP en milieu ISOLATED
-        if (patientToClick) {
-            console.log("[pdfParser] Patient à sélectionner :", patientToClickName, patientToClick);
-            clicCSPLockedElement(patientToClicSelector);
-            return { status: 'success', message: "Patient trouvé et cliqué" };
-        } else {
-            console.log("[pdfParser] Patient non trouvé");
-            return { status: 'error', message: "Aucun patient trouvé" };
-        }
+        console.log("[pdfParser] Patient non trouvé");
+        return { status: 'error', message: "Aucun patient trouvé" };
     }
 }
 
