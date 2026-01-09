@@ -68,7 +68,7 @@ function parseSettings(settings, callback) {
 // // Options hors raccourcis
 // 0 - Gestion de la Beta
 // ici nous ajoutons un message spécifique pour les utilisateurs de la version Beta
-const isTestVersion = chrome.runtime.id !== 'dbdodecalholckdneehnejnipbgalami';
+const isTestVersion = chrome.runtime.id !== 'dbdodecalholckdneehnejnipbgalami'; // ID de la version stable
 if (isTestVersion) {
   const betaPlaceholder = document.getElementById('betaPlaceHolder');
   const betaMessage = document.createElement('div');
@@ -792,6 +792,11 @@ importSettingsButton.addEventListener('click', function () {
         if (!confirm('Êtes-vous sûr de vouloir importer ces paramètres ? Cela écrasera vos paramètres actuels.')) {
           return;
         }
+
+        // Chaque paramètre est stocké individuellement dans chrome.storage.local
+        // avec la clé correspondant au nom du paramètre
+        // l’importation écrase les paramètres existants qui ont le même nom
+        // mais ne supprime pas les ceux qui ne sont pas présents dans l’importation
         
         chrome.storage.local.set(settingsObj, function () {
           alert('Les paramètres ont été importés avec succès');

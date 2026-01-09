@@ -47,6 +47,7 @@
         "src/ui/tooltip.js",
         "src/ui/update.js",
         "src/ui/popupFunctions.js",
+        "src/features/conflictHandler.js",
         "src/features/alertesAtcd.js",
         "src/features/content.js",
         "src/features/accueil.js",
