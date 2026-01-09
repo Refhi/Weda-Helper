@@ -27,17 +27,17 @@ const keyCommands = {
         if (window.location.href.includes('/FolderMedical/PatientViewForm.aspx')) {
             startPrintAll();
         } else {
-            handlePrint({printType: 'print', modelNumber: 0});
+            handlePrint({ printType: 'print', modelNumber: 0 });
         }
     },
     'print_meds_bis': function () {
-        handlePrint({printType: 'print', modelNumber: 1});
+        handlePrint({ printType: 'print', modelNumber: 1 });
     },
     'download_document': function () {
-        handlePrint({printType: 'download', modelNumber: 0});
+        handlePrint({ printType: 'download', modelNumber: 0 });
     },
     'download_document_bis': function () {
-        handlePrint({printType: 'download', modelNumber: 1});
+        handlePrint({ printType: 'download', modelNumber: 1 });
     },
     'send_document': function () {
         send_document(0);
@@ -193,7 +193,7 @@ function throttleWithPersistence(func, limit) {
  */
 function addHotkeyToDocument(scope, element, shortcut, action, noThrottle = false) {
     if (shortcut != undefined) {
-        const handler = noThrottle 
+        const handler = noThrottle
             ? function (event, handler) {
                 event.preventDefault();  // Empêche le comportement par défaut
                 action();  // Exécute l'action associée au raccourci
@@ -202,7 +202,7 @@ function addHotkeyToDocument(scope, element, shortcut, action, noThrottle = fals
                 event.preventDefault();  // Empêche le comportement par défaut
                 action();  // Exécute l'action associée au raccourci
             }, 300);
-            
+
         hotkeys(shortcut, {
             scope: scope,
             element: element
@@ -372,15 +372,6 @@ function toggleAtcd() {
 function push_valider() {
     console.log('push_valider activé');
     function clickClassExceptIf(class_name, class_exception, id_exception) {
-        // d’abord envoyer un change et un input dans le champ en cours d’édition pour éviter les pertes de données
-        var activeElement = document.activeElement;
-        if (activeElement) {
-            var eventChange = new Event('change', { bubbles: true });
-            var eventInput = new Event('input', { bubbles: true });
-            activeElement.dispatchEvent(eventChange);
-            activeElement.dispatchEvent(eventInput);
-            console.log('Dispatched change and input events to activeElement', activeElement);
-        }
         var elements = document.getElementsByClassName(class_name);
         console.log('elements', elements);
         for (var i = 0; i < elements.length; i++) {
@@ -392,6 +383,17 @@ function push_valider() {
         }
         return false
     }
+
+    // d’abord envoyer un change et un input dans le champ en cours d’édition pour éviter les pertes de données
+    var activeElement = document.activeElement;
+    if (activeElement) {
+        var eventChange = new Event('change', { bubbles: true });
+        var eventInput = new Event('input', { bubbles: true });
+        activeElement.dispatchEvent(eventChange);
+        activeElement.dispatchEvent(eventInput);
+        console.log('Dispatched change and input events to activeElement', activeElement);
+    }
+
 
     // click other elements, one after the other, until one of them works
     const actions = [
@@ -655,10 +657,10 @@ addTweak('*', 'WarpButtons', async function () {
         'targetSupprimer': 'push_delete'
     };
     let raccourcis = await getShortcuts(["push_annuler", "push_valider", "push_delete"]);
-    
+
     // Créer un nouvel objet pour stocker les raccourcis transformés
     const transformedRaccourcis = {};
-    
+
     // Pour chaque paire action/raccourci dans l'objet original
     for (const [action, shortcut] of Object.entries(raccourcis)) {
         // Trouver la clé dans targetToAction qui correspond à cette action
@@ -671,12 +673,12 @@ addTweak('*', 'WarpButtons', async function () {
             transformedRaccourcis[action] = shortcut;
         }
     }
-    
+
     // Remplacer l'objet raccourcis par la version transformée
     console.log('[WarpButtons] Raccourcis originaux', raccourcis);
     console.log('[WarpButtons] Raccourcis transformés', transformedRaccourcis);
     raccourcis = transformedRaccourcis;
-    
+
     function warpButtons(buttons) {
         function addClassToButton(button) {
             var actions = {
