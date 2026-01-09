@@ -372,6 +372,15 @@ function toggleAtcd() {
 function push_valider() {
     console.log('push_valider activé');
     function clickClassExceptIf(class_name, class_exception, id_exception) {
+        // d’abord envoyer un change et un input dans le champ en cours d’édition pour éviter les pertes de données
+        var activeElement = document.activeElement;
+        if (activeElement) {
+            var eventChange = new Event('change', { bubbles: true });
+            var eventInput = new Event('input', { bubbles: true });
+            activeElement.dispatchEvent(eventChange);
+            activeElement.dispatchEvent(eventInput);
+            console.log('Dispatched change and input events to activeElement', activeElement);
+        }
         var elements = document.getElementsByClassName(class_name);
         console.log('elements', elements);
         for (var i = 0; i < elements.length; i++) {
