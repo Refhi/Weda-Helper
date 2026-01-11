@@ -757,14 +757,33 @@ document.body.appendChild(clearSettingsButton);
 
 // Ajout d'un bouton copiant les paramètres actuels dans le presse-papier
 var copySettingsButton = document.createElement('button');
-copySettingsButton.textContent = '📋📤Copier paramètres';
+copySettingsButton.textContent = '📋📤Copier/Sauv. param.';
 copySettingsButton.addEventListener('click', function () {
   chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (result) {
     collectCurrentValues(result.defaultSettings, result.defaultShortcuts)
       .then(valuesToSave => {
         const settingsStr = JSON.stringify(valuesToSave, null, 2);
+        
+        // Copie dans le presse-papier
         navigator.clipboard.writeText(settingsStr).then(function () {
-          alert('Les paramètres ont été copiés dans le presse-papier');
+          // Création du nom de fichier avec date et heure
+          const now = new Date();
+          const dateStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
+          const timeStr = now.toTimeString().slice(0, 5).replace(':', 'h'); // HHhMM
+          const fileName = `WedaHelper_Parametres_${dateStr}_${timeStr}.json`;
+          
+          // Téléchargement du fichier JSON
+          const blob = new Blob([settingsStr], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          
+          alert('Les paramètres ont été copiés dans le presse-papier et téléchargés');
         }, function (err) {
           console.error('Erreur lors de la copie des paramètres : ', err);
           alert('Erreur lors de la copie des paramètres');
@@ -816,6 +835,49 @@ importSettingsButton.addEventListener('click', function () {
 });
 // Ajout du bouton à l'interface utilisateur
 document.body.appendChild(importSettingsButton);
+
+// Ajout d'un bouton pour charger les paramètres depuis un fichier
+var loadFromFileButton = document.createElement('button');
+loadFromFileButton.textContent = '📁📥Charger depuis fichier';
+loadFromFileButton.addEventListener('click', function () {
+  // Créer un input file invisible
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.json';
+  fileInput.style.display = 'none';
+  
+  fileInput.addEventListener('change', function (event) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const settingsObj = JSON.parse(e.target.result);
+          
+          // Demander confirmation avant d'importer
+          if (!confirm(`Êtes-vous sûr de vouloir importer les paramètres depuis "${file.name}" ? Cela écrasera vos paramètres actuels.`)) {
+            return;
+          }
+          
+          chrome.storage.local.set(settingsObj, function () {
+            alert('Les paramètres ont été importés avec succès depuis le fichier');
+            location.reload();
+          });
+        } catch (error) {
+          console.error('Erreur lors de l\'importation des paramètres depuis le fichier : ', error);
+          alert('Erreur lors de l\'importation des paramètres : format JSON invalide');
+        }
+      };
+      reader.readAsText(file);
+    }
+  });
+  
+  document.body.appendChild(fileInput);
+  fileInput.click();
+  document.body.removeChild(fileInput);
+});
+// Ajout du bouton à l'interface utilisateur
+document.body.appendChild(loadFromFileButton);
 
 
 

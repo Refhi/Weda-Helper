@@ -25,7 +25,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - ✅ La case "x ième injection effectuée" se coche automatiquement.
 - 🩺 [#534](https://github.com/Refhi/Weda-Helper/issues/534) - Ajout d'un bouton "+1clickVSM" dans la page des antécédents pour créer un VSM en un clic.
 - 💰 [#535](https://github.com/Refhi/Weda-Helper/issues/535) - Ajout d'un message d'aide à la cotation pour GL1, GL2 et GL3 dans la page des FSE.
-- Vous pouvez désormais copier et coller vos paramètres de Weda-Helper entre différentes installations. Rendez-vous en bas de la page des options pour retrouver les boutons "📋📤Copier paramètres" et "📋📥Coller paramètres".
+- Vous pouvez désormais copier et coller vos paramètres de Weda-Helper entre différentes installations. Rendez-vous en bas de la page des options pour retrouver les boutons "📋📤Copier/Sauv. param.", "📋📥Coller paramètres" et "📁📥Charger depuis fichier".
 
 ## 🔧 Corrections :
 - 📄 Le bouton "AT sans CV" dans la page d'accueil du dossier patient fonctionne de nouveau correctement.
