@@ -818,7 +818,7 @@ importSettingsButton.addEventListener('click', function () {
         // mais ne supprime pas les ceux qui ne sont pas présents dans l’importation
         
         chrome.storage.local.set(settingsObj, function () {
-          alert('Les paramètres ont été importés avec succès');
+          alert('Les paramètres ont été importés avec succès. Attention à reporter la clé API dans le Companion si nécessaire.');
           location.reload();
         });
       } catch (error) {
@@ -860,7 +860,7 @@ loadFromFileButton.addEventListener('click', function () {
           }
           
           chrome.storage.local.set(settingsObj, function () {
-            alert('Les paramètres ont été importés avec succès depuis le fichier');
+            alert('Les paramètres ont été importés avec succès depuis le fichier, attention à reporter la clé API dans le Companion si nécessaire.');
             location.reload();
           });
         } catch (error) {
