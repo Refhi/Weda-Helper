@@ -35,7 +35,10 @@ const alertesAtcdGlobal = {
       coloration: true,
       alerte: true,
       matIcon: "groups",
-      longDescription: "Un atelier Diabète peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans les conseils de prescription ou imprimer un Flyer depuis les documents du cabinet",
+      ageRange: [18, 99],
+      sexRange: ["M", "F"],
+      alertText: "ETP Diabète possible, cf. Antécédents.",
+      longDescription: "Un atelier Diabète peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage.",
       motsCles: ["diabète"]
     },
     {
@@ -43,7 +46,7 @@ const alertesAtcdGlobal = {
       coloration: true,
       alerte: false,
       matIcon: "groups",
-      longDescription: "Un atelier Alimentation peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans les conseils de prescription ou imprimer un Flyer depuis les documents du cabinet",
+      longDescription: "Un atelier Alimentation peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage.",
       motsCles: [
         "obésité",
         "obésité morbide",
@@ -61,7 +64,7 @@ const alertesAtcdGlobal = {
       coloration: true,
       alerte: true,
       matIcon: "groups",
-      longDescription: "Un atelier Maladies Cardiovasculaires peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans les conseils de prescription ou imprimer un Flyer depuis les documents du cabinet",
+      longDescription: "Un atelier Maladies Cardiovasculaires peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage.",
       motsCles: [
         "HTA",
         "hypertension artérielle",
