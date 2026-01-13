@@ -629,6 +629,87 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
     const atcdDiv = Array.from(panelElement.querySelectorAll('div')).find(div => div.title === "Cliquez ici pour modifier le volet médical du patient");
     if (!atcdDiv) return;
 
+    // Récupération des informations patient via l'API
+    const patientId = getCurrentPatientId();
+    const patientApiData = patientId ? await getPatientInfo(patientId) : null;
+    
+    const patientInfo = (function() {
+        let age = null;
+        let sexe = null;
+        
+        if (patientApiData) {
+            // Récupérer le sexe depuis l'API
+            sexe = patientApiData.sex; // "M" ou "F"
+            
+            // Calculer l'âge depuis la date de naissance
+            if (patientApiData.birthDate) {
+                const birthDate = new Date(patientApiData.birthDate);
+                const today = new Date();
+                age = today.getFullYear() - birthDate.getFullYear();
+                const monthDiff = today.getMonth() - birthDate.getMonth();
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                    age--;
+                }
+            }
+        }
+        
+        // Date actuelle
+        const dateActuelle = new Date();
+        
+        console.log('[alertesAtcd] Infos patient - Age:', age, 'Sexe:', sexe, 'Date:', dateActuelle.toLocaleDateString('fr-FR'));
+        return { age, sexe, dateActuelle };
+    })();
+
+    // Fonction pour vérifier si les conditions d'une alerte sont remplies
+    function verifierConditions(conditions) {
+        if (!conditions) return true;
+        
+        // Vérifier trancheAge
+        if (conditions.trancheAge && Array.isArray(conditions.trancheAge) && patientInfo.age !== null) {
+            const [ageMin, ageMax] = conditions.trancheAge;
+            if (patientInfo.age < ageMin || patientInfo.age > ageMax) {
+                console.log('[alertesAtcd] Condition trancheAge non remplie:', patientInfo.age, 'pas dans', conditions.trancheAge);
+                return false;
+            }
+        }
+        
+        // Vérifier sexes
+        if (conditions.sexes && Array.isArray(conditions.sexes) && conditions.sexes.length > 0 && patientInfo.sexe !== null) {
+            if (!conditions.sexes.includes(patientInfo.sexe)) {
+                console.log('[alertesAtcd] Condition sexes non remplie:', patientInfo.sexe, 'pas dans', conditions.sexes);
+                return false;
+            }
+        }
+        
+        // Vérifier periodeDates
+        if (conditions.periodeDates && Array.isArray(conditions.periodeDates)) {
+            const [dateDebut, dateFin] = conditions.periodeDates;
+            const dateActuelle = patientInfo.dateActuelle;
+            
+            // Parser les dates au format DD/MM/YYYY
+            const parseDate = (dateStr) => {
+                if (!dateStr) return null;
+                const parts = dateStr.split('/');
+                if (parts.length !== 3) return null;
+                return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+            };
+            
+            const debut = parseDate(dateDebut);
+            const fin = parseDate(dateFin);
+            
+            if (debut && dateActuelle < debut) {
+                console.log('[alertesAtcd] Condition periodeDates non remplie: date actuelle avant début');
+                return false;
+            }
+            if (fin && dateActuelle > fin) {
+                console.log('[alertesAtcd] Condition periodeDates non remplie: date actuelle après fin');
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
     // Récupération des alertes du cabinet/Pôle depuis alertesAtcd.js
     const cabinetId = await (async function() {
         // On vérifie que l'option alertesAtcdOptionGlobal est true
@@ -664,6 +745,9 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
     
     // Map pour éviter d'afficher plusieurs fois la même alerte sur le même élément
     const alertesAffichees = new Map();
+    
+    // Set pour tracer les alertes ayant déjà envoyé une notification
+    const notificationsEnvoyees = new Set();
 
     spanElements.forEach(spanElement => {
         const spanText = spanElement.textContent.toLowerCase();
@@ -674,6 +758,11 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
             const cible = alert.optionsCible?.cible;
             if (cible && cible !== 'atcd') {
                 return; // Cette alerte ne s'applique pas aux antécédents
+            }
+
+            // Vérifier les conditions (âge, sexe, période)
+            if (!verifierConditions(alert.conditions)) {
+                return; // Les conditions ne sont pas remplies
             }
 
             // Récupérer les mots-clés depuis conditions
@@ -688,23 +777,23 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
                     if (alertesAffichees.has(cleElement)) return;
                     alertesAffichees.set(cleElement, true);
 
-                    // Afficher une notification si le flag prioritaire est activé dans alerteWeda
-                    const estPrioritaire = alert.alerteWeda?.prioritaire || alert.alerteWeda?.estPrioritaire || false;
-                    console.log('[alertesAtcd] Traitement de l\'alerte:', alert.titre, 'prioritaire:', estPrioritaire);
-                    
-                    if (estPrioritaire && alert.alerteWeda) {
+                    // Afficher une notification si alerteWeda est présent avec texteAlerte
+                    // ET si cette alerte n'a pas déjà envoyé de notification
+                    if (alert.alerteWeda && alert.alerteWeda.texteAlerte && !notificationsEnvoyees.has(alert.titre)) {
                         const iconeWeda = alert.alerteWeda.icone || 'warning';
-                        const texteAlerte = alert.alerteWeda.texteAlerte || alert.alerteWeda.descriptionDetaillee || alert.titre;
                         const typeAlerte = alert.alerteWeda.typeAlerte || 'success';
                         const dureeAlerte = alert.alerteWeda.dureeAlerte ? alert.alerteWeda.dureeAlerte * 1000 : 10000;
                         
                         console.log('[alertesAtcd] Envoi de la notification pour l\'alerte:', alert.titre, 'mot-clé:', motCle, "icône:", iconeWeda);
                         sendWedaNotifAllTabs({
-                            message: texteAlerte,
+                            message: alert.alerteWeda.texteAlerte,
                             type: typeAlerte,
                             duration: dureeAlerte,
                             icon: iconeWeda,
                         });
+                        
+                        // Marquer cette alerte comme ayant envoyé une notification
+                        notificationsEnvoyees.add(alert.titre);
                     }
 
                     // Appliquer la coloration si le flag est activé dans optionsCible
@@ -732,11 +821,11 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
                         spanElement.appendChild(iconElement);
                     }
 
-                    // Ajouter un tooltip avec la description complète
+                    // Ajouter un tooltip avec texteSurvol
                     const texteSurvol = alert.optionsCible?.texteSurvol;
-                    const descriptionDetaillee = alert.alerteWeda?.descriptionDetaillee || alert.alerteWeda?.texteAlerte || '';
-                    const tooltipText = texteSurvol || `${alert.titre}: ${descriptionDetaillee} (mot-clé: "${motCle}")`;
-                    spanElement.title = tooltipText;
+                    if (texteSurvol) {
+                        spanElement.title = texteSurvol;
+                    }
                 }
             });
         });

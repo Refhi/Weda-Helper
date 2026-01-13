@@ -39,13 +39,11 @@ const alertesAtcdGlobal = {
         icone: "warning", // icône Material à afficher à côté de l'antécédent
         texteSurvol: "..." // Le texte affiché lors du survol de la cible
       },
-      alerteWeda: { // Configuration de l'alerte WEDA
+      alerteWeda: { // Configuration de l'alerte WEDA (si présent avec texteAlerte, l'alerte sera affichée)
         icone: "info", // L'icône Material affichée dans l'alerte
         typeAlerte: "success", // success / fail / undefined (success met en vert, undefined en bleu, fail en rouge sans limite de temps)
         dureeAlerte: 10, // Durée d'affichage de l'alerte en secondes (0 = jusqu'à fermeture manuelle)
-        texteAlerte: "...",
-        prioritaire: false,  // ou estPrioritaire
-        descriptionDetaillee: "..."  // optionnel, détails étendus
+        texteAlerte: "..." // Texte de la notification (obligatoire pour afficher l'alerte)
       },
       conditions: {
         trancheAge: null,
@@ -61,14 +59,13 @@ const alertesAtcdGlobal = {
       optionsCible: {
         cible: "atcd",
         coloration: true,
-        icone: "groups"
+        icone: "groups",
+        texteSurvol: "Un atelier Diabète peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage."
       },
       alerteWeda: {
         icone: "groups",
         typeAlerte: "success",
-        texteAlerte: "ETP Diabète possible, cf. Antécédents.",
-        prioritaire: true,
-        descriptionDetaillee: "Un atelier Diabète peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage."
+        texteAlerte: "ETP Diabète possible, cf. Antécédents."
       },
       conditions: {
         trancheAge: [18, 99],
@@ -82,13 +79,12 @@ const alertesAtcdGlobal = {
       optionsCible: {
         cible: "atcd",
         coloration: true,
-        icone: "groups"
+        icone: "groups",
+        texteSurvol: "Un atelier Alimentation peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage."
       },
       alerteWeda: {
         icone: "groups",
-        typeAlerte: "success",
-        prioritaire: false,
-        descriptionDetaillee: "Un atelier Alimentation peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage."
+        typeAlerte: "success"
       },
       conditions: {
         periodeDates: [null, "31/12/2099"],
@@ -110,13 +106,13 @@ const alertesAtcdGlobal = {
       optionsCible: {
         cible: "atcd",
         coloration: true,
-        icone: "groups"
+        icone: "groups",
+        texteSurvol: "Un atelier Maladies Cardiovasculaires peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage."
       },
       alerteWeda: {
         icone: "groups",
         typeAlerte: "success",
-        prioritaire: true,
-        descriptionDetaillee: "Un atelier Maladies Cardiovasculaires peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage."
+        texteAlerte: "ETP Maladies CV possible, cf. Antécédents."
       },
       conditions: {
         motsCles: [
@@ -203,7 +199,7 @@ function validerStructureAlertes(alertes) {
         if (typeof alerte.alerteWeda !== 'object' || alerte.alerteWeda === null) {
           console.error(`❌ ${position} (${alerte.titre}): "alerteWeda" doit être un objet`);
         } else {
-          const { icone, typeAlerte, dureeAlerte, texteAlerte, prioritaire, estPrioritaire, descriptionDetaillee } = alerte.alerteWeda;
+          const { icone, typeAlerte, dureeAlerte, texteAlerte } = alerte.alerteWeda;
           
           if (icone !== undefined && typeof icone !== 'string') {
             console.error(`❌ ${position} (${alerte.titre}): alerteWeda.icone doit être une chaîne de caractères`);
@@ -219,18 +215,6 @@ function validerStructureAlertes(alertes) {
           
           if (texteAlerte !== undefined && typeof texteAlerte !== 'string') {
             console.error(`❌ ${position} (${alerte.titre}): alerteWeda.texteAlerte doit être une chaîne de caractères`);
-          }
-          
-          if (prioritaire !== undefined && typeof prioritaire !== 'boolean') {
-            console.error(`❌ ${position} (${alerte.titre}): alerteWeda.prioritaire doit être un booléen`);
-          }
-          
-          if (estPrioritaire !== undefined && typeof estPrioritaire !== 'boolean') {
-            console.error(`❌ ${position} (${alerte.titre}): alerteWeda.estPrioritaire doit être un booléen`);
-          }
-          
-          if (descriptionDetaillee !== undefined && typeof descriptionDetaillee !== 'string') {
-            console.error(`❌ ${position} (${alerte.titre}): alerteWeda.descriptionDetaillee doit être une chaîne de caractères`);
           }
         }
       }
