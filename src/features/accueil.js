@@ -620,8 +620,8 @@ addTweak('*', '*watchPatientSearchBox', function () {
 
 
 // Gestion des alertes Antécédents
-// Cette partie recherche dans l'option alertesAtcd une valeur pour chaque clé
-// Si une des valeurs est présente dans les antécédents du patient, une alerte est affichée correspondant à la clé
+// Cette partie charge les alertes configurées dans alertesAtcd.js pour le cabinet
+// et affiche des alertes contextuelles selon les ATCD du patient
 addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async function () {
     const panelSelector = "#ContentPlaceHolder1_PanelPatient"
     const panelElement = document.querySelector(panelSelector);
@@ -629,60 +629,11 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
     const atcdDiv = Array.from(panelElement.querySelectorAll('div')).find(div => div.title === "Cliquez ici pour modifier le volet médical du patient");
     if (!atcdDiv) return;
 
-    // Fonction de normalisation des alertes (compatibilité format des alertes au format json dans alertesAtcd.js
-    // et format tableau dans l'option utilisateur alertesAtcdOption)
-    function normaliserAlertes(alertes) {
-        if (!alertes || alertes.length === 0) return [];
-        
-        const premierElement = alertes[0];
-        
-        // Vérifier si c'est l'ancien format en regardant la structure
-        // Ancien format: [message, coloration, alerte, matIcon, [motsCles]]
-        // Nouveau format: {titre, coloration, alerte, matIcon, longDescription, motsCles}
-        const estAncienFormat = Array.isArray(premierElement);
-        
-        if (estAncienFormat) {
-            // Conversion ancien format → nouveau format objet
-            console.log('[alertesAtcd] Conversion de l\'ancien format vers le nouveau format');
-            return alertes.map(alerteArray => {
-                // Ancien format: [message, coloration, alerte, matIcon, [motsCles]]
-                const [message, coloration, alerteFlag, matIcon, motsCles] = alerteArray;
-                
-                // Parser le coloration et alerte en booléens si ce sont des chaînes
-                const colorationBool = typeof coloration === 'string' ? coloration === 'true' : coloration;
-                const alerteBool = typeof alerteFlag === 'string' ? alerteFlag === 'true' : alerteFlag;
-                
-                return {
-                    titre: message.split(' - ')[0] || message,
-                    coloration: colorationBool,
-                    alerte: alerteBool,
-                    matIcon: matIcon || "info",
-                    longDescription: message,
-                    motsCles: motsCles || []
-                };
-            });
-        }
-        
-        // Le format est déjà le nouveau format objet
-        return alertes;
-    }
-
-    // Récupération et normalisation des alertes utilisateur
-    const alertesAtcdOption = await getOptionPromise('alertesAtcdOption');
-    let alertesUtilisateur = [];
-    if (alertesAtcdOption) {
-        try {
-            alertesUtilisateur = normaliserAlertes(JSON.parse(alertesAtcdOption));
-        } catch (e) {
-            console.error('[alertesAtcd] Erreur lors du parsing des alertes utilisateur', e);
-        }
-    }
-
     // Récupération des alertes du cabinet/Pôle depuis alertesAtcd.js
     const cabinetId = await (async function() {
         // On vérifie que l'option alertesAtcdOptionGlobal est true
         const alertesAtcdOptionGlobal = await getOptionPromise('alertesAtcdOptionGlobal');
-        if (!alertesAtcdOptionGlobal) return null
+        if (!alertesAtcdOptionGlobal) return null;
         const cabinetElement = document.querySelector('#LinkButtonUserLog');
         if (!cabinetElement) return null;
         const cabinetInfoLines = cabinetElement.title.split('\n');
@@ -696,15 +647,11 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
     
     console.log('[alertesAtcd] cabinetId', cabinetId);
     
-    let alertesCabinet = [];
+    let toutesLesAlertes = [];
     if (cabinetId && typeof alertesAtcdGlobal !== 'undefined' && alertesAtcdGlobal[cabinetId]) {
-        alertesCabinet = alertesAtcdGlobal[cabinetId];
+        toutesLesAlertes = alertesAtcdGlobal[cabinetId];
     }
-    console.log('[alertesAtcd] alertesCabinet', alertesCabinet);
-    console.log('[alertesAtcd] alertesUtilisateur', alertesUtilisateur);
-
-    // Fusion des alertes (Cabinet + Utilisateur)
-    const toutesLesAlertes = [...alertesCabinet, ...alertesUtilisateur];
+    console.log('[alertesAtcd] alertes du cabinet', toutesLesAlertes);
     console.log('[alertesAtcd] Total des alertes actives', toutesLesAlertes.length);
 
     if (toutesLesAlertes.length === 0) {
@@ -723,7 +670,16 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
         
         // Vérifier chaque alerte
         toutesLesAlertes.forEach(alert => {
-            alert.motsCles.forEach(motCle => {
+            // Vérifier que la cible est "atcd" (ou non définie pour rétrocompatibilité)
+            const cible = alert.optionsCible?.cible;
+            if (cible && cible !== 'atcd') {
+                return; // Cette alerte ne s'applique pas aux antécédents
+            }
+
+            // Récupérer les mots-clés depuis conditions
+            const motsCles = alert.conditions?.motsCles || [];
+            
+            motsCles.forEach(motCle => {
                 const motCleLower = motCle.toLowerCase();
                 if (spanText.includes(motCleLower)) {
                     console.log('[alertesAtcd] Alerte validée pour :', alert.titre, 'avec les caractéristiques', alert, 'mot-clé trouvé:', motCle);                    
@@ -732,26 +688,54 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
                     if (alertesAffichees.has(cleElement)) return;
                     alertesAffichees.set(cleElement, true);
 
-                    // Afficher une notification si le flag alerte est activé
-                    console.log('[alertesAtcd] Traitement de l\'alerte:', alert.titre, 'alerte flag:', alert.alerte);
-                    if (alert.alerte) {
-                        console.log('[alertesAtcd] Envoi de la notification pour l\'alerte:', alert.titre, 'mot-clé:', motCle, "matIcon:", alert.matIcon);
+                    // Afficher une notification si le flag prioritaire est activé dans alerteWeda
+                    const estPrioritaire = alert.alerteWeda?.prioritaire || alert.alerteWeda?.estPrioritaire || false;
+                    console.log('[alertesAtcd] Traitement de l\'alerte:', alert.titre, 'prioritaire:', estPrioritaire);
+                    
+                    if (estPrioritaire && alert.alerteWeda) {
+                        const iconeWeda = alert.alerteWeda.icone || 'warning';
+                        const texteAlerte = alert.alerteWeda.texteAlerte || alert.alerteWeda.descriptionDetaillee || alert.titre;
+                        const typeAlerte = alert.alerteWeda.typeAlerte || 'success';
+                        const dureeAlerte = alert.alerteWeda.dureeAlerte ? alert.alerteWeda.dureeAlerte * 1000 : 10000;
+                        
+                        console.log('[alertesAtcd] Envoi de la notification pour l\'alerte:', alert.titre, 'mot-clé:', motCle, "icône:", iconeWeda);
                         sendWedaNotifAllTabs({
-                            message: `${alert.titre}: ${alert.longDescription}`,
-                            type: 'success',
-                            duration: 10000,
-                            icon: alert.matIcon || 'warning',
+                            message: texteAlerte,
+                            type: typeAlerte,
+                            duration: dureeAlerte,
+                            icon: iconeWeda,
                         });
                     }
 
-                    // Appliquer la coloration si le flag est activé
-                    if (alert.coloration) {
-                        spanElement.style.color = 'green';
+                    // Appliquer la coloration si le flag est activé dans optionsCible
+                    const coloration = alert.optionsCible?.coloration;
+                    if (coloration) {
+                        if (typeof coloration === 'string') {
+                            // Si c'est une couleur CSS spécifique
+                            spanElement.style.color = coloration;
+                        } else if (coloration === true) {
+                            // Si c'est un booléen true, utiliser vert par défaut
+                            spanElement.style.color = 'green';
+                        }
                         spanElement.style.fontWeight = 'bold';
                     }
 
+                    // Ajouter une icône si définie dans optionsCible
+                    const icone = alert.optionsCible?.icone;
+                    if (icone) {
+                        const iconElement = document.createElement('span');
+                        iconElement.className = 'material-icons';
+                        iconElement.textContent = icone;
+                        iconElement.style.fontSize = '16px';
+                        iconElement.style.verticalAlign = 'middle';
+                        iconElement.style.marginLeft = '4px';
+                        spanElement.appendChild(iconElement);
+                    }
+
                     // Ajouter un tooltip avec la description complète
-                    const tooltipText = `${alert.titre}: ${alert.longDescription} (mot-clé: "${motCle}")`;
+                    const texteSurvol = alert.optionsCible?.texteSurvol;
+                    const descriptionDetaillee = alert.alerteWeda?.descriptionDetaillee || alert.alerteWeda?.texteAlerte || '';
+                    const tooltipText = texteSurvol || `${alert.titre}: ${descriptionDetaillee} (mot-clé: "${motCle}")`;
                     spanElement.title = tooltipText;
                 }
             });

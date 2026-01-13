@@ -33,24 +33,24 @@ const alertesAtcdGlobal = {
     // Exemple d'alerte
     {
       titre: "Exemple d'alerte", // Titre non utilisé dans les alertes, permet de s'y retrouver
-      targetOptions: {
-        target: "atcd", // peut être : "atcd", "etatcivil"
-        coloration: false, // si false, l'antécédent n'est pas colorée. Sinon mettre nom couleur css (ex: "red", "yellow", "blue", etc.)
-        matIcon: "warning", // icône Material à afficher à côté de l'antécédent
-        overtext: "..." // Le texte affiché lors du survol du target
+      optionsCible: {
+        cible: "atcd", // peut être : "atcd", "etatcivil" et rien d’autre pour l'instant
+        coloration: false, // si false, l'antécédent n'est pas coloré. Sinon mettre nom couleur css (ex: "red", "yellow", "blue", etc.)
+        icone: "warning", // icône Material à afficher à côté de l'antécédent
+        texteSurvol: "..." // Le texte affiché lors du survol de la cible
       },
-      wedaAlert: { // Configuration de l'alerte WEDA
-        matIcon: "info", // Le mat-Icon affiché dans l'alerte
-        alertType: "success", // success / fail / undefined (success met en vert, undefined en bleu, fail en rouge sans limite de temps)
-        alertDuration: 10, // Durée d'affichage de l'alerte en secondes (0 = jusqu'à fermeture manuelle)
-        alertText: "...",
-        priority: false,  // ou isPriority
-        longDescription: "..."  // optionnel, détails étendus
+      alerteWeda: { // Configuration de l'alerte WEDA
+        icone: "info", // L'icône Material affichée dans l'alerte
+        typeAlerte: "success", // success / fail / undefined (success met en vert, undefined en bleu, fail en rouge sans limite de temps)
+        dureeAlerte: 10, // Durée d'affichage de l'alerte en secondes (0 = jusqu'à fermeture manuelle)
+        texteAlerte: "...",
+        prioritaire: false,  // ou estPrioritaire
+        descriptionDetaillee: "..."  // optionnel, détails étendus
       },
       conditions: {
-        ageRange: null,
-        sexRange: null,
-        dateRange: null,
+        trancheAge: null,
+        sexes: null,
+        periodeDates: null,
         motsCles: ["exemple", "test"]
       }
     }
@@ -58,56 +58,83 @@ const alertesAtcdGlobal = {
   4341: [
     {
       titre: "Atelier diabète",
-      coloration: true,
-      alerte: true,
-      matIcon: "groups",
-      ageRange: [18, 99],
-      sexRange: ["M", "F"],
-      dateRange: null,
-      alertText: "ETP Diabète possible, cf. Antécédents.",
-      longDescription: "Un atelier Diabète peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage.",
-      motsCles: ["diabète"]
+      optionsCible: {
+        cible: "atcd",
+        coloration: true,
+        icone: "groups"
+      },
+      alerteWeda: {
+        icone: "groups",
+        typeAlerte: "success",
+        texteAlerte: "ETP Diabète possible, cf. Antécédents.",
+        prioritaire: true,
+        descriptionDetaillee: "Un atelier Diabète peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage."
+      },
+      conditions: {
+        trancheAge: [18, 99],
+        sexes: ["M", "F"],
+        periodeDates: null,
+        motsCles: ["diabète"]
+      }
     },
     {
       titre: "Atelier alimentation",
-      coloration: true,
-      alerte: false,
-      matIcon: "groups",
-      dateRange: [null, "31/12/2099"],
-      longDescription: "Un atelier Alimentation peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage.",
-      motsCles: [
-        "obésité",
-        "obésité morbide",
-        "surpoids",
-        "anorexie",
-        "anorexie mentale",
-        "boulimie",
-        "TCA",
-        "troubles du comportement alimentaire",
-        "dénutrition"
-      ]
+      optionsCible: {
+        cible: "atcd",
+        coloration: true,
+        icone: "groups"
+      },
+      alerteWeda: {
+        icone: "groups",
+        typeAlerte: "success",
+        prioritaire: false,
+        descriptionDetaillee: "Un atelier Alimentation peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage."
+      },
+      conditions: {
+        periodeDates: [null, "31/12/2099"],
+        motsCles: [
+          "obésité",
+          "obésité morbide",
+          "surpoids",
+          "anorexie",
+          "anorexie mentale",
+          "boulimie",
+          "TCA",
+          "troubles du comportement alimentaire",
+          "dénutrition"
+        ]
+      }
     },
     {
       titre: "Atelier traitement CV",
-      coloration: true,
-      alerte: true,
-      matIcon: "groups",
-      longDescription: "Un atelier Maladies Cardiovasculaires peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage.",
-      motsCles: [
-        "HTA",
-        "hypertension artérielle",
-        "infarctus du myocarde",
-        "cardiopathie",
-        "AOMI",
-        "insuffisance cardiaque",
-        "arythmie",
-        "fibrilation",
-        "angor",
-        "accident ischémique transitoire",
-        "AVC",
-        "accident vasculaire cérébral",
-        "coronaropathie"
-      ]
+      optionsCible: {
+        cible: "atcd",
+        coloration: true,
+        icone: "groups"
+      },
+      alerteWeda: {
+        icone: "groups",
+        typeAlerte: "success",
+        prioritaire: true,
+        descriptionDetaillee: "Un atelier Maladies Cardiovasculaires peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage."
+      },
+      conditions: {
+        motsCles: [
+          "HTA",
+          "hypertension artérielle",
+          "infarctus du myocarde",
+          "cardiopathie",
+          "AOMI",
+          "insuffisance cardiaque",
+          "arythmie",
+          "fibrilation",
+          "angor",
+          "accident ischémique transitoire",
+          "AVC",
+          "accident vasculaire cérébral",
+          "coronaropathie"
+        ]
+      }
     }
   ]
 };
@@ -119,8 +146,6 @@ const alertesAtcdGlobal = {
  * @param {Object} alertes - L'objet alertesAtcd à valider
  */
 function validerStructureAlertes(alertes) {
-  const champsObligatoires = ['titre', 'coloration', 'alerte', 'matIcon', 'longDescription', 'motsCles'];
-
   for (const [cabinetId, listeAlertes] of Object.entries(alertes)) {
     if (!Array.isArray(listeAlertes)) {
       console.error(`❌ Cabinet ${cabinetId}: les alertes doivent être un tableau`);
@@ -136,43 +161,119 @@ function validerStructureAlertes(alertes) {
         return;
       }
 
-      // Vérifier tous les champs obligatoires
-      champsObligatoires.forEach(champ => {
-        if (!(champ in alerte)) {
-          console.error(`❌ ${position} (${alerte.titre || 'sans titre'}): champ manquant "${champ}"`);
-        }
-      });
-
-      // Vérifier les types
-      if (alerte.titre !== undefined && typeof alerte.titre !== 'string') {
+      // Vérifier le champ obligatoire "titre"
+      if (!('titre' in alerte)) {
+        console.error(`❌ ${position}: champ obligatoire "titre" manquant`);
+        return;
+      }
+      
+      if (typeof alerte.titre !== 'string') {
         console.error(`❌ ${position}: "titre" doit être une chaîne de caractères`);
       }
 
-      if (alerte.coloration !== undefined && typeof alerte.coloration !== 'boolean') {
-        console.error(`❌ ${position} (${alerte.titre}): "coloration" doit être un booléen (true/false)`);
-      }
-
-      if (alerte.alerte !== undefined && typeof alerte.alerte !== 'boolean') {
-        console.error(`❌ ${position} (${alerte.titre}): "alerte" doit être un booléen (true/false)`);
-      }
-
-      if (alerte.matIcon !== undefined && typeof alerte.matIcon !== 'string') {
-        console.error(`❌ ${position} (${alerte.titre}): "matIcon" doit être une chaîne de caractères`);
-      }
-
-      if (alerte.longDescription !== undefined && typeof alerte.longDescription !== 'string') {
-        console.error(`❌ ${position} (${alerte.titre}): "longDescription" doit être une chaîne de caractères`);
-      }
-
-      if (alerte.motsCles !== undefined && !Array.isArray(alerte.motsCles)) {
-        console.error(`❌ ${position} (${alerte.titre}): "motsCles" doit être un tableau`);
-      } else if (alerte.motsCles) {
-        // Vérifier que tous les mots-clés sont des chaînes
-        alerte.motsCles.forEach((mot, i) => {
-          if (typeof mot !== 'string') {
-            console.error(`❌ ${position} (${alerte.titre}): motsCles[${i}] doit être une chaîne de caractères`);
+      // Vérifier optionsCible si présent
+      if (alerte.optionsCible !== undefined) {
+        if (typeof alerte.optionsCible !== 'object' || alerte.optionsCible === null) {
+          console.error(`❌ ${position} (${alerte.titre}): "optionsCible" doit être un objet`);
+        } else {
+          const { cible, coloration, icone, texteSurvol } = alerte.optionsCible;
+          
+          if (cible !== undefined && typeof cible !== 'string') {
+            console.error(`❌ ${position} (${alerte.titre}): optionsCible.cible doit être une chaîne de caractères`);
+          } else if (cible !== undefined && !['atcd', 'etatcivil'].includes(cible)) {
+            console.error(`❌ ${position} (${alerte.titre}): optionsCible.cible ne peut être que "atcd" ou "etatcivil" (pour l'instant)`);
           }
-        });
+          
+          if (coloration !== undefined && typeof coloration !== 'boolean' && typeof coloration !== 'string') {
+            console.error(`❌ ${position} (${alerte.titre}): optionsCible.coloration doit être un booléen ou une chaîne (couleur CSS)`);
+          }
+          
+          if (icone !== undefined && typeof icone !== 'string') {
+            console.error(`❌ ${position} (${alerte.titre}): optionsCible.icone doit être une chaîne de caractères`);
+          }
+          
+          if (texteSurvol !== undefined && typeof texteSurvol !== 'string') {
+            console.error(`❌ ${position} (${alerte.titre}): optionsCible.texteSurvol doit être une chaîne de caractères`);
+          }
+        }
+      }
+
+      // Vérifier alerteWeda si présent
+      if (alerte.alerteWeda !== undefined) {
+        if (typeof alerte.alerteWeda !== 'object' || alerte.alerteWeda === null) {
+          console.error(`❌ ${position} (${alerte.titre}): "alerteWeda" doit être un objet`);
+        } else {
+          const { icone, typeAlerte, dureeAlerte, texteAlerte, prioritaire, estPrioritaire, descriptionDetaillee } = alerte.alerteWeda;
+          
+          if (icone !== undefined && typeof icone !== 'string') {
+            console.error(`❌ ${position} (${alerte.titre}): alerteWeda.icone doit être une chaîne de caractères`);
+          }
+          
+          if (typeAlerte !== undefined && typeof typeAlerte !== 'string') {
+            console.error(`❌ ${position} (${alerte.titre}): alerteWeda.typeAlerte doit être une chaîne de caractères`);
+          }
+          
+          if (dureeAlerte !== undefined && typeof dureeAlerte !== 'number') {
+            console.error(`❌ ${position} (${alerte.titre}): alerteWeda.dureeAlerte doit être un nombre`);
+          }
+          
+          if (texteAlerte !== undefined && typeof texteAlerte !== 'string') {
+            console.error(`❌ ${position} (${alerte.titre}): alerteWeda.texteAlerte doit être une chaîne de caractères`);
+          }
+          
+          if (prioritaire !== undefined && typeof prioritaire !== 'boolean') {
+            console.error(`❌ ${position} (${alerte.titre}): alerteWeda.prioritaire doit être un booléen`);
+          }
+          
+          if (estPrioritaire !== undefined && typeof estPrioritaire !== 'boolean') {
+            console.error(`❌ ${position} (${alerte.titre}): alerteWeda.estPrioritaire doit être un booléen`);
+          }
+          
+          if (descriptionDetaillee !== undefined && typeof descriptionDetaillee !== 'string') {
+            console.error(`❌ ${position} (${alerte.titre}): alerteWeda.descriptionDetaillee doit être une chaîne de caractères`);
+          }
+        }
+      }
+
+      // Vérifier conditions si présent
+      if (alerte.conditions !== undefined) {
+        if (typeof alerte.conditions !== 'object' || alerte.conditions === null) {
+          console.error(`❌ ${position} (${alerte.titre}): "conditions" doit être un objet`);
+        } else {
+          const { trancheAge, sexes, periodeDates, motsCles } = alerte.conditions;
+          
+          if (trancheAge !== undefined && trancheAge !== null && !Array.isArray(trancheAge)) {
+            console.error(`❌ ${position} (${alerte.titre}): conditions.trancheAge doit être un tableau ou null`);
+          } else if (Array.isArray(trancheAge) && trancheAge.length !== 2) {
+            console.error(`❌ ${position} (${alerte.titre}): conditions.trancheAge doit contenir exactement 2 éléments [min, max]`);
+          }
+          
+          if (sexes !== undefined && sexes !== null && !Array.isArray(sexes)) {
+            console.error(`❌ ${position} (${alerte.titre}): conditions.sexes doit être un tableau ou null`);
+          } else if (Array.isArray(sexes)) {
+            sexes.forEach((sex, i) => {
+              if (typeof sex !== 'string') {
+                console.error(`❌ ${position} (${alerte.titre}): conditions.sexes[${i}] doit être une chaîne de caractères`);
+              }
+            });
+          }
+          
+          if (periodeDates !== undefined && periodeDates !== null && !Array.isArray(periodeDates)) {
+            console.error(`❌ ${position} (${alerte.titre}): conditions.periodeDates doit être un tableau ou null`);
+          } else if (Array.isArray(periodeDates) && periodeDates.length !== 2) {
+            console.error(`❌ ${position} (${alerte.titre}): conditions.periodeDates doit contenir exactement 2 éléments [début, fin]`);
+          }
+          
+          if (motsCles !== undefined && !Array.isArray(motsCles)) {
+            console.error(`❌ ${position} (${alerte.titre}): conditions.motsCles doit être un tableau`);
+          } else if (Array.isArray(motsCles)) {
+            motsCles.forEach((mot, i) => {
+              if (typeof mot !== 'string') {
+                console.error(`❌ ${position} (${alerte.titre}): conditions.motsCles[${i}] doit être une chaîne de caractères`);
+              }
+            });
+          }
+        }
       }
     });
   }
@@ -181,3 +282,9 @@ function validerStructureAlertes(alertes) {
 }
 
 validerStructureAlertes(alertesAtcdGlobal);
+
+// Test en environnement Node.js
+if (typeof require !== 'undefined' && require.main === module) {
+  // afficher l'ensemble de la structure pour vérification visuelle avec coloration
+  console.dir(alertesAtcdGlobal, { depth: null, colors: true });
+}
