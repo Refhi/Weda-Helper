@@ -204,12 +204,66 @@ const customFieldsDefault2 = JSON.stringify([
 
 const customFieldsDefault3 = JSON.stringify([
 ]);
+/**
+ * Configuration par défaut des alertes antécédents personnalisées
+ * Format conforme à alerteSchema (voir alertesAtcd.js)
+ * ⚠️ EXEMPLES UNIQUEMENT - À personnaliser selon vos besoins
+ */
 const alertesAtcdOptionDefault = JSON.stringify([
-    // Format : ["Titre de l'alerte", coloration (true/false), alerte prioritaire (true/false), "icône Material", ["mots", "clés"]]
-    ["ETP Diabète - ce patient peut être éligible à une ETP Diabète", "true", "true", "groups", ["diabete_", "diabete_"]],
-    ["ETP Asthme - ce patient peut être éligible à une ETP Asthme", "true", "true", "groups", ["asthme_", "asthma_"]],
-    ["ETP Alimentation - ce patient peut être éligible à une ETP Alimentation", "true", "false", "groups", ["obesite_", "surpoids_", "anorexie_", "boulimie_", "TCA_"]],
-    ["ETP Cardiovasculaire - ce patient peut être éligible à une ETP Maladies Cardiovasculaires", "true", "true", "groups", ["HTA_", "hypertension artérielle_", "infarctus_", "insuffisance cardiaque_"]]
+    {
+        titre: "Exemple Alerte 1",
+        optionsCible: {
+            cible: "atcd",
+            coloration: true,
+            icone: "info",
+            texteSurvol: "Ceci est un exemple d'alerte personnalisée"
+        },
+        alerteWeda: {
+            icone: "info",
+            typeAlerte: "success",
+            dureeAlerte: 10,
+            texteAlerte: "Exemple d'alerte 1"
+        },
+        conditions: {
+            motsCles: ["exemple1", "test1"]
+        }
+    },
+    {
+        titre: "Exemple Alerte 2",
+        optionsCible: {
+            cible: "atcd",
+            coloration: true,
+            icone: "warning",
+            texteSurvol: "Ceci est un autre exemple d'alerte"
+        },
+        alerteWeda: {
+            icone: "warning",
+            typeAlerte: "success",
+            dureeAlerte: 10,
+            texteAlerte: "Exemple d'alerte 2"
+        },
+        conditions: {
+            motsCles: ["exemple2", "test2"]
+        }
+    },
+    {
+        titre: "Exemple Alerte 3",
+        optionsCible: {
+            cible: "atcd",
+            coloration: false,
+            icone: "notifications",
+            texteSurvol: "Exemple sans coloration"
+        },
+        alerteWeda: {
+            icone: "notifications",
+            typeAlerte: undefined,
+            dureeAlerte: 5,
+            texteAlerte: ""
+        },
+        conditions: {
+            motsCles: ["exemple3", "test3"]
+        }
+    }
 ]);
 
 
