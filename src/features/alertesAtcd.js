@@ -29,128 +29,10 @@
 
 
 /**
- * Schéma définissant les caractéristiques des champs d'une alerte.
- * Utilisé pour le constructeur d'alerte dans les options et pour la validation.
+ * ⚠️ NOTE: Le schéma de validation (alerteSchema) est défini dans background.js
+ * et accessible via chrome.storage.local.get('alerteSchema').
+ * Cela garantit une seule source de vérité pour la validation des alertes.
  */
-const alerteSchema = {
-  titre: {
-    type: 'string',
-    required: true,
-    description: 'Titre de l\'alerte (non affiché, sert à s\'y retrouver)'
-  },
-  optionsCible: {
-    type: 'object',
-    required: false,
-    description: 'Options d\'affichage de la cible (antécédent ou état civil)',
-    properties: {
-      cible: {
-        type: 'string',
-        required: false,
-        description: 'Cible de l\'alerte',
-        enum: ['atcd', 'etatCivil'],
-        default: 'atcd'
-      },
-      coloration: {
-        type: ['boolean', 'string'],
-        required: false,
-        description: 'Coloration de la cible (false ou nom de couleur CSS)',
-        default: false
-      },
-      icone: {
-        type: 'string',
-        required: false,
-        description: 'Icône Material à afficher',
-        default: 'info'
-      },
-      texteSurvol: {
-        type: 'string',
-        required: false,
-        description: 'Texte affiché au survol de la cible',
-        default: ''
-      }
-    }
-  },
-  alerteWeda: {
-    type: 'object',
-    required: false,
-    description: 'Configuration de l\'alerte WEDA (notification)',
-    properties: {
-      icone: {
-        type: 'string',
-        required: false,
-        description: 'Icône Material de l\'alerte',
-        default: 'info'
-      },
-      typeAlerte: {
-        type: 'string',
-        required: false,
-        description: 'Type d\'alerte visuelle',
-        enum: ['success', 'fail', 'undefined'],
-        default: undefined
-      },
-      dureeAlerte: {
-        type: 'number',
-        required: false,
-        description: 'Durée d\'affichage en secondes (0 = jusqu\'à fermeture manuelle)',
-        default: 10,
-        min: 0
-      },
-      texteAlerte: {
-        type: 'string',
-        required: false,
-        description: 'Texte de la notification (obligatoire pour afficher l\'alerte)',
-        default: ''
-      }
-    }
-  },
-  conditions: {
-    type: 'object',
-    required: false,
-    description: 'Conditions de déclenchement de l\'alerte',
-    properties: {
-      ageMin: {
-        type: 'number',
-        required: false,
-        description: 'Âge minimum',
-        default: null
-      },
-      ageMax: {
-        type: 'number',
-        required: false,
-        description: 'Âge maximum',
-        default: null
-      },
-      sexes: {
-        type: 'string',
-        required: false,
-        description: 'Sexes concernés',
-        enum: ['F', 'M', 'N'],
-        default: null
-      },
-      dateDebut: {
-        type: 'string',
-        required: false,
-        description: 'Date de début de validité (format DD/MM/YYYY)',
-        format: 'date',
-        default: null
-      },
-      dateFin: {
-        type: 'string',
-        required: false,
-        description: 'Date de fin de validité (format DD/MM/YYYY)',
-        format: 'date',
-        default: null
-      },
-      motsCles: {
-        type: 'array',
-        required: false,
-        description: 'Mots-clés à rechercher dans les antécédents',
-        itemType: 'string',
-        default: []
-      }
-    }
-  }
-};
 
 
 const alertesAtcdGlobal = {
@@ -267,133 +149,42 @@ const alertesAtcdGlobal = {
 
 /**
  * Vérifie la structure des alertes et affiche des avertissements en console en cas de problème
+ * Utilise le validateur mutualisé depuis alertes-validator.js
  * @param {Object} alertes - L'objet alertesAtcd à valider
+ * @returns {Promise<void>}
  */
-function validerStructureAlertes(alertes) {
+async function validerStructureAlertes(alertes) {
+  const schema = await getAlerteSchema();
+
+  if (!schema) {
+    console.warn('⚠️ Schéma de validation non disponible, validation ignorée');
+    return;
+  }
+
   for (const [cabinetId, listeAlertes] of Object.entries(alertes)) {
     if (!Array.isArray(listeAlertes)) {
       console.error(`❌ Cabinet ${cabinetId}: les alertes doivent être un tableau`);
       continue;
     }
 
-    listeAlertes.forEach((alerte, index) => {
-      const position = `Cabinet ${cabinetId}, Alerte #${index + 1}`;
-
-      // Vérifier que c'est un objet
-      if (typeof alerte !== 'object' || alerte === null) {
-        console.error(`❌ ${position}: l'alerte doit être un objet`);
-        return;
-      }
-
-      // Vérifier le champ obligatoire "titre"
-      if (!('titre' in alerte)) {
-        console.error(`❌ ${position}: champ obligatoire "titre" manquant`);
-        return;
-      }
-      
-      if (typeof alerte.titre !== 'string') {
-        console.error(`❌ ${position}: "titre" doit être une chaîne de caractères`);
-      }
-
-      // Vérifier optionsCible si présent
-      if (alerte.optionsCible !== undefined) {
-        if (typeof alerte.optionsCible !== 'object' || alerte.optionsCible === null) {
-          console.error(`❌ ${position} (${alerte.titre}): "optionsCible" doit être un objet`);
-        } else {
-          const { cible, coloration, icone, texteSurvol } = alerte.optionsCible;
-          
-          if (cible !== undefined && typeof cible !== 'string') {
-            console.error(`❌ ${position} (${alerte.titre}): optionsCible.cible doit être une chaîne de caractères`);
-          } else if (cible !== undefined && !['atcd', 'etatCivil'].includes(cible)) {
-            console.error(`❌ ${position} (${alerte.titre}): optionsCible.cible ne peut être que "atcd" ou "etatCivil" (pour l'instant)`);
-          }
-          
-          if (coloration !== undefined && typeof coloration !== 'boolean' && typeof coloration !== 'string') {
-            console.error(`❌ ${position} (${alerte.titre}): optionsCible.coloration doit être un booléen ou une chaîne (couleur CSS)`);
-          }
-          
-          if (icone !== undefined && typeof icone !== 'string') {
-            console.error(`❌ ${position} (${alerte.titre}): optionsCible.icone doit être une chaîne de caractères`);
-          }
-          
-          if (texteSurvol !== undefined && typeof texteSurvol !== 'string') {
-            console.error(`❌ ${position} (${alerte.titre}): optionsCible.texteSurvol doit être une chaîne de caractères`);
-          }
-        }
-      }
-
-      // Vérifier alerteWeda si présent
-      if (alerte.alerteWeda !== undefined) {
-        if (typeof alerte.alerteWeda !== 'object' || alerte.alerteWeda === null) {
-          console.error(`❌ ${position} (${alerte.titre}): "alerteWeda" doit être un objet`);
-        } else {
-          const { icone, typeAlerte, dureeAlerte, texteAlerte } = alerte.alerteWeda;
-          
-          if (icone !== undefined && typeof icone !== 'string') {
-            console.error(`❌ ${position} (${alerte.titre}): alerteWeda.icone doit être une chaîne de caractères`);
-          }
-          
-          if (typeAlerte !== undefined && typeof typeAlerte !== 'string') {
-            console.error(`❌ ${position} (${alerte.titre}): alerteWeda.typeAlerte doit être une chaîne de caractères`);
-          }
-          
-          if (dureeAlerte !== undefined && typeof dureeAlerte !== 'number') {
-            console.error(`❌ ${position} (${alerte.titre}): alerteWeda.dureeAlerte doit être un nombre`);
-          }
-          
-          if (texteAlerte !== undefined && typeof texteAlerte !== 'string') {
-            console.error(`❌ ${position} (${alerte.titre}): alerteWeda.texteAlerte doit être une chaîne de caractères`);
-          }
-        }
-      }
-
-      // Vérifier conditions si présent
-      if (alerte.conditions !== undefined) {
-        if (typeof alerte.conditions !== 'object' || alerte.conditions === null) {
-          console.error(`❌ ${position} (${alerte.titre}): "conditions" doit être un objet`);
-        } else {
-          const { ageMin, ageMax, sexes, dateDebut, dateFin, motsCles } = alerte.conditions;
-          
-          if (ageMin !== undefined && ageMin !== null && typeof ageMin !== 'number') {
-            console.error(`❌ ${position} (${alerte.titre}): conditions.ageMin doit être un nombre ou null`);
-          }
-          
-          if (ageMax !== undefined && ageMax !== null && typeof ageMax !== 'number') {
-            console.error(`❌ ${position} (${alerte.titre}): conditions.ageMax doit être un nombre ou null`);
-          }
-          
-          if (sexes !== undefined && sexes !== null && typeof sexes !== 'string') {
-            console.error(`❌ ${position} (${alerte.titre}): conditions.sexes doit être une chaîne de caractères ou null`);
-          } else if (typeof sexes === 'string' && !['F', 'M', 'N'].includes(sexes)) {
-            console.error(`❌ ${position} (${alerte.titre}): conditions.sexes doit être "F", "M" ou "N"`);
-          }
-          
-          if (dateDebut !== undefined && dateDebut !== null && typeof dateDebut !== 'string') {
-            console.error(`❌ ${position} (${alerte.titre}): conditions.dateDebut doit être une chaîne de caractères (format DD/MM/YYYY) ou null`);
-          }
-          
-          if (dateFin !== undefined && dateFin !== null && typeof dateFin !== 'string') {
-            console.error(`❌ ${position} (${alerte.titre}): conditions.dateFin doit être une chaîne de caractères (format DD/MM/YYYY) ou null`);
-          }
-          
-          if (motsCles !== undefined && !Array.isArray(motsCles)) {
-            console.error(`❌ ${position} (${alerte.titre}): conditions.motsCles doit être un tableau`);
-          } else if (Array.isArray(motsCles)) {
-            motsCles.forEach((mot, i) => {
-              if (typeof mot !== 'string') {
-                console.error(`❌ ${position} (${alerte.titre}): conditions.motsCles[${i}] doit être une chaîne de caractères`);
-              }
-            });
-          }
-        }
-      }
-    });
+    // Utiliser la fonction de validation mutualisée
+    const validation = validateAlertes(listeAlertes, schema);
+    
+    if (!validation.valid) {
+      console.error(`❌ Erreurs de validation pour le cabinet ${cabinetId}:`);
+      validation.errors.forEach(error => console.error(`  - ${error}`));
+    } else {
+      console.log(`✅ Cabinet ${cabinetId}: ${listeAlertes.length} alerte(s) valide(s)`);
+    }
   }
 
   console.log('✅ Validation des alertes terminée');
 }
 
-validerStructureAlertes(alertesAtcdGlobal);
+// Valider les alertes globales de manière asynchrone
+validerStructureAlertes(alertesAtcdGlobal).catch(err => {
+  console.error('❌ Erreur lors de la validation des alertes:', err);
+});
 
 // Test en environnement Node.js
 if (typeof require !== 'undefined' && require.main === module) {

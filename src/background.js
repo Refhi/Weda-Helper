@@ -210,6 +210,131 @@ const customFieldsDefault3 = JSON.stringify([
  * Format conforme à alerteSchema (voir alertesAtcd.js)
  * ⚠️ EXEMPLES UNIQUEMENT - À personnaliser selon vos besoins
  */
+
+/**
+ * Schéma de validation pour les alertes personnalisées
+ * Définit la structure attendue pour chaque alerte
+ */
+const alerteSchema = {
+  titre: {
+    type: 'string',
+    required: true,
+    description: 'Titre de l\'alerte (non affiché, sert à s\'y retrouver)'
+  },
+  optionsCible: {
+    type: 'object',
+    required: false,
+    description: 'Options d\'affichage de la cible (antécédent ou état civil)',
+    properties: {
+      cible: {
+        type: 'string',
+        required: false,
+        description: 'Cible de l\'alerte',
+        enum: ['atcd', 'etatCivil'],
+        default: 'atcd'
+      },
+      coloration: {
+        type: ['boolean', 'string'],
+        required: false,
+        description: 'Coloration de la cible (false ou nom de couleur CSS)',
+        default: false
+      },
+      icone: {
+        type: 'string',
+        required: false,
+        description: 'Icône Material à afficher',
+        default: 'info'
+      },
+      texteSurvol: {
+        type: 'string',
+        required: false,
+        description: 'Texte affiché au survol de la cible',
+        default: ''
+      }
+    }
+  },
+  alerteWeda: {
+    type: 'object',
+    required: false,
+    description: 'Configuration de l\'alerte WEDA (notification)',
+    properties: {
+      icone: {
+        type: 'string',
+        required: false,
+        description: 'Icône Material de l\'alerte',
+        default: 'info'
+      },
+      typeAlerte: {
+        type: 'string',
+        required: false,
+        description: 'Type d\'alerte visuelle',
+        enum: ['success', 'fail', 'undefined'],
+        default: undefined
+      },
+      dureeAlerte: {
+        type: 'number',
+        required: false,
+        description: 'Durée d\'affichage en secondes (0 = jusqu\'à fermeture manuelle)',
+        default: 10,
+        min: 0
+      },
+      texteAlerte: {
+        type: 'string',
+        required: false,
+        description: 'Texte de la notification (obligatoire pour afficher l\'alerte)',
+        default: ''
+      }
+    }
+  },
+  conditions: {
+    type: 'object',
+    required: false,
+    description: 'Conditions de déclenchement de l\'alerte',
+    properties: {
+      ageMin: {
+        type: 'number',
+        required: false,
+        description: 'Âge minimum',
+        default: null
+      },
+      ageMax: {
+        type: 'number',
+        required: false,
+        description: 'Âge maximum',
+        default: null
+      },
+      sexes: {
+        type: 'string',
+        required: false,
+        description: 'Sexes concernés',
+        enum: ['F', 'M', 'N'],
+        default: null
+      },
+      dateDebut: {
+        type: 'string',
+        required: false,
+        description: 'Date de début de validité (format DD/MM/YYYY)',
+        format: 'date',
+        default: null
+      },
+      dateFin: {
+        type: 'string',
+        required: false,
+        description: 'Date de fin de validité (format DD/MM/YYYY)',
+        format: 'date',
+        default: null
+      },
+      motsCles: {
+        type: 'array',
+        required: false,
+        description: 'Mots-clés à rechercher dans les antécédents',
+        itemType: 'string',
+        default: []
+      }
+    }
+  }
+};
+
 const alertesAtcdOptionDefault = JSON.stringify([
     {
         titre: "Alerte avec coloration CSS personnalisée",
@@ -1348,7 +1473,12 @@ var defaultShortcuts = {
 };
 
 // retour à un chargement systématique, a priori sans impact évident sur le temps de chargement
-chrome.storage.local.set({ defaultSettings: defaultSettings, defaultShortcuts: defaultShortcuts, advancedDefaultSettings: advancedDefaultSettings }, function () {
+chrome.storage.local.set({ 
+    defaultSettings: defaultSettings, 
+    defaultShortcuts: defaultShortcuts, 
+    advancedDefaultSettings: advancedDefaultSettings,
+    alerteSchema: alerteSchema  // Schéma de validation des alertes
+}, function () {
     console.log('[background.js] Les valeurs et raccourcis par défaut ont été enregistrées');
 });
 

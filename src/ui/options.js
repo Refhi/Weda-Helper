@@ -4,6 +4,14 @@
  * Gère l'affichage et la modification de toutes les options (avancées et raccourcis),
  * avec support des sous-options, validation, import/export et recherche.
  * 
+ * TODO (Point 5): Refactoriser ce fichier en modules séparés pour améliorer la maintenabilité:
+ *   - options-ui.js : Génération de l'interface (traverseOptions, createInput, etc.)
+ *   - options-save.js : Logique de sauvegarde (collectCurrentValues, saveOptions)
+ *   - options-import-export.js : Import/export JSON
+ *   - options-search.js : Fonctionnalité de recherche
+ *   - options-init.js : Initialisation et événements
+ *   Les charger dynamiquement comme alertes-validator.js et alert-editor-modal.js
+ * 
  * @exports traverseOptions - Parcourt les options récursivement
  * @exports generateOptionsPage - Génère l'interface des options
  * @exports saveOptions - Sauvegarde les options modifiées
@@ -11,11 +19,52 @@
  * 
  * @requires storage.js (getOption)
  * @requires background.js (advancedDefaultSettings, defaultShortcuts)
+ * @requires alertes-validator.js (validateProperty, validateAlertes, getAlerteSchema)
  */
+
+// Charger le validateur d'alertes dynamiquement
+(function loadValidator() {
+  const script = document.createElement('script');
+  script.src = '../utils/alertes-validator.js';
+  script.onerror = () => console.error('❌ Erreur de chargement du validateur d\'alertes');
+  document.head.appendChild(script);
+})();
+
+// Charger l'éditeur modal d'alertes dynamiquement
+(function loadAlertEditor() {
+  const script = document.createElement('script');
+  script.src = 'alert-editor-modal.js';
+  script.onerror = () => console.error('❌ Erreur de chargement de l\'éditeur d\'alertes');
+  document.head.appendChild(script);
+})();
 
 // // --------- Page de gestion des options de l'extension----------
 // L'ajout et la modification d'options existantes se fait dans le fichier background.js
 // => variables advancedDefaultSettings et defaultShortcuts
+
+/**
+ * Formate un JSON de manière lisible avec indentation
+ * @param {string} jsonString - Chaîne JSON à formater
+ * @returns {string} JSON formaté ou chaîne originale en cas d'erreur
+ */
+function formatJsonPretty(jsonString) {
+  try {
+    const parsed = JSON.parse(jsonString);
+    return JSON.stringify(parsed, null, 2);
+  } catch (e) {
+    return jsonString;
+  }
+}
+
+/**
+ * Note: Les fonctions de validation des alertes (validateProperty, validateAlertes)
+ * sont maintenant dans src/utils/alertes-validator.js pour être partagées
+ * entre options.js et alertesAtcd.js
+ * 
+ * La fonction openAlertEditorModal() est dans alert-editor-modal.js
+ * et sera appelée automatiquement par le bouton "✏️ Assistant"
+ */
+
 /**
  * Traverse les options, sous-options et sous-sections d'un ensemble de paramètres et applique une fonction de rappel à chaque option.
  * @param {Array} settings - La liste des catégories de paramètres.
@@ -94,7 +143,7 @@ function createInput(option) { // gestion des différents types d'input
   let inputType = 'input';
   if (['html', 'radio'].includes(option.type)) {
     inputType = 'div';
-  } else if (option.type === 'json') {
+  } else if (['json', 'true_json'].includes(option.type)) {
     inputType = 'textarea'; // Utiliser un textarea pour les options de type json
   }
   const input = document.createElement(inputType);
@@ -132,6 +181,29 @@ function createInput(option) { // gestion des différents types d'input
           this.style.height = '40px';
         });
 
+        break;
+      case 'true_json':
+        input.classList.add('true-json-input');
+        // Pour true_json, afficher directement le JSON sans transformation
+        input.value = formatJsonPretty(optionValue);
+        input.style.minHeight = '200px';
+        input.style.width = '100%';
+        input.style.fontFamily = 'monospace';
+        input.style.fontSize = '12px';
+        input.style.whiteSpace = 'pre';
+        input.style.overflowX = 'auto';
+        
+        // Validation JSON en temps réel
+        input.addEventListener('input', function() {
+          try {
+            JSON.parse(this.value);
+            this.style.borderColor = '';
+            this.style.backgroundColor = '';
+          } catch (e) {
+            this.style.borderColor = 'red';
+            this.style.backgroundColor = '#fff0f0';
+          }
+        });
         break;
       case 'smalltext':
         input.type = 'text';
@@ -354,8 +426,8 @@ function createLabel(option) {
   label.innerHTML = option.description;
   label.setAttribute('for', option.name);
 
-  // Pour les options JSON ou si longDescription existe, ajouter l'icône d'information
-  if (option.longDescription || option.type === 'json') {
+  // Pour les options JSON ou true_json ou si longDescription existe, ajouter l'icône d'information
+  if (option.longDescription || ['json', 'true_json'].includes(option.type)) {
     const infoIcon = document.createElement('span');
     infoIcon.innerHTML = ' ℹ️';
     infoIcon.className = 'info-icon';
@@ -375,6 +447,12 @@ function createLabel(option) {
       tooltipContent += '<br><br><strong>Valeur par défaut :</strong><br>';
       tooltipContent += displayCategories(option.default).replace(/\n/g, '<br>');
     }
+    
+    // Si c'est une option true_json, afficher la valeur par défaut formatée
+    if (option.type === 'true_json') {
+      tooltipContent += '<br><br><strong>Valeur par défaut :</strong><br>';
+      tooltipContent += '<pre>' + formatJsonPretty(option.default) + '</pre>';
+    }
 
     tooltip.innerHTML = tooltipContent;
     infoIcon.appendChild(tooltip);
@@ -382,7 +460,7 @@ function createLabel(option) {
   }
 
   // Ajouter un bouton "Valeur par défaut" pour certains types d'options
-  if (['text', 'json', 'smalltext'].includes(option.type)) {
+  if (['text', 'json', 'smalltext', 'true_json'].includes(option.type)) {
     const defaultBtn = document.createElement('button');
     defaultBtn.textContent = '↻';
     defaultBtn.title = 'Restaurer la valeur par défaut';
@@ -403,6 +481,12 @@ function createLabel(option) {
         if (option.type === 'json') {
           // Pour les options JSON, utiliser displayCategories pour formater
           inputElement.value = displayCategories(option.default);
+        } else if (option.type === 'true_json') {
+          // Pour les options true_json, formater joliment le JSON
+          inputElement.value = formatJsonPretty(option.default);
+          // Réinitialiser le style en cas d'erreur précédente
+          inputElement.style.borderColor = '';
+          inputElement.style.backgroundColor = '';
         } else {
           // Pour les autres types, utiliser directement la valeur par défaut
           inputElement.value = option.default;
@@ -414,6 +498,23 @@ function createLabel(option) {
     });
 
     label.appendChild(defaultBtn);
+  }
+  
+  // Ajouter un bouton "Assistant d'édition" pour les options true_json
+  if (option.type === 'true_json') {
+    const assistantBtn = document.createElement('button');
+    assistantBtn.textContent = '✏️ Assistant';
+    assistantBtn.title = 'Ouvrir l\'assistant d\'édition';
+    assistantBtn.className = 'default-value-btn'; // Réutiliser le même style
+    assistantBtn.style.background = '#00a300';
+    assistantBtn.type = 'button';
+    
+    assistantBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      openAlertEditorModal(option.name);
+    });
+    
+    label.appendChild(assistantBtn);
   }
 
   return label;
@@ -587,51 +688,83 @@ chrome.storage.local.get('defaultShortcuts', function (result) {
 // Fonction mutualisée pour collecter les valeurs des options et raccourcis
 function collectCurrentValues(defaultSettings, defaultShortcuts) {
   return new Promise((resolve, reject) => {
-    var options = Object.keys(defaultSettings);
-    var valuesToSave = {};
-    let hasValidationError = false; // Flag pour détecter les erreurs de validation
+    // Récupérer le schéma de validation des alertes
+    chrome.storage.local.get('alerteSchema', function(result) {
+      const alerteSchema = result.alerteSchema;
+      
+      var options = Object.keys(defaultSettings);
+      var valuesToSave = {};
+      let hasValidationError = false; // Flag pour détecter les erreurs de validation
 
-    options.forEach(function (option) {
-      let element = document.getElementById(option);
-      if (element && element.classList.contains('radio-group')) {
-        valuesToSave[option] = getSelectedRadioValue(option);
-      } else if (element && element.classList.contains('json-input')) {
-        const jsonData = getCategoriesFromJsonInput(element);
-        // Si la conversion retourne null, il y a eu une erreur
-        if (jsonData === null) {
-          console.error('❌ Erreur lors de la validation pour l\'option', option);
-          hasValidationError = true;
-          return; // On arrête le traitement de cette option
+      options.forEach(function (option) {
+        let element = document.getElementById(option);
+        if (element && element.classList.contains('radio-group')) {
+          valuesToSave[option] = getSelectedRadioValue(option);
+        } else if (element && element.classList.contains('json-input')) {
+          const jsonData = getCategoriesFromJsonInput(element);
+          // Si la conversion retourne null, il y a eu une erreur
+          if (jsonData === null) {
+            console.error('❌ Erreur lors de la validation pour l\'option', option);
+            hasValidationError = true;
+            return; // On arrête le traitement de cette option
+          }
+          valuesToSave[option] = JSON.stringify(jsonData);
+        } else if (element && element.classList.contains('true-json-input')) {
+          // Pour true_json, valider le JSON et le sauvegarder tel quel
+          try {
+            const parsed = JSON.parse(element.value);
+            
+            // Validation spécifique pour alertesAtcdOption
+            if (option === 'alertesAtcdOption' && alerteSchema) {
+              const validation = validateAlertes(parsed, alerteSchema);
+              if (!validation.valid) {
+                console.error('❌ Validation des alertes échouée:', validation.errors);
+                const errorMessage = '❌ Validation des alertes échouée:\n\n' + 
+                  validation.errors.slice(0, 10).join('\n') +
+                  (validation.errors.length > 10 ? `\n\n... et ${validation.errors.length - 10} autres erreurs` : '');
+                alert(errorMessage);
+                hasValidationError = true;
+                return;
+              }
+              console.log('✅ Validation des alertes réussie');
+            }
+            
+            valuesToSave[option] = JSON.stringify(parsed); // Minifier pour le stockage
+          } catch (e) {
+            console.error('❌ JSON invalide pour l\'option', option, ':', e.message);
+            alert(`❌ JSON invalide pour "${option}":\n${e.message}`);
+            hasValidationError = true;
+            return;
+          }
+        } else if (element) { // Vérifiez si l'élément existe
+          var value = element.type === 'checkbox' ? element.checked : element.value;
+          valuesToSave[option] = value;
+        } else {
+          console.log('Aucun élément trouvé avec l\'ID', option);
         }
-        valuesToSave[option] = JSON.stringify(jsonData);
-      } else if (element) { // Vérifiez si l'élément existe
-        var value = element.type === 'checkbox' ? element.checked : element.value;
-        valuesToSave[option] = value;
-      } else {
-        console.log('Aucun élément trouvé avec l\'ID', option);
+      });
+
+      // Si une erreur de validation a été détectée, on rejette la promesse
+      if (hasValidationError) {
+        reject(new Error('Erreurs de validation détectées'));
+        return;
       }
+
+      // Ajouter les raccourcis
+      var shortcuts = {};
+      Object.entries(defaultShortcuts).forEach(([key, shortcut]) => {
+        let element = document.getElementById(key);
+        if (element) {
+          shortcuts[key] = element.innerHTML;
+        }
+        else {
+          console.log('Aucun élément avec l\'ID', key);
+        }
+      });
+      valuesToSave["shortcuts"] = shortcuts;
+
+      resolve(valuesToSave);
     });
-
-    // Si une erreur de validation a été détectée, on rejette la promesse
-    if (hasValidationError) {
-      reject(new Error('Erreurs de validation détectées'));
-      return;
-    }
-
-    // Ajouter les raccourcis
-    var shortcuts = {};
-    Object.entries(defaultShortcuts).forEach(([key, shortcut]) => {
-      let element = document.getElementById(key);
-      if (element) {
-        shortcuts[key] = element.innerHTML;
-      }
-      else {
-        console.log('Aucun élément avec l\'ID', key);
-      }
-    });
-    valuesToSave["shortcuts"] = shortcuts;
-
-    resolve(valuesToSave);
   });
 }
 

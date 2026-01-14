@@ -36,6 +36,7 @@
         "src/utils/metrics.js",
         "src/utils/dom-helpers.js",
         "src/utils/notifications.js",
+        "src/utils/alertes-validator.js",
         "src/utils/tweaks.js",
         "src/utils/option-updater.js",
         "src/utils/optionValuesUpdates.js",
