@@ -519,17 +519,51 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
     
     console.log('[alertesAtcd] cabinetId', cabinetId);
     
-    let toutesLesAlertes = [];
+    // Récupération des alertes personnalisées de l'utilisateur (JSON direct = tableau d'alertes)
+    const alertesPersonnalisees = await (async function() {
+        try {
+            const alertesAtcdOptionValue = await getOptionPromise('alertesAtcdOption');
+            if (!alertesAtcdOptionValue) return [];
+            
+            // Parser le JSON - doit être directement un tableau d'alertes
+            const alertesParsed = JSON.parse(alertesAtcdOptionValue);
+            
+            if (Array.isArray(alertesParsed)) {
+                return alertesParsed;
+            } else {
+                console.warn('[alertesAtcd] Format inattendu pour alertesAtcdOption, tableau attendu');
+                return [];
+            }
+        } catch (error) {
+            console.error('[alertesAtcd] Erreur lors du parsing des alertes personnalisées:', error);
+            return [];
+        }
+    })();
+    
+    // Récupération des alertes globales du cabinet
+    const alertesGlobales = [];
     if (cabinetId && typeof alertesAtcdGlobal !== 'undefined' && alertesAtcdGlobal[cabinetId]) {
-        toutesLesAlertes = alertesAtcdGlobal[cabinetId];
+        alertesGlobales.push(...alertesAtcdGlobal[cabinetId]);
     }
-    console.log('[alertesAtcd] alertes du cabinet', toutesLesAlertes);
+    
+    // Fusion des alertes : les alertes personnalisées en premier, puis les globales
+    // Cela permet aux alertes personnalisées d'avoir la priorité si nécessaire
+    let toutesLesAlertes = [...alertesPersonnalisees, ...alertesGlobales];
+    
+    console.log('[alertesAtcd] Alertes personnalisées:', alertesPersonnalisees.length);
+    console.log('[alertesAtcd] Alertes du cabinet:', alertesGlobales.length);
     console.log('[alertesAtcd] Total des alertes actives', toutesLesAlertes.length);
 
     if (toutesLesAlertes.length === 0) {
         console.log('[alertesAtcd] Aucune alerte configurée');
         return;
     }
+
+    // Récupération des options de sous-affichage
+    const afficherPopup = await getOptionPromise('alertesAtcdOptionGlobalPopup');
+    const afficherMarquage = await getOptionPromise('alertesAtcdOptionGlobalLocalMarking');
+    
+    console.log('[alertesAtcd] Options d\'affichage - Popup:', afficherPopup, 'Marquage:', afficherMarquage);
 
     // Liste de tous les span du panel
     const spanElements = atcdDiv.querySelectorAll('span');
@@ -568,54 +602,67 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
                     if (alertesAffichees.has(cleElement)) return;
                     alertesAffichees.set(cleElement, true);
 
+                    // Déterminer si l'alerte provient des alertes globales ou personnalisées
+                    const estAlerteGlobale = alertesGlobales.includes(alert);
+                    
                     // Afficher une notification si alerteWeda est présent avec texteAlerte
                     // ET si cette alerte n'a pas déjà envoyé de notification
+                    // ET si l'option popup est activée (ou si c'est une alerte personnalisée)
                     if (alert.alerteWeda && alert.alerteWeda.texteAlerte && !notificationsEnvoyees.has(alert.titre)) {
-                        const iconeWeda = alert.alerteWeda.icone || 'warning';
-                        const typeAlerte = alert.alerteWeda.typeAlerte || 'success';
-                        const dureeAlerte = alert.alerteWeda.dureeAlerte ? alert.alerteWeda.dureeAlerte * 1000 : 10000;
+                        const doitAfficherPopup = !estAlerteGlobale || afficherPopup;
                         
-                        console.log('[alertesAtcd] Envoi de la notification pour l\'alerte:', alert.titre, 'mot-clé:', motCle, "icône:", iconeWeda);
-                        sendWedaNotifAllTabs({
-                            message: alert.alerteWeda.texteAlerte,
-                            type: typeAlerte,
-                            duration: dureeAlerte,
-                            icon: iconeWeda,
-                        });
+                        if (doitAfficherPopup) {
+                            const iconeWeda = alert.alerteWeda.icone || 'warning';
+                            const typeAlerte = alert.alerteWeda.typeAlerte || 'success';
+                            const dureeAlerte = alert.alerteWeda.dureeAlerte ? alert.alerteWeda.dureeAlerte * 1000 : 10000;
+                            
+                            console.log('[alertesAtcd] Envoi de la notification pour l\'alerte:', alert.titre, 'mot-clé:', motCle, "icône:", iconeWeda);
+                            sendWedaNotifAllTabs({
+                                message: alert.alerteWeda.texteAlerte,
+                                type: typeAlerte,
+                                duration: dureeAlerte,
+                                icon: iconeWeda,
+                            });
+                        }
                         
                         // Marquer cette alerte comme ayant envoyé une notification
                         notificationsEnvoyees.add(alert.titre);
                     }
 
-                    // Appliquer la coloration si le flag est activé dans optionsCible
-                    const coloration = alert.optionsCible?.coloration;
-                    if (coloration) {
-                        if (typeof coloration === 'string') {
-                            // Si c'est une couleur CSS spécifique
-                            spanElement.style.color = coloration;
-                        } else if (coloration === true) {
-                            // Si c'est un booléen true, utiliser vert par défaut
-                            spanElement.style.color = 'green';
+                    // Appliquer le marquage visuel si l'option est activée (ou si c'est une alerte personnalisée)
+                    const doitAfficherMarquage = !estAlerteGlobale || afficherMarquage;
+                    
+                    if (doitAfficherMarquage) {
+                        // Appliquer la coloration si le flag est activé dans optionsCible
+                        const coloration = alert.optionsCible?.coloration;
+                        if (coloration) {
+                            if (typeof coloration === 'string') {
+                                // Si c'est une couleur CSS spécifique
+                                spanElement.style.color = coloration;
+                            } else if (coloration === true) {
+                                // Si c'est un booléen true, utiliser vert par défaut
+                                spanElement.style.color = 'green';
+                            }
+                            spanElement.style.fontWeight = 'bold';
                         }
-                        spanElement.style.fontWeight = 'bold';
-                    }
 
-                    // Ajouter une icône si définie dans optionsCible
-                    const icone = alert.optionsCible?.icone;
-                    if (icone) {
-                        const iconElement = document.createElement('span');
-                        iconElement.className = 'material-icons';
-                        iconElement.textContent = icone;
-                        iconElement.style.fontSize = '16px';
-                        iconElement.style.verticalAlign = 'middle';
-                        iconElement.style.marginLeft = '4px';
-                        spanElement.appendChild(iconElement);
-                    }
+                        // Ajouter une icône si définie dans optionsCible
+                        const icone = alert.optionsCible?.icone;
+                        if (icone) {
+                            const iconElement = document.createElement('span');
+                            iconElement.className = 'material-icons';
+                            iconElement.textContent = icone;
+                            iconElement.style.fontSize = '16px';
+                            iconElement.style.verticalAlign = 'middle';
+                            iconElement.style.marginLeft = '4px';
+                            spanElement.appendChild(iconElement);
+                        }
 
-                    // Ajouter un tooltip avec texteSurvol
-                    const texteSurvol = alert.optionsCible?.texteSurvol;
-                    if (texteSurvol) {
-                        spanElement.title = texteSurvol;
+                        // Ajouter un tooltip avec texteSurvol
+                        const texteSurvol = alert.optionsCible?.texteSurvol;
+                        if (texteSurvol) {
+                            spanElement.title = texteSurvol;
+                        }
                     }
                 }
             });
