@@ -186,12 +186,7 @@ validerStructureAlertes(alertesAtcdGlobal).catch(err => {
   console.error('❌ Erreur lors de la validation des alertes:', err);
 });
 
-// Test en environnement Node.js
-if (typeof require !== 'undefined' && require.main === module) {
-  // afficher l'ensemble de la structure pour vérification visuelle avec coloration
-  console.dir(alertesAtcdGlobal, { depth: null, colors: true });
-  return;
-}
+
 
 
 
@@ -302,7 +297,10 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
         const cabinetInfoLines = cabinetElement.title.split('\n');
         for (let line of cabinetInfoLines) {
             if (line.startsWith('CabinetID : ')) {
-                return line.replace('CabinetID : ', '').trim();
+                const cabinetId = line.replace('CabinetID : ', '').trim();
+                // On en profite pour enregistrer l'info dans le storage local pour d'autres usages
+                await chrome.storage.local.set({ currentCabinetId: cabinetId });
+                return cabinetId;
             }
         }
         return null;

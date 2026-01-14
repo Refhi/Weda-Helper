@@ -319,7 +319,7 @@ const alerteSchema = {
       },
       dateFin: {
         type: 'string',
-        required: false,
+        required: true,
         description: 'Date de fin de validité (format DD/MM/YYYY)',
         format: 'date',
         default: null

@@ -221,7 +221,7 @@ function createModalElement() {
   overlay.innerHTML = `
     <div class="alert-editor-modal">
       <div class="alert-editor-header">
-        <h2>✏️ Assistant d'édition des alertes</h2>
+        <h2>✏️ Édition des alertes personnalisées</h2>
         <button class="alert-editor-close" title="Fermer">✕</button>
       </div>
       <div class="alert-editor-content">
@@ -307,7 +307,14 @@ function renderAlertesList(modal, alertes, schema, optionName, inputElement) {
 
   // Bouton ajouter
   modal.querySelector('.alert-editor-add-btn').onclick = () => {
-    renderAlerteForm(modal, alertes, -1, schema, optionName, inputElement);
+    // Créer immédiatement un squelette d'alerte
+    const nouvelleAlerte = createDefaultAlerte(schema);
+    alertes.push(nouvelleAlerte);
+    const newIndex = alertes.length - 1;
+    // Rafraîchir la liste pour afficher la nouvelle alerte
+    renderAlertesList(modal, alertes, schema, optionName, inputElement);
+    // Ouvrir le formulaire d'édition
+    renderAlerteForm(modal, alertes, newIndex, schema, optionName, inputElement);
   };
 
   // Bouton sauvegarder
@@ -410,13 +417,13 @@ function renderAlerteForm(modal, alertes, index, schema, optionName, inputElemen
             <input type="text" name="dateDebut" value="${alerte.conditions?.dateDebut || ''}" placeholder="01/01/2024" pattern="\\d{2}/\\d{2}/\\d{4}">
           </label>
           <label>
-            Date de fin (DD/MM/YYYY)
-            <input type="text" name="dateFin" value="${alerte.conditions?.dateFin || ''}" placeholder="31/12/2025" pattern="\\d{2}/\\d{2}/\\d{4}">
+            Date de fin (DD/MM/YYYY) <span style="color: #d32f2f;" title="Champ obligatoire">*</span>
+            <input type="text" name="dateFin" value="${alerte.conditions?.dateFin || ''}" placeholder="31/12/2025" pattern="\\d{2}/\\d{2}/\\d{4}" required>
           </label>
         </div>
         <label>
-          Mots-clés (un par ligne) *
-          <textarea name="motsCles" rows="4" required placeholder="diabète&#10;diabète type 2&#10;DT2">${(alerte.conditions?.motsCles || []).join('\n')}</textarea>
+          Mots-clés (un par ligne)
+          <textarea name="motsCles" rows="4" placeholder="diabète&#10;diabète type 2&#10;DT2">${(alerte.conditions?.motsCles || []).join('\n')}</textarea>
           <small>L'alerte se déclenchera si l'un de ces mots est trouvé dans les antécédents</small>
         </label>
       </fieldset>
@@ -631,21 +638,33 @@ function renderAlerteForm(modal, alertes, index, schema, optionName, inputElemen
     
     if (!isValid) return;
     
+    // Construire l'alerte et valider avec le schéma
     const nouvelleAlerte = buildAlerteFromForm();
     
-    if (isNew) {
-      // Ajouter la nouvelle alerte si elle n'existe pas encore
-      if (alertes.length === 0 || alertes[alertes.length - 1] !== alerte) {
-        alertes.push(nouvelleAlerte);
-        console.log('🆕 Nouvelle alerte ajoutée:', nouvelleAlerte);
-      } else {
-        alertes[alertes.length - 1] = nouvelleAlerte;
-      }
-    } else {
-      // Mettre à jour l'alerte existante
-      alertes[index] = nouvelleAlerte;
-      console.log('✏️ Alerte mise à jour:', nouvelleAlerte);
+    // Validation supplémentaire basée sur le schéma
+    const validationResult = validateAlertes([nouvelleAlerte], schema);
+    
+    // Marquer les champs en erreur selon le schéma
+    if (!validationResult.valid) {
+      validationResult.errors.forEach(error => {
+        console.warn('⚠️ Erreur de validation:', error);
+        // Extraire le nom du champ de l'erreur (ex: "Alerte #1.conditions.dateFin")
+        const match = error.match(/\.([^.:]+):/);
+        if (match) {
+          const fieldName = match[1];
+          const field = form.querySelector(`[name="${fieldName}"]`);
+          if (field) {
+            field.style.borderColor = '#dc3545';
+            field.style.borderWidth = '2px';
+          }
+        }
+      });
+      return;
     }
+    
+    // Mettre à jour l'alerte existante (index toujours valide maintenant)
+    alertes[index] = nouvelleAlerte;
+    console.log('✏️ Alerte mise à jour (index ' + index + '):', nouvelleAlerte);
     
     // Rafraîchir la liste
     renderAlertesList(modal, alertes, schema, optionName, inputElement);
@@ -655,11 +674,6 @@ function renderAlerteForm(modal, alertes, index, schema, optionName, inputElemen
   const form = formContainer.querySelector('#alertForm');
   form.addEventListener('input', updateAlerte);
   form.addEventListener('change', updateAlerte);
-  
-  // Si c'est une nouvelle alerte, l'ajouter immédiatement
-  if (isNew) {
-    updateAlerte();
-  }
 }
 
 /**

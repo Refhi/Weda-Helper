@@ -192,6 +192,7 @@ function createInput(option) { // gestion des différents types d'input
         input.style.fontSize = '12px';
         input.style.whiteSpace = 'pre';
         input.style.overflowX = 'auto';
+        input.style.display = 'none'; // Masqué par défaut
         
         // Validation JSON en temps réel
         input.addEventListener('input', function() {
@@ -500,12 +501,13 @@ function createLabel(option) {
     label.appendChild(defaultBtn);
   }
   
-  // Ajouter un bouton "Assistant d'édition" pour les options true_json
+  // Ajouter des boutons pour les options true_json
   if (option.type === 'true_json') {
+    // Bouton Éditer les alertes
     const assistantBtn = document.createElement('button');
-    assistantBtn.textContent = '✏️ Assistant';
-    assistantBtn.title = 'Ouvrir l\'assistant d\'édition';
-    assistantBtn.className = 'default-value-btn'; // Réutiliser le même style
+    assistantBtn.textContent = '✏️ Éditer les alertes';
+    assistantBtn.title = 'Ouvrir l\'interface d\'édition guidée';
+    assistantBtn.className = 'default-value-btn';
     assistantBtn.style.background = '#00a300';
     assistantBtn.type = 'button';
     
@@ -515,6 +517,116 @@ function createLabel(option) {
     });
     
     label.appendChild(assistantBtn);
+    
+    // Bouton Éditeur avancé (toggle JSON)
+    const advancedBtn = document.createElement('button');
+    advancedBtn.textContent = '📝 Éditeur avancé';
+    advancedBtn.title = 'Afficher/Masquer le JSON brut';
+    advancedBtn.className = 'default-value-btn';
+    advancedBtn.style.background = '#6c757d';
+    advancedBtn.type = 'button';
+    
+    advancedBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const textarea = document.getElementById(option.name);
+      if (textarea) {
+        const isHidden = textarea.style.display === 'none';
+        textarea.style.display = isHidden ? 'block' : 'none';
+        advancedBtn.textContent = isHidden ? '💁 Masquer JSON' : '📝 Éditeur avancé';
+      }
+    });
+    
+    label.appendChild(advancedBtn);
+    
+    // Bouton Étendre les alertes au Pôle
+    const poleBtn = document.createElement('a');
+    poleBtn.textContent = '🌐 Étendre au Pôle';
+    poleBtn.title = 'Procédure :\n1. Créez un compte GitHub gratuit si nécessaire\n2. Vérifiez que vos alertes sont bien configurées\n3. Cliquez pour créer une demande GitHub\n4. L\'issue s\'ouvrira pré-remplie avec vos alertes\n5. L\'administrateur du Pôle pourra alors les diffuser';
+    poleBtn.className = 'default-value-btn';
+    poleBtn.style.background = '#007bff';
+    poleBtn.style.cursor = 'pointer';
+    poleBtn.style.textDecoration = 'none';
+    poleBtn.style.display = 'inline-block';
+    poleBtn.target = '_blank';
+    
+    poleBtn.addEventListener('click', async function(e) {
+      e.preventDefault();
+      
+      const confirmMessage = `📋 Diffusion des alertes au Pôle\n\n` +
+        `Avant de continuer, assurez-vous que :\n\n` +
+        `✅ Vous avez un compte GitHub (gratuit)\n` +
+        `✅ Vos alertes sont bien configurées et testées\n` +
+        `✅ Elles ne contiennent aucune information confidentielle\n` +
+        `✅ Vous avez l'accord de vos pairs du groupement\n` +
+        `✅ Vous êtes prêt à les partager publiquement\n\n` +
+        `Une demande GitHub s'ouvrira avec le template pré-rempli.\n` +
+        `Délai de diffusion : environ 2 semaines.\n\n` +
+        `Voulez-vous continuer ?`;
+      
+      if (!confirm(confirmMessage)) {
+        return;
+      }
+      
+      // Récupérer le cabinet ID depuis le storage
+      let cabinetId = '0000';
+      try {
+        const result = await chrome.storage.local.get('currentCabinetId');
+        if (result.currentCabinetId) {
+          cabinetId = result.currentCabinetId.toString();
+        } else {
+          throw new Error('CabinetID non trouvé');
+        }
+      } catch (error) {
+        console.warn('Impossible de récupérer le cabinet ID:', error);
+        const needConnection = confirm(
+          '⚠️ Impossible de récupérer votre numéro de cabinet.\n\n' +
+          'Le CabinetID n\'est pas encore enregistré dans le storage.\n\n' +
+          'Voulez-vous continuer quand même ?\n' +
+          '(Vous devrez saisir manuellement le numéro dans l\'issue GitHub)'
+        );
+        if (!needConnection) {
+          return;
+        }
+      }
+      
+      // Récupérer le JSON au moment du clic
+      const textarea = document.getElementById(option.name);
+      const jsonContent = textarea ? textarea.value : '';
+      
+      const issueBody = `Bonjour @Refhi,
+
+je souhaite diffuser mes alertes personnalisées à mon Pôle/Cabinet/Groupement, et j'ai bien compris les conditions ci-dessous :
+- J'ai testé ces alertes et elles fonctionnent correctement
+- Elles ne contiennent aucune information confidentielle
+- J'ai l'accord de mes pairs du groupement/cabinet/pôle
+- Je comprends qu'elles seront publiques (dans ce ticket et dans le code source)
+- Je comprends le délai de diffusion (~2 semaines en moyenne)
+- J'ai fait attention à ne pas surcharger les alertes (trop d'info tue l'info !)
+- Ces alertes obtiendront le même statut de licence libre que le code source de Weda-Helper.
+
+Voici mes alertes à intégrer à mon Pole/Cabinet/Groupement (CabinetID: ${cabinetId}) :
+
+\`\`\`javascript
+${cabinetId}: ${jsonContent}
+\`\`\`
+
+`;
+      
+      // Construire l'URL avec les paramètres correctement encodés
+      const params = new URLSearchParams({
+        template: 'demande-de-diffusion-d-alertes-au-pole-cabinet-groupement.md',
+        title: 'Demande de diffusion de mes alertes à mon cabinet/pôle/groupement',
+        labels: 'Alertes à diffuser',
+        body: issueBody
+      });
+      
+      const issueUrl = `https://github.com/Refhi/Weda-Helper/issues/new?${params.toString()}`;
+      
+      // Ouvrir l'URL
+      window.open(issueUrl, '_blank');
+    });
+    
+    label.appendChild(poleBtn);
   }
 
   return label;
