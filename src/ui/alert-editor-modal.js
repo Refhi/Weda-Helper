@@ -10,6 +10,7 @@
  * Liste des icônes Material Icons couramment utilisées
  */
 const COMMON_MATERIAL_ICONS = [
+  { value: '', label: 'Aucune icône' },
   { value: 'info', label: 'Info' },
   { value: 'warning', label: 'Attention' },
   { value: 'error', label: 'Erreur' },
@@ -59,8 +60,7 @@ const COMMON_MATERIAL_ICONS = [
  * Liste des couleurs disponibles pour la coloration
  */
 const AVAILABLE_COLORS = [
-  { value: false, label: 'Aucune', color: 'transparent', border: '#ddd' },
-  { value: true, label: 'Vert (défaut)', color: '#28a745', textColor: 'white' },
+  { value: '', label: 'Aucune couleur', color: 'transparent', border: '#ddd' },
   { value: 'green', label: 'Vert', color: '#28a745', textColor: 'white' },
   { value: 'red', label: 'Rouge', color: '#dc3545', textColor: 'white' },
   { value: 'orange', label: 'Orange', color: '#fd7e14', textColor: 'white' },
@@ -89,7 +89,7 @@ function createIconSelect(name, currentValue, id) {
   
   const options = COMMON_MATERIAL_ICONS.map(icon => 
     `<div class="icon-option" data-value="${icon.value}" ${currentValue === icon.value ? 'data-selected="true"' : ''}>
-      <span class="material-icons">${icon.value}</span>
+      <span class="material-icons">${icon.value || 'block'}</span>
       <span class="icon-label">${icon.label}</span>
     </div>`
   ).join('');
@@ -98,7 +98,7 @@ function createIconSelect(name, currentValue, id) {
     <div class="custom-icon-select" data-name="${name}" id="${id}Container">
       <input type="hidden" name="${name}" value="${selectedIcon.value}" id="${id}" />
       <div class="icon-select-button" id="${id}Button">
-        <span class="material-icons">${selectedIcon.value}</span>
+        <span class="material-icons">${selectedIcon.value || 'block'}</span>
         <span class="icon-label">${selectedIcon.label}</span>
         <span class="dropdown-arrow">▼</span>
       </div>
@@ -113,10 +113,8 @@ function createIconSelect(name, currentValue, id) {
  * Génère le HTML pour un select de couleur personnalisé avec prévisualisation
  */
 function createColorSelect(name, currentValue, id) {
-  // Normaliser la valeur (true -> 'green')
-  let normalizedValue = currentValue;
-  if (currentValue === true || currentValue === 'true') normalizedValue = true;
-  if (currentValue === false || currentValue === 'false') normalizedValue = false;
+  // Normaliser la valeur en string
+  let normalizedValue = String(currentValue);
   
   const selectedColor = AVAILABLE_COLORS.find(color => color.value === normalizedValue) || AVAILABLE_COLORS[0];
   
@@ -275,8 +273,11 @@ function renderAlertesList(modal, alertes, schema, optionName, inputElement) {
 
   // Bouton sauvegarder
   modal.querySelector('.alert-editor-save').onclick = () => {
+    console.log('💾 Sauvegarde des alertes:', alertes);
     inputElement.value = JSON.stringify(alertes, null, 2);
+    console.log('✅ Valeur du champ mise à jour:', inputElement.value);
     inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+    inputElement.dispatchEvent(new Event('change', { bubbles: true }));
     modal.remove();
     alert('✅ Modifications appliquées au JSON');
   };
@@ -304,7 +305,7 @@ function renderAlerteForm(modal, alertes, index, schema, optionName, inputElemen
         <legend>🎯 Cible visuelle (Antécédent)</legend>
         <label>
           Coloration
-          ${createColorSelect('coloration', alerte.optionsCible?.coloration ?? false, 'colorationInput')}
+          ${createColorSelect('coloration', alerte.optionsCible?.coloration ?? '', 'colorationInput')}
         </label>
         <label>
           Icône Material
@@ -325,8 +326,8 @@ function renderAlerteForm(modal, alertes, index, schema, optionName, inputElemen
         <label>
           Type d'alerte
           <select name="typeAlerte">
+            <option value="" ${!alerte.alerteWeda?.typeAlerte || alerte.alerteWeda?.typeAlerte === 'undefined' ? 'selected' : ''}>Non défini (défaut)</option>
             <option value="success" ${alerte.alerteWeda?.typeAlerte === 'success' ? 'selected' : ''}>Succès (vert)</option>
-            <option value="undefined" ${!alerte.alerteWeda?.typeAlerte || alerte.alerteWeda?.typeAlerte === 'undefined' ? 'selected' : ''}>Info (bleu)</option>
             <option value="fail" ${alerte.alerteWeda?.typeAlerte === 'fail' ? 'selected' : ''}>Attention (rouge, permanent)</option>
           </select>
         </label>
@@ -355,7 +356,7 @@ function renderAlerteForm(modal, alertes, index, schema, optionName, inputElemen
         <label>
           Sexe
           <select name="sexes">
-            <option value="N" ${!alerte.conditions?.sexes || alerte.conditions?.sexes === 'N' ? 'selected' : ''}>Tous (Neutre)</option>
+            <option value="" ${!alerte.conditions?.sexes ? 'selected' : ''}>Non défini (tous)</option>
             <option value="M" ${alerte.conditions?.sexes === 'M' ? 'selected' : ''}>Masculin</option>
             <option value="F" ${alerte.conditions?.sexes === 'F' ? 'selected' : ''}>Féminin</option>
           </select>
@@ -453,11 +454,15 @@ function renderAlerteForm(modal, alertes, index, schema, optionName, inputElemen
     options.forEach((option, index) => {
       option.onclick = () => {
         const value = option.dataset.value;
+        console.log(`🎨 [${containerId}] Sélection d'une option:`, { value, type: typeof value });
         let item;
         
         if (isColorSelect) {
           item = dataArray.find(c => String(c.value) === String(value));
+          console.log(`🎨 [${containerId}] Item trouvé:`, item);
           input.value = value;
+          console.log(`🎨 [${containerId}] Input.value après mise à jour:`, input.value, '(type:', typeof input.value, ')');
+          console.log(`🎨 [${containerId}] Input.name:`, input.name, 'Input.id:', input.id);
           
           // Mettre à jour uniquement le color-preview du bouton
           button.querySelector('.color-preview').style.backgroundColor = item.color;
@@ -465,7 +470,9 @@ function renderAlerteForm(modal, alertes, index, schema, optionName, inputElemen
           button.querySelector('.color-label').textContent = item.label;
         } else {
           item = dataArray.find(i => i.value === value);
+          console.log(`🎯 [${containerId}] Icône sélectionnée:`, item);
           input.value = value;
+          console.log(`🎯 [${containerId}] Input.value après mise à jour:`, input.value);
           
           // Mettre à jour le bouton
           button.querySelector('.material-icons').textContent = value;
@@ -509,24 +516,47 @@ function renderAlerteForm(modal, alertes, index, schema, optionName, inputElemen
     e.preventDefault();
     const formData = new FormData(e.target);
     
+    const colorationValue = formData.get('coloration');
+    const iconeValue = formData.get('icone');
+    const iconeAlerteValue = formData.get('iconeAlerte');
+    const typeAlerteValue = formData.get('typeAlerte');
+    const sexesValue = formData.get('sexes');
+
+    // [bug] Cette partie n'est jamais déclenchée
+
+    console.log('📝 Soumission du formulaire avec les données:', {
+      titre: formData.get('titre'),
+      coloration: colorationValue,
+      icone: iconeValue,
+      texteSurvol: formData.get('texteSurvol'),
+      texteAlerte: formData.get('texteAlerte'),
+      typeAlerte: typeAlerteValue,
+      dureeAlerte: formData.get('dureeAlerte'),
+      iconeAlerte: iconeAlerteValue,
+      ageMin: formData.get('ageMin'),
+      ageMax: formData.get('ageMax'),
+      sexes: sexesValue
+    });
+
+    
     const nouvelleAlerte = {
       titre: formData.get('titre'),
       optionsCible: {
         cible: 'atcd',
-        coloration: formData.get('coloration') === 'true' ? true : (formData.get('coloration') === 'false' ? false : formData.get('coloration')),
-        icone: formData.get('icone'),
+        ...(colorationValue && { coloration: colorationValue }),
+        ...(iconeValue && { icone: iconeValue }),
         texteSurvol: formData.get('texteSurvol')
       },
       alerteWeda: {
-        icone: formData.get('iconeAlerte'),
-        typeAlerte: formData.get('typeAlerte') === 'undefined' ? undefined : formData.get('typeAlerte'),
+        ...(iconeAlerteValue && { icone: iconeAlerteValue }),
+        ...(typeAlerteValue && typeAlerteValue !== 'undefined' && { typeAlerte: typeAlerteValue }),
         dureeAlerte: parseInt(formData.get('dureeAlerte')),
         texteAlerte: formData.get('texteAlerte')
       },
       conditions: {
         ageMin: formData.get('ageMin') ? parseInt(formData.get('ageMin')) : null,
         ageMax: formData.get('ageMax') ? parseInt(formData.get('ageMax')) : null,
-        sexes: formData.get('sexes'),
+        ...(sexesValue && { sexes: sexesValue }),
         dateDebut: formData.get('dateDebut') || null,
         dateFin: formData.get('dateFin') || null,
         motsCles: formData.get('motsCles').split('\n').map(s => s.trim()).filter(s => s)
@@ -556,20 +586,15 @@ function createDefaultAlerte(schema) {
     titre: '',
     optionsCible: {
       cible: 'atcd',
-      coloration: false,
-      icone: 'info',
       texteSurvol: ''
     },
     alerteWeda: {
-      icone: 'info',
-      typeAlerte: undefined,
       dureeAlerte: 10,
       texteAlerte: ''
     },
     conditions: {
       ageMin: null,
       ageMax: null,
-      sexes: 'N',
       dateDebut: null,
       dateFin: null,
       motsCles: []

@@ -228,16 +228,16 @@ const alerteSchema = {
     properties: {
       cible: {
         type: 'string',
-        required: false,
+        required: true,
         description: 'Cible de l\'alerte',
         enum: ['atcd', 'etatCivil'],
         default: 'atcd'
       },
       coloration: {
-        type: ['boolean', 'string'],
+        type: 'string',
         required: false,
-        description: 'Coloration de la cible (false ou nom de couleur CSS)',
-        default: false
+        description: 'Coloration de la cible (nom de couleur CSS). Omettre la propriété pour aucune coloration. "true" ou "green" pour vert.',
+        default: undefined
       },
       icone: {
         type: 'string',
@@ -419,7 +419,7 @@ const alertesAtcdOptionDefault = JSON.stringify([
         titre: "Alerte simple sans notification",
         optionsCible: {
             cible: "atcd",
-            coloration: true,
+            coloration: "yellow",
             icone: "lightbulb",
             texteSurvol: "Cette alerte colore l'antécédent mais n'affiche pas de notification"
         },
