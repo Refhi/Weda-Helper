@@ -82,6 +82,36 @@ const AVAILABLE_COLORS = [
 ];
 
 /**
+ * Génère le HTML pour un select de cible personnalisé
+ * @param {string} name - Nom du champ
+ * @param {string} currentValue - Valeur actuelle
+ * @param {string} id - ID de l'élément
+ * @param {Array} availableCibles - Liste des cibles disponibles depuis le schéma
+ */
+function createCibleSelect(name, currentValue, id, availableCibles) {
+  const selectedCible = availableCibles.find(c => c.value === currentValue) || availableCibles[0];
+  
+  const options = availableCibles.map(cible => 
+    `<div class="cible-option" data-value="${cible.value}" ${currentValue === cible.value ? 'data-selected="true"' : ''}>
+      <span class="cible-label">${cible.label}</span>
+    </div>`
+  ).join('');
+  
+  return `
+    <div class="custom-cible-select" data-name="${name}" id="${id}Container">
+      <input type="hidden" name="${name}" value="${selectedCible.value}" id="${id}" />
+      <div class="cible-select-button" id="${id}Button">
+        <span class="cible-label">${selectedCible.label}</span>
+        <span class="dropdown-arrow">▼</span>
+      </div>
+      <div class="cible-dropdown" id="${id}Dropdown">
+        ${options}
+      </div>
+    </div>
+  `;
+}
+
+/**
  * Génère le HTML pour un select d'icône personnalisé avec prévisualisation
  */
 function createIconSelect(name, currentValue, id) {
@@ -238,9 +268,18 @@ function renderAlertesList(modal, alertes, schema, optionName, inputElement) {
     alertes.forEach((alerte, index) => {
       const item = document.createElement('div');
       item.className = 'alert-editor-list-item';
+      
+      // Prévisualisation de l'icône et de la couleur
+      const icone = alerte.optionsCible?.icone || '';
+      const coloration = alerte.optionsCible?.coloration || '';
+      const titre = alerte.titre || 'Sans titre';
+      
+      const titreStyle = coloration ? `color: ${coloration};` : '';
+      const iconeHtml = icone ? `<span class="material-icons" style="font-size: 16px; vertical-align: middle; margin-left: 4px; ${coloration ? `color: ${coloration};` : ''}">${icone}</span>` : '';
+      
       item.innerHTML = `
         <div class="alert-item-content">
-          <strong>${alerte.titre || 'Sans titre'}</strong>
+          <strong style="${titreStyle}">${titre}${iconeHtml}</strong>
           <span class="alert-item-keywords">${(alerte.conditions?.motsCles || []).slice(0, 3).join(', ')}${(alerte.conditions?.motsCles?.length > 3) ? '...' : ''}</span>
         </div>
         <div class="alert-item-actions">
@@ -296,29 +335,33 @@ function renderAlerteForm(modal, alertes, index, schema, optionName, inputElemen
       <fieldset>
         <legend>🏷️ Identification</legend>
         <label>
-          Titre de l'alerte *
+          Titre de l'alerte <span style="color: #d32f2f;" title="Champ obligatoire">*</span>
           <input type="text" name="titre" value="${alerte.titre || ''}" required placeholder="Ex: Diabète Type 2">
         </label>
       </fieldset>
 
       <fieldset>
-        <legend>🎯 Cible visuelle (Antécédent)</legend>
+        <legend>🎯 Cible visuelle</legend>
+        <label>
+          Cible (Colore un antécédent ou l'état civil)
+          ${createCibleSelect('cible', alerte.optionsCible?.cible || 'atcd', 'cibleInput', getCiblesFromSchema(schema))}
+        </label>
         <label>
           Coloration
           ${createColorSelect('coloration', alerte.optionsCible?.coloration ?? '', 'colorationInput')}
         </label>
         <label>
-          Icône Material
+          Icône Affichée à côté de la cible
           ${createIconSelect('icone', alerte.optionsCible?.icone || 'info', 'iconeInput')}
         </label>
         <label>
-          Texte au survol
+          Texte au survol de la cible
           <textarea name="texteSurvol" rows="2" placeholder="Texte affiché au survol de l'antécédent">${alerte.optionsCible?.texteSurvol || ''}</textarea>
         </label>
       </fieldset>
 
       <fieldset>
-        <legend>🔔 Notification Weda</legend>
+        <legend>🔔 Notification Weda (rectangle de couleur en bas à droite)</legend>
         <label>
           Texte de la notification
           <input type="text" name="texteAlerte" value="${alerte.alerteWeda?.texteAlerte || ''}" placeholder="Laissez vide pour ne pas afficher de notification">
@@ -332,8 +375,8 @@ function renderAlerteForm(modal, alertes, index, schema, optionName, inputElemen
           </select>
         </label>
         <label>
-          Durée (secondes)
-          <input type="number" name="dureeAlerte" value="${alerte.alerteWeda?.dureeAlerte ?? 10}" min="0" placeholder="0 = jusqu'à fermeture manuelle">
+          Durée (secondes, 0 pour laisser par défaut)
+          <input type="number" name="dureeAlerte" value="${alerte.alerteWeda?.dureeAlerte ?? 10}" min="0" max="60" placeholder="0 = par défaut">
         </label>
         <label>
           Icône notification
@@ -346,11 +389,11 @@ function renderAlerteForm(modal, alertes, index, schema, optionName, inputElemen
         <div class="form-row">
           <label>
             Âge minimum
-            <input type="number" name="ageMin" value="${alerte.conditions?.ageMin ?? ''}" min="0" placeholder="Laissez vide si pas de limite">
+            <input type="number" name="ageMin" value="${alerte.conditions?.ageMin ?? ''}" min="0" max="300" placeholder="Laissez vide si pas de limite">
           </label>
           <label>
             Âge maximum
-            <input type="number" name="ageMax" value="${alerte.conditions?.ageMax ?? ''}" min="0" placeholder="Laissez vide si pas de limite">
+            <input type="number" name="ageMax" value="${alerte.conditions?.ageMax ?? ''}" min="0" max="300" placeholder="Laissez vide si pas de limite">
           </label>
         </div>
         <label>
@@ -379,8 +422,7 @@ function renderAlerteForm(modal, alertes, index, schema, optionName, inputElemen
       </fieldset>
 
       <div class="form-actions">
-        <button type="button" class="btn-secondary" id="btnCancel">Annuler</button>
-        <button type="submit" class="btn-primary">${isNew ? '➕ Ajouter' : '💾 Enregistrer'}</button>
+        <button type="button" class="btn-secondary" id="btnCancel">Fermer</button>
       </div>
     </form>
   `;
@@ -468,6 +510,15 @@ function renderAlerteForm(modal, alertes, index, schema, optionName, inputElemen
           button.querySelector('.color-preview').style.backgroundColor = item.color;
           button.querySelector('.color-preview').style.borderColor = item.border || '#ddd';
           button.querySelector('.color-label').textContent = item.label;
+        } else if (containerId === 'cibleInput') {
+          // Gestion spécifique pour la cible
+          item = dataArray.find(c => c.value === value);
+          console.log(`🎯 [${containerId}] Cible sélectionnée:`, item);
+          input.value = value;
+          console.log(`🎯 [${containerId}] Input.value après mise à jour:`, input.value);
+          
+          // Mettre à jour le bouton
+          button.querySelector('.cible-label').textContent = item.label;
         } else {
           item = dataArray.find(i => i.value === value);
           console.log(`🎯 [${containerId}] Icône sélectionnée:`, item);
@@ -484,6 +535,9 @@ function renderAlerteForm(modal, alertes, index, schema, optionName, inputElemen
         option.setAttribute('data-selected', 'true');
         focusedIndex = index;
         highlightOption(-1); // Retirer le highlight
+        
+        // Déclencher un événement change pour l'auto-save
+        input.dispatchEvent(new Event('change', { bubbles: true }));
         
         // Fermer le dropdown
         dropdown.classList.remove('show');
@@ -505,44 +559,29 @@ function renderAlerteForm(modal, alertes, index, schema, optionName, inputElemen
   setupCustomSelect('iconeInput', 'icon-option', COMMON_MATERIAL_ICONS, false);
   setupCustomSelect('iconeAlerteInput', 'icon-option', COMMON_MATERIAL_ICONS, false);
   setupCustomSelect('colorationInput', 'color-option', AVAILABLE_COLORS, true);
+  setupCustomSelect('cibleInput', 'cible-option', getCiblesFromSchema(schema), false);
 
   // Gestionnaire d'annulation
   formContainer.querySelector('#btnCancel').onclick = () => {
     formContainer.innerHTML = '<p class="alert-editor-empty">Sélectionnez une alerte ou créez-en une nouvelle</p>';
   };
 
-  // Gestionnaire de soumission
-  formContainer.querySelector('#alertForm').onsubmit = (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
+  // Fonction pour construire l'objet alerte depuis le formulaire
+  function buildAlerteFromForm() {
+    const form = formContainer.querySelector('#alertForm');
+    const formData = new FormData(form);
     
-    const colorationValue = formData.get('coloration');
-    const iconeValue = formData.get('icone');
-    const iconeAlerteValue = formData.get('iconeAlerte');
+    const cibleValue = document.getElementById('cibleInput')?.value || 'atcd';
+    const colorationValue = document.getElementById('colorationInput')?.value || '';
+    const iconeValue = document.getElementById('iconeInput')?.value || '';
+    const iconeAlerteValue = document.getElementById('iconeAlerteInput')?.value || '';
     const typeAlerteValue = formData.get('typeAlerte');
     const sexesValue = formData.get('sexes');
-
-    // [bug] Cette partie n'est jamais déclenchée
-
-    console.log('📝 Soumission du formulaire avec les données:', {
-      titre: formData.get('titre'),
-      coloration: colorationValue,
-      icone: iconeValue,
-      texteSurvol: formData.get('texteSurvol'),
-      texteAlerte: formData.get('texteAlerte'),
-      typeAlerte: typeAlerteValue,
-      dureeAlerte: formData.get('dureeAlerte'),
-      iconeAlerte: iconeAlerteValue,
-      ageMin: formData.get('ageMin'),
-      ageMax: formData.get('ageMax'),
-      sexes: sexesValue
-    });
-
     
     const nouvelleAlerte = {
       titre: formData.get('titre'),
       optionsCible: {
-        cible: 'atcd',
+        cible: cibleValue,
         ...(colorationValue && { coloration: colorationValue }),
         ...(iconeValue && { icone: iconeValue }),
         texteSurvol: formData.get('texteSurvol')
@@ -562,20 +601,65 @@ function renderAlerteForm(modal, alertes, index, schema, optionName, inputElemen
         motsCles: formData.get('motsCles').split('\n').map(s => s.trim()).filter(s => s)
       }
     };
-
+    
     // Nettoyer les valeurs vides
     if (!nouvelleAlerte.optionsCible.texteSurvol) delete nouvelleAlerte.optionsCible.texteSurvol;
     if (!nouvelleAlerte.alerteWeda.texteAlerte) delete nouvelleAlerte.alerteWeda.texteAlerte;
-
+    
+    return nouvelleAlerte;
+  }
+  
+  // Fonction pour mettre à jour l'alerte dans le tableau
+  function updateAlerte() {
+    const form = formContainer.querySelector('#alertForm');
+    if (!form) return;
+    
+    // Valider et marquer les champs invalides en rouge
+    const isValid = form.checkValidity();
+    
+    // Marquer tous les champs requis, avec pattern ou contraintes numériques
+    const fieldsToValidate = form.querySelectorAll('[required], [pattern], [type="number"]');
+    fieldsToValidate.forEach(field => {
+      if (!field.validity.valid) {
+        field.style.borderColor = '#dc3545';
+        field.style.borderWidth = '2px';
+      } else {
+        field.style.borderColor = '';
+        field.style.borderWidth = '';
+      }
+    });
+    
+    if (!isValid) return;
+    
+    const nouvelleAlerte = buildAlerteFromForm();
+    
     if (isNew) {
-      alertes.push(nouvelleAlerte);
+      // Ajouter la nouvelle alerte si elle n'existe pas encore
+      if (alertes.length === 0 || alertes[alertes.length - 1] !== alerte) {
+        alertes.push(nouvelleAlerte);
+        console.log('🆕 Nouvelle alerte ajoutée:', nouvelleAlerte);
+      } else {
+        alertes[alertes.length - 1] = nouvelleAlerte;
+      }
     } else {
+      // Mettre à jour l'alerte existante
       alertes[index] = nouvelleAlerte;
+      console.log('✏️ Alerte mise à jour:', nouvelleAlerte);
     }
-
+    
+    // Rafraîchir la liste
     renderAlertesList(modal, alertes, schema, optionName, inputElement);
-    formContainer.innerHTML = '<p class="alert-editor-empty">✅ Alerte enregistrée</p>';
-  };
+  }
+  
+  // Écouter les changements sur tous les champs du formulaire
+  const form = formContainer.querySelector('#alertForm');
+  form.addEventListener('input', updateAlerte);
+  form.addEventListener('change', updateAlerte);
+  
+  // Si c'est une nouvelle alerte, l'ajouter immédiatement
+  if (isNew) {
+    updateAlerte();
+  }
 }
 
 /**
@@ -600,6 +684,28 @@ function createDefaultAlerte(schema) {
       motsCles: []
     }
   };
+}
+
+/**
+ * Extrait la liste des cibles disponibles depuis le schéma
+ * @param {Object} schema - Schéma de validation
+ * @returns {Array} Liste des cibles avec label
+ */
+function getCiblesFromSchema(schema) {
+  const cibles = schema?.optionsCible?.properties?.cible?.enum || ['atcd'];
+  
+  // Mapping des cibles vers des labels
+  const labelMap = {
+    'atcd': 'Antécédent',
+    'etatCivil': 'État civil',
+    'allergie': 'Allergie',
+    'traitement': 'Traitement'
+  };
+  
+  return cibles.map(value => ({
+    value: value,
+    label: labelMap[value] || value
+  }));
 }
 
 /**
@@ -777,7 +883,12 @@ function addModalStyles() {
       width: 100%;
     }
 
-    .icon-select-button, .color-select-button {
+    .custom-cible-select {
+      position: relative;
+      width: 100%;
+    }
+
+    .icon-select-button, .color-select-button, .cible-select-button {
       display: flex;
       align-items: center;
       gap: 8px;
@@ -789,12 +900,12 @@ function addModalStyles() {
       transition: all 0.2s;
     }
 
-    .icon-select-button:hover, .color-select-button:hover {
+    .icon-select-button:hover, .color-select-button:hover, .cible-select-button:hover {
       border-color: #007bff;
       box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
     }
 
-    .icon-select-button:focus, .color-select-button:focus {
+    .icon-select-button:focus, .color-select-button:focus, .cible-select-button:focus {
       outline: 2px solid #007bff;
       outline-offset: 2px;
     }
@@ -804,7 +915,7 @@ function addModalStyles() {
       color: #007bff;
     }
 
-    .icon-select-button .icon-label, .color-select-button .color-label {
+    .icon-select-button .icon-label, .color-select-button .color-label, .cible-select-button .cible-label {
       flex: 1;
       font-size: 14px;
     }
@@ -823,7 +934,7 @@ function addModalStyles() {
       transition: transform 0.2s;
     }
 
-    .icon-dropdown, .color-dropdown {
+    .icon-dropdown, .color-dropdown, .cible-dropdown {
       position: absolute;
       top: 100%;
       left: 0;
@@ -839,11 +950,11 @@ function addModalStyles() {
       margin-top: 4px;
     }
 
-    .icon-dropdown.show, .color-dropdown.show {
+    .icon-dropdown.show, .color-dropdown.show, .cible-dropdown.show {
       display: block;
     }
 
-    .icon-option, .color-option {
+    .icon-option, .color-option, .cible-option {
       display: flex;
       align-items: center;
       gap: 12px;
@@ -852,11 +963,11 @@ function addModalStyles() {
       transition: background 0.2s;
     }
 
-    .icon-option:hover, .color-option:hover {
+    .icon-option:hover, .color-option:hover, .cible-option:hover {
       background: #f8f9fa;
     }
 
-    .icon-option[data-selected="true"] {
+    .icon-option[data-selected="true"], .cible-option[data-selected="true"] {
       background: #e7f3ff;
     }
 
@@ -870,7 +981,7 @@ function addModalStyles() {
       min-width: 24px;
     }
 
-    .icon-option .icon-label, .color-option .color-label {
+    .icon-option .icon-label, .color-option .color-label, .cible-option .cible-label {
       font-size: 14px;
       flex: 1;
     }
@@ -921,8 +1032,13 @@ function addModalStyles() {
       gap: 10px;
       justify-content: flex-end;
       margin-top: 20px;
-      padding-top: 15px;
+      padding: 15px;
       border-top: 1px solid #e0e0e0;
+      position: sticky;
+      bottom: 0;
+      background: white;
+      z-index: 10;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
     }
 
     .btn-primary, .btn-secondary {
