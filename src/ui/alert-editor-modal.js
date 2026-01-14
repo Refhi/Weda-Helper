@@ -711,7 +711,7 @@ function getCiblesFromSchema(schema) {
   // Mapping des cibles vers des labels
   const labelMap = {
     'atcd': 'Antécédent',
-    'etatCivil': 'État civil',
+    'etatCivil': 'État civil (inactif pour le moment, me dire si ça vous intéresse)', // TODO à implémenter
     'allergie': 'Allergie',
     'traitement': 'Traitement'
   };

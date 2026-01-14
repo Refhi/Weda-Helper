@@ -503,27 +503,29 @@ function createLabel(option) {
   
   // Ajouter des boutons pour les options true_json
   if (option.type === 'true_json') {
-    // Bouton Éditer les alertes
-    const assistantBtn = document.createElement('button');
-    assistantBtn.textContent = '✏️ Éditer les alertes';
-    assistantBtn.title = 'Ouvrir l\'interface d\'édition guidée';
-    assistantBtn.className = 'default-value-btn';
-    assistantBtn.style.background = '#00a300';
-    assistantBtn.type = 'button';
+    // Bouton 1: Éditer les alertes (interface guidée)
+    const editBtn = document.createElement('button');
+    editBtn.textContent = '✏️ Éditer';
+    editBtn.title = 'Ouvrir l\'interface d\'édition guidée des alertes';
+    editBtn.className = 'default-value-btn';
+    editBtn.style.background = '#28a745';
+    editBtn.style.color = 'white';
+    editBtn.type = 'button';
     
-    assistantBtn.addEventListener('click', function(e) {
+    editBtn.addEventListener('click', function(e) {
       e.preventDefault();
       openAlertEditorModal(option.name);
     });
     
-    label.appendChild(assistantBtn);
+    label.appendChild(editBtn);
     
-    // Bouton Éditeur avancé (toggle JSON)
+    // Bouton 2: Éditeur avancé (toggle JSON)
     const advancedBtn = document.createElement('button');
-    advancedBtn.textContent = '📝 Éditeur avancé';
-    advancedBtn.title = 'Afficher/Masquer le JSON brut';
+    advancedBtn.textContent = '📝 Editeur Avancé';
+    advancedBtn.title = 'Afficher/masquer l\'éditeur JSON brut';
     advancedBtn.className = 'default-value-btn';
     advancedBtn.style.background = '#6c757d';
+    advancedBtn.style.color = 'white';
     advancedBtn.type = 'button';
     
     advancedBtn.addEventListener('click', function(e) {
@@ -532,22 +534,20 @@ function createLabel(option) {
       if (textarea) {
         const isHidden = textarea.style.display === 'none';
         textarea.style.display = isHidden ? 'block' : 'none';
-        advancedBtn.textContent = isHidden ? '💁 Masquer JSON' : '📝 Éditeur avancé';
+        advancedBtn.textContent = isHidden ? '✖️ Masquer' : '📝 JSON';
       }
     });
     
     label.appendChild(advancedBtn);
     
-    // Bouton Étendre les alertes au Pôle
-    const poleBtn = document.createElement('a');
-    poleBtn.textContent = '🌐 Étendre au Pôle';
-    poleBtn.title = 'Procédure :\n1. Créez un compte GitHub gratuit si nécessaire\n2. Vérifiez que vos alertes sont bien configurées\n3. Cliquez pour créer une demande GitHub\n4. L\'issue s\'ouvrira pré-remplie avec vos alertes\n5. L\'administrateur du Pôle pourra alors les diffuser';
+    // Bouton 3: Étendre au Pôle (GitHub)
+    const poleBtn = document.createElement('button');
+    poleBtn.textContent = '🌐 Partager au Pôle/Groupement/Cabinet';
+    poleBtn.title = 'Partager ces alertes avec votre pôle/cabinet/groupement via GitHub';
     poleBtn.className = 'default-value-btn';
     poleBtn.style.background = '#007bff';
-    poleBtn.style.cursor = 'pointer';
-    poleBtn.style.textDecoration = 'none';
-    poleBtn.style.display = 'inline-block';
-    poleBtn.target = '_blank';
+    poleBtn.style.color = 'white';
+    poleBtn.type = 'button';
     
     poleBtn.addEventListener('click', async function(e) {
       e.preventDefault();

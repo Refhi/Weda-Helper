@@ -677,7 +677,7 @@ var advancedDefaultSettings = [
             }, {
                 "name": "alertesAtcdOption",
                 "type": TYPE_TRUE_JSON,
-                "description": "Liste des alertes personnelles à afficher en fonction des mots-clés trouvés dans les antécédents.",
+                "description": "Alertes personnelles à afficher en fonction des mots-clés trouvés dans les antécédents.",
                 "default": alertesAtcdOptionDefault,
                 "longDescription": "Ce champ contiens les alertes que vous avez défini pour votre propre compte. \n Vous pouvez les éditer en JSON directement ici, ou cliquer sur l'icone d'édition pour une interface plus conviviale.\n Envoyez-moi une requête sur le github si vous souhaitez les diffuser à tout votre Pôle/Cabinet/Groupement !                 https://github.com/Refhi/Weda-Helper/issues/new?template=demande-de-diffusion-d-alertes-au-pole-cabinet-groupement.md",
                 "subOptions": [{
