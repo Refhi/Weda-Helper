@@ -4,12 +4,15 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.15.0.4] - message aux beta-testeurs
+- j'ai énormement bossé sur le système d'alerte selon atcd... c'est le plus gros truc que j'ai fait depuis longtemps... pouvez-vous le tester svp ? Merci +++ :)
+
 # [2.15] - Bonne année 2026 à toustes ! 🎉🎊
 
 ## 🎯 Vos Pôles et Cabinets peuvent désormais créer des alertes personnalisées communes sur les antécédents ! 
 - ⚕️ Particulièrement utile pour repérer facilement les patients éligibles à un suivi spécifique comme l'inscription à un atelier ETP.
 - 🔬 Si vous avez des protocoles ou études à appliquer auprès de patients avec des antécédents spécifiques, vous pouvez désormais les repérer en un coup d'œil !
-- 📧 Pensez à nous les envoyer (wedahelper@mailo.com) avec votre CabinetID (en haut à droite de votre Weda) pour que nous puissions les intégrer par défaut dans la prochaine version. Vous devrez me les envoyer formatés comme dans les Options de Weda-Helper.
+- 📧 Pensez à nous les envoyer depuis le bouton dédié dans les options pour que nous puissions les intégrer par défaut dans la prochaine version.
 - 🧪 Testez dès maintenant en ajoutant vos propres mots-clés dans les options de Weda-Helper !
 - [#528](https://github.com/Refhi/Weda-Helper/issues/528) - Ajout d'un système d'alerte si un antécédent contient un mot-clé précisé dans les options de Weda-Helper.
 
