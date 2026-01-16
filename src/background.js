@@ -39,6 +39,7 @@
 const TYPE_BOOL = "bool";
 const TYPE_TEXT = "text";
 const TYPE_JSON = "json";
+const TYPE_TRUE_JSON = "true_json"; // au lieu de fournir une structure assez user-friendly, là on fait du pur JSON
 const TYPE_SMALLTEXT = "smalltext";
 const TYPE_HTML = "html";
 const TYPE_RADIO = "radio";
@@ -204,12 +205,248 @@ const customFieldsDefault2 = JSON.stringify([
 
 const customFieldsDefault3 = JSON.stringify([
 ]);
+/**
+ * Configuration par défaut des alertes antécédents personnalisées
+ * Format conforme à alerteSchema (voir alertesAtcd.js)
+ * ⚠️ EXEMPLES UNIQUEMENT - À personnaliser selon vos besoins
+ */
+
+/**
+ * Schéma de validation pour les alertes personnalisées
+ * Définit la structure attendue pour chaque alerte
+ */
+const alerteSchema = {
+  titre: {
+    type: 'string',
+    required: true,
+    description: 'Titre de l\'alerte (non affiché, sert à s\'y retrouver)'
+  },
+  optionsCible: {
+    type: 'object',
+    required: false,
+    description: 'Options d\'affichage de la cible (antécédent ou état civil)',
+    properties: {
+      cible: {
+        type: 'string',
+        required: true,
+        description: 'Cible de l\'alerte',
+        enum: ['atcd', 'etatCivil'],
+        default: 'atcd'
+      },
+      coloration: {
+        type: 'string',
+        required: false,
+        description: 'Coloration de la cible (nom de couleur CSS). Omettre la propriété pour aucune coloration. "true" ou "green" pour vert.',
+        default: undefined
+      },
+      icone: {
+        type: 'string',
+        required: false,
+        description: 'Icône Material à afficher',
+        default: 'info'
+      },
+      texteSurvol: {
+        type: 'string',
+        required: false,
+        description: 'Texte affiché au survol de la cible',
+        default: ''
+      }
+    }
+  },
+  alerteWeda: {
+    type: 'object',
+    required: false,
+    description: 'Configuration de l\'alerte WEDA (notification)',
+    properties: {
+      icone: {
+        type: 'string',
+        required: false,
+        description: 'Icône Material de l\'alerte',
+        default: 'info'
+      },
+      typeAlerte: {
+        type: 'string',
+        required: false,
+        description: 'Type d\'alerte visuelle',
+        enum: ['success', 'fail', 'undefined'],
+        default: undefined
+      },
+      dureeAlerte: {
+        type: 'number',
+        required: false,
+        description: 'Durée d\'affichage en secondes (0 = jusqu\'à fermeture manuelle)',
+        default: 10,
+        min: 0
+      },
+      texteAlerte: {
+        type: 'string',
+        required: false,
+        description: 'Texte de la notification (obligatoire pour afficher l\'alerte)',
+        default: ''
+      }
+    }
+  },
+  conditions: {
+    type: 'object',
+    required: false,
+    description: 'Conditions de déclenchement de l\'alerte',
+    properties: {
+      ageMin: {
+        type: 'number',
+        required: false,
+        description: 'Âge minimum',
+        default: null
+      },
+      ageMax: {
+        type: 'number',
+        required: false,
+        description: 'Âge maximum',
+        default: null
+      },
+      sexes: {
+        type: 'string',
+        required: false,
+        description: 'Sexes concernés',
+        enum: ['F', 'M', 'N'],
+        default: null
+      },
+      dateDebut: {
+        type: 'string',
+        required: false,
+        description: 'Date de début de validité (format DD/MM/YYYY)',
+        format: 'date',
+        default: null
+      },
+      dateFin: {
+        type: 'string',
+        required: true,
+        description: 'Date de fin de validité (format DD/MM/YYYY)',
+        format: 'date',
+        default: null
+      },
+      motsCles: {
+        type: 'array',
+        required: false,
+        description: 'Mots-clés à rechercher dans les antécédents',
+        itemType: 'string',
+        default: []
+      }
+    }
+  }
+};
+
 const alertesAtcdOptionDefault = JSON.stringify([
-    // Format : ["Titre de l'alerte", coloration (true/false), alerte prioritaire (true/false), "icône Material", ["mots", "clés"]]
-    ["ETP Diabète - ce patient peut être éligible à une ETP Diabète", "true", "true", "groups", ["diabete_", "diabete_"]],
-    ["ETP Asthme - ce patient peut être éligible à une ETP Asthme", "true", "true", "groups", ["asthme_", "asthma_"]],
-    ["ETP Alimentation - ce patient peut être éligible à une ETP Alimentation", "true", "false", "groups", ["obesite_", "surpoids_", "anorexie_", "boulimie_", "TCA_"]],
-    ["ETP Cardiovasculaire - ce patient peut être éligible à une ETP Maladies Cardiovasculaires", "true", "true", "groups", ["HTA_", "hypertension artérielle_", "infarctus_", "insuffisance cardiaque_"]]
+    {
+        titre: "Alerte avec coloration CSS personnalisée",
+        optionsCible: {
+            cible: "atcd",
+            coloration: "orange",
+            icone: "warning",
+            texteSurvol: "Exemple d'alerte avec coloration CSS personnalisée (orange)"
+        },
+        alerteWeda: {
+            icone: "warning",
+            typeAlerte: "success",
+            dureeAlerte: 10,
+            texteAlerte: "Attention : antécédent important détecté"
+        },
+        conditions: {
+            ageMin: 18,
+            ageMax: 65,
+            sexes: "N",
+            motsCles: ["exemple1", "test1"]
+        }
+    },
+    {
+        titre: "Alerte état civil avec conditions d'âge et sexe",
+        optionsCible: {
+            cible: "etatCivil",
+            coloration: "lightblue",
+            icone: "person",
+            texteSurvol: "Alerte spécifique pour les femmes de plus de 50 ans"
+        },
+        alerteWeda: {
+            icone: "info",
+            typeAlerte: "success",
+            dureeAlerte: 15,
+            texteAlerte: "Protocole de dépistage disponible"
+        },
+        conditions: {
+            ageMin: 50,
+            sexes: "F",
+            motsCles: ["exemple2", "test2"]
+        }
+    },
+    {
+        titre: "Alerte critique sans limite de temps",
+        optionsCible: {
+            cible: "atcd",
+            coloration: "red",
+            icone: "error",
+            texteSurvol: "Alerte critique nécessitant une attention immédiate"
+        },
+        alerteWeda: {
+            icone: "error",
+            typeAlerte: "fail",
+            dureeAlerte: 0,
+            texteAlerte: "⚠️ Attention : contre-indication absolue détectée"
+        },
+        conditions: {
+            motsCles: ["exemple3", "test3"]
+        }
+    },
+    {
+        titre: "Alerte temporaire avec période de validité",
+        optionsCible: {
+            cible: "atcd",
+            coloration: "yellow",
+            icone: "schedule",
+            texteSurvol: "Alerte active seulement pendant une période définie"
+        },
+        alerteWeda: {
+            icone: "schedule",
+            typeAlerte: "undefined",
+            dureeAlerte: 8,
+            texteAlerte: "Campagne de prévention en cours"
+        },
+        conditions: {
+            dateDebut: "01/01/2026",
+            dateFin: "31/12/2026",
+            motsCles: ["exemple4", "test4"]
+        }
+    },
+    {
+        titre: "Alerte simple sans notification",
+        optionsCible: {
+            cible: "atcd",
+            coloration: "yellow",
+            icone: "lightbulb",
+            texteSurvol: "Cette alerte colore l'antécédent mais n'affiche pas de notification"
+        },
+        conditions: {
+            motsCles: ["exemple5", "test5"]
+        }
+    },
+    {
+        titre: "Alerte pédiatrique spécifique",
+        optionsCible: {
+            cible: "atcd",
+            coloration: "pink",
+            icone: "child_care",
+            texteSurvol: "Protocole pédiatrique disponible"
+        },
+        alerteWeda: {
+            icone: "child_care",
+            typeAlerte: "success",
+            dureeAlerte: 12,
+            texteAlerte: "Suivi pédiatrique recommandé - voir protocole"
+        },
+        conditions: {
+            ageMax: 18,
+            sexes: "N",
+            motsCles: ["exemple6", "test6"]
+        }
+    }
 ]);
 
 
@@ -439,20 +676,34 @@ var advancedDefaultSettings = [
                 "longDescription": "En cliquant sur un antécédent depuis la page d'accueil, cela ouvre la fenêtre d'édition directement.",
             }, {
                 "name": "alertesAtcdOption",
-                "type": TYPE_JSON,
-                "description": "Liste des alertes à afficher en fonction des mots-clés trouvés dans les antécédents.",
+                "type": TYPE_TRUE_JSON,
+                "description": "Alertes personnelles à afficher en fonction des mots-clés trouvés dans les antécédents.",
                 "default": alertesAtcdOptionDefault,
-                "longDescription": "Format : \"Titre de l'alerte\", coloration (true/false), alerte prioritaire (true/false), \"icône Material\", \"mots\", \"clés\".\n cf. https://fonts.google.com/icons pour la liste des icônes disponibles.\n les mots-clés de valeurs par défaut sont suivis d'un underscore (_) pour les neutraliser. Vous pouvez les enlever pour réactiver l'alerte sur ces mots-clés.",
+                "longDescription": "Ce champ contiens les alertes que vous avez défini pour votre propre compte. \n Vous pouvez les éditer en JSON directement ici, ou cliquer sur l'icone d'édition pour une interface plus conviviale.\n Envoyez-moi une requête sur le github si vous souhaitez les diffuser à tout votre Pôle/Cabinet/Groupement !                 https://github.com/Refhi/Weda-Helper/issues/new?template=demande-de-diffusion-d-alertes-au-pole-cabinet-groupement.md",
                 "subOptions": [{
                     "name": "alertesAtcdOptionGlobal",
                     "type": TYPE_BOOL,
-                    "description": "Afficher les alertes ATCD globales (non personnalisées).",
+                    "description": "Afficher les alertes ATCD globales de votre cabinet/pole/groupement Weda (non personnalisées).",
                     "longDescription": "Ces alertes doivent être définies à l’échelle du cabinet Weda auquel appartient l'utilisateur. Elle sont pensées pour diffuser au sein d’un Pôle de Santé des alertes communes à tous les praticiens, pour encourager la mise en place de programmes d’éducation thérapeutique du patient (ETP) par exemple ou certains protocoles. Pour les mettre en place ouvrez un ticket sur le github avec le contenu des alertes que vous aurez préparé et testées dans le champ ci-dessus. (je les mettrai à jour manuellement, aussi cela peut prendre un peu de temps).",
-                    "default": true
+                    "default": true,
+                    "subOptions": [{
+                        "name": "alertesAtcdOptionGlobalPopup",
+                        "type": TYPE_BOOL,
+                        "description": "Afficher une popup \"Weda\" si une alerte est disponible.",
+                        "default": true,
+                        "longDescription": "Une popup Weda s'affichera à l'ouverture du dossier patient si une alerte ATCD globale est détectée."
+                    },
+                    {
+                        "name": "alertesAtcdOptionGlobalLocalMarking",
+                        "type": TYPE_BOOL,
+                        "description": "Marquer les antécédents concernés dans le dossier patient d'une couleur et/ou d'une icone.",
+                        "default": true,
+                        "longDescription": "Les antécédents concernés seront marqués dans le dossier patient d'une couleur (selon l'alerte) et d'une icône (selon l'alerte)."
+                    }]
                 }]
             }
-        ]
-        },{
+            ]
+        }, {
             "name": "Médecin Traitant",
             "description": "Permet d'automatiser certaines tâches liées au médecin traitant.",
             "type": TYPE_TITLE,
@@ -1222,7 +1473,12 @@ var defaultShortcuts = {
 };
 
 // retour à un chargement systématique, a priori sans impact évident sur le temps de chargement
-chrome.storage.local.set({ defaultSettings: defaultSettings, defaultShortcuts: defaultShortcuts, advancedDefaultSettings: advancedDefaultSettings }, function () {
+chrome.storage.local.set({ 
+    defaultSettings: defaultSettings, 
+    defaultShortcuts: defaultShortcuts, 
+    advancedDefaultSettings: advancedDefaultSettings,
+    alerteSchema: alerteSchema  // Schéma de validation des alertes
+}, function () {
     console.log('[background.js] Les valeurs et raccourcis par défaut ont été enregistrées');
 });
 

@@ -28,55 +28,119 @@
 // }
 
 
+/**
+ * ⚠️ NOTE: Le schéma de validation (alerteSchema) est défini dans background.js
+ * et accessible via chrome.storage.local.get('alerteSchema').
+ * Cela garantit une seule source de vérité pour la validation des alertes.
+ */
+
+
 const alertesAtcdGlobal = {
+  1000: [
+    // Exemple d'alerte
+    {
+      titre: "Exemple d'alerte", // Titre non utilisé dans les alertes, permet de s'y retrouver
+      optionsCible: {
+        cible: "atcd", // peut être : "atcd", "etatCivil" et rien d'autre pour l'instant
+        coloration: false, // si false, l'antécédent n'est pas coloré. Sinon mettre nom couleur css (ex: "red", "yellow", "blue", etc.)
+        icone: "warning", // icône Material à afficher à côté de l'antécédent
+        texteSurvol: "..." // Le texte affiché lors du survol de la cible
+      },
+      alerteWeda: { // Configuration de l'alerte WEDA (si présent avec texteAlerte, l'alerte sera affichée)
+        icone: "info", // L'icône Material affichée dans l'alerte
+        typeAlerte: "success", // success / fail / undefined (success met en vert, undefined en bleu, fail en rouge sans limite de temps)
+        dureeAlerte: 10, // Durée d'affichage de l'alerte en secondes (0 = jusqu'à fermeture manuelle)
+        texteAlerte: "..." // Texte de la notification (obligatoire pour afficher l'alerte)
+      },
+      conditions: {
+        ageMin: 0,
+        ageMax: 10,
+        sexes: "N", // "M", "F", "N" (N = neutre)
+        dateDebut: "01/01/2000", // format DD/MM/YYYY
+        dateFin: "31/12/2099", // format DD/MM/YYYY
+        motsCles: ["exemple", "test"]
+      }
+    }
+  ],
   4341: [
     {
       titre: "Atelier diabète",
-      coloration: true,
-      alerte: true,
-      matIcon: "groups",
-      longDescription: "Un atelier Diabète peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans les conseils de prescription ou imprimer un Flyer depuis les documents du cabinet",
-      motsCles: ["diabète"]
+      optionsCible: {
+        cible: "atcd",
+        coloration: true,
+        icone: "groups",
+        texteSurvol: "Un atelier Diabète peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage."
+      },
+      alerteWeda: {
+        icone: "groups",
+        typeAlerte: "success",
+        texteAlerte: "ETP Diabète possible, cf. Antécédents."
+      },
+      conditions: {
+        ageMin: 18,
+        ageMax: 99,
+        sexes: "N",
+        dateFin: "31/03/2026",
+        motsCles: ["diabète"]
+      }
     },
     {
       titre: "Atelier alimentation",
-      coloration: true,
-      alerte: false,
-      matIcon: "groups",
-      longDescription: "Un atelier Alimentation peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans les conseils de prescription ou imprimer un Flyer depuis les documents du cabinet",
-      motsCles: [
-        "obésité",
-        "obésité morbide",
-        "surpoids",
-        "anorexie",
-        "anorexie mentale",
-        "boulimie",
-        "TCA",
-        "troubles du comportement alimentaire",
-        "dénutrition"
-      ]
+      optionsCible: {
+        cible: "atcd",
+        coloration: true,
+        icone: "groups",
+        texteSurvol: "Un atelier Alimentation peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage."
+      },
+      alerteWeda: {
+        icone: "groups",
+        typeAlerte: "success"
+      },
+      conditions: {
+        dateFin: "31/12/2099",
+        motsCles: [
+          "obésité",
+          "obésité morbide",
+          "surpoids",
+          "anorexie",
+          "anorexie mentale",
+          "boulimie",
+          "TCA",
+          "troubles du comportement alimentaire",
+          "dénutrition"
+        ]
+      }
     },
     {
       titre: "Atelier traitement CV",
-      coloration: true,
-      alerte: true,
-      matIcon: "groups",
-      longDescription: "Un atelier Maladies Cardiovasculaires peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans les conseils de prescription ou imprimer un Flyer depuis les documents du cabinet",
-      motsCles: [
-        "HTA",
-        "hypertension artérielle",
-        "infarctus du myocarde",
-        "cardiopathie",
-        "AOMI",
-        "insuffisance cardiaque",
-        "arythmie",
-        "fibrilation",
-        "angor",
-        "accident ischémique transitoire",
-        "AVC",
-        "accident vasculaire cérébral",
-        "coronaropathie"
-      ]
+      optionsCible: {
+        cible: "atcd",
+        coloration: true,
+        icone: "groups",
+        texteSurvol: "Un atelier Maladies Cardiovasculaires peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage."
+      },
+      alerteWeda: {
+        icone: "groups",
+        typeAlerte: "success",
+        texteAlerte: "ETP Maladies CV possible, cf. Antécédents."
+      },
+      conditions: {
+        motsCles: [
+          "HTA",
+          "hypertension artérielle",
+          "infarctus du myocarde",
+          "cardiopathie",
+          "AOMI",
+          "insuffisance cardiaque",
+          "arythmie",
+          "fibrilation",
+          "angor",
+          "accident ischémique transitoire",
+          "AVC",
+          "accident vasculaire cérébral",
+          "coronaropathie"
+        ]
+      }
     }
   ]
 };
@@ -85,68 +149,312 @@ const alertesAtcdGlobal = {
 
 /**
  * Vérifie la structure des alertes et affiche des avertissements en console en cas de problème
+ * Utilise le validateur mutualisé depuis alertes-validator.js
  * @param {Object} alertes - L'objet alertesAtcd à valider
+ * @returns {Promise<void>}
  */
-function validerStructureAlertes(alertes) {
-  const champsObligatoires = ['titre', 'coloration', 'alerte', 'matIcon', 'longDescription', 'motsCles'];
-  
+async function validerStructureAlertes(alertes) {
+  const schema = await getAlerteSchema();
+
+  if (!schema) {
+    console.warn('⚠️ Schéma de validation non disponible, validation ignorée');
+    return;
+  }
+
   for (const [cabinetId, listeAlertes] of Object.entries(alertes)) {
     if (!Array.isArray(listeAlertes)) {
       console.error(`❌ Cabinet ${cabinetId}: les alertes doivent être un tableau`);
       continue;
     }
+
+    // Utiliser la fonction de validation mutualisée
+    const validation = validateAlertes(listeAlertes, schema);
     
-    listeAlertes.forEach((alerte, index) => {
-      const position = `Cabinet ${cabinetId}, Alerte #${index + 1}`;
-      
-      // Vérifier que c'est un objet
-      if (typeof alerte !== 'object' || alerte === null) {
-        console.error(`❌ ${position}: l'alerte doit être un objet`);
-        return;
-      }
-      
-      // Vérifier tous les champs obligatoires
-      champsObligatoires.forEach(champ => {
-        if (!(champ in alerte)) {
-          console.error(`❌ ${position} (${alerte.titre || 'sans titre'}): champ manquant "${champ}"`);
-        }
-      });
-      
-      // Vérifier les types
-      if (alerte.titre !== undefined && typeof alerte.titre !== 'string') {
-        console.error(`❌ ${position}: "titre" doit être une chaîne de caractères`);
-      }
-      
-      if (alerte.coloration !== undefined && typeof alerte.coloration !== 'boolean') {
-        console.error(`❌ ${position} (${alerte.titre}): "coloration" doit être un booléen (true/false)`);
-      }
-      
-      if (alerte.alerte !== undefined && typeof alerte.alerte !== 'boolean') {
-        console.error(`❌ ${position} (${alerte.titre}): "alerte" doit être un booléen (true/false)`);
-      }
-      
-      if (alerte.matIcon !== undefined && typeof alerte.matIcon !== 'string') {
-        console.error(`❌ ${position} (${alerte.titre}): "matIcon" doit être une chaîne de caractères`);
-      }
-      
-      if (alerte.longDescription !== undefined && typeof alerte.longDescription !== 'string') {
-        console.error(`❌ ${position} (${alerte.titre}): "longDescription" doit être une chaîne de caractères`);
-      }
-      
-      if (alerte.motsCles !== undefined && !Array.isArray(alerte.motsCles)) {
-        console.error(`❌ ${position} (${alerte.titre}): "motsCles" doit être un tableau`);
-      } else if (alerte.motsCles) {
-        // Vérifier que tous les mots-clés sont des chaînes
-        alerte.motsCles.forEach((mot, i) => {
-          if (typeof mot !== 'string') {
-            console.error(`❌ ${position} (${alerte.titre}): motsCles[${i}] doit être une chaîne de caractères`);
-          }
-        });
-      }
-    });
+    if (!validation.valid) {
+      console.error(`❌ Erreurs de validation pour le cabinet ${cabinetId}:`);
+      validation.errors.forEach(error => console.error(`  - ${error}`));
+    } else {
+      console.log(`✅ Cabinet ${cabinetId}: ${listeAlertes.length} alerte(s) valide(s)`);
+    }
   }
-  
-  // console.log('✅ Validation des alertes terminée');
+
+  console.log('✅ Validation des alertes terminée');
 }
 
-validerStructureAlertes(alertesAtcdGlobal);
+// Valider les alertes globales de manière asynchrone
+validerStructureAlertes(alertesAtcdGlobal).catch(err => {
+  console.error('❌ Erreur lors de la validation des alertes:', err);
+});
+
+
+
+
+
+// Gestion des alertes Antécédents
+// Cette partie charge les alertes configurées dans alertesAtcd.js pour le cabinet
+// et affiche des alertes contextuelles selon les ATCD du patient
+addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async function () {
+    const panelSelector = "#ContentPlaceHolder1_PanelPatient"
+    const panelElement = document.querySelector(panelSelector);
+    if (!panelElement) return;
+    const atcdDiv = Array.from(panelElement.querySelectorAll('div')).find(div => div.title === "Cliquez ici pour modifier le volet médical du patient");
+    if (!atcdDiv) return;
+
+    // Récupération des informations patient via l'API
+    const patientId = getCurrentPatientId();
+    const patientApiData = patientId ? await getPatientInfo(patientId) : null;
+    
+    const patientInfo = (function() {
+        let age = null;
+        let sexe = null;
+        
+        if (patientApiData) {
+            // Récupérer le sexe depuis l'API
+            sexe = patientApiData.sex; // "M" ou "F"
+            
+            // Calculer l'âge depuis la date de naissance
+            if (patientApiData.birthDate) {
+                const birthDate = new Date(patientApiData.birthDate);
+                const today = new Date();
+                age = today.getFullYear() - birthDate.getFullYear();
+                const monthDiff = today.getMonth() - birthDate.getMonth();
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                    age--;
+                }
+            }
+        }
+        
+        // Date actuelle
+        const dateActuelle = new Date();
+        
+        console.log('[alertesAtcd] Infos patient - Age:', age, 'Sexe:', sexe, 'Date:', dateActuelle.toLocaleDateString('fr-FR'));
+        return { age, sexe, dateActuelle };
+    })();
+
+    // Fonction pour vérifier si les conditions d'une alerte sont remplies
+    function verifierConditions(conditions) {
+        if (!conditions) return true;
+        
+        // Vérifier ageMin et ageMax
+        if (conditions.ageMin !== undefined && conditions.ageMin !== null && patientInfo.age !== null) {
+            if (patientInfo.age < conditions.ageMin) {
+                console.log('[alertesAtcd] Condition ageMin non remplie:', patientInfo.age, '<', conditions.ageMin);
+                return false;
+            }
+        }
+        
+        if (conditions.ageMax !== undefined && conditions.ageMax !== null && patientInfo.age !== null) {
+            if (patientInfo.age > conditions.ageMax) {
+                console.log('[alertesAtcd] Condition ageMax non remplie:', patientInfo.age, '>', conditions.ageMax);
+                return false;
+            }
+        }
+        
+        // Vérifier sexes
+        if (conditions.sexes && patientInfo.sexe !== null) {
+            // Gestion spéciale pour 'N' (neutre) qui accepte tous les sexes
+            if (conditions.sexes !== 'N' && patientInfo.sexe !== conditions.sexes) {
+                console.log('[alertesAtcd] Condition sexes non remplie:', patientInfo.sexe, '!=', conditions.sexes);
+                return false;
+            }
+        }
+        
+        // Vérifier dateDebut et dateFin
+        if (conditions.dateDebut || conditions.dateFin) {
+            const dateActuelle = patientInfo.dateActuelle;
+            
+            // Parser les dates au format DD/MM/YYYY
+            const parseDate = (dateStr) => {
+                if (!dateStr) return null;
+                const parts = dateStr.split('/');
+                if (parts.length !== 3) return null;
+                return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+            };
+            
+            const debut = parseDate(conditions.dateDebut);
+            const fin = parseDate(conditions.dateFin);
+            
+            if (debut && dateActuelle < debut) {
+                console.log('[alertesAtcd] Condition dateDebut non remplie: date actuelle avant début');
+                return false;
+            }
+            if (fin && dateActuelle > fin) {
+                console.log('[alertesAtcd] Condition dateFin non remplie: date actuelle après fin');
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    // Récupération des alertes du cabinet/Pôle depuis alertesAtcd.js
+    const cabinetId = await (async function() {
+        // On vérifie que l'option alertesAtcdOptionGlobal est true
+        const alertesAtcdOptionGlobal = await getOptionPromise('alertesAtcdOptionGlobal');
+        if (!alertesAtcdOptionGlobal) return null;
+        const cabinetElement = document.querySelector('#LinkButtonUserLog');
+        if (!cabinetElement) return null;
+        const cabinetInfoLines = cabinetElement.title.split('\n');
+        for (let line of cabinetInfoLines) {
+            if (line.startsWith('CabinetID : ')) {
+                const cabinetId = line.replace('CabinetID : ', '').trim();
+                // On en profite pour enregistrer l'info dans le storage local pour d'autres usages
+                await chrome.storage.local.set({ currentCabinetId: cabinetId });
+                return cabinetId;
+            }
+        }
+        return null;
+    })();
+    
+    console.log('[alertesAtcd] cabinetId', cabinetId);
+    
+    // Récupération des alertes personnalisées de l'utilisateur (JSON direct = tableau d'alertes)
+    const alertesPersonnalisees = await (async function() {
+        try {
+            const alertesAtcdOptionValue = await getOptionPromise('alertesAtcdOption');
+            if (!alertesAtcdOptionValue) return [];
+            
+            // Parser le JSON - doit être directement un tableau d'alertes
+            const alertesParsed = JSON.parse(alertesAtcdOptionValue);
+            
+            if (Array.isArray(alertesParsed)) {
+                return alertesParsed;
+            } else {
+                console.warn('[alertesAtcd] Format inattendu pour alertesAtcdOption, tableau attendu');
+                return [];
+            }
+        } catch (error) {
+            console.error('[alertesAtcd] Erreur lors du parsing des alertes personnalisées:', error);
+            return [];
+        }
+    })();
+    
+    // Récupération des alertes globales du cabinet
+    const alertesGlobales = [];
+    if (cabinetId && typeof alertesAtcdGlobal !== 'undefined' && alertesAtcdGlobal[cabinetId]) {
+        alertesGlobales.push(...alertesAtcdGlobal[cabinetId]);
+    }
+    
+    // Fusion des alertes : les alertes personnalisées en premier, puis les globales
+    // Cela permet aux alertes personnalisées d'avoir la priorité si nécessaire
+    let toutesLesAlertes = [...alertesPersonnalisees, ...alertesGlobales];
+    
+    console.log('[alertesAtcd] Alertes personnalisées:', alertesPersonnalisees.length);
+    console.log('[alertesAtcd] Alertes du cabinet:', alertesGlobales.length);
+    console.log('[alertesAtcd] Total des alertes actives', toutesLesAlertes.length);
+
+    if (toutesLesAlertes.length === 0) {
+        console.log('[alertesAtcd] Aucune alerte configurée');
+        return;
+    }
+
+    // Récupération des options de sous-affichage
+    const afficherPopup = await getOptionPromise('alertesAtcdOptionGlobalPopup');
+    const afficherMarquage = await getOptionPromise('alertesAtcdOptionGlobalLocalMarking');
+    
+    console.log('[alertesAtcd] Options d\'affichage - Popup:', afficherPopup, 'Marquage:', afficherMarquage);
+
+    // Liste de tous les span du panel
+    const spanElements = atcdDiv.querySelectorAll('span');
+    
+    // Map pour éviter d'afficher plusieurs fois la même alerte sur le même élément
+    const alertesAffichees = new Map();
+    
+    // Set pour tracer les alertes ayant déjà envoyé une notification
+    const notificationsEnvoyees = new Set();
+
+    spanElements.forEach(spanElement => {
+        const spanText = spanElement.textContent.toLowerCase();
+        
+        // Vérifier chaque alerte
+        toutesLesAlertes.forEach(alert => {
+            // Vérifier que la cible est "atcd" (ou non définie pour rétrocompatibilité)
+            const cible = alert.optionsCible?.cible;
+            if (cible && cible !== 'atcd') {
+                return; // Cette alerte ne s'applique pas aux antécédents
+            }
+
+            // Vérifier les conditions (âge, sexe, période)
+            if (!verifierConditions(alert.conditions)) {
+                return; // Les conditions ne sont pas remplies
+            }
+
+            // Récupérer les mots-clés depuis conditions
+            const motsCles = alert.conditions?.motsCles || [];
+            
+            motsCles.forEach(motCle => {
+                const motCleLower = motCle.toLowerCase();
+                if (spanText.includes(motCleLower)) {
+                    console.log('[alertesAtcd] Alerte validée pour :', alert.titre, 'avec les caractéristiques', alert, 'mot-clé trouvé:', motCle);                    
+                    // Clé unique pour éviter les doublons
+                    const cleElement = spanElement.textContent + alert.titre;
+                    if (alertesAffichees.has(cleElement)) return;
+                    alertesAffichees.set(cleElement, true);
+
+                    // Déterminer si l'alerte provient des alertes globales ou personnalisées
+                    const estAlerteGlobale = alertesGlobales.includes(alert);
+                    
+                    // Afficher une notification si alerteWeda est présent avec texteAlerte
+                    // ET si cette alerte n'a pas déjà envoyé de notification
+                    // ET si l'option popup est activée (ou si c'est une alerte personnalisée)
+                    if (alert.alerteWeda && alert.alerteWeda.texteAlerte && !notificationsEnvoyees.has(alert.titre)) {
+                        const doitAfficherPopup = !estAlerteGlobale || afficherPopup;
+                        
+                        if (doitAfficherPopup) {
+                            const iconeWeda = alert.alerteWeda.icone || 'warning';
+                            const typeAlerte = alert.alerteWeda.typeAlerte || 'success';
+                            const dureeAlerte = alert.alerteWeda.dureeAlerte ? alert.alerteWeda.dureeAlerte * 1000 : 10000;
+                            
+                            console.log('[alertesAtcd] Envoi de la notification pour l\'alerte:', alert.titre, 'mot-clé:', motCle, "icône:", iconeWeda);
+                            sendWedaNotifAllTabs({
+                                message: alert.alerteWeda.texteAlerte,
+                                type: typeAlerte,
+                                duration: dureeAlerte,
+                                icon: iconeWeda,
+                            });
+                        }
+                        
+                        // Marquer cette alerte comme ayant envoyé une notification
+                        notificationsEnvoyees.add(alert.titre);
+                    }
+
+                    // Appliquer le marquage visuel si l'option est activée (ou si c'est une alerte personnalisée)
+                    const doitAfficherMarquage = !estAlerteGlobale || afficherMarquage;
+                    
+                    if (doitAfficherMarquage) {
+                        // Appliquer la coloration si le flag est activé dans optionsCible
+                        const coloration = alert.optionsCible?.coloration;
+                        if (coloration) {
+                            if (typeof coloration === 'string') {
+                                // Si c'est une couleur CSS spécifique
+                                spanElement.style.color = coloration;
+                            } else if (coloration === true) {
+                                // Si c'est un booléen true, utiliser vert par défaut
+                                spanElement.style.color = 'green';
+                            }
+                            spanElement.style.fontWeight = 'bold';
+                        }
+
+                        // Ajouter une icône si définie dans optionsCible
+                        const icone = alert.optionsCible?.icone;
+                        if (icone) {
+                            const iconElement = document.createElement('span');
+                            iconElement.className = 'material-icons';
+                            iconElement.textContent = icone;
+                            iconElement.style.fontSize = '16px';
+                            iconElement.style.verticalAlign = 'middle';
+                            iconElement.style.marginLeft = '4px';
+                            spanElement.appendChild(iconElement);
+                        }
+
+                        // Ajouter un tooltip avec texteSurvol
+                        const texteSurvol = alert.optionsCible?.texteSurvol;
+                        if (texteSurvol) {
+                            spanElement.title = texteSurvol;
+                        }
+                    }
+                }
+            });
+        });
+    });
+});
