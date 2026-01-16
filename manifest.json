@@ -61,6 +61,7 @@
         "src/features/pdfParser.js",
         "src/features/headlessSetup.js",
         "src/features/instantVaccine.js",
+        "src/features/noemie.js",
         "src/utils/print.js",
         "src/utils/optionalPermissions.js",
         "src/ui/update.js"
