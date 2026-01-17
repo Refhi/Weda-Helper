@@ -57,6 +57,13 @@ function waitLegacyForElement(selector, text = null, timeout, callback) {
  * });
  */
 function afterMutations({ delay, callback, callBackId = "callback id undefined", preventMultiple = false }) {
+    // Si aucun callback n'est fourni, retourner une promesse
+    if (typeof callback !== 'function') {
+        return new Promise(resolve => {
+            afterMutations({ delay, callback: resolve, callBackId, preventMultiple });
+        });
+    }
+
     let timeoutId = null;
     const action = () => {
         // console.debug(`Aucune mutation détectée pendant ${delay}ms, je considère la page comme chargée. Appel du Callback. (${callBackId})`);
@@ -67,7 +74,6 @@ function afterMutations({ delay, callback, callBackId = "callback id undefined",
         } else {
             callback();
         }
-
     };
 
     const observer = new MutationObserver((mutationsList, observer) => {
@@ -79,7 +85,7 @@ function afterMutations({ delay, callback, callBackId = "callback id undefined",
     });
 
     observer.observe(document, { childList: true, subtree: true });
-};
+}
 
 
 /**

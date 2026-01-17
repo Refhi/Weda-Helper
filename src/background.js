@@ -353,6 +353,7 @@ const alertesAtcdOptionDefault = JSON.stringify([
         conditions: {
             ageMin: 18,
             ageMax: 65,
+            dateFin: "31/12/2020",
             sexes: "N",
             motsCles: ["exemple1", "test1"]
         }
@@ -373,6 +374,7 @@ const alertesAtcdOptionDefault = JSON.stringify([
         },
         conditions: {
             ageMin: 50,
+            dateFin: "31/12/2020",
             sexes: "F",
             motsCles: ["exemple2", "test2"]
         }
@@ -392,6 +394,7 @@ const alertesAtcdOptionDefault = JSON.stringify([
             texteAlerte: "⚠️ Attention : contre-indication absolue détectée"
         },
         conditions: {
+            dateFin: "31/12/2020",
             motsCles: ["exemple3", "test3"]
         }
     },
@@ -424,6 +427,7 @@ const alertesAtcdOptionDefault = JSON.stringify([
             texteSurvol: "Cette alerte colore l'antécédent mais n'affiche pas de notification"
         },
         conditions: {
+            dateFin: "31/12/2020",
             motsCles: ["exemple5", "test5"]
         }
     },
@@ -444,6 +448,7 @@ const alertesAtcdOptionDefault = JSON.stringify([
         conditions: {
             ageMax: 18,
             sexes: "N",
+            dateFin: "31/12/2020",
             motsCles: ["exemple6", "test6"]
         }
     }
