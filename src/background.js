@@ -1218,7 +1218,12 @@ var advancedDefaultSettings = [
                 "type": TYPE_BOOL,
                 "description": "<em><strong>Désactiver</strong></em> la communication avec le TPE et l'option TPE dans les fse <strong>(décocher pour l'activer)</strong>.",
                 "default": true
-            }],
+            }, {
+            "name": "TPEOnlyForCB",
+            "type": TYPE_BOOL,
+            "description": "Envoyer le montant du réglement au TPE uniquement en cas de réglement par CB",
+            "default": true
+        }],
         }]
     }, {
         "name": "Options avancées",
