@@ -216,123 +216,123 @@ const customFieldsDefault3 = JSON.stringify([
  * Définit la structure attendue pour chaque alerte
  */
 const alerteSchema = {
-  titre: {
-    type: 'string',
-    required: true,
-    description: 'Titre de l\'alerte (non affiché, sert à s\'y retrouver)'
-  },
-  optionsCible: {
-    type: 'object',
-    required: false,
-    description: 'Options d\'affichage de la cible (antécédent ou état civil)',
-    properties: {
-      cible: {
+    titre: {
         type: 'string',
         required: true,
-        description: 'Cible de l\'alerte',
-        enum: ['atcd', 'etatCivil'],
-        default: 'atcd'
-      },
-      coloration: {
-        type: 'string',
+        description: 'Titre de l\'alerte (non affiché, sert à s\'y retrouver)'
+    },
+    optionsCible: {
+        type: 'object',
         required: false,
-        description: 'Coloration de la cible (nom de couleur CSS). Omettre la propriété pour aucune coloration. "true" ou "green" pour vert.',
-        default: undefined
-      },
-      icone: {
-        type: 'string',
+        description: 'Options d\'affichage de la cible (antécédent ou état civil)',
+        properties: {
+            cible: {
+                type: 'string',
+                required: true,
+                description: 'Cible de l\'alerte',
+                enum: ['atcd', 'etatCivil'],
+                default: 'atcd'
+            },
+            coloration: {
+                type: 'string',
+                required: false,
+                description: 'Coloration de la cible (nom de couleur CSS). Omettre la propriété pour aucune coloration. "true" ou "green" pour vert.',
+                default: undefined
+            },
+            icone: {
+                type: 'string',
+                required: false,
+                description: 'Icône Material à afficher',
+                default: 'info'
+            },
+            texteSurvol: {
+                type: 'string',
+                required: false,
+                description: 'Texte affiché au survol de la cible',
+                default: ''
+            }
+        }
+    },
+    alerteWeda: {
+        type: 'object',
         required: false,
-        description: 'Icône Material à afficher',
-        default: 'info'
-      },
-      texteSurvol: {
-        type: 'string',
+        description: 'Configuration de l\'alerte WEDA (notification)',
+        properties: {
+            icone: {
+                type: 'string',
+                required: false,
+                description: 'Icône Material de l\'alerte',
+                default: 'info'
+            },
+            typeAlerte: {
+                type: 'string',
+                required: false,
+                description: 'Type d\'alerte visuelle',
+                enum: ['success', 'fail', 'undefined'],
+                default: undefined
+            },
+            dureeAlerte: {
+                type: 'number',
+                required: false,
+                description: 'Durée d\'affichage en secondes (0 = jusqu\'à fermeture manuelle)',
+                default: 10,
+                min: 0
+            },
+            texteAlerte: {
+                type: 'string',
+                required: false,
+                description: 'Texte de la notification (obligatoire pour afficher l\'alerte)',
+                default: ''
+            }
+        }
+    },
+    conditions: {
+        type: 'object',
         required: false,
-        description: 'Texte affiché au survol de la cible',
-        default: ''
-      }
+        description: 'Conditions de déclenchement de l\'alerte',
+        properties: {
+            ageMin: {
+                type: 'number',
+                required: false,
+                description: 'Âge minimum',
+                default: null
+            },
+            ageMax: {
+                type: 'number',
+                required: false,
+                description: 'Âge maximum',
+                default: null
+            },
+            sexes: {
+                type: 'string',
+                required: false,
+                description: 'Sexes concernés',
+                enum: ['F', 'M', 'N'],
+                default: null
+            },
+            dateDebut: {
+                type: 'string',
+                required: false,
+                description: 'Date de début de validité (format DD/MM/YYYY)',
+                format: 'date',
+                default: null
+            },
+            dateFin: {
+                type: 'string',
+                required: true,
+                description: 'Date de fin de validité (format DD/MM/YYYY)',
+                format: 'date',
+                default: null
+            },
+            motsCles: {
+                type: 'array',
+                required: false,
+                description: 'Mots-clés à rechercher dans les antécédents',
+                itemType: 'string',
+                default: []
+            }
+        }
     }
-  },
-  alerteWeda: {
-    type: 'object',
-    required: false,
-    description: 'Configuration de l\'alerte WEDA (notification)',
-    properties: {
-      icone: {
-        type: 'string',
-        required: false,
-        description: 'Icône Material de l\'alerte',
-        default: 'info'
-      },
-      typeAlerte: {
-        type: 'string',
-        required: false,
-        description: 'Type d\'alerte visuelle',
-        enum: ['success', 'fail', 'undefined'],
-        default: undefined
-      },
-      dureeAlerte: {
-        type: 'number',
-        required: false,
-        description: 'Durée d\'affichage en secondes (0 = jusqu\'à fermeture manuelle)',
-        default: 10,
-        min: 0
-      },
-      texteAlerte: {
-        type: 'string',
-        required: false,
-        description: 'Texte de la notification (obligatoire pour afficher l\'alerte)',
-        default: ''
-      }
-    }
-  },
-  conditions: {
-    type: 'object',
-    required: false,
-    description: 'Conditions de déclenchement de l\'alerte',
-    properties: {
-      ageMin: {
-        type: 'number',
-        required: false,
-        description: 'Âge minimum',
-        default: null
-      },
-      ageMax: {
-        type: 'number',
-        required: false,
-        description: 'Âge maximum',
-        default: null
-      },
-      sexes: {
-        type: 'string',
-        required: false,
-        description: 'Sexes concernés',
-        enum: ['F', 'M', 'N'],
-        default: null
-      },
-      dateDebut: {
-        type: 'string',
-        required: false,
-        description: 'Date de début de validité (format DD/MM/YYYY)',
-        format: 'date',
-        default: null
-      },
-      dateFin: {
-        type: 'string',
-        required: true,
-        description: 'Date de fin de validité (format DD/MM/YYYY)',
-        format: 'date',
-        default: null
-      },
-      motsCles: {
-        type: 'array',
-        required: false,
-        description: 'Mots-clés à rechercher dans les antécédents',
-        itemType: 'string',
-        default: []
-      }
-    }
-  }
 };
 
 const alertesAtcdOptionDefault = JSON.stringify([
@@ -353,6 +353,7 @@ const alertesAtcdOptionDefault = JSON.stringify([
         conditions: {
             ageMin: 18,
             ageMax: 65,
+            dateFin: "31/12/2020",
             sexes: "N",
             motsCles: ["exemple1", "test1"]
         }
@@ -373,6 +374,7 @@ const alertesAtcdOptionDefault = JSON.stringify([
         },
         conditions: {
             ageMin: 50,
+            dateFin: "31/12/2020",
             sexes: "F",
             motsCles: ["exemple2", "test2"]
         }
@@ -392,6 +394,7 @@ const alertesAtcdOptionDefault = JSON.stringify([
             texteAlerte: "⚠️ Attention : contre-indication absolue détectée"
         },
         conditions: {
+            dateFin: "31/12/2020",
             motsCles: ["exemple3", "test3"]
         }
     },
@@ -424,6 +427,7 @@ const alertesAtcdOptionDefault = JSON.stringify([
             texteSurvol: "Cette alerte colore l'antécédent mais n'affiche pas de notification"
         },
         conditions: {
+            dateFin: "31/12/2020",
             motsCles: ["exemple5", "test5"]
         }
     },
@@ -444,6 +448,7 @@ const alertesAtcdOptionDefault = JSON.stringify([
         conditions: {
             ageMax: 18,
             sexes: "N",
+            dateFin: "31/12/2020",
             motsCles: ["exemple6", "test6"]
         }
     }
@@ -1217,7 +1222,13 @@ var advancedDefaultSettings = [
                 "name": "RemoveLocalCompanionTPE",
                 "type": TYPE_BOOL,
                 "description": "<em><strong>Désactiver</strong></em> la communication avec le TPE et l'option TPE dans les fse <strong>(décocher pour l'activer)</strong>.",
-                "default": true
+                "default": true,
+                "subOptions": [{
+                    "name": "TPEOnlyForCB",
+                    "type": TYPE_BOOL,
+                    "description": "Envoyer le montant du réglement au TPE uniquement en cas de réglement par CB",
+                    "default": true
+                }]
             }],
         }]
     }, {
@@ -1473,9 +1484,9 @@ var defaultShortcuts = {
 };
 
 // retour à un chargement systématique, a priori sans impact évident sur le temps de chargement
-chrome.storage.local.set({ 
-    defaultSettings: defaultSettings, 
-    defaultShortcuts: defaultShortcuts, 
+chrome.storage.local.set({
+    defaultSettings: defaultSettings,
+    defaultShortcuts: defaultShortcuts,
     advancedDefaultSettings: advancedDefaultSettings,
     alerteSchema: alerteSchema  // Schéma de validation des alertes
 }, function () {

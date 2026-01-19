@@ -818,7 +818,12 @@ addTweak('/vitalzen/fse.aspx', '*autoSelectRienAMO', function () {
  * Envoie automatiquement le montant au TPE après sécurisationou facturation FSE.
  * Surveille les boutons de sécurisation et facturation pour déclencher l'envoi TPE.
  */
-function tpesender() {
+async function tpesender() {
+    let modeReglement = document.querySelector("vz-facturation select").value;
+    let TPEOnlyForCB = await getOptionPromise('TPEOnlyForCB');
+    if (TPEOnlyForCB && modeReglement != "CB") {
+        return;
+    }
     console.log('tpe_sender activé');
     var montantElement = document.querySelector('input[placeholder="Montant"]');
     // extraire le montant de l'élément
