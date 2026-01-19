@@ -4,6 +4,99 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.15.0.4] - message aux beta-testeurs
+- j'ai énormement bossé sur le système d'alerte selon atcd... c'est le plus gros truc que j'ai fait depuis longtemps... pouvez-vous le tester svp ? Merci +++ :)
+
+# [2.15] - Bonne année 2026 à toustes ! 🎉🎊
+
+## 🎯 Vos Pôles et Cabinets peuvent désormais créer des alertes personnalisées communes sur les antécédents ! 
+- ⚕️ Particulièrement utile pour repérer facilement les patients éligibles à un suivi spécifique comme l'inscription à un atelier ETP.
+- 🔬 Si vous avez des protocoles ou études à appliquer auprès de patients avec des antécédents spécifiques, vous pouvez désormais les repérer en un coup d'œil !
+- 📧 Pensez à nous les envoyer depuis le bouton dédié dans les options pour que nous puissions les intégrer par défaut dans la prochaine version.
+- 🧪 Testez dès maintenant en ajoutant vos propres mots-clés dans les options de Weda-Helper !
+- [#528](https://github.com/Refhi/Weda-Helper/issues/528) - Ajout d'un système d'alerte si un antécédent contient un mot-clé précisé dans les options de Weda-Helper.
+
+
+## 🔍 La recherche des motifs d'arrêt de travail est désormais grandement simplifiée !
+- 🎯 [#527](https://github.com/Refhi/Weda-Helper/issues/527) - Recherche rapide et floue (tolérant aux fautes de frappe) dans les motifs d'arrêt de travail AATI.
+- 📋 Les motifs d'arrêt de travail AATI sont désormais classés par ordre alphabétique.
+
+
+## ✨ Autres ajouts :
+- 🖨️ [#532](https://github.com/Refhi/Weda-Helper/issues/532) - L'impression de masse peut être désactivée dans les options (utile si le raccourci vous gêne).
+- 💉 [#521](https://github.com/Refhi/Weda-Helper/issues/521) - Ajout de raccourcis pour scanner directement le datamatrix d'un vaccin depuis l'arborescence des vaccins.
+- ✅ La case "x ième injection effectuée" se coche automatiquement.
+- 🩺 [#534](https://github.com/Refhi/Weda-Helper/issues/534) - Ajout d'un bouton "+1clickVSM" dans la page des antécédents pour créer un VSM en un clic.
+- 💰 [#535](https://github.com/Refhi/Weda-Helper/issues/535) - Ajout d'un message d'aide à la cotation pour GL1, GL2 et GL3 dans la page des FSE.
+- Vous pouvez désormais copier et coller vos paramètres de Weda-Helper entre différentes installations. Rendez-vous en bas de la page des options pour retrouver les boutons "📋📤Copier/Sauv. param.", "📋📥Coller paramètres" et "📁📥Charger depuis fichier". Attention à la clé API qui sera à reporter dans le Companion.
+
+## 🔧 Corrections :
+- 📄 Le bouton "AT sans CV" dans la page d'accueil du dossier patient fonctionne de nouveau correctement.
+- 📝 [#504](https://github.com/Refhi/Weda-Helper/issues/504) - Le titre automatique d'un document importé depuis la messagerie sécurisée fonctionne de nouveau correctement si un commentaire est ajouté par l'utilisateur avant l'import.
+- 📨 [#505](https://github.com/Refhi/Weda-Helper/issues/505) - Lors des intégrations dans la messagerie sécurisée, le corps du message est correctement pris en compte si le PDF ne contient pas suffisamment de texte (moins de 3 lignes).
+- 🔄 [#494](https://github.com/Refhi/Weda-Helper/issues/494) - Tentative de correction d'un problème de persistance intermittente du nom du précédent patient lors de l'importation automatique dans la messagerie sécurisée.
+- utiliser le raccourci clavier de Validation dans les prescriptions valide également le texte en cours d’édition (évite de perdre des données si on oublie de sortir du champ avant de valider).
+- [#547](https://github.com/Refhi/Weda-Helper/issues/547) - L'envoi au TPE est par défaut réservé aux paiements par CB.
+
+
+## 🏗️ Refactorisation :
+- 🔨 Refactorisation des options
+- ajout d’une option d’id pour le waitForElement permettant de multiplier les observateurs sur un même sélecteur sans conflit.
+
+# [2.14] - Correctifs divers et améliorations
+## Améliorations :
+- [#519](https://github.com/Refhi/Weda-Helper/issues/519) - Ajout d’un champ de recherche pour filtrer les pharmacies dans la sélection de pharmacie lors de la création d’une prescription.
+- [#520](https://github.com/Refhi/Weda-Helper/issues/520) - Le champ de date d’expiration du vaccin est désormais automatiquement formaté.
+
+## Fix :
+- [#517](https://github.com/Refhi/Weda-Helper/issues/517) - La lecture automatique de la carte vitale fonctionne de nouveau correctement pour les nouvelles installations.
+
+# [2.13.5.1] - Hotfix impressions
+## Fix :
+- [#511](https://github.com/Refhi/Weda-Helper/issues/511) - Lors d’une impression simple via Ctrl+P, l’onglet ne se ferme plus indument avant que l’impression n’ait été validée. Ajout d’un message incitant à l’installation du Companion et à l’activation des impressions instantanées lors des impressions simples.
+
+
+# [2.13.5] - Correctifs impressions
+## Fix :
+- correction d’une faute d’orthographe dans "(Imprime tous les documents du jour)" (merci à @CecilePRLN pour la remarque !)
+- [#506](https://github.com/Refhi/Weda-Helper/issues/506) - Les icones imprimante dans les "Documents du cabinet" fonctionnent de nouveau correctement.
+- [#493](https://github.com/Refhi/Weda-Helper/issues/493) - Amélioration du flux d’impression : permet de limiter les cas de blocage et de faciliter le débogage.
+- [#501](https://github.com/Refhi/Weda-Helper/issues/501) - La navigation par tabulation depuis les champ de suivi vers les saisie de texte n’ignore plus les champs confidentiels.
+
+## Améliorations :
+- [#503](https://github.com/Refhi/Weda-Helper/issues/503) - La fenêtre popup de l’extension affiche plus clairement les différents liens, et ajout d’un lien vers le forum de discussion et le wiki.
+
+
+# [2.13.4]
+## Divers :
+- amélioration des messages d'onglet pour le suivi des impressions instantanées
+
+## Fix :
+- [#490](https://github.com/Refhi/Weda-Helper/issues/490) - Les modèles WeDoc fonctionnent désormais correctement avec l'impression instantanée et le post-traitement (fermeture de l'onglet, envoi MSSanté, etc.)
+- [#496](https://github.com/Refhi/Weda-Helper/issues/496) - Ctrl+E permet de nouveau d'imprimer + envoyer par MSSanté si l'option est activée.
+- [#481](https://github.com/Refhi/Weda-Helper/issues/481) - Dans la messagerie Sécurisée, les pdfs accompagnés d'un message sont de nouveau évalués correctement.
+- l’envoi au DMP lors de l’impression instantanée fonctionne de nouveau correctement. (un id d’élement avait changé dans Weda)
+- [#500](https://github.com/Refhi/Weda-Helper/issues/500) - La navigation par tabulation entre les champs de saisie de la consultation est beaucoup plus rapide, et réparée quand on passe sur le champ confidentiel.
+
+
+# [2.13.3] - Correctifs
+## Fix :
+- [#491](https://github.com/Refhi/Weda-Helper/issues/491) - Les raccourcis ne créent un nouveau document que si aucun n’existe ou qu’il est appelé depuis le document en cours.
+
+
+## Nettoyage :
+- Suppression de la fonctionnalité "Tout mettre en consultation" dans le popup (obsolète avec les imports automatisés)
+- Suppression de la fonctionnalité "Envoyer une notification Weda" dans le popup (inutile, était surtout utile pour le développement)
+
+## Divers :
+- [#492](https://github.com/Refhi/Weda-Helper/issues/492) - Ajout d’émojis dans les titres des onglets pour mieux repérer les onglets en cours (impression, envoi MSSanté, etc.)
+
+
+# [2.13.2.1] - Correctifs
+## Fix :
+- [#487](https://github.com/Refhi/Weda-Helper/issues/487) - Le bouton "Réinitialiser les auto-imports" n’est plus caché par le "log d’extraction".
+
+
 # [2.13.2] - Améliorations et correctifs - imports automatisés nettement améliorés !
 ## Ajouts :
 - Lors de la recherche d’un patient, si un unique résultat est trouvé, il est automatiquement validé. ![Recherche patient](./Images/mises%20a%20jour/2.13.2-autopast.gif)
@@ -131,7 +224,7 @@ Suite à la fermeture du site de la communauté Weda, l'espace de discussion de 
 - [#381](https://github.com/Refhi/Weda-Helper/issues/381) - Refonte du système de titre automatique (vos retours sont les bienvenus !)
 
 ## Raccourcis :
-- [#397](https://github.com/Refhi/Weda-Helper/issues/397) - **Impression de masse** : Vous pouvez désormais appeler Ctrl+P (et seulement celui-ci !) pour imprimer TOUT les documents du jour depuis l'accueil du dossier patient. Cela fonctionne surtout si vous avez activé l'impression complète en 1 clic via le Companion. Au passage les onglets affichent l'étape d'impression en cours.
+- [#397](https://github.com/Refhi/Weda-Helper/issues/397) - **Impression de masse** : Vous pouvez désormais appeler Ctrl+P (et seulement celui-ci !) pour imprimer TOUS les documents du jour depuis l'accueil du dossier patient. Cela fonctionne surtout si vous avez activé l'impression complète en 1 clic via le Companion. Au passage les onglets affichent l'étape d'impression en cours.
 - [#393](https://github.com/Refhi/Weda-Helper/issues/393) - Meilleurs raccourcis pour les documents : Alt+chiffre ouvre le dernier document, et Alt+Maj+chiffre en crée un nouveau (ex. Pour les ordonnances, les prescriptions, les consultations, etc.). Les demandes de nouvelles prescriptions sont mieux prises en compte.
 
 ## Automatismes :

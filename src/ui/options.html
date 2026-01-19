@@ -1,0 +1,371 @@
+<!-- Description: Page d'options de Weda-Helper -->
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin-bottom: 70px;
+            line-height: 1.6;
+            background-color: #f8f9fa;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Hiérarchie des niveaux avec indentation progressive et bordures colorées */
+        .level-1 {
+            margin-left: 20px;
+            padding-left: 15px;
+            border-left: 3px solid #007bff;
+            margin-bottom: 15px;
+        }
+
+        .level-2 {
+            margin-left: 40px;
+            padding-left: 15px;
+            border-left: 3px solid #28a745;
+            margin-bottom: 12px;
+        }
+
+        .level-3 {
+            margin-left: 60px;
+            padding-left: 15px;
+            border-left: 3px solid #ffc107;
+            margin-bottom: 10px;
+        }
+
+        .level-4 {
+            margin-left: 80px;
+            padding-left: 15px;
+            border-left: 3px solid #fd7e14;
+            margin-bottom: 8px;
+        }
+
+        .level-5 {
+            margin-left: 100px;
+            padding-left: 15px;
+            border-left: 3px solid #e83e8c;
+            margin-bottom: 6px;
+        }
+
+        .level-6 {
+            margin-left: 120px;
+            padding-left: 15px;
+            border-left: 3px solid #6f42c1;
+            margin-bottom: 6px;
+        }
+
+        /* Carte pour chaque section principale */
+        .option-card {
+            background: #ffffff;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            padding: 16px;
+            transition: box-shadow 0.2s ease;
+        }
+
+        .option-card:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Styles pour les titres hiérarchiques */
+        h1 {
+            color: #212529;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            color: #495057;
+            border-bottom: 2px solid #28a745;
+            padding-bottom: 8px;
+        }
+
+        h3 {
+            color: #6c757d;
+            border-bottom: 1px solid #ffc107;
+            padding-bottom: 6px;
+        }
+
+        h4,
+        h5,
+        h6 {
+            color: #868e96;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-style: italic;
+            margin-left: 0;
+            margin-top: -5px;
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .radio-title {
+            margin-bottom: 0.5em;
+        }
+
+        /* Amélioration des tableaux */
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        td,
+        th {
+            border: 1px solid #dee2e6;
+            text-align: left;
+            padding: 12px;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        tr:hover {
+            background-color: #e9ecef;
+        }
+
+        /* Amélioration des inputs */
+        input[type="text"],
+        input[type="checkbox"],
+        textarea {
+            margin-bottom: 0.5em;
+        }
+
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
+        input[type="checkbox"] {
+            transform: scale(1.2);
+            margin-right: 8px;
+        }
+
+        /* Amélioration des boutons */
+        button {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+        }
+
+        button.modifying {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        }
+
+        button.modifying:hover {
+            background: linear-gradient(135deg, #138496 0%, #117a8b 100%);
+        }
+
+        /* Groupe de radio buttons amélioré */
+        .radio-group {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 12px;
+            border: 1px solid #e9ecef;
+        }
+
+        .radio-group input[type="radio"] {
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+
+        .radio-group label {
+            margin-bottom: 8px;
+            display: inline-block;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background-color 0.2s ease;
+        }
+
+        .radio-group label:hover {
+            background-color: #e9ecef;
+        }
+
+        /* Bouton save fixe amélioré */
+        #save {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            font-size: 16px;
+            border-radius: 50px;
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+            z-index: 1000;
+        }
+
+        #save:hover {
+            transform: scale(1.05);
+        }
+
+        /* Styles pour les liens */
+        a {
+            color: #007bff;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        a:hover {
+            color: #0056b3;
+            text-decoration: underline;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .container {
+                margin: 0;
+                padding: 15px;
+                border-radius: 0;
+            }
+
+            .level-1,
+            .level-2,
+            .level-3,
+            .level-4,
+            .level-5,
+            .level-6 {
+                margin-left: 10px;
+                padding-left: 10px;
+            }
+
+            #save {
+                bottom: 10px;
+                right: 10px;
+                left: 10px;
+                width: auto;
+            }
+        }
+
+        /* Animation pour les sections qui se déplient */
+        .option {
+            transition: all 0.3s ease;
+        }
+
+        /* Indicateurs visuels pour la hiérarchie */
+        .level-indicator {
+            position: absolute;
+            left: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .level-1 {
+            position: relative;
+        }
+
+        .level-2 {
+            position: relative;
+        }
+
+        .level-3 {
+            position: relative;
+        }
+
+        .level-4 {
+            position: relative;
+        }
+
+        .level-5 {
+            position: relative;
+        }
+
+        .level-6 {
+            position: relative;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- ...existing code... -->
+        <h1 id="MainTitle">Options de Weda-Helper</h1>
+        <div id="betaPlaceHolder"></div>
+        <p>Bienvenue dans les options de Weda-Helper !</p>
+        <p> Weda-Helper et son companion sont entièrement gratuits et open-source. Ils sont développés par <a
+                href="https://github.com/Refhi" target="_blank">Refhi</a>, un médecin Euroi, et <a
+                href="https://github.com/Abeldvlpr" target="_blank">Abeldvlpr</a>, un médecin Toulousain</p>
+        <p>Vous pouvez ici activer ou désactiver les fonctionnalités de Weda-Helper selon vos besoins.</p>
+        <p>Pour accéder au code source de Weda-Helper, suggérer des fonctionnalités ou signaler des bugs, c'est par ici
+            : <a href="https://github.com/Refhi/Weda-Helper" target="_blank">https://github.com/Refhi/Weda-Helper</a> et
+            <a href="https://github.com/Refhi/Weda-Helper-Companion"
+                target="_blank">https://github.com/Refhi/Weda-Helper-Companion</a></p>
+        <p>Si vous souhaitez faire des remarques plus générales ou simplement exprimer votre soutien, c'est par là : <a
+                href="https://github.com/Refhi/Weda-Helper/discussions"
+                target="_blank">https://github.com/Refhi/Weda-Helper/discussions</a>
+        </p>
+        <p>Et enfin si vous souhaitez soutenir le développement de Weda-Helper, vous pouvez également faire un don via
+            PayPal : <a href="https://www.paypal.com/paypalme/refhi"
+                target="_blank">https://www.paypal.com/paypalme/refhi</a> (Pour un encouragement à l'attention d'Abel,
+            le <a href="https://github.com/Refhi/Weda-Helper/discussions" target="_blank">contacter directement
+                sur le site de la communauté</a>)</p>
+
+        <div id="advanced-options"></div>
+
+        <h2>Raccourcis</h2>
+        <div id="shortcuts"></div>
+
+        <h2>Métriques</h2>
+        <div id="metrics"></div>
+        </br>
+
+        <button id="save">💾 Enregistrer</button>
+    </div>
+    <!-- ...existing code... -->
+    <script src="options.js"></script>
+    <script src="../../lib/hotkeys.js"></script>
+</body>
+
+</html>
