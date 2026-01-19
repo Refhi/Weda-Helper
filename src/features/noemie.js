@@ -25,6 +25,7 @@ addTweak('/FolderGestion/NoemieForm.aspx', '*noemieDate', function() {
                         "CARCASSONNE":"CPAM CARCASSONNE",
                         "VANNES":"CPAM DU MORBIHAN - COURANT",
                         "TARBES":"CPAM TARBES",
+                        "TULLE":"CPAM TULLE",
                         "Organisme 901":"CAVIMAC",
                         "NANTERRE":"CPAM HAUTS DE SEINE SEPA",
                         "Organisme 004110000":"CAISSE PREVOYANCE ET RETRAIT",
@@ -34,7 +35,7 @@ addTweak('/FolderGestion/NoemieForm.aspx', '*noemieDate', function() {
                         "Organisme SP0080000" : "CETIP CETIP",
                         "Organisme VM0030000":"HARMONIE MUTUELLES",
                         "Organisme VM0010000":"KORELIO PRESTATIONS",
-                        "Organisme AC0010000":"ACTIL SAS"
+                        "Organisme AC0010000":"ACTIL SAS",
                         "Caisse de Ret.et Prev. Clercs et Emp. Notaires":"CRPCEN M",
                         "Organisme 091007311":"MGEN",
                         "Organisme 091007971" : "MGEN",
@@ -87,10 +88,16 @@ function ajouterJour(dateStr, numDay) {
   const [jour, mois, annee] = dateStr.split('/').map(num => parseInt(num, 10));
 
   // On crée une nouvelle date avec les valeurs extraites
-  const date = new Date(annee, mois - 1, jour); // Le mois commence à 0 en JS
+  let date = new Date(annee, mois - 1, jour); // Le mois commence à 0 en JS
 
   // On ajoute un jour à la date
   date.setDate(date.getDate() + numDay);
+  if (date.getDay() == 6) { //Si date tombe un samedi, ajouter 2 jours
+    date.setDate(date.getDate()+2);
+  }
+  else if (date.getDay() == 0) {//Si date tombe un dimanche, ajouter 1 jour
+    date.setDate(date.getDate()+1);
+  }
 
   // On formate la nouvelle date au format jj/mm/yyyy
   const jourAjoute = String(date.getDate()).padStart(2, '0');
