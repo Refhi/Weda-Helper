@@ -115,7 +115,7 @@ const alertesAtcdGlobal = {
       titre: "Atelier traitement CV",
       optionsCible: {
         cible: "atcd",
-        coloration: "yellow",
+        coloration: "green",
         icone: "groups",
         texteSurvol: "Un atelier Maladies Cardiovasculaires peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage."
       },
