@@ -12,7 +12,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 ## 🎯 Vos Pôles et Cabinets peuvent désormais créer des alertes personnalisées communes sur les antécédents ! 
 - ⚕️ Particulièrement utile pour repérer facilement les patients éligibles à un suivi spécifique comme l'inscription à un atelier ETP.
 - 🔬 Si vous avez des protocoles ou études à appliquer auprès de patients avec des antécédents spécifiques, vous pouvez désormais les repérer en un coup d'œil !
-- 📧 Pensez à nous les envoyer depuis le bouton dédié dans les options pour que nous puissions les intégrer par défaut dans la prochaine version.
+- 📧 Vous pouvez demander à étendre vos alertes à tout votre Pôle/Cabinet/Groupement ! Pour ce faire cliquez sur le bouton dédié dans les options.
 - 🧪 Testez dès maintenant en ajoutant vos propres mots-clés dans les options de Weda-Helper !
 - [#528](https://github.com/Refhi/Weda-Helper/issues/528) - Ajout d'un système d'alerte si un antécédent contient un mot-clé précisé dans les options de Weda-Helper.
 
