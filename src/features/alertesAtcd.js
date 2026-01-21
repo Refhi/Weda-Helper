@@ -36,7 +36,7 @@
 
 
 const alertesAtcdGlobal = {
-  1000: [
+  "0000": [
     // Exemple d'alerte
     {
       titre: "Exemple d'alerte", // Titre non utilisé dans les alertes, permet de s'y retrouver
@@ -67,7 +67,7 @@ const alertesAtcdGlobal = {
       titre: "Atelier diabète",
       optionsCible: {
         cible: "atcd",
-        coloration: "blue",
+        coloration: "green",
         icone: "groups",
         texteSurvol: "Un atelier Diabète peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage."
       },
@@ -88,7 +88,7 @@ const alertesAtcdGlobal = {
       titre: "Atelier alimentation",
       optionsCible: {
         cible: "atcd",
-        coloration: "blue",
+        coloration: "green",
         icone: "groups",
         texteSurvol: "Un atelier Alimentation peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage."
       },
@@ -376,30 +376,30 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
       return;
     }
 
-    let motCleTrouve = false;
-    let ciblesCorrespondantes = [];
+    let cibleCorrespondante = null;
 
-    // Chercher les correspondances de mots-clés dans les cibles potentielles
-    motsCles.forEach(motCle => {
+    // Chercher la première correspondance de mot-clé dans les cibles potentielles
+    rechercheMotCle:
+    for (const motCle of motsCles) {
       const motCleLower = motCle.toLowerCase();
-      ciblesPotentielles.forEach(cible => {
+      for (const cible of ciblesPotentielles) {
         if (cible.text.includes(motCleLower)) {
           const cleElement = cible.element.textContent + alert.titre;
           if (!alertesAffichees.has(cleElement)) {
-            motCleTrouve = true;
-            ciblesCorrespondantes.push({ cible: cible.element, motCle });
+            cibleCorrespondante = { cible: cible.element, motCle };
+            break rechercheMotCle; // Sortir des deux boucles dès la première correspondance trouvée
           }
         }
-      });
-    });
+      }
+    }
 
-    if (!motCleTrouve) {
+    if (!cibleCorrespondante) {
       console.log(`[alertesAtcd] ${alert.titre} : Exclue (aucun mot-clé trouvé dans le texte)`);
       return;
     }
 
     // L'alerte est validée - appliquer les actions
-    console.log(`[alertesAtcd] ${alert.titre} : Validée (${ciblesCorrespondantes.length} correspondance(s))`);
+    console.log(`[alertesAtcd] ${alert.titre} : Validée (1 correspondance appliquée)`);
 
     // Déterminer si l'alerte provient des alertes globales ou personnalisées
     const estAlerteGlobale = alertesGlobales.includes(alert);
@@ -424,13 +424,14 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
       notificationsEnvoyees.add(alert.titre);
     }
 
-    // Appliquer le marquage visuel sur les cibles correspondantes
+    // Appliquer le marquage visuel sur la cible correspondante (une seule)
     const doitAfficherMarquage = !estAlerteGlobale || afficherMarquage;
 
-    if (doitAfficherMarquage) {
-      ciblesCorrespondantes.forEach(({ cible: spanElement, motCle }) => {
-        const cleElement = spanElement.textContent + alert.titre;
-        if (alertesAffichees.has(cleElement)) return;
+    if (doitAfficherMarquage && cibleCorrespondante) {
+      const spanElement = cibleCorrespondante.cible;
+      const cleElement = spanElement.textContent + alert.titre;
+      
+      if (!alertesAffichees.has(cleElement)) {
         alertesAffichees.set(cleElement, true);
 
         // Appliquer la coloration si le flag est activé dans optionsCible
@@ -461,7 +462,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
         if (texteSurvol) {
           spanElement.title = texteSurvol;
         }
-      });
+      }
     }
   });
 });
