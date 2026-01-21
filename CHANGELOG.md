@@ -4,8 +4,8 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
-# [2.15.0.4] - message aux beta-testeurs
-- j'ai énormement bossé sur le système d'alerte selon atcd... c'est le plus gros truc que j'ai fait depuis longtemps... pouvez-vous le tester svp ? Merci +++ :)
+# [2.15.0.5] - message aux beta-testeurs
+- j'ai revu le système d’alerte pour les antécédents. Je suis très intéressé par vos retours sur cette fonction, même si elle ne sera utile qu’à un petit groupe d’utilisateurs je pense (dont notre pôle)
 
 # [2.15] - Bonne année 2026 à toustes ! 🎉🎊
 
