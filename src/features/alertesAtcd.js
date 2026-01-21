@@ -195,7 +195,6 @@ validerStructureAlertes(alertesAtcdGlobal).catch(err => {
 // Cette partie charge les alertes configurées dans alertesAtcd.js pour le cabinet
 // et affiche des alertes contextuelles selon les ATCD du patient
 addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async function () {
-  // TODO : reprendre ici (les alertes sont trop souvent vérifiées, avec une surcharge du Log. A optimiser)
   const panelSelector = "#ContentPlaceHolder1_PanelPatient"
   const panelElement = document.querySelector(panelSelector);
   if (!panelElement) return;
