@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Weda Helper",
-  "version": "2.14",
-  "version_name": "2.14",
-  "options_page": "options.html",
+  "name": "Weda Helper Beta",
+  "version": "2.15.0.5",
+  "version_name": "2.15.0.5-RC4",
+  "options_page": "src/ui/options.html",
   "permissions": [
     "storage"
   ],
@@ -14,11 +14,11 @@
     "http://localhost/"
   ],
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "src/ui/popup.html"
   },
   "description": "Simplifie et fluidifie l'usage de Weda",
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "src/background.js"
   },
   "content_scripts": [
     {
@@ -26,34 +26,46 @@
         "*://secure.weda.fr/*"
       ],
       "js": [
-        "metrics.js",
         "lib/hotkeys.js",
         "lib/pdf-lib.js",
-        "utils.js",
-        "content.js",
-        "tooltip.js",
-        "popupFunctions.js",
-        "patientLink.js",
-        "accueil.js",
-        "consultation.js",
-        "fse.js",
-        "keyCommands.js",
-        "searchUpload.js",
-        "companionLink.js",
-        "prescription.js",
-        "update.js",
-        "aati.js",
-        "upload.js",
-        "agenda.js",
-        "antecedent.js",
-        "print.js",
-        "courrier.js",
-        "imti.js",
-        "wedaEchanges.js",
-        "pdfParser.js",
-        "optionalPermissions.js",
-        "headlessSetup.js",
-        "instantVaccine.js"
+        "lib/fuse.js",
+        "src/utils/configs.js",
+        "src/utils/date-time-helpers.js",
+        "src/utils/dom-oberver.js",
+        "src/utils/storage.js",
+        "src/utils/metrics.js",
+        "src/utils/dom-helpers.js",
+        "src/utils/notifications.js",
+        "src/utils/alertes-validator.js",
+        "src/utils/tweaks.js",
+        "src/utils/option-updater.js",
+        "src/utils/optionValuesUpdates.js",
+        "src/utils/print.js",
+        "src/utils/optionalPermissions.js",
+        "src/utils/patientLink.js",
+        "src/utils/companionLink.js",
+        "src/utils/keyCommands.js",
+        "src/ui/tooltip.js",
+        "src/ui/update.js",
+        "src/ui/popupFunctions.js",
+        "src/features/conflictHandler.js",
+        "src/features/alertesAtcd.js",
+        "src/features/content.js",
+        "src/features/accueil.js",
+        "src/features/consultation.js",
+        "src/features/fse.js",
+        "src/features/searchUpload.js",
+        "src/features/prescription.js",
+        "src/features/aati.js",
+        "src/features/upload.js",
+        "src/features/agenda.js",
+        "src/features/antecedent.js",
+        "src/features/courrier.js",
+        "src/features/imti.js",
+        "src/features/wedaEchanges.js",
+        "src/features/pdfParser.js",
+        "src/features/headlessSetup.js",
+        "src/features/instantVaccine.js"
       ]
     }
   ],
