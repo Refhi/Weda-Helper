@@ -412,7 +412,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
         const typeAlerte = alert.alerteWeda.typeAlerte || 'success';
         const dureeAlerte = alert.alerteWeda.dureeAlerte ? alert.alerteWeda.dureeAlerte * 1000 : 10000;
 
-        sendWedaNotifAllTabs({
+        sendWedaNotif({
           message: alert.alerteWeda.texteAlerte,
           type: typeAlerte,
           duration: dureeAlerte,
