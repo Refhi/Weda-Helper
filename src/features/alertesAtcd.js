@@ -456,10 +456,55 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
           spanElement.appendChild(iconElement);
         }
 
-        // Ajouter un tooltip avec texteSurvol
+        // Ajouter une icône de point d'interrogation avec tooltip instantané
         const texteSurvol = alert.optionsCible?.texteSurvol;
         if (texteSurvol) {
-          spanElement.title = texteSurvol;
+          // Créer l'icône de point d'interrogation
+          const helpIcon = document.createElement('span');
+          helpIcon.className = 'material-icons';
+          helpIcon.textContent = 'help_outline';
+          helpIcon.style.fontSize = '16px';
+          helpIcon.style.verticalAlign = 'middle';
+          helpIcon.style.marginLeft = '4px';
+          helpIcon.style.cursor = 'pointer';
+          helpIcon.style.color = '#1976d2';
+          helpIcon.style.position = 'relative';
+
+          // Créer le tooltip
+          const tooltip = document.createElement('div');
+          tooltip.textContent = texteSurvol;
+          tooltip.style.position = 'absolute';
+          tooltip.style.left = '100%';
+          tooltip.style.bottom = '100%';
+          tooltip.style.marginLeft = '8px';
+          tooltip.style.marginBottom = '4px';
+          tooltip.style.backgroundColor = '#ffffff';
+          tooltip.style.color = '#000000';
+          tooltip.style.padding = '8px 12px';
+          tooltip.style.borderRadius = '4px';
+          tooltip.style.border = '1px solid #ccc';
+          tooltip.style.fontSize = '13px';
+          tooltip.style.fontFamily = 'Arial, sans-serif';
+          tooltip.style.maxWidth = '300px';
+          tooltip.style.width = 'max-content';
+          tooltip.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+          tooltip.style.zIndex = '10000';
+          tooltip.style.display = 'none';
+          tooltip.style.pointerEvents = 'none';
+          tooltip.style.whiteSpace = 'normal';
+          tooltip.style.lineHeight = '1.4';
+
+          // Ajouter les gestionnaires d'événements pour affichage instantané
+          helpIcon.addEventListener('mouseenter', () => {
+            tooltip.style.display = 'block';
+          });
+          
+          helpIcon.addEventListener('mouseleave', () => {
+            tooltip.style.display = 'none';
+          });
+
+          helpIcon.appendChild(tooltip);
+          spanElement.appendChild(helpIcon);
         }
       }
     }
