@@ -4,8 +4,9 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
-# [2.15.0.5] - message aux beta-testeurs
-- j'ai revu le système d’alerte pour les antécédents. Je suis très intéressé par vos retours sur cette fonction, même si elle ne sera utile qu’à un petit groupe d’utilisateurs je pense (dont notre pôle)
+# [2.15.1] - fix
+## Fix :
+- [#550](https://github.com/Refhi/Weda-Helper/issues/550) - la cible de alt+V est désormais constante, notamment dans la page des imports sécurisés.
 
 # [2.15] - Bonne année 2026 à toustes ! 🎉🎊
 
