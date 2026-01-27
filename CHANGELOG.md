@@ -4,7 +4,7 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
-# [2.15.1] - fix
+# [2.15.1.0] - fix - beta testing
 ## Fix :
 - [#550](https://github.com/Refhi/Weda-Helper/issues/550) - la cible de alt+V est désormais constante, notamment dans la page des imports sécurisés.
 - [#549](https://github.com/Refhi/Weda-Helper/issues/549) - ajout de lumbago dans les motifs d'arrêt de travail rapides.
