@@ -208,9 +208,9 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*alertesHashtagsATCD', function
                     `<span style="color: ${color}; font-weight: bold;" title="${tooltip}">$1</span>`
                 );
             } else {
-                // Colorer toute la ligne date + texte + hashtag
+                // Colorer uniquement la date de référence
                 const dateEscaped = item.dateStr.replace(/[/]/g, '\\/');
-                const regex = new RegExp(`([^<>]*?${dateEscaped}[^<#]*?#${item.hashtag}(?=\\s|<br|$))`, 'gi');
+                const regex = new RegExp(`(${dateEscaped})`, 'gi');
                 nouveauHTML = nouveauHTML.replace(regex,
                     `<span style="color: ${color}; font-weight: bold;" title="${tooltip}">$1</span>`
                 );
