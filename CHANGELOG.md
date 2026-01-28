@@ -11,6 +11,9 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - les alertes etp sont limitées à l’onglet en cours.
 - [#559](https://github.com/Refhi/Weda-Helper/issues/559) - retrait des informations sensibles des logs d’erreurs afin de limiter l’exposition de données personnelles en cas de partage du log lors d’un signalement de bug.
 
+## Améliorations :
+- les alertes basées sur l’état civil sont désormais fonctionnelles (ex. mettre en évidence certaines tranches d’age et de genre).
+
 # [2.15] - Bonne année 2026 à toustes ! 🎉🎊
 
 ## 🎯 Vos Pôles et Cabinets peuvent désormais créer des alertes personnalisées communes sur les antécédents ! 
