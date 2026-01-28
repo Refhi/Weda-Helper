@@ -14,7 +14,7 @@
 addTweak("/FolderMedical/CourrierForm.aspx", "autoSelectMT", function () {
     function listDestinataires() {
         var destinataires = document.querySelectorAll("label[for^='ContentPlaceHolder1_PatientContactsGrid_CheckBoxContactPatient_']");
-        console.log("[autoSelectMT] destinataires trouvés", destinataires);
+        // console.log("[autoSelectMT] destinataires trouvés", destinataires);
         return destinataires;
     }
 
@@ -28,7 +28,7 @@ addTweak("/FolderMedical/CourrierForm.aspx", "autoSelectMT", function () {
             var number = forAttr.split('_').pop();
             return number;
         });
-        console.log("[autoSelectMT] Numéros des médecins traitants trouvés", mts);
+        // console.log("[autoSelectMT] Numéros des médecins traitants trouvés", mts);
         return mts;
     }
 

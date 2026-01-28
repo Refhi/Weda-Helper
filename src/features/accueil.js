@@ -168,7 +168,6 @@ addTweak(homePageUrls, 'TweakNIR', function () {
             nir = nir.replace(/\s/g, ''); // Supprime tous les espaces de la chaîne
             addCopySymbol(elements[0], nir);
             elements[0].addEventListener('click', function () {
-                console.log('nir', nir);
                 navigator.clipboard.writeText(nir);
                 recordMetrics({ clicks: 3, drags: 2 });
             });
@@ -184,7 +183,6 @@ addTweak(homePageUrls, 'TweakNIR', function () {
             secu = secu.replace(/\s/g, ''); // Supprime tous les espaces de la chaîne
             addCopySymbol(elements[0], secu);
             elements[0].addEventListener('click', function () {
-                console.log('secu', secu);
                 navigator.clipboard.writeText(secu);
                 recordMetrics({ clicks: 3, drags: 2 });
             });
