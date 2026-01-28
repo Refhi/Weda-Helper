@@ -98,34 +98,126 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*alertesHashtagsATCD', function
     // Cible le panel des antécédents
     const panelSelector = "#ContentPlaceHolder1_PanelPatient";
 
-    // Fonction utilitaire : parse une date du hashtag (format jj/mm/aaaa)
-    const parseDateFromHashtag = (hashtagText) => {
-        const match = hashtagText.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-        if (!match) return null;
-        const [_, jj, mm, aaaa] = match;
-        const date = new Date(`${aaaa}-${mm}-${jj}`);
-        return isNaN(date) ? null : date;
-    };
-
     // Fonction utilitaire : calcule la prochaine échéance
     const calculerProchaineEcheance = (dateReference, frequenceEnMois) => {
-        const aujourdhui = new Date();
-        aujourdhui.setHours(0, 0, 0, 0);
-
         // Si pas de fréquence, la date de référence est la date d'échéance
         if (!frequenceEnMois) return dateReference;
 
-        // Calculer la prochaine échéance en ajoutant la fréquence jusqu'à dépasser aujourd'hui
+        // Ajouter la fréquence UNE FOIS à la date de référence pour obtenir la prochaine occurrence
         let prochaineDate = new Date(dateReference);
         prochaineDate.setHours(0, 0, 0, 0);
-        
-        let iterations = 0;
-        while (prochaineDate < aujourdhui && iterations < 1000) {
-            prochaineDate.setMonth(prochaineDate.getMonth() + frequenceEnMois);
-            iterations++;
+        prochaineDate.setMonth(prochaineDate.getMonth() + frequenceEnMois);
+
+        return prochaineDate;
+    };
+
+    // Fonction d'extraction : Hashtags avec date en dur (#jj/mm/aaaa)
+    const extraireDatesDirectes = (texte, aujourdhui, seuilPreAlertJours) => {
+        const alertes = [];
+        const pattern = /#(\d{2}\/\d{2}\/\d{4})/gi;
+
+        for (const match of texte.matchAll(pattern)) {
+            const [fullMatch, dateStr] = match;
+            const [jj, mm, aaaa] = dateStr.split('/');
+            const dateEcheance = new Date(`${aaaa}-${mm}-${jj}`);
+            if (isNaN(dateEcheance)) continue;
+
+            const prochaineDate = calculerProchaineEcheance(dateEcheance, null);
+            if (!prochaineDate) continue;
+
+            const diffJours = Math.floor((prochaineDate - aujourdhui) / (1000 * 60 * 60 * 24));
+            let niveau = null;
+
+            if (prochaineDate < aujourdhui) {
+                niveau = 'urgent';
+            } else if (diffJours <= seuilPreAlertJours) {
+                niveau = 'warning';
+            }
+
+            // Garder toutes les alertes (même niveau null) pour le debug
+            alertes.push({
+                type: 'dateDirecte',
+                matchText: fullMatch,
+                prochaineDate,
+                diffJours,
+                niveau
+            });
         }
 
-        return iterations >= 1000 ? null : prochaineDate;
+        return alertes;
+    };
+
+    // Fonction d'extraction : Date pré-# + hashtag de fréquence (jj/mm/aaaa #frequence)
+    const extraireDatesAvecFrequence = (texte, aujourdhui, hashtagsConfig) => {
+        const alertes = [];
+        const pattern = /(\d{2}\/\d{2}\/\d{4})[^\n#]*?#(\w+)/gi;
+
+        for (const match of texte.matchAll(pattern)) {
+            const [fullMatch, dateStr, hashtagBrut] = match;
+            const [jj, mm, aaaa] = dateStr.split('/');
+            const dateReference = new Date(`${aaaa}-${mm}-${jj}`);
+            if (isNaN(dateReference)) continue;
+
+            const hashtag = hashtagBrut.toLowerCase();
+            const frequence = hashtagsConfig[hashtag];
+            if (!frequence) continue; // Ignorer si hashtag inconnu
+
+            const prochaineDate = calculerProchaineEcheance(dateReference, frequence);
+            if (!prochaineDate) continue;
+
+            const diffJours = Math.floor((prochaineDate - aujourdhui) / (1000 * 60 * 60 * 24));
+            const seuilWarning = Math.floor((frequence * 30.44) / 2);
+            let niveau = null;
+
+            if (prochaineDate < aujourdhui) {
+                niveau = 'urgent';
+            } else if (diffJours <= seuilWarning) {
+                niveau = 'warning';
+            }
+
+            // Garder toutes les alertes (même niveau null) pour le debug
+            alertes.push({
+                type: 'dateFrequence',
+                dateStr,
+                hashtag,
+                prochaineDate,
+                diffJours,
+                niveau
+            });
+        }
+
+        return alertes;
+    };
+
+    // Fonction de coloration : applique les styles aux hashtags détectés
+    const appliquerColoration = (html, alertes) => {
+        let nouveauHTML = html;
+
+        alertes.forEach((item) => {
+            const color = item.niveau === 'urgent' ? 'red' : 'orange';
+            const dateFormatee = `${item.prochaineDate.getDate().toString().padStart(2, '0')}/${(item.prochaineDate.getMonth() + 1).toString().padStart(2, '0')}/${item.prochaineDate.getFullYear()}`;
+            const tooltip = item.diffJours < 0
+                ? `Échéance dépassée : ${dateFormatee} (${-item.diffJours} jours)`
+                : `Prochaine échéance : ${dateFormatee} (dans ${item.diffJours} jours)`;
+
+            if (item.type === 'dateDirecte') {
+                // Colorer uniquement le hashtag #jj/mm/aaaa
+                const matchEscaped = item.matchText.replace(/[/]/g, '\\/');
+                const regex = new RegExp(`(${matchEscaped})`, 'gi');
+                nouveauHTML = nouveauHTML.replace(regex,
+                    `<span style="color: ${color}; font-weight: bold;" title="${tooltip}">$1</span>`
+                );
+            } else {
+                // Colorer toute la ligne date + texte + hashtag
+                const dateEscaped = item.dateStr.replace(/[/]/g, '\\/');
+                const regex = new RegExp(`([^<>]*?${dateEscaped}[^<#]*?#${item.hashtag}(?=\\s|<br|$))`, 'gi');
+                nouveauHTML = nouveauHTML.replace(regex,
+                    `<span style="color: ${color}; font-weight: bold;" title="${tooltip}">$1</span>`
+                );
+            }
+        });
+
+        return nouveauHTML;
     };
 
     waitForElement({
@@ -144,114 +236,30 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*alertesHashtagsATCD', function
             atcdElements.forEach(atcdDiv => { // On parcourt chaque antécédent
                 // Cibler spécifiquement les spans avec font-size:x-small qui contiennent les notes/détails
                 const detailSpans = atcdDiv.querySelectorAll('span[style*="font-size:x-small"]');
-                if (detailSpans.length === 0) return;                
+                if (detailSpans.length === 0) return;
                 const span = detailSpans[0]; // chaque antécédent n'a qu'un seul span de détails
                 if (span.dataset.hashtagProcessed) return;
 
                 // Utiliser innerHTML et remplacer les <br> par des sauts de ligne pour préserver la structure
                 const texte = span.innerHTML.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '');
-                const hashtagsDetectes = [];
 
-                // PASSE 1 : Hashtags avec date en dur (#jj/mm/aaaa)
-                const patternDateDirecte = /#(\d{2}\/\d{2}\/\d{4})/gi;
-                for (const match of texte.matchAll(patternDateDirecte)) {
-                    const [fullMatch, dateStr] = match;
-                    const [jj, mm, aaaa] = dateStr.split('/');
-                    const dateEcheance = new Date(`${aaaa}-${mm}-${jj}`);
-                    if (isNaN(dateEcheance)) continue;
-
-                    const prochaineDate = calculerProchaineEcheance(dateEcheance, null);
-                    if (!prochaineDate) continue;
-
-                    const diffJours = Math.floor((prochaineDate - aujourdhui) / (1000 * 60 * 60 * 24));
-                    const seuilWarning = seuilPreAlertJours;
-
-                    let niveau = null;
-                    if (prochaineDate < aujourdhui) {
-                        niveau = 'urgent';
-                    } else if (diffJours <= seuilWarning) {
-                        niveau = 'warning';
-                    }
-
-                    if (niveau) {
-                        hashtagsDetectes.push({
-                            type: 'dateDirecte',
-                            matchText: fullMatch,
-                            prochaineDate,
-                            diffJours,
-                            niveau
-                        });
-                    }
-                }
-
-                // PASSE 2 : Date pré-# + hashtag de fréquence (jj/mm/aaaa #frequence)
-                const patternDateFrequence = /(\d{2}\/\d{2}\/\d{4})[^\n#]*?#(\w+)/gi;
-                for (const match of texte.matchAll(patternDateFrequence)) {
-                    const [fullMatch, dateStr, hashtagBrut] = match;
-                    const [jj, mm, aaaa] = dateStr.split('/');
-                    const dateReference = new Date(`${aaaa}-${mm}-${jj}`);
-                    if (isNaN(dateReference)) continue;
-
-                    const hashtag = hashtagBrut.toLowerCase();
-                    const frequence = HASHTAGS_CONFIG[hashtag];
-                    if (!frequence) continue; // Ignorer si hashtag inconnu
-
-                    const prochaineDate = calculerProchaineEcheance(dateReference, frequence);
-                    if (!prochaineDate) continue;
-
-                    const diffJours = Math.floor((prochaineDate - aujourdhui) / (1000 * 60 * 60 * 24));
-                    const seuilWarning = Math.floor((frequence * 30.44) / 2);
-
-                    let niveau = null;
-                    if (prochaineDate < aujourdhui) {
-                        niveau = 'urgent';
-                    } else if (diffJours <= seuilWarning) {
-                        niveau = 'warning';
-                    }
-
-                    if (niveau) {
-                        hashtagsDetectes.push({
-                            type: 'dateFrequence',
-                            dateStr,
-                            hashtag,
-                            prochaineDate,
-                            diffJours,
-                            niveau
-                        });
-                    }
-                }
+                // Extraire les alertes des deux types
+                const alertesDatesDirectes = extraireDatesDirectes(texte, aujourdhui, seuilPreAlertJours);
+                const alertesDatesFrequence = extraireDatesAvecFrequence(texte, aujourdhui, HASHTAGS_CONFIG);
+                const hashtagsDetectes = [...alertesDatesDirectes, ...alertesDatesFrequence];
 
                 if (hashtagsDetectes.length === 0) return;
 
-                console.log('[alertesDateHashtag] Alertes détectées:', hashtagsDetectes.length);
+                console.log('[alertesDateHashtag] Alertes détectées:', hashtagsDetectes.length, hashtagsDetectes);
+
+                // Filtrer pour ne garder que les alertes avec un niveau défini (urgent ou warning)
+                const alertesAColorer = hashtagsDetectes.filter(alerte => alerte.niveau !== null);
+                if (alertesAColorer.length === 0) return;
+
+                console.log('[alertesDateHashtag] Alertes à colorer:', alertesAColorer.length);
 
                 // Appliquer la coloration
-                let nouveauHTML = span.innerHTML;
-                hashtagsDetectes.forEach((item) => {
-                    const color = item.niveau === 'urgent' ? 'red' : 'orange';
-                    const dateFormatee = `${item.prochaineDate.getDate().toString().padStart(2, '0')}/${(item.prochaineDate.getMonth() + 1).toString().padStart(2, '0')}/${item.prochaineDate.getFullYear()}`;
-                    const tooltip = item.diffJours < 0
-                        ? `Échéance dépassée : ${dateFormatee} (${-item.diffJours} jours)`
-                        : `Prochaine échéance : ${dateFormatee} (dans ${item.diffJours} jours)`;
-
-                    if (item.type === 'dateDirecte') {
-                        // Colorer uniquement le hashtag #jj/mm/aaaa
-                        const matchEscaped = item.matchText.replace(/[/]/g, '\\/');
-                        const regex = new RegExp(`(${matchEscaped})`, 'gi');
-                        nouveauHTML = nouveauHTML.replace(regex, 
-                            `<span style="color: ${color}; font-weight: bold;" title="${tooltip}">$1</span>`
-                        );
-                    } else {
-                        // Colorer toute la ligne date + texte + hashtag
-                        const dateEscaped = item.dateStr.replace(/[/]/g, '\\/');
-                        const regex = new RegExp(`([^<>]*?${dateEscaped}[^<#]*?#${item.hashtag}(?=\\s|<br|$))`, 'gi');
-                        nouveauHTML = nouveauHTML.replace(regex, 
-                            `<span style="color: ${color}; font-weight: bold;" title="${tooltip}">$1</span>`
-                        );
-                    }
-                });
-
-                span.innerHTML = nouveauHTML;
+                span.innerHTML = appliquerColoration(span.innerHTML, alertesAColorer);
                 span.dataset.hashtagProcessed = 'true';
             });
         }
