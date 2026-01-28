@@ -15,17 +15,17 @@
 // Applicable sur les pages d'accueil et de vue patient
 addTweak(['/FolderMedical/FindPatientForm.aspx', '/FolderMedical/PatientViewForm.aspx'], '*preAlertATCD', function () {
     console.log('[alertesDates] Initialisation des alertes de dates Weda natives');
-    
+
     waitForElement({
         selector: '[title="Date d\'alerte"]',
         callback: function (elements) {
             console.log('[alertesDatesNative] Traitement de', elements.length / 2, 'alerte(s) Weda native(s)', elements);
-            
+
             elements.forEach(alertElement => {
                 // Le texte est au format "Alerte : DD/MM/YYYY."
                 alertElement.textContent = alertElement.textContent.replace('.', '');
                 let alertDateText = alertElement.textContent.split(' : ')[1];
-                
+
                 if (!alertDateText) {
                     return;
                 }
@@ -47,14 +47,14 @@ addTweak(['/FolderMedical/FindPatientForm.aspx', '/FolderMedical/PatientViewForm
                 }
 
                 let today = new Date();
-                
+
                 getOption('preAlertATCD', function (preAlertATCD) {
                     preAlertATCD = parseInt(preAlertATCD);
                     let datePreAlerte = new Date();
                     datePreAlerte.setMonth(today.getMonth() + preAlertATCD);
-                    
+
                     const diffJours = Math.ceil((alertDate - today) / (1000 * 60 * 60 * 24));
-                    
+
                     // Weda colore automatiquement en rouge les dates dépassées ou urgentes
                     // On se concentre uniquement sur la pré-alerte (orange)
                     if (alertDate > today && alertDate <= datePreAlerte) {
@@ -72,9 +72,17 @@ addTweak(['/FolderMedical/FindPatientForm.aspx', '/FolderMedical/PatientViewForm
 // Applicable uniquement sur la page de vue patient
 addTweak('/FolderMedical/PatientViewForm.aspx', '*alertesHashtagsATCD', function () {
     console.log('[alertesDateHashtag] Initialisation des alertes par hashtags');
-    
+
     // Configuration des hashtags et leurs durées associées
     const HASHTAGS_CONFIG = {
+        'quinquennal': 60,
+        '5ans': 60,
+        'quadriannual': 48,
+        '4ans': 48,
+        'triennal': 36,
+        '3ans': 36,
+        'biennal': 24,
+        '2ans': 24,
         'annuel': 12,
         '1an': 12,
         'semestriel': 6,
@@ -86,207 +94,165 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*alertesHashtagsATCD', function
         'mensuel': 1,
         '1mois': 1
     };
-    
+
+    // Cible le panel des antécédents
     const panelSelector = "#ContentPlaceHolder1_PanelPatient";
-    
+
+    // Fonction utilitaire : parse une date du hashtag (format jj/mm/aaaa)
+    const parseDateFromHashtag = (hashtagText) => {
+        const match = hashtagText.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+        if (!match) return null;
+        const [_, jj, mm, aaaa] = match;
+        const date = new Date(`${aaaa}-${mm}-${jj}`);
+        return isNaN(date) ? null : date;
+    };
+
+    // Fonction utilitaire : calcule la prochaine échéance
+    const calculerProchaineEcheance = (dateReference, frequenceEnMois) => {
+        const aujourdhui = new Date();
+        aujourdhui.setHours(0, 0, 0, 0);
+
+        // Si pas de fréquence, la date de référence est la date d'échéance
+        if (!frequenceEnMois) return dateReference;
+
+        // Calculer la prochaine échéance en ajoutant la fréquence jusqu'à dépasser aujourd'hui
+        let prochaineDate = new Date(dateReference);
+        prochaineDate.setHours(0, 0, 0, 0);
+        
+        let iterations = 0;
+        while (prochaineDate < aujourdhui && iterations < 1000) {
+            prochaineDate.setMonth(prochaineDate.getMonth() + frequenceEnMois);
+            iterations++;
+        }
+
+        return iterations >= 1000 ? null : prochaineDate;
+    };
+
     waitForElement({
         selector: panelSelector,
-        callback: function (panels) {
+        callback: async function (panels) {
             console.log('[alertesDateHashtag] Panel patient trouvé, recherche des hashtags...');
-            
-            panels.forEach(panel => {
-                // Rechercher tous les antécédents dans le panel
-                const atcdElements = panel.querySelectorAll('td div[style*="font-Size:10pt"]');
-                console.log('[alertesDateHashtag] Nombre d\'antécédents trouvés:', atcdElements.length);
-                
-                atcdElements.forEach(atcdDiv => {
-                    // Cibler spécifiquement les spans avec font-size:x-small qui contiennent les notes/détails
-                    const detailSpans = atcdDiv.querySelectorAll('span[style*="font-size:x-small"]');
-                    
-                    if (detailSpans.length === 0) {
-                        return;
+            const panel = panels[0];
+            const atcdElements = panel.querySelectorAll('td div[style*="font-Size:10pt"]');
+            console.log('[alertesDateHashtag] Nombre d\'antécédents trouvés:', atcdElements.length);
+
+            const preAlertATCD = parseInt(await getOptionPromise('preAlertATCD'));
+            const seuilPreAlertJours = Math.floor(preAlertATCD * 30.44);
+            const aujourdhui = new Date();
+            aujourdhui.setHours(0, 0, 0, 0);
+
+            atcdElements.forEach(atcdDiv => { // On parcourt chaque antécédent
+                // Cibler spécifiquement les spans avec font-size:x-small qui contiennent les notes/détails
+                const detailSpans = atcdDiv.querySelectorAll('span[style*="font-size:x-small"]');
+                if (detailSpans.length === 0) return;                
+                const span = detailSpans[0]; // chaque antécédent n'a qu'un seul span de détails
+                if (span.dataset.hashtagProcessed) return;
+
+                // Utiliser innerHTML et remplacer les <br> par des sauts de ligne pour préserver la structure
+                const texte = span.innerHTML.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '');
+                const hashtagsDetectes = [];
+
+                // PASSE 1 : Hashtags avec date en dur (#jj/mm/aaaa)
+                const patternDateDirecte = /#(\d{2}\/\d{2}\/\d{4})/gi;
+                for (const match of texte.matchAll(patternDateDirecte)) {
+                    const [fullMatch, dateStr] = match;
+                    const [jj, mm, aaaa] = dateStr.split('/');
+                    const dateEcheance = new Date(`${aaaa}-${mm}-${jj}`);
+                    if (isNaN(dateEcheance)) continue;
+
+                    const prochaineDate = calculerProchaineEcheance(dateEcheance, null);
+                    if (!prochaineDate) continue;
+
+                    const diffJours = Math.floor((prochaineDate - aujourdhui) / (1000 * 60 * 60 * 24));
+                    const seuilWarning = seuilPreAlertJours;
+
+                    let niveau = null;
+                    if (prochaineDate < aujourdhui) {
+                        niveau = 'urgent';
+                    } else if (diffJours <= seuilWarning) {
+                        niveau = 'warning';
                     }
-                    
-                    console.log('[alertesDateHashtag] Spans de détails trouvés:', detailSpans.length, 'dans un antécédent', atcdDiv);
-                    
-                    detailSpans.forEach(span => {
-                        console.log('[alertesDateHashtag] Analyse du span:', span);
-                        
-                        // Utiliser innerHTML et remplacer les <br> par des sauts de ligne pour préserver la structure
-                        let texte = span.innerHTML.replace(/<br\s*\/?>/gi, '\n');
-                        // Supprimer les balises HTML restantes
-                        texte = texte.replace(/<[^>]*>/g, '');
-                        console.log('[alertesDateHashtag] Contenu textuel:', texte);
-                        console.log('[alertesDateHashtag] Lignes séparées:', texte.split('\n'));
-                        
-                        // Chercher les dates avec hashtags
-                        // Pattern : date suivie de texte optionnel puis hashtag
-                        const pattern = /(\d{2}\/\d{2}\/\d{4})[^\n#]*?#([\w]+)/gi;
-                        const infosHashtags = [];
-                        let match;
-                        
-                        console.log('[alertesDateHashtag] Début de la recherche avec pattern:', pattern);
-                        
-                        while ((match = pattern.exec(texte)) !== null) {
-                            console.log('[alertesDateHashtag] Match brut trouvé:', match[0], '| Date:', match[1], '| Hashtag:', match[2]);
-                            const [fullMatch, dateStr, hashtag] = match;
-                            const [day, month, year] = dateStr.split('/');
-                            const date = new Date(`${year}-${month}-${day}`);
 
-                            console.log('[alertesDateHashtag] Vérification - Date valide?', !isNaN(date), '- Hashtag lowercase:', hashtag.toLowerCase(), '- Dans config?', HASHTAGS_CONFIG[hashtag.toLowerCase()]);
-
-                            if (!isNaN(date) && HASHTAGS_CONFIG[hashtag.toLowerCase()]) {
-                                infosHashtags.push({
-                                    date: date,
-                                    hashtag: hashtag.toLowerCase(),
-                                    texte: dateStr,
-                                    fullMatch: fullMatch,
-                                    index: match.index
-                                });
-                                console.log('[alertesDateHashtag] ✓ Hashtag validé et ajouté:', hashtag);
-                            } else {
-                                console.log('[alertesDateHashtag] ✗ Hashtag rejeté:', hashtag, '- Raison:', !isNaN(date) ? 'pas dans config' : 'date invalide');
-                            }
-                        }
-                        
-                        console.log('[alertesDateHashtag] Total hashtags trouvés:', infosHashtags.length);
-                        
-                        if (infosHashtags.length === 0) {
-                            return;
-                        }
-                        
-                        console.log('[alertesDateHashtag] Hashtags trouvés:', infosHashtags.length, '→', infosHashtags.map(h => `${h.texte} #${h.hashtag}`).join(', '));
-
-                        getOption('preAlertATCD', function (preAlertATCD) {
-                            preAlertATCD = parseInt(preAlertATCD);
-                            
-                            // Préparer les remplacements pour tous les hashtags du span
-                            const remplacementsAFaire = [];
-
-                            infosHashtags.forEach(info => {
-                                // Calculer la prochaine échéance de manière fiable
-                                const dureeEnMois = HASHTAGS_CONFIG[info.hashtag];
-                                const maintenant = new Date();
-                                const maintenant_start = new Date(maintenant.getFullYear(), maintenant.getMonth(), maintenant.getDate());
-
-                                // Créer une date de référence normalisée (à minuit)
-                                const dateRef = new Date(info.date.getFullYear(), info.date.getMonth(), info.date.getDate());
-
-                                // Calculer la PREMIÈRE échéance théorique après la date de référence
-                                // Cela nous permet de détecter les échéances manquées
-                                const premiereEcheance = new Date(dateRef);
-                                premiereEcheance.setMonth(premiereEcheance.getMonth() + dureeEnMois);
-
-                                // Vérifier s'il y a eu une échéance manquée (la première aurait déjà dû passer)
-                                const echeaneMnquee = premiereEcheance < maintenant_start;
-
-                                // Calculer la prochaine échéance en ajoutant les mois jusqu'à dépasser aujourd'hui
-                                const prochaineDate = new Date(dateRef);
-                                let compteur = 0;
-
-                                while (prochaineDate < maintenant_start && compteur < 1000) {
-                                    prochaineDate.setMonth(prochaineDate.getMonth() + dureeEnMois);
-                                    compteur++;
-                                }
-
-                                if (compteur >= 1000) {
-                                    console.log('[alertesDateHashtag] Erreur : trop d\'itérations pour', info.hashtag);
-                                    return;
-                                }
-
-                                // Calculs de différence en jours
-                                const diffJours = Math.floor((prochaineDate - maintenant_start) / (1000 * 60 * 60 * 24));
-                                const joursDepuisRef = Math.floor((maintenant_start - dateRef) / (1000 * 60 * 60 * 24));
-                                
-                                // Seuil warning : à mi-chemin de la durée (ex: 6 mois pour annuel)
-                                const seuilWarningJours = Math.floor((dureeEnMois * 30.44) / 2);
-
-                                let niveau = null;
-                                
-                                // Cas 1 : Il y a une échéance manquée (première date théorique dépassée) → ROUGE
-                                if (echeaneMnquee) {
-                                    niveau = 'urgent';
-                                }
-                                // Cas 2 : Prochaine date dépassée → ROUGE
-                                else if (prochaineDate < maintenant_start) {
-                                    niveau = 'urgent';
-                                }
-                                // Cas 3 : À moins de (durée/2) avant la prochaine date → ORANGE
-                                else if (diffJours <= seuilWarningJours) {
-                                    niveau = 'warning';
-                                }
-                                // Sinon : pas de coloration
-
-                                console.log('[alertesDateHashtag] Calcul pour', info.hashtag, '- Ref:', dateRef.toLocaleDateString('fr-FR'), '- Première:', premiereEcheance.toLocaleDateString('fr-FR'), '- Manquée?', echeaneMnquee, '- Prochaine:', prochaineDate.toLocaleDateString('fr-FR'), '- Jours restants:', diffJours, '- Seuil warning:', seuilWarningJours, '- Niveau:', niveau);
-                                
-                                if (niveau) {
-                                    console.log('[alertesDateHashtag] Alerte hashtag détectée:', info.texte, '#' + info.hashtag, '- Niveau:', niveau, '- Prochaine échéance:', prochaineDate.toLocaleDateString('fr-FR'), '- Jours restants:', diffJours);
-                                    
-                                    // Déterminer la date à afficher dans le tooltip
-                                    // Si une échéance a été manquée, afficher la première manquée
-                                    // Sinon, afficher la prochaine
-                                    const dateAffichee = echeaneMnquee ? premiereEcheance : prochaineDate;
-                                    const dateFormatee = `${dateAffichee.getDate().toString().padStart(2, '0')}/${(dateAffichee.getMonth() + 1).toString().padStart(2, '0')}/${dateAffichee.getFullYear()}`;
-                                    
-                                    // Calculer les jours pour le tooltip
-                                    const joursPourTooltip = echeaneMnquee 
-                                        ? Math.floor((dateAffichee - maintenant_start) / (1000 * 60 * 60 * 24))
-                                        : diffJours;
-                                    
-                                    remplacementsAFaire.push({
-                                        info: info,
-                                        niveau: niveau,
-                                        dateFormatee: dateFormatee,
-                                        joursPourTooltip: joursPourTooltip,
-                                        estEcheanceMnquee: echeaneMnquee
-                                    });
-                                }
-                            });
-                            
-                            // Appliquer tous les remplacements en une seule passe
-                            if (remplacementsAFaire.length > 0 && !span.dataset.hashtagProcessed) {
-                                let nouveauHTML = span.innerHTML;
-                                
-                                remplacementsAFaire.forEach(remplacement => {
-                                    const { info, niveau, dateFormatee, joursPourTooltip, estEcheanceMnquee } = remplacement;
-                                    
-                                    // Colorer toute la ligne qui contient le hashtag
-                                    const dateEscaped = info.texte.replace(/[/]/g, '\\/');
-                                    const regexLigneComplete = new RegExp(`([^<>]*?${dateEscaped}[^<#]*?#${info.hashtag}(?=\\s|<br|$))`, 'gi');
-                                    
-                                    nouveauHTML = nouveauHTML.replace(regexLigneComplete, (match) => {
-                                        let color = 'inherit';
-                                        let weight = 'normal';
-                                        
-                                        switch (niveau) {
-                                            case 'urgent':
-                                                color = 'red';
-                                                weight = 'bold';
-                                                break;
-                                            case 'warning':
-                                                color = 'orange';
-                                                weight = 'bold';
-                                                break;
-                                            case 'info':
-                                                color = 'blue';
-                                                break;
-                                        }
-                                        
-                                        // Texte du tooltip
-                                        const tooltipText = estEcheanceMnquee
-                                            ? `Échéance manquée depuis : ${dateFormatee} (${-joursPourTooltip} jours)`
-                                            : `Prochaine échéance : ${dateFormatee} (dans ${joursPourTooltip} jours)`;
-                                        
-                                        return `<span style="color: ${color}; font-weight: ${weight};" title="${tooltipText}">${match}</span>`;
-                                    });
-                                });
-                                
-                                span.innerHTML = nouveauHTML;
-                                span.dataset.hashtagProcessed = 'true';
-                            }
+                    if (niveau) {
+                        hashtagsDetectes.push({
+                            type: 'dateDirecte',
+                            matchText: fullMatch,
+                            prochaineDate,
+                            diffJours,
+                            niveau
                         });
-                    });
+                    }
+                }
+
+                // PASSE 2 : Date pré-# + hashtag de fréquence (jj/mm/aaaa #frequence)
+                const patternDateFrequence = /(\d{2}\/\d{2}\/\d{4})[^\n#]*?#(\w+)/gi;
+                for (const match of texte.matchAll(patternDateFrequence)) {
+                    const [fullMatch, dateStr, hashtagBrut] = match;
+                    const [jj, mm, aaaa] = dateStr.split('/');
+                    const dateReference = new Date(`${aaaa}-${mm}-${jj}`);
+                    if (isNaN(dateReference)) continue;
+
+                    const hashtag = hashtagBrut.toLowerCase();
+                    const frequence = HASHTAGS_CONFIG[hashtag];
+                    if (!frequence) continue; // Ignorer si hashtag inconnu
+
+                    const prochaineDate = calculerProchaineEcheance(dateReference, frequence);
+                    if (!prochaineDate) continue;
+
+                    const diffJours = Math.floor((prochaineDate - aujourdhui) / (1000 * 60 * 60 * 24));
+                    const seuilWarning = Math.floor((frequence * 30.44) / 2);
+
+                    let niveau = null;
+                    if (prochaineDate < aujourdhui) {
+                        niveau = 'urgent';
+                    } else if (diffJours <= seuilWarning) {
+                        niveau = 'warning';
+                    }
+
+                    if (niveau) {
+                        hashtagsDetectes.push({
+                            type: 'dateFrequence',
+                            dateStr,
+                            hashtag,
+                            prochaineDate,
+                            diffJours,
+                            niveau
+                        });
+                    }
+                }
+
+                if (hashtagsDetectes.length === 0) return;
+
+                console.log('[alertesDateHashtag] Alertes détectées:', hashtagsDetectes.length);
+
+                // Appliquer la coloration
+                let nouveauHTML = span.innerHTML;
+                hashtagsDetectes.forEach((item) => {
+                    const color = item.niveau === 'urgent' ? 'red' : 'orange';
+                    const dateFormatee = `${item.prochaineDate.getDate().toString().padStart(2, '0')}/${(item.prochaineDate.getMonth() + 1).toString().padStart(2, '0')}/${item.prochaineDate.getFullYear()}`;
+                    const tooltip = item.diffJours < 0
+                        ? `Échéance dépassée : ${dateFormatee} (${-item.diffJours} jours)`
+                        : `Prochaine échéance : ${dateFormatee} (dans ${item.diffJours} jours)`;
+
+                    if (item.type === 'dateDirecte') {
+                        // Colorer uniquement le hashtag #jj/mm/aaaa
+                        const matchEscaped = item.matchText.replace(/[/]/g, '\\/');
+                        const regex = new RegExp(`(${matchEscaped})`, 'gi');
+                        nouveauHTML = nouveauHTML.replace(regex, 
+                            `<span style="color: ${color}; font-weight: bold;" title="${tooltip}">$1</span>`
+                        );
+                    } else {
+                        // Colorer toute la ligne date + texte + hashtag
+                        const dateEscaped = item.dateStr.replace(/[/]/g, '\\/');
+                        const regex = new RegExp(`([^<>]*?${dateEscaped}[^<#]*?#${item.hashtag}(?=\\s|<br|$))`, 'gi');
+                        nouveauHTML = nouveauHTML.replace(regex, 
+                            `<span style="color: ${color}; font-weight: bold;" title="${tooltip}">$1</span>`
+                        );
+                    }
                 });
+
+                span.innerHTML = nouveauHTML;
+                span.dataset.hashtagProcessed = 'true';
             });
         }
     });
