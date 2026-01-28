@@ -20,49 +20,7 @@ let homePageUrls = [
     '/FolderMedical/PatientViewForm.aspx'
 ];
 
-addTweak(homePageUrls, '*preAlertATCD', function () {
-    waitForElement({
-        selector: '[title="Date d\'alerte"]',
-        callback: function (elements) {
-            elements.forEach(alertElement => {
-                // ici le texte est au format Alerte : 01/01/2011.
-                // Donc d'abord retirer le point final
-                alertElement.textContent = alertElement.textContent.replace('.', '');
-                let alertDateText = alertElement.textContent.split(' : ')[1];
-                if (!alertDateText) {
-                    return;
-                }
-
-                // Vérifier que alertDateText est bien au format xx/xx/xxxx
-                const datePattern = /^\d{2}\/\d{2}\/\d{4}$/;
-                if (!datePattern.test(alertDateText)) {
-                    return;
-                }
-                // Conversion manuelle de la date
-                let [day, month, year] = alertDateText.split('/');
-                let alertDate = new Date(`${year}-${month}-${day}`);
-
-                // Ne continuer que si la date est valide
-                if (isNaN(alertDate)) {
-                    return;
-                }
-                let today = new Date();
-                let fiveMonthsLater = new Date();
-                // console.log('alertDate', alertDate, 'today', today);
-                getOption('preAlertATCD', function (preAlertATCD) {
-                    preAlertATCD = parseInt(preAlertATCD);
-                    fiveMonthsLater.setMonth(today.getMonth() + preAlertATCD);
-                    if (alertDate <= fiveMonthsLater && alertDate > today) {
-                        // Mettre l'élément en orange et en gras
-                        alertElement.style.color = 'orange';
-                        alertElement.style.fontWeight = 'bold';
-
-                    }
-                });
-            });
-        }
-    });
-});
+// Note : La gestion des alertes de dates d'antécédents (preAlertATCD) a été déplacée dans alertesDates.js
 
 addTweak(homePageUrls, 'autoSelectPatientCV', function () {
     // lit automatiquement la carte vitale elle est insérée

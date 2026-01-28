@@ -49,6 +49,7 @@
         "src/ui/popupFunctions.js",
         "src/features/conflictHandler.js",
         "src/features/alertesAtcd.js",
+        "src/features/alertesDates.js",
         "src/features/content.js",
         "src/features/accueil.js",
         "src/features/consultation.js",
