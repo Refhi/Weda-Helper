@@ -33,7 +33,7 @@ addTweak('/FolderGestion/NoemieForm.aspx', '*noemieDate', function() {
                         "Organisme AL0010000": "ALMERYS",
                         "Organisme SP0080000" : "CETIP CETIP",
                         "Organisme VM0030000":"HARMONIE MUTUELLES",
-                        "Organisme VM0010000":"KORELIO PRESTATIONS",
+                        "Organisme VM0010000":"VIAMEDIS",
                         "Organisme AC0010000":"ACTIL SAS",
                         "Caisse de Ret.et Prev. Clercs et Emp. Notaires":"CRPCEN M",
                         "Organisme 091007311":"MGEN",
