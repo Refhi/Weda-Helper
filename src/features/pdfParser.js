@@ -1299,7 +1299,7 @@ async function extractRelevantData(fullText) {
     const regexPatterns = {
         dateRegexes: [
             /(?!06\/01\/1978)[0-9]{2}[\/\-.][0-9]{2}[\/\-.][0-9]{4}/g, // Match dates dd/mm/yyyy ou dd-mm-yyyy sauf 06/01/1978
-            /([0-9]{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+([0-9]{4})/gi // Match dates comme "28 novembre 2024"
+            /(?!6 janvier 1978)([0-9]{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+([0-9]{4})/gi // Match dates comme "28 novembre 2024"
         ],
         dateOfBirthRegexes: [
             /(?:né\(e\) le|date de naissance:|date de naissance :|née le|né le)[\s\S]([0-9]{2}[\/\-.][0-9]{4})/gi // Match la date de naissance
