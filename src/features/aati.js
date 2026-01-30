@@ -387,6 +387,7 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
         'hanche': ['arthroplastie', 'prothèse', 'totale', 'coxarthrose'],
         'coxarthrose': ['hanche'],
         'ncb': ['cervico-brachiale'],
+        'lumbago': ['lombalgie'],
         // Appareil génito-urinaire
         'ovaire': ['genito-urinaire'],
         'pelvien': ['symptômes', 'invalidants', 'douleurs', 'hémorragies'],

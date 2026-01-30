@@ -36,7 +36,7 @@
 
 
 const alertesAtcdGlobal = {
-  1000: [
+  "0000": [
     // Exemple d'alerte
     {
       titre: "Exemple d'alerte", // Titre non utilisé dans les alertes, permet de s'y retrouver
@@ -67,7 +67,7 @@ const alertesAtcdGlobal = {
       titre: "Atelier diabète",
       optionsCible: {
         cible: "atcd",
-        coloration: "blue",
+        coloration: "green",
         icone: "groups",
         texteSurvol: "Un atelier Diabète peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage."
       },
@@ -88,7 +88,7 @@ const alertesAtcdGlobal = {
       titre: "Atelier alimentation",
       optionsCible: {
         cible: "atcd",
-        coloration: "blue",
+        coloration: "green",
         icone: "groups",
         texteSurvol: "Un atelier Alimentation peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage."
       },
@@ -115,7 +115,7 @@ const alertesAtcdGlobal = {
       titre: "Atelier traitement CV",
       optionsCible: {
         cible: "atcd",
-        coloration: "yellow",
+        coloration: "green",
         icone: "groups",
         texteSurvol: "Un atelier Maladies Cardiovasculaires peut être proposé à ce patient dans le cadre des ETP. Vous pouvez aller dans \"Courrier\" => \"Protocole ETP\" pour l'adressage."
       },
@@ -195,11 +195,6 @@ validerStructureAlertes(alertesAtcdGlobal).catch(err => {
 // Cette partie charge les alertes configurées dans alertesAtcd.js pour le cabinet
 // et affiche des alertes contextuelles selon les ATCD du patient
 addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async function () {
-  // TODO : reprendre ici (les alertes sont trop souvent vérifiées, avec une surcharge du Log. A optimiser)
-  await afterMutations({
-    delay: 5000,
-    callBackId: 'alertesAtcd-afterPanelPatient',
-  })
   const panelSelector = "#ContentPlaceHolder1_PanelPatient"
   const panelElement = document.querySelector(panelSelector);
   if (!panelElement) return;
@@ -236,68 +231,6 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
     console.log('[alertesAtcd] Infos patient - Age:', age, 'Sexe:', sexe, 'Date:', dateActuelle.toLocaleDateString('fr-FR'));
     return { age, sexe, dateActuelle };
   })();
-
-  // Fonction pour vérifier si les conditions d'une alerte sont remplies
-  function verifierConditions(conditions) {
-    if (!conditions) {
-      console.log('[alertesAtcd] Résumé conditions : aucune condition, validé.');
-      return true;
-    }
-
-    let raisons = [];
-
-    // Vérifier ageMin et ageMax
-    if (conditions.ageMin !== undefined && conditions.ageMin !== null && patientInfo.age !== null) {
-      if (patientInfo.age < conditions.ageMin) {
-        raisons.push(`ageMin non rempli (${patientInfo.age} < ${conditions.ageMin})`);
-      }
-    }
-
-    if (conditions.ageMax !== undefined && conditions.ageMax !== null && patientInfo.age !== null) {
-      if (patientInfo.age > conditions.ageMax) {
-        raisons.push(`ageMax non rempli (${patientInfo.age} > ${conditions.ageMax})`);
-      }
-    }
-
-    // Vérifier sexes
-    if (conditions.sexes && patientInfo.sexe !== null) {
-      // Gestion spéciale pour 'N' (neutre) qui accepte tous les sexes
-      if (conditions.sexes !== 'N' && patientInfo.sexe !== conditions.sexes) {
-        raisons.push(`sexe non rempli (${patientInfo.sexe} != ${conditions.sexes})`);
-      }
-    }
-
-    // Vérifier dateDebut et dateFin
-    if (conditions.dateDebut || conditions.dateFin) {
-      const dateActuelle = patientInfo.dateActuelle;
-
-      // Parser les dates au format DD/MM/YYYY
-      const parseDate = (dateStr) => {
-        if (!dateStr) return null;
-        const parts = dateStr.split('/');
-        if (parts.length !== 3) return null;
-        return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
-      };
-
-      const debut = parseDate(conditions.dateDebut);
-      const fin = parseDate(conditions.dateFin);
-
-      if (debut && dateActuelle < debut) {
-        raisons.push('dateDebut non remplie (date actuelle avant début)');
-      }
-      if (fin && dateActuelle > fin) {
-        raisons.push('dateFin non remplie (date actuelle après fin)');
-      }
-    }
-
-    const valide = raisons.length === 0;
-    if (valide) {
-      return true;
-    } else {
-      const synthese = `${raisons.join(', ')}`;
-      return synthese;
-    }
-  }
 
   // Récupération des alertes du cabinet/Pôle depuis alertesAtcd.js
   const cabinetId = await (async function () {
@@ -366,109 +299,258 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'alertesAtcdOption', async funct
 
   console.log('[alertesAtcd] Options d\'affichage - Popup:', afficherPopup, 'Marquage:', afficherMarquage);
 
-  // Liste de tous les span du panel
-  const spanElements = atcdDiv.querySelectorAll('span');
+  // Récupération de toutes les cibles potentielles (spans ATCD)
+  const spanElements = Array.from(atcdDiv.querySelectorAll('span'));
+  const ciblesPotentielles = spanElements.map(spanElement => ({
+    element: spanElement,
+    text: spanElement.textContent.toLowerCase(),
+    type: 'atcd'
+  }));
 
-  // Map pour éviter d'afficher plusieurs fois la même alerte sur le même élément
-  const alertesAffichees = new Map();
+  console.log(`[alertesAtcd] ${ciblesPotentielles.length} cible(s) ATCD potentielle(s) trouvée(s)`);
+
+  // Récupération de la cible État Civil unique
+  const etatCivilDiv = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_LabelPatientNom').parentElement;
+  if (etatCivilDiv) {
+    ciblesPotentielles.push({
+      element: etatCivilDiv,
+      text: etatCivilDiv.textContent.toLowerCase(),
+      type: 'etatCivil'
+    });
+    console.log('[alertesAtcd] Cible État Civil trouvée');
+  } else {
+    console.log('[alertesAtcd] Élément État Civil non trouvé');
+  }
+
+  console.log(`[alertesAtcd] ${ciblesPotentielles.length} cible(s) potentielle(s) TOTAL trouvée(s)`);
 
   // Set pour tracer les alertes ayant déjà envoyé une notification
   const notificationsEnvoyees = new Set();
 
-  spanElements.forEach(spanElement => {
-    const spanText = spanElement.textContent.toLowerCase();
+  // Map pour éviter d'afficher plusieurs fois la même alerte sur le même élément
+  const alertesAffichees = new Map();
 
-    // Vérifier chaque alerte
-    toutesLesAlertes.forEach(alert => {
-      // Vérifier que la cible est "atcd" (ou non définie pour rétrocompatibilité)
-      const cible = alert.optionsCible?.cible;
-      if (cible && cible !== 'atcd') {
-        return; // Cette alerte ne s'applique pas aux antécédents
+  // Parcourir chaque alerte et vérifier les conditions de filtrage
+  toutesLesAlertes.forEach(alert => {
+    // Vérifier que la cible correspond (ou non définie pour rétrocompatibilité = "atcd")
+    const cible = alert.optionsCible?.cible || 'atcd';
+    
+    // Filtrer les cibles potentielles selon le type de cible de l'alerte
+    const ciblesFiltrées = ciblesPotentielles.filter(c => c.type === cible);
+    
+    if (ciblesFiltrées.length === 0) {
+      console.log(`[alertesAtcd] ${alert.titre} : Exclue (aucune cible de type "${cible}" disponible)`);
+      return;
+    }
+
+    // ÉTAPE 1 : Vérifier les dates
+    if (alert.conditions?.dateDebut || alert.conditions?.dateFin) {
+      const dateActuelle = patientInfo.dateActuelle;
+      const parseDate = (dateStr) => {
+        if (!dateStr) return null;
+        const parts = dateStr.split('/');
+        if (parts.length !== 3) return null;
+        return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+      };
+
+      const debut = parseDate(alert.conditions.dateDebut);
+      const fin = parseDate(alert.conditions.dateFin);
+
+      if (debut && dateActuelle < debut) {
+        console.log(`[alertesAtcd] ${alert.titre} : Exclue (date actuelle avant début)`);
+        return;
       }
-
-      // Vérifier les conditions (âge, sexe, période)
-      const conditionsResult = verifierConditions(alert.conditions);
-      if (conditionsResult !== true) {
-        console.log('[alertesAtcd] ', alert.titre, "non confirmée car : ", conditionsResult);
-        return; // Les conditions ne sont pas remplies
+      if (fin && dateActuelle > fin) {
+        console.log(`[alertesAtcd] ${alert.titre} : Exclue (date actuelle après fin)`);
+        return;
       }
+    }
 
-      // Récupérer les mots-clés depuis conditions
-      const motsCles = alert.conditions?.motsCles || [];
+    // ÉTAPE 2 : Vérifier le sexe
+    if (alert.conditions?.sexes && patientInfo.sexe !== null) {
+      if (alert.conditions.sexes !== 'N' && patientInfo.sexe !== alert.conditions.sexes) {
+        console.log(`[alertesAtcd] ${alert.titre} : Exclue (sexe=${patientInfo.sexe}, attendu=${alert.conditions.sexes})`);
+        return;
+      }
+    }
 
-      motsCles.forEach(motCle => {
-        const motCleLower = motCle.toLowerCase();
-        if (spanText.includes(motCleLower)) {
-          console.log('[alertesAtcd] Alerte validée pour :', alert.titre, 'avec les caractéristiques', alert, 'mot-clé trouvé:', motCle);
-          // Clé unique pour éviter les doublons
-          const cleElement = spanElement.textContent + alert.titre;
-          if (alertesAffichees.has(cleElement)) return;
-          alertesAffichees.set(cleElement, true);
+    // ÉTAPE 3 : Vérifier l'âge
+    if (alert.conditions?.ageMin !== undefined && alert.conditions?.ageMin !== null && patientInfo.age !== null) {
+      if (patientInfo.age < alert.conditions.ageMin) {
+        console.log(`[alertesAtcd] ${alert.titre} : Exclue (âge=${patientInfo.age} < min=${alert.conditions.ageMin})`);
+        return;
+      }
+    }
+    if (alert.conditions?.ageMax !== undefined && alert.conditions?.ageMax !== null && patientInfo.age !== null) {
+      if (patientInfo.age > alert.conditions.ageMax) {
+        console.log(`[alertesAtcd] ${alert.titre} : Exclue (âge=${patientInfo.age} > max=${alert.conditions.ageMax})`);
+        return;
+      }
+    }
 
-          // Déterminer si l'alerte provient des alertes globales ou personnalisées
-          const estAlerteGlobale = alertesGlobales.includes(alert);
+    // Déterminer si l'alerte provient des alertes globales ou personnalisées
+    const estAlerteGlobale = alertesGlobales.includes(alert);
 
-          // Afficher une notification si alerteWeda est présent avec texteAlerte
-          // ET si cette alerte n'a pas déjà envoyé de notification
-          // ET si l'option popup est activée (ou si c'est une alerte personnalisée)
-          if (alert.alerteWeda && alert.alerteWeda.texteAlerte && !notificationsEnvoyees.has(alert.titre)) {
-            const doitAfficherPopup = !estAlerteGlobale || afficherPopup;
+    // Pour les alertes État Civil : validation complète (pas de recherche de mots-clés)
+    if (cible === 'etatCivil') {
+      console.log(`[alertesAtcd] ${alert.titre} : Validée (État Civil)`);
+      
+      // Utiliser la première cible disponible pour État Civil
+      const cibleCorrespondante = { cible: ciblesFiltrées[0].element, motCle: null };
+      appliquerAlerteAuxElements(alert, cibleCorrespondante, estAlerteGlobale, afficherPopup, afficherMarquage, alertesAffichees, notificationsEnvoyees);
+      return;
+    }
 
-            if (doitAfficherPopup) {
-              const iconeWeda = alert.alerteWeda.icone || 'warning';
-              const typeAlerte = alert.alerteWeda.typeAlerte || 'success';
-              const dureeAlerte = alert.alerteWeda.dureeAlerte ? alert.alerteWeda.dureeAlerte * 1000 : 10000;
+    // Pour les alertes ATCD : vérifier les mots-clés (ÉTAPE 4)
+    const motsCles = alert.conditions?.motsCles || [];
+    if (motsCles.length === 0) {
+      console.log(`[alertesAtcd] ${alert.titre} : Exclue (aucun mot-clé défini)`);
+      return;
+    }
 
-              console.log('[alertesAtcd] Envoi de la notification pour l\'alerte:', alert.titre, 'mot-clé:', motCle, "icône:", iconeWeda);
-              sendWedaNotifAllTabs({
-                message: alert.alerteWeda.texteAlerte,
-                type: typeAlerte,
-                duration: dureeAlerte,
-                icon: iconeWeda,
-              });
-            }
+    let cibleCorrespondante = null;
 
-            // Marquer cette alerte comme ayant envoyé une notification
-            notificationsEnvoyees.add(alert.titre);
-          }
-
-          // Appliquer le marquage visuel si l'option est activée (ou si c'est une alerte personnalisée)
-          const doitAfficherMarquage = !estAlerteGlobale || afficherMarquage;
-
-          if (doitAfficherMarquage) {
-            // Appliquer la coloration si le flag est activé dans optionsCible
-            const coloration = alert.optionsCible?.coloration;
-            if (coloration) {
-              if (typeof coloration === 'string') {
-                // Si c'est une couleur CSS spécifique
-                spanElement.style.color = coloration;
-              } else if (coloration === true) {
-                // Si c'est un booléen true, utiliser vert par défaut
-                spanElement.style.color = 'green';
-              }
-              spanElement.style.fontWeight = 'bold';
-            }
-
-            // Ajouter une icône si définie dans optionsCible
-            const icone = alert.optionsCible?.icone;
-            if (icone) {
-              const iconElement = document.createElement('span');
-              iconElement.className = 'material-icons';
-              iconElement.textContent = icone;
-              iconElement.style.fontSize = '16px';
-              iconElement.style.verticalAlign = 'middle';
-              iconElement.style.marginLeft = '4px';
-              spanElement.appendChild(iconElement);
-            }
-
-            // Ajouter un tooltip avec texteSurvol
-            const texteSurvol = alert.optionsCible?.texteSurvol;
-            if (texteSurvol) {
-              spanElement.title = texteSurvol;
-            }
+    // Chercher la première correspondance de mot-clé dans les cibles potentielles
+    rechercheMotCle:
+    for (const motCle of motsCles) {
+      const motCleLower = motCle.toLowerCase();
+      for (const ciblePotentielle of ciblesFiltrées) {
+        if (ciblePotentielle.text.includes(motCleLower)) {
+          const cleElement = ciblePotentielle.element.textContent + alert.titre;
+          if (!alertesAffichees.has(cleElement)) {
+            cibleCorrespondante = { cible: ciblePotentielle.element, motCle };
+            break rechercheMotCle; // Sortir des deux boucles dès la première correspondance trouvée
           }
         }
-      });
-    });
+      }
+    }
+
+    if (!cibleCorrespondante) {
+      console.log(`[alertesAtcd] ${alert.titre} : Exclue (aucun mot-clé trouvé dans le texte)`);
+      return;
+    }
+
+    // L'alerte est validée - appliquer les actions
+    console.log(`[alertesAtcd] ${alert.titre} : Validée (1 correspondance appliquée)`);
+
+    appliquerAlerteAuxElements(alert, cibleCorrespondante, estAlerteGlobale, afficherPopup, afficherMarquage, alertesAffichees, notificationsEnvoyees);
   });
 });
+
+/**
+ * Applique une alerte validée à un élément
+ * @param {Object} alert - L'alerte validée
+ * @param {Object} cibleCorrespondante - L'élément cible
+ * @param {boolean} estAlerteGlobale - Si l'alerte vient des alertes globales
+ * @param {boolean} afficherPopup - Option pour afficher la popup
+ * @param {boolean} afficherMarquage - Option pour afficher le marquage
+ * @param {Map} alertesAffichees - Map pour éviter les doublons
+ * @param {Set} notificationsEnvoyees - Set des notifications déjà envoyées
+ */
+function appliquerAlerteAuxElements(alert, cibleCorrespondante, estAlerteGlobale, afficherPopup, afficherMarquage, alertesAffichees, notificationsEnvoyees) {
+  // Afficher une notification si alerteWeda est présent avec texteAlerte
+  if (alert.alerteWeda && alert.alerteWeda.texteAlerte && !notificationsEnvoyees.has(alert.titre)) {
+    const doitAfficherPopup = !estAlerteGlobale || afficherPopup;
+
+    if (doitAfficherPopup) {
+      const iconeWeda = alert.alerteWeda.icone || 'warning';
+      const typeAlerte = alert.alerteWeda.typeAlerte || 'success';
+      const dureeAlerte = alert.alerteWeda.dureeAlerte ? alert.alerteWeda.dureeAlerte * 1000 : 10000;
+
+      sendWedaNotif({
+        message: alert.alerteWeda.texteAlerte,
+        type: typeAlerte,
+        duration: dureeAlerte,
+        icon: iconeWeda,
+      });
+    }
+
+    notificationsEnvoyees.add(alert.titre);
+  }
+
+  // Appliquer le marquage visuel sur la cible correspondante (une seule)
+  const doitAfficherMarquage = !estAlerteGlobale || afficherMarquage;
+
+  if (doitAfficherMarquage && cibleCorrespondante) {
+    const spanElement = cibleCorrespondante.cible;
+    const cleElement = spanElement.textContent + alert.titre;
+    
+    if (!alertesAffichees.has(cleElement)) {
+      alertesAffichees.set(cleElement, true);
+
+      // Appliquer la coloration si le flag est activé dans optionsCible
+      const coloration = alert.optionsCible?.coloration;
+      if (coloration) {
+        if (typeof coloration === 'string') {
+          spanElement.style.color = coloration;
+        } else if (coloration === true) {
+          spanElement.style.color = 'green';
+        }
+        spanElement.style.fontWeight = 'bold';
+      }
+
+      // Ajouter une icône si définie dans optionsCible
+      const icone = alert.optionsCible?.icone;
+      if (icone) {
+        const iconElement = document.createElement('span');
+        iconElement.className = 'material-icons';
+        iconElement.textContent = icone;
+        iconElement.style.fontSize = '16px';
+        iconElement.style.verticalAlign = 'middle';
+        iconElement.style.marginLeft = '4px';
+        spanElement.appendChild(iconElement);
+      }
+
+      // Ajouter une icône de point d'interrogation avec tooltip instantané
+      const texteSurvol = alert.optionsCible?.texteSurvol;
+      if (texteSurvol) {
+        // Créer l'icône de point d'interrogation
+        const helpIcon = document.createElement('span');
+        helpIcon.className = 'material-icons';
+        helpIcon.textContent = 'help_outline';
+        helpIcon.style.fontSize = '16px';
+        helpIcon.style.verticalAlign = 'middle';
+        helpIcon.style.marginLeft = '4px';
+        helpIcon.style.cursor = 'pointer';
+        helpIcon.style.color = '#1976d2';
+        helpIcon.style.position = 'relative';
+
+        // Créer le tooltip
+        const tooltip = document.createElement('div');
+        tooltip.textContent = texteSurvol;
+        tooltip.style.position = 'absolute';
+        tooltip.style.left = '100%';
+        tooltip.style.bottom = '100%';
+        tooltip.style.marginLeft = '8px';
+        tooltip.style.marginBottom = '4px';
+        tooltip.style.backgroundColor = '#ffffff';
+        tooltip.style.color = '#000000';
+        tooltip.style.padding = '8px 12px';
+        tooltip.style.borderRadius = '4px';
+        tooltip.style.border = '1px solid #ccc';
+        tooltip.style.fontSize = '13px';
+        tooltip.style.fontFamily = 'Arial, sans-serif';
+        tooltip.style.maxWidth = '300px';
+        tooltip.style.width = 'max-content';
+        tooltip.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+        tooltip.style.zIndex = '10000';
+        tooltip.style.display = 'none';
+        tooltip.style.pointerEvents = 'none';
+        tooltip.style.whiteSpace = 'normal';
+        tooltip.style.lineHeight = '1.4';
+
+        // Ajouter les gestionnaires d'événements pour affichage instantané
+        helpIcon.addEventListener('mouseenter', () => {
+          tooltip.style.display = 'block';
+        });
+        
+        helpIcon.addEventListener('mouseleave', () => {
+          tooltip.style.display = 'none';
+        });
+
+        helpIcon.appendChild(tooltip);
+        spanElement.appendChild(helpIcon);
+      }
+    }
+  }
+}

@@ -401,7 +401,7 @@ addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', functi
                     return;
                 }
                 
-                console.log('[MT Workflow] MT trouvé : ', mtInfo);
+                // console.log('[MT Workflow] MT trouvé : ', mtInfo);
                 completeStep(MT_STEPS.MT_EXTRACTED, { mtInfo });
             }
             
@@ -431,7 +431,7 @@ addTweak('/FolderTools/ContactForm.aspx', 'autoMTIncludeAndCheckContact', functi
             if (!isStepCompleted(MT_STEPS.CONTACT_SELECTED)) {
                 const currentWorkflow = getWorkflow();
                 recordMetrics({ clicks: 1, drags: 1 });
-                console.log('[MT Workflow] Sélection du contact : ', currentWorkflow.mtInfo.prenom);
+                // console.log('[MT Workflow] Sélection du contact : ', currentWorkflow.mtInfo.prenom);
                 selectMTContact(currentWorkflow.mtInfo.prenom);
                 completeStep(MT_STEPS.CONTACT_SELECTED);
             }

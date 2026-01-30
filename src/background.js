@@ -337,6 +337,19 @@ const alerteSchema = {
 
 const alertesAtcdOptionDefault = JSON.stringify([
     {
+        titre: "Alerte standard exemple",
+        optionsCible: {
+            cible: "atcd",
+            coloration: "green",
+            icone: "info",
+            texteSurvol: "Ceci est un exemple d'alerte standard pouvant être mis en place par Weda-Helper. Le système d’alerte colore l'antécédent, ajoute une icone, un texte explicatif au survol de la souris et peut même afficher une popup. Vous pouvez les personnaliser dans les options de Weda-Helper section \"Antécédents\". Cette alerte de démonstration demeurera active jusqu'au 10/02/2026. Vous pouvez diffuser des alertes globales pour votre cabinet/pôle/groupement WEDA en ouvrant une demande depuis les options. Utile pour faire vivre vos protocoles internes !",
+        },
+        conditions: {
+            dateFin: "10/02/2026",
+            motsCles: ["tabagisme", "hypertension"]
+        }
+    },
+    {
         titre: "Alerte avec coloration CSS personnalisée",
         optionsCible: {
             cible: "atcd",

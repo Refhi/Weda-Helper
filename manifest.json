@@ -1,8 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper Beta",
-  "version": "2.15.0.4",
-  "version_name": "2.15.0.4-RC3",
+  "version": "2.15.1.0",
   "options_page": "src/ui/options.html",
   "permissions": [
     "storage"
@@ -50,6 +49,7 @@
         "src/ui/popupFunctions.js",
         "src/features/conflictHandler.js",
         "src/features/alertesAtcd.js",
+        "src/features/alertesDates.js",
         "src/features/content.js",
         "src/features/accueil.js",
         "src/features/consultation.js",

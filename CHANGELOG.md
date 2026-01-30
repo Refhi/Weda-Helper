@@ -4,15 +4,23 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
-# [2.15.0.4] - message aux beta-testeurs
-- j'ai énormement bossé sur le système d'alerte selon atcd... c'est le plus gros truc que j'ai fait depuis longtemps... pouvez-vous le tester svp ? Merci +++ :)
+# [2.15.1.0] - fix - beta testing
+## Fix :
+- [#550](https://github.com/Refhi/Weda-Helper/issues/550) - la cible de alt+V est désormais constante, notamment dans la page des imports sécurisés.
+- [#549](https://github.com/Refhi/Weda-Helper/issues/549) - ajout de lumbago dans les motifs d'arrêt de travail rapides.
+- les alertes etp sont limitées à l’onglet en cours.
+- [#559](https://github.com/Refhi/Weda-Helper/issues/559) - retrait des informations sensibles des logs d’erreurs afin de limiter l’exposition de données personnelles en cas de partage du log lors d’un signalement de bug.
+
+## Améliorations :
+- les alertes basées sur l’état civil sont désormais fonctionnelles (ex. mettre en évidence certaines tranches d’age et de genre).
+- [#526](https://github.com/Refhi/Weda-Helper/issues/526) - vous pouvez désormais afficher des alertes dans la description des atcd grace à un # par exemple #annuel après une date affichera une coloration selon la proximité de la date (utile pour les suivis annuels par exemple).
 
 # [2.15] - Bonne année 2026 à toustes ! 🎉🎊
 
 ## 🎯 Vos Pôles et Cabinets peuvent désormais créer des alertes personnalisées communes sur les antécédents ! 
 - ⚕️ Particulièrement utile pour repérer facilement les patients éligibles à un suivi spécifique comme l'inscription à un atelier ETP.
 - 🔬 Si vous avez des protocoles ou études à appliquer auprès de patients avec des antécédents spécifiques, vous pouvez désormais les repérer en un coup d'œil !
-- 📧 Pensez à nous les envoyer depuis le bouton dédié dans les options pour que nous puissions les intégrer par défaut dans la prochaine version.
+- 📧 Vous pouvez demander à étendre vos alertes à tout votre Pôle/Cabinet/Groupement ! Pour ce faire cliquez sur le bouton dédié dans les options.
 - 🧪 Testez dès maintenant en ajoutant vos propres mots-clés dans les options de Weda-Helper !
 - [#528](https://github.com/Refhi/Weda-Helper/issues/528) - Ajout d'un système d'alerte si un antécédent contient un mot-clé précisé dans les options de Weda-Helper.
 

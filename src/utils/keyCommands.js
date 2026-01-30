@@ -714,7 +714,7 @@ addTweak('*', 'WarpButtons', async function () {
                     'Valider et mettre à la corbeille',
                     'Supprimer',
                 ]
-
+        
             };
             if (button) {
                 var buttonText = button.textContent;
@@ -723,7 +723,11 @@ addTweak('*', 'WarpButtons', async function () {
                 }
                 var action = Object.keys(actions).find(key => actions[key].includes(buttonText));
                 if (action) {
-                    button.classList.add('target' + action);
+                    var targetClass = 'target' + action;
+                    // Vérifier si la classe existe déjà dans le document
+                    if (!document.querySelector('.' + targetClass)) {
+                        button.classList.add(targetClass);
+                    }
                 }
             }
             return true;
