@@ -65,7 +65,8 @@
         "src/features/wedaEchanges.js",
         "src/features/pdfParser.js",
         "src/features/headlessSetup.js",
-        "src/features/instantVaccine.js"
+        "src/features/instantVaccine.js",
+        "src/features/accoladesHandling.js"
       ]
     }
   ],
