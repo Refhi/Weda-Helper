@@ -15,27 +15,30 @@
 // Configuration et fonctions utilitaires communes
 // ============================================================================
 
-// Configuration des hashtags et leurs durées associées
+// Configuration des hashtags et leurs durées associées (en mois)
 const HASHTAGS_CONFIG = {
-    'quinquennal': 60,
-    '5ans': 60,
-    'quadriannual': 48,
-    '4ans': 48,
-    'triennal': 36,
-    '3ans': 36,
-    'biennal': 24,
-    '2ans': 24,
-    'annuel': 12,
-    '1an': 12,
-    'semestriel': 6,
-    '6mois': 6,
-    'trimestriel': 3,
-    '3mois': 3,
-    'bimensuel': 2,
-    '2mois': 2,
-    'mensuel': 1,
-    '1mois': 1
+    'mensuel': { duree: 1, description: '1 mois' },
+    '1mois': { duree: 1, description: '1 mois' },
+    '2mois': { duree: 2, description: '2 mois' },
+    'trimestriel': { duree: 3, description: '3 mois' },
+    '3mois': { duree: 3, description: '3 mois' },
+    'semestriel': { duree: 6, description: '6 mois' },
+    '6mois': { duree: 6, description: '6 mois' },
+    'annuel': { duree: 12, description: '1 an' },
+    '1an': { duree: 12, description: '1 an' },
+    '2ans': { duree: 24, description: '2 ans' },
+    '3ans': { duree: 36, description: '3 ans' },
+    '4ans': { duree: 48, description: '4 ans' },
+    '5ans': { duree: 60, description: '5 ans' },
+    '10ans': { duree: 120, description: '10 ans' }
 };
+
+// Générer la liste des suggestions pour l'auto-complétion
+const HASHTAGS_SUGGESTIONS = Object.keys(HASHTAGS_CONFIG).map(key => ({
+    hashtag: `#${key}`,
+    description: HASHTAGS_CONFIG[key].description,
+    duree: HASHTAGS_CONFIG[key].duree
+}));
 
 
 // Fonction utilitaire : calcule la prochaine échéance
@@ -94,9 +97,10 @@ const extraireDatesAvecFrequence = (texte, aujourdhui, hashtagsConfig) => {
         if (isNaN(dateReference)) continue;
 
         const hashtag = hashtagBrut.toLowerCase();
-        const frequence = hashtagsConfig[hashtag];
-        if (!frequence) continue;
+        const config = hashtagsConfig[hashtag];
+        if (!config) continue;
 
+        const frequence = config.duree;
         const prochaineDate = calculerProchaineEcheance(dateReference, frequence);
         if (!prochaineDate) continue;
 
@@ -398,3 +402,342 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*alertesDatesSuivis', function
     }
 });
 
+// ============================================================================
+// Auto-complétion des hashtags de fréquence
+// ============================================================================
+
+// Applicable sur les pages de consultation et d'ajout d'antécédent
+addTweak(['/FolderMedical/ConsultationForm.aspx', '/FolderMedical/AntecedentForm.aspx'], '*autoCompleteHashtags', function () {
+    console.log('[autoCompleteHashtags] Initialisation de l\'auto-complétion des hashtags');
+
+    let autocompleteMenu = null;
+    let currentInput = null;
+    let hashtagPosition = -1;
+    let selectedIndex = -1;
+
+    // Créer le menu d'auto-complétion
+    function createAutocompleteMenu() {
+        const container = document.createElement('div');
+        container.id = 'hashtag-autocomplete-container';
+        container.style.cssText = `
+            position: absolute;
+            z-index: 10000;
+            display: none;
+        `;
+        
+        // Icône d'aide
+        const helpIcon = document.createElement('div');
+        helpIcon.className = 'hashtag-help-icon';
+        helpIcon.innerHTML = '#?';
+        helpIcon.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: -30px;
+            width: 24px;
+            height: 24px;
+            background-color: #0066cc;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 24px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: help;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        `;
+        
+        // Texte d'aide (affiché au survol)
+        const helpText = document.createElement('div');
+        helpText.className = 'hashtag-help-text';
+        helpText.innerHTML = `
+            <strong style="margin-bottom: 8px; display: block; font-size: 13px;">Rappels automatiques avec hashtags</strong>
+            
+            <div style="margin-bottom: 8px; font-size: 11px;">
+                Tapez <strong>#</strong> suivi d'une durée ou d’une date pour insérer une coloration automatique
+                de la ligne.
+            </div>
+            
+            <div style="margin-bottom: 4px;"><strong>Exemples :</strong></div>
+            <div style="padding-left: 10px; line-height: 1.6; font-size: 11px; margin-bottom: 8px;">
+                • <strong>28/01/2026 - #mensuel</strong> :<br>
+                    alerte dès qu’on s’approche du 28/02/2026 <br>
+                • <strong>monofilament #28/02/2026</strong> :<br>
+                    alerte quand on s’approche du 28/02/2026
+            </div>
+                        
+            <div style="padding: 6px; background: #f0f8ff; border-radius: 4px; font-size: 10px; margin-bottom: 8px;">
+                <strong>💡 dans les items de suivis :</strong> La date de référence est celle de l'enregistrement
+            </div>
+            
+            <div style="padding-top: 8px; border-top: 1px solid #e0e0e0; font-size: 10px; color: #666;">
+                Navigation : ↑↓ pour sélectionner, Entrée pour valider<br>
+                Possible pour les champs de suivi et le commentaire d'antécédent.
+            </div>
+        `;
+        helpText.style.cssText = `
+            display: none;
+            position: absolute;
+            top: 0;
+            left: -360px;
+            width: 300px;
+            background: white;
+            border: 1px solid #0066cc;
+            border-radius: 6px;
+            padding: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #333;
+            z-index: 10001;
+        `;
+        
+        // Événements de survol
+        helpIcon.addEventListener('mouseenter', () => {
+            helpText.style.display = 'block';
+        });
+        helpIcon.addEventListener('mouseleave', () => {
+            helpText.style.display = 'none';
+        });
+        
+        // Menu des suggestions
+        const menu = document.createElement('div');
+        menu.id = 'hashtag-autocomplete-menu';
+        menu.style.cssText = `
+            position: relative;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            max-height: 250px;
+            overflow-y: auto;
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+        `;
+        
+        container.appendChild(helpText);
+        container.appendChild(helpIcon);
+        container.appendChild(menu);
+        document.body.appendChild(container);
+        
+        return container;
+    }
+
+    // Afficher le menu avec les suggestions
+    function showAutocomplete(input, searchTerm = '') {
+        if (!autocompleteMenu) {
+            autocompleteMenu = createAutocompleteMenu();
+        }
+
+        // Filtrer les suggestions selon le terme de recherche
+        const filtered = searchTerm 
+            ? HASHTAGS_SUGGESTIONS.filter(s => s.hashtag.toLowerCase().includes(searchTerm.toLowerCase()))
+            : HASHTAGS_SUGGESTIONS;
+
+        if (filtered.length === 0) {
+            hideAutocomplete();
+            return;
+        }
+
+        // Réinitialiser l'index de sélection
+        selectedIndex = -1;
+
+        // Construire le contenu du menu
+        const menu = autocompleteMenu.querySelector('#hashtag-autocomplete-menu');
+        menu.innerHTML = '';
+        menu.dataset.filteredSuggestions = JSON.stringify(filtered);
+        
+        filtered.forEach((suggestion, index) => {
+            const item = document.createElement('div');
+            item.className = 'hashtag-item';
+            item.dataset.index = index;
+            item.style.cssText = `
+                padding: 8px 12px;
+                cursor: pointer;
+                border-bottom: 1px solid #f0f0f0;
+            `;
+            item.innerHTML = `
+                <strong style="color: #0066cc;">${suggestion.hashtag}</strong>
+                <span style="color: #666; margin-left: 8px;">(${suggestion.description})</span>
+            `;
+            
+            // Survol
+            item.addEventListener('mouseenter', () => {
+                selectItem(index);
+            });
+
+            // Sélection
+            item.addEventListener('click', () => {
+                insertHashtag(input, suggestion.hashtag);
+                hideAutocomplete();
+            });
+
+            menu.appendChild(item);
+        });
+
+        // Positionner le conteneur sous le curseur
+        const rect = input.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+        
+        autocompleteMenu.style.left = `${rect.left + scrollLeft}px`;
+        autocompleteMenu.style.top = `${rect.bottom + scrollTop}px`;
+        menu.style.minWidth = `${rect.width}px`;
+        autocompleteMenu.style.display = 'block';
+        
+        currentInput = input;
+    }
+
+    // Sélectionner un item par son index
+    function selectItem(index) {
+        if (!autocompleteMenu) return;
+        
+        const menu = autocompleteMenu.querySelector('#hashtag-autocomplete-menu');
+        if (!menu) return;
+        const items = menu.querySelectorAll('.hashtag-item');
+        items.forEach((item, i) => {
+            if (i === index) {
+                item.style.backgroundColor = '#e6f2ff';
+                selectedIndex = index;
+                // Scroll pour rendre l'item visible
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.style.backgroundColor = 'white';
+            }
+        });
+    }
+
+    // Cacher le menu
+    function hideAutocomplete() {
+        if (autocompleteMenu) {
+            autocompleteMenu.style.display = 'none';
+        }
+        currentInput = null;
+        hashtagPosition = -1;
+        selectedIndex = -1;
+    }
+
+    // Insérer le hashtag dans le champ
+    function insertHashtag(input, hashtag) {
+        const text = input.value;
+        const cursorPos = input.selectionStart;
+        
+        // Trouver le début du hashtag (le #)
+        let hashStart = cursorPos - 1;
+        while (hashStart >= 0 && text[hashStart] !== '#') {
+            hashStart--;
+        }
+
+        if (hashStart >= 0 && text[hashStart] === '#') {
+            // Remplacer depuis le # jusqu'à la position actuelle
+            const newText = text.substring(0, hashStart) + hashtag + text.substring(cursorPos);
+            input.value = newText;
+            
+            // Placer le curseur après le hashtag
+            const newCursorPos = hashStart + hashtag.length;
+            input.setSelectionRange(newCursorPos, newCursorPos);
+            input.focus();
+        }
+    }
+
+    // Gérer les événements sur les champs
+    function attachAutocomplete(input) {
+        if (input.dataset.autocompleteAttached) return;
+        input.dataset.autocompleteAttached = 'true';
+
+        // Détecter la frappe
+        input.addEventListener('input', (e) => {
+            const text = input.value;
+            const cursorPos = input.selectionStart;
+            
+            // Vérifier si on vient de taper un #
+            if (text[cursorPos - 1] === '#') {
+                hashtagPosition = cursorPos - 1;
+                showAutocomplete(input, '');
+            } else if (hashtagPosition >= 0) {
+                // On est en train de taper après un #
+                const textAfterHash = text.substring(hashtagPosition + 1, cursorPos);
+                
+                // Si on a un espace ou autre caractère, on arrête l'auto-complétion
+                if (textAfterHash.includes(' ') || textAfterHash.includes('\n')) {
+                    hideAutocomplete();
+                } else {
+                    showAutocomplete(input, textAfterHash);
+                }
+            }
+        });
+
+        // Gérer la navigation au clavier
+        input.addEventListener('keydown', (e) => {
+            if (!autocompleteMenu || autocompleteMenu.style.display !== 'block') return;
+            
+            const menu = autocompleteMenu.querySelector('#hashtag-autocomplete-menu');
+            const filtered = menu && menu.dataset.filteredSuggestions 
+                ? JSON.parse(menu.dataset.filteredSuggestions)
+                : [];
+            
+            switch(e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    selectedIndex = selectedIndex < filtered.length - 1 ? selectedIndex + 1 : 0;
+                    selectItem(selectedIndex);
+                    break;
+                    
+                case 'ArrowUp':
+                    e.preventDefault();
+                    selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : filtered.length - 1;
+                    selectItem(selectedIndex);
+                    break;
+                    
+                case 'Enter':
+                    if (selectedIndex >= 0 && selectedIndex < filtered.length) {
+                        e.preventDefault();
+                        insertHashtag(input, filtered[selectedIndex].hashtag);
+                        hideAutocomplete();
+                    }
+                    break;
+                    
+                case 'Escape':
+                    e.preventDefault();
+                    hideAutocomplete();
+                    break;
+            }
+        });
+
+        // Fermer le menu si on clique en dehors
+        input.addEventListener('blur', () => {
+            // Petit délai pour permettre le clic sur un item
+            setTimeout(() => {
+                if (document.activeElement !== input) {
+                    hideAutocomplete();
+                }
+            }, 200);
+        });
+    }
+
+    // Observer et attacher l'auto-complétion aux champs
+    function observeAndAttach() {
+        // Champs de suivi (ConsultationForm)
+        const suiviInputs = document.querySelectorAll('[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]');
+        suiviInputs.forEach(attachAutocomplete);
+
+        // Champ de commentaire d'antécédent (AntecedentForm)
+        const atcdInput = document.getElementById('ContentPlaceHolder1_TextBoxAntecedentCommentaire');
+        if (atcdInput) {
+            attachAutocomplete(atcdInput);
+        }
+    }
+
+    // Observer au chargement
+    observeAndAttach();
+
+    // Observer les changements dynamiques
+    const observer = new MutationObserver(() => {
+        observeAndAttach();
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+});
