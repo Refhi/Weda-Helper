@@ -5,6 +5,9 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
 # [2.15.1.0] - fix - beta testing
+## L’historique des facturations dans la page des FSE est désormais ouverte !
+- En allant dans les options de Weda-Helper, vous pouvez activer l’affichage de l’historique des facturations dans la page des FSE. Utile pour les facturations qui ne peuvent être faite que une seule fois par période (ex. ALQP003, GL1, etc.).
+
 ## Fix :
 - [#550](https://github.com/Refhi/Weda-Helper/issues/550) - la cible de alt+V est désormais constante, notamment dans la page des imports sécurisés.
 - [#549](https://github.com/Refhi/Weda-Helper/issues/549) - ajout de lumbago dans les motifs d'arrêt de travail rapides.

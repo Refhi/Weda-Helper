@@ -1139,9 +1139,9 @@ var advancedDefaultSettings = [
         }, {
             "name": "showBillingHistory",
             "type": TYPE_BOOL,
-            "description": "[En attente du feu vert de Weda] Affiche l'historique des facturations dans la page de télétransmission.",
+            "description": "Affiche l'historique des facturations dans la page de télétransmission.",
             "default": false,
-            "disabled": true,
+            "disabled": false,
             "subOptions": [{
                 "name": "billingDataFilter",
                 "type": TYPE_TEXT,
