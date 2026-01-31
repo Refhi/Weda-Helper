@@ -216,11 +216,10 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'debugModePdfParser', function () {
  * }
  */
 async function processFoundPdfIframeImport(elements) {
-    // Setup de la procédure
-    // Partie "neutre" => n'entraine pas de rafraichissement de la page ou de DOM change
-    // ---------------------------------
-
-    // Extraction des données de base
+    // ===========================================
+    // ÉTAPE 1 : Extraction des données du PDF
+    // (pas de modification du DOM ni de refresh)
+    // ===========================================
     const baseData = await extractBasePdfData(elements);
     if (!baseData) return;
 
@@ -230,138 +229,133 @@ async function processFoundPdfIframeImport(elements) {
     addResetButton(hashId);
 
     // Récupération des données déjà extraites pour ce PDF
-    let extractedData = getPdfData(hashId);
+    let extractedData = getPdfData(hashId); // bien que déjà fait dans handleDataExtraction, on le refait ici pour le check suivant
 
-    // Données déjà importées pour ce PDF ?
+    // Si déjà importé, on redirige vers le champ de recherche
     if (extractedData.alreadyImported) {
-        console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction. Renvoi vers le champ de recherche ou le 1er patient de la liste si présent");
+        console.log("[pdfParser] Import - Données déjà importées. Redirection vers recherche.");
         selectFirstPatientOrSearchField();
         return;
     }
-
-    // Extraction ou récupération des données
+    // Sinon, on extrait les données
     extractedData = await handleDataExtraction(fullText, urlPDF, hashId);
 
-    // Partie "non-neutre" - entraine un rafraichissement de la page ou un changement du DOM
-    // ---------------------------------
-    // Recherche du patient par la date de naissance
-    // => on pourrait rechercher par INS si on a le datamatrix, mais cela impliquerait de
-    //    naviguer entre les différents types de recherche dans la fenêtre d'import
+    // ===========================================
+    // ÉTAPE 2 : Recherche et sélection du patient
+    // ATTENTION : peut déclencher un refresh de page
+    // ===========================================
+    const searchResult = handlePatientSearch(extractedData, hashId);
 
-    let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
-    if (handlePatientSearchReturn.action === 'refresh') {
-        console.log("[pdfParser] handlePatientSearchReturn", handlePatientSearchReturn.message);
-        // La procédure n'est pas arrivée au bout, un rafraichissement de la page est attendu
-        // On bloque donc ici pour éviter d'intégrer des données trop tôt
+    // Si un refresh est attendu (changement de mode de recherche ou clic bouton recherche),
+    // on stoppe ici. La fonction sera rappelée après le rechargement de page.
+    if (searchResult.needsPageRefresh) {
+        console.log("[pdfParser] Import - Refresh attendu :", searchResult.message);
         return;
     }
 
-    // Intégration des données dans le formulaire d'import
+    // Si échec de la recherche patient, on continue quand même pour remplir le formulaire
+    if (!searchResult.patientFound) {
+        console.warn("[pdfParser] Import - Patient non trouvé automatiquement :", searchResult.message);
+    }
+
+    // ===========================================
+    // ÉTAPE 3 : Remplissage du formulaire d'import
+    // ===========================================
     await setExtractedDataInForm(extractedData);
-
-    // Marquage des données comme déjà importées
     markDataAsImported(hashId, extractedData);
-
-    // Enregistrement des métriques approximatives
     recordMetrics({ clicks: 9, drags: 9, keyStrokes: 10 });
 
-    // Mise du focus sur la date du document importé
-    setTimeout(function () {
-        highlightDate();
-    }, 200);
+    setTimeout(() => highlightDate(), 200);
 }
 
-// Fonction pour traiter le PDF dans la page des échanges sécurisés
-// va suivre une logique similaire à celle de la page d'import
+/**
+ * Traite le PDF dans la page des échanges sécurisés.
+ * Contrairement à processFoundPdfIframeImport, cette fonction gère les changements DOM
+ * en interne via une boucle (pas de rechargement de page complet).
+ * 
+ * @param {boolean} isINSValidated - Si true, on saute l'étape de recherche patient (INS déjà validé)
+ */
 async function processFoundPdfIframeEchanges(isINSValidated = false) {
-    console.log("[pdfParser] processFoundPdfIframeEchanges avec isINSValidated", isINSValidated);
+    console.log("[pdfParser] Echanges - Démarrage avec isINSValidated =", isINSValidated);
+
+    // ===========================================
+    // ÉTAPE 1 : Extraction des données du PDF
+    // ===========================================
     let iframesElements = document.querySelectorAll('#PanelViewDocument iframe');
     if (iframesElements.length === 0) {
-        // On n'a pas trouvé d'iframe, on est donc peut-être dans le cadre d'un pdf mis dans un embed (c'est le cas
-        // quand les pdfs sont accompagnés d'un corps de message dans les échanges sécurisés)
+        // Fallback pour les PDF dans un embed (cas des messages avec corps de texte)
         iframesElements = document.querySelectorAll('.mssAttachment embed');
     }
 
     // Setup de la procédure
     // Extraction des données de base
-    const baseData = await extractBasePdfData(iframesElements);
+    const baseData = await extractBasePdfData(iframesElements); // s’occupe également de vérifier les données déjà extraites
     if (!baseData) return;
 
     const { urlPDF, fullText, hashId } = baseData;
+    let extractedData = await handleDataExtraction(fullText, urlPDF, hashId);
 
-    // récupération des données déjà extraites pour ce PDF
-    let extractedData = getPdfData(hashId);
-
-    // Récupérer les données via extraction/datamatrix ou sessionStorage si déjà extraites
-    extractedData = await handleDataExtraction(fullText, urlPDF, hashId);
-
-    // Surveiller les listes de patients cliquables pour savoir quel patient a été cliqué
+    // Surveillance des clics sur les patients (pour affichage du nom sélectionné)
     waitForElement({
         selector: ".grid-item_tr, .grid-selecteditem",
         callback: showClickedPatient,
         triggerOnInit: true
     });
 
-
-    // Données déjà importées pour ce PDF ?
+    // Si déjà importé, redirection vers recherche
     if (extractedData.alreadyImported) {
         console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction. Renvoi vers le champ de recherche ou le 1er patient de la liste si présent");
         selectFirstPatientOrSearchField();
         return;
     }
 
+    console.log("[pdfParser] Echanges - Données extraites :", extractedData);
 
-    console.log("[pdfParser] je travaille sur les données", extractedData);
-
+    // ===========================================
+    // ÉTAPE 2 : Recherche et sélection du patient
+    // Boucle interne car pas de refresh de page
+    // ===========================================
     if (!isINSValidated) {
-        console.log("[pdfParser] Je ne suis pas sur une INS validée, je vais donc chercher le patient");
-        // Boucle de recherche patient - on continue jusqu'à ce qu'il n'y ait plus de refresh nécessaire
-        let continueSearching = true;
-        let attempts = 0;
-        const MAX_ATTEMPTS = 5; // Limite pour éviter une boucle infinie
+        const MAX_ATTEMPTS = 5;
+        let patientSearchSucceeded = false;
 
-        while (continueSearching && attempts < MAX_ATTEMPTS) {
-            attempts++;
-            console.log(`[pdfParser] Tentative de recherche de patient ${attempts}/${MAX_ATTEMPTS}`);
+        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            console.log(`[pdfParser] Echanges - Tentative de recherche patient ${attempt}/${MAX_ATTEMPTS}`);
 
-            // Recherche du patient
-            let handlePatientSearchReturn = handlePatientSearch(extractedData, hashId);
+            const searchResult = handlePatientSearch(extractedData, hashId);
 
-            if (handlePatientSearchReturn.status === 'success' || handlePatientSearchReturn.message === 'Patient trouvé et cliqué') {
-                console.log("[pdfParser] Recherche de patient terminée avec succès", handlePatientSearchReturn.message);
-                continueSearching = false;
-                console.log("[pdfParser] Traitement terminé pour la page d'échanges");
-            } else if (handlePatientSearchReturn.status === 'error') {
-                console.error("[pdfParser] Erreur lors de la recherche de patient :", handlePatientSearchReturn.message);
-                continueSearching = false;
-                sendWedaNotifAllTabs({
-                    message: "Erreur lors de la recherche de patient : " + handlePatientSearchReturn.message,
-                    type: 'undefined',
-                    icon: 'search_off',
-                    duration: 10000
-                });
-            } else if (handlePatientSearchReturn.action === 'refresh') {
-                console.log("[pdfParser] handlePatientSearchReturn nécessite une action:", handlePatientSearchReturn.message);
-                // On attend un peu pour que les changements DOM se produisent
-                await new Promise(resolve => setTimeout(resolve, 500));
-                // On continue la boucle sans quitter la fonction
-                continue;
-            } else {
-                console.log("[pdfParser] Échec de la recherche de patient après plusieurs tentatives");
-                continueSearching = false;
+            if (searchResult.patientFound) {
+                console.log("[pdfParser] Echanges - Patient trouvé :", searchResult.message);
+                patientSearchSucceeded = true;
+                break;
             }
+
+            if (searchResult.needsPageRefresh) {
+                // Dans les échanges, on attend le changement DOM au lieu d'un refresh complet
+                console.log("[pdfParser] Echanges - Attente changement DOM :", searchResult.message);
+                await new Promise(resolve => setTimeout(resolve, 500));
+                continue; // Nouvelle tentative
+            }
+
+            // Échec définitif (pas de données, ou toutes les méthodes ont échoué)
+            console.warn("[pdfParser] Echanges - Recherche patient échouée :", searchResult.message);
+            sendWedaNotifAllTabs({
+                message: "Recherche patient automatique échouée : " + searchResult.message,
+                type: 'undefined',
+                icon: 'search_off',
+                duration: 10000
+            });
+            break;
         }
 
-        if (attempts >= MAX_ATTEMPTS) {
-            console.log("[pdfParser] Nombre maximum de tentatives atteint pour la recherche de patient");
-            // Marquage des données comme déjà importées
-            markDataAsImported(hashId, extractedData);
-            return;
+        if (!patientSearchSucceeded) {
+            console.warn("[pdfParser] Echanges - Impossible de trouver le patient automatiquement.");
         }
     }
 
-    // On a normalement pu sélectionner le bon patient
-    // Sélectionner la bonne destination d'importation (soumis à option false par défaut)
+    // ===========================================
+    // ÉTAPE 3 : Remplissage du formulaire d'import
+    // ===========================================
     await selectDestinationIfNeededES(extractedData.destinationClass);
     // 2. Mettre le titre
     await setTitleIfNeededES(extractedData.documentTitle);
@@ -370,9 +364,9 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     // Marquage des données comme déjà importées
     markDataAsImported(hashId, extractedData);
 
-
-    // pas de champ de date possible depuis les échanges sécurisés
-    // si #ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 existe, y mettre le focus
+    // ===========================================
+    // ÉTAPE 4 : Focus sur l'élément de validation
+    // ===========================================
     const patientLinkButton = document.querySelector("#ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0");
     if (patientLinkButton) {
         console.log("[pdfParser] Mise au focus sur le patient sélectionné");
@@ -380,16 +374,31 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
         ListTabOrderer(patientLinkButton.id);
         await observeDiseapearance(patientLinkButton);
     }
-    // 4. mettre le focus sur le bouton de validation "#messageContainer class.button.valid"
+
     const validationButton = document.querySelector("#messageContainer .button.valid");
     if (validationButton) {
         console.log("[pdfParser] Mise au focus sur le bouton de validation");
         validationButton.focus();
+        validationButton.style.outline = '2px solid rgba(255, 255, 255, 0.5)';
+        validationButton.style.outlineOffset = '2px';
+
+        // Supprimer l'outline dès interaction utilisateur
+        const removeOutline = () => {
+            validationButton.style.outline = '';
+            validationButton.style.outlineOffset = '';
+        };
+
+        validationButton.addEventListener('click', removeOutline, { once: true });
+        validationButton.addEventListener('keydown', removeOutline, { once: true });
+        validationButton.addEventListener('blur', removeOutline, { once: true });
+
+
         sendWedaNotifAllTabs({
-            message: "Sélection du patient et des données d'import terminée. Vous pouvez valider l'import en appuyant sur Enter. Maj+Tab pour effectuer des corrections.",
+            message: "Sélection terminée. Appuyez sur Espace pour valider, Maj+Tab pour corriger.",
             type: 'success',
             icon: 'success'
         });
+
         // Supprimer #iFrameViewFile du taborder
         const iframe = document.querySelector("#iFrameViewFile");
         if (iframe) {
@@ -608,6 +617,7 @@ async function extractBasePdfData(iframesElements) {
  */
 async function handleDataExtraction(fullText, urlPDF, hashId) {
     let dataMatrixReturn = null;
+    // Vérification des données déjà extraites pour ce PDF
     let extractedData = getPdfData(hashId);
 
     if (Object.keys(extractedData).length > 0) {
@@ -704,65 +714,89 @@ function checkSearchPossibility(searchOptionValue) {
 /**
  * Gère la recherche et la sélection du patient en fonction des données extraites.
  * 
- * @param {Object} extractedData - Les données extraites du PDF.
- * @param {Array} extractedData.nirMatches - Les correspondances de NIR trouvées dans les données extraites.
- * @param {string} extractedData.dateOfBirth - La date de naissance extraite.
- * @param {Array} extractedData.nameMatches - Les correspondances de noms trouvées dans les données extraites.
- * @param {Array} extractedData.failedSearches - Les méthodes de recherche qui ont échoué.
+ * Cette fonction orchestre deux opérations distinctes :
+ * 1. lookupPatient() : Configure le champ de recherche et lance la recherche (peut déclencher un refresh)
+ * 2. clicPatient() : Sélectionne le bon patient dans la liste des résultats
  * 
- * @returns {Object} - L'action et le message de la recherche.
- * @returns {string} action - Le statut de la recherche ('refresh', 'continue').
- * @returns {string} status - Le statut de la recherche ('success', 'error', 'ongoing').
- * @returns {string} message - Le message associé au statut.
+ * @param {Object} extractedData - Les données extraites du PDF.
+ * @param {Array} extractedData.nirMatches - Les NIR trouvés (priorité 1 et 2 : INS complet puis tronqué).
+ * @param {string} extractedData.dateOfBirth - Date de naissance (priorité 3).
+ * @param {Array} extractedData.nameMatches - Noms pour matcher dans la liste de résultats.
+ * @param {Array} extractedData.failedSearches - Méthodes de recherche déjà échouées (évite de les retenter).
+ * @param {string} hashId - Identifiant unique du PDF pour persistance des données.
+ * 
+ * @returns {Object} Résultat de la recherche avec contrat clair :
+ * @returns {boolean} patientFound - true si un patient a été trouvé et sélectionné.
+ * @returns {boolean} needsPageRefresh - true si un refresh de page/DOM est nécessaire avant de continuer.
+ * @returns {string} message - Description de l'état pour le debug.
  */
 function handlePatientSearch(extractedData, hashId) {
-    console.log("[pdfParser] handlePatientSearch", extractedData);
-    // On initialise les priorités de recherche en vérifiant si les données sont présentes et cohérentes
-    const searchPriorities = [
-        { type: "InsSearch", data: extractedData.nirMatches && extractedData.nirMatches.length > 0 ? extractedData.nirMatches[0] : null },
-        // "Nom" porte mal son nom : on peut y rechercher pas mal de choses, dont le NIR tronqué (sans clé) ce qui est utile pour les INS non validés
-        { type: "Nom", data: extractedData.nirMatches && extractedData.nirMatches.length > 0 ? extractedData.nirMatches[0] : null },
-        { type: "Naissance", data: extractedData.dateOfBirth && extractedData.dateOfBirth !== formatDate(new Date()) ? extractedData.dateOfBirth : null },
+    console.log("[pdfParser] handlePatientSearch - Début", extractedData);
 
+    // Priorités de recherche : INS complet > NIR tronqué > Date de naissance
+    const searchPriorities = [
+        { type: "InsSearch", data: extractedData.nirMatches?.[0] || null },
+        { type: "Nom", data: extractedData.nirMatches?.[0] || null }, // "Nom" est mal nommé ici, on peut y chercher pas mal de choses, dont le NIR tronqué, utile pour les INS non validés"
+        { type: "Naissance", data: extractedData.dateOfBirth !== formatDate(new Date()) ? extractedData.dateOfBirth : null },
     ];
 
-    for (let search of searchPriorities) {
-        console.log("[pdfParser] Les méthodes refusées sont :", extractedData.failedSearches);
-        console.log("[pdfParser] Recherche de patient par :", search.type, "=>", search.data);
-        if (search.data && !extractedData.failedSearches.includes(search.type)) {
-            let properSearched = lookupPatient(search.type, search.data);
-            console.log(`[pdfParser] après lookupPatient : ${search.type} :`, properSearched);
-            if (properSearched.status === 'success') {
-                console.log(`[pdfParser] ${search.type} présent, on continue à chercher le patient.`);
-                const clicPatientReturn = clicPatient(extractedData);
-                console.log("[pdfParser] clicPatientReturn", clicPatientReturn.status, clicPatientReturn.message);
-                if (clicPatientReturn.status === 'success') {
-                    return { status: 'success', action: 'refresh', message: 'Patient trouvé et cliqué' };
-                } else if (clicPatientReturn.status === 'error') {
-                    extractedData.failedSearches.push(search.type);
-                    setPdfData(hashId, extractedData); // permet la rémanence des données
-                } else if (clicPatientReturn.status === 'continue') {
-                    console.log("[pdfParser] Patient non trouvé ou correctement sélectionné, je continue la procédure.");
-                    return { status: 'success', action: 'continue', message: 'Patient non trouvé ou correctement sélectionné' };
-                } else {
-                    console.error("[pdfParser] Erreur inconnue lors de la recherche du patient, je continue la procédure.");
-                    return { status: 'error', action: 'continue', message: 'Erreur inconnue lors de la recherche du patient' };
-                }
-            } else if (properSearched.status === 'refresh') {
-                console.log(`[pdfParser] arrêt de la procédure car :`, properSearched.message);
-                // On attends aussi un rafraichissement de la page
-                return { status: 'ongoing', action: 'refresh', message: properSearched.message };
-            } else {
-                // On marque l'échec de cette méthode de recherche => la boucle suivante l'écartera
-                console.error(`[pdfParser] Echec de la méthode de recherche :`, properSearched.message, `pour ${search.type}`, "je la marque comme un échec et je continue la procédure.");
-                extractedData.failedSearches.push(search.type);
-                setPdfData(hashId, extractedData); // permet la rémanence des données
-            }
+    for (const search of searchPriorities) {
+        // Ignorer les méthodes sans données ou déjà échouées
+        if (!search.data || extractedData.failedSearches?.includes(search.type)) {
+            console.log(`[pdfParser] Méthode ${search.type} ignorée (pas de données ou déjà échouée)`);
+            continue;
         }
+
+        console.log(`[pdfParser] Tentative de recherche par ${search.type} avec :`, search.data);
+
+        // ÉTAPE 1 : Lancer la recherche dans la base
+        const lookupResult = lookupPatient(search.type, search.data);
+        console.log(`[pdfParser] lookupPatient(${search.type}) =>`, lookupResult);
+
+        if (lookupResult.status === 'refresh') {
+            // Un changement de mode ou un clic sur "Rechercher" a été effectué
+            // => attendre le refresh avant de continuer
+            return { patientFound: false, needsPageRefresh: true, message: lookupResult.message };
+        }
+
+        if (lookupResult.status !== 'success') {
+            // Cette méthode de recherche n'est pas disponible ou a échoué
+            console.warn(`[pdfParser] Méthode ${search.type} échouée :`, lookupResult.message);
+            extractedData.failedSearches = extractedData.failedSearches || [];
+            extractedData.failedSearches.push(search.type);
+            setPdfData(hashId, extractedData);
+            continue; // Essayer la méthode suivante
+        }
+
+        // ÉTAPE 2 : La recherche est prête, sélectionner le patient dans la liste
+        const clicResult = clicPatient(extractedData);
+        console.log(`[pdfParser] clicPatient() =>`, clicResult);
+
+        if (clicResult.status === 'success') {
+            // Patient trouvé et cliqué => succès, mais un refresh DOM est attendu après le clic
+            return { patientFound: true, needsPageRefresh: true, message: clicResult.message };
+        }
+
+        if (clicResult.status === 'continue') {
+            // Le bon patient est déjà sélectionné
+            return { patientFound: true, needsPageRefresh: false, message: clicResult.message };
+        }
+
+        // Échec : patient non trouvé dans la liste avec cette méthode
+        console.warn(`[pdfParser] Patient non trouvé avec méthode ${search.type}`);
+        extractedData.failedSearches = extractedData.failedSearches || [];
+        extractedData.failedSearches.push(search.type);
+        setPdfData(hashId, extractedData);
+        // Continuer avec la méthode suivante
     }
 
-    console.log("[pdfParser] Aucune donnée permettant de trouver le patient. Arrêt de la recherche de patient.");
-    return { status: 'error', action: 'continue', message: 'Aucune donnée permettant de trouver le patient. Merci de chercher manuellement le patient.' };
+    // Toutes les méthodes ont été épuisées sans succès
+    console.warn("[pdfParser] Aucune méthode de recherche n'a permis de trouver le patient.");
+    return {
+        patientFound: false,
+        needsPageRefresh: false,
+        message: 'Aucune donnée valide pour trouver le patient. Recherche manuelle requise.'
+    };
 }
 
 
@@ -920,7 +954,7 @@ function clicPatient(extractedData) {
         // Vérifier que le patient sélectionné est bien celui qu'on cherche
         const normalizedSelected = normalizeString(patientSelectionneText);
         const normalizedToClick = normalizeString(patientToClickName);
-        
+
         // Comparaison directe entre le patient sélectionné et le patient à cliquer
         const matchesExpectedPatient = normalizedSelected.includes(normalizedToClick) ||
             normalizedToClick.includes(normalizedSelected);
@@ -933,7 +967,7 @@ function clicPatient(extractedData) {
             // Continuer pour cliquer sur le bon patient
         }
     }
-    
+
     // Clic sur le bon patient
     let patientToClicSelector = "#" + patientToClick.id;
     // patientToClick.click(); => ne fonctionne pas à cause du CSP en milieu ISOLATED
