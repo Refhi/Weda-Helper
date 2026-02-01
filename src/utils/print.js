@@ -62,7 +62,7 @@ async function handlePrint({ printType, modelNumber = 0, massPrint = false, send
             // Type d'impression (impression, téléchargement, companion)
             handlingType: deduceHandlingType(printType, RemoveLocalCompanionPrint),
 
-            // Type de contenu (courbe, FSE, modèle, suivicollection, documentCabinet)
+            // Type de contenu (courbe, FSE, modèle)
             whatToPrint: deduceWhatToPrint(),
 
             // Types de prise en charge spécifiques
@@ -118,7 +118,7 @@ function validatePrintConfig(printConfig) {
     }
 
     // Validation des types de contenu
-    const whatToPrintTypes = ['courbe', 'fse', 'model', 'documentCabinet', 'suivicollection'];
+    const whatToPrintTypes = ['courbe', 'fse', 'model', 'documentCabinet'];
     if (!whatToPrintTypes.includes(printConfig.whatToPrint)) {
         console.error('[validatePrintConfig] Type de contenu non reconnu:', printConfig.whatToPrint);
         return false;
@@ -172,13 +172,6 @@ function deduceWhatToPrint() {
         'courbe': () => window.location.href.startsWith(`${baseUrl}/FolderMedical/ConsultationForm.aspx`),
         'fse': () => window.location.href.startsWith(`${baseUrl}/vitalzen/fse.aspx`),
         'documentCabinet': () => window.location.href.startsWith(`${baseUrl}/FolderTools/BiblioForm.aspx`),
-        'suivicollection': () => {
-            if (!window.location.href.startsWith(`${baseUrl}/FolderMedical/PatientViewForm.aspx`)) return false;
-            // Chercher dans l'iframe #iframeID
-            const iframe = document.querySelector('#iframeID');
-            if (!iframe || !iframe.contentDocument) return false;
-            return iframe.contentDocument.querySelector('.suivicollection') !== null;
-        },
         'model': () => true // Par défaut, si aucun autre scénario ne correspond
     };
 
@@ -191,159 +184,6 @@ function deduceWhatToPrint() {
 
     // Si aucun scénario ne correspond, retourner null
     return null;
-}
-
-/**
- * Convertit le tableau .suivicollection en PDF.
- * Capture le tableau HTML et le convertit en PDF pour impression ou téléchargement.
- * Le tableau se trouve dans l'iframe #iframeID.
- * 
- * @returns {Promise<Blob>} - Le blob PDF généré
- */
-async function convertSuivicollectionToPdf() {
-    // Accéder au document de l'iframe
-    const iframe = document.querySelector('#iframeID');
-    if (!iframe || !iframe.contentDocument) {
-        throw new Error('[convertSuivicollectionToPdf] Iframe #iframeID non trouvée');
-    }
-    
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-    const table = iframeDoc.querySelector('.suivicollection table');
-    if (!table) {
-        throw new Error('[convertSuivicollectionToPdf] Tableau suivicollection non trouvé dans l\'iframe');
-    }
-
-    // Cloner le tableau pour modification sans affecter l'affichage
-    const tableClone = table.cloneNode(true);
-    
-    // Retirer les inputs pour n'afficher que les valeurs
-    const inputs = tableClone.querySelectorAll('input');
-    inputs.forEach(input => {
-        if (input.type === 'text') {
-            const value = input.value || '';
-            const span = document.createElement('span');
-            span.textContent = value;
-            span.style.display = 'inline-block';
-            span.style.width = '60px';
-            span.style.textAlign = 'center';
-            input.parentNode.replaceChild(span, input);
-        } else if (input.type === 'button') {
-            // Retirer les boutons d'ajout de colonne
-            input.parentNode.removeChild(input);
-        }
-    });
-
-    // Retirer la première cellule (contrôles d'ajout de date)
-    const firstRow = tableClone.querySelector('tr');
-    if (firstRow && firstRow.cells[0]) {
-        firstRow.deleteCell(0);
-    }
-
-    // Créer un canvas pour capturer le tableau
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    // Calculer les dimensions du tableau
-    const rows = tableClone.querySelectorAll('tr');
-    const cellHeight = 25;
-    const cellWidth = 75;
-    const headerCellWidth = 150;
-    
-    const numCols = rows[0]?.cells.length || 0;
-    const numRows = rows.length;
-    
-    canvas.width = headerCellWidth + (numCols - 1) * cellWidth + 20;
-    canvas.height = numRows * cellHeight + 20;
-    
-    // Fond blanc
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Dessiner le tableau
-    ctx.strokeStyle = '#000000';
-    ctx.fillStyle = '#000000';
-    ctx.font = '12px Arial';
-    ctx.lineWidth = 1;
-    
-    let yPos = 10;
-    rows.forEach((row, rowIndex) => {
-        let xPos = 10;
-        const cells = row.querySelectorAll('td');
-        
-        cells.forEach((cell, cellIndex) => {
-            const width = cellIndex === 0 ? headerCellWidth : cellWidth;
-            
-            // Fond pour les en-têtes
-            if (cell.style.backgroundColor && cell.style.backgroundColor !== 'rgb(255, 255, 255)') {
-                ctx.fillStyle = '#f0f0f0';
-                ctx.fillRect(xPos, yPos, width, cellHeight);
-            }
-            
-            // Bordure
-            ctx.strokeStyle = '#000000';
-            ctx.strokeRect(xPos, yPos, width, cellHeight);
-            
-            // Texte
-            ctx.fillStyle = '#000000';
-            const text = cell.textContent.trim();
-            const textX = xPos + (cellIndex === 0 ? 5 : width / 2);
-            const textY = yPos + cellHeight / 2 + 4;
-            ctx.textAlign = cellIndex === 0 ? 'left' : 'center';
-            ctx.fillText(text, textX, textY);
-            
-            xPos += width;
-        });
-        
-        yPos += cellHeight;
-    });
-    
-    // Convertir le canvas en blob
-    return new Promise((resolve) => {
-        canvas.toBlob(async (blob) => {
-            // Créer un PDF avec pdf-lib
-            const pdfDoc = await PDFLib.PDFDocument.create();
-            
-            // Convertir le blob en image PNG
-            const pngImageBytes = await blob.arrayBuffer();
-            const pngImage = await pdfDoc.embedPng(pngImageBytes);
-            
-            // Calculer les dimensions pour le PDF (A4 paysage)
-            const pageWidth = 842; // A4 largeur en points (paysage)
-            const pageHeight = 595; // A4 hauteur en points (paysage)
-            
-            const imageAspectRatio = pngImage.width / pngImage.height;
-            const pageAspectRatio = pageWidth / pageHeight;
-            
-            let imgWidth, imgHeight;
-            if (imageAspectRatio > pageAspectRatio) {
-                imgWidth = pageWidth - 40;
-                imgHeight = imgWidth / imageAspectRatio;
-            } else {
-                imgHeight = pageHeight - 40;
-                imgWidth = imgHeight * imageAspectRatio;
-            }
-            
-            // Créer la page
-            const page = pdfDoc.addPage([pageWidth, pageHeight]);
-            
-            // Centrer l'image
-            const x = (pageWidth - imgWidth) / 2;
-            const y = (pageHeight - imgHeight) / 2;
-            
-            page.drawImage(pngImage, {
-                x,
-                y,
-                width: imgWidth,
-                height: imgHeight,
-            });
-            
-            // Générer le PDF
-            const pdfBytes = await pdfDoc.save();
-            const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-            
-            resolve(pdfBlob);
-        }, 'image/png');
-    });
 }
 
 /**
@@ -692,7 +532,7 @@ async function startPrinting(printConfig) {
     let { handlingType, whatToPrint, massPrint, sendAfterPrint, postPrintBehavior, modelNumber, instantPrint } = printConfig;
     recordMetrics({ clicks: 3, drags: 4 });
 
-    // quatre grands cas de figure : impression d'une courbe, d'une fse, d'un document ou du tableau suivicollection
+    // trois grands cas de figure : impression d'une courbe, d'une fse ou d'un document
     if (whatToPrint === 'courbe') {
         let url = fetchPdfUrlFromImageData();
         if (!url) {
@@ -707,41 +547,6 @@ async function startPrinting(printConfig) {
                 .then(blob => { sendToCompanion('print', blob); });
         } else if (handlingType === 'download') {
             triggerDirectDownload(url);
-        }
-    } else if (whatToPrint === 'suivicollection') {
-        console.log('[startPrinting] printing suivicollection');
-        try {
-            const pdfBlob = await convertSuivicollectionToPdf();
-            
-            if (handlingType === 'print') {
-                // Créer une URL temporaire pour le blob
-                const blobUrl = URL.createObjectURL(pdfBlob);
-                const iframe = createEmptyHiddenIframe();
-                loadUrlAndShowPrintDialog(iframe, blobUrl);
-                // Nettoyer l'URL après un délai
-                setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-            } else if (handlingType === 'companion') {
-                sendToCompanion('print', pdfBlob);
-            } else if (handlingType === 'download') {
-                // Télécharger le PDF
-                const downloadLink = document.createElement('a');
-                const blobUrl = URL.createObjectURL(pdfBlob);
-                downloadLink.href = blobUrl;
-                downloadLink.download = `suivi_biologique_${new Date().toISOString().split('T')[0]}.pdf`;
-                downloadLink.click();
-                setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-            }
-            
-            sendWedaNotifAllTabs({
-                message: 'Tableau de suivi biologique converti en PDF avec succès.',
-            });
-            document.title = "🖨️✅ Conversion terminée";
-        } catch (error) {
-            console.error('[startPrinting] Erreur lors de la conversion du tableau:', error);
-            sendWedaNotifAllTabs({
-                message: 'Erreur lors de la conversion du tableau de suivi.',
-                type: 'error'
-            });
         }
     } else if (whatToPrint === 'fse') {
         console.log('[startPrinting] printing FSE');
