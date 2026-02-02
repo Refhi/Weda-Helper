@@ -22,6 +22,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#554](https://github.com/Refhi/Weda-Helper/issues/554) - Amélioration du flux de travail lors des imports automatique dans la messagerie sécurisée : devrait être plus fiable.
 - [#563](https://github.com/Refhi/Weda-Helper/issues/563) - amélioration des impressions automatiques des arrêts de travail : devrait être plus fiable.
 - la mention "AT avec CV | AT sans CV" dans l’accueil du dossier patient ne disparait plus indument après un rafraichissement de la page.
+- fix disparition de la pré-alertVSM
 
 ## Améliorations :
 - les alertes basées sur l’état civil sont désormais fonctionnelles (ex. mettre en évidence certaines tranches d’age et de genre).
