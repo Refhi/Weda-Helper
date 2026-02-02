@@ -8,6 +8,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 
 ## A l’attention des beta-testeurs :
 - pouvez-vous tester les imports semi-automatiques dans la messagerie sécurisée et me faire un retour si vous constatez des problèmes ? Merci d’avance ! (ça devrait être plus fiable désormais, mais à tester !)
+- j’ai essayé de fix le problème d’impression des arrêts de travail qui ne s’imprimaient pas toujours correctement. Pouvez-vous me dire si ça fonctionne mieux pour vous ? Merci d’avance !
 
 
 ## L’historique des facturations dans la page des FSE est désormais ouverte !
@@ -19,6 +20,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - les alertes etp sont limitées à l’onglet en cours.
 - [#559](https://github.com/Refhi/Weda-Helper/issues/559) - retrait des informations sensibles des logs d’erreurs afin de limiter l’exposition de données personnelles en cas de partage du log lors d’un signalement de bug.
 - [#554](https://github.com/Refhi/Weda-Helper/issues/554) - Amélioration du flux de travail lors des imports automatique dans la messagerie sécurisée : devrait être plus fiable.
+- [#563](https://github.com/Refhi/Weda-Helper/issues/563) - amélioration des impressions automatiques des arrêts de travail : devrait être plus fiable.
 
 ## Améliorations :
 - les alertes basées sur l’état civil sont désormais fonctionnelles (ex. mettre en évidence certaines tranches d’age et de genre).
