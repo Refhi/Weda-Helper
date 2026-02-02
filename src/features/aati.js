@@ -149,7 +149,7 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
             console.log('autoAATIexit set to', Date.now());
             setTimeout(function () {
                 elements[0].click();
-            }, 500); // essai avec un délai de 500ms
+            }, 1000); // ce délais permet de s’assurer que le pdf ait bien été généré, sinon il n’est pas affiché à l’étape suivante sur les connexions lentes
             recordMetrics({ clicks: 1, drags: 1 });
         },
         justOnce: true
