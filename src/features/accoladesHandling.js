@@ -6,29 +6,34 @@
 const urlsToWorkOn = [
     "/FolderMedical/CertificatForm.aspx",
     "/FolderMedical/DemandeForm.aspx",
-    "/FolderMedical/CourrierForm.aspx"
+    "/FolderMedical/CourrierForm.aspx",
+    "/FolderMedical/PrescriptionForm.aspx"
 
 ];
 
+
 // Suppression dans les prescriptions des textes entre {} : ex "{test}" => ""
 addTweak(urlsToWorkOn, '*removeBrackets', function () {
-    // Sélectionner toutes les iframes qui commencent par CE_ContentPlaceHolder1_Editor
-    let iframes = document.querySelectorAll("iframe[id^='CE_ContentPlaceHolder1_Editor']");
+    // Sélecteur pour les iframes d'éditeurs de texte
+    const editorIframesSelector = "iframe[id^='CE_ContentPlaceHolder1_Editor'], #CE_ContentPlaceHolder1_PrescriptionSaisieLibre_EditorLibre_ID_Frame";
 
-    if (iframes.length === 0) {
-        console.log('[removeBrackets] aucune iframe trouvée');
-        return;
+    // Sélectionner toutes les iframes d'éditeurs
+    let iframes = document.querySelectorAll(editorIframesSelector);
+
+    if (iframes.length !== 0) {
+        console.log(`[removeBrackets] ${iframes.length} iframes trouvées, traitement en cours`);
+        iframes.forEach(removeBracketsFromIframe);
     }
 
-    // Parcourir toutes les iframes trouvées et appliquer la fonction
-    iframes.forEach(removeBracketsFromIframe);
+    console.log('[removeBrackets] traitement initial terminé, ajout de l\'observateur de mutations');
 
     // On va également recommencer aux DOM refresh
     afterMutations({
         delay: 100,
         callBackId: 'removeBrackets',
         callback: function () {
-            iframes = document.querySelectorAll("iframe[id^='CE_ContentPlaceHolder1_Editor']");
+            console.log('[removeBrackets] DOM modifié, re-vérification des iframes');
+            iframes = document.querySelectorAll(editorIframesSelector);
             iframes.forEach(removeBracketsFromIframe);
         }
     });
