@@ -40,7 +40,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoAATI', function () {
         });
     }
 
-    waitForElement({ selector: selecteurBoutonAT, justOnce: true, callback: processButton });
+    waitForElement({ selector: selecteurBoutonAT, justOnce: false, callback: processButton });
 });
 
 

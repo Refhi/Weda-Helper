@@ -21,6 +21,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#559](https://github.com/Refhi/Weda-Helper/issues/559) - retrait des informations sensibles des logs d’erreurs afin de limiter l’exposition de données personnelles en cas de partage du log lors d’un signalement de bug.
 - [#554](https://github.com/Refhi/Weda-Helper/issues/554) - Amélioration du flux de travail lors des imports automatique dans la messagerie sécurisée : devrait être plus fiable.
 - [#563](https://github.com/Refhi/Weda-Helper/issues/563) - amélioration des impressions automatiques des arrêts de travail : devrait être plus fiable.
+- la mention "AT avec CV | AT sans CV" dans l’accueil du dossier patient ne disparait plus indument après un rafraichissement de la page.
 
 ## Améliorations :
 - les alertes basées sur l’état civil sont désormais fonctionnelles (ex. mettre en évidence certaines tranches d’age et de genre).
