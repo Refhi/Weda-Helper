@@ -171,7 +171,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - rafraichissement automatique des messages Mssanté. Il vérifiera 30 secondes après le chargement de la page, puis toutes les 15 minutes. Il vaut donc mieux laisser un onglet ouvert sur cette page.
 
 ### AT
-- simplification de la réalisation des arrêts de travail intégrés à Weda (lecture auto CV, selection auto de l'assuré, impression automatique, autofill de la date en cas de sorties libres, fermeture automatique).
+- simplification de la réalisation des arrêts de travail intégrés à Weda (lecture auto CV, selection auto de l'assuré, impression automatique, autofill de la date en cas de sorties libres, fermeture automatique). Attention le plugin Adobe Acrobat Reader doit être désactivé pour que l'impression automatique fonctionne ici.
 - La case "Mon patient accepte que je transmette le présent avis d'arrêt de travail pour son compte [...]" se coche automatiquement.
 - Ajout d’un champ de recherche de motif d’arrêt de travail (tolérant aux fautes de frappe et aux acronymes courants).
 - Classement des motifs d’arrêt de travail par ordre alphabétique.
