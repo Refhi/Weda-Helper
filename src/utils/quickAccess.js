@@ -1,0 +1,538 @@
+/**
+ * @file quickAccess.js
+ * @description Système de navigation rapide par raccourcis clavier avec affichage d'infobulles.
+ * Permet d'activer un mode "Quick Access" où tous les éléments configurés affichent
+ * une lettre de raccourci pour y accéder rapidement.
+ * 
+ * @exports initQuickAccess - Initialise le système de quick access
+ * @exports activateQuickAccess - Active le mode quick access
+ * @exports deactivateQuickAccess - Désactive le mode quick access
+ * 
+ * @requires metrics.js (recordMetrics)
+ */
+
+/**
+ * Configuration du Quick Access
+ * Structure hiérarchique : chaque élément peut avoir des subItems
+ * 
+ * @typedef {Object} QuickAccessItem
+ * @property {string} selector - Sélecteur CSS de l'élément
+ * @property {string} key - Touche de raccourci (une seule lettre/chiffre)
+ * @property {string} [description] - Description optionnelle pour le tooltip
+ * @property {boolean} [terminal=true] - Si true, sort du mode après clic
+ * @property {Object.<string, QuickAccessItem>} [subItems] - Sous-éléments à afficher après clic
+ * @property {Function} [dynamicSubItems] - Fonction qui génère dynamiquement les subItems
+ * @property {Function} [customAction] - Action personnalisée au lieu du clic simple
+ */
+
+/**
+ * Configuration par défaut des éléments Quick Access
+ * À personnaliser selon vos besoins
+ */
+const quickAccessConfig = {
+    // Menu W - Navigation principale
+    'w': {
+        selector: '.level1.static',
+        key: 'w',
+        description: 'Menu Navigation (W)',
+        terminal: false,
+        // Génération dynamique des sous-menus niveau 2
+        dynamicSubItems: function(element) {
+            const subItems = {};
+            const level2Elements = element.querySelectorAll('a.level2.dynamic');
+            
+            // Mapping des types de documents vers des touches
+            const keyMapping = {
+                'Consultation': 'c',
+                'Certificat': 't',
+                'Demande': 'd',
+                'Prescription': 'p',
+                'Formulaire': 'f',
+                'Courrier': 'o',
+                'FSE': 's'
+            };
+            
+            level2Elements.forEach(level2 => {
+                const text = level2.textContent.trim();
+                const key = keyMapping[text];
+                
+                if (key) {
+                    subItems[key] = {
+                        selector: null, // Déjà trouvé
+                        element: level2,
+                        key: key,
+                        description: text,
+                        terminal: false,
+                        // Génération dynamique des documents existants (niveau 3)
+                        dynamicSubItems: function(parentEl) {
+                            const subSubItems = {};
+                            const level3Elements = parentEl.parentElement.querySelectorAll('a.level3');
+                            
+                            // Filtre blacklist
+                            const blackList = [
+                                "Courrier à établir",
+                                "Demande laboratoire",
+                                "Demande imagerie",
+                                "Demande paramédicale",
+                                "Renouvellement"
+                            ];
+                            
+                            let keyIndex = 1;
+                            level3Elements.forEach(level3 => {
+                                const text = level3.textContent.trim();
+                                if (!blackList.includes(text) && keyIndex <= 9) {
+                                    subSubItems[keyIndex.toString()] = {
+                                        selector: null,
+                                        element: level3,
+                                        key: keyIndex.toString(),
+                                        description: text.substring(0, 50) + (text.length > 50 ? '...' : ''),
+                                        terminal: true
+                                    };
+                                    keyIndex++;
+                                }
+                            });
+                            
+                            // Option pour créer nouveau document (0)
+                            subSubItems['0'] = {
+                                selector: null,
+                                element: parentEl,
+                                key: '0',
+                                description: 'Nouveau ' + text,
+                                terminal: true
+                            };
+                            
+                            return subSubItems;
+                        }
+                    };
+                }
+            });
+            
+            return subItems;
+        }
+    },
+    
+    // Carte Vitale
+    'c': {
+        selector: '.cv',
+        key: 'c',
+        description: 'Carte Vitale',
+        terminal: true
+    },
+    
+    // Recherche patient
+    'r': {
+        selector: 'a[href*="FindPatientForm.aspx"]',
+        key: 'r',
+        description: 'Recherche patient',
+        terminal: true,
+        customAction: function() {
+            openSearch();
+        }
+    },
+    
+    // Antécédents
+    'a': {
+        selector: '#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent',
+        key: 'a',
+        description: 'Antécédents',
+        terminal: true
+    },
+    
+    // Scanner
+    's': {
+        selector: 'a.level2.dynamic[href^="javascript:void(window.weda.actions.startScan"]',
+        key: 's',
+        description: 'Scanner document',
+        terminal: true,
+        customAction: function(element) {
+            clicCSPLockedElement('a.level2.dynamic[href^="javascript:void(window.weda.actions.startScan"]');
+        }
+    },
+    
+    // Upload
+    'u': {
+        selector: 'a[href*="PopUpUploader.aspx"]',
+        key: 'u',
+        description: 'Upload document',
+        terminal: true
+    },
+    
+    // Vous pouvez ajouter d'autres éléments ici...
+};
+
+// État du système Quick Access
+let quickAccessState = {
+    active: false,
+    currentLevel: null,
+    currentConfig: quickAccessConfig,
+    overlayElement: null,
+    tooltipElements: [],
+    inactivityTimer: null,
+    lastClickedKey: null,
+    lastClickedTime: 0
+};
+
+const INACTIVITY_TIMEOUT = 3000; // 3 secondes
+const DOUBLE_CLICK_DELAY = 500; // 500ms pour détecter un double appui
+
+/**
+ * Initialise le système de Quick Access
+ * Ajoute les event listeners nécessaires
+ */
+function initQuickAccess() {
+    console.log('[QuickAccess] Initialisation du système');
+    
+    // Écoute des touches en mode Quick Access
+    document.addEventListener('keydown', handleQuickAccessKey);
+    
+    // Écoute de la touche Échap pour sortir
+    document.addEventListener('keyup', (e) => {
+        if (e.key === 'Escape' && quickAccessState.active) {
+            deactivateQuickAccess();
+        }
+    });
+}
+
+/**
+ * Active le mode Quick Access
+ * Affiche l'overlay et les tooltips sur les éléments configurés
+ */
+function activateQuickAccess() {
+    if (quickAccessState.active) {
+        console.log('[QuickAccess] Déjà actif');
+        return;
+    }
+    
+    console.log('[QuickAccess] Activation du mode');
+    quickAccessState.active = true;
+    quickAccessState.currentLevel = null;
+    quickAccessState.currentConfig = quickAccessConfig;
+    
+    // Créer l'overlay
+    createOverlay();
+    
+    // Afficher les tooltips pour le niveau racine
+    showTooltips(quickAccessConfig);
+    
+    // Démarrer le timer d'inactivité
+    resetInactivityTimer();
+    
+    recordMetrics({ drags: 1 });
+}
+
+/**
+ * Désactive le mode Quick Access
+ * Supprime l'overlay et tous les tooltips
+ */
+function deactivateQuickAccess() {
+    if (!quickAccessState.active) {
+        return;
+    }
+    
+    console.log('[QuickAccess] Désactivation du mode');
+    quickAccessState.active = false;
+    quickAccessState.currentLevel = null;
+    quickAccessState.currentConfig = quickAccessConfig;
+    quickAccessState.lastClickedKey = null;
+    
+    // Supprimer l'overlay
+    removeOverlay();
+    
+    // Supprimer tous les tooltips
+    removeAllTooltips();
+    
+    // Annuler le timer d'inactivité
+    if (quickAccessState.inactivityTimer) {
+        clearTimeout(quickAccessState.inactivityTimer);
+        quickAccessState.inactivityTimer = null;
+    }
+}
+
+/**
+ * Crée et affiche l'overlay semi-transparent
+ */
+function createOverlay() {
+    // Supprimer l'overlay existant si présent
+    removeOverlay();
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'wh-quickaccess-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.3);
+        z-index: 99998;
+        pointer-events: none;
+    `;
+    
+    // Message d'information
+    const message = document.createElement('div');
+    message.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 15px 30px;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: bold;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        z-index: 99999;
+        pointer-events: none;
+        font-family: Arial, sans-serif;
+    `;
+    message.textContent = '🎯 Mode Quick Access actif - Appuyez sur Échap pour quitter';
+    
+    overlay.appendChild(message);
+    document.body.appendChild(overlay);
+    quickAccessState.overlayElement = overlay;
+}
+
+/**
+ * Supprime l'overlay
+ */
+function removeOverlay() {
+    if (quickAccessState.overlayElement) {
+        quickAccessState.overlayElement.remove();
+        quickAccessState.overlayElement = null;
+    }
+}
+
+/**
+ * Affiche les tooltips pour une configuration donnée
+ * @param {Object} config - Configuration des éléments à afficher
+ */
+function showTooltips(config) {
+    // Supprimer les tooltips existants
+    removeAllTooltips();
+    
+    console.log('[QuickAccess] Affichage des tooltips', config);
+    
+    for (const [key, item] of Object.entries(config)) {
+        // Si l'élément a déjà été trouvé (cas dynamique)
+        if (item.element) {
+            createTooltip(item.element, item.key, item.description || '');
+            continue;
+        }
+        
+        // Sinon, chercher l'élément par sélecteur
+        if (!item.selector) continue;
+        
+        const elements = document.querySelectorAll(item.selector);
+        if (elements.length > 0) {
+            // Prendre le premier élément trouvé (ou tous si nécessaire)
+            const element = elements[0];
+            createTooltip(element, item.key, item.description || '');
+        } else {
+            console.warn(`[QuickAccess] Élément non trouvé pour le sélecteur: ${item.selector}`);
+        }
+    }
+}
+
+/**
+ * Crée et affiche un tooltip sur un élément
+ * @param {HTMLElement} element - Élément sur lequel afficher le tooltip
+ * @param {string} key - Touche de raccourci
+ * @param {string} description - Description
+ */
+function createTooltip(element, key, description) {
+    if (!element) return;
+    
+    // S'assurer que l'élément est visible
+    if (element.offsetParent === null) {
+        console.log(`[QuickAccess] Élément non visible, tooltip ignoré pour la clé ${key}`);
+        return;
+    }
+    
+    const tooltip = document.createElement('div');
+    tooltip.className = 'wh-quickaccess-tooltip';
+    tooltip.style.cssText = `
+        position: absolute;
+        background-color: rgba(255, 200, 0, 0.95);
+        color: black;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 13px;
+        font-weight: bold;
+        font-family: monospace;
+        z-index: 99999;
+        pointer-events: none;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        border: 2px solid #ff8800;
+        white-space: nowrap;
+    `;
+    
+    // Contenu : touche + description si présente
+    if (description) {
+        tooltip.innerHTML = `<span style="font-size: 16px;">${key.toUpperCase()}</span> <span style="font-size: 11px; opacity: 0.8;">- ${description}</span>`;
+    } else {
+        tooltip.textContent = key.toUpperCase();
+    }
+    
+    document.body.appendChild(tooltip);
+    
+    // Positionner le tooltip en bas à gauche de l'élément
+    const rect = element.getBoundingClientRect();
+    tooltip.style.left = `${rect.left + window.scrollX}px`;
+    tooltip.style.top = `${rect.bottom + window.scrollY + 2}px`;
+    
+    // Si le tooltip sort de l'écran en bas, le placer au-dessus
+    const tooltipRect = tooltip.getBoundingClientRect();
+    if (tooltipRect.bottom > window.innerHeight) {
+        tooltip.style.top = `${rect.top + window.scrollY - tooltipRect.height - 2}px`;
+    }
+    
+    quickAccessState.tooltipElements.push(tooltip);
+}
+
+/**
+ * Supprime tous les tooltips affichés
+ */
+function removeAllTooltips() {
+    quickAccessState.tooltipElements.forEach(tooltip => tooltip.remove());
+    quickAccessState.tooltipElements = [];
+}
+
+/**
+ * Gère les touches pressées en mode Quick Access
+ * @param {KeyboardEvent} e - Événement clavier
+ */
+function handleQuickAccessKey(e) {
+    if (!quickAccessState.active) return;
+    
+    // Ignorer les modificateurs seuls
+    if (['Control', 'Alt', 'Shift', 'Meta', 'Escape'].includes(e.key)) return;
+    
+    const key = e.key.toLowerCase();
+    console.log('[QuickAccess] Touche pressée:', key);
+    
+    // Chercher l'élément correspondant dans la config actuelle
+    const item = quickAccessState.currentConfig[key];
+    
+    if (!item) {
+        console.log('[QuickAccess] Aucune action pour cette touche');
+        return;
+    }
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Détecter un double appui
+    const now = Date.now();
+    const isDoubleClick = (quickAccessState.lastClickedKey === key && 
+                          (now - quickAccessState.lastClickedTime) < DOUBLE_CLICK_DELAY);
+    
+    quickAccessState.lastClickedKey = key;
+    quickAccessState.lastClickedTime = now;
+    
+    // Trouver l'élément cible
+    let targetElement = item.element;
+    if (!targetElement && item.selector) {
+        const elements = document.querySelectorAll(item.selector);
+        targetElement = elements[0];
+    }
+    
+    if (!targetElement) {
+        console.warn('[QuickAccess] Élément cible non trouvé');
+        resetInactivityTimer();
+        return;
+    }
+    
+    // Vérifier s'il y a des conflits de configuration
+    checkForDuplicateKeys(quickAccessState.currentConfig);
+    
+    // Si double clic OU élément terminal : exécuter l'action et sortir/rester
+    if (isDoubleClick || item.terminal) {
+        console.log(`[QuickAccess] ${isDoubleClick ? 'Double clic' : 'Élément terminal'} détecté - Exécution de l'action`);
+        
+        // Exécuter l'action
+        if (item.customAction) {
+            item.customAction(targetElement);
+        } else {
+            targetElement.click();
+            recordMetrics({ clicks: 1, drags: 1 });
+        }
+        
+        // Sortir du mode
+        deactivateQuickAccess();
+        return;
+    }
+    
+    // Si élément non-terminal : afficher les sous-éléments
+    if (item.subItems || item.dynamicSubItems) {
+        console.log('[QuickAccess] Élément non-terminal - Affichage du sous-niveau');
+        
+        let subConfig = item.subItems;
+        
+        // Générer dynamiquement si nécessaire
+        if (item.dynamicSubItems) {
+            subConfig = item.dynamicSubItems(targetElement);
+        }
+        
+        if (subConfig && Object.keys(subConfig).length > 0) {
+            quickAccessState.currentConfig = subConfig;
+            showTooltips(subConfig);
+            resetInactivityTimer();
+        } else {
+            console.warn('[QuickAccess] Aucun sous-élément trouvé');
+            // Cliquer quand même
+            if (item.customAction) {
+                item.customAction(targetElement);
+            } else {
+                targetElement.click();
+                recordMetrics({ clicks: 1, drags: 1 });
+            }
+            deactivateQuickAccess();
+        }
+    } else {
+        // Pas de sous-éléments, cliquer et sortir
+        console.log('[QuickAccess] Pas de sous-éléments - Clic et sortie');
+        if (item.customAction) {
+            item.customAction(targetElement);
+        } else {
+            targetElement.click();
+            recordMetrics({ clicks: 1, drags: 1 });
+        }
+        deactivateQuickAccess();
+    }
+}
+
+/**
+ * Réinitialise le timer d'inactivité
+ */
+function resetInactivityTimer() {
+    if (quickAccessState.inactivityTimer) {
+        clearTimeout(quickAccessState.inactivityTimer);
+    }
+    
+    quickAccessState.inactivityTimer = setTimeout(() => {
+        console.log('[QuickAccess] Timeout d\'inactivité atteint');
+        deactivateQuickAccess();
+    }, INACTIVITY_TIMEOUT);
+}
+
+/**
+ * Vérifie s'il y a des conflits de touches dans la configuration
+ * @param {Object} config - Configuration à vérifier
+ */
+function checkForDuplicateKeys(config) {
+    const keys = {};
+    for (const [key, item] of Object.entries(config)) {
+        if (keys[item.key]) {
+            console.warn(`[QuickAccess] ⚠️ CONFLIT : La touche "${item.key}" est utilisée plusieurs fois :`, keys[item.key], item);
+        } else {
+            keys[item.key] = item;
+        }
+    }
+}
+
+// Initialiser le système au chargement
+setTimeout(() => {
+    initQuickAccess();
+    console.log('[QuickAccess] Système initialisé');
+}, 100);
