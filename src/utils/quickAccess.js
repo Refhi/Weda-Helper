@@ -41,7 +41,7 @@ const quickAccessConfig = {
     'menu_navigation': {
         selector: '.level1.static',
         key: 'w',
-        onTap: 'mouseover',
+        onTap: 'pseudomouseover',
         onDoubleTap: 'clic',
         subItems: null // TODO
     },
@@ -92,7 +92,7 @@ const quickAccessConfig = {
         'medical': {
             selector: '#nav-menu > li > a.nav-icon__link--doctor',
             key: 'm',
-            onTap: 'mouseover',
+            onTap: 'pseudomouseover',
             onDoubleTap: 'clic',
             subItems: function(element) {
                 const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
@@ -103,7 +103,7 @@ const quickAccessConfig = {
         'applicatifs': {
             selector: '#nav-menu > li > a.nav-icon__link--tools',
             key: 'p',
-            onTap: 'mouseover',
+            onTap: 'pseudomouseover',
             onDoubleTap: 'clic',
             subItems: function(element) {
                 const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
@@ -114,7 +114,7 @@ const quickAccessConfig = {
         'gestion': {
             selector: '#nav-menu > li > a.nav-icon__link--safe-open',
             key: 'g',
-            onTap: 'mouseover',
+            onTap: 'pseudomouseover',
             onDoubleTap: 'clic',
             subItems: function(element) {
                 const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
@@ -125,7 +125,7 @@ const quickAccessConfig = {
         'parametres': {
             selector: '#nav-menu > li > a.nav-icon__link--mixing-desk',
             key: 'e',
-            onTap: 'mouseover',
+            onTap: 'pseudomouseover',
             onDoubleTap: 'clic',
             subItems: function(element) {
                 const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
@@ -147,9 +147,10 @@ const quickAccessConfig = {
  * Génère récursivement les sous-items d'un menu de navigation
  * @param {HTMLElement} submenuElement - Élément ul.nav-menu__submenu
  * @param {string} parentId - ID du parent pour générer les clés
+ * @param {Set<string>} usedKeys - Ensemble des touches déjà utilisées à éviter
  * @returns {Object} Configuration des sous-items
  */
-function generateNavSubItems(submenuElement, parentId) {
+function generateNavSubItems(submenuElement, parentId, usedKeys = new Set()) {
     const subItems = {};
     
     // Récupérer tous les liens directs de ce niveau
@@ -164,27 +165,34 @@ function generateNavSubItems(submenuElement, parentId) {
         const hasArrow = link.classList.contains('nav-icon__link--arrow-right');
         const nextLevelSubmenu = parentLi.querySelector('.nav-menu__submenu--level2');
         
-        // Générer une clé numérique ou alphabétique
-        const key = keyIndex <= 9 ? keyIndex.toString() : String.fromCharCode(96 + keyIndex); // a, b, c...
-        const itemId = `${parentId}_item_${keyIndex}`;
+        // Générer une clé numérique ou alphabétique en évitant les touches déjà utilisées
+        let key;
+        do {
+            key = keyIndex <= 9 ? keyIndex.toString() : String.fromCharCode(96 + keyIndex); // a, b, c...
+            keyIndex++;
+        } while (usedKeys.has(key));
+        
+        const itemId = `${parentId}_item_${keyIndex - 1}`;
         
         const item = {
             selector: null,
             element: link,
             key: key,
-            onTap: hasArrow ? 'mouseover' : 'clic'
+            onTap: hasArrow ? 'pseudomouseover' : 'clic'
         };
         
-        // Si a un sous-menu, le générer dynamiquement
+        // Si a un sous-menu, configurer le double-tap pour ouvrir directement
         if (nextLevelSubmenu) {
             item.onDoubleTap = 'clic';
             item.subItems = function(el) {
-                return generateNavSubItems(nextLevelSubmenu, itemId);
+                // Créer un nouvel ensemble avec la touche actuelle incluse
+                const newUsedKeys = new Set(usedKeys);
+                newUsedKeys.add(key);
+                return generateNavSubItems(nextLevelSubmenu, itemId, newUsedKeys);
             };
         }
         
         subItems[itemId] = item;
-        keyIndex++;
     });
     
     return subItems;
@@ -510,7 +518,7 @@ function executeAction(action, element) {
             element.click();
             break;
             
-        case 'mouseover':
+        case 'pseudomouseover':
             // Déclencher l'événement mouseover
             element.dispatchEvent(new MouseEvent('mouseover', {
                 bubbles: true,
@@ -678,8 +686,9 @@ function handleQuickAccessKey(e) {
     // Générer ou récupérer les subItems
     let subConfig = null;
     if (typeof item.subItems === 'function') {
-        // Génération dynamique
-        subConfig = item.subItems(targetElement);
+        // Génération dynamique - passer les touches déjà utilisées pour éviter les conflits
+        const usedKeys = new Set(Object.values(quickAccessState.currentConfig).map(i => i.key));
+        subConfig = item.subItems(targetElement, usedKeys);
     } else {
         // SubItems statiques
         subConfig = item.subItems;
