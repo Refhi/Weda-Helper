@@ -184,11 +184,10 @@ function generateNavSubItems(submenuElement, parentId, usedKeys = new Set()) {
         // Si a un sous-menu, configurer le double-tap pour ouvrir directement
         if (nextLevelSubmenu) {
             item.onDoubleTap = 'clic';
-            item.subItems = function(el) {
-                // Créer un nouvel ensemble avec la touche actuelle incluse
-                const newUsedKeys = new Set(usedKeys);
-                newUsedKeys.add(key);
-                return generateNavSubItems(nextLevelSubmenu, itemId, newUsedKeys);
+            item.subItems = function(el, currentUsedKeys) {
+                // Utiliser les touches actuellement actives (passées lors de l'appel)
+                const activeKeys = currentUsedKeys || new Set();
+                return generateNavSubItems(nextLevelSubmenu, itemId, activeKeys);
             };
         }
         
@@ -242,7 +241,7 @@ let quickAccessState = {
     escapeListener: null
 };
 
-const INACTIVITY_TIMEOUT = 3000; // 3 secondes
+const INACTIVITY_TIMEOUT = 10000; // 10 secondes
 const DOUBLE_CLICK_DELAY = 500; // 500ms pour détecter un double appui
 
 /**
@@ -410,7 +409,7 @@ function removeOverlay() {
  * @param {Object} config - Configuration des éléments à afficher
  */
 function showTooltips(config) {
-    // Supprimer les tooltips existants
+    // Supprimer tous les tooltips existants
     removeAllTooltips();
     
     console.log('[QuickAccess] Affichage des tooltips', config);
@@ -418,7 +417,7 @@ function showTooltips(config) {
     for (const [key, item] of Object.entries(config)) {
         // Si l'élément a déjà été trouvé (cas dynamique)
         if (item.element) {
-            createTooltip(item.element, item.key);
+            createTooltip(item.element, item.key, item.onDoubleTap != null);
             continue;
         }
         
@@ -429,7 +428,7 @@ function showTooltips(config) {
         if (elements.length > 0) {
             // Prendre le premier élément trouvé
             const element = elements[0];
-            createTooltip(element, item.key);
+            createTooltip(element, item.key, item.onDoubleTap != null);
         } else {
             console.warn(`[QuickAccess] Élément non trouvé pour le sélecteur: ${item.selector}`);
         }
@@ -440,8 +439,9 @@ function showTooltips(config) {
  * Crée et affiche un tooltip sur un élément
  * @param {HTMLElement} element - Élément sur lequel afficher le tooltip
  * @param {string} key - Touche de raccourci
+ * @param {boolean} hasDoubleTap - Indique si un double-tap est disponible
  */
-function createTooltip(element, key) {
+function createTooltip(element, key, hasDoubleTap = false) {
     if (!element) return;
     
     // S'assurer que l'élément est visible
@@ -450,39 +450,39 @@ function createTooltip(element, key) {
         return;
     }
     
-    const tooltip = document.createElement('div');
+    const tooltip = document.createElement('span');
     tooltip.className = 'wh-quickaccess-tooltip';
+    
+    // Style plus visible avec positionnement en bas à gauche
     tooltip.style.cssText = `
         position: absolute;
-        background-color: rgba(255, 200, 0, 0.95);
-        color: black;
-        padding: 6px 10px;
-        border-radius: 4px;
-        font-size: 16px;
-        font-weight: bold;
-        font-family: monospace;
-        z-index: 99999;
+        color: #333;
+        font-size: 1em;
+        background-color: rgba(240, 240, 240, 0.95);
+        padding: 4px 8px;
+        border-radius: 10px;
         pointer-events: none;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-        border: 2px solid #ff8800;
         white-space: nowrap;
+        z-index: 99999;
+        bottom: -12px;
+        left: 0px;
+        height: auto;
+        line-height: normal;
+        display: inline-block;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     `;
+    
+    // Si double-tap disponible, mettre en gras
+    if (hasDoubleTap) {
+        tooltip.style.fontWeight = 'bold';
+    }
     
     // Contenu : uniquement la touche
     tooltip.textContent = key.toUpperCase();
     
-    document.body.appendChild(tooltip);
-    
-    // Positionner le tooltip en bas à gauche de l'élément
-    const rect = element.getBoundingClientRect();
-    tooltip.style.left = `${rect.left + window.scrollX}px`;
-    tooltip.style.top = `${rect.bottom + window.scrollY + 2}px`;
-    
-    // Si le tooltip sort de l'écran en bas, le placer au-dessus
-    const tooltipRect = tooltip.getBoundingClientRect();
-    if (tooltipRect.bottom > window.innerHeight) {
-        tooltip.style.top = `${rect.top + window.scrollY - tooltipRect.height - 2}px`;
-    }
+    // Positionner le tooltip par rapport à l'élément
+    element.style.position = 'relative';
+    element.appendChild(tooltip);
     
     quickAccessState.tooltipElements.push(tooltip);
 }
@@ -686,8 +686,8 @@ function handleQuickAccessKey(e) {
     // Générer ou récupérer les subItems
     let subConfig = null;
     if (typeof item.subItems === 'function') {
-        // Génération dynamique - passer les touches déjà utilisées pour éviter les conflits
-        const usedKeys = new Set(Object.values(quickAccessState.currentConfig).map(i => i.key));
+        // Génération dynamique - passer la touche du parent pour l'éviter
+        const usedKeys = new Set([item.key]);
         subConfig = item.subItems(targetElement, usedKeys);
     } else {
         // SubItems statiques
@@ -701,9 +701,9 @@ function handleQuickAccessKey(e) {
         // Aplatir les subItems si nécessaire
         const flatSubConfig = flattenConfig(subConfig);
         
-        // Ajouter les sous-éléments à la configuration actuelle au lieu de les remplacer
+        // Remplacer la configuration par : parent + sous-éléments (pour garder le double-tap sur le parent)
         quickAccessState.currentConfig = {
-            ...quickAccessState.currentConfig,
+            [itemId]: item,
             ...flatSubConfig
         };
         
@@ -714,7 +714,7 @@ function handleQuickAccessKey(e) {
         setTimeout(() => {
             if (quickAccessState.active) {
                 console.log(`[QuickAccess] Affichage différé des tooltips pour ${Object.keys(flatSubConfig).length} sous-éléments`);
-                // Afficher les tooltips uniquement pour les nouveaux sous-éléments
+                // Afficher les tooltips pour les sous-éléments (remplace les anciens)
                 showTooltips(flatSubConfig);
                 
                 // Si aucun tooltip n'a été créé, réessayer après un délai supplémentaire
