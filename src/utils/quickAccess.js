@@ -704,8 +704,21 @@ function handleQuickAccessKey(e) {
     // Afficher les sous-éléments
     if (subConfig && Object.keys(subConfig).length > 0) {
         console.log(`[QuickAccess] ${Object.keys(subConfig).length} sous-éléments trouvés`);
-        quickAccessState.currentConfig = subConfig;
-        showTooltips(subConfig);
+        
+        // Aplatir les subItems si nécessaire
+        const flatSubConfig = flattenConfig(subConfig);
+        
+        // Ajouter les sous-éléments à la configuration actuelle au lieu de les remplacer
+        quickAccessState.currentConfig = {
+            ...quickAccessState.currentConfig,
+            ...flatSubConfig
+        };
+        
+        console.log(`[QuickAccess] Configuration mise à jour avec ${Object.keys(flatSubConfig).length} sous-éléments`);
+        console.log(`[QuickAccess] Total d'items actifs: ${Object.keys(quickAccessState.currentConfig).length}`);
+        
+        // Afficher les tooltips uniquement pour les nouveaux sous-éléments
+        showTooltips(flatSubConfig);
         resetInactivityTimer();
     } else {
         // Pas de sous-éléments : traiter comme terminal
