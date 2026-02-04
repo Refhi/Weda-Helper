@@ -239,7 +239,10 @@ let quickAccessState = {
     tooltipElements: [],
     inactivityTimer: null,
     lastClickedKey: null,
-    lastClickedTime: 0
+    lastClickedTime: 0,
+    // Références aux listeners pour pouvoir les supprimer
+    keydownListener: null,
+    escapeListener: null
 };
 
 const INACTIVITY_TIMEOUT = 3000; // 3 secondes
@@ -248,19 +251,27 @@ const DOUBLE_CLICK_DELAY = 500; // 500ms pour détecter un double appui
 /**
  * Initialise le système de Quick Access
  * Ajoute les event listeners nécessaires
+ * Appelée automatiquement par activateQuickAccess()
  */
 function initQuickAccess() {
-    console.log('[QuickAccess] Initialisation du système');
+    if (quickAccessState.keydownListener) {
+        console.log('[QuickAccess] Listeners déjà actifs');
+        return;
+    }
     
-    // Écoute des touches en mode Quick Access
-    document.addEventListener('keydown', handleQuickAccessKey);
+    console.log('[QuickAccess] Ajout des event listeners');
     
-    // Écoute de la touche Échap pour sortir
-    document.addEventListener('keyup', (e) => {
+    // Créer et stocker le listener keydown
+    quickAccessState.keydownListener = handleQuickAccessKey;
+    document.addEventListener('keydown', quickAccessState.keydownListener);
+    
+    // Créer et stocker le listener escape
+    quickAccessState.escapeListener = (e) => {
         if (e.key === 'Escape' && quickAccessState.active) {
             deactivateQuickAccess();
         }
-    });
+    };
+    document.addEventListener('keyup', quickAccessState.escapeListener);
 }
 
 /**
@@ -268,6 +279,9 @@ function initQuickAccess() {
  * Affiche l'overlay et les tooltips sur les éléments configurés
  */
 function activateQuickAccess() {
+    // Initialiser le système si nécessaire
+    initQuickAccess();
+    
     if (quickAccessState.active) {
         console.log('[QuickAccess] Déjà actif');
         return;
@@ -313,6 +327,24 @@ function deactivateQuickAccess() {
     
     // Supprimer tous les tooltips
     removeAllTooltips();
+    
+    // Nettoyer les styles ajoutés aux sous-menus
+    document.querySelectorAll('.nav-menu__submenu[style*="position"]').forEach(submenu => {
+        submenu.style.position = '';
+        submenu.style.left = '';
+        submenu.style.top = '';
+        submenu.style.zIndex = '';
+    });
+    
+    // Supprimer les event listeners
+    if (quickAccessState.keydownListener) {
+        document.removeEventListener('keydown', quickAccessState.keydownListener);
+        quickAccessState.keydownListener = null;
+    }
+    if (quickAccessState.escapeListener) {
+        document.removeEventListener('keyup', quickAccessState.escapeListener);
+        quickAccessState.escapeListener = null;
+    }
     
     // Annuler le timer d'inactivité
     if (quickAccessState.inactivityTimer) {
@@ -495,11 +527,63 @@ function executeAction(action, element) {
             break;
             
         case 'mouseover':
+            // Déclencher l'événement mouseover
             element.dispatchEvent(new MouseEvent('mouseover', {
                 bubbles: true,
                 cancelable: true,
                 view: window
             }));
+            
+            // Pour les menus de navigation, repositionner le sous-menu s'il sort du viewport
+            const parentLi = element.closest('li');
+            if (parentLi) {
+                const submenu = parentLi.querySelector('.nav-menu__submenu');
+                if (submenu) {
+                    // Attendre un instant que le CSS s'applique
+                    setTimeout(() => {
+                        const submenuRect = submenu.getBoundingClientRect();
+                        const parentRect = element.getBoundingClientRect();
+                        const isOutside = submenuRect.top < 0 || submenuRect.bottom > window.innerHeight || 
+                                        submenuRect.left < 0 || submenuRect.right > window.innerWidth;
+                        
+                        if (isOutside) {
+                            console.log('[QuickAccess] Sous-menu hors viewport, repositionnement par rapport à l\'élément parent...');
+                            
+                            // Calculer la position idéale par rapport à l'élément parent
+                            let newLeft = parentRect.right + 5; // À droite du parent avec un petit espacement
+                            let newTop = parentRect.top;
+                            
+                            // Ajuster si ça sort à droite
+                            if (newLeft + submenuRect.width > window.innerWidth) {
+                                newLeft = parentRect.left - submenuRect.width - 5; // À gauche du parent
+                            }
+                            
+                            // Ajuster si ça sort à gauche
+                            if (newLeft < 0) {
+                                newLeft = 10; // Marge minimale à gauche
+                            }
+                            
+                            // Ajuster si ça sort en bas
+                            if (newTop + submenuRect.height > window.innerHeight) {
+                                newTop = window.innerHeight - submenuRect.height - 10;
+                            }
+                            
+                            // Ajuster si ça sort en haut
+                            if (newTop < 0) {
+                                newTop = 10; // Marge minimale en haut
+                            }
+                            
+                            // Appliquer la position
+                            submenu.style.position = 'fixed';
+                            submenu.style.left = newLeft + 'px';
+                            submenu.style.top = newTop + 'px';
+                            submenu.style.zIndex = '10000';
+                            
+                            console.log(`[QuickAccess] Sous-menu repositionné à left=${newLeft}, top=${newTop}`);
+                        }
+                    }, 10);
+                }
+            }
             break;
             
         case 'enter':
@@ -660,8 +744,3 @@ function checkForDuplicateKeys(config) {
     }
 }
 
-// Initialiser le système au chargement
-setTimeout(() => {
-    initQuickAccess();
-    console.log('[QuickAccess] Système initialisé');
-}, 100);
