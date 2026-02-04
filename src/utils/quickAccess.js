@@ -41,7 +41,6 @@ const quickAccessConfig = {
     'menu_navigation': {
         selector: '.level1.static',
         key: 'w',
-        description: 'Menu Navigation (W)',
         onTap: 'mouseover',
         onDoubleTap: 'clic',
         subItems: null // TODO
@@ -51,7 +50,6 @@ const quickAccessConfig = {
     'carte_vitale': {
         selector: '.cv',
         key: 'c',
-        description: 'Carte Vitale',
         onTap: 'clic'
     },
     
@@ -59,7 +57,6 @@ const quickAccessConfig = {
     'recherche_patient': {
         selector: 'a[href*="FindPatientForm.aspx"]',
         key: 'r',
-        description: 'Recherche patient',
         onTap: function() {
             openSearch();
         }
@@ -69,7 +66,6 @@ const quickAccessConfig = {
     'antecedents': {
         selector: '#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent',
         key: 'a',
-        description: 'Antécédents',
         onTap: 'clic'
     },
     
@@ -77,7 +73,6 @@ const quickAccessConfig = {
     'scanner': {
         selector: 'a.level2.dynamic[href^="javascript:void(window.weda.actions.startScan"]',
         key: 's',
-        description: 'Scanner document',
         onTap: function(element) {
             clicCSPLockedElement('a.level2.dynamic[href^="javascript:void(window.weda.actions.startScan"]');
         }
@@ -87,7 +82,6 @@ const quickAccessConfig = {
     'upload': {
         selector: 'a[href*="PopUpUploader.aspx"]',
         key: 'u',
-        description: 'Upload document',
         onTap: 'clic'
     },
     
@@ -98,7 +92,6 @@ const quickAccessConfig = {
         'medical': {
             selector: '#nav-menu > li > a.nav-icon__link--doctor',
             key: 'm',
-            description: 'Médical',
             onTap: 'mouseover',
             onDoubleTap: 'clic',
             subItems: function(element) {
@@ -110,7 +103,6 @@ const quickAccessConfig = {
         'applicatifs': {
             selector: '#nav-menu > li > a.nav-icon__link--tools',
             key: 'p',
-            description: 'Applicatifs',
             onTap: 'mouseover',
             onDoubleTap: 'clic',
             subItems: function(element) {
@@ -122,7 +114,6 @@ const quickAccessConfig = {
         'gestion': {
             selector: '#nav-menu > li > a.nav-icon__link--safe-open',
             key: 'g',
-            description: 'Gestion',
             onTap: 'mouseover',
             onDoubleTap: 'clic',
             subItems: function(element) {
@@ -134,7 +125,6 @@ const quickAccessConfig = {
         'parametres': {
             selector: '#nav-menu > li > a.nav-icon__link--mixing-desk',
             key: 'e',
-            description: 'Paramètres',
             onTap: 'mouseover',
             onDoubleTap: 'clic',
             subItems: function(element) {
@@ -182,7 +172,6 @@ function generateNavSubItems(submenuElement, parentId) {
             selector: null,
             element: link,
             key: key,
-            description: text.substring(0, 60) + (text.length > 60 ? '...' : ''),
             onTap: hasArrow ? 'mouseover' : 'clic'
         };
         
@@ -421,7 +410,7 @@ function showTooltips(config) {
     for (const [key, item] of Object.entries(config)) {
         // Si l'élément a déjà été trouvé (cas dynamique)
         if (item.element) {
-            createTooltip(item.element, item.key, item.description || '');
+            createTooltip(item.element, item.key);
             continue;
         }
         
@@ -430,9 +419,9 @@ function showTooltips(config) {
         
         const elements = document.querySelectorAll(item.selector);
         if (elements.length > 0) {
-            // Prendre le premier élément trouvé (ou tous si nécessaire)
+            // Prendre le premier élément trouvé
             const element = elements[0];
-            createTooltip(element, item.key, item.description || '');
+            createTooltip(element, item.key);
         } else {
             console.warn(`[QuickAccess] Élément non trouvé pour le sélecteur: ${item.selector}`);
         }
@@ -443,9 +432,8 @@ function showTooltips(config) {
  * Crée et affiche un tooltip sur un élément
  * @param {HTMLElement} element - Élément sur lequel afficher le tooltip
  * @param {string} key - Touche de raccourci
- * @param {string} description - Description
  */
-function createTooltip(element, key, description) {
+function createTooltip(element, key) {
     if (!element) return;
     
     // S'assurer que l'élément est visible
@@ -460,9 +448,9 @@ function createTooltip(element, key, description) {
         position: absolute;
         background-color: rgba(255, 200, 0, 0.95);
         color: black;
-        padding: 4px 8px;
+        padding: 6px 10px;
         border-radius: 4px;
-        font-size: 13px;
+        font-size: 16px;
         font-weight: bold;
         font-family: monospace;
         z-index: 99999;
@@ -472,12 +460,8 @@ function createTooltip(element, key, description) {
         white-space: nowrap;
     `;
     
-    // Contenu : touche + description si présente
-    if (description) {
-        tooltip.innerHTML = `<span style="font-size: 16px;">${key.toUpperCase()}</span> <span style="font-size: 11px; opacity: 0.8;">- ${description}</span>`;
-    } else {
-        tooltip.textContent = key.toUpperCase();
-    }
+    // Contenu : uniquement la touche
+    tooltip.textContent = key.toUpperCase();
     
     document.body.appendChild(tooltip);
     
@@ -539,7 +523,7 @@ function executeAction(action, element) {
             if (parentLi) {
                 const submenu = parentLi.querySelector('.nav-menu__submenu');
                 if (submenu) {
-                    // Attendre un instant que le CSS s'applique
+                    // Attendre que le CSS s'applique et que les animations se terminent
                     setTimeout(() => {
                         const submenuRect = submenu.getBoundingClientRect();
                         const parentRect = element.getBoundingClientRect();
@@ -581,7 +565,7 @@ function executeAction(action, element) {
                             
                             console.log(`[QuickAccess] Sous-menu repositionné à left=${newLeft}, top=${newTop}`);
                         }
-                    }, 10);
+                    }, 50); // Augmenté de 10ms à 50ms
                 }
             }
             break;
@@ -717,8 +701,25 @@ function handleQuickAccessKey(e) {
         console.log(`[QuickAccess] Configuration mise à jour avec ${Object.keys(flatSubConfig).length} sous-éléments`);
         console.log(`[QuickAccess] Total d'items actifs: ${Object.keys(quickAccessState.currentConfig).length}`);
         
-        // Afficher les tooltips uniquement pour les nouveaux sous-éléments
-        showTooltips(flatSubConfig);
+        // Attendre que le DOM se mette à jour et que le sous-menu soit repositionné
+        setTimeout(() => {
+            if (quickAccessState.active) {
+                console.log(`[QuickAccess] Affichage différé des tooltips pour ${Object.keys(flatSubConfig).length} sous-éléments`);
+                // Afficher les tooltips uniquement pour les nouveaux sous-éléments
+                showTooltips(flatSubConfig);
+                
+                // Si aucun tooltip n'a été créé, réessayer après un délai supplémentaire
+                if (quickAccessState.tooltipElements.length === 0 && Object.keys(flatSubConfig).length > 0) {
+                    console.log('[QuickAccess] Aucun tooltip créé, nouvelle tentative dans 200ms...');
+                    setTimeout(() => {
+                        if (quickAccessState.active) {
+                            showTooltips(flatSubConfig);
+                        }
+                    }, 200);
+                }
+            }
+        }, 150); // Délai de 150ms pour laisser le DOM et le repositionnement se terminer
+        
         resetInactivityTimer();
     } else {
         // Pas de sous-éléments : traiter comme terminal
