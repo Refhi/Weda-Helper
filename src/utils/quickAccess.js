@@ -44,82 +44,7 @@ const quickAccessConfig = {
         description: 'Menu Navigation (W)',
         onTap: 'mouseover',
         onDoubleTap: 'clic',
-        // Génération dynamique des sous-menus niveau 2
-        subItems: function(element) {
-            const subItems = {};
-            const level2Elements = element.querySelectorAll('a.level2.dynamic');
-            
-            // Mapping des types de documents vers des touches
-            const keyMapping = {
-                'Consultation': { key: 'c', id: 'consultation' },
-                'Certificat': { key: 't', id: 'certificat' },
-                'Demande': { key: 'd', id: 'demande' },
-                'Prescription': { key: 'p', id: 'prescription' },
-                'Formulaire': { key: 'f', id: 'formulaire' },
-                'Courrier': { key: 'o', id: 'courrier' },
-                'FSE': { key: 's', id: 'fse' }
-            };
-            
-            level2Elements.forEach(level2 => {
-                const text = level2.textContent.trim();
-                const mapping = keyMapping[text];
-                
-                if (mapping) {
-                    const itemId = `menu_${mapping.id}`;
-                    subItems[itemId] = {
-                        selector: null,
-                        element: level2,
-                        key: mapping.key,
-                        description: text,
-                        onTap: 'mouseover',
-                        onDoubleTap: 'clic',
-                        // Génération dynamique des documents existants (niveau 3)
-                        subItems: function(parentEl) {
-                            const subSubItems = {};
-                            const level3Elements = parentEl.parentElement.querySelectorAll('a.level3');
-                            
-                            // Filtre blacklist
-                            const blackList = [
-                                "Courrier à établir",
-                                "Demande laboratoire",
-                                "Demande imagerie",
-                                "Demande paramédicale",
-                                "Renouvellement"
-                            ];
-                            
-                            let keyIndex = 1;
-                            level3Elements.forEach(level3 => {
-                                const docText = level3.textContent.trim();
-                                if (!blackList.includes(docText) && keyIndex <= 9) {
-                                    const itemId = `${mapping.id}_doc_${keyIndex}`;
-                                    subSubItems[itemId] = {
-                                        selector: null,
-                                        element: level3,
-                                        key: keyIndex.toString(),
-                                        description: docText.substring(0, 50) + (docText.length > 50 ? '...' : ''),
-                                        onTap: 'clic'
-                                    };
-                                    keyIndex++;
-                                }
-                            });
-                            
-                            // Option pour créer nouveau document (0)
-                            subSubItems[`${mapping.id}_new`] = {
-                                selector: null,
-                                element: parentEl,
-                                key: '0',
-                                description: 'Nouveau ' + text,
-                                onTap: 'clic'
-                            };
-                            
-                            return subSubItems;
-                        }
-                    };
-                }
-            });
-            
-            return subItems;
-        }
+        subItems: null // TODO
     },
     
     // Carte Vitale
@@ -164,10 +89,146 @@ const quickAccessConfig = {
         key: 'u',
         description: 'Upload document',
         onTap: 'clic'
+    },
+    
+    // === Menu horizontal - Organisation hiérarchique ===
+    'menu_horizontal': {
+        // Ce groupe n'est pas un item actif, juste pour l'organisation
+        
+        'medical': {
+            selector: '#nav-menu > li > a.nav-icon__link--doctor',
+            key: 'm',
+            description: 'Médical',
+            onTap: 'mouseover',
+            onDoubleTap: 'clic',
+            subItems: function(element) {
+                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
+                return submenu ? generateNavSubItems(submenu, 'medical') : {};
+            }
+        },
+        
+        'applicatifs': {
+            selector: '#nav-menu > li > a.nav-icon__link--tools',
+            key: 'p',
+            description: 'Applicatifs',
+            onTap: 'mouseover',
+            onDoubleTap: 'clic',
+            subItems: function(element) {
+                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
+                return submenu ? generateNavSubItems(submenu, 'applicatifs') : {};
+            }
+        },
+        
+        'gestion': {
+            selector: '#nav-menu > li > a.nav-icon__link--safe-open',
+            key: 'g',
+            description: 'Gestion',
+            onTap: 'mouseover',
+            onDoubleTap: 'clic',
+            subItems: function(element) {
+                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
+                return submenu ? generateNavSubItems(submenu, 'gestion') : {};
+            }
+        },
+        
+        'parametres': {
+            selector: '#nav-menu > li > a.nav-icon__link--mixing-desk',
+            key: 'e',
+            description: 'Paramètres',
+            onTap: 'mouseover',
+            onDoubleTap: 'clic',
+            subItems: function(element) {
+                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
+                return submenu ? generateNavSubItems(submenu, 'parametres') : {};
+            }
+        }
     }
     
     // Vous pouvez ajouter d'autres éléments ici...
 };
+
+
+/** Fonctions support pour les items le configuration
+ * 
+ */
+
+
+/**
+ * Génère récursivement les sous-items d'un menu de navigation
+ * @param {HTMLElement} submenuElement - Élément ul.nav-menu__submenu
+ * @param {string} parentId - ID du parent pour générer les clés
+ * @returns {Object} Configuration des sous-items
+ */
+function generateNavSubItems(submenuElement, parentId) {
+    const subItems = {};
+    
+    // Récupérer tous les liens directs de ce niveau
+    const menuItems = submenuElement.querySelectorAll(':scope > li > a');
+    
+    let keyIndex = 1;
+    menuItems.forEach(link => {
+        const text = link.textContent.trim();
+        const parentLi = link.parentElement;
+        
+        // Chercher un sous-menu de niveau suivant
+        const hasArrow = link.classList.contains('nav-icon__link--arrow-right');
+        const nextLevelSubmenu = parentLi.querySelector('.nav-menu__submenu--level2');
+        
+        // Générer une clé numérique ou alphabétique
+        const key = keyIndex <= 9 ? keyIndex.toString() : String.fromCharCode(96 + keyIndex); // a, b, c...
+        const itemId = `${parentId}_item_${keyIndex}`;
+        
+        const item = {
+            selector: null,
+            element: link,
+            key: key,
+            description: text.substring(0, 60) + (text.length > 60 ? '...' : ''),
+            onTap: hasArrow ? 'mouseover' : 'clic'
+        };
+        
+        // Si a un sous-menu, le générer dynamiquement
+        if (nextLevelSubmenu) {
+            item.onDoubleTap = 'clic';
+            item.subItems = function(el) {
+                return generateNavSubItems(nextLevelSubmenu, itemId);
+            };
+        }
+        
+        subItems[itemId] = item;
+        keyIndex++;
+    });
+    
+    return subItems;
+}
+
+
+
+
+/**
+ * Aplatit une configuration hiérarchique en extrayant tous les items actifs
+ * Un item est considéré comme actif s'il a une propriété 'key'
+ * @param {Object} config - Configuration potentiellement hiérarchique
+ * @param {string} prefix - Préfixe pour les clés (utilisé en récursion)
+ * @returns {Object} Configuration aplatie avec uniquement les items actifs
+ */
+function flattenConfig(config, prefix = '') {
+    const flattened = {};
+    
+    for (const [id, item] of Object.entries(config)) {
+        // Si l'item a une propriété 'key', c'est un item actif
+        if (item.key !== undefined) {
+            const flatId = prefix ? `${prefix}_${id}` : id;
+            flattened[flatId] = item;
+        } else {
+            // Sinon, c'est un groupe organisationnel, on l'aplatit récursivement
+            const subFlattened = flattenConfig(item, prefix ? `${prefix}_${id}` : id);
+            Object.assign(flattened, subFlattened);
+        }
+    }
+    
+    return flattened;
+}
+
 
 // État du système Quick Access
 let quickAccessState = {
@@ -215,13 +276,16 @@ function activateQuickAccess() {
     console.log('[QuickAccess] Activation du mode');
     quickAccessState.active = true;
     quickAccessState.currentLevel = null;
-    quickAccessState.currentConfig = quickAccessConfig;
+    
+    // Aplatir la configuration pour extraire les items actifs
+    const flatConfig = flattenConfig(quickAccessConfig);
+    quickAccessState.currentConfig = flatConfig;
     
     // Créer l'overlay
     createOverlay();
     
     // Afficher les tooltips pour le niveau racine
-    showTooltips(quickAccessConfig);
+    showTooltips(flatConfig);
     
     // Démarrer le timer d'inactivité
     resetInactivityTimer();
@@ -241,7 +305,7 @@ function deactivateQuickAccess() {
     console.log('[QuickAccess] Désactivation du mode');
     quickAccessState.active = false;
     quickAccessState.currentLevel = null;
-    quickAccessState.currentConfig = quickAccessConfig;
+    quickAccessState.currentConfig = {};
     quickAccessState.lastClickedKey = null;
     
     // Supprimer l'overlay
@@ -508,7 +572,7 @@ function handleQuickAccessKey(e) {
     
     // Déterminer le type d'item
     const hasSubItems = item.subItems != null;
-    const isTerminal = !hasSubItems || item.onDoubleTap == null;
+    const isTerminal = !hasSubItems // || item.onDoubleTap == null;
     
     // Cas 1 : Double-tap avec onDoubleTap défini (toujours terminal)
     if (isDoubleTap && item.onDoubleTap) {
@@ -516,6 +580,13 @@ function handleQuickAccessKey(e) {
         executeAction(item.onDoubleTap, targetElement);
         recordMetrics({ clicks: 1, drags: 1 });
         deactivateQuickAccess();
+        return;
+    }
+    
+    // Cas 1b : Double-tap détecté mais pas de onDoubleTap configuré - ignorer
+    if (isDoubleTap && !item.onDoubleTap) {
+        console.log(`[QuickAccess] Double-tap détecté sur ${itemId} mais pas de onDoubleTap - Action ignorée`);
+        resetInactivityTimer();
         return;
     }
     
