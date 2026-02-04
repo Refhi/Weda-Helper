@@ -364,7 +364,7 @@ function createOverlay() {
         left: 0;
         width: 100%;
         height: 100%;
-        background-color: rgba(0, 0, 0, 0.3);
+        background-color: rgba(0, 0, 0, 0.1);
         z-index: 99998;
         pointer-events: none;
     `;
@@ -373,21 +373,20 @@ function createOverlay() {
     const message = document.createElement('div');
     message.style.cssText = `
         position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background-color: rgba(0, 0, 0, 0.8);
+        bottom: 20px;
+        right: 20px;
+        background-color: rgba(0, 0, 0, 0.7);
         color: white;
-        padding: 15px 30px;
-        border-radius: 8px;
-        font-size: 16px;
-        font-weight: bold;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        padding: 8px 15px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: normal;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         z-index: 99999;
         pointer-events: none;
         font-family: Arial, sans-serif;
     `;
-    message.textContent = '🎯 Mode Quick Access actif - Appuyez sur Échap pour quitter';
+    message.textContent = 'Quick Access (Échap pour quitter)';
     
     overlay.appendChild(message);
     document.body.appendChild(overlay);
