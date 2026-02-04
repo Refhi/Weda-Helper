@@ -19,52 +19,62 @@
  * @property {string} selector - Sélecteur CSS de l'élément
  * @property {string} key - Touche de raccourci (une seule lettre/chiffre)
  * @property {string} [description] - Description optionnelle pour le tooltip
- * @property {boolean} [terminal=true] - Si true, sort du mode après clic
- * @property {Object.<string, QuickAccessItem>} [subItems] - Sous-éléments à afficher après clic
- * @property {Function} [dynamicSubItems] - Fonction qui génère dynamiquement les subItems
- * @property {Function} [customAction] - Action personnalisée au lieu du clic simple
+ * @property {string|Function} [onTap="clic"] - Action à exécuter au tap ("clic", "mouseover", "enter", ou fonction). Si seul, l'item est terminal
+ * @property {string|Function} [onDoubleTap] - Action à exécuter au double-tap (toujours terminal). Implique la présence de subItems
+ * @property {Object.<string, QuickAccessItem>|Function} [subItems=null] - Sous-éléments (objet ou fonction qui les génère)
+ * @property {HTMLElement} [element] - Référence à l'élément DOM (pour items générés dynamiquement)
+ * 
+ * Logique :
+ * - onTap seul = item terminal (exécute onTap et sort)
+ * - onTap + onDoubleTap + subItems = item non-terminal (tap = onTap + affiche subItems, double-tap = onDoubleTap + sort)
  */
 
 /**
  * Configuration par défaut des éléments Quick Access
  * À personnaliser selon vos besoins
+ * 
+ * Note : Les clés d'objet sont descriptives et servent au débogage.
+ * Les vraies touches de raccourci sont définies dans la propriété 'key'.
  */
 const quickAccessConfig = {
     // Menu W - Navigation principale
-    'w': {
+    'menu_navigation': {
         selector: '.level1.static',
         key: 'w',
         description: 'Menu Navigation (W)',
-        terminal: false,
+        onTap: 'mouseover',
+        onDoubleTap: 'clic',
         // Génération dynamique des sous-menus niveau 2
-        dynamicSubItems: function(element) {
+        subItems: function(element) {
             const subItems = {};
             const level2Elements = element.querySelectorAll('a.level2.dynamic');
             
             // Mapping des types de documents vers des touches
             const keyMapping = {
-                'Consultation': 'c',
-                'Certificat': 't',
-                'Demande': 'd',
-                'Prescription': 'p',
-                'Formulaire': 'f',
-                'Courrier': 'o',
-                'FSE': 's'
+                'Consultation': { key: 'c', id: 'consultation' },
+                'Certificat': { key: 't', id: 'certificat' },
+                'Demande': { key: 'd', id: 'demande' },
+                'Prescription': { key: 'p', id: 'prescription' },
+                'Formulaire': { key: 'f', id: 'formulaire' },
+                'Courrier': { key: 'o', id: 'courrier' },
+                'FSE': { key: 's', id: 'fse' }
             };
             
             level2Elements.forEach(level2 => {
                 const text = level2.textContent.trim();
-                const key = keyMapping[text];
+                const mapping = keyMapping[text];
                 
-                if (key) {
-                    subItems[key] = {
-                        selector: null, // Déjà trouvé
+                if (mapping) {
+                    const itemId = `menu_${mapping.id}`;
+                    subItems[itemId] = {
+                        selector: null,
                         element: level2,
-                        key: key,
+                        key: mapping.key,
                         description: text,
-                        terminal: false,
+                        onTap: 'mouseover',
+                        onDoubleTap: 'clic',
                         // Génération dynamique des documents existants (niveau 3)
-                        dynamicSubItems: function(parentEl) {
+                        subItems: function(parentEl) {
                             const subSubItems = {};
                             const level3Elements = parentEl.parentElement.querySelectorAll('a.level3');
                             
@@ -79,26 +89,27 @@ const quickAccessConfig = {
                             
                             let keyIndex = 1;
                             level3Elements.forEach(level3 => {
-                                const text = level3.textContent.trim();
-                                if (!blackList.includes(text) && keyIndex <= 9) {
-                                    subSubItems[keyIndex.toString()] = {
+                                const docText = level3.textContent.trim();
+                                if (!blackList.includes(docText) && keyIndex <= 9) {
+                                    const itemId = `${mapping.id}_doc_${keyIndex}`;
+                                    subSubItems[itemId] = {
                                         selector: null,
                                         element: level3,
                                         key: keyIndex.toString(),
-                                        description: text.substring(0, 50) + (text.length > 50 ? '...' : ''),
-                                        terminal: true
+                                        description: docText.substring(0, 50) + (docText.length > 50 ? '...' : ''),
+                                        onTap: 'clic'
                                     };
                                     keyIndex++;
                                 }
                             });
                             
                             // Option pour créer nouveau document (0)
-                            subSubItems['0'] = {
+                            subSubItems[`${mapping.id}_new`] = {
                                 selector: null,
                                 element: parentEl,
                                 key: '0',
                                 description: 'Nouveau ' + text,
-                                terminal: true
+                                onTap: 'clic'
                             };
                             
                             return subSubItems;
@@ -112,50 +123,48 @@ const quickAccessConfig = {
     },
     
     // Carte Vitale
-    'c': {
+    'carte_vitale': {
         selector: '.cv',
         key: 'c',
         description: 'Carte Vitale',
-        terminal: true
+        onTap: 'clic'
     },
     
     // Recherche patient
-    'r': {
+    'recherche_patient': {
         selector: 'a[href*="FindPatientForm.aspx"]',
         key: 'r',
         description: 'Recherche patient',
-        terminal: true,
-        customAction: function() {
+        onTap: function() {
             openSearch();
         }
     },
     
     // Antécédents
-    'a': {
+    'antecedents': {
         selector: '#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent',
         key: 'a',
         description: 'Antécédents',
-        terminal: true
+        onTap: 'clic'
     },
     
     // Scanner
-    's': {
+    'scanner': {
         selector: 'a.level2.dynamic[href^="javascript:void(window.weda.actions.startScan"]',
         key: 's',
         description: 'Scanner document',
-        terminal: true,
-        customAction: function(element) {
+        onTap: function(element) {
             clicCSPLockedElement('a.level2.dynamic[href^="javascript:void(window.weda.actions.startScan"]');
         }
     },
     
     // Upload
-    'u': {
+    'upload': {
         selector: 'a[href*="PopUpUploader.aspx"]',
         key: 'u',
         description: 'Upload document',
-        terminal: true
-    },
+        onTap: 'clic'
+    }
     
     // Vous pouvez ajouter d'autres éléments ici...
 };
@@ -399,6 +408,53 @@ function removeAllTooltips() {
 }
 
 /**
+ * Exécute une action sur un élément
+ * @param {string|Function} action - Action à exécuter ("clic", "mouseover", "enter", ou fonction)
+ * @param {HTMLElement} element - Élément cible
+ */
+function executeAction(action, element) {
+    if (!element) {
+        console.warn('[QuickAccess] Impossible d\'exécuter l\'action : élément manquant');
+        return;
+    }
+    
+    // Action personnalisée (fonction)
+    if (typeof action === 'function') {
+        action(element);
+        return;
+    }
+    
+    // Actions standardisées
+    switch (action) {
+        case 'clic':
+            element.click();
+            break;
+            
+        case 'mouseover':
+            element.dispatchEvent(new MouseEvent('mouseover', {
+                bubbles: true,
+                cancelable: true,
+                view: window
+            }));
+            break;
+            
+        case 'enter':
+            element.dispatchEvent(new KeyboardEvent('keypress', {
+                key: 'Enter',
+                code: 'Enter',
+                keyCode: 13,
+                bubbles: true,
+                cancelable: true
+            }));
+            break;
+            
+        default:
+            console.warn(`[QuickAccess] Action non reconnue: ${action}`);
+            element.click(); // Fallback sur clic
+    }
+}
+
+/**
  * Gère les touches pressées en mode Quick Access
  * @param {KeyboardEvent} e - Événement clavier
  */
@@ -411,21 +467,25 @@ function handleQuickAccessKey(e) {
     const key = e.key.toLowerCase();
     console.log('[QuickAccess] Touche pressée:', key);
     
-    // Chercher l'élément correspondant dans la config actuelle
-    const item = quickAccessState.currentConfig[key];
+    // Chercher l'élément correspondant par la propriété 'key' (pas la clé d'objet)
+    const itemEntry = Object.entries(quickAccessState.currentConfig).find(
+        ([id, item]) => item.key === key
+    );
     
-    if (!item) {
+    if (!itemEntry) {
         console.log('[QuickAccess] Aucune action pour cette touche');
         return;
     }
     
+    const [itemId, item] = itemEntry;
+    
     e.preventDefault();
     e.stopPropagation();
     
-    // Détecter un double appui
+    // Détecter un double tap
     const now = Date.now();
-    const isDoubleClick = (quickAccessState.lastClickedKey === key && 
-                          (now - quickAccessState.lastClickedTime) < DOUBLE_CLICK_DELAY);
+    const isDoubleTap = (quickAccessState.lastClickedKey === key && 
+                         (now - quickAccessState.lastClickedTime) < DOUBLE_CLICK_DELAY);
     
     quickAccessState.lastClickedKey = key;
     quickAccessState.lastClickedTime = now;
@@ -438,7 +498,7 @@ function handleQuickAccessKey(e) {
     }
     
     if (!targetElement) {
-        console.warn('[QuickAccess] Élément cible non trouvé');
+        console.warn('[QuickAccess] Élément cible non trouvé pour:', itemId);
         resetInactivityTimer();
         return;
     }
@@ -446,58 +506,56 @@ function handleQuickAccessKey(e) {
     // Vérifier s'il y a des conflits de configuration
     checkForDuplicateKeys(quickAccessState.currentConfig);
     
-    // Si double clic OU élément terminal : exécuter l'action et sortir/rester
-    if (isDoubleClick || item.terminal) {
-        console.log(`[QuickAccess] ${isDoubleClick ? 'Double clic' : 'Élément terminal'} détecté - Exécution de l'action`);
-        
-        // Exécuter l'action
-        if (item.customAction) {
-            item.customAction(targetElement);
-        } else {
-            targetElement.click();
-            recordMetrics({ clicks: 1, drags: 1 });
-        }
-        
-        // Sortir du mode
+    // Déterminer le type d'item
+    const hasSubItems = item.subItems != null;
+    const isTerminal = !hasSubItems || item.onDoubleTap == null;
+    
+    // Cas 1 : Double-tap avec onDoubleTap défini (toujours terminal)
+    if (isDoubleTap && item.onDoubleTap) {
+        console.log(`[QuickAccess] Double-tap détecté sur ${itemId} - Exécution de onDoubleTap`);
+        executeAction(item.onDoubleTap, targetElement);
+        recordMetrics({ clicks: 1, drags: 1 });
         deactivateQuickAccess();
         return;
     }
     
-    // Si élément non-terminal : afficher les sous-éléments
-    if (item.subItems || item.dynamicSubItems) {
-        console.log('[QuickAccess] Élément non-terminal - Affichage du sous-niveau');
-        
-        let subConfig = item.subItems;
-        
-        // Générer dynamiquement si nécessaire
-        if (item.dynamicSubItems) {
-            subConfig = item.dynamicSubItems(targetElement);
-        }
-        
-        if (subConfig && Object.keys(subConfig).length > 0) {
-            quickAccessState.currentConfig = subConfig;
-            showTooltips(subConfig);
-            resetInactivityTimer();
-        } else {
-            console.warn('[QuickAccess] Aucun sous-élément trouvé');
-            // Cliquer quand même
-            if (item.customAction) {
-                item.customAction(targetElement);
-            } else {
-                targetElement.click();
-                recordMetrics({ clicks: 1, drags: 1 });
-            }
-            deactivateQuickAccess();
-        }
+    // Cas 2 : Item terminal (onTap seul)
+    if (isTerminal) {
+        console.log(`[QuickAccess] Item terminal ${itemId} - Exécution de onTap`);
+        const action = item.onTap || 'clic';
+        executeAction(action, targetElement);
+        recordMetrics({ clicks: 1, drags: 1 });
+        deactivateQuickAccess();
+        return;
+    }
+    
+    // Cas 3 : Item non-terminal (onTap + subItems + optionnel onDoubleTap)
+    console.log(`[QuickAccess] Simple tap sur item non-terminal ${itemId}`);
+    
+    // Exécuter onTap (ex: mouseover pour ouvrir le menu)
+    const action = item.onTap || 'clic';
+    executeAction(action, targetElement);
+    
+    // Générer ou récupérer les subItems
+    let subConfig = null;
+    if (typeof item.subItems === 'function') {
+        // Génération dynamique
+        subConfig = item.subItems(targetElement);
     } else {
-        // Pas de sous-éléments, cliquer et sortir
-        console.log('[QuickAccess] Pas de sous-éléments - Clic et sortie');
-        if (item.customAction) {
-            item.customAction(targetElement);
-        } else {
-            targetElement.click();
-            recordMetrics({ clicks: 1, drags: 1 });
-        }
+        // SubItems statiques
+        subConfig = item.subItems;
+    }
+    
+    // Afficher les sous-éléments
+    if (subConfig && Object.keys(subConfig).length > 0) {
+        console.log(`[QuickAccess] ${Object.keys(subConfig).length} sous-éléments trouvés`);
+        quickAccessState.currentConfig = subConfig;
+        showTooltips(subConfig);
+        resetInactivityTimer();
+    } else {
+        // Pas de sous-éléments : traiter comme terminal
+        console.warn(`[QuickAccess] Aucun sous-élément trouvé pour ${itemId} - Sortie du mode`);
+        recordMetrics({ clicks: 1, drags: 1 });
         deactivateQuickAccess();
     }
 }
