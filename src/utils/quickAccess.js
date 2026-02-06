@@ -36,23 +36,7 @@
  * Note : Les clés d'objet sont descriptives et servent au débogage.
  * Les vraies touches de raccourci sont définies dans la propriété 'key'.
  */
-const quickAccessConfig = {
-    // Menu W - Navigation principale
-    'menu_navigation': {
-        selector: '.level1.static',
-        key: 'w',
-        onTap: 'pseudomouseover',
-        onDoubleTap: 'clic',
-        subItems: null // TODO
-    },
-    
-    // Carte Vitale
-    'carte_vitale': {
-        selector: '.cv',
-        key: 'c',
-        onTap: 'clic'
-    },
-    
+const quickAccessConfig = {    
     // Recherche patient
     'recherche_patient': {
         selector: 'a[href*="FindPatientForm.aspx"]',
@@ -60,29 +44,6 @@ const quickAccessConfig = {
         onTap: function() {
             openSearch();
         }
-    },
-    
-    // Antécédents
-    'antecedents': {
-        selector: '#ContentPlaceHolder1_EvenementUcForm1_ImageButtonShowAntecedent',
-        key: 'a',
-        onTap: 'clic'
-    },
-    
-    // Scanner
-    'scanner': {
-        selector: 'a.level2.dynamic[href^="javascript:void(window.weda.actions.startScan"]',
-        key: 's',
-        onTap: function(element) {
-            clicCSPLockedElement('a.level2.dynamic[href^="javascript:void(window.weda.actions.startScan"]');
-        }
-    },
-    
-    // Upload
-    'upload': {
-        selector: 'a[href*="PopUpUploader.aspx"]',
-        key: 'u',
-        onTap: 'clic'
     },
     
     // === Menu horizontal - Organisation hiérarchique ===
@@ -132,9 +93,145 @@ const quickAccessConfig = {
                 return submenu ? generateNavSubItems(submenu, 'parametres') : {};
             }
         }
-    }
+    },
     
-    // Vous pouvez ajouter d'autres éléments ici...
+    // === Menu vertical gauche (sidebar) ===
+    'menu_vertical_gauche': {
+        selector: ".menu-sidebar",
+        key: 'l',
+        onTap: null,
+        onDoubleTap: null,
+        subItems: {
+            // Menu W - Navigation événements
+            'menu_w_sidebar': {
+                selector: '#ContentPlaceHolder1_UpdatePanelMenuNavigate',
+                key: 'w',
+                onTap: 'pseudomouseover',
+                onDoubleTap: 'clic',
+                subItems: function(element) {
+                    const submenu = element.querySelector('ul.level2.dynamic');
+                    return submenu ? generateNavSubItems(submenu, 'menu_w_sidebar') : {};
+                }
+            },
+            
+            // Fiche patient
+            'modifier_patient': {
+                selector: '#ContentPlaceHolder1_ButtonModifierPatient',
+                key: 'f',
+                onTap: 'clic'
+            },
+            
+            // Carte Vitale
+            'cv_sidebar': {
+                selector: '.cv',
+                key: 'c',
+                onTap: 'clic'
+            },
+            
+            // Menu périphériques (scanner, doctolib, DMP, omnidoc)
+            'peripheriques': {
+                selector: '#ContentPlaceHolder1_DivMenuPeripherique',
+                key: 'p',
+                onTap: 'mouseover',
+                onDoubleTap: 'clic',
+                subItems: function(element) {
+                    const submenu = element.querySelector('ul.level2.dynamic');
+                    return submenu ? generateNavSubItems(submenu, 'peripheriques') : {};
+                }
+            },
+            
+            // Recherche patient (déjà défini au niveau racine)
+            'recherche_sidebar': {
+                selector: '.imgChercher',
+                key: 'r',
+                onTap: 'clic'
+            },
+            
+            // Ajouter patient
+            'ajouter_patient': {
+                selector: '.imgAddNewPatient',
+                key: 'n',
+                onTap: 'clic'
+            },
+            
+            // Documents - Organisation hiérarchique
+            'documents': {
+                'consultations': {
+                    selector: '#ContentPlaceHolder1_ButtonConsultation',
+                    key: 'o',
+                    onTap: 'clic'
+                },
+                
+                'resultats_examen': {
+                    selector: '#ContentPlaceHolder1_ButtonResultatExamen',
+                    key: 'x',
+                    onTap: 'clic'
+                },
+                
+                'courriers': {
+                    selector: '#ContentPlaceHolder1_ButtonCourrier',
+                    key: 'k',
+                    onTap: 'clic'
+                },
+                
+                'vaccins': {
+                    selector: '#ContentPlaceHolder1_ButtonVaccins',
+                    key: 'v',
+                    onTap: 'clic'
+                },
+                
+                'traitements': {
+                    selector: '#ContentPlaceHolder1_ButtonPanneauxSynthetique',
+                    key: 't',
+                    onTap: 'clic'
+                },
+                
+                'graphiques': {
+                    selector: '#ContentPlaceHolder1_ButtonChart',
+                    key: 'h',
+                    onTap: 'clic'
+                },
+                
+                'documents_joints': {
+                    selector: '#ButtonDocumentJointAction',
+                    key: 'd',
+                    onTap: 'clic'
+                },
+                
+                'arrets_travail': {
+                    selector: '#ContentPlaceHolder1_ButtonAT',
+                    key: 'at',
+                    onTap: 'clic'
+                }
+            },
+            
+            // Menu impression
+            'impression': {
+                selector: '#ContentPlaceHolder1_MenuPrint > ul.level1.static',
+                key: 'i',
+                onTap: 'pseudomouseover',
+                onDoubleTap: 'clic',
+                subItems: function(element) {
+                    const submenu = element.querySelector('ul.level2.dynamic');
+                    return submenu ? generateNavSubItems(submenu, 'impression') : {};
+                }
+            },
+            
+            // Recherche prescriptions
+            'recherche_prescriptions': {
+                selector: '#ContentPlaceHolder1_ButtonHasStat',
+                key: 'q',
+                onTap: 'clic'
+            },
+            
+            // Séquenceur
+            'sequenceur': {
+                selector: '#ContentPlaceHolder1_ButtonSequenceur',
+                key: 'z',
+                onTap: 'clic'
+            }
+        }
+    }
 };
 
 
@@ -441,6 +538,7 @@ function showTooltips(config) {
  * @param {boolean} hasDoubleTap - Indique si un double-tap est disponible
  */
 function createTooltip(element, key, hasDoubleTap = false) {
+    console.log(`[QuickAccess] Création du tooltip pour la touche "${key}" sur l'élément:`, element);
     if (!element) return;
     
     // S'assurer que l'élément est visible
@@ -452,9 +550,12 @@ function createTooltip(element, key, hasDoubleTap = false) {
     const tooltip = document.createElement('span');
     tooltip.className = 'wh-quickaccess-tooltip';
     
-    // Style plus visible avec positionnement en bas à gauche
+    // Calculer la position de l'élément
+    const rect = element.getBoundingClientRect();
+    
+    // Style avec positionnement fixed pour garantir la visibilité
     tooltip.style.cssText = `
-        position: absolute;
+        position: fixed;
         color: #333;
         font-size: 1em;
         background-color: rgba(240, 240, 240, 0.95);
@@ -463,8 +564,8 @@ function createTooltip(element, key, hasDoubleTap = false) {
         pointer-events: none;
         white-space: nowrap;
         z-index: 99999;
-        bottom: -12px;
-        left: 0px;
+        top: ${rect.bottom + 2}px;
+        left: ${rect.left}px;
         height: auto;
         line-height: normal;
         display: inline-block;
@@ -479,9 +580,11 @@ function createTooltip(element, key, hasDoubleTap = false) {
     // Contenu : uniquement la touche
     tooltip.textContent = key.toUpperCase();
     
-    // Positionner le tooltip par rapport à l'élément
-    element.style.position = 'relative';
-    element.appendChild(tooltip);
+    // Ajouter le tooltip au body plutôt qu'à l'élément
+    document.body.appendChild(tooltip);
+    
+    // Stocker une référence à l'élément pour repositionner si nécessaire
+    tooltip.dataset.targetElement = element;
     
     quickAccessState.tooltipElements.push(tooltip);
 }
