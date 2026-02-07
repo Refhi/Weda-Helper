@@ -128,7 +128,11 @@ const keyCommands = {
         console.log('shortcut_search activé');
         openSearch();
     },
-    'shortcut_atcd': toggleAtcd
+    'shortcut_atcd': toggleAtcd,
+    'quick_access': function () {
+        console.log('quick_access activé');
+        activateQuickAccess();
+    }
 };
 
 /**
