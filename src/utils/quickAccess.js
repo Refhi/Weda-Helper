@@ -19,6 +19,10 @@
  * @property {Object.<string, QuickAccessItem>|Function} [subItems=null] - Sous-éléments (objet ou fonction qui les génère)
  * @property {HTMLElement} [element] - Référence à l'élément DOM (pour items générés dynamiquement)
  * 
+ * ⚠️ IMPORTANT - Comportement des subItems fonction :
+ * Une fonction subItems est appelée UNE SEULE FOIS lors du premier accès au niveau.
+ * Le résultat est ensuite mis en cache dans quickAccessConfig.
+ * 
  * Logique :
  * - onTap seul = item terminal (exécute onTap et sort)
  * - onTap + onDoubleTap + subItems = item non-terminal (tap = onTap + affiche subItems, double-tap = onDoubleTap + sort)
@@ -41,7 +45,7 @@ const quickAccessConfig = {
         onDoubleTap: 'clic',
         subItems: function (element) {
             const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-            return submenu ? generateNavSubItems(submenu, 'medical') : {};
+            return submenu ? generateHorizMenuSubItems(submenu, 'medical') : {};
         }
     },
 
@@ -52,7 +56,7 @@ const quickAccessConfig = {
         onDoubleTap: 'clic',
         subItems: function (element) {
             const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-            return submenu ? generateNavSubItems(submenu, 'applicatifs') : {};
+            return submenu ? generateHorizMenuSubItems(submenu, 'applicatifs') : {};
         }
     },
 
@@ -63,7 +67,7 @@ const quickAccessConfig = {
         onDoubleTap: 'clic',
         subItems: function (element) {
             const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-            return submenu ? generateNavSubItems(submenu, 'gestion') : {};
+            return submenu ? generateHorizMenuSubItems(submenu, 'gestion') : {};
         }
     },
 
@@ -74,7 +78,7 @@ const quickAccessConfig = {
         onDoubleTap: 'clic',
         subItems: function (element) {
             const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-            return submenu ? generateNavSubItems(submenu, 'parametres') : {};
+            return submenu ? generateHorizMenuSubItems(submenu, 'parametres') : {};
         }
     },
 
@@ -93,7 +97,7 @@ const quickAccessConfig = {
                 onDoubleTap: 'clic',
                 subItems: function (element) {
                     const submenu = element.querySelector('ul.level2.dynamic');
-                    return submenu ? generateNavSubItems(submenu, 'menu_w_sidebar') : {};
+                    return submenu ? generateWMenuSubItems(submenu, 'menu_w_sidebar') : {};
                 }
             },
 
@@ -119,7 +123,7 @@ const quickAccessConfig = {
                 onDoubleTap: 'clic',
                 subItems: function (element) {
                     const submenu = element.querySelector('ul.level2.dynamic');
-                    return submenu ? generateNavSubItems(submenu, 'peripheriques') : {};
+                    return submenu ? generateWMenuSubItems(submenu, 'peripheriques') : {};
                 }
             },
 
@@ -182,7 +186,7 @@ const quickAccessConfig = {
 
             'arrets_travail': {
                 selector: '#ContentPlaceHolder1_ButtonAT',
-                key: 'at',
+                key: 'r',
                 onTap: 'clic'
             },
 
@@ -194,7 +198,7 @@ const quickAccessConfig = {
                 onDoubleTap: 'clic',
                 subItems: function (element) {
                     const submenu = element.querySelector('ul.level2.dynamic');
-                    return submenu ? generateNavSubItems(submenu, 'impression') : {};
+                    return submenu ? generateWMenuSubItems(submenu, 'impression') : {};
                 }
             },
 
@@ -247,6 +251,9 @@ function activateQuickAccess() {
     // On ajoute sur l'overlay les évents Listeners chargés d'écouter les entrées clavier
     addListenersToOverlay(overlay, state, quickAccessConfig)
 
+    // Afficher les tooltips du niveau racine
+    showTooltips(state, quickAccessConfig);
+
     // Le reste du flux est géré dans les listeners
 }
 
@@ -295,8 +302,8 @@ function executeQuickAccessAction(matchedItem, state, config) {
     // Détection du double-tap : si la touche détectée correspond au premier élément
     // du flattenedCurrentLevelConfig, on doit éxécuter onDoubleTap au lieu de onTap
     const currentConfig = flattenedCurrentLevelConfig(state, config);
-    // Ce n’est pas du vrai double-tap, mais si on appelle l’élément parent
-    // c’est forcémente que c’est un double-tap
+    // Ce n’est pas du vrai double-tap, mais si on appelle l’élément parent (qui est
+    // forcément en premier dans le flattened) c’est forcément que c’est un double-tap
     const isDoubleTap = matchedItem.onDoubleTap && Object.values(currentConfig)[0] === matchedItem;
     
     // Ensuite on doit déterminer si l’action est de type terminal
@@ -553,6 +560,12 @@ function moveToTargetConfig(targetQALevel, state, config) {
  * Celle-ci met à jour quickAccessConfig lors d'une avancée dans l'arborescence
  * de façon à peupler les subItems si ceux-ci sont générés par une fonction
  * 
+ * ⚠️ COMPORTEMENT IMPORTANT - Génération unique et mise en cache :
+ * - Si subItems est une fonction, elle est appelée UNE SEULE FOIS
+ * - Le résultat remplace la fonction dans la configuration
+ * - Les appels suivants réutilisent le résultat mis en cache
+ * - Les subItems générés ne sont JAMAIS régénérés, même si on remonte puis redescend dans l'arborescence
+ * 
  * @param {Object} config - Configuration racine (quickAccessConfig)
  * @param {string[]} targetQALevel - Chemin vers le niveau à peupler
  */
@@ -599,12 +612,16 @@ function populateSubItems(config, targetQALevel) {
             // Stocker l'élément pour usage ultérieur
             currentItem.element = element;
             
+            // ⚠️ REMPLACEMENT PERMANENT : la fonction est remplacée par son résultat
             // Appeler la fonction pour générer les subItems et les remplacer
             currentItem.subItems = currentItem.subItems(element);
             console.log(`[QuickAccess] SubItems peuplés avec succès pour`, targetQALevel);
         } else {
             console.warn(`[QuickAccess] Impossible de trouver l'élément pour peupler les subItems`, targetQALevel);
         }
+    } else if (typeof currentItem.subItems === 'object') {
+        // Les subItems ont déjà été générés (cache) ou sont statiques
+        console.log(`[QuickAccess] Réutilisation du cache subItems pour`, targetQALevel);
     }
 
     console.log(`[QuickAccess] Configuration après peuplement pour le niveau`, targetQALevel, config);
@@ -826,4 +843,70 @@ function WMenuPseudoMouseover(element) {
     }
     console.error('[QuickAccess] WMenuPseudoMouseover déclenché mais pas encore implémenté');
     // TODO : implémenter une logique spécifique pour le menu W si nécessaire, similaire à horizontalMenuPseudoMouseover
+}
+
+
+/**
+ * 
+ */
+function generateWMenuSubItems() {
+    console.error('[QuickAccess] generateWMenuSubItems déclenché mais pas encore implémenté');
+    // TODO
+    return {};
+}
+
+
+// TODO : à refaire également
+/**
+ * Génère récursivement les sous-items du menu horizontal à partir de l'élément DOM du sous-menu
+ * @param {HTMLElement} submenuElement - Élément ul.nav-menu__submenu
+ * @param {string} parentId - ID du parent pour générer les clés
+ * @param {Set<string>} usedKeys - Ensemble des touches déjà utilisées à éviter
+ * @returns {Object} Configuration des sous-items
+ */
+function generateHorizMenuSubItems(submenuElement, parentId) {
+    const subItems = {};
+
+    // Récupérer tous les liens directs de ce niveau
+    const menuItems = submenuElement.querySelectorAll(':scope > li > a');
+
+    let keyIndex = 1;
+    menuItems.forEach(link => {
+        const text = link.textContent.trim();
+        const parentLi = link.parentElement;
+
+        // Chercher un sous-menu de niveau suivant
+        const hasArrow = link.classList.contains('nav-icon__link--arrow-right');
+        const nextLevelSubmenu = parentLi.querySelector('.nav-menu__submenu--level2');
+
+        // Générer une clé numérique ou alphabétique en évitant les touches déjà utilisées
+        let key;
+        do {
+            key = keyIndex <= 9 ? keyIndex.toString() : String.fromCharCode(96 + keyIndex); // a, b, c...
+            keyIndex++;
+        } while (usedKeys.has(key));
+
+        const itemId = `${parentId}_item_${keyIndex - 1}`;
+
+        const item = {
+            selector: null,
+            element: link,
+            key: key,
+            onTap: hasArrow ? 'pseudomouseover' : 'clic'
+        };
+
+        // Si a un sous-menu, configurer le double-tap pour ouvrir directement
+        if (nextLevelSubmenu) {
+            item.onDoubleTap = 'clic';
+            item.subItems = function (el, currentUsedKeys) {
+                // Utiliser les touches actuellement actives (passées lors de l'appel)
+                const activeKeys = currentUsedKeys || new Set();
+                return generateHorizMenuSubItems(nextLevelSubmenu, itemId, activeKeys);
+            };
+        }
+
+        subItems[itemId] = item;
+    });
+
+    return subItems;
 }
