@@ -267,6 +267,8 @@ function addListenersToOverlay(overlay, state, config) {
 function handleQuickAccessKey(e, state, config) {
     // Vérifier que la touche pressée correspond à un élément du niveau actuel
     const currentConfig = flattenedCurrentLevelConfig(state, config);
+
+    //
     const matchedItem = Object.values(currentConfig).find(item => item.key === e.key);
 
     if (matchedItem) {
@@ -275,6 +277,25 @@ function handleQuickAccessKey(e, state, config) {
         // et gérer la navigation dans les niveaux si nécessaire
         executeQuickAccessAction(matchedItem, state, config);
     }
+}
+
+/**
+ * Exécute l'action associée à un élément Quick Access
+ * Gère la logique de navigation entre niveaux et l'exécution des actions
+ * 
+ */
+function executeQuickAccessAction(matchedItem, state, config) {
+    // Détection du double-tap : si la touche détectée correspond au premier élément
+    // du flattenedCurrentLevelConfig, on doit éxécuter onDoubleTap au lieu de onTap
+    const currentConfig = flattenedCurrentLevelConfig(state, config);
+    const isDoubleTap = matchedItem.onDoubleTap && Object.values(currentConfig)[0] === matchedItem;
+    
+    // Ensuite on doit déterminer si l’action est de type terminal
+    // ce qui est le cas si l’item n’a pas de subItems ou si on est en présence d’un double-tap
+    const isTerminal = !matchedItem.subItems || isDoubleTap;
+
+
+    // TODO: Suite de la logique...
 }
 
 
