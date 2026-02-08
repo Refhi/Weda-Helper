@@ -43,9 +43,9 @@ const quickAccessConfig = {
         key: 'm',
         onTap: 'horizontal_menu_pseudomouseover',
         onDoubleTap: 'clic',
-        subItems: function (element) {
+        subItems: function (element, currentItemKey) {
             const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-            return submenu ? generateHorizMenuSubItems(submenu, 'medical') : {};
+            return submenu ? generateHorizMenuSubItems(submenu, 'medical', currentItemKey) : {};
         }
     },
 
@@ -54,9 +54,9 @@ const quickAccessConfig = {
         key: 'p',
         onTap: 'horizontal_menu_pseudomouseover',
         onDoubleTap: 'clic',
-        subItems: function (element) {
+        subItems: function (element, currentItemKey) {
             const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-            return submenu ? generateHorizMenuSubItems(submenu, 'applicatifs') : {};
+            return submenu ? generateHorizMenuSubItems(submenu, 'applicatifs', currentItemKey) : {};
         }
     },
 
@@ -65,9 +65,9 @@ const quickAccessConfig = {
         key: 'g',
         onTap: 'horizontal_menu_pseudomouseover',
         onDoubleTap: 'clic',
-        subItems: function (element) {
+        subItems: function (element, currentItemKey) {
             const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-            return submenu ? generateHorizMenuSubItems(submenu, 'gestion') : {};
+            return submenu ? generateHorizMenuSubItems(submenu, 'gestion', currentItemKey) : {};
         }
     },
 
@@ -76,9 +76,9 @@ const quickAccessConfig = {
         key: 'e',
         onTap: 'horizontal_menu_pseudomouseover',
         onDoubleTap: 'clic',
-        subItems: function (element) {
+        subItems: function (element, currentItemKey) {
             const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-            return submenu ? generateHorizMenuSubItems(submenu, 'parametres') : {};
+            return submenu ? generateHorizMenuSubItems(submenu, 'parametres', currentItemKey) : {};
         }
     },
 
@@ -95,9 +95,9 @@ const quickAccessConfig = {
                 key: 'w',
                 onTap: 'W_menu_pseudomouseover',
                 onDoubleTap: 'clic',
-                subItems: function (element) {
+                subItems: function (element, currentItemKey) {
                     const submenu = element.querySelector('ul.level2.dynamic');
-                    return submenu ? generateWMenuSubItems(submenu, 'menu_w_sidebar') : {};
+                    return submenu ? generateWMenuSubItems(submenu, 'menu_w_sidebar', currentItemKey) : {};
                 }
             },
 
@@ -121,9 +121,9 @@ const quickAccessConfig = {
                 key: 'p',
                 onTap: 'W_menu_pseudomouseover',
                 onDoubleTap: 'clic',
-                subItems: function (element) {
+                subItems: function (element, currentItemKey) {
                     const submenu = element.querySelector('ul.level2.dynamic');
-                    return submenu ? generateWMenuSubItems(submenu, 'peripheriques') : {};
+                    return submenu ? generateWMenuSubItems(submenu, 'peripheriques', currentItemKey) : {};
                 }
             },
 
@@ -196,9 +196,9 @@ const quickAccessConfig = {
                 key: 'i',
                 onTap: 'W_menu_pseudomouseover',
                 onDoubleTap: 'clic',
-                subItems: function (element) {
+                subItems: function (element, currentItemKey) {
                     const submenu = element.querySelector('ul.level2.dynamic');
-                    return submenu ? generateWMenuSubItems(submenu, 'impression') : {};
+                    return submenu ? generateWMenuSubItems(submenu, 'impression', currentItemKey) : {};
                 }
             },
 
@@ -405,29 +405,10 @@ function currentLevelConfig(state, config) {
     }
 
     // Cas 2 : Naviguer jusqu'à l'élément cible
-    let currentItem = config;
+    const { item: currentItem } = navigateToItem(config, actualQALevel, 'currentLevelConfig');
     
-    // Parcourir le chemin pour trouver l'élément cible
-    for (let i = 0; i < actualQALevel.length; i++) {
-        const key = actualQALevel[i];
-        
-        if (!currentItem[key]) {
-            console.warn(`[QuickAccess] Élément "${key}" introuvable dans le chemin`, actualQALevel);
-            return {};
-        }
-        
-        currentItem = currentItem[key];
-        
-        // Si ce n'est pas le dernier niveau, descendre dans subItems
-        if (i < actualQALevel.length - 1) {
-            if (!currentItem.subItems) {
-                console.warn(`[QuickAccess] Pas de subItems pour "${key}"`, actualQALevel);
-                return {};
-            }
-            
-            // Descendre dans subItems (qui doit déjà être peuplé)
-            currentItem = currentItem.subItems;
-        }
+    if (!currentItem) {
+        return {};
     }
 
     // Retourner uniquement l'élément parent avec sa structure complète (incluant subItems)
@@ -442,6 +423,34 @@ function currentLevelConfig(state, config) {
         [parentKey]: currentItem
     };
 }
+
+/**
+ * Vérifie qu'il n'y a pas de touches de raccourci en double dans une configuration
+ * @param {Object} config - Configuration à vérifier (généralement la version aplatie d'un niveau)
+ * @param {string[]} QALevel - Niveau actuel pour les messages d'erreur
+ */
+function checkForKeyDuplication(config, QALevel) {
+    const usedKeys = {};
+    let hasDuplicates = false;
+
+    for (const [itemKey, item] of Object.entries(config)) {
+        if (!item.key) continue;
+
+        const key = item.key.toLowerCase();
+        if (usedKeys[key]) {
+            console.error(`[QuickAccess] Duplication de touche "${key}" détectée au niveau`, QALevel, 
+                `entre "${usedKeys[key]}" et "${itemKey}"`);
+            hasDuplicates = true;
+        } else {
+            usedKeys[key] = itemKey;
+        }
+    }
+
+    if (hasDuplicates) {
+        console.error('[QuickAccess] ⚠️ Des touches en double ont été détectées ! Cela causera des conflits.');
+    }
+}
+
 /**
  * Fonction utilitaire pour trouver la clé d'un objet à partir de son titre (valeur)
  */
@@ -474,25 +483,51 @@ function flattenedCurrentLevelConfig(state, config) {
     return flattenedConfig;
 }
 
-/** 
- * Check for key duplication in the configuration
- * Vérifie uniquement les clés du niveau aplati (parent + enfants directs)
- * sans descendre récursivement dans les subItems
- * 
- * @param {Object} flattenedConfig - Configuration aplatie du niveau actuel
- * @param {string[]} path - Chemin actuel (pour les messages d'erreur)
- */
-function checkForKeyDuplication(flattenedConfig, path = []) {
-    const keysSeen = new Set();
 
-    for (const [key, item] of Object.entries(flattenedConfig)) {
-        if (keysSeen.has(item.key)) {
-            console.error(`[QuickAccess] Duplication de la touche "${item.key}" détectée dans le chemin`, [...path, key]);
-        } else {
-            keysSeen.add(item.key);
+/**
+ * Fonction utilitaire pour naviguer dans l'arborescence de configuration
+ * Retourne l'objet de configuration de l'élément ciblé par un QALevel
+ * 
+ * @param {Object} config - Configuration racine
+ * @param {string[]} QALevel - Chemin vers l'élément
+ * @param {string} [context='navigation'] - Contexte de l'appel pour les logs
+ * @returns {{item: Object|null, parent: Object|null}} Objet contenant l'item trouvé et son parent
+ */
+function navigateToItem(config, QALevel, context = 'navigation') {
+    // Cas du niveau racine
+    if (QALevel.length === 0) {
+        return { item: config, parent: null };
+    }
+
+    // Naviguer jusqu'à l'élément cible
+    let currentItem = config;
+    let parentItem = null;
+    
+    for (let i = 0; i < QALevel.length; i++) {
+        const key = QALevel[i];
+        
+        if (!currentItem[key]) {
+            console.warn(`[QuickAccess] Élément "${key}" introuvable lors de ${context}`, QALevel);
+            return { item: null, parent: null };
+        }
+        
+        parentItem = currentItem;
+        currentItem = currentItem[key];
+        
+        // Si ce n'est pas le dernier niveau, descendre dans subItems
+        if (i < QALevel.length - 1) {
+            if (!currentItem.subItems) {
+                console.warn(`[QuickAccess] Pas de subItems pour "${key}" lors de ${context}`, QALevel);
+                return { item: null, parent: null };
+            }
+            currentItem = currentItem.subItems;
         }
     }
+
+    return { item: currentItem, parent: parentItem };
 }
+
+
 
 /**
  * Cette fonction permet de changer de QALevel
@@ -576,26 +611,10 @@ function populateSubItems(config, targetQALevel) {
     }
     
     // Naviguer jusqu'à l'élément cible
-    let currentItem = config;
+    const { item: currentItem } = navigateToItem(config, targetQALevel, 'populateSubItems');
     
-    for (let i = 0; i < targetQALevel.length; i++) {
-        const key = targetQALevel[i];
-        
-        if (!currentItem[key]) {
-            console.warn(`[QuickAccess] Élément "${key}" introuvable lors du peuplement`, targetQALevel);
-            return;
-        }
-        
-        currentItem = currentItem[key];
-        
-        // Si ce n'est pas le dernier niveau, descendre dans subItems
-        if (i < targetQALevel.length - 1) {
-            if (!currentItem.subItems) {
-                console.warn(`[QuickAccess] Pas de subItems pour "${key}" lors du peuplement`, targetQALevel);
-                return;
-            }
-            currentItem = currentItem.subItems;
-        }
+    if (!currentItem) {
+        return;
     }
     
     // Vérifier si subItems est une fonction à évaluer
@@ -609,12 +628,10 @@ function populateSubItems(config, targetQALevel) {
         }
         
         if (element) {
-            // Stocker l'élément pour usage ultérieur
-            currentItem.element = element;
-            
             // ⚠️ REMPLACEMENT PERMANENT : la fonction est remplacée par son résultat
             // Appeler la fonction pour générer les subItems et les remplacer
-            currentItem.subItems = currentItem.subItems(element);
+            let currentItemKey = getKeyByValue(config, currentItem);
+            currentItem.subItems = currentItem.subItems(element, currentItemKey); // on peut aussi passer la clé de l'item si besoin
             console.log(`[QuickAccess] SubItems peuplés avec succès pour`, targetQALevel);
         } else {
             console.warn(`[QuickAccess] Impossible de trouver l'élément pour peupler les subItems`, targetQALevel);
@@ -626,6 +643,7 @@ function populateSubItems(config, targetQALevel) {
 
     console.log(`[QuickAccess] Configuration après peuplement pour le niveau`, targetQALevel, config);
 }
+
 
 /**
  * Désactive le mode Quick Access en supprimant l'overlay et les listeners associés
@@ -849,22 +867,21 @@ function WMenuPseudoMouseover(element) {
 /**
  * 
  */
-function generateWMenuSubItems() {
+function generateWMenuSubItems(submenuElement, parentId, currentItemKey) {
     console.error('[QuickAccess] generateWMenuSubItems déclenché mais pas encore implémenté');
     // TODO
     return {};
 }
 
 
-// TODO : à refaire également
 /**
  * Génère récursivement les sous-items du menu horizontal à partir de l'élément DOM du sous-menu
  * @param {HTMLElement} submenuElement - Élément ul.nav-menu__submenu
  * @param {string} parentId - ID du parent pour générer les clés
- * @param {Set<string>} usedKeys - Ensemble des touches déjà utilisées à éviter
+ * @param {string} currentItemKey - Clé du parent à éviter (la touche de raccourci du parent)
  * @returns {Object} Configuration des sous-items
  */
-function generateHorizMenuSubItems(submenuElement, parentId) {
+function generateHorizMenuSubItems(submenuElement, parentId, currentItemKey) {
     const subItems = {};
 
     // Récupérer tous les liens directs de ce niveau
@@ -879,12 +896,12 @@ function generateHorizMenuSubItems(submenuElement, parentId) {
         const hasArrow = link.classList.contains('nav-icon__link--arrow-right');
         const nextLevelSubmenu = parentLi.querySelector('.nav-menu__submenu--level2');
 
-        // Générer une clé numérique ou alphabétique en évitant les touches déjà utilisées
+        // Générer une clé numérique ou alphabétique en évitant la touche du parent
         let key;
         do {
             key = keyIndex <= 9 ? keyIndex.toString() : String.fromCharCode(96 + keyIndex); // a, b, c...
             keyIndex++;
-        } while (usedKeys.has(key));
+        } while (key === currentItemKey);
 
         const itemId = `${parentId}_item_${keyIndex - 1}`;
 
@@ -898,10 +915,9 @@ function generateHorizMenuSubItems(submenuElement, parentId) {
         // Si a un sous-menu, configurer le double-tap pour ouvrir directement
         if (nextLevelSubmenu) {
             item.onDoubleTap = 'clic';
-            item.subItems = function (el, currentUsedKeys) {
-                // Utiliser les touches actuellement actives (passées lors de l'appel)
-                const activeKeys = currentUsedKeys || new Set();
-                return generateHorizMenuSubItems(nextLevelSubmenu, itemId, activeKeys);
+            item.subItems = function (el, itemKey) {
+                // Passer la clé de l'item actuel comme clé à éviter au niveau suivant
+                return generateHorizMenuSubItems(nextLevelSubmenu, itemId, key);
             };
         }
 
