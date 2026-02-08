@@ -272,7 +272,6 @@ function handleQuickAccessKey(e, state, config) {
     const matchedItem = Object.values(currentConfig).find(item => item.key === e.key);
 
     if (matchedItem) {
-
         // Exécuter l'action associée à onTap ou onDoubleTap selon le contexte
         // et gérer la navigation dans les niveaux si nécessaire
         executeQuickAccessAction(matchedItem, state, config);
@@ -294,8 +293,53 @@ function executeQuickAccessAction(matchedItem, state, config) {
     // ce qui est le cas si l’item n’a pas de subItems ou si on est en présence d’un double-tap
     const isTerminal = !matchedItem.subItems || isDoubleTap;
 
+    const action = isDoubleTap ? matchedItem.onDoubleTap : matchedItem.onTap;
+    const targetElementSelector = matchedItem.selector;
 
-    // TODO: Suite de la logique...
+    if (isTerminal) {
+        // Cas terminal : exécuter l'action et sortir du Quick Access
+        executeAction(action, targetElementSelector);
+        recordMetrics({ clicks: 1, drags: 1 });
+        deactivateQuickAccess(overlay);
+    } else {
+        // Cas non-terminal avec subItems : exécuter onTap puis descendre dans les subItems
+        executeAction(action, targetElementSelector);
+        const targetQALevel = [...state.currentLevel, getKeyByValue(config, matchedItem)];
+        if (moveToTargetConfig(targetQALevel, state, config)) {
+            showTooltips(state, config);
+        }
+    }
+}
+
+/**
+ * Fonction utilitaire pour exécuter une action qui peut être une string (clic, mouseover, enter) ou une fonction personnalisée
+ */
+function executeAction(action, selector) {
+    const element = document.querySelector(selector);
+    if (!element) {
+        console.warn(`[QuickAccess] Impossible d'exécuter l'action : élément non trouvé pour le sélecteur "${selector}"`);
+        return;
+    }
+
+    if (typeof action === 'string') {
+        switch (action) {
+            case 'clic':
+                element.click();
+                break;
+            case 'mouseover':
+                element.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+                break;
+            case 'enter':
+                element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+                break;
+            default:
+                console.warn(`[QuickAccess] Action de type string non reconnue : "${action}"`);
+        }
+    } else if (typeof action === 'function') {
+        action(element);
+    } else {
+        console.warn(`[QuickAccess] Action de type inconnu :`, action);
+    }
 }
 
 
