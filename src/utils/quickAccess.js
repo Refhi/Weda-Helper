@@ -4,11 +4,6 @@
  * Permet d'activer un mode "Quick Access" où tous les éléments configurés affichent
  * une lettre de raccourci pour y accéder rapidement.
  * 
- * @exports initQuickAccess - Initialise le système de quick access
- * @exports activateQuickAccess - Active le mode quick access
- * @exports deactivateQuickAccess - Désactive le mode quick access
- * 
- * @requires metrics.js (recordMetrics)
  */
 
 /**
@@ -28,15 +23,7 @@
  * - onTap seul = item terminal (exécute onTap et sort)
  * - onTap + onDoubleTap + subItems = item non-terminal (tap = onTap + affiche subItems, double-tap = onDoubleTap + sort)
  */
-
-/**
- * Configuration par défaut des éléments Quick Access
- * À personnaliser selon vos besoins
- * 
- * Note : Les clés d'objet sont descriptives et servent au débogage.
- * Les vraies touches de raccourci sont définies dans la propriété 'key'.
- */
-let quickAccessConfig = {
+const quickAccessConfig = {
     // Recherche patient
     'recherche_patient': {
         selector: 'a[href*="FindPatientForm.aspx"]',
@@ -234,53 +221,50 @@ let quickAccessConfig = {
 */
 function activateQuickAccess() {
     /**
-    * Le actualQALevel correspond au chemin du niveau actuellement activé.
+    * L'objet state contient l'état du Quick Access.
+    * currentLevel correspond au chemin du niveau actuellement activé.
     * C'est un tableau de clés représentant le chemin dans l'arborescence.
     * Exemples :
     * - [] = niveau racine
     * - ["menu_vertical_gauche"] = premier niveau de profondeur
     * - ["menu_vertical_gauche", "menu_w_sidebar"] = second niveau de profondeur
     * 
-    * Un élément activé est un élément qui affiche une infobulle et qui est écouté par le système pour déclencher une action.
+    * Un élément activé est un élément qui affiche une infobulle et dont la lettre est écoutée par le système pour déclencher une action.
     * Si on est au niveau ["menu_vertical_gauche"], alors on affiche les lettres pour menu_vertical_gauche
     * et tous ses sous-éléments immédiats, mais on désactive les autres éléments du niveau racine.
     */
-    let actualQALevel = [] // Correspond au niveau racine
+    const state = {
+        currentLevel: []  // Correspond au niveau racine
+        // d’autres caractéristiques sont envisageables
+    };
 
     // Commencer par activer l'overlay
-    let overlay = activateOverlay()
+    let overlay = createOverlay();
 
     // Y mettre le focus pour faciliter les écoutes clavier et éviter les interractions malheureuses avec les champs inf. (comme les inputs)
     overlay.focus()
 
     // On ajoute sur l'overlay les évents Listeners chargés d'écouter les entrées clavier
-    addListenersToOverlay(overlay, actualQALevel, quickAccessConfig)
+    addListenersToOverlay(overlay, state, quickAccessConfig)
 
     // Le reste du flux est géré dans les listeners
 }
 
-function activateOverlay() {
-    // Ajouter un overlay au document
 
-    // TODO
-
-    return overlayElement
-}
-
-function addListenersToOverlay(overlay, actualQALevel, config) {
+function addListenersToOverlay(overlay, state, config) {
     overlay.addEventListener('keydown', (e) => {
-        handleQuickAccessKey(e, actualQALevel, config)
+        handleQuickAccessKey(e, state, config)
     })
 
     // On implémente aussi la touche terminale
     overlay.addEventListener('keyup', (e) => {
         if (e.key === 'Escape') {
-            deactivateQuickAccess()
+            deactivateQuickAccess(overlay)
         }
     })
 }
 
-function handleQuickAccessKey(e, actualQALevel, config) {
+function handleQuickAccessKey(e, state, config) {
     // TODO
 }
 
@@ -288,7 +272,7 @@ function handleQuickAccessKey(e, actualQALevel, config) {
  * Renvoie la configuration du niveau actuel sous forme d'objet
  * Contient uniquement l'élément parent avec ses subItems immédiats
  * 
- * @param {string[]} actualQALevel - Chemin vers le niveau actuel (ex: [], ["menu_vertical_gauche"], ["menu_vertical_gauche", "menu_w_sidebar"])
+ * @param {Object} state - Objet d'état contenant currentLevel
  * @param {Object} config - Configuration racine
  * @returns {Object} Configuration du niveau avec structure cohérente
  * 
@@ -310,7 +294,9 @@ function handleQuickAccessKey(e, actualQALevel, config) {
  *     }
  *   }
  */
-function currentLevelConfig(actualQALevel, config) {
+function currentLevelConfig(state, config) {
+    const actualQALevel = state.currentLevel;
+    
     // Cas 1 : Niveau racine
     if (actualQALevel.length === 0) {
         return config;
@@ -344,11 +330,60 @@ function currentLevelConfig(actualQALevel, config) {
 
     // Retourner uniquement l'élément parent avec sa structure complète (incluant subItems)
     const parentKey = actualQALevel[actualQALevel.length - 1];
+
+    // Vérifier que les items de l’élément parent et ses subItems
+    // n’ont pas de lettre de raccourci en double
+    checkForKeyDuplication(currentItem, state);
+
     return {
         [parentKey]: currentItem
     };
 }
 
+/**
+ * Génère la même configuration que currentLevelConfig, mais applatie,
+ * afin que l’élément parent et ses subItems immédiats soient au même niveau pour faciliter l'affichage des tooltips et la gestion des raccourcis.
+ * 
+*/
+function flattenedCurrentLevelConfig(state, config) {
+    const currentConfig = currentLevelConfig(state, config);
+    const flattenedConfig = {};
+
+    for (const [key, item] of Object.entries(currentConfig)) {
+        // Ajouter l'élément parent
+        flattenedConfig[key] = item;
+
+        // Ajouter les subItems immédiats au même niveau
+        if (item.subItems && typeof item.subItems === 'object') {
+            for (const [subKey, subItem] of Object.entries(item.subItems)) {
+                flattenedConfig[subKey] = subItem;
+            }
+        }
+    }
+
+    return flattenedConfig;
+}
+
+/** 
+ * Check for key duplication in the configuration
+ * Vérifie uniquement les clés du niveau aplati (parent + enfants directs)
+ * sans descendre récursivement dans les subItems
+ * 
+ * @param {Object} flattenedConfig - Configuration aplatie du niveau actuel
+ * @param {string[]} path - Chemin actuel (pour les messages d'erreur)
+ */
+function checkForKeyDuplication(config, state) {
+    const flattenedConfig = flattenedCurrentLevelConfig(state, config);
+    const keysSeen = new Set();
+
+    for (const [key, item] of Object.entries(flattenedConfig)) {
+        if (keysSeen.has(item.key)) {
+            console.error(`[QuickAccess] Duplication de la touche "${item.key}" détectée dans le chemin`, [...path, key]);
+        } else {
+            keysSeen.add(item.key);
+        }
+    }
+}
 
 /**
  * Cette fonction permet de changer de QALevel
@@ -357,11 +392,13 @@ function currentLevelConfig(actualQALevel, config) {
  * ce soit fait correctement avec le peuplement des niveaux inférieurs au besoin
  * 
  * @param {string[]} targetQALevel - Nouveau chemin cible
- * @param {string[]} actualQALevel - Chemin actuel
+ * @param {Object} state - Objet d'état contenant currentLevel
  * @param {Object} config - Configuration racine
  * @returns {boolean} true si le changement est valide, false sinon
  */
-function moveToTargetConfig(targetQALevel, actualQALevel, config) {
+function moveToTargetConfig(targetQALevel, state, config) {
+    const actualQALevel = state.currentLevel;
+    
     // Vérifier que la demande de changement de niveau est d'un niveau exactement
     const levelDiff = Math.abs(targetQALevel.length - actualQALevel.length);
     
@@ -401,6 +438,8 @@ function moveToTargetConfig(targetQALevel, actualQALevel, config) {
     // Appliquer le changement de niveau en peuplant si besoin le nouveau niveau
     try {
         populateSubItems(config, targetQALevel);
+        // ✅ Mettre à jour l'état si le changement est valide
+        state.currentLevel = targetQALevel;
         return true;
     } catch (error) {
         console.error(`[QuickAccess] Erreur lors du peuplement des subItems`, error);
@@ -469,4 +508,143 @@ function populateSubItems(config, targetQALevel) {
     console.log(`[QuickAccess] Configuration après peuplement pour le niveau`, targetQALevel, config);
 }
 
+/**
+ * Désactive le mode Quick Access en supprimant l'overlay et les listeners associés
+ * et en supprimant les infobulles affichées.
+ */
+function deactivateQuickAccess(overlay) {
+    // supprimer l'overlay (les listeners y étant attachés, ils seront automatiquement supprimés)
+    overlay.remove();
 
+    // supprimer les infobulles affichées
+    clearAllTooltips();
+}
+
+
+/**
+ * Suppression de tout les tooltips affichés
+ */
+function clearAllTooltips() {
+    const tooltips = document.querySelectorAll('.wh-quickaccess-tooltip');
+    tooltips.forEach(tooltip => tooltip.remove());
+}
+
+/**
+ * Crée et affiche l'overlay semi-transparent
+ */
+function createOverlay() {
+    const overlay = document.createElement('div');
+    overlay.id = 'wh-quickaccess-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.1);
+        z-index: 99998;
+        pointer-events: none;
+    `;
+
+    // Message d'information
+    const message = document.createElement('div');
+    message.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 8px 15px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: normal;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        z-index: 99999;
+        pointer-events: none;
+        font-family: Arial, sans-serif;
+    `;
+    message.textContent = 'Quick Access (Échap pour quitter)';
+
+    overlay.appendChild(message);
+    document.body.appendChild(overlay);
+    quickAccessState.overlayElement = overlay;
+    return overlay;
+}
+
+
+/**
+ * Crée et affiche un tooltip sur un élément
+ * @param {HTMLElement} element - Élément sur lequel afficher le tooltip
+ * @param {string} key - Touche de raccourci
+ * @param {boolean} hasDoubleTap - Indique si un double-tap est disponible
+ */
+function createTooltip(selector, key, hasDoubleTap = false) {
+    const element = document.querySelector(selector);
+    console.log(`[QuickAccess] Création du tooltip pour la touche "${key}" sur l'élément:`, element);
+    if (!element) return;
+
+    // S'assurer que l'élément est visible
+    if (element.offsetParent === null) {
+        console.log(`[QuickAccess] Élément non visible, tooltip ignoré pour la clé ${key}`);
+        return;
+    }
+
+    const tooltip = document.createElement('span');
+    tooltip.className = 'wh-quickaccess-tooltip';
+
+    // Calculer la position de l'élément
+    const rect = element.getBoundingClientRect();
+
+    // Style avec positionnement fixed pour garantir la visibilité
+    tooltip.style.cssText = `
+        position: fixed;
+        color: #333;
+        font-size: 1em;
+        background-color: rgba(240, 240, 240, 0.95);
+        padding: 4px 8px;
+        border-radius: 10px;
+        pointer-events: none;
+        white-space: nowrap;
+        z-index: 99999;
+        top: ${rect.bottom + 2}px;
+        left: ${rect.left}px;
+        height: auto;
+        line-height: normal;
+        display: inline-block;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    `;
+
+    // Si double-tap disponible, mettre en bleu
+    if (hasDoubleTap) {
+        tooltip.style.color = 'blue';
+    }
+
+    // Contenu : uniquement la touche
+    tooltip.textContent = key.toUpperCase();
+
+    // Ajouter le tooltip au body plutôt qu'à l'élément
+    document.body.appendChild(tooltip);
+
+    // Stocker une référence à l'élément pour repositionner si nécessaire
+    tooltip.dataset.targetElement = element;
+}
+
+
+/**
+ * Affiche les tooltips pour le niveau actuel
+ * @param {Object} state - Objet d'état contenant currentLevel
+ * @param {Object} config - Configuration racine
+ */
+function showTooltips(state, config) {
+    // Supprimer tous les tooltips existants
+    clearAllTooltips();
+
+    // Obtenir la configuration aplatie du niveau actuel
+    const flattenedConfig = flattenedCurrentLevelConfig(state, config);
+
+    console.log('[QuickAccess] Affichage des tooltips pour le niveau', state.currentLevel, flattenedConfig);
+
+    for (const [key, item] of Object.entries(flattenedConfig)) {
+        createTooltip(item.selector, item.key, item.onDoubleTap != null);
+    }
+}
