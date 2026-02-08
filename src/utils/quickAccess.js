@@ -43,9 +43,9 @@ const quickAccessConfig = {
         hotkey: 'm',
         onTap: 'horizontal_menu_pseudomouseover',
         onDoubleTap: 'clic',
-        subItems: function (element, currentItemId) {
+        subItems: function (element, currentItemHotkey) {
             const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-            return submenu ? generateHorizMenuSubItems(submenu, 'medical', currentItemId) : {};
+            return submenu ? generateHorizMenuSubItems(submenu, 'medical', currentItemHotkey) : {};
         }
     },
 
@@ -54,9 +54,9 @@ const quickAccessConfig = {
         hotkey: 'p',
         onTap: 'horizontal_menu_pseudomouseover',
         onDoubleTap: 'clic',
-        subItems: function (element, currentItemId) {
+        subItems: function (element, currentItemHotkey) {
             const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-            return submenu ? generateHorizMenuSubItems(submenu, 'applicatifs', currentItemId) : {};
+            return submenu ? generateHorizMenuSubItems(submenu, 'applicatifs', currentItemHotkey) : {};
         }
     },
 
@@ -65,9 +65,9 @@ const quickAccessConfig = {
         hotkey: 'g',
         onTap: 'horizontal_menu_pseudomouseover',
         onDoubleTap: 'clic',
-        subItems: function (element, currentItemId) {
+        subItems: function (element, currentItemHotkey) {
             const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-            return submenu ? generateHorizMenuSubItems(submenu, 'gestion', currentItemId) : {};
+            return submenu ? generateHorizMenuSubItems(submenu, 'gestion', currentItemHotkey) : {};
         }
     },
 
@@ -76,9 +76,9 @@ const quickAccessConfig = {
         hotkey: 'e',
         onTap: 'horizontal_menu_pseudomouseover',
         onDoubleTap: 'clic',
-        subItems: function (element, currentItemId) {
+        subItems: function (element, currentItemHotkey) {
             const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-            return submenu ? generateHorizMenuSubItems(submenu, 'parametres', currentItemId) : {};
+            return submenu ? generateHorizMenuSubItems(submenu, 'parametres', currentItemHotkey) : {};
         }
     },
 
@@ -95,9 +95,9 @@ const quickAccessConfig = {
                 hotkey: 'w',
                 onTap: 'W_menu_pseudomouseover',
                 onDoubleTap: 'clic',
-                subItems: function (element, currentItemId) {
+                subItems: function (element, currentItemHotkey) {
                     const submenu = element.querySelector('ul.level2.dynamic');
-                    return submenu ? generateWMenuSubItems(submenu, 'menu_w_sidebar', currentItemId) : {};
+                    return submenu ? generateWMenuSubItems(submenu, 'menu_w_sidebar', currentItemHotkey) : {};
                 }
             },
 
@@ -121,9 +121,9 @@ const quickAccessConfig = {
                 hotkey: 'p',
                 onTap: 'W_menu_pseudomouseover',
                 onDoubleTap: 'clic',
-                subItems: function (element, currentItemId) {
+                subItems: function (element, currentItemHotkey) {
                     const submenu = element.querySelector('ul.level2.dynamic');
-                    return submenu ? generateWMenuSubItems(submenu, 'peripheriques', currentItemId) : {};
+                    return submenu ? generateWMenuSubItems(submenu, 'peripheriques', currentItemHotkey) : {};
                 }
             },
 
@@ -186,7 +186,7 @@ const quickAccessConfig = {
 
             'arrets_travail': {
                 selector: '#ContentPlaceHolder1_ButtonAT',
-                hotkey: 'r',
+                hotkey: 'z',
                 onTap: 'clic'
             },
 
@@ -196,9 +196,9 @@ const quickAccessConfig = {
                 hotkey: 'i',
                 onTap: 'W_menu_pseudomouseover',
                 onDoubleTap: 'clic',
-                subItems: function (element, currentItemId) {
+                subItems: function (element, currentItemHotkey) {
                     const submenu = element.querySelector('ul.level2.dynamic');
-                    return submenu ? generateWMenuSubItems(submenu, 'impression', currentItemId) : {};
+                    return submenu ? generateWMenuSubItems(submenu, 'impression', currentItemHotkey) : {};
                 }
             },
 
@@ -324,7 +324,7 @@ function executeQuickAccessAction(matchedItem, state, config) {
         deactivateQuickAccess();
     } else {
         // Cas non-terminal avec subItems : exécuter onTap puis descendre dans les subItems
-        const targetQALevel = [...state.currentLevel, getItemIdByValue(config, matchedItem)];
+        const targetQALevel = [...state.currentLevel, getItemIdByValue(currentConfig, matchedItem)];
         if (moveToTargetConfig(targetQALevel, state, config)) {
             showTooltips(state, config);
         }
@@ -414,11 +414,6 @@ function currentLevelConfig(state, config) {
     // Retourner uniquement l'élément parent avec sa structure complète (incluant subItems)
     const parentId = actualQALevel[actualQALevel.length - 1];
 
-    // Vérifier que les items de l'élément parent et ses subItems
-    // n'ont pas de lettre de raccourci en double
-    const flattenedForCheck = flattenedCurrentLevelConfig(state, config);
-    checkForKeyDuplication(flattenedForCheck, state.currentLevel);
-
     return {
         [parentId]: currentItem
     };
@@ -469,10 +464,7 @@ function flattenedCurrentLevelConfig(state, config) {
     const flattenedConfig = {};
 
     for (const [itemId, item] of Object.entries(currentConfig)) {
-        if (typeof item.subItems === "function") {
-            console.error(`[QuickAccess] Impossible d'aplatir la configuration : subItems est une fonction pour l'item "${itemId}" au niveau`, state.currentLevel);
-            continue;
-        }
+
         // Ajouter l'élément parent
         flattenedConfig[itemId] = item;
 
@@ -483,6 +475,10 @@ function flattenedCurrentLevelConfig(state, config) {
             }
         }
     }
+
+    // Vérifier que les items de l'élément parent et ses subItems
+    // n'ont pas de lettre de raccourci en double
+    checkForKeyDuplication(flattenedConfig, state.currentLevel);
 
     return flattenedConfig;
 }
@@ -514,10 +510,10 @@ function navigateToItem(config, QALevel, context = 'navigation') {
             return { item: null, parent: null, parentId: null };
         }
         
-        // ✅ Sauvegarder le parent AVANT de descendre
+        // ✅ Sauvegarder le parent AVANT de descendre dans l'item final
         if (i === QALevel.length - 1) {
-            parentItem = currentItem;
-            parentId = itemId;
+            parentItem = currentItem;  // Le conteneur parent
+            parentId = itemId;          // L'id de l'item dans ce conteneur
         }
         
         currentItem = currentItem[itemId];
@@ -528,6 +524,8 @@ function navigateToItem(config, QALevel, context = 'navigation') {
                 console.warn(`[QuickAccess] Pas de subItems pour "${itemId}" lors de ${context}`, QALevel);
                 return { item: null, parent: null, parentId: null };
             }
+            // ✅ Sauvegarder le parent pour le prochain niveau
+            parentItem = currentItem.subItems;
             currentItem = currentItem.subItems;
         }
     }
@@ -617,10 +615,10 @@ function populateSubItems(config, targetQALevel) {
         return;
     }
     
-    // Naviguer jusqu'à l'élément cible
-    const { item: currentItem } = navigateToItem(config, targetQALevel, 'populateSubItems');
+    // Naviguer jusqu'à l'élément cible et obtenir son parent
+    const { item: currentItem, parent: parentContainer, parentId } = navigateToItem(config, targetQALevel, 'populateSubItems');
     
-    if (!currentItem) {
+    if (!currentItem || !parentContainer) {
         return;
     }
     
@@ -636,9 +634,13 @@ function populateSubItems(config, targetQALevel) {
         
         if (element) {
             // ⚠️ REMPLACEMENT PERMANENT : la fonction est remplacée par son résultat
-            // Appeler la fonction pour générer les subItems et les remplacer
-            let currentItemId = getItemIdByValue(config, currentItem);
-            currentItem.subItems = currentItem.subItems(element, currentItemId); // on peut aussi passer la clé de l'item si besoin
+            // Modifier directement dans le parent pour que le cache fonctionne
+            const currentItemHotkey = currentItem.hotkey || null;
+            const generatedSubItems = currentItem.subItems(element, currentItemHotkey);
+            
+            // ✅ Modifier directement la référence dans quickAccessConfig via le parent
+            parentContainer[parentId].subItems = generatedSubItems;
+            
             console.log(`[QuickAccess] SubItems peuplés avec succès pour`, targetQALevel);
         } else {
             console.warn(`[QuickAccess] Impossible de trouver l'élément pour peupler les subItems`, targetQALevel);
@@ -890,6 +892,12 @@ function generateWMenuSubItems(submenuElement, parentId, currentItemHotkey) {
  */
 function generateHorizMenuSubItems(submenuElement, parentId, currentItemHotkey) {
     const subItems = {};
+    const usedHotkeys = new Set();
+    
+    // Ajouter la hotkey du parent aux hotkeys à éviter
+    if (currentItemHotkey) {
+        usedHotkeys.add(currentItemHotkey.toLowerCase());
+    }
 
     // Récupérer tous les liens directs de ce niveau
     const menuItems = submenuElement.querySelectorAll(':scope > li > a');
@@ -902,12 +910,15 @@ function generateHorizMenuSubItems(submenuElement, parentId, currentItemHotkey) 
         const hasArrow = link.classList.contains('nav-icon__link--arrow-right');
         const nextLevelSubmenu = parentLi.querySelector('.nav-menu__submenu--level2');
 
-        // Générer une clé numérique ou alphabétique en évitant la touche du parent
+        // Générer une clé numérique ou alphabétique en évitant les touches déjà utilisées
         let hotkey;
         do {
             hotkey = keyIndex <= 9 ? keyIndex.toString() : String.fromCharCode(96 + keyIndex); // a, b, c...
             keyIndex++;
-        } while (hotkey === currentItemHotkey);
+        } while (usedHotkeys.has(hotkey));
+        
+        // Ajouter la hotkey générée à la liste des hotkeys utilisées
+        usedHotkeys.add(hotkey);
 
         const itemId = `${parentId}_item_${keyIndex - 1}`;
 
