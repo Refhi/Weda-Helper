@@ -16,7 +16,7 @@
  * @param {string|Function} action - Action à exécuter ("clic", "mouseover", "enter", ou fonction)
  * @param {HTMLElement} element - Élément cible
  */
-function executeAction(action, element) {
+function executeQuickAccessAction(action, element) {
     if (!element) {
         console.warn('[QuickAccess] Impossible d\'exécuter l\'action : élément manquant');
         return;
@@ -251,22 +251,6 @@ function handleQuickAccessKey(e) {
         console.warn(`[QuickAccess] Aucun sous-élément trouvé pour ${itemId} - Sortie du mode`);
         recordMetrics({ clicks: 1, drags: 1 });
         deactivateQuickAccess();
-    }
-}
-
-
-/**
- * Vérifie s'il y a des conflits de touches dans la configuration
- * @param {Object} config - Configuration à vérifier
- */
-function checkForDuplicateKeys(config) {
-    const keys = {};
-    for (const [key, item] of Object.entries(config)) {
-        if (keys[item.key]) {
-            console.warn(`[QuickAccess] ⚠️ CONFLIT : La touche "${item.key}" est utilisée plusieurs fois :`, keys[item.key], item);
-        } else {
-            keys[item.key] = item;
-        }
     }
 }
 

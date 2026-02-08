@@ -265,8 +265,19 @@ function addListenersToOverlay(overlay, state, config) {
 }
 
 function handleQuickAccessKey(e, state, config) {
-    // TODO
+    // Vérifier que la touche pressée correspond à un élément du niveau actuel
+    const currentConfig = flattenedCurrentLevelConfig(state, config);
+    const matchedItem = Object.values(currentConfig).find(item => item.key === e.key);
+
+    if (matchedItem) {
+
+        // Exécuter l'action associée à onTap ou onDoubleTap selon le contexte
+        // et gérer la navigation dans les niveaux si nécessaire
+        executeQuickAccessAction(matchedItem, state, config);
+    }
 }
+
+
 
 /**
  * Renvoie la configuration du niveau actuel sous forme d'objet
