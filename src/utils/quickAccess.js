@@ -326,7 +326,9 @@ function executeQuickAccessAction(matchedItem, state, config) {
         // Cas non-terminal avec subItems : exécuter onTap puis descendre dans les subItems
         const targetQALevel = [...state.currentLevel, getItemIdByValue(currentConfig, matchedItem)];
         if (moveToTargetConfig(targetQALevel, state, config)) {
-            showTooltips(state, config);
+            setTimeout(() => {
+                showTooltips(state, config);
+            }, 100); // Petit délai pour laisser le temps au DOM de se mettre à jour si besoin
         }
     }
 }
@@ -727,7 +729,7 @@ function createOverlay() {
  */
 function createTooltip(selector, hotkey, hasDoubleTap = false) {
     const element = document.querySelector(selector);
-    console.log(`[QuickAccess] Création du tooltip pour la touche "${hotkey}" sur l'élément:`, element);
+    console.log(`[QuickAccess] Création du tooltip pour la touche "${hotkey}" sur l'élément:`, element, "Selector:", selector);
     if (!element) return;
 
     // S'assurer que l'élément est visible
@@ -792,6 +794,7 @@ function showTooltips(state, config) {
     console.log('[QuickAccess] Affichage des tooltips pour le niveau', state.currentLevel, flattenedConfig);
 
     for (const [itemId, item] of Object.entries(flattenedConfig)) {
+        console.log(`[QuickAccess] Traitement de l'item "${itemId}" pour affichage du tooltip:`, item, "Selector:", item.selector, "Hotkey:", item.hotkey, "HasDoubleTap:", item.onDoubleTap != null);
         createTooltip(item.selector, item.hotkey, item.onDoubleTap != null);
     }
 }
@@ -922,9 +925,19 @@ function generateHorizMenuSubItems(submenuElement, parentId, currentItemHotkey) 
 
         const itemId = `${parentId}_item_${keyIndex - 1}`;
 
+        // Générer un sélecteur valide : utiliser l'id existant ou en créer un
+        let selector;
+        if (link.id) {
+            selector = `#${link.id}`;
+        } else {
+            // Créer un id unique pour cet élément
+            const uniqueId = `wh-qa-${itemId}`;
+            link.id = uniqueId;
+            selector = `#${uniqueId}`;
+        }
+
         const item = {
-            selector: null,
-            element: link,
+            selector: selector,
             hotkey: hotkey,
             onTap: hasArrow ? 'horizontal_menu_pseudomouseover' : 'clic'
         };
