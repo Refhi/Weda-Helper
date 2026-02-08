@@ -452,7 +452,7 @@ function checkForKeyDuplication(config, QALevel) {
 }
 
 /**
- * Fonction utilitaire pour trouver la clé d'un objet à partir de son titre (valeur)
+ * Fonction utilitaire pour trouver la clé (touche d’action) d'un objet à partir de son titre (valeur)
  */
 function getKeyByValue(obj, value) {
     return Object.keys(obj).find(key => obj[key] === value);
@@ -469,6 +469,10 @@ function flattenedCurrentLevelConfig(state, config) {
     const flattenedConfig = {};
 
     for (const [key, item] of Object.entries(currentConfig)) {
+        if (typeof item.subItems === "function") {
+            console.error(`[QuickAccess] Impossible d'aplatir la configuration : subItems est une fonction pour l'item "${key}" au niveau`, state.currentLevel);
+            continue;
+        }
         // Ajouter l'élément parent
         flattenedConfig[key] = item;
 
@@ -494,39 +498,42 @@ function flattenedCurrentLevelConfig(state, config) {
  * @returns {{item: Object|null, parent: Object|null}} Objet contenant l'item trouvé et son parent
  */
 function navigateToItem(config, QALevel, context = 'navigation') {
-    // Cas du niveau racine
     if (QALevel.length === 0) {
-        return { item: config, parent: null };
+        return { item: config, parent: null, parentKey: null };
     }
 
-    // Naviguer jusqu'à l'élément cible
     let currentItem = config;
     let parentItem = null;
+    let parentKey = null;
     
     for (let i = 0; i < QALevel.length; i++) {
         const key = QALevel[i];
         
         if (!currentItem[key]) {
             console.warn(`[QuickAccess] Élément "${key}" introuvable lors de ${context}`, QALevel);
-            return { item: null, parent: null };
+            return { item: null, parent: null, parentKey: null };
         }
         
-        parentItem = currentItem;
+        // ✅ Sauvegarder le parent AVANT de descendre
+        if (i === QALevel.length - 1) {
+            parentItem = currentItem;
+            parentKey = key;
+        }
+        
         currentItem = currentItem[key];
         
         // Si ce n'est pas le dernier niveau, descendre dans subItems
         if (i < QALevel.length - 1) {
             if (!currentItem.subItems) {
                 console.warn(`[QuickAccess] Pas de subItems pour "${key}" lors de ${context}`, QALevel);
-                return { item: null, parent: null };
+                return { item: null, parent: null, parentKey: null };
             }
             currentItem = currentItem.subItems;
         }
     }
 
-    return { item: currentItem, parent: parentItem };
+    return { item: currentItem, parent: parentItem, parentKey };
 }
-
 
 
 /**
@@ -889,7 +896,6 @@ function generateHorizMenuSubItems(submenuElement, parentId, currentItemKey) {
 
     let keyIndex = 1;
     menuItems.forEach(link => {
-        const text = link.textContent.trim();
         const parentLi = link.parentElement;
 
         // Chercher un sous-menu de niveau suivant
@@ -909,7 +915,7 @@ function generateHorizMenuSubItems(submenuElement, parentId, currentItemKey) {
             selector: null,
             element: link,
             key: key,
-            onTap: hasArrow ? 'pseudomouseover' : 'clic'
+            onTap: hasArrow ? 'horizontal_menu_pseudomouseover' : 'clic'
         };
 
         // Si a un sous-menu, configurer le double-tap pour ouvrir directement
