@@ -29,7 +29,7 @@ const quickAccessConfig = {
         selector: 'a[href*="FindPatientForm.aspx"]',
         key: 'r',
         onTap: function () {
-            openSearch();
+            openSearch(); // définie dans keyCommand.js
         }
     },
 
@@ -37,7 +37,7 @@ const quickAccessConfig = {
     'medical': {
         selector: '#nav-menu > li > a.nav-icon__link--doctor',
         key: 'm',
-        onTap: 'pseudomouseover',
+        onTap: 'horizontal_menu_pseudomouseover',
         onDoubleTap: 'clic',
         subItems: function (element) {
             const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
@@ -48,7 +48,7 @@ const quickAccessConfig = {
     'applicatifs': {
         selector: '#nav-menu > li > a.nav-icon__link--tools',
         key: 'p',
-        onTap: 'pseudomouseover',
+        onTap: 'horizontal_menu_pseudomouseover',
         onDoubleTap: 'clic',
         subItems: function (element) {
             const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
@@ -59,7 +59,7 @@ const quickAccessConfig = {
     'gestion': {
         selector: '#nav-menu > li > a.nav-icon__link--safe-open',
         key: 'g',
-        onTap: 'pseudomouseover',
+        onTap: 'horizontal_menu_pseudomouseover',
         onDoubleTap: 'clic',
         subItems: function (element) {
             const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
@@ -70,7 +70,7 @@ const quickAccessConfig = {
     'parametres': {
         selector: '#nav-menu > li > a.nav-icon__link--mixing-desk',
         key: 'e',
-        onTap: 'pseudomouseover',
+        onTap: 'horizontal_menu_pseudomouseover',
         onDoubleTap: 'clic',
         subItems: function (element) {
             const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
@@ -89,7 +89,7 @@ const quickAccessConfig = {
             'menu_w_sidebar': {
                 selector: '#ContentPlaceHolder1_UpdatePanelMenuNavigate',
                 key: 'w',
-                onTap: 'pseudomouseover',
+                onTap: 'W_menu_pseudomouseover',
                 onDoubleTap: 'clic',
                 subItems: function (element) {
                     const submenu = element.querySelector('ul.level2.dynamic');
@@ -115,7 +115,7 @@ const quickAccessConfig = {
             'peripheriques': {
                 selector: '#ContentPlaceHolder1_DivMenuPeripherique',
                 key: 'p',
-                onTap: 'mouseover',
+                onTap: 'W_menu_pseudomouseover',
                 onDoubleTap: 'clic',
                 subItems: function (element) {
                     const submenu = element.querySelector('ul.level2.dynamic');
@@ -190,7 +190,7 @@ const quickAccessConfig = {
             'impression': {
                 selector: '#ContentPlaceHolder1_MenuPrint > ul.level1.static',
                 key: 'i',
-                onTap: 'pseudomouseover',
+                onTap: 'W_menu_pseudomouseover',
                 onDoubleTap: 'clic',
                 subItems: function (element) {
                     const submenu = element.querySelector('ul.level2.dynamic');
@@ -253,13 +253,21 @@ function activateQuickAccess() {
 
 function addListenersToOverlay(overlay, state, config) {
     overlay.addEventListener('keydown', (e) => {
-        handleQuickAccessKey(e, state, config)
-    })
+        if (e.key === 'Backspace' && state.currentLevel.length > 0) {
+            // Remonter d'un niveau
+            const parentLevel = state.currentLevel.slice(0, -1);
+            if (moveToTargetConfig(parentLevel, state, config)) {
+                showTooltips(state, config);
+            }
+        } else {
+            handleQuickAccessKey(e, state, config);
+        }
+    });
 
     // On implémente aussi la touche terminale
     overlay.addEventListener('keyup', (e) => {
         if (e.key === 'Escape') {
-            deactivateQuickAccess(overlay)
+            deactivateQuickAccess()
         }
     })
 }
@@ -287,6 +295,8 @@ function executeQuickAccessAction(matchedItem, state, config) {
     // Détection du double-tap : si la touche détectée correspond au premier élément
     // du flattenedCurrentLevelConfig, on doit éxécuter onDoubleTap au lieu de onTap
     const currentConfig = flattenedCurrentLevelConfig(state, config);
+    // Ce n’est pas du vrai double-tap, mais si on appelle l’élément parent
+    // c’est forcémente que c’est un double-tap
     const isDoubleTap = matchedItem.onDoubleTap && Object.values(currentConfig)[0] === matchedItem;
     
     // Ensuite on doit déterminer si l’action est de type terminal
@@ -295,15 +305,18 @@ function executeQuickAccessAction(matchedItem, state, config) {
 
     const action = isDoubleTap ? matchedItem.onDoubleTap : matchedItem.onTap;
     const targetElementSelector = matchedItem.selector;
+    
+    // Ne rien exécuter si l'action est null/undefined
+    if (action) {
+        executeAction(action, targetElementSelector);
+    }
 
     if (isTerminal) {
         // Cas terminal : exécuter l'action et sortir du Quick Access
-        executeAction(action, targetElementSelector);
-        recordMetrics({ clicks: 1, drags: 1 });
-        deactivateQuickAccess(overlay);
+        recordMetrics({ clicks: 1, drags: 1 }); // Définie dans metrics.js
+        deactivateQuickAccess();
     } else {
         // Cas non-terminal avec subItems : exécuter onTap puis descendre dans les subItems
-        executeAction(action, targetElementSelector);
         const targetQALevel = [...state.currentLevel, getKeyByValue(config, matchedItem)];
         if (moveToTargetConfig(targetQALevel, state, config)) {
             showTooltips(state, config);
@@ -331,6 +344,12 @@ function executeAction(action, selector) {
                 break;
             case 'enter':
                 element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+                break;
+            case 'horizontal_menu_pseudomouseover':
+                horizontalMenuPseudoMouseover(element);
+                break;
+            case 'W_menu_pseudomouseover':
+                WMenuPseudoMouseover(element);
                 break;
             default:
                 console.warn(`[QuickAccess] Action de type string non reconnue : "${action}"`);
@@ -409,12 +428,20 @@ function currentLevelConfig(state, config) {
 
     // Vérifier que les items de l’élément parent et ses subItems
     // n’ont pas de lettre de raccourci en double
-    checkForKeyDuplication(currentItem, state);
+    const flattenedForCheck = flattenedCurrentLevelConfig(state, config);
+    checkForKeyDuplication(flattenedForCheck, state.currentLevel);
 
     return {
         [parentKey]: currentItem
     };
 }
+/**
+ * Fonction utilitaire pour trouver la clé d'un objet à partir de son titre (valeur)
+ */
+function getKeyByValue(obj, value) {
+    return Object.keys(obj).find(key => obj[key] === value);
+}
+
 
 /**
  * Génère la même configuration que currentLevelConfig, mais applatie,
@@ -448,8 +475,7 @@ function flattenedCurrentLevelConfig(state, config) {
  * @param {Object} flattenedConfig - Configuration aplatie du niveau actuel
  * @param {string[]} path - Chemin actuel (pour les messages d'erreur)
  */
-function checkForKeyDuplication(config, state) {
-    const flattenedConfig = flattenedCurrentLevelConfig(state, config);
+function checkForKeyDuplication(flattenedConfig, path = []) {
     const keysSeen = new Set();
 
     for (const [key, item] of Object.entries(flattenedConfig)) {
@@ -588,8 +614,9 @@ function populateSubItems(config, targetQALevel) {
  * Désactive le mode Quick Access en supprimant l'overlay et les listeners associés
  * et en supprimant les infobulles affichées.
  */
-function deactivateQuickAccess(overlay) {
+function deactivateQuickAccess() {
     // supprimer l'overlay (les listeners y étant attachés, ils seront automatiquement supprimés)
+    const overlay = document.getElementById('wh-quickaccess-overlay');
     overlay.remove();
 
     // supprimer les infobulles affichées
@@ -611,6 +638,7 @@ function clearAllTooltips() {
 function createOverlay() {
     const overlay = document.createElement('div');
     overlay.id = 'wh-quickaccess-overlay';
+    overlay.tabIndex = -1; // pour pouvoir y mettre le focus et écouter les événements clavier
     overlay.style.cssText = `
         position: fixed;
         top: 0;
@@ -643,7 +671,6 @@ function createOverlay() {
 
     overlay.appendChild(message);
     document.body.appendChild(overlay);
-    quickAccessState.overlayElement = overlay;
     return overlay;
 }
 
@@ -723,4 +750,80 @@ function showTooltips(state, config) {
     for (const [key, item] of Object.entries(flattenedConfig)) {
         createTooltip(item.selector, item.key, item.onDoubleTap != null);
     }
+}
+
+
+/** 
+ * Horizontal menu pseudo-mouseover : simule un mouseover en dispatchant un événement personnalisé
+ * valable uniquement pour les éléments du menu horizontal haut dans la page d’accueil
+ */
+function horizontalMenuPseudoMouseover(element) {
+    if (!element) {
+        console.warn('[QuickAccess] Impossible de déclencher horizontalMenuPseudoMouseover : élément manquant');
+        return;
+    }
+    // Pour les menus de navigation, repositionner le sous-menu s'il sort du viewport
+    const parentLi = element.closest('li');
+    if (parentLi) {
+        const submenu = parentLi.querySelector('.nav-menu__submenu');
+        if (submenu) {
+            // Attendre que le CSS s'applique et que les animations se terminent
+            setTimeout(() => {
+                const submenuRect = submenu.getBoundingClientRect();
+                const parentRect = element.getBoundingClientRect();
+                const isOutside = submenuRect.top < 0 || submenuRect.bottom > window.innerHeight ||
+                    submenuRect.left < 0 || submenuRect.right > window.innerWidth;
+
+                if (isOutside) {
+                    console.log('[QuickAccess] Sous-menu horizontalMenuPseudoMouseover hors viewport, repositionnement par rapport à l\'élément parent...');
+
+                    // Calculer la position idéale par rapport à l'élément parent
+                    let newLeft = parentRect.right + 5; // À droite du parent avec un petit espacement
+                    let newTop = parentRect.top;
+
+                    // Ajuster si ça sort à droite
+                    if (newLeft + submenuRect.width > window.innerWidth) {
+                        newLeft = parentRect.left - submenuRect.width - 5; // À gauche du parent
+                    }
+
+                    // Ajuster si ça sort à gauche
+                    if (newLeft < 0) {
+                        newLeft = 10; // Marge minimale à gauche
+                    }
+
+                    // Ajuster si ça sort en bas
+                    if (newTop + submenuRect.height > window.innerHeight) {
+                        newTop = window.innerHeight - submenuRect.height - 10;
+                    }
+
+                    // Ajuster si ça sort en haut
+                    if (newTop < 0) {
+                        newTop = 10; // Marge minimale en haut
+                    }
+
+                    // Appliquer la position
+                    submenu.style.position = 'fixed';
+                    submenu.style.left = newLeft + 'px';
+                    submenu.style.top = newTop + 'px';
+                    submenu.style.zIndex = '10000';
+
+                    console.log(`[QuickAccess] Sous-menu repositionné à left=${newLeft}, top=${newTop}`);
+                }
+            }, 50); // Augmenté de 10ms à 50ms
+        }
+    }
+}
+
+
+/**
+ * Menu W pseudo-mouseover : simule un mouseover en dispatchant un événement personnalisé
+ * valable uniquement pour les éléments du menu W dans la sidebar gauche
+ */
+function WMenuPseudoMouseover(element) {
+    if (!element) {
+        console.warn('[QuickAccess] Impossible de déclencher WMenuPseudoMouseover : élément manquant');
+        return;
+    }
+    console.error('[QuickAccess] WMenuPseudoMouseover déclenché mais pas encore implémenté');
+    // TODO : implémenter une logique spécifique pour le menu W si nécessaire, similaire à horizontalMenuPseudoMouseover
 }
