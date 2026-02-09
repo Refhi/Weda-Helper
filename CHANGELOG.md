@@ -4,13 +4,7 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
-# [2.15.1.0] - fix - beta testing
-
-## A l’attention des beta-testeurs :
-- pouvez-vous tester les imports semi-automatiques dans la messagerie sécurisée et me faire un retour si vous constatez des problèmes ? Merci d’avance ! (ça devrait être plus fiable désormais, mais à tester !)
-- j’ai essayé de fix le problème d’impression des arrêts de travail qui ne s’imprimaient pas toujours correctement. Pouvez-vous me dire si ça fonctionne mieux pour vous ? Merci d’avance !
-
-
+# [2.15.1.2] - fixes et améliorations
 ## L’historique des facturations dans la page des FSE est désormais ouverte !
 - En allant dans les options de Weda-Helper, vous pouvez activer l’affichage de l’historique des facturations dans la page des FSE. Utile pour les facturations qui ne peuvent être faite que une seule fois par période (ex. ALQP003, GL1, etc.).
 
