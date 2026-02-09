@@ -24,7 +24,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#526](https://github.com/Refhi/Weda-Helper/issues/526) - vous pouvez désormais afficher des alertes dans la description des atcd grace à un # par exemple #annuel après une date affichera une coloration selon la proximité de la date (utile pour les suivis annuels par exemple).
 - [#562](https://github.com/Refhi/Weda-Helper/issues/562) - les variable type {variable1} sont également automatiquement supprimées dans les courriers.
 
-# [2.15] - Bonne année 2026 à toustes ! 🎉🎊
+# [2.15.0.5] - Bonne année 2026 à toustes ! 🎉🎊
 
 ## 🎯 Vos Pôles et Cabinets peuvent désormais créer des alertes personnalisées communes sur les antécédents ! 
 - ⚕️ Particulièrement utile pour repérer facilement les patients éligibles à un suivi spécifique comme l'inscription à un atelier ETP.
