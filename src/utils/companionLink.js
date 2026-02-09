@@ -24,12 +24,14 @@ chrome.storage.local.set({ 'version': '1.2' });
 
 // Initialise la clé API
 chrome.storage.local.get('apiKey', function (result) {
-    console.log('Clé API récupérée :', result.apiKey);
+    // console.log('Clé API récupérée :', result.apiKey);
+    console.log('Clé API récupérée'); // ne pas afficher la clé en clair dans la console pour des raisons de sécurité
     if (!result.apiKey) {
         console.log('Aucune clé API trouvée, génération d\'une nouvelle clé...');
         const apiKey = generateApiKey(32);
         chrome.storage.local.set({ 'apiKey': apiKey }, function () {
-            console.log('Clé API générée et stockée :', apiKey);
+            // console.log('Clé API générée et stockée :', apiKey);
+            console.log('Clé API générée et stockée'); // ne pas afficher la clé en clair dans la console pour des raisons de sécurité
         });
     }
     
@@ -43,7 +45,7 @@ chrome.storage.local.get('apiKey', function (result) {
                 // Si l'utilisateur confirme, générer une nouvelle clé
                 const newApiKey = generateApiKey(32);
                 chrome.storage.local.set({ 'apiKey': newApiKey }, function () {
-                    console.log('Nouvelle clé API générée et stockée :', newApiKey);
+                    console.log('Nouvelle clé API générée et stockée'); // ne pas afficher la clé en clair dans la console pour des raisons de sécurité
                     alert("Nouvelle clé API générée : " + newApiKey + ". Pensez à la reporter dans le Companion.");
                 });
             } else {

@@ -208,7 +208,7 @@ function tweakFSECreation() {
 
                 // Créer le premier bouton
                 var button1 = document.createElement('button');
-                // button1.id = 'targetValider';
+                button1.id = 'targetValider';
                 button1.classList.add('boutonCustonWH');
                 button1.textContent = 'FSE dégradée';
                 Object.assign(button1.style, commonStyle);
@@ -218,7 +218,7 @@ function tweakFSECreation() {
 
                 // Créer le deuxième bouton
                 var button2 = document.createElement('button');
-                // button2.id = 'targetAnnuler';
+                button2.id = 'targetAnnuler';
                 button2.classList.add('boutonCustonWH');
                 button2.textContent = 'FSE Teleconsultation';
                 Object.assign(button2.style, commonStyle);

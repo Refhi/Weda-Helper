@@ -1,8 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper",
-  "version": "2.15.0.5",
-  "version_name": "2.15.0.5",
+  "version": "2.15.1.2",
   "options_page": "src/ui/options.html",
   "permissions": [
     "storage"
@@ -50,6 +49,7 @@
         "src/ui/popupFunctions.js",
         "src/features/conflictHandler.js",
         "src/features/alertesAtcd.js",
+        "src/features/alertesDates.js",
         "src/features/content.js",
         "src/features/accueil.js",
         "src/features/consultation.js",
@@ -65,7 +65,8 @@
         "src/features/wedaEchanges.js",
         "src/features/pdfParser.js",
         "src/features/headlessSetup.js",
-        "src/features/instantVaccine.js"
+        "src/features/instantVaccine.js",
+        "src/features/accoladesHandling.js"
       ]
     }
   ],

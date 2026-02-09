@@ -4,6 +4,26 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.15.1.2] - fixes et améliorations
+## L’historique des facturations dans la page des FSE est désormais ouverte !
+- En allant dans les options de Weda-Helper, vous pouvez activer l’affichage de l’historique des facturations dans la page des FSE. Utile pour les facturations qui ne peuvent être faite que une seule fois par période (ex. ALQP003, GL1, etc.).
+
+## Fix :
+- [#550](https://github.com/Refhi/Weda-Helper/issues/550) - la cible de alt+V est désormais constante, notamment dans la page des imports sécurisés.
+- [#549](https://github.com/Refhi/Weda-Helper/issues/549) - ajout de lumbago dans les motifs d'arrêt de travail rapides.
+- les alertes etp sont limitées à l’onglet en cours.
+- [#559](https://github.com/Refhi/Weda-Helper/issues/559) - retrait des informations sensibles des logs d’erreurs afin de limiter l’exposition de données personnelles en cas de partage du log lors d’un signalement de bug.
+- [#554](https://github.com/Refhi/Weda-Helper/issues/554) - Amélioration du flux de travail lors des imports automatique dans la messagerie sécurisée : devrait être plus fiable.
+- [#563](https://github.com/Refhi/Weda-Helper/issues/563) - amélioration des impressions automatiques des arrêts de travail : devrait être plus fiable.
+- la mention "AT avec CV | AT sans CV" dans l’accueil du dossier patient ne disparait plus indument après un rafraichissement de la page.
+- fix disparition de la pré-alertVSM
+- les boutons FSE Téléconsultation et FSE Dégradée n’apparaissent qu’une seule fois dans la page des FSE, même en cas de relecture de la carte vitale.
+
+## Améliorations :
+- les alertes basées sur l’état civil sont désormais fonctionnelles (ex. mettre en évidence certaines tranches d’age et de genre).
+- [#526](https://github.com/Refhi/Weda-Helper/issues/526) - vous pouvez désormais afficher des alertes dans la description des atcd grace à un # par exemple #annuel après une date affichera une coloration selon la proximité de la date (utile pour les suivis annuels par exemple).
+- [#562](https://github.com/Refhi/Weda-Helper/issues/562) - les variable type {variable1} sont également automatiquement supprimées dans les courriers.
+
 # [2.15.0.5] - Bonne année 2026 à toustes ! 🎉🎊
 
 ## 🎯 Vos Pôles et Cabinets peuvent désormais créer des alertes personnalisées communes sur les antécédents ! 
