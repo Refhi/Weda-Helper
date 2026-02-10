@@ -270,17 +270,22 @@ function activateQuickAccess() {
 
 function addListenersToOverlay(overlay, state, config) {
     overlay.addEventListener('keydown', (e) => {
-        if (e.key === 'Backspace' && state.currentLevel.length > 0) {
-            // Remontée : récupérer l'élément qu'on quitte et revert son sous-menu
-            console.log(`[QuickAccess] Item à quitter lors de la remontée`, state.currentLevel);
-            if (state.currentLevel && state.currentLevel.length > 0) {
-                revertMovedElement(JSON.stringify(state.currentLevel));
-            }
+        if (e.key === 'Backspace') {
+            if (state.currentLevel.length === 0) {
+                // Déjà à la racine : quitter le Quick Access
+                deactivateQuickAccess();
+            } else {
+                // Remontée : récupérer l'élément qu'on quitte et revert son sous-menu
+                console.log(`[QuickAccess] Item à quitter lors de la remontée`, state.currentLevel);
+                if (state.currentLevel && state.currentLevel.length > 0) {
+                    revertMovedElement(JSON.stringify(state.currentLevel));
+                }
 
-            // Remonter d'un niveau
-            const parentLevel = state.currentLevel.slice(0, -1);
-            if (moveToTargetConfig(parentLevel, state, config)) {
-                showTooltips(state, config);
+                // Remonter d'un niveau
+                const parentLevel = state.currentLevel.slice(0, -1);
+                if (moveToTargetConfig(parentLevel, state, config)) {
+                    showTooltips(state, config);
+                }
             }
         } else {
             handleQuickAccessKey(e, state, config);
