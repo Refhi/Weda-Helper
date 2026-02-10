@@ -35,7 +35,6 @@ const quickAccessConfig = {
     // Recherche patient
     'recherche_patient': {
         selector: 'a[href*="FindPatientForm.aspx"]',
-        hotkey: 'r',
         onTap: function () {
             openSearch(); // définie dans keyCommand.js
         }
@@ -47,9 +46,9 @@ const quickAccessConfig = {
         hotkey: 'm',
         onTap: 'horizontal_menu_pseudomouseover',
         onDoubleTap: 'clic',
-        subItems: function (element, currentItemHotkey) {
+        subItems: function (element) {
             const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-            return submenu ? generateHorizMenuSubItems(submenu, 'medical', currentItemHotkey) : {};
+            return submenu ? generateHorizMenuSubItems(submenu, 'medical') : {};
         }
     },
 
@@ -58,9 +57,9 @@ const quickAccessConfig = {
         hotkey: 'p',
         onTap: 'horizontal_menu_pseudomouseover',
         onDoubleTap: 'clic',
-        subItems: function (element, currentItemHotkey) {
+        subItems: function (element) {
             const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-            return submenu ? generateHorizMenuSubItems(submenu, 'applicatifs', currentItemHotkey) : {};
+            return submenu ? generateHorizMenuSubItems(submenu, 'applicatifs') : {};
         }
     },
 
@@ -69,9 +68,9 @@ const quickAccessConfig = {
         hotkey: 'g',
         onTap: 'horizontal_menu_pseudomouseover',
         onDoubleTap: 'clic',
-        subItems: function (element, currentItemHotkey) {
+        subItems: function (element) {
             const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-            return submenu ? generateHorizMenuSubItems(submenu, 'gestion', currentItemHotkey) : {};
+            return submenu ? generateHorizMenuSubItems(submenu, 'gestion') : {};
         }
     },
 
@@ -80,143 +79,125 @@ const quickAccessConfig = {
         hotkey: 'e',
         onTap: 'horizontal_menu_pseudomouseover',
         onDoubleTap: 'clic',
-        subItems: function (element, currentItemHotkey) {
+        subItems: function (element) {
             const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-            return submenu ? generateHorizMenuSubItems(submenu, 'parametres', currentItemHotkey) : {};
+            return submenu ? generateHorizMenuSubItems(submenu, 'parametres') : {};
         }
     },
 
     // === Menu vertical gauche (sidebar) ===
     'menu_vertical_gauche': {
         selector: ".menu-sidebar",
-        hotkey: 'l',
         onTap: null,
         onDoubleTap: null,
         subItems: {
             // Menu W - Navigation événements
             'menu_w_sidebar': {
                 selector: '#ContentPlaceHolder1_UpdatePanelMenuNavigate',
-                hotkey: 'w',
                 onTap: 'W_menu_pseudomouseover',
                 onDoubleTap: 'clic',
-                subItems: function (element, currentItemHotkey) {
+                subItems: function (element) {
                     const submenu = element.querySelector('ul.level2.dynamic');
-                    return submenu ? generateWMenuSubItems(submenu, 'menu_w_sidebar', currentItemHotkey) : {};
+                    return submenu ? generateWMenuSubItems(submenu, 'menu_w_sidebar') : {};
                 }
             },
 
             // Fiche patient
             'modifier_patient': {
                 selector: '#ContentPlaceHolder1_ButtonModifierPatient',
-                hotkey: 'f',
                 onTap: 'clic'
             },
 
             // Carte Vitale
             'cv_sidebar': {
                 selector: '.cv',
-                hotkey: 'c',
                 onTap: 'clic'
             },
 
             // Menu périphériques (scanner, doctolib, DMP, omnidoc)
             'peripheriques': {
                 selector: '#ContentPlaceHolder1_DivMenuPeripherique',
-                hotkey: 'p',
                 onTap: 'W_menu_pseudomouseover',
                 onDoubleTap: 'clic',
-                subItems: function (element, currentItemHotkey) {
+                subItems: function (element) {
                     const submenu = element.querySelector('ul.level2.dynamic');
-                    return submenu ? generateWMenuSubItems(submenu, 'peripheriques', currentItemHotkey) : {};
+                    return submenu ? generateWMenuSubItems(submenu, 'peripheriques') : {};
                 }
             },
 
             // Recherche patient (déjà défini au niveau racine)
             'recherche_sidebar': {
                 selector: '.imgChercher',
-                hotkey: 'r',
                 onTap: 'clic'
             },
 
             // Ajouter patient
             'ajouter_patient': {
                 selector: '.imgAddNewPatient',
-                hotkey: 'n',
                 onTap: 'clic'
             },
 
             // Documents - Organisation hiérarchique
             'consultations': {
                 selector: '#ContentPlaceHolder1_ButtonConsultation',
-                hotkey: 'o',
                 onTap: 'clic'
             },
 
             'resultats_examen': {
                 selector: '#ContentPlaceHolder1_ButtonResultatExamen',
-                hotkey: 'x',
                 onTap: 'clic'
             },
 
             'courriers': {
                 selector: '#ContentPlaceHolder1_ButtonCourrier',
-                hotkey: 'k',
                 onTap: 'clic'
             },
 
             'vaccins': {
                 selector: '#ContentPlaceHolder1_ButtonVaccins',
-                hotkey: 'v',
                 onTap: 'clic'
             },
 
             'traitements': {
                 selector: '#ContentPlaceHolder1_ButtonPanneauxSynthetique',
-                hotkey: 't',
                 onTap: 'clic'
             },
 
             'graphiques': {
                 selector: '#ContentPlaceHolder1_ButtonChart',
-                hotkey: 'h',
                 onTap: 'clic'
             },
 
             'documents_joints': {
                 selector: '#ButtonDocumentJointAction',
-                hotkey: 'd',
                 onTap: 'clic'
             },
 
             'arrets_travail': {
                 selector: '#ContentPlaceHolder1_ButtonAT',
-                hotkey: 'z',
                 onTap: 'clic'
             },
 
             // Menu impression
             'impression': {
                 selector: '#ContentPlaceHolder1_MenuPrint > ul.level1.static',
-                hotkey: 'i',
                 onTap: 'W_menu_pseudomouseover',
                 onDoubleTap: 'clic',
-                subItems: function (element, currentItemHotkey) {
+                subItems: function (element) {
                     const submenu = element.querySelector('ul.level2.dynamic');
-                    return submenu ? generateWMenuSubItems(submenu, 'impression', currentItemHotkey) : {};
+                    return submenu ? generateWMenuSubItems(submenu, 'impression') : {};
                 }
             },
 
             // Recherche prescriptions
             'recherche_prescriptions': {
                 selector: '#ContentPlaceHolder1_ButtonHasStat',
-                hotkey: 'q',
                 onTap: 'clic'
             },
 
             // Séquenceur
             'sequenceur': {
                 selector: '#ContentPlaceHolder1_ButtonSequenceur',
-                hotkey: 'z',
                 onTap: 'clic'
             }
         }
@@ -430,6 +411,9 @@ function flattenedCurrentLevelConfig(state, config) {
         }
     }
 
+    // Générer automatiquement les hotkeys manquants
+    ensureHotkeysForItems(flattenedConfig);
+
     // Vérifier que les items de l'élément parent et ses subItems
     // n'ont pas de lettre de raccourci en double
     checkForKeyDuplication(flattenedConfig, state.currentLevel);
@@ -639,7 +623,79 @@ function checkForKeyDuplication(config, QALevel) {
     }
 }
 
+/**
+ * S'assure que tous les items dans une configuration ont un hotkey
+ * Génère automatiquement les hotkeys manquants en utilisant generateHotkeyFromText
+ * @param {Object} config - Configuration à vérifier et compléter
+ */
+function ensureHotkeysForItems(config) {
+    const usedHotkeys = new Set();
 
+    // Première passe : collecter les hotkeys déjà définies
+    for (const [itemId, item] of Object.entries(config)) {
+        if (item.hotkey) {
+            usedHotkeys.add(item.hotkey.toLowerCase());
+        }
+    }
+
+    // Deuxième passe : générer les hotkeys manquants
+    for (const [itemId, item] of Object.entries(config)) {
+        if (!item.hotkey) {
+            // Déterminer le texte source pour la génération de hotkey
+            let sourceText = itemId; // Fallback : utiliser l'ID
+            
+            // Essayer d'obtenir un texte plus significatif
+            if (item.description) {
+                sourceText = item.description;
+            } else if (item.selector) {
+                // Essayer de récupérer le texte de l'élément
+                const element = document.querySelector(item.selector);
+                if (element && element.textContent) {
+                    sourceText = element.textContent.trim();
+                } else if (element) {
+                    sourceText = element.getAttribute('title') || element.getAttribute('alt') || itemId;
+                }
+            }
+            
+            const generatedHotkey = generateHotkeyFromText(sourceText, usedHotkeys);
+            item.hotkey = generatedHotkey;
+            usedHotkeys.add(generatedHotkey);
+            
+            console.log(`[QuickAccess] Hotkey "${generatedHotkey}" générée automatiquement pour "${itemId}" basé sur "${sourceText}"`);
+        }
+    }
+}
+
+/**
+ * Génère un hotkey basé sur la première lettre disponible du texte
+ * @param {string} text - Texte à analyser
+ * @param {Set} usedHotkeys - Ensemble des hotkeys déjà utilisées
+ * @returns {string} Hotkey générée
+ */
+function generateHotkeyFromText(text, usedHotkeys) {
+    // Nettoyer le texte et le convertir en minuscules
+    const cleanText = text.toLowerCase().trim();
+    
+    // Essayer chaque lettre du texte dans l'ordre
+    for (const char of cleanText) {
+        // Ne considérer que les lettres et chiffres
+        if (/[a-z0-9]/.test(char) && !usedHotkeys.has(char)) {
+            return char;
+        }
+    }
+    
+    // Si aucune lettre du texte n'est disponible, utiliser la première lettre disponible de l'alphabet
+    const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    for (const char of alphabet) {
+        if (!usedHotkeys.has(char)) {
+            return char;
+        }
+    }
+    
+    // Dernier recours : utiliser des lettres doublées ou autres caractères
+    console.warn('[QuickAccess] Aucune hotkey disponible, génération de fallback');
+    return Math.random().toString(36).substring(2, 3);
+}
 
 // ============================================================================
 // INTERFACE UTILISATEUR - OVERLAY ET TOOLTIPS
@@ -906,53 +962,44 @@ function WMenuPseudoMouseover(element) {
 
 
 /**
- * 
+ * Génère récursivement les sous-items du menu W (sidebar) à partir de l'élément DOM du sous-menu
+ * ⚠️ NE GÉNÈRE PAS les hotkeys - cela sera fait par ensureHotkeysForItems()
+ * @param {HTMLElement} submenuElement - Élément ul du menu W
+ * @param {string} parentId - ID du parent pour générer les clés
+ * @returns {Object} Configuration des sous-items
  */
-function generateWMenuSubItems(submenuElement, parentId, currentItemHotkey) {
+function generateWMenuSubItems(submenuElement, parentId) {
     console.error('[QuickAccess] generateWMenuSubItems déclenché mais pas encore implémenté');
-    // TODO
+    // TODO: Implémenter de façon similaire à generateHorizMenuSubItems
+    // mais sans générer les hotkeys (elles seront générées par ensureHotkeysForItems)
     return {};
 }
 
 
 /**
  * Génère récursivement les sous-items du menu horizontal à partir de l'élément DOM du sous-menu
+ * ⚠️ NE GÉNÈRE PAS les hotkeys - cela sera fait par ensureHotkeysForItems()
  * @param {HTMLElement} submenuElement - Élément ul.nav-menu__submenu
  * @param {string} parentId - ID du parent pour générer les clés
- * @param {string} currentItemHotkey - Touche de raccourci du parent à éviter
  * @returns {Object} Configuration des sous-items
  */
-function generateHorizMenuSubItems(submenuElement, parentId, currentItemHotkey) {
+function generateHorizMenuSubItems(submenuElement, parentId) {
     const subItems = {};
-    const usedHotkeys = new Set();
-
-    // Ajouter la hotkey du parent aux hotkeys à éviter
-    if (currentItemHotkey) {
-        usedHotkeys.add(currentItemHotkey.toLowerCase());
-    }
 
     // Récupérer tous les liens directs de ce niveau
     const menuItems = submenuElement.querySelectorAll(':scope > li > a');
 
-    let keyIndex = 1;
+    let itemIndex = 1;
     menuItems.forEach(link => {
         const parentLi = link.parentElement;
+        const linkText = link.textContent.trim();
 
         // Chercher un sous-menu de niveau suivant
         const hasArrow = link.classList.contains('nav-icon__link--arrow-right');
         const nextLevelSubmenu = parentLi.querySelector('.nav-menu__submenu--level2');
 
-        // Générer une clé numérique ou alphabétique en évitant les touches déjà utilisées
-        let hotkey;
-        do {
-            hotkey = keyIndex <= 9 ? keyIndex.toString() : String.fromCharCode(96 + keyIndex); // a, b, c...
-            keyIndex++;
-        } while (usedHotkeys.has(hotkey));
-
-        // Ajouter la hotkey générée à la liste des hotkeys utilisées
-        usedHotkeys.add(hotkey);
-
-        const itemId = `${parentId}_item_${keyIndex - 1}`;
+        const itemId = `${parentId}_item_${itemIndex}`;
+        itemIndex++;
 
         // Générer un sélecteur valide : utiliser l'id existant ou en créer un
         let selector;
@@ -967,16 +1014,15 @@ function generateHorizMenuSubItems(submenuElement, parentId, currentItemHotkey) 
 
         const item = {
             selector: selector,
-            hotkey: hotkey,
+            description: linkText, // Stocker le texte pour la génération de hotkey ultérieure
             onTap: hasArrow ? 'horizontal_menu_pseudomouseover' : 'clic'
         };
 
         // Si a un sous-menu, configurer le double-tap pour ouvrir directement
         if (nextLevelSubmenu) {
             item.onDoubleTap = 'clic';
-            item.subItems = function (el, itemHotkey) {
-                // Passer la touche de raccourci de l'item actuel comme touche à éviter au niveau suivant
-                return generateHorizMenuSubItems(nextLevelSubmenu, itemId, hotkey);
+            item.subItems = function (el) {
+                return generateHorizMenuSubItems(nextLevelSubmenu, itemId);
             };
         }
 
