@@ -6,6 +6,10 @@
  * 
  */
 
+// ============================================================================
+// CONFIGURATION
+// ============================================================================
+
 /**
  * Configuration du Quick Access
  * Structure hiérarchique : chaque élément peut avoir des subItems
@@ -219,6 +223,9 @@ const quickAccessConfig = {
     }
 };
 
+// ============================================================================
+// POINT D'ENTRÉE ET INITIALISATION
+// ============================================================================
 
 /** 
  * Fonction d'entrée
@@ -257,6 +264,9 @@ function activateQuickAccess() {
     // Le reste du flux est géré dans les listeners
 }
 
+// ============================================================================
+// GESTION DES ÉVÉNEMENTS CLAVIER
+// ============================================================================
 
 function addListenersToOverlay(overlay, state, config) {
     overlay.addEventListener('keydown', (e) => {
@@ -289,13 +299,14 @@ function handleQuickAccessKey(e, state, config) {
     // Vérifier que la touche pressée correspond à un élément du niveau actuel
     const currentConfig = flattenedCurrentLevelConfig(state, config);
 
-    //
-    const matchedItem = Object.values(currentConfig).find(item => item.hotkey === e.key);
+    // Chercher directement l'entrée [itemId, item] correspondant à la touche
+    const matchedEntry = Object.entries(currentConfig).find(([, item]) => item.hotkey === e.key);
 
-    if (matchedItem) {
+    if (matchedEntry) {
+        const [matchedItemId, matchedItem] = matchedEntry;
         // Exécuter l'action associée à onTap ou onDoubleTap selon le contexte
         // et gérer la navigation dans les niveaux si nécessaire
-        executeQuickAccessAction(matchedItem, state, config);
+        executeQuickAccessAction(matchedItem, matchedItemId, state, config);
     }
 }
 
@@ -303,8 +314,10 @@ function handleQuickAccessKey(e, state, config) {
  * Exécute l'action associée à un élément Quick Access
  * Gère la logique de navigation entre niveaux et l'exécution des actions
  * 
+ * @param {Object} matchedItem - L'item de configuration trouvé
+ * @param {string} matchedItemId - L'ID de l'item dans la configuration
  */
-function executeQuickAccessAction(matchedItem, state, config) {
+function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
     // Détection du double-tap : si la touche détectée correspond au premier élément
     // du flattenedCurrentLevelConfig, on doit éxécuter onDoubleTap au lieu de onTap
     const currentConfig = flattenedCurrentLevelConfig(state, config);
@@ -330,7 +343,7 @@ function executeQuickAccessAction(matchedItem, state, config) {
         deactivateQuickAccess();
     } else {
         // Cas non-terminal avec subItems : exécuter onTap puis descendre dans les subItems
-        const targetQALevel = [...state.currentLevel, getItemIdByValue(currentConfig, matchedItem)];
+        const targetQALevel = [...state.currentLevel, matchedItemId];
         if (moveToTargetConfig(targetQALevel, state, config)) {
             setTimeout(() => {
                 showTooltips(state, config);
@@ -376,7 +389,9 @@ function executeAction(action, selector, state) {
     }
 }
 
-
+// ============================================================================
+// NAVIGATION ET GESTION DE LA CONFIGURATION
+// ============================================================================
 
 /**
  * Renvoie la configuration du niveau actuel sous forme d'objet
@@ -426,41 +441,6 @@ function currentLevelConfig(state, config) {
         [parentId]: currentItem
     };
 }
-
-/**
- * Vérifie qu'il n'y a pas de touches de raccourci en double dans une configuration
- * @param {Object} config - Configuration à vérifier (généralement la version aplatie d'un niveau)
- * @param {string[]} QALevel - Niveau actuel pour les messages d'erreur
- */
-function checkForKeyDuplication(config, QALevel) {
-    const usedHotkeys = {};
-    let hasDuplicates = false;
-
-    for (const [itemId, item] of Object.entries(config)) {
-        if (!item.hotkey) continue;
-
-        const hotkey = item.hotkey.toLowerCase();
-        if (usedHotkeys[hotkey]) {
-            console.error(`[QuickAccess] Duplication de touche "${hotkey}" détectée au niveau`, QALevel,
-                `entre "${usedHotkeys[hotkey]}" et "${itemId}"`);
-            hasDuplicates = true;
-        } else {
-            usedHotkeys[hotkey] = itemId;
-        }
-    }
-
-    if (hasDuplicates) {
-        console.error('[QuickAccess] ⚠️ Des touches en double ont été détectées ! Cela causera des conflits.');
-    }
-}
-
-/**
- * Fonction utilitaire pour trouver l'identifiant (clé d'objet) d'un item à partir de sa valeur
- */
-function getItemIdByValue(obj, value) {
-    return Object.keys(obj).find(itemId => obj[itemId] === value);
-}
-
 
 /**
  * Génère la même configuration que currentLevelConfig, mais applatie,
@@ -661,34 +641,46 @@ function populateSubItems(config, targetQALevel) {
     console.log(`[QuickAccess] Configuration après peuplement pour le niveau`, targetQALevel, config);
 }
 
+// ============================================================================
+// FONCTIONS UTILITAIRES
+// ============================================================================
 
 /**
- * Désactive le mode Quick Access en supprimant l'overlay et les listeners associés
- * et en supprimant les infobulles affichées.
+ * Vérifie qu'il n'y a pas de touches de raccourci en double dans une configuration
+ * @param {Object} config - Configuration à vérifier (généralement la version aplatie d'un niveau)
+ * @param {string[]} QALevel - Niveau actuel pour les messages d'erreur
  */
-function deactivateQuickAccess() {
-    // supprimer l'overlay (les listeners y étant attachés, ils seront automatiquement supprimés)
-    const overlay = document.getElementById('wh-quickaccess-overlay');
-    overlay.remove();
+function checkForKeyDuplication(config, QALevel) {
+    const usedHotkeys = {};
+    let hasDuplicates = false;
 
-    // supprimer les infobulles affichées
-    clearAllTooltips();
+    for (const [itemId, item] of Object.entries(config)) {
+        if (!item.hotkey) continue;
 
-    // Remettre tout les éléments à leur place
-    revertMovedElement();
+        const hotkey = item.hotkey.toLowerCase();
+        if (usedHotkeys[hotkey]) {
+            console.error(`[QuickAccess] Duplication de touche "${hotkey}" détectée au niveau`, QALevel,
+                `entre "${usedHotkeys[hotkey]}" et "${itemId}"`);
+            hasDuplicates = true;
+        } else {
+            usedHotkeys[hotkey] = itemId;
+        }
+    }
+
+    if (hasDuplicates) {
+        console.error('[QuickAccess] ⚠️ Des touches en double ont été détectées ! Cela causera des conflits.');
+    }
 }
 
 
-/**
- * Suppression de tout les tooltips affichés
- */
-function clearAllTooltips() {
-    const tooltips = document.querySelectorAll('.wh-quickaccess-tooltip');
-    tooltips.forEach(tooltip => tooltip.remove());
-}
+
+// ============================================================================
+// INTERFACE UTILISATEUR - OVERLAY ET TOOLTIPS
+// ============================================================================
 
 /**
  * Crée et affiche l'overlay semi-transparent
+ * @returns {HTMLElement} L'élément overlay créé
  */
 function createOverlay() {
     const overlay = document.createElement('div');
@@ -729,10 +721,9 @@ function createOverlay() {
     return overlay;
 }
 
-
 /**
  * Crée et affiche un tooltip sur un élément
- * @param {HTMLElement} element - Élément sur lequel afficher le tooltip
+ * @param {string} selector - Sélecteur CSS de l'élément
  * @param {string} hotkey - Touche de raccourci
  * @param {boolean} hasDoubleTap - Indique si un double-tap est disponible
  */
@@ -787,7 +778,6 @@ function createTooltip(selector, hotkey, hasDoubleTap = false) {
     tooltip.dataset.targetElement = element;
 }
 
-
 /**
  * Affiche les tooltips pour le niveau actuel
  * @param {Object} state - Objet d'état contenant currentLevel
@@ -808,6 +798,33 @@ function showTooltips(state, config) {
     }
 }
 
+/**
+ * Suppression de tous les tooltips affichés
+ */
+function clearAllTooltips() {
+    const tooltips = document.querySelectorAll('.wh-quickaccess-tooltip');
+    tooltips.forEach(tooltip => tooltip.remove());
+}
+
+/**
+ * Désactive le mode Quick Access en supprimant l'overlay et les listeners associés
+ * et en supprimant les infobulles affichées.
+ */
+function deactivateQuickAccess() {
+    // supprimer l'overlay (les listeners y étant attachés, ils seront automatiquement supprimés)
+    const overlay = document.getElementById('wh-quickaccess-overlay');
+    overlay.remove();
+
+    // supprimer les infobulles affichées
+    clearAllTooltips();
+
+    // Remettre tout les éléments à leur place
+    revertMovedElement();
+}
+
+// ============================================================================
+// FONCTIONS SPÉCIFIQUES AUX MENUS
+// ============================================================================
 
 /** 
  * Horizontal menu pseudo-mouseover : simule un mouseover en dispatchant un événement personnalisé
