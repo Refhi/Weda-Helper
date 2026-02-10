@@ -747,15 +747,15 @@ function createTooltip(selector, hotkey, hasDoubleTap = false) {
     // Style avec positionnement fixed pour garantir la visibilité
     tooltip.style.cssText = `
         position: fixed;
-        color: #333;
+        color: #000000;
         font-size: 1em;
-        background-color: rgba(240, 240, 240, 0.95);
+        background-color: rgba(240, 240, 240, 0.50);
         padding: 4px 8px;
         border-radius: 10px;
         pointer-events: none;
         white-space: nowrap;
         z-index: 99999;
-        top: ${rect.bottom + 2}px;
+        top: ${rect.top + rect.height * 0.55}px;
         left: ${rect.left}px;
         height: auto;
         line-height: normal;
@@ -763,9 +763,9 @@ function createTooltip(selector, hotkey, hasDoubleTap = false) {
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     `;
 
-    // Si double-tap disponible, mettre en bleu
+    // Si double-tap disponible, mettre le background en bleu
     if (hasDoubleTap) {
-        tooltip.style.color = 'blue';
+        tooltip.style.backgroundColor = 'rgba(0, 123, 255, 0.125)'; // Bleu clair avec transparence
     }
 
     // Contenu : uniquement la touche
