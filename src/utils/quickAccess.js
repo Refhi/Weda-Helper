@@ -261,6 +261,12 @@ function activateQuickAccess() {
 function addListenersToOverlay(overlay, state, config) {
     overlay.addEventListener('keydown', (e) => {
         if (e.key === 'Backspace' && state.currentLevel.length > 0) {
+            // Remontée : récupérer l'élément qu'on quitte et revert son sous-menu
+            console.log(`[QuickAccess] Item à quitter lors de la remontée`, state.currentLevel);
+            if (state.currentLevel && state.currentLevel.length > 0) {
+                revertMovedElement(JSON.stringify(state.currentLevel));
+            }
+
             // Remonter d'un niveau
             const parentLevel = state.currentLevel.slice(0, -1);
             if (moveToTargetConfig(parentLevel, state, config)) {
@@ -305,17 +311,17 @@ function executeQuickAccessAction(matchedItem, state, config) {
     // Ce n’est pas du vrai double-tap, mais si on appelle l’élément parent (qui est
     // forcément en premier dans le flattened) c’est forcément que c’est un double-tap
     const isDoubleTap = matchedItem.onDoubleTap && Object.values(currentConfig)[0] === matchedItem;
-    
+
     // Ensuite on doit déterminer si l’action est de type terminal
     // ce qui est le cas si l’item n’a pas de subItems ou si on est en présence d’un double-tap
     const isTerminal = !matchedItem.subItems || isDoubleTap;
 
     const action = isDoubleTap ? matchedItem.onDoubleTap : matchedItem.onTap;
     const targetElementSelector = matchedItem.selector;
-    
+
     // Ne rien exécuter si l'action est null/undefined
     if (action) {
-        executeAction(action, targetElementSelector);
+        executeAction(action, targetElementSelector, state);
     }
 
     if (isTerminal) {
@@ -336,7 +342,7 @@ function executeQuickAccessAction(matchedItem, state, config) {
 /**
  * Fonction utilitaire pour exécuter une action qui peut être une string (clic, mouseover, enter) ou une fonction personnalisée
  */
-function executeAction(action, selector) {
+function executeAction(action, selector, state) {
     const element = document.querySelector(selector);
     if (!element) {
         console.warn(`[QuickAccess] Impossible d'exécuter l'action : élément non trouvé pour le sélecteur "${selector}"`);
@@ -355,7 +361,7 @@ function executeAction(action, selector) {
                 element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
                 break;
             case 'horizontal_menu_pseudomouseover':
-                horizontalMenuPseudoMouseover(element);
+                horizontalMenuPseudoMouseover(element, state);
                 break;
             case 'W_menu_pseudomouseover':
                 WMenuPseudoMouseover(element);
@@ -400,7 +406,7 @@ function executeAction(action, selector) {
  */
 function currentLevelConfig(state, config) {
     const actualQALevel = state.currentLevel;
-    
+
     // Cas 1 : Niveau racine
     if (actualQALevel.length === 0) {
         return config;
@@ -408,7 +414,7 @@ function currentLevelConfig(state, config) {
 
     // Cas 2 : Naviguer jusqu'à l'élément cible
     const { item: currentItem } = navigateToItem(config, actualQALevel, 'currentLevelConfig');
-    
+
     if (!currentItem) {
         return {};
     }
@@ -435,7 +441,7 @@ function checkForKeyDuplication(config, QALevel) {
 
         const hotkey = item.hotkey.toLowerCase();
         if (usedHotkeys[hotkey]) {
-            console.error(`[QuickAccess] Duplication de touche "${hotkey}" détectée au niveau`, QALevel, 
+            console.error(`[QuickAccess] Duplication de touche "${hotkey}" détectée au niveau`, QALevel,
                 `entre "${usedHotkeys[hotkey]}" et "${itemId}"`);
             hasDuplicates = true;
         } else {
@@ -503,23 +509,23 @@ function navigateToItem(config, QALevel, context = 'navigation') {
     let currentItem = config;
     let parentItem = null;
     let parentId = null;
-    
+
     for (let i = 0; i < QALevel.length; i++) {
         const itemId = QALevel[i];
-        
+
         if (!currentItem[itemId]) {
             console.warn(`[QuickAccess] Élément "${itemId}" introuvable lors de ${context}`, QALevel);
             return { item: null, parent: null, parentId: null };
         }
-        
+
         // ✅ Sauvegarder le parent AVANT de descendre dans l'item final
         if (i === QALevel.length - 1) {
             parentItem = currentItem;  // Le conteneur parent
             parentId = itemId;          // L'id de l'item dans ce conteneur
         }
-        
+
         currentItem = currentItem[itemId];
-        
+
         // Si ce n'est pas le dernier niveau, descendre dans subItems
         if (i < QALevel.length - 1) {
             if (!currentItem.subItems) {
@@ -549,10 +555,10 @@ function navigateToItem(config, QALevel, context = 'navigation') {
  */
 function moveToTargetConfig(targetQALevel, state, config) {
     const actualQALevel = state.currentLevel;
-    
+
     // Vérifier que la demande de changement de niveau est d'un niveau exactement
     const levelDiff = Math.abs(targetQALevel.length - actualQALevel.length);
-    
+
     if (levelDiff !== 1) {
         console.warn(`[QuickAccess] Changement de niveau invalide : différence de ${levelDiff} niveaux`, {
             from: actualQALevel,
@@ -616,33 +622,33 @@ function populateSubItems(config, targetQALevel) {
     if (targetQALevel.length === 0) {
         return;
     }
-    
+
     // Naviguer jusqu'à l'élément cible et obtenir son parent
     const { item: currentItem, parent: parentContainer, parentId } = navigateToItem(config, targetQALevel, 'populateSubItems');
-    
+
     if (!currentItem || !parentContainer) {
         return;
     }
-    
+
     // Vérifier si subItems est une fonction à évaluer
     if (typeof currentItem.subItems === 'function') {
         console.log(`[QuickAccess] Peuplement des subItems pour le niveau`, targetQALevel);
-        
+
         // Trouver l'élément DOM si nécessaire
         let element = currentItem.element;
         if (!element && currentItem.selector) {
             element = document.querySelector(currentItem.selector);
         }
-        
+
         if (element) {
             // ⚠️ REMPLACEMENT PERMANENT : la fonction est remplacée par son résultat
             // Modifier directement dans le parent pour que le cache fonctionne
             const currentItemHotkey = currentItem.hotkey || null;
             const generatedSubItems = currentItem.subItems(element, currentItemHotkey);
-            
+
             // ✅ Modifier directement la référence dans quickAccessConfig via le parent
             parentContainer[parentId].subItems = generatedSubItems;
-            
+
             console.log(`[QuickAccess] SubItems peuplés avec succès pour`, targetQALevel);
         } else {
             console.warn(`[QuickAccess] Impossible de trouver l'élément pour peupler les subItems`, targetQALevel);
@@ -667,6 +673,9 @@ function deactivateQuickAccess() {
 
     // supprimer les infobulles affichées
     clearAllTooltips();
+
+    // Remettre tout les éléments à leur place
+    revertMovedElement();
 }
 
 
@@ -804,7 +813,7 @@ function showTooltips(state, config) {
  * Horizontal menu pseudo-mouseover : simule un mouseover en dispatchant un événement personnalisé
  * valable uniquement pour les éléments du menu horizontal haut dans la page d’accueil
  */
-function horizontalMenuPseudoMouseover(element) {
+function horizontalMenuPseudoMouseover(element, state) {
     if (!element) {
         console.warn('[QuickAccess] Impossible de déclencher horizontalMenuPseudoMouseover : élément manquant');
         return;
@@ -848,6 +857,20 @@ function horizontalMenuPseudoMouseover(element) {
                         newTop = 10; // Marge minimale en haut
                     }
 
+                    // Stocker la position dans l'élément pour pouvoir la réutiliser si besoin (ex: lors du revert)
+                    submenu.dataset.originalPosition = JSON.stringify({
+                        position: submenu.style.position,
+                        left: submenu.style.left,
+                        top: submenu.style.top,
+                        zIndex: submenu.style.zIndex
+                    });
+
+                    // Y ajouter une classe pour indiquer que le sous-menu a été repositionné (utile pour le revert)
+                    submenu.classList.add('wh-qa-repositioned');
+
+                    // Y ajouter le state.currentLevel
+                    submenu.dataset.qaLevel = JSON.stringify(state.currentLevel);
+
                     // Appliquer la position
                     submenu.style.position = 'fixed';
                     submenu.style.left = newLeft + 'px';
@@ -861,6 +884,28 @@ function horizontalMenuPseudoMouseover(element) {
     }
 }
 
+/** 
+ * Revert du repositionnement de tout ou partie des sous-menus horizontaux
+ */
+function revertMovedElement(QALevelTarget) {
+    const repositionnedClass = 'wh-qa-repositioned';
+    const movedElements = QALevelTarget ? document.querySelectorAll(`[data-qa-level='${QALevelTarget}']`) : document.querySelectorAll(`.${repositionnedClass}`);
+
+    movedElements.forEach(submenu => {
+        const originalPosition = submenu.dataset.originalPosition;
+        if (originalPosition) {
+            const { position, left, top, zIndex } = JSON.parse(originalPosition);
+            submenu.style.position = position;
+            submenu.style.left = left;
+            submenu.style.top = top;
+            submenu.style.zIndex = zIndex;
+            submenu.classList.remove(repositionnedClass);
+            delete submenu.dataset.originalPosition;
+            delete submenu.dataset.qaLevel;
+            console.log(`[QuickAccess] Sous-menu repositionné à sa position originale:`, submenu);
+        }
+    });
+}
 
 /**
  * Menu W pseudo-mouseover : simule un mouseover en dispatchant un événement personnalisé
@@ -896,7 +941,7 @@ function generateWMenuSubItems(submenuElement, parentId, currentItemHotkey) {
 function generateHorizMenuSubItems(submenuElement, parentId, currentItemHotkey) {
     const subItems = {};
     const usedHotkeys = new Set();
-    
+
     // Ajouter la hotkey du parent aux hotkeys à éviter
     if (currentItemHotkey) {
         usedHotkeys.add(currentItemHotkey.toLowerCase());
@@ -919,7 +964,7 @@ function generateHorizMenuSubItems(submenuElement, parentId, currentItemHotkey) 
             hotkey = keyIndex <= 9 ? keyIndex.toString() : String.fromCharCode(96 + keyIndex); // a, b, c...
             keyIndex++;
         } while (usedHotkeys.has(hotkey));
-        
+
         // Ajouter la hotkey générée à la liste des hotkeys utilisées
         usedHotkeys.add(hotkey);
 
