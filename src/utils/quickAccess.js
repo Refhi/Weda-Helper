@@ -397,55 +397,6 @@ function executeAction(action, selector, state) {
 // NAVIGATION ET GESTION DE LA CONFIGURATION
 // ============================================================================
 
-/**
- * Renvoie la configuration du niveau actuel sous forme d'objet
- * Contient uniquement l'élément parent avec ses subItems immédiats
- * 
- * @param {Object} state - Objet d'état contenant currentLevel
- * @param {Object} config - Configuration racine
- * @returns {Object} Configuration du niveau avec structure cohérente
- * 
- * Structure retournée :
- * - Si niveau racine [] : retourne config complet
- * - Si niveau enfant : retourne un objet contenant uniquement l'élément parent avec sa structure complète
- *   Exemple pour ["menu_vertical_gauche"] :
- *   {
- *     "menu_vertical_gauche": {
- *       selector: ".menu-sidebar",
- *       key: 'l',
- *       onTap: null,
- *       onDoubleTap: null,
- *       subItems: {
- *         "menu_w_sidebar": { ...config enfant... },
- *         "modifier_patient": { ...config enfant... },
- *         ...
- *       }
- *     }
- *   }
- */
-function currentLevelConfig(state, config) {
-    const actualQALevel = state.currentLevel;
-
-    // Cas 1 : Niveau racine
-    if (actualQALevel.length === 0) {
-        return config;
-    }
-
-    // Cas 2 : Naviguer jusqu'à l'élément cible
-    const { item: subItemsContent, parent: parentContainer, parentId } = navigateToItem(config, actualQALevel, 'currentLevelConfig');
-
-    if (!subItemsContent || !parentContainer) {
-        return {};
-    }
-
-    // Récupérer l'objet parent complet pour reconstruire la structure
-    const parentItem = parentContainer[parentId];
-
-    // Retourner l'élément parent avec sa structure complète
-    return {
-        [parentId]: parentItem
-    };
-}
 
 /**
  * Génère la même configuration que currentLevelConfig, mais applatie,
@@ -453,19 +404,29 @@ function currentLevelConfig(state, config) {
  * 
 */
 function flattenedCurrentLevelConfig(state, config) {
-    const currentConfig = currentLevelConfig(state, config);
     const flattenedConfig = {};
+    const actualQALevel = state.currentLevel;
 
-    for (const [itemId, item] of Object.entries(currentConfig)) {
+    // Cas 1 : Niveau racine - retourner tous les éléments racine
+    if (actualQALevel.length === 0) {
+        Object.assign(flattenedConfig, config);
+    } else {
+        // Cas 2 : Niveau enfant - naviguer jusqu'à l'élément parent
+        const { parent: parentContainer, parentId } = navigateToItem(config, actualQALevel, 'flattenedCurrentLevelConfig');
+
+        if (!parentContainer || !parentId) {
+            console.warn('[QuickAccess] Impossible de construire la configuration aplatie', actualQALevel);
+            return {};
+        }
+
+        const parentItem = parentContainer[parentId];
 
         // Ajouter l'élément parent
-        flattenedConfig[itemId] = item;
+        flattenedConfig[parentId] = parentItem;
 
         // Ajouter les subItems immédiats au même niveau
-        if (item.subItems && typeof item.subItems === 'object') {
-            for (const [subItemId, subItem] of Object.entries(item.subItems)) {
-                flattenedConfig[subItemId] = subItem;
-            }
+        if (parentItem.subItems && typeof parentItem.subItems === 'object') {
+            Object.assign(flattenedConfig, parentItem.subItems);
         }
     }
 
