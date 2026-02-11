@@ -887,73 +887,104 @@ function restoreElementStyles(element) {
 // FONCTIONS SPÉCIFIQUES AUX MENUS
 // ============================================================================
 
+/**
+ * Fonction support commune pour préparer un sous-menu à être affiché/repositionné
+ * Gère les étapes communes : vérification, recherche du sous-menu, sauvegarde des styles, marquage
+ * @param {HTMLElement} element - L'élément déclencheur
+ * @param {string} submenuSelector - Le sélecteur CSS pour trouver le sous-menu
+ * @param {Object} state - L'état actuel de QuickAccess
+ * @param {string} contextName - Nom du contexte pour les logs (ex: 'HorizontalMenu', 'WMenu')
+ * @returns {{submenu: HTMLElement|null, parentLi: HTMLElement|null}} Le sous-menu trouvé et son parent li
+ */
+function prepareSubmenuForDisplay(element, submenuSelector, state, contextName) {
+    if (!element) {
+        console.warn(`[QuickAccess][${contextName}] Impossible de préparer le sous-menu : élément manquant`);
+        return { submenu: null, parentLi: null };
+    }
+
+    // Trouver le parent li
+    const parentLi = element.closest('li');
+    if (!parentLi) {
+        console.error(`[QuickAccess][${contextName}] Élément li parent non trouvé`);
+        return { submenu: null, parentLi: null };
+    }
+
+    // Trouver le sous-menu
+    const submenu = parentLi.querySelector(submenuSelector);
+    if (!submenu) {
+        console.log(`[QuickAccess][${contextName}] Pas de sous-menu pour cet élément`);
+        return { submenu: null, parentLi };
+    }
+
+    // Sauvegarder les styles originaux du sous-menu
+    saveElementStyles(submenu, {
+        display: submenu.style.display || '',
+        position: submenu.style.position || '',
+        top: submenu.style.top || '',
+        left: submenu.style.left || '',
+        right: submenu.style.right || '',
+        zIndex: submenu.style.zIndex || ''
+    });
+
+    // Marquer comme repositionné et associer au niveau de navigation actuel
+    submenu.classList.add('wh-qa-repositioned');
+    submenu.dataset.qaLevel = JSON.stringify(state?.currentLevel || []);
+
+    return { submenu, parentLi };
+}
+
 /** 
  * Horizontal menu pseudo-mouseover : simule un mouseover en dispatchant un événement personnalisé
- * valable uniquement pour les éléments du menu horizontal haut dans la page d’accueil
+ * valable uniquement pour les éléments du menu horizontal haut dans la page d'accueil
  */
 function horizontalMenuPseudoMouseover(element, state) {
-    if (!element) {
-        console.warn('[QuickAccess] Impossible de déclencher horizontalMenuPseudoMouseover : élément manquant');
+    // Utiliser la fonction support pour préparer le sous-menu
+    const { submenu } = prepareSubmenuForDisplay(element, '.nav-menu__submenu', state, 'HorizontalMenu');
+    
+    if (!submenu) {
         return;
     }
-    // Pour les menus de navigation, repositionner le sous-menu s'il sort du viewport
-    const parentLi = element.closest('li');
-    if (parentLi) {
-        const submenu = parentLi.querySelector('.nav-menu__submenu');
-        if (submenu) {
-            const submenuRect = submenu.getBoundingClientRect();
-            const parentRect = element.getBoundingClientRect();
-            const isOutside = submenuRect.top < 0 || submenuRect.bottom > window.innerHeight ||
-                submenuRect.left < 0 || submenuRect.right > window.innerWidth;
 
-            if (isOutside) {
-                console.log('[QuickAccess] Sous-menu horizontalMenuPseudoMouseover hors viewport, repositionnement par rapport à l\'élément parent...');
+    // Logique spécifique au menu horizontal : repositionner si hors viewport
+    const submenuRect = submenu.getBoundingClientRect();
+    const parentRect = element.getBoundingClientRect();
+    const isOutside = submenuRect.top < 0 || submenuRect.bottom > window.innerHeight ||
+        submenuRect.left < 0 || submenuRect.right > window.innerWidth;
 
-                // Calculer la position idéale par rapport à l'élément parent
-                let newLeft = parentRect.right + 5; // À droite du parent avec un petit espacement
-                let newTop = parentRect.top;
+    if (isOutside) {
+        console.log('[QuickAccess] Sous-menu horizontalMenuPseudoMouseover hors viewport, repositionnement par rapport à l\'élément parent...');
 
-                // Ajuster si ça sort à droite
-                if (newLeft + submenuRect.width > window.innerWidth) {
-                    newLeft = parentRect.left - submenuRect.width - 5; // À gauche du parent
-                }
+        // Calculer la position idéale par rapport à l'élément parent
+        let newLeft = parentRect.right + 5; // À droite du parent avec un petit espacement
+        let newTop = parentRect.top;
 
-                // Ajuster si ça sort à gauche
-                if (newLeft < 0) {
-                    newLeft = 10; // Marge minimale à gauche
-                }
-
-                // Ajuster si ça sort en bas
-                if (newTop + submenuRect.height > window.innerHeight) {
-                    newTop = window.innerHeight - submenuRect.height - 10;
-                }
-
-                // Ajuster si ça sort en haut
-                if (newTop < 0) {
-                    newTop = 10; // Marge minimale en haut
-                }
-
-                // Sauvegarder les styles originaux pour pouvoir les restaurer
-                saveElementStyles(submenu, {
-                    position: submenu.style.position,
-                    left: submenu.style.left,
-                    top: submenu.style.top,
-                    zIndex: submenu.style.zIndex
-                });
-
-                // Marquer comme repositionné et associer au niveau de navigation actuel
-                submenu.classList.add('wh-qa-repositioned');
-                submenu.dataset.qaLevel = JSON.stringify(state.currentLevel);
-
-                // Appliquer la nouvelle position
-                submenu.style.position = 'fixed';
-                submenu.style.left = newLeft + 'px';
-                submenu.style.top = newTop + 'px';
-                submenu.style.zIndex = '10000';
-
-                console.log(`[QuickAccess] Sous-menu repositionné à left=${newLeft}, top=${newTop}`);
-            }
+        // Ajuster si ça sort à droite
+        if (newLeft + submenuRect.width > window.innerWidth) {
+            newLeft = parentRect.left - submenuRect.width - 5; // À gauche du parent
         }
+
+        // Ajuster si ça sort à gauche
+        if (newLeft < 0) {
+            newLeft = 10; // Marge minimale à gauche
+        }
+
+        // Ajuster si ça sort en bas
+        if (newTop + submenuRect.height > window.innerHeight) {
+            newTop = window.innerHeight - submenuRect.height - 10;
+        }
+
+        // Ajuster si ça sort en haut
+        if (newTop < 0) {
+            newTop = 10; // Marge minimale en haut
+        }
+
+        // Appliquer la nouvelle position
+        submenu.style.position = 'fixed';
+        submenu.style.left = newLeft + 'px';
+        submenu.style.top = newTop + 'px';
+        submenu.style.zIndex = '10000';
+
+        console.log(`[QuickAccess] Sous-menu repositionné à left=${newLeft}, top=${newTop}`);
     }
 }
 
@@ -985,44 +1016,17 @@ function revertMovedElement(QALevelTarget) {
  * valable uniquement pour les éléments du menu W dans la sidebar gauche
  */
 function WMenuPseudoMouseover(element, state) {
-    if (!element) {
-        console.warn('[QuickAccess][WMenu] Impossible de déclencher WMenuPseudoMouseover : élément manquant');
-        return;
-    }
-
-    // Pour le menu W, on doit gérer l'affichage du sous-menu
-    // Le menu W utilise une structure différente avec display:none/block
-    const parentLi = element.closest('li');
-    if (!parentLi) {
-        console.error('[QuickAccess][WMenu] WMenuPseudoMouseover : élément li parent non trouvé');
-        return;
-    }
-
-    // Trouver le sous-menu associé (ul.level2.dynamic ou level3.dynamic, etc.)
-    const submenu = parentLi.querySelector('ul[class*="level"][class*="dynamic"]');
+    // Utiliser la fonction support pour préparer le sous-menu
+    const { submenu } = prepareSubmenuForDisplay(element, 'ul[class*="level"][class*="dynamic"]', state, 'WMenu');
+    
     if (!submenu) {
-        console.log('[QuickAccess][WMenu] pas de sous-menu pour cet élément');
         return;
     }
 
-    // Sauvegarder TOUS les styles originaux du sous-menu avant toute modification
-    // (y compris display, position, top, left, right)
-    saveElementStyles(submenu, {
-        display: submenu.style.display || '',
-        position: submenu.style.position || '',
-        top: submenu.style.top || '',
-        left: submenu.style.left || '',
-        right: submenu.style.right || ''
-    });
-
-    // Marquer comme repositionné dès le début
-    submenu.classList.add('wh-qa-repositioned');
-    submenu.dataset.qaLevel = JSON.stringify(state?.currentLevel || []);
-
-    // Afficher le sous-menu
+    // Logique spécifique au menu W : affichage et positionnement simple
+    // Le menu W utilise une structure différente avec display:none/block
     submenu.style.display = 'block';
 
-    // Positionner le sous-menu
     // Pour le menu W, les sous-menus s'affichent à droite (left: 100%) et alignés en haut (top: 0)
     submenu.style.position = 'absolute';
     submenu.style.top = '0px';
