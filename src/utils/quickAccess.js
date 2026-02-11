@@ -342,7 +342,13 @@ function executeAction(action, selector, state) {
     if (typeof action === 'string') {
         switch (action) {
             case 'clic':
-                element.click();
+                // D'abord vérifier si l'élément possède un href
+                // auquel cas on passera par clicCSPLockedElement pour éviter les problèmes de CSP
+                if (element.tagName.toLowerCase() === 'a' && element.href) {
+                    clicCSPLockedElement(selector);
+                } else {
+                    element.click();
+                }
                 break;
             case 'mouseover':
                 element.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
@@ -1032,6 +1038,187 @@ function WMenuPseudoMouseover(element, state) {
     submenu.style.left = '100%';
 }
 
+/**
+ * Menu Périphériques pseudo-mouseover
+ * Gère l'affichage du sous-menu des périphériques (#ContentPlaceHolder1_MenuPeripherique)
+ */
+function peripheriquesPseudoMouseover(element, state) {
+    // Le menu périphériques a une structure spéciale : le sous-menu est dans #ContentPlaceHolder1_MenuPeripherique
+    const submenu = document.querySelector('#ContentPlaceHolder1_MenuPeripherique ul.level2.dynamic');
+    
+    if (!submenu) {
+        console.warn('[QuickAccess][Peripheriques] Sous-menu non trouvé');
+        return;
+    }
+
+    // Sauvegarder les styles originaux
+    saveElementStyles(submenu, {
+        display: submenu.style.display || '',
+        position: submenu.style.position || '',
+        top: submenu.style.top || '',
+        left: submenu.style.left || '',
+        zIndex: submenu.style.zIndex || ''
+    });
+
+    // Marquer comme repositionné
+    submenu.classList.add('wh-qa-repositioned');
+    submenu.dataset.qaLevel = JSON.stringify(state?.currentLevel || []);
+
+    // Positionner le sous-menu à droite de l'élément déclencheur
+    const rect = element.getBoundingClientRect();
+    submenu.style.display = 'block';
+    submenu.style.position = 'fixed';
+    submenu.style.top = rect.top + 'px';
+    submenu.style.left = (rect.right + 5) + 'px';
+    submenu.style.zIndex = '10000';
+
+    console.log('[QuickAccess][Peripheriques] Sous-menu affiché et repositionné');
+}
+
+/**
+ * Menu Documents Joints pseudo-mouseover
+ * Gère l'affichage du menu déroulant des documents joints (#DivMenuDocumentJoint)
+ */
+function documentsJointsPseudoMouseover(element, state) {
+    const submenu = document.querySelector('#DivMenuDocumentJoint');
+    
+    if (!submenu) {
+        console.warn('[QuickAccess][DocumentsJoints] Sous-menu non trouvé');
+        return;
+    }
+
+    // Sauvegarder les styles originaux
+    saveElementStyles(submenu, {
+        display: submenu.style.display || '',
+        position: submenu.style.position || '',
+        top: submenu.style.top || '',
+        left: submenu.style.left || '',
+        zIndex: submenu.style.zIndex || ''
+    });
+
+    // Marquer comme repositionné
+    submenu.classList.add('wh-qa-repositioned');
+    submenu.dataset.qaLevel = JSON.stringify(state?.currentLevel || []);
+
+    // Positionner le sous-menu à droite de l'élément déclencheur
+    const rect = element.getBoundingClientRect();
+    submenu.style.display = 'block';
+    submenu.style.position = 'fixed';
+    submenu.style.top = rect.top + 'px';
+    submenu.style.left = (rect.right + 5) + 'px';
+    submenu.style.zIndex = '10000';
+
+    console.log('[QuickAccess][DocumentsJoints] Sous-menu affiché et repositionné');
+}
+
+/**
+ * Menu Impression pseudo-mouseover
+ * Gère l'affichage du sous-menu d'impression (#ContentPlaceHolder1_MenuPrint)
+ */
+function impressionPseudoMouseover(element, state) {
+    // Le menu impression a une structure similaire au menu W standard
+    const submenu = element.querySelector('ul.level2.dynamic');
+    
+    if (!submenu) {
+        console.warn('[QuickAccess][Impression] Sous-menu non trouvé');
+        return;
+    }
+
+    // Sauvegarder les styles originaux
+    saveElementStyles(submenu, {
+        display: submenu.style.display || '',
+        position: submenu.style.position || '',
+        top: submenu.style.top || '',
+        left: submenu.style.left || '',
+        zIndex: submenu.style.zIndex || ''
+    });
+
+    // Marquer comme repositionné
+    submenu.classList.add('wh-qa-repositioned');
+    submenu.dataset.qaLevel = JSON.stringify(state?.currentLevel || []);
+
+    // Positionner le sous-menu à droite de l'élément déclencheur
+    const rect = element.getBoundingClientRect();
+    submenu.style.display = 'block';
+    submenu.style.position = 'fixed';
+    submenu.style.top = rect.top + 'px';
+    submenu.style.left = (rect.right + 5) + 'px';
+    submenu.style.zIndex = '10000';
+
+    console.log('[QuickAccess][Impression] Sous-menu affiché et repositionné');
+}
+
+
+/**
+ * Génère les sous-items du menu Documents Joints à partir de la table HTML
+ * Structure spéciale : table avec des td contenant onclick
+ * @param {HTMLElement} tableElement - Élément table du menu documents joints
+ * @param {string} parentId - ID du parent pour générer les clés
+ * @returns {Object} Configuration des sous-items
+ */
+function generateDocumentsJointsSubItems(tableElement, parentId) {
+    const subItems = {};
+
+    if (!tableElement) {
+        console.error('[QuickAccess][DocumentsJoints] generateDocumentsJointsSubItems : tableElement est null');
+        return subItems;
+    }
+
+    // Récupérer tous les td cliquables (ceux avec onclick)
+    const menuItems = tableElement.querySelectorAll('td.menutddocjoint[onclick]');
+
+    console.log(`[QuickAccess][DocumentsJoints] Génération des subItems pour "${parentId}" : ${menuItems.length} items trouvés`);
+
+    let itemIndex = 1;
+    menuItems.forEach(td => {
+        // Extraire le texte du td (en cherchant dans les nested tables)
+        const textElement = td.querySelector('td[valign="middle"]');
+        let textContent = textElement ? textElement.textContent.trim() : td.textContent.trim();
+
+        if (!textContent) {
+            console.warn('[QuickAccess][DocumentsJoints] TD sans texte trouvé, ignoré');
+            return;
+        }
+
+        // Générer un ID unique basé sur le texte nettoyé
+        const cleanText = textContent
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // Supprimer les accents
+            .replace(/[^a-z0-9]/g, '_')
+            .replace(/_+/g, '_')
+            .replace(/^_|_$/g, '');
+
+        const itemId = `${parentId}_${cleanText}_${itemIndex}`;
+        itemIndex++;
+
+        // Créer un sélecteur sûr : toujours utiliser un ID
+        // Les sélecteurs par attribut (onclick) peuvent contenir des caractères spéciaux invalides
+        let selector;
+        if (!td.id) {
+            const uniqueId = `wh-qa-docjoint-${itemId}`;
+            td.id = uniqueId;
+            selector = `#${uniqueId}`;
+        } else {
+            selector = `#${td.id}`;
+        }
+
+        // Créer l'item de configuration
+        const item = {
+            selector: selector,
+            description: textContent,
+            hotkey: null, // Sera généré automatiquement
+            onTap: 'clic', // Les items sont directement cliquables
+            element: td
+        };
+
+        subItems[itemId] = item;
+    });
+
+    console.log(`[QuickAccess][DocumentsJoints] ${Object.keys(subItems).length} items générés pour "${parentId}"`);
+    return subItems;
+}
+
 
 /**
  * Génère récursivement les sous-items du menu W (sidebar) à partir de l'élément DOM du sous-menu
@@ -1081,29 +1268,15 @@ function generateWMenuSubItems(submenuElement, parentId) {
         const itemId = `${parentId}_lv${currentLevel}_${cleanText}_${itemIndex}`;
         itemIndex++;
 
-        // Créer le sélecteur pour cet item
-        // Priorité : onclick > href > fallback par id
-        const onclickAttr = link.getAttribute('onclick');
+        // Créer un sélecteur sûr : toujours utiliser un ID
+        // Les sélecteurs par attribut (onclick, href) peuvent contenir des caractères spéciaux invalides
         let selector;
-
-        if (onclickAttr) {
-            // Échapper les guillemets et caractères spéciaux dans onclick
-            const escapedOnclick = onclickAttr.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-            selector = `a.level${currentLevel}.dynamic[onclick="${escapedOnclick}"]`;
+        if (!link.id) {
+            const uniqueId = `wh-qa-wmenu-${itemId}`;
+            link.id = uniqueId;
+            selector = `#${uniqueId}`;
         } else {
-            const href = link.getAttribute('href');
-            if (href && href !== '#') {
-                selector = `a.level${currentLevel}.dynamic[href="${href}"]`;
-            } else {
-                // Créer un ID unique pour pouvoir cibler l'élément
-                if (!link.id) {
-                    const uniqueId = `wh-qa-wmenu-${itemId}`;
-                    link.id = uniqueId;
-                    selector = `#${uniqueId}`;
-                } else {
-                    selector = `#${link.id}`;
-                }
-            }
+            selector = `#${link.id}`;
         }
 
         // Vérifier s'il y a un sous-menu
