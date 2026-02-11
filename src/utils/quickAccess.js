@@ -34,7 +34,7 @@ const quickAccessConfig = {
         }
     },
 
-    // Menu horizontal haut
+    // --------- Menu horizontal haut ---------------------
     'medical': {
         selector: '#nav-menu > li > a.nav-icon__link--doctor',
         hotkey: 'm',
@@ -207,21 +207,16 @@ const quickAccessConfig = {
 */
 function activateQuickAccess() {
     /**
-    * L'objet state contient l'état du Quick Access.
-    * currentLevel correspond au chemin du niveau actuellement activé.
+    * state.currentLevel correspond au niveau actuel du QuickAccess (QALevel)
     * C'est un tableau de clés représentant le chemin dans l'arborescence.
     * Exemples :
     * - [] = niveau racine
     * - ["menu_vertical_gauche"] = premier niveau de profondeur
     * - ["menu_vertical_gauche", "menu_w_sidebar"] = second niveau de profondeur
-    * 
-    * Un élément activé est un élément qui affiche une infobulle et dont la lettre est écoutée par le système pour déclencher une action.
-    * Si on est au niveau ["menu_vertical_gauche"], alors on affiche les lettres pour menu_vertical_gauche
-    * et tous ses sous-éléments immédiats, mais on désactive les autres éléments du niveau racine.
     */
-    const state = {
+
+    const state = { // Objet pour la rémanence de l'état du Quick Access
         currentLevel: []  // Correspond au niveau racine
-        // d’autres caractéristiques sont envisageables
     };
 
     // Commencer par activer l'overlay
@@ -236,7 +231,7 @@ function activateQuickAccess() {
     // Afficher les tooltips du niveau racine
     showTooltips(state, quickAccessConfig);
 
-    // Le reste du flux est géré dans les listeners
+    // Le reste du flux est géré dans les listeners juste ci-dessous.
 }
 
 // ============================================================================
@@ -245,20 +240,23 @@ function activateQuickAccess() {
 
 function addListenersToOverlay(overlay, state, config) {
     overlay.addEventListener('keydown', (e) => {
-        if (e.key === 'Backspace') {
+        if (e.key === 'Backspace') { // Permet de remonter d'un niveau dans l'arborescence du Quick Access
             if (state.currentLevel.length === 0) {
-                // Déjà à la racine : quitter le Quick Access
+                // Déjà à la racine : fermer le Quick Access
                 deactivateQuickAccess();
             } else {
                 // Remontée : récupérer l'élément qu'on quitte et revert son sous-menu
                 console.log(`[QuickAccess] Item à quitter lors de la remontée`, state.currentLevel);
                 if (state.currentLevel && state.currentLevel.length > 0) {
+                    // Certains éléments sont déplacés lors de la navigation
+                    // on les remet en place à la remontée.
                     revertMovedElement(JSON.stringify(state.currentLevel));
                 }
 
-                // Remonter d'un niveau
-                const parentLevel = state.currentLevel.slice(0, -1);
-                if (moveToTargetConfig(parentLevel, state, config)) {
+                // Remontée d'un niveau
+                const parentLevel = state.currentLevel.slice(0, -1); // On enlève le dernier élément du chemin
+                if (moveToTargetConfig(parentLevel, state, config)) { // Change le state.currentLevel et vérifie la validité du changement
+                    // showToolTips contiens également un reset
                     showTooltips(state, config);
                 }
             }
@@ -267,7 +265,8 @@ function addListenersToOverlay(overlay, state, config) {
         }
     });
 
-    // On implémente aussi la touche terminale
+    // L'action deactivateQuickAccess ferme le Quick Access
+    // la touche Echap permet de l'appeler à tout moment
     overlay.addEventListener('keyup', (e) => {
         if (e.key === 'Escape') {
             deactivateQuickAccess()
