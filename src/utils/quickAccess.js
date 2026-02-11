@@ -261,6 +261,7 @@ function addListenersToOverlay(overlay, state, config) {
                 }
             }
         } else {
+            // Pour tout le reste des touches, c'est géré dans :
             handleQuickAccessKey(e, state, config);
         }
     });
@@ -385,29 +386,29 @@ function flattenedCurrentLevelConfig(state, config) {
     if (actualQALevel.length === 0) {
         Object.assign(flattenedConfig, config);
     } else {
-        // Cas 2 : Niveau enfant - naviguer jusqu'à l'élément parent
-        const { parent: parentContainer, parentId } = navigateToItem(config, actualQALevel, 'flattenedCurrentLevelConfig');
+        // Cas 2 : Niveau enfant - naviguer jusqu'à l'élément cible
+        const { item: itemContainer, itemId } = getItemAndSubItems(config, actualQALevel, 'flattenedCurrentLevelConfig');
 
-        if (!parentContainer || !parentId) {
+        if (!itemContainer || !itemId) {
             console.warn('[QuickAccess] Impossible de construire la configuration aplatie', actualQALevel);
             return {};
         }
 
-        const parentItem = parentContainer[parentId];
+        const targetItem = itemContainer[itemId];
 
-        // Ajouter l'élément parent
-        flattenedConfig[parentId] = parentItem;
+        // Ajouter l'élément cible
+        flattenedConfig[itemId] = targetItem;
 
         // Ajouter les subItems immédiats au même niveau
-        if (parentItem.subItems && typeof parentItem.subItems === 'object') {
-            Object.assign(flattenedConfig, parentItem.subItems);
+        if (targetItem.subItems && typeof targetItem.subItems === 'object') {
+            Object.assign(flattenedConfig, targetItem.subItems);
         }
     }
 
     // Générer automatiquement les hotkeys manquants
     ensureHotkeysForItems(flattenedConfig);
 
-    // Vérifier que les items de l'élément parent et ses subItems
+    // Vérifier que les items de l'élément cible et ses subItems
     // n'ont pas de lettre de raccourci en double
     checkForKeyDuplication(flattenedConfig, state.currentLevel);
 
@@ -417,49 +418,49 @@ function flattenedCurrentLevelConfig(state, config) {
 
 /**
  * Fonction utilitaire pour naviguer dans l'arborescence de configuration
- * Retourne l'objet de configuration de l'élément ciblé par un QALevel
+ * Retourne l'élément ciblé par un QALevel, ses subItems et son conteneur parent
  * 
  * @param {Object} config - Configuration racine
  * @param {string[]} QALevel - Chemin vers l'élément
  * @param {string} [context='navigation'] - Contexte de l'appel pour les logs
- * @returns {{item: Object|null, parent: Object|null}} Objet contenant l'item trouvé et son parent
+ * @returns {{item: Object|null, subItems: Object|null, itemId: string|null}} Objet contenant l'item, ses subItems et son ID
  */
-function navigateToItem(config, QALevel, context = 'navigation') {
+function getItemAndSubItems(config, QALevel, context = 'navigation') {
     if (QALevel.length === 0) {
-        return { item: config, parent: null, parentId: null };
+        return { item: null, subItems: config, itemId: null };
     }
 
-    let currentItem = config;
-    let parentItem = null;
-    let parentId = null;
+    let currentSubItems = config;
+    let currentItemContainer = null;
+    let currentItemId = null;
 
     for (let i = 0; i < QALevel.length; i++) {
         const itemId = QALevel[i];
 
-        if (!currentItem[itemId]) {
+        if (!currentSubItems[itemId]) {
             console.warn(`[QuickAccess] Élément "${itemId}" introuvable lors de ${context}`, QALevel);
-            return { item: null, parent: null, parentId: null };
+            return { item: null, subItems: null, itemId: null };
         }
 
-        // ✅ Sauvegarder le parent et l'item complet AVANT de descendre
-        parentItem = currentItem;
-        parentId = itemId;
-        const fullItem = currentItem[itemId];
+        // ✅ Sauvegarder le conteneur et l'item complet AVANT de descendre
+        currentItemContainer = currentSubItems;
+        currentItemId = itemId;
+        const fullItem = currentSubItems[itemId];
 
         // Si ce n'est pas le dernier niveau, descendre dans subItems
         if (i < QALevel.length - 1) {
             if (!fullItem.subItems) {
                 console.warn(`[QuickAccess] Pas de subItems pour "${itemId}" lors de ${context}`, QALevel);
-                return { item: null, parent: null, parentId: null };
+                return { item: null, subItems: null, itemId: null };
             }
-            currentItem = fullItem.subItems;
+            currentSubItems = fullItem.subItems;
         } else {
             // Dernier niveau : retourner le contenu de subItems
-            currentItem = fullItem.subItems || fullItem;
+            currentSubItems = fullItem.subItems || fullItem;
         }
     }
 
-    return { item: currentItem, parent: parentItem, parentId };
+    return { item: currentItemContainer, subItems: currentSubItems, itemId: currentItemId };
 }
 
 
@@ -544,40 +545,40 @@ function populateSubItems(config, targetQALevel) {
         return;
     }
 
-    // Naviguer jusqu'à l'élément cible et obtenir son parent
-    const { item: subItemsContent, parent: parentContainer, parentId } = navigateToItem(config, targetQALevel, 'populateSubItems');
+    // Naviguer jusqu'à l'élément cible et obtenir son conteneur
+    const { subItems: subItemsContent, item: itemContainer, itemId } = getItemAndSubItems(config, targetQALevel, 'populateSubItems');
 
-    if (!parentContainer || !parentId) {
+    if (!itemContainer || !itemId) {
         return;
     }
 
-    // Récupérer l'objet complet de l'item depuis le parent
-    const fullItem = parentContainer[parentId];
+    // Récupérer l'objet complet de l'item depuis son conteneur
+    const targetItem = itemContainer[itemId];
 
     // Vérifier si subItems est une fonction à évaluer
-    if (typeof fullItem.subItems === 'function') {
+    if (typeof targetItem.subItems === 'function') {
         console.log(`[QuickAccess] Peuplement des subItems pour le niveau`, targetQALevel);
 
         // Trouver l'élément DOM si nécessaire
-        let element = fullItem.element;
-        if (!element && fullItem.selector) {
-            element = document.querySelector(fullItem.selector);
+        let element = targetItem.element;
+        if (!element && targetItem.selector) {
+            element = document.querySelector(targetItem.selector);
         }
 
         if (element) {
             // ⚠️ REMPLACEMENT PERMANENT : la fonction est remplacée par son résultat
-            // Modifier directement dans le parent pour que le cache fonctionne
-            const currentItemHotkey = fullItem.hotkey || null;
-            const generatedSubItems = fullItem.subItems(element, currentItemHotkey);
+            // Modifier directement dans le conteneur pour que le cache fonctionne
+            const currentItemHotkey = targetItem.hotkey || null;
+            const generatedSubItems = targetItem.subItems(element, currentItemHotkey);
 
-            // ✅ Modifier directement la référence dans quickAccessConfig via le parent
-            parentContainer[parentId].subItems = generatedSubItems;
+            // ✅ Modifier directement la référence dans quickAccessConfig via le conteneur
+            itemContainer[itemId].subItems = generatedSubItems;
 
             console.log(`[QuickAccess] SubItems peuplés avec succès pour`, targetQALevel);
         } else {
             console.warn(`[QuickAccess] Impossible de trouver l'élément pour peupler les subItems`, targetQALevel);
         }
-    } else if (typeof fullItem.subItems === 'object') {
+    } else if (typeof targetItem.subItems === 'object') {
         // Les subItems ont déjà été générés (cache) ou sont statiques
         console.log(`[QuickAccess] Réutilisation du cache subItems pour`, targetQALevel);
     }
