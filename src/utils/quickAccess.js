@@ -26,7 +26,7 @@
  *   }
  */
 const quickAccessConfig = {
-    // Recherche patient
+    // ================= Page d'accueil =================
     'recherche_patient': {
         selector: 'a[href*="FindPatientForm.aspx"]',
         onTap: function () {
@@ -34,7 +34,7 @@ const quickAccessConfig = {
         }
     },
 
-    // === Menu horizontal - Organisation hiérarchique ===
+    // Menu horizontal haut
     'medical': {
         selector: '#nav-menu > li > a.nav-icon__link--doctor',
         hotkey: 'm',
@@ -743,8 +743,9 @@ function createOverlay() {
  * @param {string} selector - Sélecteur CSS de l'élément
  * @param {string} hotkey - Touche de raccourci
  * @param {boolean} hasDoubleTap - Indique si un double-tap est disponible
+ * @param {boolean} isRootWithoutDoubleTap - Indique si l'élément est à la racine sans onDoubleTap
  */
-function createTooltip(selector, hotkey, hasDoubleTap = false) {
+function createTooltip(selector, hotkey, hasDoubleTap = false, isRootWithoutDoubleTap = false) {
     const element = document.querySelector(selector);
     console.log(`[QuickAccess] Création du tooltip pour la touche "${hotkey}" sur l'élément:`, element, "Selector:", selector);
     if (!element) return;
@@ -784,6 +785,18 @@ function createTooltip(selector, hotkey, hasDoubleTap = false) {
     if (hasDoubleTap) {
         tooltip.style.backgroundColor = 'rgba(0, 123, 255, 0.125)'; // Bleu clair avec transparence
     }
+    // Si élément à la racine sans doubleTap, ajouter un entourage à l'élément DOM
+    if (isRootWithoutDoubleTap) {
+        // Sauvegarder le style original de la bordure
+        element.dataset.originalBorder = element.style.border || '';
+        element.dataset.originalOutline = element.style.outline || '';
+        element.dataset.originalBoxShadow = element.style.boxShadow || '';
+        
+        // Appliquer l'entourage
+        element.style.outline = '2px solid rgba(0, 123, 255, 0.8)';
+        element.style.outlineOffset = '2px';
+        element.classList.add('wh-quickaccess-highlighted');
+    }
 
     // Contenu : uniquement la touche
     tooltip.textContent = hotkey.toUpperCase();
@@ -809,9 +822,25 @@ function showTooltips(state, config) {
 
     console.log('[QuickAccess] Affichage des tooltips pour le niveau', state.currentLevel, flattenedConfig);
 
-    for (const [itemId, item] of Object.entries(flattenedConfig)) {
-        console.log(`[QuickAccess] Traitement de l'item "${itemId}" pour affichage du tooltip:`, item, "Selector:", item.selector, "Hotkey:", item.hotkey, "HasDoubleTap:", item.onDoubleTap != null);
-        createTooltip(item.selector, item.hotkey, item.onDoubleTap != null);
+    const entries = Object.entries(flattenedConfig);
+    const isAtChildLevel = state.currentLevel.length > 0;
+    const isAtRoot = state.currentLevel.length === 0;
+
+    for (let i = 0; i < entries.length; i++) {
+        const [itemId, item] = entries[i];
+        const isParentElement = isAtChildLevel && i === 0;
+        
+        // Si c'est l'élément parent et que doubleTap est null, ne pas afficher le tooltip
+        if (isParentElement && item.onDoubleTap === null) {
+            console.log(`[QuickAccess] Élément parent "${itemId}" ignoré (onDoubleTap est null)`);
+            continue;
+        }
+        
+        const hasDoubleTap = item.onDoubleTap != null;
+        const isRootWithoutDoubleTap = isAtRoot && !hasDoubleTap;
+        
+        console.log(`[QuickAccess] Traitement de l'item "${itemId}" pour affichage du tooltip:`, item, "Selector:", item.selector, "Hotkey:", item.hotkey, "HasDoubleTap:", hasDoubleTap, "IsRootWithoutDoubleTap:", isRootWithoutDoubleTap);
+        createTooltip(item.selector, item.hotkey, hasDoubleTap, isRootWithoutDoubleTap);
     }
 }
 
@@ -821,6 +850,21 @@ function showTooltips(state, config) {
 function clearAllTooltips() {
     const tooltips = document.querySelectorAll('.wh-quickaccess-tooltip');
     tooltips.forEach(tooltip => tooltip.remove());
+    
+    // Supprimer les entourages des éléments mis en valeur
+    const highlightedElements = document.querySelectorAll('.wh-quickaccess-highlighted');
+    highlightedElements.forEach(element => {
+        element.style.outline = element.dataset.originalOutline || '';
+        element.style.outlineOffset = '';
+        element.style.border = element.dataset.originalBorder || '';
+        element.style.boxShadow = element.dataset.originalBoxShadow || '';
+        element.classList.remove('wh-quickaccess-highlighted');
+        
+        // Nettoyer les données
+        delete element.dataset.originalBorder;
+        delete element.dataset.originalOutline;
+        delete element.dataset.originalBoxShadow;
+    });
 }
 
 /**
