@@ -458,48 +458,38 @@ function getItemAndSubItems(config, QALevel, context = 'navigation') {
  * @param {string[]} targetQALevel - Nouveau chemin cible
  * @param {Object} state - Objet d'état contenant currentLevel
  * @param {Object} config - Configuration racine
- * @returns {boolean} true si le changement est valide, false sinon
  */
 function moveToTargetConfig(targetQALevel, state, config) {
     const actualQALevel = state.currentLevel;
 
     // Vérifier que la demande de changement de niveau est d'un niveau exactement
     const levelDiff = Math.abs(targetQALevel.length - actualQALevel.length);
-
     if (levelDiff !== 1) {
         console.error(`[QuickAccess] Changement de niveau invalide : différence de ${levelDiff} niveaux`, {
             from: actualQALevel,
             to: targetQALevel
         });
+        return;
     }
 
-    // Vérifier que le chemin supérieur est cohérent (en cas de descente)
-    if (targetQALevel.length > actualQALevel.length) {
-        // Descente : vérifier que targetQALevel commence par actualQALevel
-        for (let i = 0; i < actualQALevel.length; i++) {
-            if (actualQALevel[i] !== targetQALevel[i]) {
-                console.error(`[QuickAccess] Chemin incohérent lors de la descente`, {
-                    from: actualQALevel,
-                    to: targetQALevel
-                });
-            }
-        }
-    } else {
-        // Remontée : vérifier que actualQALevel commence par targetQALevel
-        for (let i = 0; i < targetQALevel.length; i++) {
-            if (actualQALevel[i] !== targetQALevel[i]) {
-                console.error(`[QuickAccess] Chemin incohérent lors de la remontée`, {
-                    from: actualQALevel,
-                    to: targetQALevel
-                });
-            }
+    // Vérifier que le chemin le plus court est un préfixe du chemin le plus long
+    const [shorterPath, longerPath] = actualQALevel.length < targetQALevel.length 
+        ? [actualQALevel, targetQALevel] 
+        : [targetQALevel, actualQALevel];
+    
+    for (let i = 0; i < shorterPath.length; i++) {
+        if (shorterPath[i] !== longerPath[i]) {
+            console.error(`[QuickAccess] Chemin incohérent`, {
+                from: actualQALevel,
+                to: targetQALevel
+            });
+            return; // Le changement de niveau est invalide, les chemins ne sont pas alignés
         }
     }
 
     // Appliquer le changement de niveau en peuplant si besoin le nouveau niveau
     try {
         populateSubItems(config, targetQALevel);
-        // ✅ Mettre à jour l'état si le changement est valide
         state.currentLevel = targetQALevel;
     } catch (error) {
         console.error(`[QuickAccess] Erreur lors du peuplement des subItems`, error);
@@ -658,17 +648,16 @@ function generateHotkeyFromText(text, usedHotkeys) {
         }
     }
     
-    // Si aucune lettre du texte n'est disponible, utiliser la première lettre disponible de l'alphabet
-    const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    for (const char of alphabet) {
+    // Si aucune lettre du texte n'est disponible, parcourir tous les caractères disponibles
+    const availableChars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/~`';
+    for (const char of availableChars) {
         if (!usedHotkeys.has(char)) {
             return char;
         }
     }
     
-    // Dernier recours : utiliser des lettres doublées ou autres caractères
-    console.warn('[QuickAccess] Aucune hotkey disponible, génération de fallback');
-    return Math.random().toString(36).substring(2, 3);
+    // Si vraiment tous les caractères sont pris, lever une erreur
+    console.error('[QuickAccess] Plus aucune hotkey disponible ! Configuration trop large (plus de 65 items au même niveau).');
 }
 
 // ============================================================================
@@ -723,9 +712,9 @@ function createOverlay() {
  * @param {string} selector - Sélecteur CSS de l'élément
  * @param {string} hotkey - Touche de raccourci
  * @param {boolean} hasDoubleTap - Indique si un double-tap est disponible
- * @param {boolean} isRootWithoutDoubleTap - Indique si l'élément est à la racine sans onDoubleTap
+ * @param {boolean} isContainerOnly - Indique si l'item sert uniquement de conteneur pour la navigation (pas d'action directe)
  */
-function createTooltip(selector, hotkey, hasDoubleTap = false, isRootWithoutDoubleTap = false) {
+function createTooltip(selector, hotkey, hasDoubleTap = false, isContainerOnly = false) {
     const element = document.querySelector(selector);
     console.log(`[QuickAccess] Création du tooltip pour la touche "${hotkey}" sur l'élément:`, element, "Selector:", selector);
     if (!element) return;
@@ -765,12 +754,16 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isRootWithoutDoub
     if (hasDoubleTap) {
         tooltip.style.backgroundColor = 'rgba(0, 123, 255, 0.125)'; // Bleu clair avec transparence
     }
-    // Si élément à la racine sans doubleTap, ajouter un entourage à l'élément DOM
-    if (isRootWithoutDoubleTap) {
-        // Sauvegarder le style original de la bordure
-        element.dataset.originalBorder = element.style.border || '';
-        element.dataset.originalOutline = element.style.outline || '';
-        element.dataset.originalBoxShadow = element.style.boxShadow || '';
+    // Si l'item est un conteneur pur (sert uniquement à la navigation vers subItems),
+    // mettre en évidence l'élément DOM avec un outline pour le distinguer visuellement
+    if (isContainerOnly) {
+        // Sauvegarder les styles originaux
+        saveElementStyles(element, {
+            outline: element.style.outline || '',
+            outlineOffset: element.style.outlineOffset || '',
+            border: element.style.border || '',
+            boxShadow: element.style.boxShadow || ''
+        });
         
         // Appliquer l'entourage
         element.style.outline = '2px solid rgba(0, 123, 255, 0.8)';
@@ -817,10 +810,12 @@ function showTooltips(state, config) {
         }
         
         const hasDoubleTap = item.onDoubleTap != null;
-        const isRootWithoutDoubleTap = isAtRoot && !hasDoubleTap;
+        // Un item sans doubleTap à la racine est un conteneur pur :
+        // il ne peut pas être une cible finale, il sert uniquement à naviguer vers ses subItems
+        const isContainerOnly = isAtRoot && !hasDoubleTap;
         
-        console.log(`[QuickAccess] Traitement de l'item "${itemId}" pour affichage du tooltip:`, item, "Selector:", item.selector, "Hotkey:", item.hotkey, "HasDoubleTap:", hasDoubleTap, "IsRootWithoutDoubleTap:", isRootWithoutDoubleTap);
-        createTooltip(item.selector, item.hotkey, hasDoubleTap, isRootWithoutDoubleTap);
+        console.log(`[QuickAccess] Traitement de l'item "${itemId}" pour affichage du tooltip:`, item, "Selector:", item.selector, "Hotkey:", item.hotkey, "HasDoubleTap:", hasDoubleTap, "IsContainerOnly:", isContainerOnly);
+        createTooltip(item.selector, item.hotkey, hasDoubleTap, isContainerOnly);
     }
 }
 
@@ -834,16 +829,8 @@ function clearAllTooltips() {
     // Supprimer les entourages des éléments mis en valeur
     const highlightedElements = document.querySelectorAll('.wh-quickaccess-highlighted');
     highlightedElements.forEach(element => {
-        element.style.outline = element.dataset.originalOutline || '';
-        element.style.outlineOffset = '';
-        element.style.border = element.dataset.originalBorder || '';
-        element.style.boxShadow = element.dataset.originalBoxShadow || '';
+        restoreElementStyles(element);
         element.classList.remove('wh-quickaccess-highlighted');
-        
-        // Nettoyer les données
-        delete element.dataset.originalBorder;
-        delete element.dataset.originalOutline;
-        delete element.dataset.originalBoxShadow;
     });
 }
 
@@ -861,6 +848,36 @@ function deactivateQuickAccess() {
 
     // Remettre tout les éléments à leur place
     revertMovedElement();
+}
+
+// ============================================================================
+// UTILITAIRES DE SAUVEGARDE/RESTAURATION DE STYLES
+// ============================================================================
+
+/**
+ * Sauvegarde les styles d'un élément pour pouvoir les restaurer plus tard
+ * @param {HTMLElement} element - L'élément dont on veut sauvegarder les styles
+ * @param {Object} styles - Objet contenant les styles à sauvegarder {propName: value}
+ */
+function saveElementStyles(element, styles) {
+    if (!element || !styles) return;
+    
+    element.dataset.originalStyles = JSON.stringify(styles);
+}
+
+/**
+ * Restaure les styles originaux d'un élément sauvegardés précédemment
+ * @param {HTMLElement} element - L'élément dont on veut restaurer les styles
+ */
+function restoreElementStyles(element) {
+    if (!element || !element.dataset.originalStyles) return;
+    
+    const styles = JSON.parse(element.dataset.originalStyles);
+    Object.entries(styles).forEach(([prop, value]) => {
+        element.style[prop] = value;
+    });
+    
+    delete element.dataset.originalStyles;
 }
 
 // ============================================================================
@@ -915,21 +932,19 @@ function horizontalMenuPseudoMouseover(element, state) {
                         newTop = 10; // Marge minimale en haut
                     }
 
-                    // Stocker la position dans l'élément pour pouvoir la réutiliser si besoin (ex: lors du revert)
-                    submenu.dataset.originalPosition = JSON.stringify({
+                    // Sauvegarder les styles originaux pour pouvoir les restaurer
+                    saveElementStyles(submenu, {
                         position: submenu.style.position,
                         left: submenu.style.left,
                         top: submenu.style.top,
                         zIndex: submenu.style.zIndex
                     });
 
-                    // Y ajouter une classe pour indiquer que le sous-menu a été repositionné (utile pour le revert)
+                    // Marquer comme repositionné et associer au niveau de navigation actuel
                     submenu.classList.add('wh-qa-repositioned');
-
-                    // Y ajouter le state.currentLevel
                     submenu.dataset.qaLevel = JSON.stringify(state.currentLevel);
 
-                    // Appliquer la position
+                    // Appliquer la nouvelle position
                     submenu.style.position = 'fixed';
                     submenu.style.left = newLeft + 'px';
                     submenu.style.top = newTop + 'px';
@@ -947,21 +962,15 @@ function horizontalMenuPseudoMouseover(element, state) {
  */
 function revertMovedElement(QALevelTarget) {
     const repositionnedClass = 'wh-qa-repositioned';
-    const movedElements = QALevelTarget ? document.querySelectorAll(`[data-qa-level='${QALevelTarget}']`) : document.querySelectorAll(`.${repositionnedClass}`);
+    const movedElements = QALevelTarget 
+        ? document.querySelectorAll(`[data-qa-level='${QALevelTarget}']`) 
+        : document.querySelectorAll(`.${repositionnedClass}`);
 
     movedElements.forEach(submenu => {
-        const originalPosition = submenu.dataset.originalPosition;
-        if (originalPosition) {
-            const { position, left, top, zIndex } = JSON.parse(originalPosition);
-            submenu.style.position = position;
-            submenu.style.left = left;
-            submenu.style.top = top;
-            submenu.style.zIndex = zIndex;
-            submenu.classList.remove(repositionnedClass);
-            delete submenu.dataset.originalPosition;
-            delete submenu.dataset.qaLevel;
-            console.log(`[QuickAccess] Sous-menu repositionné à sa position originale:`, submenu);
-        }
+        restoreElementStyles(submenu);
+        submenu.classList.remove(repositionnedClass);
+        delete submenu.dataset.qaLevel;
+        console.log(`[QuickAccess] Sous-menu restauré à sa position originale:`, submenu);
     });
 }
 
