@@ -6,206 +6,204 @@
  * 
  */
 
-// ============================================================================
-// CONFIGURATION
-// ============================================================================
-
-/**
- * Configuration du Quick Access
- * Un Item correspond à un élément présent dans le DOM :
- * 
- * 'ceci_est_un_item': {     // ID de l'item, utilisé pour la navigation dans les niveaux
- *   selector: 'a.mon-lien', // sélecteur CSS pour trouver l'élément dans le DOM
- *   hotkey: 'c',            // lettre de raccourci (de préférence null pour génération automatique)
- *   onTap: 'mouseover',     // action à exécuter au tap (cf. executeAction)
- *   onDouble: 'clic',       // action à exécuter au double-tap (optionnel, cf. executeAction)
- *   subItems: {             // sous-éléments (optionnel, pour les items non-terminaux). Générés une seule fois puis mis en cache.
- *     'sous_item_1': { ... },
- *     'sous_item_2': { ... }
- *     }
- *   }
- */
-const quickAccessConfig = {
-    // ================= Page d'accueil =================
-    'recherche_patient': {
-        selector: 'a[href*="FindPatientForm.aspx"]',
-        onTap: function () {
-            openSearch(); // définie dans keyCommand.js
-        }
-    },
-
-    // --------- Menu horizontal haut ---------------------
-    'medical': {
-        selector: '#nav-menu > li > a.nav-icon__link--doctor',
-        hotkey: 'm',
-        onTap: 'horizontal_menu_pseudomouseover',
-        onDoubleTap: 'clic',
-        subItems: function (element) {
-            const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-            return submenu ? generateHorizMenuSubItems(submenu, 'medical') : {};
-        }
-    },
-
-    'applicatifs': {
-        selector: '#nav-menu > li > a.nav-icon__link--tools',
-        hotkey: 'p',
-        onTap: 'horizontal_menu_pseudomouseover',
-        onDoubleTap: 'clic',
-        subItems: function (element) {
-            const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-            return submenu ? generateHorizMenuSubItems(submenu, 'applicatifs') : {};
-        }
-    },
-
-    'gestion': {
-        selector: '#nav-menu > li > a.nav-icon__link--safe-open',
-        hotkey: 'g',
-        onTap: 'horizontal_menu_pseudomouseover',
-        onDoubleTap: 'clic',
-        subItems: function (element) {
-            const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-            return submenu ? generateHorizMenuSubItems(submenu, 'gestion') : {};
-        }
-    },
-
-    'parametres': {
-        selector: '#nav-menu > li > a.nav-icon__link--mixing-desk',
-        hotkey: 'e',
-        onTap: 'horizontal_menu_pseudomouseover',
-        onDoubleTap: 'clic',
-        subItems: function (element) {
-            const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-            return submenu ? generateHorizMenuSubItems(submenu, 'parametres') : {};
-        }
-    },
-
-    // === Menu vertical gauche (sidebar) ===
-    'menu_vertical_gauche': {
-        selector: ".menu-sidebar",
-        onTap: null,
-        onDoubleTap: null,
-        subItems: {
-            // Menu W - Navigation événements
-            'menu_w_sidebar': {
-                selector: '#ContentPlaceHolder1_UpdatePanelMenuNavigate',
-                onTap: 'W_menu_pseudomouseover',
-                onDoubleTap: 'clic',
-                subItems: function (element) {
-                    const submenu = element.querySelector('ul.level2.dynamic');
-                    return submenu ? generateWMenuSubItems(submenu, 'menu_w_sidebar') : {};
-                }
-            },
-
-            // Fiche patient
-            'modifier_patient': {
-                selector: '#ContentPlaceHolder1_ButtonModifierPatient',
-                onTap: 'clic'
-            },
-
-            // Carte Vitale
-            'cv_sidebar': {
-                selector: '.cv',
-                onTap: 'clic'
-            },
-
-            // Menu périphériques (scanner, doctolib, DMP, omnidoc)
-            'peripheriques': {
-                selector: '#ContentPlaceHolder1_DivMenuPeripherique',
-                onTap: 'W_menu_pseudomouseover',
-                onDoubleTap: 'clic',
-                subItems: function (element) {
-                    const submenu = element.querySelector('ul.level2.dynamic');
-                    return submenu ? generateWMenuSubItems(submenu, 'peripheriques') : {};
-                }
-            },
-
-            // Recherche patient (déjà défini au niveau racine)
-            'recherche_sidebar': {
-                selector: '.imgChercher',
-                onTap: 'clic'
-            },
-
-            // Ajouter patient
-            'ajouter_patient': {
-                selector: '.imgAddNewPatient',
-                onTap: 'clic'
-            },
-
-            // Documents - Organisation hiérarchique
-            'consultations': {
-                selector: '#ContentPlaceHolder1_ButtonConsultation',
-                onTap: 'clic'
-            },
-
-            'resultats_examen': {
-                selector: '#ContentPlaceHolder1_ButtonResultatExamen',
-                onTap: 'clic'
-            },
-
-            'courriers': {
-                selector: '#ContentPlaceHolder1_ButtonCourrier',
-                onTap: 'clic'
-            },
-
-            'vaccins': {
-                selector: '#ContentPlaceHolder1_ButtonVaccins',
-                onTap: 'clic'
-            },
-
-            'traitements': {
-                selector: '#ContentPlaceHolder1_ButtonPanneauxSynthetique',
-                onTap: 'clic'
-            },
-
-            'graphiques': {
-                selector: '#ContentPlaceHolder1_ButtonChart',
-                onTap: 'clic'
-            },
-
-            'documents_joints': {
-                selector: '#ButtonDocumentJointAction',
-                onTap: 'clic'
-            },
-
-            'arrets_travail': {
-                selector: '#ContentPlaceHolder1_ButtonAT',
-                onTap: 'clic'
-            },
-
-            // Menu impression
-            'impression': {
-                selector: '#ContentPlaceHolder1_MenuPrint > ul.level1.static',
-                onTap: 'W_menu_pseudomouseover',
-                onDoubleTap: 'clic',
-                subItems: function (element) {
-                    const submenu = element.querySelector('ul.level2.dynamic');
-                    return submenu ? generateWMenuSubItems(submenu, 'impression') : {};
-                }
-            },
-
-            // Recherche prescriptions
-            'recherche_prescriptions': {
-                selector: '#ContentPlaceHolder1_ButtonHasStat',
-                onTap: 'clic'
-            },
-
-            // Séquenceur
-            'sequenceur': {
-                selector: '#ContentPlaceHolder1_ButtonSequenceur',
-                onTap: 'clic'
-            }
-        }
-    }
-};
 
 // ============================================================================
 // POINT D'ENTRÉE ET INITIALISATION
 // ============================================================================
 
 /** 
- * Fonction d'entrée
+ * Fonction d'entrée de activation du Quick Access
 */
 function activateQuickAccess() {
+    // Les objets de conf sont définies ici pour être réinitialisées à chaque activation du Quick Access et éviter les problèmes de cache
+    /**
+     * Configuration du Quick Access
+     * Un Item correspond à un élément présent dans le DOM :
+     * 
+     * 'ceci_est_un_item': {     // ID de l'item, utilisé pour la navigation dans les niveaux
+     *   selector: 'a.mon-lien', // sélecteur CSS pour trouver l'élément dans le DOM
+     *   hotkey: 'c',            // lettre de raccourci (de préférence null pour génération automatique)
+     *   onTap: 'mouseover',     // action à exécuter au tap (cf. executeAction)
+     *   onDouble: 'clic',       // action à exécuter au double-tap (optionnel, cf. executeAction)
+     *   subItems: {             // sous-éléments (optionnel, pour les items non-terminaux). Générés une seule fois puis mis en cache.
+     *     'sous_item_1': { ... },
+     *     'sous_item_2': { ... }
+     *     }
+     *   }
+     */
+    const quickAccessConfig = {
+        // ================= Page d'accueil =================
+        'recherche_patient': {
+            selector: 'a[href*="FindPatientForm.aspx"]',
+            onTap: function () {
+                openSearch(); // définie dans keyCommand.js
+            }
+        },
+
+        // --------- Menu horizontal haut ---------------------
+        'medical': {
+            selector: '#nav-menu > li > a.nav-icon__link--doctor',
+            hotkey: 'm',
+            onTap: 'horizontal_menu_pseudomouseover',
+            onDoubleTap: 'clic',
+            subItems: function (element) {
+                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
+                return submenu ? generateHorizMenuSubItems(submenu, 'medical') : {};
+            }
+        },
+
+        'applicatifs': {
+            selector: '#nav-menu > li > a.nav-icon__link--tools',
+            hotkey: 'p',
+            onTap: 'horizontal_menu_pseudomouseover',
+            onDoubleTap: 'clic',
+            subItems: function (element) {
+                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
+                return submenu ? generateHorizMenuSubItems(submenu, 'applicatifs') : {};
+            }
+        },
+
+        'gestion': {
+            selector: '#nav-menu > li > a.nav-icon__link--safe-open',
+            hotkey: 'g',
+            onTap: 'horizontal_menu_pseudomouseover',
+            onDoubleTap: 'clic',
+            subItems: function (element) {
+                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
+                return submenu ? generateHorizMenuSubItems(submenu, 'gestion') : {};
+            }
+        },
+
+        'parametres': {
+            selector: '#nav-menu > li > a.nav-icon__link--mixing-desk',
+            hotkey: 'e',
+            onTap: 'horizontal_menu_pseudomouseover',
+            onDoubleTap: 'clic',
+            subItems: function (element) {
+                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
+                return submenu ? generateHorizMenuSubItems(submenu, 'parametres') : {};
+            }
+        },
+
+        // === Menu vertical gauche (sidebar) ===
+        'menu_vertical_gauche': {
+            selector: ".menu-sidebar",
+            onTap: null,
+            onDoubleTap: null,
+            subItems: {
+                // Menu W - Navigation événements
+                'menu_w_sidebar': {
+                    selector: '#ContentPlaceHolder1_UpdatePanelMenuNavigate',
+                    onTap: 'W_menu_pseudomouseover',
+                    onDoubleTap: 'clic',
+                    subItems: function (element) {
+                        const submenu = element.querySelector('ul.level2.dynamic');
+                        return submenu ? generateWMenuSubItems(submenu, 'menu_w_sidebar') : {};
+                    }
+                },
+
+                // Fiche patient
+                'modifier_patient': {
+                    selector: '#ContentPlaceHolder1_ButtonModifierPatient',
+                    onTap: 'clic'
+                },
+
+                // Carte Vitale
+                'cv_sidebar': {
+                    selector: '.cv',
+                    onTap: 'clic'
+                },
+
+                // Menu périphériques (scanner, doctolib, DMP, omnidoc)
+                'peripheriques': {
+                    selector: '#ContentPlaceHolder1_DivMenuPeripherique',
+                    onTap: 'W_menu_pseudomouseover',
+                    onDoubleTap: 'clic',
+                    subItems: function (element) {
+                        const submenu = element.querySelector('ul.level2.dynamic');
+                        return submenu ? generateWMenuSubItems(submenu, 'peripheriques') : {};
+                    }
+                },
+
+                // Recherche patient (déjà défini au niveau racine)
+                'recherche_sidebar': {
+                    selector: '.imgChercher',
+                    onTap: 'clic'
+                },
+
+                // Ajouter patient
+                'ajouter_patient': {
+                    selector: '.imgAddNewPatient',
+                    onTap: 'clic'
+                },
+
+                // Documents - Organisation hiérarchique
+                'consultations': {
+                    selector: '#ContentPlaceHolder1_ButtonConsultation',
+                    onTap: 'clic'
+                },
+
+                'resultats_examen': {
+                    selector: '#ContentPlaceHolder1_ButtonResultatExamen',
+                    onTap: 'clic'
+                },
+
+                'courriers': {
+                    selector: '#ContentPlaceHolder1_ButtonCourrier',
+                    onTap: 'clic'
+                },
+
+                'vaccins': {
+                    selector: '#ContentPlaceHolder1_ButtonVaccins',
+                    onTap: 'clic'
+                },
+
+                'traitements': {
+                    selector: '#ContentPlaceHolder1_ButtonPanneauxSynthetique',
+                    onTap: 'clic'
+                },
+
+                'graphiques': {
+                    selector: '#ContentPlaceHolder1_ButtonChart',
+                    onTap: 'clic'
+                },
+
+                'documents_joints': {
+                    selector: '#ButtonDocumentJointAction',
+                    onTap: 'clic'
+                },
+
+                'arrets_travail': {
+                    selector: '#ContentPlaceHolder1_ButtonAT',
+                    onTap: 'clic'
+                },
+
+                // Menu impression
+                'impression': {
+                    selector: '#ContentPlaceHolder1_MenuPrint > ul.level1.static',
+                    onTap: 'W_menu_pseudomouseover',
+                    onDoubleTap: 'clic',
+                    subItems: function (element) {
+                        const submenu = element.querySelector('ul.level2.dynamic');
+                        return submenu ? generateWMenuSubItems(submenu, 'impression') : {};
+                    }
+                },
+
+                // Recherche prescriptions
+                'recherche_prescriptions': {
+                    selector: '#ContentPlaceHolder1_ButtonHasStat',
+                    onTap: 'clic'
+                },
+
+                // Séquenceur
+                'sequenceur': {
+                    selector: '#ContentPlaceHolder1_ButtonSequenceur',
+                    onTap: 'clic'
+                }
+            }
+        }
+    };
+
     /**
     * state.currentLevel correspond au niveau actuel du QuickAccess (QALevel)
     * C'est un tableau de clés représentant le chemin dans l'arborescence.
