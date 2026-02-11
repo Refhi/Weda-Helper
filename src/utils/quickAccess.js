@@ -328,7 +328,7 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
 function executeAction(action, selector, state) {
     const element = document.querySelector(selector);
     if (!element) {
-        console.warn(`[QuickAccess] Impossible d'exécuter l'action : élément non trouvé pour le sélecteur "${selector}"`);
+        console.error(`[QuickAccess] Impossible d'exécuter l'action : élément non trouvé pour le sélecteur "${selector}"`);
         return;
     }
 
@@ -350,12 +350,12 @@ function executeAction(action, selector, state) {
                 WMenuPseudoMouseover(element);
                 break;
             default:
-                console.warn(`[QuickAccess] Action de type string non reconnue : "${action}"`);
+                console.error(`[QuickAccess] Action de type string non reconnue : "${action}"`);
         }
     } else if (typeof action === 'function') {
         action(element);
     } else {
-        console.warn(`[QuickAccess] Action de type inconnu :`, action);
+        console.error(`[QuickAccess] Action de type inconnu :`, action);
     }
 }
 
@@ -365,8 +365,9 @@ function executeAction(action, selector, state) {
 
 
 /**
- * Génère la même configuration que currentLevelConfig, mais applatie,
- * afin que l’élément parent et ses subItems immédiats soient au même niveau pour faciliter l'affichage des tooltips et la gestion des raccourcis.
+ * Génère la même configuration que getItemAndSubItems, mais applatie,
+ * afin que l’Item et ses subItems soient au même niveau
+ * (facilite les appels pour affichage des tooltips et gestion des raccourcis).
  * 
 */
 function flattenedCurrentLevelConfig(state, config) {
@@ -378,22 +379,15 @@ function flattenedCurrentLevelConfig(state, config) {
         Object.assign(flattenedConfig, config);
     } else {
         // Cas 2 : Niveau enfant - naviguer jusqu'à l'élément cible
-        const { item: itemContainer, itemId } = getItemAndSubItems(config, actualQALevel, 'flattenedCurrentLevelConfig');
+        const { item, subItems, itemId } = getItemAndSubItems(config, actualQALevel, 'flattenedCurrentLevelConfig');
 
-        if (!itemContainer || !itemId) {
+        if (!item || !itemId) {
             console.warn('[QuickAccess] Impossible de construire la configuration aplatie', actualQALevel);
             return {};
         }
 
-        const targetItem = itemContainer[itemId];
-
-        // Ajouter l'élément cible
-        flattenedConfig[itemId] = targetItem;
-
-        // Ajouter les subItems immédiats au même niveau
-        if (targetItem.subItems && typeof targetItem.subItems === 'object') {
-            Object.assign(flattenedConfig, targetItem.subItems);
-        }
+        // Aplatir : l'item et ses subItems au même niveau
+        Object.assign(flattenedConfig, { [itemId]: item[itemId] }, subItems);
     }
 
     // Générer automatiquement les hotkeys manquants
