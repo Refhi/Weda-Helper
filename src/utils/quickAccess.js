@@ -44,7 +44,7 @@ function activateQuickAccess() {
         'medical': {
             selector: '#nav-menu > li > a.nav-icon__link--doctor',
             hotkey: 'm',
-            onTap: 'horizontal_menu_pseudomouseover',
+            onTap: function(element, state) { horizontalMenuPseudoMouseover(element, state); },
             onDoubleTap: 'clic',
             subItems: function (element) {
                 const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
@@ -55,7 +55,7 @@ function activateQuickAccess() {
         'applicatifs': {
             selector: '#nav-menu > li > a.nav-icon__link--tools',
             hotkey: 'p',
-            onTap: 'horizontal_menu_pseudomouseover',
+            onTap: function(element, state) { horizontalMenuPseudoMouseover(element, state); },
             onDoubleTap: 'clic',
             subItems: function (element) {
                 const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
@@ -66,7 +66,7 @@ function activateQuickAccess() {
         'gestion': {
             selector: '#nav-menu > li > a.nav-icon__link--safe-open',
             hotkey: 'g',
-            onTap: 'horizontal_menu_pseudomouseover',
+            onTap: function(element, state) { horizontalMenuPseudoMouseover(element, state); },
             onDoubleTap: 'clic',
             subItems: function (element) {
                 const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
@@ -77,7 +77,7 @@ function activateQuickAccess() {
         'parametres': {
             selector: '#nav-menu > li > a.nav-icon__link--mixing-desk',
             hotkey: 'e',
-            onTap: 'horizontal_menu_pseudomouseover',
+            onTap: function(element, state) { horizontalMenuPseudoMouseover(element, state); },
             onDoubleTap: 'clic',
             subItems: function (element) {
                 const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
@@ -94,7 +94,7 @@ function activateQuickAccess() {
                 // Menu W - Navigation événements
                 'menu_w_sidebar': {
                     selector: '#ContentPlaceHolder1_MenuNavigate > ul.level1 > li > a.level1',
-                    onTap: 'W_menu_pseudomouseover',
+                    onTap: function(element, state) { WMenuPseudoMouseover(element, state); },
                     onDoubleTap: 'clic',
                     subItems: function (element) {
                         // Le sous-menu est dans le li parent
@@ -119,10 +119,10 @@ function activateQuickAccess() {
                 // Menu périphériques (scanner, doctolib, DMP, omnidoc)
                 'peripheriques': {
                     selector: '#ContentPlaceHolder1_DivMenuPeripherique',
-                    onTap: 'W_menu_pseudomouseover',
+                    onTap: function(element, state) { peripheriquesPseudoMouseover(element, state); },
                     onDoubleTap: 'clic',
                     subItems: function (element) {
-                        const submenu = element.querySelector('ul.level2.dynamic');
+                        const submenu = element.querySelector('#ContentPlaceHolder1_MenuPeripherique ul.level2.dynamic');
                         return submenu ? generateWMenuSubItems(submenu, 'peripheriques') : {};
                     }
                 },
@@ -172,7 +172,12 @@ function activateQuickAccess() {
 
                 'documents_joints': {
                     selector: '#ButtonDocumentJointAction',
-                    onTap: 'clic'
+                    onTap: function(element, state) { documentsJointsPseudoMouseover(element, state); },
+                    onDoubleTap: 'clic',
+                    subItems: function (element) {
+                        const submenu = document.querySelector('#DivMenuDocumentJoint table');
+                        return submenu ? generateDocumentsJointsSubItems(submenu, 'documents_joints') : {};
+                    }
                 },
 
                 'arrets_travail': {
@@ -183,7 +188,7 @@ function activateQuickAccess() {
                 // Menu impression
                 'impression': {
                     selector: '#ContentPlaceHolder1_MenuPrint > ul.level1.static',
-                    onTap: 'W_menu_pseudomouseover',
+                    onTap: function(element, state) { impressionPseudoMouseover(element, state); },
                     onDoubleTap: 'clic',
                     subItems: function (element) {
                         const submenu = element.querySelector('ul.level2.dynamic');
@@ -345,17 +350,11 @@ function executeAction(action, selector, state) {
             case 'enter':
                 element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
                 break;
-            case 'horizontal_menu_pseudomouseover':
-                horizontalMenuPseudoMouseover(element, state);
-                break;
-            case 'W_menu_pseudomouseover':
-                WMenuPseudoMouseover(element, state);
-                break;
             default:
                 console.error(`[QuickAccess] Action de type string non reconnue : "${action}"`);
         }
     } else if (typeof action === 'function') {
-        action(element);
+        action(element, state);
     } else {
         console.error(`[QuickAccess] Action de type inconnu :`, action);
     }
@@ -1125,7 +1124,7 @@ function generateWMenuSubItems(submenuElement, parentId) {
         const item = {
             selector: selector,
             hotkey: null, // Sera généré automatiquement par ensureHotkeysForItems
-            onTap: nestedSubmenu ? 'W_menu_pseudomouseover' : 'clic',
+            onTap: nestedSubmenu ? function(element, state) { WMenuPseudoMouseover(element, state); } : 'clic',
             onDoubleTap: nestedSubmenu ? 'clic' : null,
             element: link // Sauvegarder la référence à l'élément pour un accès ultérieur
         };
@@ -1193,7 +1192,7 @@ function generateHorizMenuSubItems(submenuElement, parentId) {
         const item = {
             selector: selector,
             description: linkText, // Stocker le texte pour la génération de hotkey ultérieure
-            onTap: hasArrow ? 'horizontal_menu_pseudomouseover' : 'clic'
+            onTap: hasArrow ? function(element, state) { horizontalMenuPseudoMouseover(element, state); } : 'clic'
         };
 
         // Si a un sous-menu, configurer le double-tap pour ouvrir directement
