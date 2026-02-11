@@ -255,10 +255,9 @@ function addListenersToOverlay(overlay, state, config) {
 
                 // Remontée d'un niveau
                 const parentLevel = state.currentLevel.slice(0, -1); // On enlève le dernier élément du chemin
-                if (moveToTargetConfig(parentLevel, state, config)) { // Change le state.currentLevel et vérifie la validité du changement
-                    // showToolTips contiens également un reset
-                    showTooltips(state, config);
-                }
+                moveToTargetConfig(parentLevel, state, config) // Change le state.currentLevel et vérifie la validité du changement
+                // showToolTips contiens également un reset
+                showTooltips(state, config);
             }
         } else {
             // Pour tout le reste des touches, c'est géré dans :
@@ -276,38 +275,33 @@ function addListenersToOverlay(overlay, state, config) {
 }
 
 function handleQuickAccessKey(e, state, config) {
-    // Vérifier que la touche pressée correspond à un élément du niveau actuel
+    // Vérifier que la touche pressée est associée à un élément **du niveau actuel**
     const currentConfig = flattenedCurrentLevelConfig(state, config);
-
-    // Chercher directement l'entrée [itemId, item] correspondant à la touche
     const matchedEntry = Object.entries(currentConfig).find(([, item]) => item.hotkey === e.key);
 
     if (matchedEntry) {
         const [matchedItemId, matchedItem] = matchedEntry;
-        // Exécuter l'action associée à onTap ou onDoubleTap selon le contexte
-        // et gérer la navigation dans les niveaux si nécessaire
+        // Exécuter l'action pertinente : onTap || onDoubleTap || Navigation
         executeQuickAccessAction(matchedItem, matchedItemId, state, config);
     }
 }
+
+
 /**
- * Exécute l'action associée à un élément Quick Access
- * Gère la logique de navigation entre niveaux et l'exécution des actions
- * 
- * @param {Object} matchedItem - L'item de configuration trouvé
- * @param {string} matchedItemId - L'ID de l'item dans la configuration
- */
+ * Exécute l'action associée à un Item transmis
+ * Peut être une action onTap, onDoubleTap ou une navigation vers les subItems
+ * +/- une sortie.
+*/
 function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
-    // Détection du double-tap : si la touche détectée correspond au premier élément
-    // du flattenedCurrentLevelConfig, on doit éxécuter onDoubleTap au lieu de onTap
     const currentConfig = flattenedCurrentLevelConfig(state, config);
-    // Ce n’est pas du vrai double-tap, mais si on appelle l’élément parent (qui est
-    // forcément en premier dans le flattened) c’est forcément que c’est un double-tap
+    // Si le premier item du flattened a un onDoubleTap et qu'il est appelé
+    // alors c'est un doubleTap. (logique navigationnelle, pas temporelle)
     const isDoubleTap = matchedItem.onDoubleTap && Object.values(currentConfig)[0] === matchedItem;
 
-    // Ensuite on doit déterminer si l’action est de type terminal
-    // ce qui est le cas si l’item n’a pas de subItems ou si on est en présence d’un double-tap
+    // L'action est terminale si l’item n’a pas de subItems ou est un double-tap
     const isTerminal = !matchedItem.subItems || isDoubleTap;
 
+    // On extrait l'action à effectuer et le selecteur à cibler
     const action = isDoubleTap ? matchedItem.onDoubleTap : matchedItem.onTap;
     const targetElementSelector = matchedItem.selector;
 
@@ -316,18 +310,15 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
         executeAction(action, targetElementSelector, state);
     }
 
-    if (isTerminal) {
-        // Cas terminal : exécuter l'action et sortir du Quick Access
+    if (isTerminal) { // On sort du Quick Access après l'action
         recordMetrics({ clicks: 1, drags: 1 }); // Définie dans metrics.js
         deactivateQuickAccess();
-    } else {
-        // Cas non-terminal avec subItems : exécuter onTap puis descendre dans les subItems
+    } else { // Sinon, on descend dans les subItems
         const targetQALevel = [...state.currentLevel, matchedItemId];
-        if (moveToTargetConfig(targetQALevel, state, config)) {
-            setTimeout(() => {
-                showTooltips(state, config);
-            }, 100); // Petit délai pour laisser le temps au DOM de se mettre à jour si besoin
-        }
+        moveToTargetConfig(targetQALevel, state, config);
+        setTimeout(() => {
+            showTooltips(state, config);
+        }, 100); // Petit délai pour laisser le temps au DOM de se mettre à jour si besoin
     }
 }
 
@@ -482,11 +473,10 @@ function moveToTargetConfig(targetQALevel, state, config) {
     const levelDiff = Math.abs(targetQALevel.length - actualQALevel.length);
 
     if (levelDiff !== 1) {
-        console.warn(`[QuickAccess] Changement de niveau invalide : différence de ${levelDiff} niveaux`, {
+        console.error(`[QuickAccess] Changement de niveau invalide : différence de ${levelDiff} niveaux`, {
             from: actualQALevel,
             to: targetQALevel
         });
-        return false;
     }
 
     // Vérifier que le chemin parent est cohérent (en cas de descente)
@@ -494,22 +484,20 @@ function moveToTargetConfig(targetQALevel, state, config) {
         // Descente : vérifier que targetQALevel commence par actualQALevel
         for (let i = 0; i < actualQALevel.length; i++) {
             if (actualQALevel[i] !== targetQALevel[i]) {
-                console.warn(`[QuickAccess] Chemin incohérent lors de la descente`, {
+                console.error(`[QuickAccess] Chemin incohérent lors de la descente`, {
                     from: actualQALevel,
                     to: targetQALevel
                 });
-                return false;
             }
         }
     } else {
         // Remontée : vérifier que actualQALevel commence par targetQALevel
         for (let i = 0; i < targetQALevel.length; i++) {
             if (actualQALevel[i] !== targetQALevel[i]) {
-                console.warn(`[QuickAccess] Chemin incohérent lors de la remontée`, {
+                console.error(`[QuickAccess] Chemin incohérent lors de la remontée`, {
                     from: actualQALevel,
                     to: targetQALevel
                 });
-                return false;
             }
         }
     }
@@ -519,10 +507,8 @@ function moveToTargetConfig(targetQALevel, state, config) {
         populateSubItems(config, targetQALevel);
         // ✅ Mettre à jour l'état si le changement est valide
         state.currentLevel = targetQALevel;
-        return true;
     } catch (error) {
         console.error(`[QuickAccess] Erreur lors du peuplement des subItems`, error);
-        return false;
     }
 }
 
