@@ -40,6 +40,74 @@ function activateQuickAccess() {
             }
         },
 
+        // --------- Bandeau supérieur large ---------------------
+        'large_top_menu': {
+            selector: 'table.bandeau',
+            onTap: null,
+            onDoubleTap: null,
+            subItems: {
+                'recherche_patient_input': {
+                    selector: '#TextBoxFindPatient',
+                    onTap: function(element) {
+                        element.focus();
+                        element.select();
+                    }
+                },
+                'coller_presse_papiers': {
+                    selector: 'span[title="Coller le contenu du presse-papiers"]',
+                    onTap: 'clic'
+                },
+                'aide': {
+                    selector: '#ImageAide',
+                    onTap: 'clic'
+                },
+                'vidal': {
+                    selector: '#ImageVidal',
+                    onTap: 'clic'
+                },
+                'vidal_recos': {
+                    selector: '#ImageRoco',
+                    onTap: 'clic'
+                },
+                'expert_weda': {
+                    selector: '#ImageButtonExpertWeda',
+                    onTap: 'clic'
+                },
+                'negatoscope': {
+                    selector: '#ImageNegatoscope',
+                    onTap: 'clic'
+                },
+                'messagerie': {
+                    selector: '.messagerieWidget',
+                    onTap: 'clic'
+                },
+                'postits': {
+                    selector: '#postitWidget_divContainer',
+                    onTap: 'clic'
+                },
+                'lecture_cps': {
+                    selector: 'vz-lecture-cps-widget button[mat-raised-button]',
+                    onTap: 'clic'
+                },
+                'idomed': {
+                    selector: '#idomed_icon img[alt="idomed"]',
+                    onTap: 'clic'
+                },
+                'resultats_icon': {
+                    selector: 'resultats-icon div.icon',
+                    onTap: 'clic'
+                },
+                'weda_connect': {
+                    selector: 'weda-connect-update-invite div.icon',
+                    onTap: 'clic'
+                },
+                'deconnexion': {
+                    selector: '.imgDeconnexion',
+                    onTap: 'clic'
+                }
+            }
+        },
+
         // --------- Menu horizontal haut ---------------------
         'medical': {
             selector: '#nav-menu > li > a.nav-icon__link--doctor',
