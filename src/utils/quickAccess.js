@@ -250,7 +250,7 @@ function addListenersToOverlay(overlay, state, config) {
                 if (state.currentLevel && state.currentLevel.length > 0) {
                     // Certains éléments sont déplacés lors de la navigation
                     // on les remet en place à la remontée.
-                    revertMovedElement(JSON.stringify(state.currentLevel));
+                    revertMovedElement(state.currentLevel);
                 }
 
                 // Remontée d'un niveau
@@ -959,16 +959,22 @@ function horizontalMenuPseudoMouseover(element, state) {
 }
 
 /** 
- * Revert du repositionnement de tout ou partie des sous-menus horizontaux
+ * Revert du repositionnement de tout ou partie des sous-menus (horizontaux et W menu)
+ * Gestion unifiée via restoreElementStyles qui restaure tous les styles sauvegardés
  */
 function revertMovedElement(QALevelTarget) {
     const repositionnedClass = 'wh-qa-repositioned';
     const movedElements = QALevelTarget 
-        ? document.querySelectorAll(`[data-qa-level='${QALevelTarget}']`) 
+        ? document.querySelectorAll(`[data-qa-level='${JSON.stringify(QALevelTarget)}']`) 
         : document.querySelectorAll(`.${repositionnedClass}`);
 
+    console.log(`[QuickAccess] Revert des éléments déplacés pour le niveau ${QALevelTarget || 'tous les niveaux'}`, movedElements);
+
     movedElements.forEach(submenu => {
+        // Restaurer TOUS les styles originaux (display, position, left, right, top, etc.)
+        // via restoreElementStyles de façon unifiée
         restoreElementStyles(submenu);
+        
         submenu.classList.remove(repositionnedClass);
         delete submenu.dataset.qaLevel;
         console.log(`[QuickAccess] Sous-menu restauré à sa position originale:`, submenu);
@@ -1000,62 +1006,35 @@ function WMenuPseudoMouseover(element, state) {
         return;
     }
 
+    // Sauvegarder TOUS les styles originaux du sous-menu avant toute modification
+    // (y compris display, position, top, left, right)
+    saveElementStyles(submenu, {
+        display: submenu.style.display || '',
+        position: submenu.style.position || '',
+        top: submenu.style.top || '',
+        left: submenu.style.left || '',
+        right: submenu.style.right || ''
+    });
+
+    // Marquer comme repositionné dès le début
+    submenu.classList.add('wh-qa-repositioned');
+    submenu.dataset.qaLevel = JSON.stringify(state?.currentLevel || []);
+
     // Afficher le sous-menu
     submenu.style.display = 'block';
-    
-    // Calculer le niveau actuel
-    const currentLevel = parseInt(submenu.className.match(/level(\d+)/)?.[1] || '2');
     
     // Positionner le sous-menu
     // Pour le menu W, les sous-menus s'affichent à droite (left: 100%) et alignés en haut (top: 0)
     submenu.style.position = 'absolute';
     submenu.style.top = '0px';
     submenu.style.left = '100%';
-    
-    // Vérifier si le sous-menu sort du viewport
-    const submenuRect = submenu.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    
-    // Si le sous-menu sort à droite du viewport, le repositionner à gauche
-    if (submenuRect.right > viewportWidth) {
-        // Sauvegarder les styles originaux
-        saveElementStyles(submenu, {
-            left: submenu.style.left || '',
-            right: submenu.style.right || ''
-        });
-        
-        submenu.style.left = 'auto';
-        submenu.style.right = '100%';
-        submenu.classList.add('wh-qa-repositioned');
-        submenu.dataset.qaLevel = state?.currentLevel?.join('_') || 'root';
-    }
-    
-    // Si le sous-menu sort en bas du viewport, ajuster la position verticale
-    if (submenuRect.bottom > viewportHeight) {
-        const overflow = submenuRect.bottom - viewportHeight;
-        const currentTop = parseInt(submenu.style.top) || 0;
-        
-        // Sauvegarder les styles originaux si ce n'est pas déjà fait
-        if (!submenu.classList.contains('wh-qa-repositioned')) {
-            saveElementStyles(submenu, {
-                top: submenu.style.top || '',
-                left: submenu.style.left || '',
-                right: submenu.style.right || ''
-            });
-            submenu.classList.add('wh-qa-repositioned');
-            submenu.dataset.qaLevel = state?.currentLevel?.join('_') || 'root';
-        }
-        
-        submenu.style.top = `${Math.max(0, currentTop - overflow - 10)}px`;
-    }
 }
 
 
 /**
  * Génère récursivement les sous-items du menu W (sidebar) à partir de l'élément DOM du sous-menu
  * ⚠️ NE GÉNÈRE PAS les hotkeys - cela sera fait par ensureHotkeysForItems()
- * @param {HTMLElement} submenuElement - Élément ul du menu W
+ * @param {HTMLElement} submenuElement - Élément ul du menu W (ul.level2.dynamic, ul.level3.dynamic, etc.)
  * @param {string} parentId - ID du parent pour générer les clés
  * @returns {Object} Configuration des sous-items
  */
@@ -1063,12 +1042,19 @@ function generateWMenuSubItems(submenuElement, parentId) {
     const subItems = {};
 
     if (!submenuElement) {
-        console.error('[QuickAccess] generateWMenuSubItems : submenuElement est null');
+        console.error('[QuickAccess][WMenu] generateWMenuSubItems : submenuElement est null');
         return subItems;
     }
 
+    // Déterminer le niveau actuel depuis la classe (level2, level3, etc.)
+    const currentLevelMatch = submenuElement.className.match(/level(\d+)/);
+    const currentLevel = currentLevelMatch ? parseInt(currentLevelMatch[1]) : 2;
+    const nextLevel = currentLevel + 1;
+    
+    console.log(`[QuickAccess][WMenu] Génération des subItems pour "${parentId}" (niveau ${currentLevel})`);
+
     // Récupérer tous les liens directs de ce niveau
-    // Pour le menu W : ul.levelX.dynamic > li > a.levelX.dynamic
+    // Structure : ul.levelX.dynamic > li > a.levelX.dynamic
     const menuItems = submenuElement.querySelectorAll(':scope > li > a');
 
     let itemIndex = 1;
@@ -1077,11 +1063,11 @@ function generateWMenuSubItems(submenuElement, parentId) {
         const textContent = link.textContent?.trim() || '';
         
         if (!textContent) {
-            console.warn('[QuickAccess] Lien sans texte trouvé dans le menu W, ignoré');
+            console.warn(`[QuickAccess][WMenu] Lien sans texte trouvé au niveau ${currentLevel}, ignoré`);
             return;
         }
 
-        // Générer un ID unique basé sur le texte nettoyé
+        // Générer un ID unique basé sur le texte nettoyé et le niveau
         const cleanText = textContent
             .toLowerCase()
             .normalize('NFD')
@@ -1090,26 +1076,31 @@ function generateWMenuSubItems(submenuElement, parentId) {
             .replace(/_+/g, '_') // Remplacer les _ multiples par un seul
             .replace(/^_|_$/g, ''); // Supprimer les _ en début et fin
 
-        const itemId = `${parentId}_${cleanText}_${itemIndex}`;
+        const itemId = `${parentId}_lv${currentLevel}_${cleanText}_${itemIndex}`;
         itemIndex++;
 
         // Créer le sélecteur pour cet item
-        // On utilise un sélecteur basé sur le texte ou sur l'attribut onclick
+        // Priorité : onclick > href > fallback par id
         const onclickAttr = link.getAttribute('onclick');
         let selector;
         
         if (onclickAttr) {
-            // Utiliser l'attribut onclick pour un sélecteur plus précis
-            selector = `a[onclick="${onclickAttr}"]`;
+            // Échapper les guillemets et caractères spéciaux dans onclick
+            const escapedOnclick = onclickAttr.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+            selector = `a.level${currentLevel}.dynamic[onclick="${escapedOnclick}"]`;
         } else {
-            // Fallback sur le href si disponible
             const href = link.getAttribute('href');
             if (href && href !== '#') {
-                selector = `a[href="${href}"]`;
+                selector = `a.level${currentLevel}.dynamic[href="${href}"]`;
             } else {
-                // Dernier recours : utiliser le texte
-                console.warn(`[QuickAccess] Impossible de créer un sélecteur précis pour "${textContent}", utilisation du texte`);
-                selector = `a:contains("${textContent}")`;
+                // Créer un ID unique pour pouvoir cibler l'élément
+                if (!link.id) {
+                    const uniqueId = `wh-qa-wmenu-${itemId}`;
+                    link.id = uniqueId;
+                    selector = `#${uniqueId}`;
+                } else {
+                    selector = `#${link.id}`;
+                }
             }
         }
 
@@ -1119,9 +1110,12 @@ function generateWMenuSubItems(submenuElement, parentId) {
         let nestedSubmenu = null;
 
         if (hasPopup) {
-            // Chercher le sous-menu de niveau suivant
-            // Le menu W utilise ul.level2.dynamic, ul.level3.dynamic, etc.
-            nestedSubmenu = parentLi.querySelector(':scope > ul[class*="level"][class*="dynamic"]');
+            // Chercher le sous-menu du niveau suivant : ul.level3.dynamic, ul.level4.dynamic, etc.
+            nestedSubmenu = parentLi.querySelector(`:scope > ul.level${nextLevel}.dynamic`);
+            
+            if (!nestedSubmenu) {
+                console.warn(`[QuickAccess][WMenu] has-popup détecté mais aucun sous-menu ul.level${nextLevel}.dynamic trouvé pour "${textContent}"`);
+            }
         }
 
         // Créer l'item de configuration
@@ -1136,15 +1130,23 @@ function generateWMenuSubItems(submenuElement, parentId) {
         // Si sous-menu, ajouter une fonction pour le générer
         if (nestedSubmenu) {
             item.subItems = function(element) {
-                const submenu = element.parentElement?.querySelector(':scope > ul[class*="level"][class*="dynamic"]');
-                return submenu ? generateWMenuSubItems(submenu, itemId) : {};
+                const parentLi = element.parentElement;
+                // Chercher spécifiquement le sous-menu du niveau suivant
+                const submenu = parentLi?.querySelector(`:scope > ul.level${nextLevel}.dynamic`);
+                
+                if (submenu) {
+                    return generateWMenuSubItems(submenu, itemId);
+                } else {
+                    console.warn(`[QuickAccess][WMenu] Impossible de trouver le sous-menu level${nextLevel} pour "${itemId}"`);
+                    return {};
+                }
             };
         }
 
         subItems[itemId] = item;
     });
 
-    console.log(`[QuickAccess] generateWMenuSubItems pour "${parentId}" : ${Object.keys(subItems).length} items générés`);
+    console.log(`[QuickAccess][WMenu] generateWMenuSubItems pour "${parentId}" (niveau ${currentLevel}) : ${Object.keys(subItems).length} items générés`);
     return subItems;
 }
 
