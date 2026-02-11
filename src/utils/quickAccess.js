@@ -12,24 +12,18 @@
 
 /**
  * Configuration du Quick Access
- * Structure hiérarchique : chaque élément peut avoir des subItems
+ * Un Item correspond à un élément présent dans le DOM :
  * 
- * @typedef {Object} QuickAccessItem
- * @property {string} selector - Sélecteur CSS de l'élément
- * @property {string} hotkey - Touche de raccourci (une seule lettre/chiffre)
- * @property {string} [description] - Description optionnelle pour le tooltip
- * @property {string|Function} [onTap="clic"] - Action à exécuter au tap ("clic", "mouseover", "enter", ou fonction). Si seul, l'item est terminal
- * @property {string|Function} [onDoubleTap] - Action à exécuter au double-tap (toujours terminal). Implique la présence de subItems
- * @property {Object.<string, QuickAccessItem>|Function} [subItems=null] - Sous-éléments (objet ou fonction qui les génère)
- * @property {HTMLElement} [element] - Référence à l'élément DOM (pour items générés dynamiquement)
- * 
- * ⚠️ IMPORTANT - Comportement des subItems fonction :
- * Une fonction subItems est appelée UNE SEULE FOIS lors du premier accès au niveau.
- * Le résultat est ensuite mis en cache dans quickAccessConfig.
- * 
- * Logique :
- * - onTap seul = item terminal (exécute onTap et sort)
- * - onTap + onDoubleTap + subItems = item non-terminal (tap = onTap + affiche subItems, double-tap = onDoubleTap + sort)
+ * 'ceci_est_un_item': {     // ID de l'item, utilisé pour la navigation dans les niveaux
+ *   selector: 'a.mon-lien', // sélecteur CSS pour trouver l'élément dans le DOM
+ *   hotkey: 'c',            // lettre de raccourci (de préférence null pour génération automatique)
+ *   onTap: 'mouseover',     // action à exécuter au tap (cf. executeAction)
+ *   onDouble: 'clic',       // action à exécuter au double-tap (optionnel, cf. executeAction)
+ *   subItems: {             // sous-éléments (optionnel, pour les items non-terminaux). Générés une seule fois puis mis en cache.
+ *     'sous_item_1': { ... },
+ *     'sous_item_2': { ... }
+ *     }
+ *   }
  */
 const quickAccessConfig = {
     // Recherche patient
