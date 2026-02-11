@@ -254,8 +254,8 @@ function addListenersToOverlay(overlay, state, config) {
                 }
 
                 // Remontée d'un niveau
-                const parentLevel = state.currentLevel.slice(0, -1); // On enlève le dernier élément du chemin
-                moveToTargetConfig(parentLevel, state, config) // Change le state.currentLevel et vérifie la validité du changement
+                const previousLevel = state.currentLevel.slice(0, -1); // On enlève le dernier élément du chemin
+                moveToTargetConfig(previousLevel, state, config) // Change le state.currentLevel et vérifie la validité du changement
                 // showToolTips contiens également un reset
                 showTooltips(state, config);
             }
@@ -378,7 +378,7 @@ function flattenedCurrentLevelConfig(state, config) {
     if (actualQALevel.length === 0) {
         Object.assign(flattenedConfig, config);
     } else {
-        // Cas 2 : Niveau enfant - naviguer jusqu'à l'élément cible
+        // Cas 2 : Niveau subItem - naviguer jusqu'à l'élément cible
         const { item, subItems, itemId } = getItemAndSubItems(config, actualQALevel, 'flattenedCurrentLevelConfig');
 
         if (!item || !itemId) {
@@ -403,7 +403,7 @@ function flattenedCurrentLevelConfig(state, config) {
 
 /**
  * Fonction utilitaire pour naviguer dans l'arborescence de configuration
- * Retourne l'élément ciblé par un QALevel, ses subItems et son conteneur parent
+ * Retourne l'item ciblé par un QALevel, ses subItems et son conteneur parent
  * 
  * @param {Object} config - Configuration racine
  * @param {string[]} QALevel - Chemin vers l'élément
@@ -473,7 +473,7 @@ function moveToTargetConfig(targetQALevel, state, config) {
         });
     }
 
-    // Vérifier que le chemin parent est cohérent (en cas de descente)
+    // Vérifier que le chemin supérieur est cohérent (en cas de descente)
     if (targetQALevel.length > actualQALevel.length) {
         // Descente : vérifier que targetQALevel commence par actualQALevel
         for (let i = 0; i < actualQALevel.length; i++) {
@@ -808,11 +808,11 @@ function showTooltips(state, config) {
 
     for (let i = 0; i < entries.length; i++) {
         const [itemId, item] = entries[i];
-        const isParentElement = isAtChildLevel && i === 0;
+        const isCurrentItem = isAtChildLevel && i === 0;
         
-        // Si c'est l'élément parent et que doubleTap est null, ne pas afficher le tooltip
-        if (isParentElement && item.onDoubleTap === null) {
-            console.log(`[QuickAccess] Élément parent "${itemId}" ignoré (onDoubleTap est null)`);
+        // Si c'est l'item actuel et que doubleTap est null, ne pas afficher le tooltip
+        if (isCurrentItem && item.onDoubleTap === null) {
+            console.log(`[QuickAccess] Item actuel "${itemId}" ignoré (onDoubleTap est null)`);
             continue;
         }
         
