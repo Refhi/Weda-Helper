@@ -11,19 +11,7 @@
 // ============================================================================
 
 function returnQuickAccessConfig() {
-}
-
-
-// ============================================================================
-// POINT D'ENTRÉE ET INITIALISATION
-// ============================================================================
-
-/** 
- * Fonction d'entrée de activation du Quick Access
-*/
-function activateQuickAccess() {
-    // Les objets de conf sont définies ici pour être réinitialisées à chaque activation du Quick Access et éviter les problèmes de cache
-    /**
+        /**
      * Configuration du Quick Access
      * Un Item correspond à un élément présent dans le DOM :
      * 
@@ -285,7 +273,20 @@ function activateQuickAccess() {
             }
         }
     };
+    return quickAccessConfig;
+}
 
+
+// ============================================================================
+// POINT D'ENTRÉE ET INITIALISATION
+// ============================================================================
+
+/** 
+ * Fonction d'entrée de activation du Quick Access
+*/
+function activateQuickAccess() {
+    // Les objets de conf sont définies ici pour être réinitialisées à chaque activation du Quick Access et éviter les problèmes de cache
+    const quickAccessConfig = returnQuickAccessConfig();
     /**
     * state.currentLevel correspond au niveau actuel du QuickAccess (QALevel)
     * C'est un tableau de clés représentant le chemin dans l'arborescence.
