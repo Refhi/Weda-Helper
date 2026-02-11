@@ -6,6 +6,13 @@
  * 
  */
 
+// ============================================================================
+// CONFIGURATION
+// ============================================================================
+
+function returnQuickAccessConfig() {
+}
+
 
 // ============================================================================
 // POINT D'ENTRÉE ET INITIALISATION
@@ -707,6 +714,7 @@ function ensureHotkeysForItems(config) {
 
 /**
  * Génère un hotkey basé sur la première lettre disponible du texte
+ * Hiérarchie : lettres → chiffres → caractères spéciaux
  * @param {string} text - Texte à analyser
  * @param {Set} usedHotkeys - Ensemble des hotkeys déjà utilisées
  * @returns {string} Hotkey générée
@@ -715,24 +723,53 @@ function generateHotkeyFromText(text, usedHotkeys) {
     // Nettoyer le texte et le convertir en minuscules
     const cleanText = text.toLowerCase().trim();
 
-    // Essayer chaque lettre du texte dans l'ordre
+    // 1. Essayer les lettres du texte
     for (const char of cleanText) {
-        // Ne considérer que les lettres et chiffres
-        if (/[a-z0-9]/.test(char) && !usedHotkeys.has(char)) {
+        if (/[a-z]/.test(char) && !usedHotkeys.has(char)) {
             return char;
         }
     }
 
-    // Si aucune lettre du texte n'est disponible, parcourir tous les caractères disponibles
-    const availableChars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/~`';
-    for (const char of availableChars) {
+    // 2. Si aucune lettre du texte n'est disponible, essayer toutes les lettres
+    const allLetters = 'abcdefghijklmnopqrstuvwxyz';
+    for (const char of allLetters) {
+        if (!usedHotkeys.has(char)) {
+            return char;
+        }
+    }
+
+    // 3. Si toutes les lettres sont prises, essayer les chiffres du texte
+    for (const char of cleanText) {
+        if (/[0-9]/.test(char) && !usedHotkeys.has(char)) {
+            return char;
+        }
+    }
+
+    // 4. Si aucun chiffre du texte n'est disponible, essayer tous les chiffres
+    const allDigits = '0123456789';
+    for (const char of allDigits) {
+        if (!usedHotkeys.has(char)) {
+            return char;
+        }
+    }
+
+    // 5. Si tous les chiffres sont pris, essayer les caractères spéciaux du texte
+    for (const char of cleanText) {
+        if (/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?/~`]/.test(char) && !usedHotkeys.has(char)) {
+            return char;
+        }
+    }
+
+    // 6. Si aucun caractère spécial du texte n'est disponible, essayer tous les caractères spéciaux
+    const specialChars = '!@#$%^&*()_+-=[]{}|;:,.<>?/~`';
+    for (const char of specialChars) {
         if (!usedHotkeys.has(char)) {
             return char;
         }
     }
 
     // Si vraiment tous les caractères sont pris, lever une erreur
-    console.error('[QuickAccess] Plus aucune hotkey disponible ! Configuration trop large (plus de 65 items au même niveau).');
+    console.error('[QuickAccess] Plus aucune hotkey disponible ! Configuration trop large (plus de 75 items au même niveau).');
 }
 
 // ============================================================================
