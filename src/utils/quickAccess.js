@@ -680,7 +680,8 @@ function createOverlay() {
         height: 100%;
         background-color: rgba(0, 0, 0, 0.1);
         z-index: 99998;
-        pointer-events: none;
+        pointer-events: auto;
+        cursor: default;
     `;
 
     // Message d'information
@@ -980,7 +981,7 @@ function revertMovedElement(QALevelTarget) {
  */
 function WMenuPseudoMouseover(element, state) {
     if (!element) {
-        console.warn('[QuickAccess] Impossible de déclencher WMenuPseudoMouseover : élément manquant');
+        console.warn('[QuickAccess][WMenu] Impossible de déclencher WMenuPseudoMouseover : élément manquant');
         return;
     }
 
@@ -988,14 +989,14 @@ function WMenuPseudoMouseover(element, state) {
     // Le menu W utilise une structure différente avec display:none/block
     const parentLi = element.closest('li');
     if (!parentLi) {
-        console.error('[QuickAccess] WMenuPseudoMouseover : élément li parent non trouvé');
+        console.error('[QuickAccess][WMenu] WMenuPseudoMouseover : élément li parent non trouvé');
         return;
     }
 
     // Trouver le sous-menu associé (ul.level2.dynamic ou level3.dynamic, etc.)
     const submenu = parentLi.querySelector('ul[class*="level"][class*="dynamic"]');
     if (!submenu) {
-        console.log('[QuickAccess] WMenuPseudoMouseover : pas de sous-menu pour cet élément');
+        console.log('[QuickAccess][WMenu] pas de sous-menu pour cet élément');
         return;
     }
 
