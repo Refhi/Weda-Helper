@@ -305,10 +305,7 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
     const action = isDoubleTap ? matchedItem.onDoubleTap : matchedItem.onTap;
     const targetElementSelector = matchedItem.selector;
 
-    // Ne rien exécuter si l'action est null/undefined
-    if (action) {
-        executeAction(action, targetElementSelector, state);
-    }
+
 
     if (isTerminal) { // On sort du Quick Access après l'action
         recordMetrics({ clicks: 1, drags: 1 }); // Définie dans metrics.js
@@ -319,6 +316,11 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
         setTimeout(() => {
             showTooltips(state, config);
         }, 100); // Petit délai pour laisser le temps au DOM de se mettre à jour si besoin
+    }
+
+    // Ne rien exécuter si l'action est null/undefined
+    if (action) {
+        executeAction(action, targetElementSelector, state);
     }
 }
 
@@ -473,10 +475,10 @@ function moveToTargetConfig(targetQALevel, state, config) {
     }
 
     // Vérifier que le chemin le plus court est un préfixe du chemin le plus long
-    const [shorterPath, longerPath] = actualQALevel.length < targetQALevel.length 
-        ? [actualQALevel, targetQALevel] 
+    const [shorterPath, longerPath] = actualQALevel.length < targetQALevel.length
+        ? [actualQALevel, targetQALevel]
         : [targetQALevel, actualQALevel];
-    
+
     for (let i = 0; i < shorterPath.length; i++) {
         if (shorterPath[i] !== longerPath[i]) {
             console.error(`[QuickAccess] Chemin incohérent`, {
@@ -607,7 +609,7 @@ function ensureHotkeysForItems(config) {
         if (!item.hotkey) {
             // Déterminer le texte source pour la génération de hotkey
             let sourceText = itemId; // Fallback : utiliser l'ID
-            
+
             // Essayer d'obtenir un texte plus significatif
             if (item.description) {
                 sourceText = item.description;
@@ -620,11 +622,11 @@ function ensureHotkeysForItems(config) {
                     sourceText = element.getAttribute('title') || element.getAttribute('alt') || itemId;
                 }
             }
-            
+
             const generatedHotkey = generateHotkeyFromText(sourceText, usedHotkeys);
             item.hotkey = generatedHotkey;
             usedHotkeys.add(generatedHotkey);
-            
+
             console.log(`[QuickAccess] Hotkey "${generatedHotkey}" générée automatiquement pour "${itemId}" basé sur "${sourceText}"`);
         }
     }
@@ -639,7 +641,7 @@ function ensureHotkeysForItems(config) {
 function generateHotkeyFromText(text, usedHotkeys) {
     // Nettoyer le texte et le convertir en minuscules
     const cleanText = text.toLowerCase().trim();
-    
+
     // Essayer chaque lettre du texte dans l'ordre
     for (const char of cleanText) {
         // Ne considérer que les lettres et chiffres
@@ -647,7 +649,7 @@ function generateHotkeyFromText(text, usedHotkeys) {
             return char;
         }
     }
-    
+
     // Si aucune lettre du texte n'est disponible, parcourir tous les caractères disponibles
     const availableChars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/~`';
     for (const char of availableChars) {
@@ -655,7 +657,7 @@ function generateHotkeyFromText(text, usedHotkeys) {
             return char;
         }
     }
-    
+
     // Si vraiment tous les caractères sont pris, lever une erreur
     console.error('[QuickAccess] Plus aucune hotkey disponible ! Configuration trop large (plus de 65 items au même niveau).');
 }
@@ -765,7 +767,7 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainerOnly =
             border: element.style.border || '',
             boxShadow: element.style.boxShadow || ''
         });
-        
+
         // Appliquer l'entourage
         element.style.outline = '2px solid rgba(0, 123, 255, 0.8)';
         element.style.outlineOffset = '2px';
@@ -803,18 +805,18 @@ function showTooltips(state, config) {
     for (let i = 0; i < entries.length; i++) {
         const [itemId, item] = entries[i];
         const isCurrentItem = isAtChildLevel && i === 0;
-        
+
         // Si c'est l'item actuel et que doubleTap est null, ne pas afficher le tooltip
         if (isCurrentItem && item.onDoubleTap === null) {
             console.log(`[QuickAccess] Item actuel "${itemId}" ignoré (onDoubleTap est null)`);
             continue;
         }
-        
+
         const hasDoubleTap = item.onDoubleTap != null;
         // Un item sans doubleTap à la racine est un conteneur pur :
         // il ne peut pas être une cible finale, il sert uniquement à naviguer vers ses subItems
         const isContainerOnly = isAtRoot && !hasDoubleTap;
-        
+
         console.log(`[QuickAccess] Traitement de l'item "${itemId}" pour affichage du tooltip:`, item, "Selector:", item.selector, "Hotkey:", item.hotkey, "HasDoubleTap:", hasDoubleTap, "IsContainerOnly:", isContainerOnly);
         createTooltip(item.selector, item.hotkey, hasDoubleTap, isContainerOnly);
     }
@@ -826,7 +828,7 @@ function showTooltips(state, config) {
 function clearAllTooltips() {
     const tooltips = document.querySelectorAll('.wh-quickaccess-tooltip');
     tooltips.forEach(tooltip => tooltip.remove());
-    
+
     // Supprimer les entourages des éléments mis en valeur
     const highlightedElements = document.querySelectorAll('.wh-quickaccess-highlighted');
     highlightedElements.forEach(element => {
@@ -862,7 +864,7 @@ function deactivateQuickAccess() {
  */
 function saveElementStyles(element, styles) {
     if (!element || !styles) return;
-    
+
     element.dataset.originalStyles = JSON.stringify(styles);
 }
 
@@ -872,12 +874,12 @@ function saveElementStyles(element, styles) {
  */
 function restoreElementStyles(element) {
     if (!element || !element.dataset.originalStyles) return;
-    
+
     const styles = JSON.parse(element.dataset.originalStyles);
     Object.entries(styles).forEach(([prop, value]) => {
         element.style[prop] = value;
     });
-    
+
     delete element.dataset.originalStyles;
 }
 
@@ -899,61 +901,58 @@ function horizontalMenuPseudoMouseover(element, state) {
     if (parentLi) {
         const submenu = parentLi.querySelector('.nav-menu__submenu');
         if (submenu) {
-            // Attendre que le CSS s'applique et que les animations se terminent
-            setTimeout(() => {
-                const submenuRect = submenu.getBoundingClientRect();
-                const parentRect = element.getBoundingClientRect();
-                const isOutside = submenuRect.top < 0 || submenuRect.bottom > window.innerHeight ||
-                    submenuRect.left < 0 || submenuRect.right > window.innerWidth;
+            const submenuRect = submenu.getBoundingClientRect();
+            const parentRect = element.getBoundingClientRect();
+            const isOutside = submenuRect.top < 0 || submenuRect.bottom > window.innerHeight ||
+                submenuRect.left < 0 || submenuRect.right > window.innerWidth;
 
-                if (isOutside) {
-                    console.log('[QuickAccess] Sous-menu horizontalMenuPseudoMouseover hors viewport, repositionnement par rapport à l\'élément parent...');
+            if (isOutside) {
+                console.log('[QuickAccess] Sous-menu horizontalMenuPseudoMouseover hors viewport, repositionnement par rapport à l\'élément parent...');
 
-                    // Calculer la position idéale par rapport à l'élément parent
-                    let newLeft = parentRect.right + 5; // À droite du parent avec un petit espacement
-                    let newTop = parentRect.top;
+                // Calculer la position idéale par rapport à l'élément parent
+                let newLeft = parentRect.right + 5; // À droite du parent avec un petit espacement
+                let newTop = parentRect.top;
 
-                    // Ajuster si ça sort à droite
-                    if (newLeft + submenuRect.width > window.innerWidth) {
-                        newLeft = parentRect.left - submenuRect.width - 5; // À gauche du parent
-                    }
-
-                    // Ajuster si ça sort à gauche
-                    if (newLeft < 0) {
-                        newLeft = 10; // Marge minimale à gauche
-                    }
-
-                    // Ajuster si ça sort en bas
-                    if (newTop + submenuRect.height > window.innerHeight) {
-                        newTop = window.innerHeight - submenuRect.height - 10;
-                    }
-
-                    // Ajuster si ça sort en haut
-                    if (newTop < 0) {
-                        newTop = 10; // Marge minimale en haut
-                    }
-
-                    // Sauvegarder les styles originaux pour pouvoir les restaurer
-                    saveElementStyles(submenu, {
-                        position: submenu.style.position,
-                        left: submenu.style.left,
-                        top: submenu.style.top,
-                        zIndex: submenu.style.zIndex
-                    });
-
-                    // Marquer comme repositionné et associer au niveau de navigation actuel
-                    submenu.classList.add('wh-qa-repositioned');
-                    submenu.dataset.qaLevel = JSON.stringify(state.currentLevel);
-
-                    // Appliquer la nouvelle position
-                    submenu.style.position = 'fixed';
-                    submenu.style.left = newLeft + 'px';
-                    submenu.style.top = newTop + 'px';
-                    submenu.style.zIndex = '10000';
-
-                    console.log(`[QuickAccess] Sous-menu repositionné à left=${newLeft}, top=${newTop}`);
+                // Ajuster si ça sort à droite
+                if (newLeft + submenuRect.width > window.innerWidth) {
+                    newLeft = parentRect.left - submenuRect.width - 5; // À gauche du parent
                 }
-            }, 50); // Augmenté de 10ms à 50ms
+
+                // Ajuster si ça sort à gauche
+                if (newLeft < 0) {
+                    newLeft = 10; // Marge minimale à gauche
+                }
+
+                // Ajuster si ça sort en bas
+                if (newTop + submenuRect.height > window.innerHeight) {
+                    newTop = window.innerHeight - submenuRect.height - 10;
+                }
+
+                // Ajuster si ça sort en haut
+                if (newTop < 0) {
+                    newTop = 10; // Marge minimale en haut
+                }
+
+                // Sauvegarder les styles originaux pour pouvoir les restaurer
+                saveElementStyles(submenu, {
+                    position: submenu.style.position,
+                    left: submenu.style.left,
+                    top: submenu.style.top,
+                    zIndex: submenu.style.zIndex
+                });
+
+                // Marquer comme repositionné et associer au niveau de navigation actuel
+                submenu.classList.add('wh-qa-repositioned');
+                submenu.dataset.qaLevel = JSON.stringify(state.currentLevel);
+
+                // Appliquer la nouvelle position
+                submenu.style.position = 'fixed';
+                submenu.style.left = newLeft + 'px';
+                submenu.style.top = newTop + 'px';
+                submenu.style.zIndex = '10000';
+
+                console.log(`[QuickAccess] Sous-menu repositionné à left=${newLeft}, top=${newTop}`);
+            }
         }
     }
 }
@@ -964,8 +963,8 @@ function horizontalMenuPseudoMouseover(element, state) {
  */
 function revertMovedElement(QALevelTarget) {
     const repositionnedClass = 'wh-qa-repositioned';
-    const movedElements = QALevelTarget 
-        ? document.querySelectorAll(`[data-qa-level='${JSON.stringify(QALevelTarget)}']`) 
+    const movedElements = QALevelTarget
+        ? document.querySelectorAll(`[data-qa-level='${JSON.stringify(QALevelTarget)}']`)
         : document.querySelectorAll(`.${repositionnedClass}`);
 
     console.log(`[QuickAccess] Revert des éléments déplacés pour le niveau ${QALevelTarget || 'tous les niveaux'}`, movedElements);
@@ -974,7 +973,7 @@ function revertMovedElement(QALevelTarget) {
         // Restaurer TOUS les styles originaux (display, position, left, right, top, etc.)
         // via restoreElementStyles de façon unifiée
         restoreElementStyles(submenu);
-        
+
         submenu.classList.remove(repositionnedClass);
         delete submenu.dataset.qaLevel;
         console.log(`[QuickAccess] Sous-menu restauré à sa position originale:`, submenu);
@@ -1022,7 +1021,7 @@ function WMenuPseudoMouseover(element, state) {
 
     // Afficher le sous-menu
     submenu.style.display = 'block';
-    
+
     // Positionner le sous-menu
     // Pour le menu W, les sous-menus s'affichent à droite (left: 100%) et alignés en haut (top: 0)
     submenu.style.position = 'absolute';
@@ -1050,7 +1049,7 @@ function generateWMenuSubItems(submenuElement, parentId) {
     const currentLevelMatch = submenuElement.className.match(/level(\d+)/);
     const currentLevel = currentLevelMatch ? parseInt(currentLevelMatch[1]) : 2;
     const nextLevel = currentLevel + 1;
-    
+
     console.log(`[QuickAccess][WMenu] Génération des subItems pour "${parentId}" (niveau ${currentLevel})`);
 
     // Récupérer tous les liens directs de ce niveau
@@ -1061,7 +1060,7 @@ function generateWMenuSubItems(submenuElement, parentId) {
     menuItems.forEach(link => {
         // Extraire le texte du lien (sans l'image)
         const textContent = link.textContent?.trim() || '';
-        
+
         if (!textContent) {
             console.warn(`[QuickAccess][WMenu] Lien sans texte trouvé au niveau ${currentLevel}, ignoré`);
             return;
@@ -1083,7 +1082,7 @@ function generateWMenuSubItems(submenuElement, parentId) {
         // Priorité : onclick > href > fallback par id
         const onclickAttr = link.getAttribute('onclick');
         let selector;
-        
+
         if (onclickAttr) {
             // Échapper les guillemets et caractères spéciaux dans onclick
             const escapedOnclick = onclickAttr.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
@@ -1112,7 +1111,7 @@ function generateWMenuSubItems(submenuElement, parentId) {
         if (hasPopup) {
             // Chercher le sous-menu du niveau suivant : ul.level3.dynamic, ul.level4.dynamic, etc.
             nestedSubmenu = parentLi.querySelector(`:scope > ul.level${nextLevel}.dynamic`);
-            
+
             if (!nestedSubmenu) {
                 console.warn(`[QuickAccess][WMenu] has-popup détecté mais aucun sous-menu ul.level${nextLevel}.dynamic trouvé pour "${textContent}"`);
             }
@@ -1129,11 +1128,11 @@ function generateWMenuSubItems(submenuElement, parentId) {
 
         // Si sous-menu, ajouter une fonction pour le générer
         if (nestedSubmenu) {
-            item.subItems = function(element) {
+            item.subItems = function (element) {
                 const parentLi = element.parentElement;
                 // Chercher spécifiquement le sous-menu du niveau suivant
                 const submenu = parentLi?.querySelector(`:scope > ul.level${nextLevel}.dynamic`);
-                
+
                 if (submenu) {
                     return generateWMenuSubItems(submenu, itemId);
                 } else {
