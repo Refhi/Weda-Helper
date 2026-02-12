@@ -403,3 +403,9 @@ document.getElementById('wikiLink').addEventListener('click', function () {
     // Ouvrir la page du Wiki dans un nouvel onglet
     chrome.tabs.create({ url: 'https://github.com/Refhi/Weda-Helper/wiki' });
 });
+
+// Lien vers le signalement de bugs (https://github.com/Refhi/Weda-Helper/issues)
+document.getElementById('bugReportLink').addEventListener('click', function () {
+    // Ouvrir la page de signalement de bugs dans un nouvel onglet
+    chrome.tabs.create({ url: 'https://github.com/Refhi/Weda-Helper/issues' });
+});
