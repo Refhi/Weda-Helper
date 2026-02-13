@@ -272,14 +272,35 @@ function returnQuickAccessConfig() {
     };
 
     // ================= éléments internes =====================
-    /** cette partie doit gérer les éléments interne en visant les grandes structures
-    * des différentes pages, en recherchant les champs de texte, boutons radio etc.
-    * on va probablement simplement chercher tout les inputs non-hidden
-    * à viser comme conteneur avant les inputs :
-    * - #ContentPlaceHolder1_PanelPatient
-    * - les iframes doivent être traversées pour trouver les éléments internes (ex: recherche patient dans la sidebar)
-    * - #ContentPlaceHolder1_PanelVisuDocument puis les name=divwc puis les inputs
-    */
+    /** Éléments internes - Items terminaux
+     * Cette partie gère les éléments avec lesquels l'utilisateur peut interagir à la souris.
+     * 
+     * REGROUPEMENT (premier niveau) :
+     * - #ContentPlaceHolder1_PanelPatient
+     * - #ContentPlaceHolder1_PanelVisuDocument > [name="divwc"] > [name="dhF"] (dh1, dh2, ..., dhN)
+     * - .copilot-vidal-project
+     * - iframes (considérées comme éléments de regroupement)
+     * 
+     * ÉLÉMENTS À CIBLER (tous visibles et non désactivés) :
+     * 
+     * 1. Champs de formulaire :
+     *    - input:not([type="hidden"]):not([disabled])
+     *    - textarea:not([disabled])
+     *    - select:not([disabled])
+     * 
+     * 2. Éléments cliquables :
+     *    - a[href]
+     *    - button:not([disabled])
+     *    - [role="button"]:not([aria-disabled="true"])
+     *    - [onclick], [ondblclick], [onmousedown] (tout élément avec event listener inline)
+     * 
+     * 3. Éléments avec tabindex >= 0 (focus clavier)
+     * 
+     * EXCLUSIONS automatiques :
+     * - display:none, visibility:hidden, opacity:0
+     * - [disabled], [aria-disabled="true"]
+     * - pointer-events:none
+     */
 
     // ================= Configuration finale =================
     const quickAccessConfig = {
