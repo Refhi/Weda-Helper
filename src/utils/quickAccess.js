@@ -11,7 +11,7 @@
 // ============================================================================
 
 function returnQuickAccessConfig() {
-        /**
+    /**
      * Configuration du Quick Access
      * Un Item correspond à un élément présent dans le DOM :
      * 
@@ -26,16 +26,10 @@ function returnQuickAccessConfig() {
      *     }
      *   }
      */
-    const quickAccessConfig = {
-        // ================= Page d'accueil =================
-        'recherche_patient': {
-            selector: 'a[href*="FindPatientForm.aspx"]',
-            onTap: function () {
-                openSearch(); // définie dans keyCommand.js
-            }
-        },
 
-        // --------- Bandeau supérieur large ---------------------
+    // ================= Configuration spécifique à la page d’accueil =================
+    // ================= Bandeau supérieur de la page d’accueil =================
+    const bandeauSuperieurConfig = {
         'large_top_menu': {
             selector: 'table.bandeau',
             onTap: null,
@@ -101,9 +95,11 @@ function returnQuickAccessConfig() {
                     onTap: 'clic'
                 }
             }
-        },
+        }
+    };
 
-        // --------- Menu horizontal haut ---------------------
+    // ================= Eléments principaux du Bandeau supérieur =================
+    const menuHorizontalConfig = {
         'medical': {
             selector: '#nav-menu > li > a.nav-icon__link--doctor',
             hotkey: 'm',
@@ -146,9 +142,11 @@ function returnQuickAccessConfig() {
                 const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
                 return submenu ? generateHorizMenuSubItems(submenu, 'parametres') : {};
             }
-        },
+        }
+    };
 
-        // === Menu vertical gauche (sidebar) ===
+    // ================= Menu vertical gauche (sidebar) de la page d’accueil =================
+    const sidebarConfig = {
         'menu_vertical_gauche': {
             selector: ".menu-sidebar",
             onTap: null,
@@ -160,7 +158,6 @@ function returnQuickAccessConfig() {
                     onTap: function(element, state) { WMenuPseudoMouseover(element, state); },
                     onDoubleTap: 'clic',
                     subItems: function (element) {
-                        // Le sous-menu est dans le li parent
                         const parentLi = element.parentElement;
                         const submenu = parentLi?.querySelector('ul.level2.dynamic');
                         return submenu ? generateWMenuSubItems(submenu, 'menu_w_sidebar') : {};
@@ -190,7 +187,7 @@ function returnQuickAccessConfig() {
                     }
                 },
 
-                // Recherche patient (déjà défini au niveau racine)
+                // Recherche patient
                 'recherche_sidebar': {
                     selector: '.imgChercher',
                     onTap: 'clic'
@@ -202,7 +199,7 @@ function returnQuickAccessConfig() {
                     onTap: 'clic'
                 },
 
-                // Documents - Organisation hiérarchique
+                // Documents
                 'consultations': {
                     selector: '#ContentPlaceHolder1_ButtonConsultation',
                     onTap: 'clic'
@@ -273,9 +270,26 @@ function returnQuickAccessConfig() {
             }
         }
     };
+
+    // ================= éléments internes =====================
+    /** cette partie doit gérer les éléments interne en visant les grandes structures
+    * des différentes pages, en recherchant les champs de texte, boutons radio etc.
+    * on va probablement simplement chercher tout les inputs non-hidden
+    * à viser comme conteneur avant les inputs :
+    * - #ContentPlaceHolder1_PanelPatient
+    * - les iframes doivent être traversées pour trouver les éléments internes (ex: recherche patient dans la sidebar)
+    * - #ContentPlaceHolder1_PanelVisuDocument puis les name=divwc puis les inputs
+    */
+
+    // ================= Configuration finale =================
+    const quickAccessConfig = {
+        ...bandeauSuperieurConfig,
+        ...menuHorizontalConfig,
+        ...sidebarConfig
+    };
+
     return quickAccessConfig;
 }
-
 
 // ============================================================================
 // POINT D'ENTRÉE ET INITIALISATION
