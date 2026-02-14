@@ -869,6 +869,13 @@ function createOverlay() {
  * @param {boolean} hasDoubleTap - Indique si un double-tap est disponible
  * @param {boolean} isContainerOnly - Indique si l'item sert uniquement de conteneur pour la navigation (pas d'action directe)
  */
+/**
+ * Crée et affiche un tooltip sur un élément
+ * @param {string} selector - Sélecteur CSS de l'élément
+ * @param {string} hotkey - Touche de raccourci
+ * @param {boolean} hasDoubleTap - Indique si un double-tap est disponible
+ * @param {boolean} isContainerOnly - Indique si l'item sert uniquement de conteneur pour la navigation (pas d'action directe)
+ */
 function createTooltip(selector, hotkey, hasDoubleTap = false, isContainerOnly = false) {
     const element = document.querySelector(selector);
     console.log(`[QuickAccess] Création du tooltip pour la touche "${hotkey}" sur l'élément:`, element, "Selector:", selector);
@@ -897,7 +904,7 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainerOnly =
         pointer-events: none;
         white-space: nowrap;
         z-index: 99999;
-        top: ${rect.top + rect.height * 0.55}px;
+        top: ${rect.top + rect.height * 0.15}px;
         left: ${rect.left}px;
         height: auto;
         line-height: normal;
@@ -1574,12 +1581,33 @@ function generateInternalSubItems(element) {
     `;
 
     // Lister tous les éléments d'action potentiels dans le conteneur
-    const actionElements = element.querySelectorAll(quickAccessTargets);
+    const allActionElements = element.querySelectorAll(quickAccessTargets);
 
+    // Filtrer pour ne garder que les éléments qui ne sont pas descendants d'une autre target
+    const actionElements = Array.from(allActionElements).filter(el => {
+        // Trouver le parent le plus proche qui est une target (en excluant l'élément lui-même)
+        let parent = el.parentElement;
+        while (parent && parent !== element) {
+            if (parent.matches(quickAccessTargets)) {
+                // Vérifier si ce parent est lui-même une action valide
+                const isVisible = parent.offsetParent !== null && 
+                                 getComputedStyle(parent).visibility !== 'hidden' && 
+                                 parseFloat(getComputedStyle(parent).opacity) > 0 &&
+                                 getComputedStyle(parent).display !== 'none' &&
+                                 getComputedStyle(parent).pointerEvents !== 'none';
+                
+                if (isVisible) {
+                    // Ce parent est une target valide, donc on ignore l'enfant
+                    return false;
+                }
+            }
+            parent = parent.parentElement;
+        }
+        return true;
+    });
 
     // Si aucun élément n'est trouvé, on renvoie null pour indiquer qu'aucun subItem n'est disponible à ce niveau
-    if (actionElements.length === 0) {return null;}
-
+    if (actionElements.length === 0) return null;
 
     let itemIndex = 0; // Index pour générer des IDs uniques
     for (let i = 0; i < actionElements.length; i++) {
