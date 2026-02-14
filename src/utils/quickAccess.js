@@ -466,7 +466,11 @@ function executeAction(action, selector, state) {
                 if (element.tagName.toLowerCase() === 'a' && element.href) {
                     clicCSPLockedElement(selector);
                 } else {
-                    element.click();
+                    element.dispatchEvent(new MouseEvent('click', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window
+                    }));
                 }
                 break;
             case 'mouseover':
@@ -1577,7 +1581,8 @@ function generateInternalSubItems(element) {
         button:not([disabled]),
         [role="button"]:not([aria-disabled="true"]),
         [onclick], [ondblclick], [onmousedown],
-        [tabindex]:not([tabindex="-1"])
+        [tabindex]:not([tabindex="-1"]),
+        svg
     `;
 
     // Lister tous les éléments d'action potentiels dans le conteneur
@@ -1696,8 +1701,15 @@ function generateUniqueQAItemId(element, index) {
     }
 
     if (element.className) {
-        const classPart = element.className.trim().split(/\s+/).join('-');
-        identifier += `_${classPart}`;
+        // Gérer les éléments SVG dont className est un SVGAnimatedString
+        const classValue = typeof element.className === 'string' 
+            ? element.className 
+            : element.className.baseVal || '';
+        
+        if (classValue) {
+            const classPart = classValue.trim().split(/\s+/).join('-');
+            identifier += `_${classPart}`;
+        }
     }
 
     identifier += `_${index}`;
