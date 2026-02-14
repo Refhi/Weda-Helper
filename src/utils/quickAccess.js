@@ -290,7 +290,7 @@ function returnQuickAccessConfig() {
             }
         },
         'documents_joints_visu': {
-            selector: '#ContentPlaceHolder1_PanelVisuDocument [name="divwc"] [name="dhF"]',
+            selector: '#ContentPlaceHolder1_PanelVisuDocument',
             subItems: function(element) {
                 return generateInternalSubItems(element);
             }
@@ -753,7 +753,7 @@ function ensureHotkeysForItems(config) {
             item.hotkey = generatedHotkey;
             usedHotkeys.add(generatedHotkey);
 
-            console.log(`[QuickAccess] Hotkey "${generatedHotkey}" générée automatiquement pour "${itemId}" basé sur "${sourceText}"`);
+            // console.log(`[QuickAccess] Hotkey "${generatedHotkey}" générée automatiquement pour "${itemId}" basé sur "${sourceText}"`);
         }
     }
 }
@@ -1582,11 +1582,15 @@ function generateInternalSubItems(element) {
         [role="button"]:not([aria-disabled="true"]),
         [onclick], [ondblclick], [onmousedown],
         [tabindex]:not([tabindex="-1"]),
-        svg
+        svg,
+        [name='divwc']
     `;
 
     // Lister tous les éléments d'action potentiels dans le conteneur
     const allActionElements = element.querySelectorAll(quickAccessTargets);
+
+    // Si aucun élément n'est trouvé, on renvoie null pour indiquer qu'aucun subItem n'est disponible à ce niveau
+    if (allActionElements.length === 0) return null;
 
     // Filtrer pour ne garder que les éléments qui ne sont pas descendants d'une autre target
     const actionElements = Array.from(allActionElements).filter(el => {
@@ -1610,9 +1614,6 @@ function generateInternalSubItems(element) {
         }
         return true;
     });
-
-    // Si aucun élément n'est trouvé, on renvoie null pour indiquer qu'aucun subItem n'est disponible à ce niveau
-    if (actionElements.length === 0) return null;
 
     let itemIndex = 0; // Index pour générer des IDs uniques
     for (let i = 0; i < actionElements.length; i++) {
@@ -1668,19 +1669,52 @@ function generateInternalSubItems(element) {
 
 function testProperActionElement(element, quickAccessTargets) {
     const isActionElement = element.matches(quickAccessTargets);
+
+    if (exceptionsToHiddenElements(element)) {
+        // On fait un mouseOver sur l'élément
+        element.dispatchEvent(new MouseEvent('mouseover', {bubbles: true, cancelable: true, view: window}));
+        return true;
+    }
     
     // Vérification complète de la visibilité
     const style = getComputedStyle(element);
-    const isVisible = element.offsetParent !== null && 
+    const isStyleVisible = element.offsetParent !== null && 
                      style.visibility !== 'hidden' && 
                      parseFloat(style.opacity) > 0 &&
                      style.display !== 'none' &&
                      style.pointerEvents !== 'none';
     
-    return isActionElement && isVisible;
+    if (!isActionElement || !isStyleVisible) {
+        return false;
+    }
+
+    // Vérifier que l'élément est visible (même partiellement) dans le viewport
+    const rect = element.getBoundingClientRect();
+    const isInViewport = rect.top < window.innerHeight && 
+                        rect.bottom > 0 && 
+                        rect.left < window.innerWidth && 
+                        rect.right > 0;
+    
+    return isInViewport;
+}
+
+function exceptionsToHiddenElements(element) {
+    /** Certains éléments doivent être de-hidden s'ils sont parcourus
+     * 
+     */
+    const toUnHideSelectors = ['.document-actions']
+    return toUnHideSelectors.some(selector => element.matches(selector) || element.closest(selector));
 }
 
 function testGroupingContainer(element, quickAccessTargets) {
+    // Exceptions d'abord
+    console.log(`[QuickAccess] Test de regroupement pour l'élément ${element.tagName} avec le sélecteur "${element.className}"`);
+    const isExceptionSelector = ["[name='divwc']"]
+    if (isExceptionSelector.some(selector => element.matches(selector))) {
+        console.log(`[QuickAccess] Élément ${element.tagName} considéré comme conteneur de regroupement en raison d'une exception de sélecteur`);
+        return true;
+    }
+    
     const isIframe = element.tagName.toLowerCase() === 'iframe';
     const hasManyActionElements = element.querySelectorAll(quickAccessTargets).length > 20;
     return isIframe || hasManyActionElements;
