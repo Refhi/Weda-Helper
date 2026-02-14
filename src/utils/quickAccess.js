@@ -1592,8 +1592,23 @@ function generateInternalSubItems(element) {
     // Si aucun élément n'est trouvé, on renvoie null pour indiquer qu'aucun subItem n'est disponible à ce niveau
     if (allActionElements.length === 0) return null;
 
+    // Pré-filtrer rapidement les éléments visibles dans le viewport (optimisation)
+    const potentiallyVisibleElements = Array.from(allActionElements).filter(el => {
+        // Éliminer d'abord les éléments clairement invisibles (offsetParent null = display:none ou parent caché)
+        if (!el.offsetParent && !exceptionsToHiddenElements(el)) return false;
+        
+        // Vérification rapide du viewport
+        const rect = el.getBoundingClientRect();
+        return rect.top < window.innerHeight && 
+               rect.bottom > 0 && 
+               rect.left < window.innerWidth && 
+               rect.right > 0;
+    });
+
+    if (potentiallyVisibleElements.length === 0) return null;
+
     // Filtrer pour ne garder que les éléments qui ne sont pas descendants d'une autre target
-    const actionElements = Array.from(allActionElements).filter(el => {
+    const actionElements = potentiallyVisibleElements.filter(el => {
         // Trouver le parent le plus proche qui est une target (en excluant l'élément lui-même)
         let parent = el.parentElement;
         while (parent && parent !== element) {
@@ -1688,14 +1703,7 @@ function testProperActionElement(element, quickAccessTargets) {
         return false;
     }
 
-    // Vérifier que l'élément est visible (même partiellement) dans le viewport
-    const rect = element.getBoundingClientRect();
-    const isInViewport = rect.top < window.innerHeight && 
-                        rect.bottom > 0 && 
-                        rect.left < window.innerWidth && 
-                        rect.right > 0;
-    
-    return isInViewport;
+    return true;
 }
 
 function exceptionsToHiddenElements(element) {
