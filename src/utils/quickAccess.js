@@ -304,7 +304,11 @@ function returnQuickAccessConfig() {
         'iframes': {
             selector: 'iframe',
             subItems: function(element) {
-                return generateInternalSubItems(element);
+                // L'élément est alors une iframe.
+                // On doit dont renvoyer le document de l'iframe
+                // TODO : gérer les iframes pour action et tooltip
+                // peut-être en envoyant la référence de l'iframe dans l'Item ?
+                return generateInternalSubItems(element.contentDocument);
             }
         }
     };
