@@ -286,25 +286,25 @@ function returnQuickAccessConfig() {
         'panel_patient': {
             selector: '#ContentPlaceHolder1_PanelPatient',
             subItems: function(element) {
-                return generateInternalSubItems(element, 'panel_patient');
+                return generateInternalSubItems(element);
             }
         },
         'documents_joints_visu': {
             selector: '#ContentPlaceHolder1_PanelVisuDocument [name="divwc"] [name="dhF"]',
             subItems: function(element) {
-                return generateInternalSubItems(element, 'documents_joints_visu');
+                return generateInternalSubItems(element);
             }
         },
         'copilot_vidal': {
             selector: '.copilot-vidal-project',
             subItems: function(element) {
-                return generateInternalSubItems(element, 'copilot_vidal');
+                return generateInternalSubItems(element);
             }
         },
         'iframes': {
             selector: 'iframe',
             subItems: function(element) {
-                return generateInternalSubItems(element, 'iframes');
+                return generateInternalSubItems(element);
             }
         }
     };
@@ -735,9 +735,7 @@ function ensureHotkeysForItems(config) {
             let sourceText = itemId; // Fallback : utiliser l'ID
 
             // Essayer d'obtenir un texte plus significatif
-            if (item.description) {
-                sourceText = item.description;
-            } else if (item.selector) {
+            if (item.selector) {
                 // Essayer de récupérer le texte de l'élément
                 const element = document.querySelector(item.selector);
                 if (element && element.textContent) {
@@ -1355,7 +1353,6 @@ function generateDocumentsJointsSubItems(tableElement, parentId) {
         // Créer l'item de configuration
         const item = {
             selector: selector,
-            description: textContent,
             hotkey: null, // Sera généré automatiquement
             onTap: 'clic', // Les items sont directement cliquables
             element: td
@@ -1513,7 +1510,6 @@ function generateHorizMenuSubItems(submenuElement, parentId) {
 
         const item = {
             selector: selector,
-            description: linkText, // Stocker le texte pour la génération de hotkey ultérieure
             onTap: hasArrow ? function(element, state) { horizontalMenuPseudoMouseover(element, state); } : 'clic'
         };
 
@@ -1566,7 +1562,7 @@ function generateHorizMenuSubItems(submenuElement, parentId) {
 function generateInternalSubItems(element) {
     const subItems = {};
 
-    const quickAcessTargets = `
+    const quickAccessTargets = `
         input:not([type="hidden"]):not([disabled]),
         textarea:not([disabled]),
         select:not([disabled]),
@@ -1578,25 +1574,29 @@ function generateInternalSubItems(element) {
     `;
 
     // Lister tous les éléments d'action potentiels dans le conteneur
-    const actionElements = element.querySelectorAll(quickAcessTargets);
+    const actionElements = element.querySelectorAll(quickAccessTargets);
 
 
     // Si aucun élément n'est trouvé, on renvoie null pour indiquer qu'aucun subItem n'est disponible à ce niveau
     if (actionElements.length === 0) {return null;}
 
+
+    let itemIndex = 0; // Index pour générer des IDs uniques
     for (let i = 0; i < actionElements.length; i++) {
         const actionElement = actionElements[i];
+
+        // Initialiser la configuration de l'item
         let itemId = null;
         const itemConfig = {
-            selector: null, // à définir plus tard
-            onTap: 'clic', // par défaut, une action simple est un clic
-            onDoubleTap: null, // à définir plus tard si besoin
-            subItems: null, // à définir plus tard si besoin
+            selector: null,
+            onTap: null,
+            onDoubleTap: null,
+            subItems: null,
         };
 
-        const isProperAction = testProperActionElement(actionElement, quickAcessTargets);
-        
-        const isGroupingContainer = testGroupingContainer(actionElement, quickAcessTargets);
+        // Vérifier si l'élément est considéré comme une action, un conteneur de regroupement, ou les deux
+        const isProperAction = testProperActionElement(actionElement, quickAccessTargets);        
+        const isGroupingContainer = testGroupingContainer(actionElement, quickAccessTargets);
 
         if (isProperAction && isGroupingContainer) {
             // Dans ce cas on a besoin de peupler de subItems, ET de prévoir un doubleTap pour accéder directement à l'action
@@ -1621,8 +1621,11 @@ function generateInternalSubItems(element) {
             continue;
         }
 
-        // Il s'agit d'un item pertinent, on lui génère un ID unique
-        itemId = generateUniqueIdForElement(actionElement);
+        // Si on arrive à cette étape, il s'agit d'un item pertinent, on lui génère un ID unique
+        itemId = generateUniqueQAItemId(actionElement, itemIndex++);
+
+        // On doit également lui trouver un selecteur unique pour pouvoir le cibler précisément (id existant ou généré)
+        itemConfig.selector = QASelectorFinder(actionElement, itemId);
         subItems[itemId] = itemConfig;
     }
 
@@ -1630,49 +1633,61 @@ function generateInternalSubItems(element) {
     return subItems;
 }
 
-function testProperActionElement(element, quickAcessTargets) {
-    const isActionElement = element.matches(quickAcessTargets);
-    // Vérifier la visibilité de l'élément
-    const isVisible = element.offsetParent !== null && getComputedStyle(element).visibility !== 'hidden' && getComputedStyle(element).opacity !== '0';
+function testProperActionElement(element, quickAccessTargets) {
+    const isActionElement = element.matches(quickAccessTargets);
+    
+    // Vérification complète de la visibilité
+    const style = getComputedStyle(element);
+    const isVisible = element.offsetParent !== null && 
+                     style.visibility !== 'hidden' && 
+                     parseFloat(style.opacity) > 0 &&
+                     style.display !== 'none' &&
+                     style.pointerEvents !== 'none';
+    
     return isActionElement && isVisible;
 }
 
-function testGroupingContainer(element, quickAcessTargets) {
+function testGroupingContainer(element, quickAccessTargets) {
     const isIframe = element.tagName.toLowerCase() === 'iframe';
-    const hasManyActionElements = element.querySelectorAll(quickAcessTargets).length > 20;
+    const hasManyActionElements = element.querySelectorAll(quickAccessTargets).length > 20;
     return isIframe || hasManyActionElements;
 }
 
-function generateUniqueItemId(element, parentId, index) {
-    // Construire un identifiant basé sur les caractéristiques de l'élément
+function generateUniqueQAItemId(element, index) {
+    /**
+     * Construire un identifiant basé sur les caractéristiques de l'élément :
+     * elementType_index
+    */ 
+
     let identifier = '';
 
-    // 1. Utiliser l'ID DOM s'il existe (meilleur identifiant)
+    if (element.tagName) {
+        identifier += element.tagName.toLowerCase();
+    } else {
+        identifier += 'element';
+    }
+
+    if (element.className) {
+        const classPart = element.className.trim().split(/\s+/).join('-');
+        identifier += `_${classPart}`;
+    }
+
+    identifier += `_${index}`;
+
+    // Nettoyer l'identifiant pour qu'il soit valide (remplacer les caractères spéciaux par des underscores)
+    identifier = identifier.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    return identifier;
+}
+
+
+function QASelectorFinder(element, itemId) {
     if (element.id) {
-        identifier = element.id;
+        return `#${element.id}`;
+    } else {
+        // Assigner un ID DOM unique à l'élément
+        const uniqueDomId = `wh-qa-${itemId}`;
+        element.id = uniqueDomId;
+        return `#${uniqueDomId}`;
     }
-    // 2. Sinon, utiliser le name si présent (champs de formulaire)
-    else if (element.name) {
-        identifier = element.name;
-    }
-    // 3. Sinon, utiliser un texte nettoyé (limité à 20 caractères)
-    else if (element.textContent && element.textContent.trim()) {
-        identifier = element.textContent
-            .trim()
-            .substring(0, 20) // Limiter à 20 caractères
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '') // Supprimer accents
-            .replace(/[^a-z0-9]/g, '_') // Remplacer caractères spéciaux
-            .replace(/_+/g, '_') // Réduire _ multiples
-            .replace(/^_|_$/g, ''); // Supprimer _ début/fin
-    }
-
-    // 4. Fallback sur le type d'élément
-    if (!identifier) {
-        identifier = element.tagName.toLowerCase();
-    }
-
-    // 5. Construire l'itemId selon le pattern du projet
-    return `${parentId}_${identifier}_${index}`;
 }
