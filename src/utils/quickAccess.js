@@ -25,6 +25,11 @@ function returnQuickAccessConfig() {
      *     'sous_item_2': { ... }
      *     }
      *   }
+     * 
+     * Nomenclature : (à des fin de commentaire uniquement)
+     * - un item de REGROUPEMENT est un item sans onTap ni onDoubleTap
+     * - un item TERMINAL est un item sans subItems
+     * - un item ACTION est un item avec une action onTap ou onDoubleTap, qu'il ait ou non des subItems
      */
 
     // ================= Configuration spécifique à la page d’accueil =================
@@ -32,8 +37,6 @@ function returnQuickAccessConfig() {
     const bandeauSuperieurConfig = {
         'large_top_menu': {
             selector: 'table.bandeau',
-            onTap: null,
-            onDoubleTap: null,
             subItems: {
                 'recherche_patient_input': {
                     selector: '#TextBoxFindPatient',
@@ -275,38 +278,43 @@ function returnQuickAccessConfig() {
     /** Éléments internes - Items terminaux
      * Cette partie gère les éléments avec lesquels l'utilisateur peut interagir à la souris.
      * 
-     * REGROUPEMENT (premier niveau) :
-     * - #ContentPlaceHolder1_PanelPatient
-     * - #ContentPlaceHolder1_PanelVisuDocument > [name="divwc"] > [name="dhF"] (dh1, dh2, ..., dhN)
-     * - .copilot-vidal-project
-     * - iframes (considérées comme éléments de regroupement)
+     * cf. @generateInternalSubItems pour la logique de génération des subItems de ces éléments internes
      * 
-     * ÉLÉMENTS À CIBLER (tous visibles et non désactivés) :
-     * 
-     * 1. Champs de formulaire :
-     *    - input:not([type="hidden"]):not([disabled])
-     *    - textarea:not([disabled])
-     *    - select:not([disabled])
-     * 
-     * 2. Éléments cliquables :
-     *    - a[href]
-     *    - button:not([disabled])
-     *    - [role="button"]:not([aria-disabled="true"])
-     *    - [onclick], [ondblclick], [onmousedown] (tout élément avec event listener inline)
-     * 
-     * 3. Éléments avec tabindex >= 0 (focus clavier)
-     * 
-     * EXCLUSIONS automatiques :
-     * - display:none, visibility:hidden, opacity:0
-     * - [disabled], [aria-disabled="true"]
-     * - pointer-events:none
      */
+
+    const internalElementsConfig = {
+        'panel_patient': {
+            selector: '#ContentPlaceHolder1_PanelPatient',
+            subItems: function(element) {
+                return generateInternalSubItems(element, 'panel_patient');
+            }
+        },
+        'documents_joints_visu': {
+            selector: '#ContentPlaceHolder1_PanelVisuDocument [name="divwc"] [name="dhF"]',
+            subItems: function(element) {
+                return generateInternalSubItems(element, 'documents_joints_visu');
+            }
+        },
+        'copilot_vidal': {
+            selector: '.copilot-vidal-project',
+            subItems: function(element) {
+                return generateInternalSubItems(element, 'copilot_vidal');
+            }
+        },
+        'iframes': {
+            selector: 'iframe',
+            subItems: function(element) {
+                return generateInternalSubItems(element, 'iframes');
+            }
+        }
+    };
 
     // ================= Configuration finale =================
     const quickAccessConfig = {
         ...bandeauSuperieurConfig,
         ...menuHorizontalConfig,
-        ...sidebarConfig
+        ...sidebarConfig,
+        ...internalElementsConfig
     };
 
     return quickAccessConfig;
@@ -1521,4 +1529,150 @@ function generateHorizMenuSubItems(submenuElement, parentId) {
     });
 
     return subItems;
+}
+
+/**
+ * Génération des items génériques
+ * Son usage est prévu pour être très large
+ * 
+ * Depuis l'élément initial fournis, on va devoir descendre récursivement dans le DOM
+ * pour trouver les élements/items de REGROUPEMENT (donc sans onTap ou onDoubleTap), puis
+ * les éléments/items d'ACTION
+ * 
+ * Les items considérés comme de REGROUPEMENT sont :
+ * - toutes les iframes
+ * - tout les éléments avec un très grand nombre de subItems (> 20)
+ * 
+ * Les items d'ACTION sont les éléments suivants : 
+ * 1. Champs de formulaire :
+ *    - input:not([type="hidden"]):not([disabled])
+ *    - textarea:not([disabled])
+ *    - select:not([disabled])
+ * 
+ * 2. Éléments cliquables :
+ *    - a[href]
+ *    - button:not([disabled])
+ *    - [role="button"]:not([aria-disabled="true"])
+ *    - [onclick], [ondblclick], [onmousedown] (tout élément avec event listener inline)
+ * 
+ * 3. Éléments avec tabindex >= 0 (focus clavier)
+ * 
+ * EXCLUSIONS automatiques : éléments non visibles ou désactivés
+ * - display:none, visibility:hidden, opacity:0
+ * - [disabled], [aria-disabled="true"]
+ * - pointer-events:none
+ *
+ */
+function generateInternalSubItems(element) {
+    const subItems = {};
+
+    const quickAcessTargets = `
+        input:not([type="hidden"]):not([disabled]),
+        textarea:not([disabled]),
+        select:not([disabled]),
+        a[href],
+        button:not([disabled]),
+        [role="button"]:not([aria-disabled="true"]),
+        [onclick], [ondblclick], [onmousedown],
+        [tabindex]:not([tabindex="-1"])
+    `;
+
+    // Lister tous les éléments d'action potentiels dans le conteneur
+    const actionElements = element.querySelectorAll(quickAcessTargets);
+
+
+    // Si aucun élément n'est trouvé, on renvoie null pour indiquer qu'aucun subItem n'est disponible à ce niveau
+    if (actionElements.length === 0) {return null;}
+
+    for (let i = 0; i < actionElements.length; i++) {
+        const actionElement = actionElements[i];
+        let itemId = null;
+        const itemConfig = {
+            selector: null, // à définir plus tard
+            onTap: 'clic', // par défaut, une action simple est un clic
+            onDoubleTap: null, // à définir plus tard si besoin
+            subItems: null, // à définir plus tard si besoin
+        };
+
+        const isProperAction = testProperActionElement(actionElement, quickAcessTargets);
+        
+        const isGroupingContainer = testGroupingContainer(actionElement, quickAcessTargets);
+
+        if (isProperAction && isGroupingContainer) {
+            // Dans ce cas on a besoin de peupler de subItems, ET de prévoir un doubleTap pour accéder directement à l'action
+            itemConfig.onDoubleTap = 'clic';
+            itemConfig.subItems = function (el) {
+                return generateInternalSubItems(el);
+            };
+
+        } else if (isProperAction) {
+            // Dans ce cas, c'est un élément d'action simple, il faut un onTap, et pas de subItems
+            itemConfig.onTap = 'clic';
+
+        } else if (isGroupingContainer) {
+            // Dans ce cas, c'est un conteneur de regroupement, il faut des subItems, et pas d'onTap
+            // on peuple donc le subItems de cet élément en appelant récursivement generateInternalSubItems sur cet élément
+            itemConfig.subItems = function (el) {
+                return generateInternalSubItems(el);
+            };
+
+        } else {
+            // Dans ce cas, c'est un élément qui n'est pas considéré comme une action ni comme un conteneur de regroupement, on l'ignore
+            continue;
+        }
+
+        // Il s'agit d'un item pertinent, on lui génère un ID unique
+        itemId = generateUniqueIdForElement(actionElement);
+        subItems[itemId] = itemConfig;
+    }
+
+    // On retourne un objet de subItems
+    return subItems;
+}
+
+function testProperActionElement(element, quickAcessTargets) {
+    const isActionElement = element.matches(quickAcessTargets);
+    // Vérifier la visibilité de l'élément
+    const isVisible = element.offsetParent !== null && getComputedStyle(element).visibility !== 'hidden' && getComputedStyle(element).opacity !== '0';
+    return isActionElement && isVisible;
+}
+
+function testGroupingContainer(element, quickAcessTargets) {
+    const isIframe = element.tagName.toLowerCase() === 'iframe';
+    const hasManyActionElements = element.querySelectorAll(quickAcessTargets).length > 20;
+    return isIframe || hasManyActionElements;
+}
+
+function generateUniqueItemId(element, parentId, index) {
+    // Construire un identifiant basé sur les caractéristiques de l'élément
+    let identifier = '';
+
+    // 1. Utiliser l'ID DOM s'il existe (meilleur identifiant)
+    if (element.id) {
+        identifier = element.id;
+    }
+    // 2. Sinon, utiliser le name si présent (champs de formulaire)
+    else if (element.name) {
+        identifier = element.name;
+    }
+    // 3. Sinon, utiliser un texte nettoyé (limité à 20 caractères)
+    else if (element.textContent && element.textContent.trim()) {
+        identifier = element.textContent
+            .trim()
+            .substring(0, 20) // Limiter à 20 caractères
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // Supprimer accents
+            .replace(/[^a-z0-9]/g, '_') // Remplacer caractères spéciaux
+            .replace(/_+/g, '_') // Réduire _ multiples
+            .replace(/^_|_$/g, ''); // Supprimer _ début/fin
+    }
+
+    // 4. Fallback sur le type d'élément
+    if (!identifier) {
+        identifier = element.tagName.toLowerCase();
+    }
+
+    // 5. Construire l'itemId selon le pattern du projet
+    return `${parentId}_${identifier}_${index}`;
 }
