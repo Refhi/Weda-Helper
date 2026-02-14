@@ -882,7 +882,7 @@ function createOverlay() {
  */
 function createTooltip(selector, hotkey, hasDoubleTap = false, isContainerOnly = false) {
     const element = document.querySelector(selector);
-    console.log(`[QuickAccess] Création du tooltip pour la touche "${hotkey}" sur l'élément:`, element, "Selector:", selector);
+    // console.log(`[QuickAccess] Création du tooltip pour la touche "${hotkey}" sur l'élément:`, element, "Selector:", selector);
     if (!element) return;
 
     // S'assurer que l'élément est visible
@@ -980,7 +980,7 @@ function showTooltips(state, config) {
         // il ne peut pas être une cible finale, il sert uniquement à naviguer vers ses subItems
         const isContainerOnly = isAtRoot && !hasDoubleTap;
 
-        console.log(`[QuickAccess] Traitement de l'item "${itemId}" pour affichage du tooltip:`, item, "Selector:", item.selector, "Hotkey:", item.hotkey, "HasDoubleTap:", hasDoubleTap, "IsContainerOnly:", isContainerOnly);
+        // console.log(`[QuickAccess] Traitement de l'item "${itemId}" pour affichage du tooltip:`, item, "Selector:", item.selector, "Hotkey:", item.hotkey, "HasDoubleTap:", hasDoubleTap, "IsContainerOnly:", isContainerOnly);
         createTooltip(item.selector, item.hotkey, hasDoubleTap, isContainerOnly);
     }
 }
@@ -1596,13 +1596,20 @@ function generateInternalSubItems(element) {
     const potentiallyVisibleElements = Array.from(allActionElements).filter(el => {
         // Éliminer d'abord les éléments clairement invisibles (offsetParent null = display:none ou parent caché)
         if (!el.offsetParent && !exceptionsToHiddenElements(el)) return false;
+
+        // Conserver les exceptions
+        if (exceptionsToHiddenElements(el)) {
+            return true;
+        }
         
         // Vérification rapide du viewport
         const rect = el.getBoundingClientRect();
-        return rect.top < window.innerHeight && 
+        const isInViewport = rect.top < window.innerHeight && 
                rect.bottom > 0 && 
                rect.left < window.innerWidth && 
                rect.right > 0;
+        
+        return isInViewport;
     });
 
     if (potentiallyVisibleElements.length === 0) return null;
@@ -1710,13 +1717,13 @@ function exceptionsToHiddenElements(element) {
     /** Certains éléments doivent être de-hidden s'ils sont parcourus
      * 
      */
-    const toUnHideSelectors = ['.document-actions']
+    const toUnHideSelectors = ['.document-actions', '.soc'];
     return toUnHideSelectors.some(selector => element.matches(selector) || element.closest(selector));
 }
 
 function testGroupingContainer(element, quickAccessTargets) {
     // Exceptions d'abord
-    console.log(`[QuickAccess] Test de regroupement pour l'élément ${element.tagName} avec le sélecteur "${element.className}"`);
+    // console.log(`[QuickAccess] Test de regroupement pour l'élément ${element.tagName} avec le sélecteur "${element.className}"`);
     const isExceptionSelector = ["[name='divwc']"]
     if (isExceptionSelector.some(selector => element.matches(selector))) {
         console.log(`[QuickAccess] Élément ${element.tagName} considéré comme conteneur de regroupement en raison d'une exception de sélecteur`);
