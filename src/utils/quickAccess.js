@@ -281,16 +281,6 @@ function returnQuickAccessConfig() {
      * cf. @generateInternalSubItems pour la logique de génération des subItems de ces éléments internes
      * 
      */
-
-    // à implémenter
-    if (exceptionsToHiddenElements(element)) {
-        // On fait un mouseOver sur l'élément
-        element.dispatchEvent(new MouseEvent('mouseover', {bubbles: true, cancelable: true, view: window}));
-        return true;
-    }
-
-    
-
     const internalElementsConfig = {
         'panel_patient': {
             selector: '#ContentPlaceHolder1_PanelPatient',
@@ -315,47 +305,41 @@ function returnQuickAccessConfig() {
                 },                    
             }
         },
-        'documents_joints_corps': {
+        'documents_joints_corps': { // Niveau 1 : le panneau contenant toutes les cs
             selector: '#ContentPlaceHolder1_HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda',
             subItems: function(element) {
+                // Niveau 2 - chaque groupe de jour de consultation
                 const generatedSubItems = {};
                 
-                // 1. Ajouter les éléments de document-actions qui nécessitent un mouseover avant le clic
+                // 1. Directement les éléments qui permettent d'agir sur les éléments de consultation (modifier, supprimer, etc.), qui ne sont pas accessibles via le DOM tant qu'on n'a pas fait de mouseover dessus
+                // en effet ce sont les éléments qui seront le + souvent accédés
                 const documentActions = element.querySelectorAll('.document-actions > div');
                 documentActions.forEach((actionDiv, index) => {
-                    // Assigner un ID unique si nécessaire
-                    if (!actionDiv.id) {
-                        actionDiv.id = `wh-qa-doc-action-${index}`;
-                    }
-
-                    // Révéler le menu via un mouseover
-                    
+                    // Révéler les élémments
+                    actionDiv.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+                    if (!isElementVisible(actionDiv)) return;
+                    // actionDiv correspond à chaque div d'action (modifier, supprimer, etc.)
+                    // Ils ont déjà chacun un element.id                    
                     generatedSubItems[`document_action_${index + 1}`] = {
                         selector: `#${actionDiv.id}`,
-                        onTap: function(element, state) {
-                            // D'abord faire un mouseover pour révéler le menu
-                            element.dispatchEvent(new MouseEvent('mouseover', {
-                                bubbles: true,
-                                cancelable: true,
-                                view: window
-                            }));
-                            // Ensuite cliquer
-                            setTimeout(() => {
-                                element.dispatchEvent(new MouseEvent('click', {
-                                    bubbles: true,
-                                    cancelable: true,
-                                    view: window
-                                }));
-                            }, 50);
-                        }
+                        onTap: 'clic'
                     };
                 });
                 
-                // 2. Ajouter tous les autres éléments interactifs via generateInternalSubItems
-                const internalItems = generateInternalSubItems(element);
-                if (internalItems) {
-                    Object.assign(generatedSubItems, internalItems);
-                }
+                // 2. Sous-niveaux : un par bloc de consultation
+                const consultationBlocks = element.querySelectorAll('div.sc[name="divwc"]');
+                // On va garder ceux visibles en utilisant isElementVisible
+                consultationBlocks.forEach((block, index) => {
+                    if (!isElementVisible(block)) return;
+                    // Les blocs de cs n'ont pas d'id
+                    block.id = `consultation_block_${index + 1}`
+                    generatedSubItems[`consultation_block_${index + 1}`] = {
+                        selector: `#${block.id}`,
+                        subItems: function() {
+                            return generateInternalSubItems(block);
+                        }
+                    };
+                });
                 
                 return generatedSubItems;
             }
