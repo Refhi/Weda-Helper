@@ -31,8 +31,10 @@ function returnQuickAccessConfig() {
      * - un item TERMINAL est un item sans subItems
      * - un item ACTION est un item avec une action onTap ou onDoubleTap, qu'il ait ou non des subItems
      */
-
-    // ================= Configuration spécifique à la page d’accueil =================
+    /** --------------------------------------------------------------------------------
+    *                Configuration spécifique à la page d’accueil
+    * ----------------------------------------------------------------------------------
+    */
     // ================= Bandeau supérieur de la page d’accueil =================
     const bandeauSuperieurConfig = {
         'large_top_menu': {
@@ -383,25 +385,31 @@ function returnQuickAccessConfig() {
             subItems: function(element) {
                 return generateInternalSubItems(element);
             }
-        },
+        }
+    };
+
+    /**
+     * ----------------------------------------------------------------------------------
+     *               Pages de consultation
+     * ----------------------------------------------------------------------------------
+     */
+    // =============== Les iframes =============================
+    const iframeConfig = {
         'iframes': {
             selector: 'iframe',
             subItems: function(element) {
-                // L'élément est alors une iframe.
-                // On doit dont renvoyer le document de l'iframe
-                // TODO : gérer les iframes pour action et tooltip
-                // peut-être en envoyant la référence de l'iframe dans l'Item ?
-                return generateInternalSubItems(element.contentDocument);
+                // On se retrouve ici avec une liste d'iframes
             }
         }
-    };
+    }
 
     // ================= Configuration finale =================
     const quickAccessConfig = {
         ...bandeauSuperieurConfig,
         ...menuHorizontalConfig,
         ...sidebarConfig,
-        ...internalElementsConfig
+        ...internalElementsConfig,
+        ...iframeConfig
     };
 
     return quickAccessConfig;
