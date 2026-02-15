@@ -282,6 +282,15 @@ function returnQuickAccessConfig() {
      * 
      */
 
+    // à implémenter
+    if (exceptionsToHiddenElements(element)) {
+        // On fait un mouseOver sur l'élément
+        element.dispatchEvent(new MouseEvent('mouseover', {bubbles: true, cancelable: true, view: window}));
+        return true;
+    }
+
+    
+
     const internalElementsConfig = {
         'panel_patient': {
             selector: '#ContentPlaceHolder1_PanelPatient',
@@ -289,10 +298,66 @@ function returnQuickAccessConfig() {
                 return generateInternalSubItems(element);
             }
         },
-        'documents_joints_visu': {
+        'documents_joints_meta': {
             selector: '#ContentPlaceHolder1_PanelVisuDocument',
+            subItems: {
+                'top_bar': {
+                    selector: '#ContentPlaceHolder1_PanelVisuDocument tr',
+                    onTap: 'clic',
+                },
+                'etiquettes': {
+                    selector: '#ContentPlaceHolder1_PanelStatEtiquette',
+                    onTap: 'clic',
+                },
+                'bouton_suite_dossier': {
+                    selector: '#ContentPlaceHolder1_HistoriqueUCForm1_LinkButtonSuiteWeda',
+                    onTap: 'clic',
+                },                    
+            }
+        },
+        'documents_joints_corps': {
+            selector: '#ContentPlaceHolder1_HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda',
             subItems: function(element) {
-                return generateInternalSubItems(element);
+                const generatedSubItems = {};
+                
+                // 1. Ajouter les éléments de document-actions qui nécessitent un mouseover avant le clic
+                const documentActions = element.querySelectorAll('.document-actions > div');
+                documentActions.forEach((actionDiv, index) => {
+                    // Assigner un ID unique si nécessaire
+                    if (!actionDiv.id) {
+                        actionDiv.id = `wh-qa-doc-action-${index}`;
+                    }
+
+                    // Révéler le menu via un mouseover
+                    
+                    generatedSubItems[`document_action_${index + 1}`] = {
+                        selector: `#${actionDiv.id}`,
+                        onTap: function(element, state) {
+                            // D'abord faire un mouseover pour révéler le menu
+                            element.dispatchEvent(new MouseEvent('mouseover', {
+                                bubbles: true,
+                                cancelable: true,
+                                view: window
+                            }));
+                            // Ensuite cliquer
+                            setTimeout(() => {
+                                element.dispatchEvent(new MouseEvent('click', {
+                                    bubbles: true,
+                                    cancelable: true,
+                                    view: window
+                                }));
+                            }, 50);
+                        }
+                    };
+                });
+                
+                // 2. Ajouter tous les autres éléments interactifs via generateInternalSubItems
+                const internalItems = generateInternalSubItems(element);
+                if (internalItems) {
+                    Object.assign(generatedSubItems, internalItems);
+                }
+                
+                return generatedSubItems;
             }
         },
         'copilot_vidal': {
@@ -823,6 +888,72 @@ function generateHotkeyFromText(text, usedHotkeys) {
 }
 
 // ============================================================================
+// UTILITAIRES DE VISIBILITÉ
+// ============================================================================
+
+/**
+ * Vérifie si un élément est visible (CSS et viewport)
+ * @param {HTMLElement} element - L'élément à vérifier
+ * @param {boolean} requirePartiallyInViewport - Si true, vérifie que l'élément est au moins partiellement visible dans le viewport
+ * @returns {boolean} True si l'élément est visible
+ */
+function isElementVisible(element, requirePartiallyInViewport = true) {
+    if (!element) return false;
+
+    // 1. Vérification basique : offsetParent === null détecte display:none et visibility:hidden
+    if (element.offsetParent === null) {
+        return false;
+    }
+
+    // 2. Vérification des styles CSS calculés
+    const style = getComputedStyle(element);
+    
+    // display: none
+    if (style.display === 'none') {
+        return false;
+    }
+    
+    // visibility: hidden
+    if (style.visibility === 'hidden') {
+        return false;
+    }
+    
+    // opacity: 0 ou proche de 0
+    if (parseFloat(style.opacity) < 0.01) {
+        return false;
+    }
+    
+    // pointer-events: none (l'élément n'est pas interactif)
+    if (style.pointerEvents === 'none') {
+        return false;
+    }
+
+    // 3. Vérification de la visibilité dans le viewport (optionnel)
+    if (requirePartiallyInViewport) {
+        const rect = element.getBoundingClientRect();
+        
+        // Vérifier si l'élément est au moins partiellement visible dans le viewport
+        const isInViewport = (
+            rect.bottom > 0 &&
+            rect.right > 0 &&
+            rect.top < window.innerHeight &&
+            rect.left < window.innerWidth
+        );
+        
+        if (!isInViewport) {
+            return false;
+        }
+        
+        // Vérifier que l'élément a une taille non nulle
+        if (rect.width === 0 || rect.height === 0) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// ============================================================================
 // INTERFACE UTILISATEUR - OVERLAY ET TOOLTIPS
 // ============================================================================
 
@@ -889,8 +1020,8 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainerOnly =
     // console.log(`[QuickAccess] Création du tooltip pour la touche "${hotkey}" sur l'élément:`, element, "Selector:", selector);
     if (!element) return;
 
-    // S'assurer que l'élément est visible
-    if (element.offsetParent === null) {
+    // S'assurer que l'élément est visible (CSS et viewport)
+    if (!isElementVisible(element)) {
         console.log(`[QuickAccess] Élément non visible, tooltip ignoré pour la clé ${hotkey}`);
         return;
     }
@@ -1544,7 +1675,8 @@ function generateHorizMenuSubItems(submenuElement, parentId) {
 
 /**
  * Génération des items génériques
- * Son usage est prévu pour être très large
+ * Son usage est prévu pour être très large, mais est consommateur de ressources
+ * donc doit être appelé au plus bas niveau possible
  * 
  * Depuis l'élément initial fournis, on va devoir descendre récursivement dans le DOM
  * pour trouver les élements/items de REGROUPEMENT (donc sans onTap ou onDoubleTap), puis
@@ -1585,9 +1717,7 @@ function generateInternalSubItems(element) {
         button:not([disabled]),
         [role="button"]:not([aria-disabled="true"]),
         [onclick], [ondblclick], [onmousedown],
-        [tabindex]:not([tabindex="-1"]),
-        svg,
-        [name='divwc']
+        [tabindex]:not([tabindex="-1"])
     `;
 
     // Lister tous les éléments d'action potentiels dans le conteneur
@@ -1596,45 +1726,21 @@ function generateInternalSubItems(element) {
     // Si aucun élément n'est trouvé, on renvoie null pour indiquer qu'aucun subItem n'est disponible à ce niveau
     if (allActionElements.length === 0) return null;
 
-    // Pré-filtrer rapidement les éléments visibles dans le viewport (optimisation)
-    const potentiallyVisibleElements = Array.from(allActionElements).filter(el => {
-        // Éliminer d'abord les éléments clairement invisibles (offsetParent null = display:none ou parent caché)
-        if (!el.offsetParent && !exceptionsToHiddenElements(el)) return false;
-
-        // Conserver les exceptions
-        if (exceptionsToHiddenElements(el)) {
-            return true;
-        }
-        
-        // Vérification rapide du viewport
-        const rect = el.getBoundingClientRect();
-        const isInViewport = rect.top < window.innerHeight && 
-               rect.bottom > 0 && 
-               rect.left < window.innerWidth && 
-               rect.right > 0;
-        
-        return isInViewport;
-    });
-
-    if (potentiallyVisibleElements.length === 0) return null;
 
     // Filtrer pour ne garder que les éléments qui ne sont pas descendants d'une autre target
-    const actionElements = potentiallyVisibleElements.filter(el => {
-        // Trouver le parent le plus proche qui est une target (en excluant l'élément lui-même)
+    // ET qui sont visibles (CSS et viewport)
+    const actionElements = Array.from(allActionElements).filter(el => {
+        // 1. Vérifier la visibilité
+        if (!isElementVisible(el)) {
+            return false;
+        }
+        
+        // 2. Trouver le parent le plus proche qui est une target (en excluant l'élément lui-même)
         let parent = el.parentElement;
         while (parent && parent !== element) {
             if (parent.matches(quickAccessTargets)) {
-                // Vérifier si ce parent est lui-même une action valide
-                const isVisible = parent.offsetParent !== null && 
-                                 getComputedStyle(parent).visibility !== 'hidden' && 
-                                 parseFloat(getComputedStyle(parent).opacity) > 0 &&
-                                 getComputedStyle(parent).display !== 'none' &&
-                                 getComputedStyle(parent).pointerEvents !== 'none';
-                
-                if (isVisible) {
-                    // Ce parent est une target valide, donc on ignore l'enfant
-                    return false;
-                }
+                // Ce parent est une target, donc on ignore l'enfant
+                return false;
             }
             parent = parent.parentElement;
         }
@@ -1655,7 +1761,7 @@ function generateInternalSubItems(element) {
         };
 
         // Vérifier si l'élément est considéré comme une action, un conteneur de regroupement, ou les deux
-        const isProperAction = testProperActionElement(actionElement, quickAccessTargets);        
+        const isProperAction = true; // Par construction, tous les éléments de actionElements sont des actions valides
         const isGroupingContainer = testGroupingContainer(actionElement, quickAccessTargets);
 
         if (isProperAction && isGroupingContainer) {
@@ -1693,37 +1799,6 @@ function generateInternalSubItems(element) {
     return subItems;
 }
 
-function testProperActionElement(element, quickAccessTargets) {
-    const isActionElement = element.matches(quickAccessTargets);
-
-    if (exceptionsToHiddenElements(element)) {
-        // On fait un mouseOver sur l'élément
-        element.dispatchEvent(new MouseEvent('mouseover', {bubbles: true, cancelable: true, view: window}));
-        return true;
-    }
-    
-    // Vérification complète de la visibilité
-    const style = getComputedStyle(element);
-    const isStyleVisible = element.offsetParent !== null && 
-                     style.visibility !== 'hidden' && 
-                     parseFloat(style.opacity) > 0 &&
-                     style.display !== 'none' &&
-                     style.pointerEvents !== 'none';
-    
-    if (!isActionElement || !isStyleVisible) {
-        return false;
-    }
-
-    return true;
-}
-
-function exceptionsToHiddenElements(element) {
-    /** Certains éléments doivent être de-hidden s'ils sont parcourus
-     * 
-     */
-    const toUnHideSelectors = ['.document-actions', '.soc'];
-    return toUnHideSelectors.some(selector => element.matches(selector) || element.closest(selector));
-}
 
 function testGroupingContainer(element, quickAccessTargets) {
     // Exceptions d'abord
