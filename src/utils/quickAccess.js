@@ -372,6 +372,40 @@ function returnQuickAccessConfig() {
                     '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> '
                 );
             }
+        },
+        'consultation_iframe_sidebar': {
+            selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> .cadreicon',
+            subItems: {
+                // Documents
+                'Consultations': {
+                    selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> #ButtonConsultation',
+                    onTap: 'clic'
+                },
+                'resultats_examen': {
+                    selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> #ButtonResultatExamen',
+                    onTap: 'clic'
+                },
+                'courriers': {
+                    selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> #ButtonCourrier',
+                    onTap: 'clic'
+                },
+                'vaccins': {
+                    selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> #ButtonVaccins',
+                    onTap: 'clic'
+                },
+                'visugraphiques': {
+                    selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> .imgChart',
+                    onTap: 'clic'
+                },
+                'grossesse': {
+                    selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> #ButtonPregnant',
+                    onTap: 'clic'
+                },
+                'arretTravail': {
+                    selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> .imgAT',
+                    onTap: 'clic'
+                }
+            }
         }
     }
 
@@ -896,6 +930,7 @@ function generateHotkeyFromText(text, usedHotkeys) {
  * @returns {boolean} True si l'élément est visible
  */
 function isElementVisible(element, requirePartiallyInViewport = true) {
+    // return true // TODO : probablement à supprimer ou à revoir..., peut-être à n'activer que sélectivement sur certains items très nombreux
     if (!element) return false;
 
     // 1. Vérification basique : offsetParent === null détecte display:none et visibility:hidden
@@ -1109,11 +1144,6 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainerOnly =
     // console.log(`[QuickAccess] Création du tooltip pour la touche "${hotkey}" sur l'élément:`, element, "Selector:", selector);
     if (!element) return;
 
-    // S'assurer que l'élément est visible (CSS et viewport)
-    if (!isElementVisible(element)) {
-        console.log(`[QuickAccess] Élément non visible, tooltip ignoré pour la clé ${hotkey}, selector: ${selector} `, element);
-        return;
-    }
 
     const tooltip = document.createElement('span');
     tooltip.className = 'wh-quickaccess-tooltip';
@@ -1870,12 +1900,7 @@ function generateInternalSubItems(element, selectorPrefix = '') {
 
     // Filtrer pour ne garder que les éléments qui ne sont pas descendants d'une autre target
     // ET qui sont visibles (CSS et viewport)
-    const actionElements = Array.from(allActionElements).filter(el => {
-        // 1. Vérifier la visibilité
-        if (!isElementVisible(el)) {
-            return false;
-        }
-        
+    const actionElements = Array.from(allActionElements).filter(el => {        
         // 2. Trouver le parent le plus proche qui est une target (en excluant l'élément lui-même)
         let parent = el.parentElement;
         while (parent && parent !== element) {
