@@ -409,13 +409,50 @@ function returnQuickAccessConfig() {
         }
     }
 
+    const iframeTextZonesConfig = {
+        'consultation_iframe_text_area_1': {
+            selector: '#ContentPlaceHolder1_divZone1',
+            subItems: function(element) {
+                return generateInternalSubItems(element);
+            }
+        },
+        'consultation_iframe_text_area_2': {
+            selector: '#ContentPlaceHolder1_divZone2',
+            subItems: function(element) {
+                return generateInternalSubItems(element);
+            }
+        },
+        'consultation_iframe_text_area_3': {
+            selector: '#ContentPlaceHolder1_divZone3',
+            subItems: function(element) {
+                return generateInternalSubItems(element);
+            }
+        },
+        'consultation_iframe_text_area_4': {
+            selector: '#ContentPlaceHolder1_divZone4',
+            subItems: function(element) {
+                return generateInternalSubItems(element);
+            }
+        },
+        'consultation_iframe_text_area_5': {
+            selector: '#ContentPlaceHolder1_PanelEvenementZone5',
+            subItems: function(element) {
+                return generateInternalSubItems(element);
+            }
+        }
+    }
+
+
+
+
     // ================= Configuration finale =================
     const quickAccessConfig = {
         ...bandeauSuperieurConfig,
         ...menuHorizontalConfig,
         ...sidebarConfig,
         ...internalElementsConfig,
-        ...iframeConfig
+        ...iframeConfig,
+        ...iframeTextZonesConfig
     };
 
     return quickAccessConfig;
@@ -825,6 +862,10 @@ function checkForKeyDuplication(config, QALevel) {
  */
 function ensureHotkeysForItems(config) {
     const usedHotkeys = new Set();
+
+    if (Object.keys(config).length === 0) {
+        return;
+    }
 
     // Première passe : collecter les hotkeys déjà définies
     for (const [itemId, item] of Object.entries(config)) {
@@ -2017,13 +2058,25 @@ function generateUniqueQAItemId(element, index) {
 }
 
 
+/**
+ * Échappe les caractères spéciaux pour les utiliser dans un sélecteur CSS
+ * Les caractères spéciaux incluent notamment $ utilisé par ASP.NET
+ * @param {string} str - Chaîne à échapper
+ * @returns {string} Chaîne échappée pour CSS
+ */
+function escapeCSSSelector(str) {
+    // Échapper les caractères spéciaux CSS avec un backslash
+    // Liste des caractères à échapper : !"#$%&'()*+,./:;<=>?@[\]^`{|}~
+    return str.replace(/([!"#$%&'()*+,./:;<=>?@[\\\]^`{|}~])/g, '\\$1');
+}
+
 function QASelectorFinder(element, itemId) {
     if (element.id) {
-        return `#${element.id}`;
+        return `#${escapeCSSSelector(element.id)}`;
     } else {
         // Assigner un ID DOM unique à l'élément
         const uniqueDomId = `wh-qa-${itemId}`;
         element.id = uniqueDomId;
-        return `#${uniqueDomId}`;
+        return `#${escapeCSSSelector(uniqueDomId)}`;
     }
 }
