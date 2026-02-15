@@ -303,12 +303,11 @@ function returnQuickAccessConfig() {
                 const etiquettes = element.querySelectorAll('.eti');
                 
                 etiquettes.forEach((eti, index) => {
-                    if (!isElementVisible(eti)) return;
                     // Pour chaque étiquette, on crée un sous-item pour la checkbox et la croix
                     const checkbox = eti.querySelector('input[type="checkbox"]');
                     const cross = eti.querySelector('.cross');
                     
-                    if (checkbox) {
+                    if (checkbox) { // Pour l'instant c'est bugé : ces items sont bizarrement hidden
                         subItems[checkbox.id] = {
                             selector: `#${checkbox.id}`,
                             onTap: 'clic'
