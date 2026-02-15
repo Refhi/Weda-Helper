@@ -344,40 +344,7 @@ function returnQuickAccessConfig() {
         'documents_joints_corps': { // Niveau 1 : le panneau contenant toutes les cs
             selector: '#ContentPlaceHolder1_HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda',
             subItems: function(element) {
-                // Niveau 2 - chaque groupe de jour de consultation
-                const generatedSubItems = {};
-                
-                // 1. Directement les éléments qui permettent d'agir sur les éléments de consultation (modifier, supprimer, etc.), qui ne sont pas accessibles via le DOM tant qu'on n'a pas fait de mouseover dessus
-                // en effet ce sont les éléments qui seront le + souvent accédés
-                const documentActions = element.querySelectorAll('.document-actions > div');
-                documentActions.forEach((actionDiv, index) => {
-                    // Révéler les élémments
-                    actionDiv.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-                    if (!isElementVisible(actionDiv)) return;
-                    // actionDiv correspond à chaque div d'action (modifier, supprimer, etc.)
-                    // Ils ont déjà chacun un element.id                    
-                    generatedSubItems[`document_action_${index + 1}`] = {
-                        selector: `#${actionDiv.id}`,
-                        onTap: 'clic'
-                    };
-                });
-                
-                // 2. Sous-niveaux : un par bloc de consultation
-                const consultationBlocks = element.querySelectorAll('div.sc[name="divwc"]');
-                // On va garder ceux visibles en utilisant isElementVisible
-                consultationBlocks.forEach((block, index) => {
-                    if (!isElementVisible(block)) return;
-                    // Les blocs de cs n'ont pas d'id
-                    block.id = `consultation_block_${index + 1}`
-                    generatedSubItems[`consultation_block_${index + 1}`] = {
-                        selector: `#${block.id}`,
-                        subItems: function() {
-                            return generateInternalSubItems(block);
-                        }
-                    };
-                });
-                
-                return generatedSubItems;
+                return generateConsultationHistorySubItems(element, 'documents_joints_corps');
             }
         },
         'copilot_vidal': {
@@ -395,10 +362,15 @@ function returnQuickAccessConfig() {
      */
     // =============== Les iframes =============================
     const iframeConfig = {
-        'iframes': {
-            selector: 'iframe',
+        'consultation_history_iframe': {
+            selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> #HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda',
             subItems: function(element) {
-                // On se retrouve ici avec une liste d'iframes
+                // Utiliser la fonction partagée avec le préfixe iframe pour les sélecteurs
+                return generateConsultationHistorySubItems(
+                    element, 
+                    'consultation_iframe',
+                    '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> '
+                );
             }
         }
     }
@@ -547,7 +519,7 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
  * Fonction utilitaire pour exécuter une action qui peut être une string (clic, mouseover, enter) ou une fonction personnalisée
  */
 function executeAction(action, selector, state) {
-    const element = document.querySelector(selector);
+    const element = querySelectorWithIframe(selector);
     if (!element) {
         console.error(`[QuickAccess] Impossible d'exécuter l'action : élément non trouvé pour le sélecteur "${selector}"`);
         return;
@@ -757,7 +729,7 @@ function populateSubItems(config, targetQALevel) {
         // Trouver l'élément DOM si nécessaire
         let element = targetItem.element;
         if (!element && targetItem.selector) {
-            element = document.querySelector(targetItem.selector);
+            element = querySelectorWithIframe(targetItem.selector);
         }
 
         if (element) {
@@ -835,8 +807,8 @@ function ensureHotkeysForItems(config) {
 
             // Essayer d'obtenir un texte plus significatif
             if (item.selector) {
-                // Essayer de récupérer le texte de l'élément
-                const element = document.querySelector(item.selector);
+                // Essayer de récupérer le texte de l'élément (supporte les iframes avec >>)
+                const element = querySelectorWithIframe(item.selector);
                 if (element && element.textContent) {
                     sourceText = element.textContent.trim();
                 } else if (element) {
@@ -980,8 +952,106 @@ function isElementVisible(element, requirePartiallyInViewport = true) {
 }
 
 // ============================================================================
+// UTILITAIRES POUR IFRAMES
+// ============================================================================
+
+/**
+ * Sélectionne un élément qui peut être dans le document principal ou dans une iframe
+ * Supporte la syntaxe : "iframe#id >> selector" ou "selector" classique
+ * @param {string} selector - Sélecteur CSS, potentiellement avec notation iframe
+ * @param {Document} doc - Document de départ (par défaut document)
+ * @returns {HTMLElement|null}
+ */
+function querySelectorWithIframe(selector, doc = document) {
+    // Détecter la syntaxe iframe >> selector
+    if (selector.includes(' >> ')) {
+        const [iframeSelector, innerSelector] = selector.split(' >> ').map(s => s.trim());
+        const iframe = doc.querySelector(iframeSelector);
+        
+        if (!iframe || iframe.tagName !== 'IFRAME') {
+            console.warn(`[QuickAccess] Iframe non trouvée: ${iframeSelector}`);
+            return null;
+        }
+        
+        try {
+            // Vérifier l'accès au contentDocument (same-origin)
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+            if (!iframeDoc) {
+                console.warn(`[QuickAccess] Accès bloqué à l'iframe (cross-origin): ${iframeSelector}`);
+                return null;
+            }
+            
+            // Chercher dans l'iframe récursivement
+            return querySelectorWithIframe(innerSelector, iframeDoc);
+        } catch (e) {
+            console.error(`[QuickAccess] Erreur d'accès à l'iframe:`, e);
+            return null;
+        }
+    }
+    
+    // Sélecteur classique
+    return doc.querySelector(selector);
+}
+
+// ============================================================================
 // INTERFACE UTILISATEUR - OVERLAY ET TOOLTIPS
 // ============================================================================
+
+/**
+ * Calcule la position absolue d'un élément dans la fenêtre principale,
+ * en tenant compte des iframes (support des iframes imbriquées)
+ * @param {HTMLElement} element - L'élément dont on veut la position
+ * @returns {DOMRect} Position dans la fenêtre principale
+ */
+function getAbsoluteBoundingRect(element) {
+    const rect = element.getBoundingClientRect();
+    
+    // Vérifier si l'élément est dans une iframe
+    const ownerDoc = element.ownerDocument;
+    
+    // Si l'élément est dans le document principal, retourner rect tel quel
+    if (ownerDoc === document) {
+        return rect;
+    }
+    
+    // Sinon, l'élément est dans une iframe
+    // Trouver l'iframe contenant cet élément
+    let iframe = null;
+    
+    // Chercher dans toutes les iframes du document principal
+    const allIframes = document.querySelectorAll('iframe');
+    for (const frame of allIframes) {
+        try {
+            if (frame.contentDocument === ownerDoc || frame.contentWindow?.document === ownerDoc) {
+                iframe = frame;
+                break;
+            }
+        } catch (e) {
+            // Accès bloqué (cross-origin), ignorer
+            continue;
+        }
+    }
+    
+    if (!iframe) {
+        console.warn('[QuickAccess] Impossible de trouver l\'iframe parente pour le positionnement du tooltip');
+        return rect;
+    }
+    
+    // Obtenir la position de l'iframe (récursif si iframe imbriquée)
+    const iframeRect = getAbsoluteBoundingRect(iframe);
+    
+    // Combiner les positions
+    return {
+        top: rect.top + iframeRect.top,
+        left: rect.left + iframeRect.left,
+        right: rect.right + iframeRect.left,
+        bottom: rect.bottom + iframeRect.top,
+        width: rect.width,
+        height: rect.height,
+        x: rect.x + iframeRect.left,
+        y: rect.y + iframeRect.top
+    };
+}
 
 /**
  * Crée et affiche l'overlay semi-transparent
@@ -1035,7 +1105,7 @@ function createOverlay() {
  * @param {boolean} isContainerOnly - Indique si l'item sert uniquement de conteneur pour la navigation (pas d'action directe)
  */
 function createTooltip(selector, hotkey, hasDoubleTap = false, isContainerOnly = false) {
-    const element = document.querySelector(selector);
+    const element = querySelectorWithIframe(selector);
     // console.log(`[QuickAccess] Création du tooltip pour la touche "${hotkey}" sur l'élément:`, element, "Selector:", selector);
     if (!element) return;
 
@@ -1048,8 +1118,8 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainerOnly =
     const tooltip = document.createElement('span');
     tooltip.className = 'wh-quickaccess-tooltip';
 
-    // Calculer la position de l'élément
-    const rect = element.getBoundingClientRect();
+    // Calculer la position de l'élément (en tenant compte des iframes)
+    const rect = getAbsoluteBoundingRect(element);
 
     // Style avec positionnement fixed pour garantir la visibilité
     tooltip.style.cssText = `
@@ -1693,6 +1763,55 @@ function generateHorizMenuSubItems(submenuElement, parentId) {
 }
 
 /**
+ * Génère les sous-items pour l'historique de consultations
+ * Fonction partagée entre documents_joints_corps et l'iframe de consultation
+ * @param {HTMLElement} element - Élément contenant l'historique (#HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda)
+ * @param {string} parentId - ID du parent pour générer les clés
+ * @param {string} selectorPrefix - Préfixe pour les sélecteurs (vide ou 'iframe#id >> ' pour iframe)
+ * @returns {Object} Configuration des sous-items
+ */
+function generateConsultationHistorySubItems(element, parentId, selectorPrefix = '') {
+    const generatedSubItems = {};
+    
+    // 1. Directement les éléments qui permettent d'agir sur les éléments de consultation
+    // (modifier, supprimer, etc.), qui ne sont pas accessibles via le DOM tant qu'on 
+    // n'a pas fait de mouseover dessus
+    const documentActions = element.querySelectorAll('.document-actions > div');
+    documentActions.forEach((actionDiv, index) => {
+        // Révéler les éléments
+        actionDiv.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+        if (!isElementVisible(actionDiv)) return;
+        
+        // Ils ont déjà chacun un element.id
+        generatedSubItems[`${parentId}_action_${index + 1}`] = {
+            selector: `${selectorPrefix}#${actionDiv.id}`,
+            onTap: 'clic'
+        };
+    });
+    
+    // 2. Sous-niveaux : un par bloc de consultation
+    const consultationBlocks = element.querySelectorAll('div.sc[name="divwc"]');
+    consultationBlocks.forEach((block, index) => {
+        if (!isElementVisible(block)) return;
+        
+        // Les blocs de cs n'ont pas d'id, on leur en crée un
+        const blockId = `${parentId}_block_${index + 1}`;
+        if (!block.id) {
+            block.id = blockId;
+        }
+        
+        generatedSubItems[blockId] = {
+            selector: `${selectorPrefix}#${block.id}`,
+            subItems: function() {
+                return generateInternalSubItems(block, selectorPrefix);
+            }
+        };
+    });
+    
+    return generatedSubItems;
+}
+
+/**
  * Génération des items génériques
  * Son usage est prévu pour être très large, mais est consommateur de ressources
  * donc doit être appelé au plus bas niveau possible
@@ -1724,8 +1843,11 @@ function generateHorizMenuSubItems(submenuElement, parentId) {
  * - [disabled], [aria-disabled="true"]
  * - pointer-events:none
  *
+ * @param {HTMLElement} element - Élément conteneur à explorer
+ * @param {string} selectorPrefix - Préfixe pour les sélecteurs (vide ou 'iframe#id >> ' pour iframe)
+ * @returns {Object|null} Configuration des sous-items ou null si aucun
  */
-function generateInternalSubItems(element) {
+function generateInternalSubItems(element, selectorPrefix = '') {
     const subItems = {};
 
     const quickAccessTargets = `
@@ -1787,7 +1909,7 @@ function generateInternalSubItems(element) {
             // Dans ce cas on a besoin de peupler de subItems, ET de prévoir un doubleTap pour accéder directement à l'action
             itemConfig.onDoubleTap = 'clic';
             itemConfig.subItems = function (el) {
-                return generateInternalSubItems(el);
+                return generateInternalSubItems(el, selectorPrefix);
             };
 
         } else if (isProperAction) {
@@ -1798,7 +1920,7 @@ function generateInternalSubItems(element) {
             // Dans ce cas, c'est un conteneur de regroupement, il faut des subItems, et pas d'onTap
             // on peuple donc le subItems de cet élément en appelant récursivement generateInternalSubItems sur cet élément
             itemConfig.subItems = function (el) {
-                return generateInternalSubItems(el);
+                return generateInternalSubItems(el, selectorPrefix);
             };
 
         } else {
@@ -1810,7 +1932,9 @@ function generateInternalSubItems(element) {
         itemId = generateUniqueQAItemId(actionElement, itemIndex++);
 
         // On doit également lui trouver un selecteur unique pour pouvoir le cibler précisément (id existant ou généré)
-        itemConfig.selector = QASelectorFinder(actionElement, itemId);
+        // Préfixer avec selectorPrefix pour supporter les iframes
+        const baseSelector = QASelectorFinder(actionElement, itemId);
+        itemConfig.selector = selectorPrefix + baseSelector;
         subItems[itemId] = itemConfig;
     }
 
