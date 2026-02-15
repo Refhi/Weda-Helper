@@ -410,36 +410,72 @@ function returnQuickAccessConfig() {
     }
 
     const iframeTextZonesConfig = {
-        'consultation_iframe_text_area_1': {
+        'consultation_iframe_text_config_area_1': {
             selector: '#ContentPlaceHolder1_divZone1',
             subItems: function(element) {
                 return generateInternalSubItems(element);
             }
         },
-        'consultation_iframe_text_area_2': {
+        'consultation_iframe_text_area_1': {
+            selector: '#ContentPlaceHolder1_divZone1 iframe >> body',
+            onTap: 'focus',
+        },
+        'consultation_iframe_text_config_area_2': {
             selector: '#ContentPlaceHolder1_divZone2',
             subItems: function(element) {
                 return generateInternalSubItems(element);
             }
         },
-        'consultation_iframe_text_area_3': {
+        'consultation_iframe_text_area_2': {
+            selector: '#ContentPlaceHolder1_divZone2 iframe >> body',
+            onTap: 'focus',
+        },
+        'consultation_iframe_text_config_area_3': {
             selector: '#ContentPlaceHolder1_divZone3',
             subItems: function(element) {
                 return generateInternalSubItems(element);
             }
         },
-        'consultation_iframe_text_area_4': {
+        'consultation_iframe_text_area_3': {
+            selector: '#ContentPlaceHolder1_divZone3 iframe >> body',
+            onTap: 'focus',
+        },
+        'consultation_iframe_text_config_area_4': {
             selector: '#ContentPlaceHolder1_divZone4',
             subItems: function(element) {
                 return generateInternalSubItems(element);
             }
         },
-        'consultation_iframe_text_area_5': {
+        'consultation_iframe_text_area_4': {
+            selector: '#ContentPlaceHolder1_divZone4 iframe >> body',
+            onTap: 'focus',
+        },
+        'consultation_iframe_text_config_area_5': {
             selector: '#ContentPlaceHolder1_PanelEvenementZone5',
             subItems: function(element) {
                 return generateInternalSubItems(element);
             }
+        },
+        'consultation_iframe_text_area_5': {
+            selector: '#ContentPlaceHolder1_PanelEvenementZone5 iframe >> body',
+            onTap: 'focus',
         }
+    }
+
+    // =============== Les autres éléments =====================
+    const menuIconsLeft = {
+        'menuW': {
+            selector: '#ContentPlaceHolder1_EvenementUcForm1_MenuNavigate a.level1',
+            onTap: function(element, state) { WMenuPseudoMouseover(element, state); },
+            onDoubleTap: 'clic',
+            subItems: function (element) {
+                console.log(`[QuickAccess] Génération des subItems pour menuW`, element);
+                const submenu = element.parentElement.querySelector('ul.level2.dynamic');
+                console.log(`[QuickAccess] Génération des subItems pour menuW`, submenu);
+                return submenu ? generateWMenuSubItems(submenu, 'menuW') : {};
+            }
+        },
+
     }
 
 
@@ -452,7 +488,8 @@ function returnQuickAccessConfig() {
         ...sidebarConfig,
         ...internalElementsConfig,
         ...iframeConfig,
-        ...iframeTextZonesConfig
+        ...iframeTextZonesConfig,
+        ...menuIconsLeft
     };
 
     return quickAccessConfig;
@@ -616,6 +653,9 @@ function executeAction(action, selector, state) {
                 break;
             case 'enter':
                 element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+                break;
+            case 'focus':
+                element.focus();
                 break;
             default:
                 console.error(`[QuickAccess] Action de type string non reconnue : "${action}"`);
