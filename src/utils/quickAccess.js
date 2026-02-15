@@ -288,22 +288,57 @@ function returnQuickAccessConfig() {
                 return generateInternalSubItems(element);
             }
         },
-        'documents_joints_meta': {
-            selector: '#ContentPlaceHolder1_PanelVisuDocument',
-            subItems: {
-                'top_bar': {
-                    selector: '#ContentPlaceHolder1_PanelVisuDocument tr',
-                    onTap: 'clic',
-                },
-                'etiquettes': {
-                    selector: '#ContentPlaceHolder1_PanelStatEtiquette',
-                    onTap: 'clic',
-                },
-                'bouton_suite_dossier': {
-                    selector: '#ContentPlaceHolder1_HistoriqueUCForm1_LinkButtonSuiteWeda',
-                    onTap: 'clic',
-                },                    
+        'documents_joints_meta_top_bar': {
+            selector: '#ContentPlaceHolder1_PanelVisuDocument tr',
+            subItems: function(element) {
+                return generateInternalSubItems(element);
             }
+        },
+        'documents_joints_meta_etiquettes': {
+            selector: '#ContentPlaceHolder1_PanelStatEtiquette',
+            subItems: function(element) {
+                const subItems = {};
+                
+                // Cibler spécifiquement les étiquettes et leurs éléments interactifs
+                const etiquettes = element.querySelectorAll('.eti');
+                
+                etiquettes.forEach((eti, index) => {
+                    if (!isElementVisible(eti)) return;
+                    // Pour chaque étiquette, on crée un sous-item pour la checkbox et la croix
+                    const checkbox = eti.querySelector('input[type="checkbox"]');
+                    const cross = eti.querySelector('.cross');
+                    
+                    if (checkbox) {
+                        subItems[checkbox.id] = {
+                            selector: `#${checkbox.id}`,
+                            onTap: 'clic'
+                        };
+                    }
+                    
+                    if (cross) {
+                        // Créer un id unique pour la croix, basée sur l'id de la checkbox
+                        cross.id = `cross_${checkbox.id}`;
+                        subItems[cross.id] = {
+                            selector: `#${cross.id}`,
+                            onTap: 'clic'
+                        };
+                    }
+                });
+                
+                // Ajouter aussi les autres éléments interactifs génériques
+                const otherItems = generateInternalSubItems(element);
+                if (otherItems) {
+                    Object.assign(subItems, otherItems);
+                }
+                
+                const subItemObject = Object.keys(subItems).length > 0 ? subItems : null;
+                console.log(`[QuickAccess] SubItems générés pour documents_joints_meta_etiquettes`, subItemObject);
+                return subItemObject;
+            }
+        },
+        'documents_joints_meta_bouton_suite_dossier': {
+            selector: '#ContentPlaceHolder1_HistoriqueUCForm1_LinkButtonSuiteWeda',
+            onTap: 'clic',
         },
         'documents_joints_corps': { // Niveau 1 : le panneau contenant toutes les cs
             selector: '#ContentPlaceHolder1_HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda',
@@ -992,13 +1027,6 @@ function createOverlay() {
  * @param {boolean} hasDoubleTap - Indique si un double-tap est disponible
  * @param {boolean} isContainerOnly - Indique si l'item sert uniquement de conteneur pour la navigation (pas d'action directe)
  */
-/**
- * Crée et affiche un tooltip sur un élément
- * @param {string} selector - Sélecteur CSS de l'élément
- * @param {string} hotkey - Touche de raccourci
- * @param {boolean} hasDoubleTap - Indique si un double-tap est disponible
- * @param {boolean} isContainerOnly - Indique si l'item sert uniquement de conteneur pour la navigation (pas d'action directe)
- */
 function createTooltip(selector, hotkey, hasDoubleTap = false, isContainerOnly = false) {
     const element = document.querySelector(selector);
     // console.log(`[QuickAccess] Création du tooltip pour la touche "${hotkey}" sur l'élément:`, element, "Selector:", selector);
@@ -1006,7 +1034,7 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainerOnly =
 
     // S'assurer que l'élément est visible (CSS et viewport)
     if (!isElementVisible(element)) {
-        console.log(`[QuickAccess] Élément non visible, tooltip ignoré pour la clé ${hotkey}`);
+        console.log(`[QuickAccess] Élément non visible, tooltip ignoré pour la clé ${hotkey}, selector: ${selector} `, element);
         return;
     }
 
