@@ -1281,17 +1281,43 @@ function showTooltips(state, config) {
 }
 
 /**
- * Suppression de tous les tooltips affichés
+ * Nettoie les tooltips et les éléments highlighted dans un document donné
+ * @param {Document} doc - Le document à nettoyer (document principal ou iframe)
  */
-function clearAllTooltips() {
-    const tooltips = document.querySelectorAll('.wh-quickaccess-tooltip');
+function clearTooltipsInDocument(doc) {
+    if (!doc) return;
+    
+    // Supprimer les tooltips
+    const tooltips = doc.querySelectorAll('.wh-quickaccess-tooltip');
     tooltips.forEach(tooltip => tooltip.remove());
 
     // Supprimer les entourages des éléments mis en valeur
-    const highlightedElements = document.querySelectorAll('.wh-quickaccess-highlighted');
+    const highlightedElements = doc.querySelectorAll('.wh-quickaccess-highlighted');
     highlightedElements.forEach(element => {
         restoreElementStyles(element);
         element.classList.remove('wh-quickaccess-highlighted');
+    });
+}
+
+/**
+ * Suppression de tous les tooltips affichés dans le document principal et les iframes
+ */
+function clearAllTooltips() {
+    // Nettoyer le document principal
+    clearTooltipsInDocument(document);
+
+    // Trouver toutes les iframes et nettoyer chacune
+    const iframes = document.querySelectorAll('iframe');
+    iframes.forEach(iframe => {
+        try {
+            // Vérifier l'accès au contentDocument (same-origin)
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+            if (iframeDoc) {
+                clearTooltipsInDocument(iframeDoc);
+            }
+        } catch (e) {
+            // Accès bloqué (cross-origin), ignorer silencieusement
+        }
     });
 }
 
