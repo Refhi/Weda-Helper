@@ -2118,37 +2118,37 @@ function generateInternalSubItems(element, selectorPrefix = '') {
         let itemId = null;
         const itemConfig = {
             selector: null,
-            onTap: null,
+            onTap: 'clic',
             onDoubleTap: null,
             subItems: null,
         };
 
-        // Vérifier si l'élément est considéré comme une action, un conteneur de regroupement, ou les deux
-        const isProperAction = true; // Par construction, tous les éléments de actionElements sont des actions valides
-        const isGroupingContainer = testGroupingContainer(actionElement, quickAccessTargets);
+        // // Vérifier si l'élément est considéré comme une action, un conteneur de regroupement, ou les deux
+        // const isProperAction = true; // Par construction, tous les éléments de actionElements sont des actions valides
+        // const isGroupingContainer = testGroupingContainer(actionElement, quickAccessTargets);
 
-        if (isProperAction && isGroupingContainer) {
-            // Dans ce cas on a besoin de peupler de subItems, ET de prévoir un doubleTap pour accéder directement à l'action
-            itemConfig.onDoubleTap = 'clic';
-            itemConfig.subItems = function (el) {
-                return generateInternalSubItems(el, selectorPrefix);
-            };
+        // if (isProperAction && isGroupingContainer) {
+        //     // Dans ce cas on a besoin de peupler de subItems, ET de prévoir un doubleTap pour accéder directement à l'action
+        //     itemConfig.onDoubleTap = 'clic';
+        //     itemConfig.subItems = function (el) {
+        //         return generateInternalSubItems(el, selectorPrefix);
+        //     };
 
-        } else if (isProperAction) {
-            // Dans ce cas, c'est un élément d'action simple, il faut un onTap, et pas de subItems
-            itemConfig.onTap = 'clic';
+        // } else if (isProperAction) {
+        //     // Dans ce cas, c'est un élément d'action simple, il faut un onTap, et pas de subItems
+        //     itemConfig.onTap = 'clic';
 
-        } else if (isGroupingContainer) {
-            // Dans ce cas, c'est un conteneur de regroupement, il faut des subItems, et pas d'onTap
-            // on peuple donc le subItems de cet élément en appelant récursivement generateInternalSubItems sur cet élément
-            itemConfig.subItems = function (el) {
-                return generateInternalSubItems(el, selectorPrefix);
-            };
+        // } else if (isGroupingContainer) {
+        //     // Dans ce cas, c'est un conteneur de regroupement, il faut des subItems, et pas d'onTap
+        //     // on peuple donc le subItems de cet élément en appelant récursivement generateInternalSubItems sur cet élément
+        //     itemConfig.subItems = function (el) {
+        //         return generateInternalSubItems(el, selectorPrefix);
+        //     };
 
-        } else {
-            // Dans ce cas, c'est un élément qui n'est pas considéré comme une action ni comme un conteneur de regroupement, on l'ignore
-            continue;
-        }
+        // } else {
+        //     // Dans ce cas, c'est un élément qui n'est pas considéré comme une action ni comme un conteneur de regroupement, on l'ignore
+        //     continue;
+        // }
 
         // Si on arrive à cette étape, il s'agit d'un item pertinent, on lui génère un ID unique
         itemId = generateUniqueQAItemId(actionElement, itemIndex++);
@@ -2165,19 +2165,15 @@ function generateInternalSubItems(element, selectorPrefix = '') {
 }
 
 
-function testGroupingContainer(element, quickAccessTargets) {
-    // Exceptions d'abord
-    // console.log(`[QuickAccess] Test de regroupement pour l'élément ${element.tagName} avec le sélecteur "${element.className}"`);
-    const isExceptionSelector = ["[name='divwc']"]
-    if (isExceptionSelector.some(selector => element.matches(selector))) {
-        console.log(`[QuickAccess] Élément ${element.tagName} considéré comme conteneur de regroupement en raison d'une exception de sélecteur`);
-        return true;
-    }
-    
-    const isIframe = element.tagName.toLowerCase() === 'iframe';
-    const hasManyActionElements = element.querySelectorAll(quickAccessTargets).length > 20;
-    return isIframe || hasManyActionElements;
-}
+// function testGroupingContainer(element, quickAccessTargets) {
+//     // Exceptions d'abord
+//     // console.log(`[QuickAccess] Test de regroupement pour l'élément ${element.tagName} avec le sélecteur "${element.className}"`);    
+//     const isIframe = element.tagName.toLowerCase() === 'iframe';
+//     const hasManyActionElements = element.querySelectorAll(quickAccessTargets).length > 20;
+//     const result = isIframe || hasManyActionElements;
+//     console.warn(`[QuickAccess] testGroupingContainer pour l'élément ${element.tagName}#${element.id}.${element.className} : isIframe=${isIframe}, hasManyActionElements=${hasManyActionElements} => ${result}`);
+//     return result
+// }
 
 function generateUniqueQAItemId(element, index) {
     /**
