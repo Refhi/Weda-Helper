@@ -1312,23 +1312,25 @@ function showTooltips(state, config) {
     console.log('[QuickAccess] Affichage des tooltips pour le niveau', state.currentLevel, flattenedConfig);
 
     const entries = Object.entries(flattenedConfig);
-    const isAtChildLevel = state.currentLevel.length > 0;
-    const isAtRoot = state.currentLevel.length === 0;
+    const isRootLevel = state.currentLevel.length === 0;
 
     for (let i = 0; i < entries.length; i++) {
         const [itemId, item] = entries[i];
-        const isCurrentItem = isAtChildLevel && i === 0;
+        const isCurrentItem = !isRootLevel && i === 0;
 
         // Si c'est l'item actuel et que doubleTap est null, ne pas afficher le tooltip
-        if (isCurrentItem && item.onDoubleTap === null) {
+        if (isCurrentItem && item.onDoubleTap == null) { // Egalité intentionnelle (null ou undefined)
             console.log(`[QuickAccess] Item actuel "${itemId}" ignoré (onDoubleTap est null)`);
             continue;
         }
 
+        const hasOnTap = item.onTap != null;
         const hasDoubleTap = item.onDoubleTap != null;
-        // Un item sans doubleTap à la racine est un conteneur pur :
+        // Un item sans onTap à la racine est un conteneur pur :
         // il ne peut pas être une cible finale, il sert uniquement à naviguer vers ses subItems
-        const isContainerOnly = isAtRoot && !hasDoubleTap;
+        const isContainerOnly = isRootLevel && !hasOnTap;
+
+        console.log(`[QuickAccess] Item "${itemId}" - Selector: "${item.selector}", Hotkey: "${item.hotkey}", HasOnTap: ${hasOnTap}, HasDoubleTap: ${hasDoubleTap}, IsContainerOnly: ${isContainerOnly}`);
 
         // console.log(`[QuickAccess] Traitement de l'item "${itemId}" pour affichage du tooltip:`, item, "Selector:", item.selector, "Hotkey:", item.hotkey, "HasDoubleTap:", hasDoubleTap, "IsContainerOnly:", isContainerOnly);
         createTooltip(item.selector, item.hotkey, hasDoubleTap, isContainerOnly);
