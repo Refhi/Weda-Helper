@@ -475,7 +475,22 @@ function returnQuickAccessConfig() {
                 return submenu ? generateWMenuSubItems(submenu, 'menuW') : {};
             }
         },
-
+        'historique_popup': {
+            selector: '#ContentPlaceHolder1_EvenementUcForm1_DivHistorique',
+            onTap: 'clic'
+        },
+        'duplicata_ordo': {
+            selector: '#ContentPlaceHolder1_ButtonDuplicata',
+            onTap: 'clic'
+        },
+        'impression': {
+            selector: '#ContentPlaceHolder1_MenuPrint li.has-popup',
+            onTap: 'mouseover',
+            subItems: function (element) {
+                const submenu = element.querySelector('ul.level2.dynamic');
+                return submenu ? generateImpressionSubItems(submenu, 'impression') : {};
+            }
+        }
     }
 
 
@@ -1840,6 +1855,81 @@ function generateWMenuSubItems(submenuElement, parentId) {
     });
 
     console.log(`[QuickAccess][WMenu] generateWMenuSubItems pour "${parentId}" (niveau ${currentLevel}) : ${Object.keys(subItems).length} items générés`);
+    return subItems;
+}
+
+
+/**
+ * Génère les sous-items du menu d'impression à partir de l'élément DOM du sous-menu
+ * Structure spécifique : ul.level2.dynamic contenant des imprimantes (items terminaux)
+ * ⚠️ NE GÉNÈRE PAS les hotkeys - cela sera fait par ensureHotkeysForItems()
+ * @param {HTMLElement} submenuElement - Élément ul.level2.dynamic du menu d'impression
+ * @param {string} parentId - ID du parent pour générer les clés
+ * @returns {Object} Configuration des sous-items
+ */
+function generateImpressionSubItems(submenuElement, parentId) {
+    const subItems = {};
+
+    if (!submenuElement) {
+        console.error('[QuickAccess][Impression] generateImpressionSubItems : submenuElement est null');
+        return subItems;
+    }
+
+    console.log(`[QuickAccess][Impression] Génération des subItems pour "${parentId}"`);
+
+    // Récupérer tous les items d'imprimante (niveau 2) : ul.level2.dynamic > li.has-popup.dynamic
+    const printerItems = submenuElement.querySelectorAll(':scope > li.has-popup.dynamic');
+
+    let itemIndex = 1;
+    printerItems.forEach(li => {
+        // Récupérer le lien de l'imprimante
+        const printerLink = li.querySelector(':scope > a.level2.dynamic');
+        
+        if (!printerLink) {
+            console.warn('[QuickAccess][Impression] Lien d\'imprimante non trouvé, ignoré');
+            return;
+        }
+
+        // Extraire le texte du lien (nom de l'imprimante)
+        const printerName = printerLink.textContent?.trim() || '';
+
+        if (!printerName) {
+            console.warn('[QuickAccess][Impression] Imprimante sans nom trouvée, ignorée');
+            return;
+        }
+
+        // Générer un ID unique basé sur le texte nettoyé
+        const cleanText = printerName
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // Supprimer les accents
+            .replace(/[^a-z0-9]/g, '_')
+            .replace(/_+/g, '_')
+            .replace(/^_|_$/g, '');
+
+        const itemId = `${parentId}_printer_${cleanText}_${itemIndex}`;
+        itemIndex++;
+
+        // Créer un sélecteur sûr : utiliser un ID
+        let selector;
+        if (!printerLink.id) {
+            const uniqueId = `wh-qa-impression-${itemId}`;
+            printerLink.id = uniqueId;
+            selector = `#${uniqueId}`;
+        } else {
+            selector = `#${printerLink.id}`;
+        }
+
+        // Créer l'item de configuration (terminal, sans subItems)
+        subItems[itemId] = {
+            selector: selector,
+            hotkey: null, // Sera généré automatiquement par ensureHotkeysForItems
+            onTap: 'clic', // Clic direct pour imprimer
+            element: printerLink // Sauvegarder la référence à l'élément
+        };
+    });
+
+    console.log(`[QuickAccess][Impression] ${Object.keys(subItems).length} imprimantes générées pour "${parentId}"`);
     return subItems;
 }
 
