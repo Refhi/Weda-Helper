@@ -922,6 +922,18 @@ function ensureHotkeysForItems(config) {
         return;
     }
 
+    // ⚠️ PASSE 0 : Nettoyer les hotkeys hardcodés pour les éléments absents du DOM
+    for (const [itemId, item] of Object.entries(config)) {
+        if (item.hotkey && item.selector) {
+            const element = querySelectorWithIframe(item.selector);
+            if (!element) {
+                // L'élément n'existe pas dans le DOM, supprimer le hotkey hardcodé
+                console.log(`[QuickAccess] Hotkey "${item.hotkey}" supprimée pour "${itemId}" (élément absent du DOM)`);
+                delete item.hotkey; // ou item.hotkey = null;
+            }
+        }
+    }
+
     // Première passe : collecter les hotkeys déjà définies
     for (const [itemId, item] of Object.entries(config)) {
         if (item.hotkey) {
@@ -932,27 +944,25 @@ function ensureHotkeysForItems(config) {
     // Deuxième passe : générer les hotkeys manquants
     for (const [itemId, item] of Object.entries(config)) {
         if (!item.hotkey) {
-            // Déterminer le texte source pour la génération de hotkey
-            let sourceText = itemId; // Fallback : utiliser l'ID
-
-            // Essayer d'obtenir un texte plus significatif
             if (item.selector) {
-                // Essayer de récupérer le texte de l'élément (supporte les iframes avec >>)
                 const element = querySelectorWithIframe(item.selector);
+                if (!element) continue; // pas de hotkey généré si l'élément n'existe pas
+                
+                // Déterminer le texte source pour la génération de hotkey
+                let sourceText = itemId;
                 if (element && element.textContent) {
                     sourceText = element.textContent.trim();
                 } else if (element) {
                     sourceText = element.getAttribute('title') || element.getAttribute('alt') || itemId;
                 }
+    
+                const generatedHotkey = generateHotkeyFromText(sourceText, usedHotkeys);
+                item.hotkey = generatedHotkey;
+                usedHotkeys.add(generatedHotkey);
             }
-
-            const generatedHotkey = generateHotkeyFromText(sourceText, usedHotkeys);
-            item.hotkey = generatedHotkey;
-            usedHotkeys.add(generatedHotkey);
-
-            // console.log(`[QuickAccess] Hotkey "${generatedHotkey}" générée automatiquement pour "${itemId}" basé sur "${sourceText}"`);
         }
     }
+    console.log(`[QuickAccess] Hotkeys après génération automatique :`, Object.fromEntries(Object.entries(config).map(([id, item]) => [id, item.hotkey])));
 }
 
 /**
@@ -1100,7 +1110,7 @@ function querySelectorWithIframe(selector, doc = document) {
         const iframe = doc.querySelector(iframeSelector);
         
         if (!iframe || iframe.tagName !== 'IFRAME') {
-            console.warn(`[QuickAccess] Iframe non trouvée: ${iframeSelector}`);
+            // console.warn(`[QuickAccess] Iframe non trouvée: ${iframeSelector}`);
             return null;
         }
         
@@ -1309,7 +1319,7 @@ function showTooltips(state, config) {
     // Obtenir la configuration aplatie du niveau actuel
     const flattenedConfig = flattenedCurrentLevelConfig(state, config);
 
-    console.log('[QuickAccess] Affichage des tooltips pour le niveau', state.currentLevel, flattenedConfig);
+    // console.log('[QuickAccess] Affichage des tooltips pour le niveau', state.currentLevel, flattenedConfig);
 
     const entries = Object.entries(flattenedConfig);
     const isRootLevel = state.currentLevel.length === 0;
@@ -1330,11 +1340,11 @@ function showTooltips(state, config) {
         // il ne peut pas être une cible finale, il sert uniquement à naviguer vers ses subItems
         const isContainerOnly = isRootLevel && !hasOnTap;
 
-        console.log(`[QuickAccess] Item "${itemId}" - Selector: "${item.selector}", Hotkey: "${item.hotkey}", HasOnTap: ${hasOnTap}, HasDoubleTap: ${hasDoubleTap}, IsContainerOnly: ${isContainerOnly}`);
-
         // console.log(`[QuickAccess] Traitement de l'item "${itemId}" pour affichage du tooltip:`, item, "Selector:", item.selector, "Hotkey:", item.hotkey, "HasDoubleTap:", hasDoubleTap, "IsContainerOnly:", isContainerOnly);
         createTooltip(item.selector, item.hotkey, hasDoubleTap, isContainerOnly);
     }
+
+    console.log('[QuickAccess] Tooltips affichés pour le niveau', state.currentLevel, Object.entries(flattenedConfig).map(([id, item]) => ({ id, hotkey: item.hotkey, selector: item.selector })));
 }
 
 /**
