@@ -246,6 +246,11 @@ function returnQuickAccessConfig() {
                     }
                 },
 
+                'grossesse': {
+                    selector: '#ContentPlaceHolder1_ButtonPregnant',
+                    onTap: 'clic'
+                },
+
                 'arrets_travail': {
                     selector: '#ContentPlaceHolder1_ButtonAT',
                     onTap: 'clic'
@@ -561,6 +566,11 @@ function returnQuickAccessConfig() {
         },
         'coche_atmp': {
             selector: '#ContentPlaceHolder1_CheckBoxAT',
+            onTap: 'clic'
+        },
+        // ----------------- pour les médicaments -------------------
+        'templates_medicaments': {
+            selector: '#ContentPlaceHolder1_ButtonPrescritionType',
             onTap: 'clic'
         }
     }
