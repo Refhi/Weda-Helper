@@ -491,6 +491,10 @@ function returnQuickAccessConfig() {
                 const submenu = element.querySelector('ul.level2.dynamic');
                 return submenu ? generateImpressionSubItems(submenu, 'impression') : {};
             }
+        },
+        'suivi_specifique': {
+            selector: '#ContentPlaceHolder1_ButtonSuivi',
+            onTap: 'clic'
         }
     }
 
@@ -502,10 +506,18 @@ function returnQuickAccessConfig() {
                 return generateInternalSubItems(element);
             }
         },
+        'suivi_preferences': {
+            selector: '#ContentPlaceHolder1_ButtonSuiviPreference',
+            onTap: 'clic'
+        },
         'zone_items': {
             selector: '#ContentPlaceHolder1_PanelBlocagePatientSuiviVisible',
             subItems: function(element) {
-                return generateInternalSubItems(element);
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]',
+                    onTap: 'focus'
+                });
             }
         },
         'zone_cim10': {
@@ -1404,7 +1416,7 @@ function showTooltips(state, config) {
         const hasOnTap = item.onTap != null;
         const hasDoubleTap = item.onDoubleTap != null;
         // Un item sans onTap et avec subItems est un conteneur
-        const isContainer = item.subItems != null;
+        const isContainer = item.subItems != null && !hasOnTap && !hasDoubleTap;
 
         // console.log(`[QuickAccess] Traitement de l'item "${itemId}" pour affichage du tooltip:`, item, "Selector:", item.selector, "Hotkey:", item.hotkey, "HasDoubleTap:", hasDoubleTap, "IsContainerOnly:", isContainerOnly);
         createTooltip(item.selector, item.hotkey, hasDoubleTap, isContainer);
@@ -2353,4 +2365,47 @@ function QASelectorFinder(element, itemId) {
         element.id = uniqueDomId;
         return `#${escapeCSSSelector(uniqueDomId)}`;
     }
+}
+
+
+/**
+ * Génère les sous-items pour un sélecteur multiple
+ * Trouve tous les éléments correspondant au sélecteur et crée un subItem pour chacun
+ * @param {Object} options - Options de configuration
+ * @param {HTMLElement} options.parentElement - Élément parent contenant les éléments à cibler
+ * @param {string} options.selector - Sélecteur CSS pour trouver tous les éléments
+ * @param {string|Function} options.onTap - Action à exécuter sur chaque élément
+ * @param {string} [options.selectorPrefix=''] - Préfixe pour les sélecteurs (pour iframes)
+ * @returns {Object} Configuration des sous-items
+ */
+function generateMultipleSelectorSubItems({ parentElement, selector, onTap, selectorPrefix = '' }) {
+    const generatedSubItems = {};
+    
+    // Trouver tous les éléments correspondant au sélecteur
+    const elements = parentElement.querySelectorAll(selector);
+    
+    if (!elements || elements.length === 0) {
+        console.warn(`[QuickAccess] Aucun élément trouvé avec le sélecteur: "${selector}"`);
+        return {};
+    }
+    
+    console.log(`[QuickAccess] ${elements.length} éléments trouvés avec le sélecteur: "${selector}"`);
+    
+    // Créer un subItem pour chaque élément trouvé
+    elements.forEach((element, index) => {        
+        // Générer un ID unique pour l'élément s'il n'en a pas
+        if (!element.id) {
+            element.id = `qa_multiple_${index}`;
+        }
+        
+        // Créer le subItem
+        const itemId = `item_${index}`;
+        generatedSubItems[itemId] = {
+            selector: `${selectorPrefix}#${element.id}`,
+            onTap: onTap
+        };
+    });
+    
+    console.log(`[QuickAccess] ${Object.keys(generatedSubItems).length} subItems générés pour le sélecteur: "${selector}"`);
+    return generatedSubItems;
 }
