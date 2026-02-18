@@ -502,17 +502,10 @@ function returnQuickAccessConfig() {
                 return generateInternalSubItems(element);
             }
         },
-        'suivi_preferences': {
-            selector: '#ContentPlaceHolder1_ButtonSuiviPreference',
-            onTap: 'clic'
-        },
         'zone_items': {
             selector: '#ContentPlaceHolder1_PanelBlocagePatientSuiviVisible',
-            subItems: {
-                'items_suivi': {
-                    multipleSelector: '[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]',
-                    onTap: 'focus'
-                }
+            subItems: function(element) {
+                return generateInternalSubItems(element);
             }
         },
         'zone_cim10': {
@@ -692,7 +685,6 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
     // On extrait l'action à effectuer et le selecteur à cibler
     const action = isDoubleTap ? matchedItem.onDoubleTap : matchedItem.onTap;
     const targetElementSelector = matchedItem.selector;
-    const targetMultipleSelector = matchedItem.multipleSelector;
 
 
 
@@ -709,59 +701,27 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
 
     // Ne rien exécuter si l'action est null/undefined
     if (action) {
-        executeAction(action, targetElementSelector, state, targetMultipleSelector);
+        executeAction(action, targetElementSelector, state);
     }
 }
 
 /**
  * Fonction utilitaire pour exécuter une action qui peut être une string (clic, mouseover, enter) ou une fonction personnalisée
  */
-function executeAction(action, selector, state, multipleSelector = null) {
-    // Si multipleSelector est défini, exécuter l'action sur tous les éléments
-    if (multipleSelector) {
-        const elements = querySelectorAllWithIframe(multipleSelector);
-        if (!elements || elements.length === 0) {
-            console.error(`[QuickAccess] Impossible d'exécuter l'action : aucun élément trouvé pour le multipleSelector "${multipleSelector}"`);
-            return;
-        }
-        
-        console.log(`[QuickAccess] Exécution de l'action sur ${elements.length} éléments trouvés avec multipleSelector`);
-        elements.forEach(element => {
-            executeSingleAction(action, element, state);
-        });
-        return;
-    }
-    
-    // Comportement classique : un seul élément
+function executeAction(action, selector, state) {
     const element = querySelectorWithIframe(selector);
     if (!element) {
         console.error(`[QuickAccess] Impossible d'exécuter l'action : élément non trouvé pour le sélecteur "${selector}"`);
         return;
     }
 
-    executeSingleAction(action, element, state);
-}
-
-/**
- * Exécute une action sur un élément spécifique
- * @param {string|Function} action - L'action à exécuter
- * @param {HTMLElement} element - L'élément sur lequel exécuter l'action
- * @param {Object} state - L'état actuel
- */
-function executeSingleAction(action, element, state) {
     if (typeof action === 'string') {
         switch (action) {
             case 'clic':
                 // D'abord vérifier si l'élément possède un href
                 // auquel cas on passera par clicCSPLockedElement pour éviter les problèmes de CSP
                 if (element.tagName.toLowerCase() === 'a' && element.href) {
-                    // Pour multipleSelector, on ne peut pas utiliser clicCSPLockedElement qui prend un selector
-                    // On simule directement le clic
-                    element.dispatchEvent(new MouseEvent('click', {
-                        bubbles: true,
-                        cancelable: true,
-                        view: window
-                    }));
+                    clicCSPLockedElement(selector);
                 } else {
                     element.dispatchEvent(new MouseEvent('click', {
                         bubbles: true,
@@ -1241,44 +1201,6 @@ function querySelectorWithIframe(selector, doc = document) {
     return doc.querySelector(selector);
 }
 
-/**
- * Recherche TOUS les éléments correspondant au sélecteur dans le document ou une iframe
- * Similaire à querySelectorWithIframe mais retourne un tableau de tous les éléments trouvés
- * @param {string} selector - Le sélecteur CSS, peut contenir ' >> ' pour les iframes
- * @param {Document} doc - Le document dans lequel chercher (par défaut: document principal)
- * @returns {HTMLElement[]} Tableau d'éléments trouvés (vide si aucun élément)
- */
-function querySelectorAllWithIframe(selector, doc = document) {
-    // Détecter la syntaxe iframe >> selector
-    if (selector.includes(' >> ')) {
-        const [iframeSelector, innerSelector] = selector.split(' >> ').map(s => s.trim());
-        const iframe = doc.querySelector(iframeSelector);
-        
-        if (!iframe || iframe.tagName !== 'IFRAME') {
-            console.warn(`[QuickAccess] Iframe non trouvée: ${iframeSelector}, il faut nécessairement que l'iframe existe et soit déclarée juste avant le '>>' pour accéder à son contenu.`);
-            return [];
-        }
-        
-        try {
-            // Vérifier l'accès au contentDocument (same-origin)
-            const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-            if (!iframeDoc) {
-                console.warn(`[QuickAccess] Accès bloqué à l'iframe (cross-origin): ${iframeSelector}`);
-                return [];
-            }
-            
-            // Chercher dans l'iframe récursivement
-            return querySelectorAllWithIframe(innerSelector, iframeDoc);
-        } catch (e) {
-            console.error(`[QuickAccess] Erreur d'accès à l'iframe:`, e);
-            return [];
-        }
-    }
-    
-    // Sélecteur classique - retourner un tableau
-    return Array.from(doc.querySelectorAll(selector));
-}
-
 // ============================================================================
 // INTERFACE UTILISATEUR - OVERLAY ET TOOLTIPS
 // ============================================================================
@@ -1390,39 +1312,9 @@ function createOverlay() {
  * @param {boolean} hasDoubleTap - Indique si un double-tap est disponible
  * @param {boolean} isContainer - Indique si l'item sert uniquement de conteneur pour la navigation (pas d'action directe)
  */
-function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = false, multipleSelector = null) {
-    // Si multipleSelector est défini, l'utiliser pour trouver tous les éléments
-    if (multipleSelector) {
-        const elements = querySelectorAllWithIframe(multipleSelector);
-        if (!elements || elements.length === 0) {
-            console.warn(`[QuickAccess] Aucun élément trouvé avec multipleSelector: "${multipleSelector}"`);
-            return;
-        }
-        
-        // Créer un tooltip pour chaque élément trouvé
-        console.log(`[QuickAccess] ${elements.length} éléments trouvés avec multipleSelector, création de ${elements.length} tooltips`);
-        elements.forEach((element, index) => {
-            createSingleTooltip(element, `${hotkey}${index}`, hasDoubleTap, isContainer);
-        });
-        return;
-    }
-    
-    // Comportement classique : un seul élément
+function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = false) {
     const element = querySelectorWithIframe(selector);
-    if (!element) return;
-    
-    createSingleTooltip(element, hotkey, hasDoubleTap, isContainer);
-}
-
-/**
- * Crée un tooltip pour un élément spécifique
- * @param {HTMLElement} element - L'élément sur lequel afficher le tooltip
- * @param {string} hotkey - La touche de raccourci
- * @param {boolean} hasDoubleTap - Si l'élément a une action onDoubleTap
- * @param {boolean} isContainer - Si l'élément est un conteneur pur
- */
-function createSingleTooltip(element, hotkey, hasDoubleTap = false, isContainer = false) {
-    // console.log(`[QuickAccess] Création du tooltip pour la touche "${hotkey}" sur l'élément:`, element);
+    // console.log(`[QuickAccess] Création du tooltip pour la touche "${hotkey}" sur l'élément:`, element, "Selector:", selector);
     if (!element) return;
 
 
@@ -1515,10 +1407,10 @@ function showTooltips(state, config) {
         const isContainer = item.subItems != null;
 
         // console.log(`[QuickAccess] Traitement de l'item "${itemId}" pour affichage du tooltip:`, item, "Selector:", item.selector, "Hotkey:", item.hotkey, "HasDoubleTap:", hasDoubleTap, "IsContainerOnly:", isContainerOnly);
-        createTooltip(item.selector, item.hotkey, hasDoubleTap, isContainer, item.multipleSelector);
+        createTooltip(item.selector, item.hotkey, hasDoubleTap, isContainer);
     }
 
-    console.log('[QuickAccess] Tooltips affichés pour le niveau', state.currentLevel, Object.entries(flattenedConfig).map(([id, item]) => ({ id, hotkey: item.hotkey, selector: item.selector, multipleSelector: item.multipleSelector })));
+    console.log('[QuickAccess] Tooltips affichés pour le niveau', state.currentLevel, Object.entries(flattenedConfig).map(([id, item]) => ({ id, hotkey: item.hotkey, selector: item.selector })));
 }
 
 /**
