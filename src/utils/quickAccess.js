@@ -37,6 +37,7 @@ function returnQuickAccessConfig() {
     */
     // ================= Bandeau supérieur de la page d’accueil =================
     const bandeauSuperieurConfig = {
+        _urlPatterns: ['/FolderMedical/PatientViewForm.aspx'],
         'large_top_menu': {
             selector: 'table.bandeau',
             subItems: {
@@ -496,18 +497,57 @@ function returnQuickAccessConfig() {
 
 
 
-    // ================= Configuration finale =================
-    const quickAccessConfig = {
-        ...bandeauSuperieurConfig,
-        ...menuHorizontalConfig,
-        ...sidebarConfig,
-        ...internalElementsConfig,
-        ...iframeConfig,
-        ...iframeTextZonesConfig,
-        ...menuIconsLeft
-    };
+    // ================= Configuration finale avec filtrage =================
+    const allConfigs = [
+        bandeauSuperieurConfig,
+        menuHorizontalConfig,
+        sidebarConfig,
+        internalElementsConfig,
+        iframeConfig,
+        iframeTextZonesConfig,
+        menuIconsLeft
+    ];
+
+    const quickAccessConfig = {};
+    
+    // Filtrer les configurations selon l'URL actuelle
+    for (const configGroup of allConfigs) {
+        const urlPatterns = configGroup._urlPatterns;
+        
+        // Si pas de restriction (_urlPatterns null/undefined) ou si l'URL correspond
+        if (!urlPatterns || matchesUrlPatterns(currentUrl, urlPatterns)) {
+            // Copier tous les items sauf _urlPatterns
+            for (const [key, value] of Object.entries(configGroup)) {
+                if (key !== '_urlPatterns') {
+                    quickAccessConfig[key] = value;
+                }
+            }
+        }
+    }
 
     return quickAccessConfig;
+}
+
+
+/**
+ * Vérifie si l'URL actuelle correspond à au moins un des patterns fournis
+ * @param {string} url - URL actuelle (généralement window.location.pathname)
+ * @param {Array<string|RegExp>} patterns - Liste des patterns à tester (string pour inclusion, RegExp pour test)
+ * @returns {boolean} True si l'URL correspond à au moins un pattern
+ */
+function matchesUrlPatterns(url, patterns) {
+    if (!patterns || patterns.length === 0) {
+        return false;
+    }
+    
+    return patterns.some(pattern => {
+        if (typeof pattern === 'string') {
+            return url.includes(pattern);
+        } else if (pattern instanceof RegExp) {
+            return pattern.test(url);
+        }
+        return false;
+    });
 }
 
 // ============================================================================
