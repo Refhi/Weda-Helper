@@ -619,6 +619,7 @@ function activateQuickAccess() {
 
 function addListenersToOverlay(overlay, state, config) {
     overlay.addEventListener('keydown', (e) => {
+        e.preventDefault();
         if (e.key === 'Backspace') { // Permet de remonter d'un niveau dans l'arborescence du Quick Access
             if (state.currentLevel.length === 0) {
                 // Déjà à la racine : fermer le Quick Access
@@ -647,6 +648,7 @@ function addListenersToOverlay(overlay, state, config) {
     // L'action deactivateQuickAccess ferme le Quick Access
     // la touche Echap permet de l'appeler à tout moment
     overlay.addEventListener('keyup', (e) => {
+        e.preventDefault();
         if (e.key === 'Escape') {
             deactivateQuickAccess()
         }
@@ -2128,18 +2130,18 @@ function generateConsultationHistorySubItems(element, parentId, selectorPrefix =
  * - tout les éléments avec un très grand nombre de subItems (> 26)
  * 
  * Les items d'ACTION sont les éléments suivants : 
- * 1. Champs de formulaire :
+ * 1. Champs de formulaire (action: focus) :
  *    - input:not([type="hidden"]):not([disabled])
  *    - textarea:not([disabled])
  *    - select:not([disabled])
  * 
- * 2. Éléments cliquables :
+ * 2. Éléments cliquables (action: clic) :
  *    - a[href]
  *    - button:not([disabled])
  *    - [role="button"]:not([aria-disabled="true"])
  *    - [onclick], [ondblclick], [onmousedown] (tout élément avec event listener inline)
  * 
- * 3. Éléments avec tabindex >= 0 (focus clavier)
+ * 3. Éléments avec tabindex >= 0 (action: focus)
  * 
  * EXCLUSIONS automatiques : éléments non visibles ou désactivés
  * - display:none, visibility:hidden, opacity:0
@@ -2151,29 +2153,58 @@ function generateConsultationHistorySubItems(element, parentId, selectorPrefix =
  * @returns {Object|null} Configuration des sous-items ou null si aucun
  */
 function generateInternalSubItems(element, selectorPrefix = '') {
-    const quickAccessTargets = `
-        input:not([type="hidden"]):not([disabled]),
-        textarea:not([disabled]),
-        select:not([disabled]),
-        a[href],
-        button:not([disabled]),
-        [role="button"]:not([aria-disabled="true"]),
-        [onclick], [ondblclick], [onmousedown],
-        [tabindex]:not([tabindex="-1"])
-    `;
+    // Groupes de sélecteurs avec leurs actions associées
+    const targetGroups = {
+        formFields: {
+            selector: `
+                input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([disabled]),
+                textarea:not([disabled]),
+                select:not([disabled])
+            `,
+            action: 'focus'
+        },
+        clickableElements: {
+            selector: `
+                a[href],
+                button:not([disabled]),
+                [role="button"]:not([aria-disabled="true"]),
+                [onclick], [ondblclick], [onmousedown], [tabindex]:not([tabindex="-1"])
+            `,
+            action: 'clic'
+        }
+    };
 
-    // Lister tous les éléments d'action potentiels dans le conteneur
-    const allActionElements = element.querySelectorAll(quickAccessTargets);
+    // Collecter tous les éléments d'action avec leur action associée
+    const allActionElements = [];
+    
+    for (const [groupName, groupConfig] of Object.entries(targetGroups)) {
+        const elements = element.querySelectorAll(groupConfig.selector);
+        
+        elements.forEach(el => {
+            // Éviter les doublons (un élément peut matcher plusieurs groupes)
+            if (!allActionElements.some(item => item.element === el)) {
+                allActionElements.push({
+                    element: el,
+                    action: groupConfig.action
+                });
+            }
+        });
+    }
 
     // Si aucun élément n'est trouvé, on renvoie null pour indiquer qu'aucun subItem n'est disponible à ce niveau
     if (allActionElements.length === 0) return null;
 
     // Filtrer pour ne garder que les éléments qui ne sont pas descendants d'une autre target
-    const actionElements = Array.from(allActionElements).filter(el => {        
+    const actionElements = allActionElements.filter(item => {
+        const el = item.element;
+        
+        // Reconstruire le sélecteur complet pour tester
+        const allSelectors = Object.values(targetGroups).map(g => g.selector).join(',');
+        
         // Trouver le parent le plus proche qui est une target (en excluant l'élément lui-même)
         let parent = el.parentElement;
         while (parent && parent !== element) {
-            if (parent.matches(quickAccessTargets)) {
+            if (parent.matches(allSelectors)) {
                 // Ce parent est une target, donc on ignore l'enfant
                 return false;
             }
@@ -2182,8 +2213,8 @@ function generateInternalSubItems(element, selectorPrefix = '') {
         return true;
     });
 
-    // Si trop d'éléments (> 26), créer des groupes de regroupement
-    if (actionElements.length > 26) {
+    // Si trop d'éléments (> 36), créer des groupes de regroupement
+    if (actionElements.length > 36) {
         console.log(`[QuickAccess] Création de groupes de regroupement pour ${actionElements.length} éléments`);
         return createGroupedSubItems(actionElements, selectorPrefix);
     }
@@ -2193,13 +2224,13 @@ function generateInternalSubItems(element, selectorPrefix = '') {
     let itemIndex = 0;
     
     for (let i = 0; i < actionElements.length; i++) {
-        const actionElement = actionElements[i];
+        const { element: actionElement, action } = actionElements[i];
         const itemId = generateUniqueQAItemId(actionElement, itemIndex++);
         const baseSelector = QASelectorFinder(actionElement, itemId);
         
         subItems[itemId] = {
             selector: selectorPrefix + baseSelector,
-            onTap: 'clic',
+            onTap: action,
             onDoubleTap: null,
             subItems: null,
         };
@@ -2211,7 +2242,7 @@ function generateInternalSubItems(element, selectorPrefix = '') {
 /**
  * Crée des groupes de regroupement pour un grand nombre d'éléments
  * Chaque groupe contient au maximum 20 éléments
- * @param {HTMLElement[]} actionElements - Liste des éléments d'action
+ * @param {Array} actionElements - Liste des objets {element, action}
  * @param {string} selectorPrefix - Préfixe pour les sélecteurs (iframe)
  * @returns {Object} Configuration avec groupes de regroupement
  */
@@ -2230,7 +2261,8 @@ function createGroupedSubItems(actionElements, selectorPrefix = '') {
         // Créer un ID pour ce groupe
         const groupId = `group_${groupIndex + 1}_of_${totalGroups}`;
         // Le premier élément du groupe détermine le sélecteur du groupe
-        const firstElement = groupElements[0];
+        const firstItem = groupElements[0];
+        const firstElement = firstItem.element;
         const firstElementId = generateUniqueQAItemId(firstElement, startIdx);
         const groupSelector = QASelectorFinder(firstElement, firstElementId);
 
@@ -2244,13 +2276,13 @@ function createGroupedSubItems(actionElements, selectorPrefix = '') {
                 const groupSubItems = {};
                 
                 for (let i = 0; i < groupElements.length; i++) {
-                    const actionElement = groupElements[i];
+                    const { element: actionElement, action } = groupElements[i];
                     const itemId = generateUniqueQAItemId(actionElement, startIdx + i);
                     const baseSelector = QASelectorFinder(actionElement, itemId);
                     
                     groupSubItems[itemId] = {
                         selector: selectorPrefix + baseSelector,
-                        onTap: 'clic',
+                        onTap: action,
                         onDoubleTap: null,
                         subItems: null,
                     };
@@ -2264,7 +2296,6 @@ function createGroupedSubItems(actionElements, selectorPrefix = '') {
 
     return groupedSubItems;
 }
-
 
 function generateUniqueQAItemId(element, index) {
     /**
