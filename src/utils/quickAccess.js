@@ -37,7 +37,6 @@ function returnQuickAccessConfig() {
     */
     // ================= Bandeau supérieur de la page d’accueil =================
     const bandeauSuperieurConfig = {
-        _urlPatterns: ['/FolderMedical/PatientViewForm.aspx'],
         'large_top_menu': {
             selector: 'table.bandeau',
             subItems: {
@@ -495,6 +494,29 @@ function returnQuickAccessConfig() {
         }
     }
 
+    // ============== Les grandes zones (titres, items, etc.) =================
+    const generalZonesConfig = {
+        'zone_titre': {
+            selector: '#ContentPlaceHolder1_EvenementUcForm1_DivCadreEvenement',
+            subItems: function(element) {
+                return generateInternalSubItems(element);
+            }
+        },
+        'zone_items': {
+            selector: '#ContentPlaceHolder1_PanelBlocagePatientSuiviVisible',
+            subItems: function(element) {
+                return generateInternalSubItems(element);
+            }
+        },
+        'zone_cim10': {
+            selector: '#ContentPlaceHolder1_UpdatePanelDiagnosticsGrid',
+            subItems: function(element) {
+                return generateInternalSubItems(element);
+            }
+        }
+    }
+
+
 
 
 
@@ -506,7 +528,8 @@ function returnQuickAccessConfig() {
         internalElementsConfig,
         iframeConfig,
         iframeTextZonesConfig,
-        menuIconsLeft
+        menuIconsLeft,
+        generalZonesConfig
     ];
 
     const quickAccessConfig = {};
@@ -2103,7 +2126,7 @@ function generateConsultationHistorySubItems(element, parentId, selectorPrefix =
  * 
  * Les items considérés comme de REGROUPEMENT sont :
  * - toutes les iframes
- * - tout les éléments avec un très grand nombre de subItems (> 20)
+ * - tout les éléments avec un très grand nombre de subItems (> 26)
  * 
  * Les items d'ACTION sont les éléments suivants : 
  * 1. Champs de formulaire :
@@ -2129,8 +2152,6 @@ function generateConsultationHistorySubItems(element, parentId, selectorPrefix =
  * @returns {Object|null} Configuration des sous-items ou null si aucun
  */
 function generateInternalSubItems(element, selectorPrefix = '') {
-    const subItems = {};
-
     const quickAccessTargets = `
         input:not([type="hidden"]):not([disabled]),
         textarea:not([disabled]),
@@ -2148,11 +2169,9 @@ function generateInternalSubItems(element, selectorPrefix = '') {
     // Si aucun élément n'est trouvé, on renvoie null pour indiquer qu'aucun subItem n'est disponible à ce niveau
     if (allActionElements.length === 0) return null;
 
-
     // Filtrer pour ne garder que les éléments qui ne sont pas descendants d'une autre target
-    // ET qui sont visibles (CSS et viewport)
     const actionElements = Array.from(allActionElements).filter(el => {        
-        // 2. Trouver le parent le plus proche qui est une target (en excluant l'élément lui-même)
+        // Trouver le parent le plus proche qui est une target (en excluant l'élément lui-même)
         let parent = el.parentElement;
         while (parent && parent !== element) {
             if (parent.matches(quickAccessTargets)) {
@@ -2164,70 +2183,90 @@ function generateInternalSubItems(element, selectorPrefix = '') {
         return true;
     });
 
-    let itemIndex = 0; // Index pour générer des IDs uniques
+    // Si trop d'éléments (> 26), créer des groupes de regroupement
+    if (actionElements.length > 26) {
+        console.log(`[QuickAccess] Création de groupes de regroupement pour ${actionElements.length} éléments`);
+        return createGroupedSubItems(actionElements, selectorPrefix);
+    }
+
+    // Sinon, créer les items directement (cas normal)
+    const subItems = {};
+    let itemIndex = 0;
+    
     for (let i = 0; i < actionElements.length; i++) {
         const actionElement = actionElements[i];
-
-        // Initialiser la configuration de l'item
-        let itemId = null;
-        const itemConfig = {
-            selector: null,
+        const itemId = generateUniqueQAItemId(actionElement, itemIndex++);
+        const baseSelector = QASelectorFinder(actionElement, itemId);
+        
+        subItems[itemId] = {
+            selector: selectorPrefix + baseSelector,
             onTap: 'clic',
             onDoubleTap: null,
             subItems: null,
         };
-
-        // // Vérifier si l'élément est considéré comme une action, un conteneur de regroupement, ou les deux
-        // const isProperAction = true; // Par construction, tous les éléments de actionElements sont des actions valides
-        // const isGroupingContainer = testGroupingContainer(actionElement, quickAccessTargets);
-
-        // if (isProperAction && isGroupingContainer) {
-        //     // Dans ce cas on a besoin de peupler de subItems, ET de prévoir un doubleTap pour accéder directement à l'action
-        //     itemConfig.onDoubleTap = 'clic';
-        //     itemConfig.subItems = function (el) {
-        //         return generateInternalSubItems(el, selectorPrefix);
-        //     };
-
-        // } else if (isProperAction) {
-        //     // Dans ce cas, c'est un élément d'action simple, il faut un onTap, et pas de subItems
-        //     itemConfig.onTap = 'clic';
-
-        // } else if (isGroupingContainer) {
-        //     // Dans ce cas, c'est un conteneur de regroupement, il faut des subItems, et pas d'onTap
-        //     // on peuple donc le subItems de cet élément en appelant récursivement generateInternalSubItems sur cet élément
-        //     itemConfig.subItems = function (el) {
-        //         return generateInternalSubItems(el, selectorPrefix);
-        //     };
-
-        // } else {
-        //     // Dans ce cas, c'est un élément qui n'est pas considéré comme une action ni comme un conteneur de regroupement, on l'ignore
-        //     continue;
-        // }
-
-        // Si on arrive à cette étape, il s'agit d'un item pertinent, on lui génère un ID unique
-        itemId = generateUniqueQAItemId(actionElement, itemIndex++);
-
-        // On doit également lui trouver un selecteur unique pour pouvoir le cibler précisément (id existant ou généré)
-        // Préfixer avec selectorPrefix pour supporter les iframes
-        const baseSelector = QASelectorFinder(actionElement, itemId);
-        itemConfig.selector = selectorPrefix + baseSelector;
-        subItems[itemId] = itemConfig;
     }
 
-    // On retourne un objet de subItems
     return subItems;
 }
 
+/**
+ * Crée des groupes de regroupement pour un grand nombre d'éléments
+ * Chaque groupe contient au maximum 20 éléments
+ * @param {HTMLElement[]} actionElements - Liste des éléments d'action
+ * @param {string} selectorPrefix - Préfixe pour les sélecteurs (iframe)
+ * @returns {Object} Configuration avec groupes de regroupement
+ */
+function createGroupedSubItems(actionElements, selectorPrefix = '') {
+    const groupedSubItems = {};
+    const itemsPerGroup = 20;
+    const totalGroups = Math.ceil(actionElements.length / itemsPerGroup);
 
-// function testGroupingContainer(element, quickAccessTargets) {
-//     // Exceptions d'abord
-//     // console.log(`[QuickAccess] Test de regroupement pour l'élément ${element.tagName} avec le sélecteur "${element.className}"`);    
-//     const isIframe = element.tagName.toLowerCase() === 'iframe';
-//     const hasManyActionElements = element.querySelectorAll(quickAccessTargets).length > 20;
-//     const result = isIframe || hasManyActionElements;
-//     console.warn(`[QuickAccess] testGroupingContainer pour l'élément ${element.tagName}#${element.id}.${element.className} : isIframe=${isIframe}, hasManyActionElements=${hasManyActionElements} => ${result}`);
-//     return result
-// }
+    console.log(`[QuickAccess] Création de ${totalGroups} groupes pour ${actionElements.length} éléments`);
+
+    for (let groupIndex = 0; groupIndex < totalGroups; groupIndex++) {
+        const startIdx = groupIndex * itemsPerGroup;
+        const endIdx = Math.min(startIdx + itemsPerGroup, actionElements.length);
+        const groupElements = actionElements.slice(startIdx, endIdx);
+
+        // Créer un ID pour ce groupe
+        const groupId = `group_${groupIndex + 1}_of_${totalGroups}`;
+
+        // Le premier élément du groupe détermine le sélecteur du groupe
+        const firstElement = groupElements[0];
+        const firstElementId = generateUniqueQAItemId(firstElement, startIdx);
+        const groupSelector = QASelectorFinder(firstElement, firstElementId);
+
+        // Créer le groupe de regroupement avec ses subItems
+        groupedSubItems[groupId] = {
+            selector: selectorPrefix + groupSelector,
+            onTap: null, // Pas d'action sur le groupe lui-même (navigation seulement)
+            onDoubleTap: null,
+            subItems: function() {
+                // Générer les subItems de ce groupe à la demande
+                const groupSubItems = {};
+                
+                for (let i = 0; i < groupElements.length; i++) {
+                    const actionElement = groupElements[i];
+                    const itemId = generateUniqueQAItemId(actionElement, startIdx + i);
+                    const baseSelector = QASelectorFinder(actionElement, itemId);
+                    
+                    groupSubItems[itemId] = {
+                        selector: selectorPrefix + baseSelector,
+                        onTap: 'clic',
+                        onDoubleTap: null,
+                        subItems: null,
+                    };
+                }
+                
+                console.log(`[QuickAccess] Groupe ${groupIndex + 1}/${totalGroups} généré avec ${Object.keys(groupSubItems).length} items`);
+                return groupSubItems;
+            }
+        };
+    }
+
+    return groupedSubItems;
+}
+
 
 function generateUniqueQAItemId(element, index) {
     /**
