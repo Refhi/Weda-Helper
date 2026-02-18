@@ -1110,7 +1110,7 @@ function querySelectorWithIframe(selector, doc = document) {
         const iframe = doc.querySelector(iframeSelector);
         
         if (!iframe || iframe.tagName !== 'IFRAME') {
-            // console.warn(`[QuickAccess] Iframe non trouvée: ${iframeSelector}`);
+            console.warn(`[QuickAccess] Iframe non trouvée: ${iframeSelector}, il faut nécessairement que l'iframe existe et soit déclarée juste avant le '>>' pour accéder à son contenu.`);
             return null;
         }
         
