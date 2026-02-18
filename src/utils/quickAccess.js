@@ -624,7 +624,7 @@ function returnQuickAccessConfig() {
         'prescription_templates': {
             selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_DivGlossaire',
             subItems: function(element) {
-                return generateInternalSubItems(element);
+                return generateInternalSubItems(element); // TODO : à réparer car ignore le premier groupe
             }
         }
     }
