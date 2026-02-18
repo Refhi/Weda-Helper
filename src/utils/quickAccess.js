@@ -1308,9 +1308,9 @@ function createOverlay() {
  * @param {string} selector - Sélecteur CSS de l'élément
  * @param {string} hotkey - Touche de raccourci
  * @param {boolean} hasDoubleTap - Indique si un double-tap est disponible
- * @param {boolean} isContainerOnly - Indique si l'item sert uniquement de conteneur pour la navigation (pas d'action directe)
+ * @param {boolean} isContainer - Indique si l'item sert uniquement de conteneur pour la navigation (pas d'action directe)
  */
-function createTooltip(selector, hotkey, hasDoubleTap = false, isContainerOnly = false) {
+function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = false) {
     const element = querySelectorWithIframe(selector);
     // console.log(`[QuickAccess] Création du tooltip pour la touche "${hotkey}" sur l'élément:`, element, "Selector:", selector);
     if (!element) return;
@@ -1347,7 +1347,7 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainerOnly =
     }
     // Si l'item est un conteneur pur (sert uniquement à la navigation vers subItems),
     // mettre en évidence l'élément DOM avec un outline pour le distinguer visuellement
-    if (isContainerOnly) {
+    if (isContainer) {
         // Sauvegarder les styles originaux
         saveElementStyles(element, {
             outline: element.style.outline || '',
@@ -1401,12 +1401,11 @@ function showTooltips(state, config) {
 
         const hasOnTap = item.onTap != null;
         const hasDoubleTap = item.onDoubleTap != null;
-        // Un item sans onTap à la racine est un conteneur pur :
-        // il ne peut pas être une cible finale, il sert uniquement à naviguer vers ses subItems
-        const isContainerOnly = isRootLevel && !hasOnTap;
+        // Un item sans onTap et avec subItems est un conteneur
+        const isContainer = item.subItems != null;
 
         // console.log(`[QuickAccess] Traitement de l'item "${itemId}" pour affichage du tooltip:`, item, "Selector:", item.selector, "Hotkey:", item.hotkey, "HasDoubleTap:", hasDoubleTap, "IsContainerOnly:", isContainerOnly);
-        createTooltip(item.selector, item.hotkey, hasDoubleTap, isContainerOnly);
+        createTooltip(item.selector, item.hotkey, hasDoubleTap, isContainer);
     }
 
     console.log('[QuickAccess] Tooltips affichés pour le niveau', state.currentLevel, Object.entries(flattenedConfig).map(([id, item]) => ({ id, hotkey: item.hotkey, selector: item.selector })));
@@ -2230,7 +2229,6 @@ function createGroupedSubItems(actionElements, selectorPrefix = '') {
 
         // Créer un ID pour ce groupe
         const groupId = `group_${groupIndex + 1}_of_${totalGroups}`;
-
         // Le premier élément du groupe détermine le sélecteur du groupe
         const firstElement = groupElements[0];
         const firstElementId = generateUniqueQAItemId(firstElement, startIdx);
