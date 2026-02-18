@@ -374,6 +374,16 @@ function returnQuickAccessConfig() {
                 );
             }
         },
+        'weda_helper_iframe': { // L'historique affiché via WH
+            selector: '#WedaHelperIframe >> #HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda',
+            subItems: function(element) {
+                return generateConsultationHistorySubItems(
+                    element,
+                    'weda_helper_iframe',
+                    '#WedaHelperIframe >> '
+                );
+            }
+        },
         'consultation_iframe_sidebar': {
             selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> .cadreicon',
             subItems: {
@@ -407,10 +417,45 @@ function returnQuickAccessConfig() {
                     onTap: 'clic'
                 }
             }
+        },
+        'other_iframe_sidebar': { // L'historique affiché via WH
+            selector: '#WedaHelperIframe >> .cadreicon',
+            subItems: {
+                // Documents
+                'Consultations': {
+                    selector: '#WedaHelperIframe >> #ButtonConsultation',
+                    onTap: 'clic'
+                },
+                'resultats_examen': {
+                    selector: '#WedaHelperIframe >> #ButtonResultatExamen',
+                    onTap: 'clic'
+                },
+                'courriers': {
+                    selector: '#WedaHelperIframe >> #ButtonCourrier',
+                    onTap: 'clic'
+                },
+                'vaccins': {
+                    selector: '#WedaHelperIframe >> #ButtonVaccins',
+                    onTap: 'clic'
+                },
+                'visugraphiques': {
+                    selector: '#WedaHelperIframe >> .imgChart',
+                    onTap: 'clic'
+                },
+                'grossesse': {
+                    selector: '#WedaHelperIframe >> #ButtonPregnant',
+                    onTap: 'clic'
+                },
+                'arretTravail': {
+                    selector: '#WedaHelperIframe >> .imgAT',
+                    onTap: 'clic'
+                }
+            }
         }
     }
 
     const iframeTextZonesConfig = {
+        // -------- pour la page des consultation ------------
         'consultation_iframe_text_config_area_1': {
             selector: '#ContentPlaceHolder1_divZone1',
             subItems: function(element) {
@@ -460,6 +505,15 @@ function returnQuickAccessConfig() {
         'consultation_iframe_text_area_5': {
             selector: '#ContentPlaceHolder1_PanelEvenementZone5 iframe >> body',
             onTap: 'focus',
+        },
+        // ---------------- et pour les autres  ---------------
+        'zone_texte_iframe_certif': { // Certif
+            selector: '#CE_ContentPlaceHolder1_EditorCertificat_ID_Frame >> body',
+            onTap: 'focus',
+        },
+        'zone_texte_iframe_prescription': { // Prescription
+            selector: '#CE_ContentPlaceHolder1_EditorPrescription_ID_Frame >> body',
+            onTap: 'focus',
         }
     }
 
@@ -495,6 +549,19 @@ function returnQuickAccessConfig() {
         'suivi_specifique': {
             selector: '#ContentPlaceHolder1_ButtonSuivi',
             onTap: 'clic'
+        },
+        // ------------------ pour les prescriptions ------------------
+        'bouton_bizone': {
+            selector: '#ContentPlaceHolder1_ButtonBizone',
+            onTap: 'clic'
+        },
+        'champ_date_atmp': {
+            selector: '#ContentPlaceHolder1_TextBoxAccidentArretTravailDateDebut',
+            onTap: 'focus'
+        },
+        'coche_atmp': {
+            selector: '#ContentPlaceHolder1_CheckBoxAT',
+            onTap: 'clic'
         }
     }
 
@@ -528,6 +595,40 @@ function returnQuickAccessConfig() {
         }
     }
 
+    // =============== modèles de documents ==================
+    const documentTemplatesConfig = {
+        'certificat_templates': {
+            selector: '.base-glossaire-uc-form',
+            subItems: function(element) {
+                return generateInternalSubItems(element);
+            }
+        },
+        'prescription_top_templace_bar': {
+            selector: '#ContentPlaceHolder1_PanelGlossaire > div > table > tbody > tr:nth-child(1) > td > table > tbody > tr',
+            subItems: function(element) {
+                return generateInternalSubItems(element);
+            }
+        },
+        'prescription_types_template_labo': {
+            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonDemandeAnalyseType',
+            onTap: 'clic'
+        },
+        'prescription_types_template_img': {
+            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonDemandeRadioType',
+            onTap: 'clic'
+        },
+        'prescription_types_template_para': {
+            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonDemandeKineType',
+            onTap: 'clic'
+        },
+        'prescription_templates': {
+            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_DivGlossaire',
+            subItems: function(element) {
+                return generateInternalSubItems(element);
+            }
+        }
+    }
+
 
 
 
@@ -541,7 +642,8 @@ function returnQuickAccessConfig() {
         iframeConfig,
         iframeTextZonesConfig,
         menuIconsLeft,
-        generalZonesConfig
+        generalZonesConfig,
+        documentTemplatesConfig
     ];
 
     const quickAccessConfig = {};
@@ -1189,7 +1291,7 @@ function querySelectorWithIframe(selector, doc = document) {
         const iframe = doc.querySelector(iframeSelector);
         
         if (!iframe || iframe.tagName !== 'IFRAME') {
-            console.warn(`[QuickAccess] Iframe non trouvée: ${iframeSelector}, il faut nécessairement que l'iframe existe et soit déclarée juste avant le '>>' pour accéder à son contenu.`);
+            // console.warn(`[QuickAccess] Iframe non trouvée: ${iframeSelector}, il faut nécessairement que l'iframe existe et soit déclarée juste avant le '>>' pour accéder à son contenu.`);
             return null;
         }
         
