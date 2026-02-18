@@ -106,6 +106,7 @@ function returnQuickAccessConfig() {
 
     // ================= Eléments principaux du Bandeau supérieur =================
     const menuHorizontalConfig = {
+        _urlPatterns: ['/FolderMedical/PatientViewForm.aspx'],
         'medical': {
             selector: '#nav-menu > li > a.nav-icon__link--doctor',
             hotkey: 'm',
@@ -511,6 +512,7 @@ function returnQuickAccessConfig() {
     const quickAccessConfig = {};
     
     // Filtrer les configurations selon l'URL actuelle
+    const currentUrl = window.location.pathname;
     for (const configGroup of allConfigs) {
         const urlPatterns = configGroup._urlPatterns;
         
