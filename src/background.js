@@ -1493,6 +1493,10 @@ var defaultShortcuts = {
     "shortcut_atcd": {
         "default": "Alt+Z",
         "description": "Ouvre les antécédents"
+    },
+    "quick_access": {
+        "default": "Ctrl+K",
+        "description": "Active le mode Quick Access (navigation rapide par raccourcis visuels)"
     }
 };
 
