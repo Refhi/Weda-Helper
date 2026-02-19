@@ -4,6 +4,13 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.16.0] - Introduction de la navigation rapide "Quick Access" ! 🚀
+## Avis aux beta-testeurs : je vous propose de tester cette nouvelle fonctionnalité pendant mes vacances :-)
+C’est encore en cours de développement, vous verrez que certaines zones sont inaccessibles, ou que certains éléments ne sont pas encore pris en compte… mais n’hésitez pas à tester et me faire part de vos retours !
+
+## Qu'est-ce que le "Quick Access" ?
+Le "Quick Access" est un mode de navigation rapide qui vous permet d'accéder à un grand nombre d'éléments de la page en quelques frappes seulement. En appuyant sur Ctrl+K, vous ouvrez le mode Quick Access qui vous permet de trouver et d'accéder rapidement à de nombreux éléments, simplement et appuyant sur la touche correspondante.
+
 # [2.15.1.2] - fixes et améliorations
 ## L’historique des facturations dans la page des FSE est désormais ouverte !
 - En allant dans les options de Weda-Helper, vous pouvez activer l’affichage de l’historique des facturations dans la page des FSE. Utile pour les facturations qui ne peuvent être faite que une seule fois par période (ex. ALQP003, GL1, etc.).
