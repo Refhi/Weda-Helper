@@ -11,6 +11,9 @@ Appuyez sur la lettre de ciblage pour accéder rapidement à l'élément corresp
 ## Fonctionnalité en Beta
 Certaines zones ne sont pas encore peuplées correctement, ou les lettres de ciblages se placent incorrectement.
 
+## Fix :
+- [#568](https://github.com/Refhi/Weda-Helper/issues/568) - la date de fin d'une alerte spécifiée dans les options de Weda-Helper n'est plus obligatoire.
+
 # [2.15.1.2] - fixes et améliorations
 ## L’historique des facturations dans la page des FSE est désormais ouverte !
 - En allant dans les options de Weda-Helper, vous pouvez activer l’affichage de l’historique des facturations dans la page des FSE. Utile pour les facturations qui ne peuvent être faite que une seule fois par période (ex. ALQP003, GL1, etc.).
