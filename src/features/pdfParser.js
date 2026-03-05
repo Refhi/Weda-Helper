@@ -760,17 +760,18 @@ function handlePatientSearch(extractedData, hashId) {
 
         if (lookupResult.status === 'refresh') {
             // Un changement de mode ou un clic sur "Rechercher" a été effectué
-            // => attendre le refresh avant de continuer
+            // => la page va se rafraichir et la fonction handlePatientSearch sera rappelée après le rechargement
             return { patientFound: false, needsPageRefresh: true, message: lookupResult.message };
         }
 
         if (lookupResult.status !== 'success') {
             // Cette méthode de recherche n'est pas disponible ou a échoué
             console.warn(`[pdfParser] Méthode ${search.type} échouée :`, lookupResult.message);
+            // On marque (via mutation de l'objet) que cette méthode a échoué pour éviter de la retenter
             extractedData.failedSearches = extractedData.failedSearches || [];
             extractedData.failedSearches.push(search.type);
             setPdfData(hashId, extractedData);
-            continue; // Essayer la méthode suivante
+            continue; // Essayer la méthode suivante (boucle for)
         }
 
         // ÉTAPE 2 : La recherche est prête, sélectionner le patient dans la liste
@@ -779,11 +780,12 @@ function handlePatientSearch(extractedData, hashId) {
 
         if (clicResult.status === 'success') {
             // Patient trouvé et cliqué => succès, mais un refresh DOM est attendu après le clic
+            // la suite de la procédure (remplissage du formulaire) sera exécutée après le rechargement de la page
             return { patientFound: true, needsPageRefresh: true, message: clicResult.message };
         }
 
         if (clicResult.status === 'continue') {
-            // Le bon patient est déjà sélectionné
+            // Le bon patient est déjà sélectionné, on va pouvoir passer au remplissage du formulaire sans refresh
             return { patientFound: true, needsPageRefresh: false, message: clicResult.message };
         }
 
