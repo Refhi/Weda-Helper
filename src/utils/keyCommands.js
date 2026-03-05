@@ -712,11 +712,11 @@ addTweak('*', 'WarpButtons', async function () {
                     'Affecter ce résultat',
                     'FSE Teleconsultation',
                     'Valider et archiver',
-                    ' Un patient '
                 ],
                 'Supprimer': [
                     'Valider et mettre à la corbeille',
                     'Supprimer',
+                    ' Un patient '
                 ]
         
             };
@@ -777,10 +777,10 @@ addTweak('*', 'WarpButtons', async function () {
                     }
                 }
 
-                console.log('ajout de raccourcis à l\'élément', element, 'raccourcis', raccourci);
+                console.log('[Warp Butttons] ajout de raccourcis à l\'élément', element, 'raccourcis', raccourci);
 
                 if (raccourci) {
-                    console.log("Je tente d'ajouter une info de raccourci à", element.tagName);
+                    console.log("[Warp Butttons] Je tente d'ajouter une info de raccourci à", element.tagName);
 
                     // Créer l'élément span pour le raccourci
                     var span = document.createElement('span');
