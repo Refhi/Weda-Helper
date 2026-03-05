@@ -76,6 +76,7 @@
       "resources": [
         "FW_scripts/*",
         "lib/*",
+        "src/features/AATI_synonymes_donnees.json",
         "CHANGELOG.md",
         "README.md",
         "Images/*"

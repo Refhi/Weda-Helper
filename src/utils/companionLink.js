@@ -144,11 +144,11 @@ function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithD
                         return;
                     }
                 }
-                console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error, 'Problème de Firewall ?');
+                console.warn(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur:', error, 'Problème de Firewall ? SumatraPDF pas installé ?');
                 if (!errortype.includes('[focus]') && !errortype.includes('tpe')) {
                     // alert(errortype + ' Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error);
                     sendWedaNotifAllTabs({
-                        message: 'Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error + 'Problème de Firewall ?',
+                        message: 'Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ? Erreur: ' + error + 'Problème de Firewall ? SumatraPDF pas installé ?',
                         type: 'fail',
                         icon: 'bug_report'
                     })

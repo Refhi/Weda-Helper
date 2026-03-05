@@ -336,85 +336,46 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
     const selecteurCategories = '.flexColumn select.entry';
     const selecteurSousCategories = '.flexColumn select.entry.ml10';
 
-    // Dictionnaire de synonymes médicaux pour améliorer la recherche
-    const synonymesMedicaux = {
-        // Système nerveux
-        'avc': ['accident', 'vasculaire', 'cérébral'],
-        'ulnaire': ['nerf', 'compression', 'libération', 'coude'],
-        'algodystrophie': ['algoneurodystrophie'],
+    // Import des données AATI (synonymes + motifs officiels) depuis le fichier JSON embarqué
+    const donneesAATIPromise = fetch(chrome.runtime.getURL('src/features/AATI_synonymes_donnees.json'))
+        .then(response => response.json())
+        .catch(err => {
+            console.error('[AATI Search] Erreur lors du chargement de AATI_synonymes_donnees.json :', err);
+            return null;
+        });
 
-        // Appareil respiratoire
-        'rhume': ['rhinopharyngite'],
-        'laryngite': ['trachéite', 'aigües'],
-        'grippe': ['grippal', 'saisonnière', 'syndrome'],
-        'pneumonie': ['pneumopathie'],
-        'pnp': ['pneumopathie'],
-        'allergie': ['allergique'],
-        'poumon': ['bronches'],
-        'pulmonaire': ['bronche', 'bronchique'],
-        'bronche': ['pulmonaire', 'poumon'],
-
-        // Traumatismes
-        'genou': ['arthroplastie', 'prothèse', 'totale', 'arthrose'],
-        'côte': ['costal'],
-        'omoplate': ['scapula'],
-        'ménisque': ['méniscales'],
-
-        // Tumeurs
-        'cancer': ['tumeur', 'maligne'],
-        'mammaire': ['sein'],
-        'colon': ['polypes', 'rectum'],
-        'col': ['utérus'],
-        'ovaire': ['kystectomie', 'ovariectomie'],
-
-
-        // Troubles mentaux
-        'bipolaire': ['dépression', 'maniaque'],
-        'toc': ['trouble', 'obsessionnel', 'compulsif'],
-        'stress': ['angoisse', 'anxiété'],
-        'burnout': ['dépressif', 'anxiété', 'stress'],
-
-        // Appareil digestif
-        'gastro': ['gastro-entérite', 'virale'],
-        'gea': ['gastro-entérite'],
-        'surpoids': ['obésité'],
-        'bariatrie': ['obésité'],
-        'dentaire': ['abcès', 'extraction', 'chirurgies'],
-        'appendice': ['appendicectomie'],
-        'rch': ['reco-colite'],
-
-        // Système ostéoarticulaire
-        'hanche': ['arthroplastie', 'prothèse', 'totale', 'coxarthrose'],
-        'coxarthrose': ['hanche'],
-        'ncb': ['cervico-brachiale'],
-        'lumbago': ['lombalgie'],
-        // Appareil génito-urinaire
-        'ovaire': ['genito-urinaire'],
-        'pelvien': ['symptômes', 'invalidants', 'douleurs', 'hémorragies'],
-
-        // Symptômes généraux
-        'aeg': ['altération', 'baisse', 'état', 'général'],
-
-        // Appareil circulatoire
-        'hta': ['hypertension'],
-        'sca': ['coronaropathie', 'infarctus', 'thoracique'],
-        'aomi': ['artériopathie'],
-        'rétrecissement': ['valvulopathie'],
-
-        // Oreille
-        'vppb': ['vertiges'],
-        'nez': ['septoplastie', 'nasale'],
-    };
-
-    // Fonction pour enrichir le terme de recherche avec les synonymes
-    function enrichirRecherche(searchTerm) {
+    // Fonction pour enrichir le terme de recherche avec les synonymes issus du JSON officiel AATI
+    async function enrichirRecherche(searchTerm) {
         const termsToSearch = [searchTerm];
         const normalizedTerm = searchTerm.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-        // Ajouter les synonymes si trouvés
-        for (const [key, synonyms] of Object.entries(synonymesMedicaux)) {
-            if (normalizedTerm.includes(key) || key.includes(normalizedTerm)) {
-                termsToSearch.push(...synonyms);
+        // Ne pas enrichir pour des termes trop courts (évite les faux positifs)
+        if (normalizedTerm.length < 3) return termsToSearch;
+
+        const donneesAATI = await donneesAATIPromise;
+        if (!donneesAATI || !donneesAATI.motifs || !donneesAATI.motifs.listeMotifs) {
+            console.warn('[AATI Search] Données JSON non disponibles pour l\'enrichissement');
+            return termsToSearch;
+        }
+
+        for (const motif of donneesAATI.motifs.listeMotifs) {
+            // Collecter tous les termes candidats de ce motif (ref, libelle, acronymes, refSynonymes)
+            const normalize = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const acronymesArr = (motif.acronymes || '').split(',').map(s => s.trim()).filter(Boolean);
+            const synonymesArr = (motif.refSynonymes || '').split(',').map(s => s.trim()).filter(Boolean);
+            const candidats = [
+                normalize(motif.ref),
+                normalize(motif.libelle),
+                ...acronymesArr.map(normalize),
+                ...synonymesArr.map(normalize)
+            ].filter(Boolean);
+
+            // Si le terme de recherche correspond à l'un des candidats, enrichir avec tous les synonymes du motif
+            const correspond = candidats.some(c => c.length >= 3 && (c.includes(normalizedTerm) || normalizedTerm.includes(c)));
+            if (correspond) {
+                if (motif.ref) termsToSearch.push(motif.ref);
+                termsToSearch.push(...synonymesArr);
+                termsToSearch.push(...acronymesArr);
             }
         }
 
@@ -452,7 +413,7 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
         }
 
         // Enrichir la recherche avec les synonymes
-        const enrichedTerms = enrichirRecherche(searchTerm);
+        const enrichedTerms = await enrichirRecherche(searchTerm);
         console.log('[AATI Search] Termes enrichis:', enrichedTerms);
 
         // Configuration de Fuse.js
