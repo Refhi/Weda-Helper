@@ -4,12 +4,12 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
-# [2.16.0] - Introduction de la navigation rapide "Quick Access" ! 🚀 (Cette fonctionnalité est en Beta)
+# [2.16.0] - Quick Access (Beta) ! 🚀
 ## Qu'est-ce que le "Quick Access" ?
-Appuyez sur Ctrl+K pour afficher des lettres de ciblage.
-Appuyez sur la lettre de ciblage pour accéder rapidement à l'élément correspondant.
+- Appuyez sur Ctrl+K pour afficher des lettres de ciblage.
+- Appuyez sur la lettre de ciblage pour accéder rapidement à l'élément correspondant.
 ## Fonctionnalité en Beta
-Certaines zones ne sont pas encore peuplées correctement, ou les lettres de ciblages se placent incorrectement.
+- Certaines zones ne sont pas encore peuplées correctement, ou les lettres de ciblages se placent incorrectement.
 
 ## Fix :
 - [#568](https://github.com/Refhi/Weda-Helper/issues/568) - la date de fin d'une alerte spécifiée dans les options de Weda-Helper n'est plus obligatoire.
