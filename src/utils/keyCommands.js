@@ -436,6 +436,17 @@ function push_annuler() {
 
 //Fonction appellée par un bouton ou un raccourci clavier pour uploader le dernier fichier d'un dossier dans le dossier patient actuel
 function uploadLatest() {
+    const currentUrl = window.location.href;
+    if (currentUrl.includes('/FolderMedical/UpLoaderForm.aspx')) {
+        // On est dans les imports de masse, on se contente de cliquer sur le bouton d'upload
+        const uploadButton = document.getElementById('ContentPlaceHolder1_ButtonTelecharger');
+        if (uploadButton) {
+            uploadButton.click();
+            recordMetrics({ clicks: 1, drags: 1 });
+        }
+        return;
+    }
+
     chrome.storage.local.set({ 'automaticUpload': true }, function () { //On met un flag qui informe que l'upload sera automatique
         let uploadURL = `${baseUrl}/FolderMedical/PopUpUploader.aspx${window.location.search}`; //On récupère l'url de l'upload
         console.log(uploadURL);

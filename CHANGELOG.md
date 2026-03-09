@@ -16,6 +16,7 @@ Certaines zones ne sont pas encore peuplées correctement, ou les lettres de cib
 - [#570](https://github.com/Refhi/Weda-Helper/issues/570) - la recherche des motifs d'arrêt de travail utilise désormais la liste officielle utilisée sur ameli.fr
 - [#574](https://github.com/Refhi/Weda-Helper/issues/574) - amélioration du message d'erreur si SumatraPDF n'est pas installé
 - [#572](https://github.com/Refhi/Weda-Helper/issues/572) - alt+V permet de nouveau de valider un import dans les échanges sécurisés. Alt+S est utilisable pour lancer la recherche du patient.
+- [#575](https://github.com/Refhi/Weda-Helper/issues/575) - dans la page des imports de masse, Ctrl+U clique sur le bouton "Télécharger" directement (préparation d'une prochaine évolution du fonctionnement de Weda et évite une déconnexion forcée)
 
 # [2.15.1.2] - fixes et améliorations
 ## L’historique des facturations dans la page des FSE est désormais ouverte !
