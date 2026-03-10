@@ -25,6 +25,7 @@ addTweak('/FolderGestion/NoemieForm.aspx', '*noemieDate', function() {
                         "CARCASSONNE":"CPAM CARCASSONNE",
                         "VANNES":"CPAM DU MORBIHAN - COURANT",
                         "TARBES":"CPAM TARBES",
+                        "VERSAILLES":"CPAM DES YVELINES",
                         "Organisme 901":"CAVIMAC",
                         "NANTERRE":"CPAM HAUTS DE SEINE SEPA",
                         "Organisme 004110000":"CAISSE PREVOYANCE ET RETRAIT",

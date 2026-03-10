@@ -66,6 +66,7 @@
         "src/features/pdfParser.js",
         "src/features/headlessSetup.js",
         "src/features/instantVaccine.js",
+        "src/features/noemie.js",
         "src/features/accoladesHandling.js"
       ]
     }

@@ -707,8 +707,7 @@ addTweak('*', 'WarpButtons', async function () {
                     'Sécuriser',
                     'Affecter ce résultat',
                     'FSE Teleconsultation',
-                    'Valider et archiver',
-                    ' Un patient '
+                    'Valider et archiver'
                 ],
                 'Supprimer': [
                     'Valider et mettre à la corbeille',
