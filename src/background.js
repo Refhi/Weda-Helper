@@ -319,7 +319,7 @@ const alerteSchema = {
             },
             dateFin: {
                 type: 'string',
-                required: true,
+                required: false,
                 description: 'Date de fin de validité (format DD/MM/YYYY)',
                 format: 'date',
                 default: null
@@ -1493,6 +1493,10 @@ var defaultShortcuts = {
     "shortcut_atcd": {
         "default": "Alt+Z",
         "description": "Ouvre les antécédents"
+    },
+    "quick_access": {
+        "default": "Ctrl+K",
+        "description": "Active le mode Quick Access (navigation rapide par raccourcis visuels)"
     }
 };
 

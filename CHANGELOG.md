@@ -4,13 +4,21 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
-# [2.15.1.0] - fix - beta testing
+# [2.16.0] - Quick Access (Beta) ! 🚀
+## Qu'est-ce que le "Quick Access" ?
+- Appuyez sur Ctrl+K pour afficher des lettres de ciblage.
+- Appuyez sur la lettre de ciblage pour accéder rapidement à l'élément correspondant.
+## Fonctionnalité en Beta
+- Certaines zones ne sont pas encore peuplées correctement, ou les lettres de ciblages se placent incorrectement.
 
-## A l’attention des beta-testeurs :
-- pouvez-vous tester les imports semi-automatiques dans la messagerie sécurisée et me faire un retour si vous constatez des problèmes ? Merci d’avance ! (ça devrait être plus fiable désormais, mais à tester !)
-- j’ai essayé de fix le problème d’impression des arrêts de travail qui ne s’imprimaient pas toujours correctement. Pouvez-vous me dire si ça fonctionne mieux pour vous ? Merci d’avance !
+## Fix :
+- [#568](https://github.com/Refhi/Weda-Helper/issues/568) - la date de fin d'une alerte spécifiée dans les options de Weda-Helper n'est plus obligatoire.
+- [#570](https://github.com/Refhi/Weda-Helper/issues/570) - la recherche des motifs d'arrêt de travail utilise désormais la liste officielle utilisée sur ameli.fr
+- [#574](https://github.com/Refhi/Weda-Helper/issues/574) - amélioration du message d'erreur si SumatraPDF n'est pas installé
+- [#572](https://github.com/Refhi/Weda-Helper/issues/572) - alt+V permet de nouveau de valider un import dans les échanges sécurisés. Alt+S est utilisable pour lancer la recherche du patient.
+- [#575](https://github.com/Refhi/Weda-Helper/issues/575) - dans la page des imports de masse, Ctrl+U clique sur le bouton "Télécharger" directement (préparation d'une prochaine évolution du fonctionnement de Weda et évite une déconnexion forcée)
 
-
+# [2.15.1.2] - fixes et améliorations
 ## L’historique des facturations dans la page des FSE est désormais ouverte !
 - En allant dans les options de Weda-Helper, vous pouvez activer l’affichage de l’historique des facturations dans la page des FSE. Utile pour les facturations qui ne peuvent être faite que une seule fois par période (ex. ALQP003, GL1, etc.).
 
@@ -23,13 +31,14 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#563](https://github.com/Refhi/Weda-Helper/issues/563) - amélioration des impressions automatiques des arrêts de travail : devrait être plus fiable.
 - la mention "AT avec CV | AT sans CV" dans l’accueil du dossier patient ne disparait plus indument après un rafraichissement de la page.
 - fix disparition de la pré-alertVSM
+- les boutons FSE Téléconsultation et FSE Dégradée n’apparaissent qu’une seule fois dans la page des FSE, même en cas de relecture de la carte vitale.
 
 ## Améliorations :
 - les alertes basées sur l’état civil sont désormais fonctionnelles (ex. mettre en évidence certaines tranches d’age et de genre).
 - [#526](https://github.com/Refhi/Weda-Helper/issues/526) - vous pouvez désormais afficher des alertes dans la description des atcd grace à un # par exemple #annuel après une date affichera une coloration selon la proximité de la date (utile pour les suivis annuels par exemple).
 - [#562](https://github.com/Refhi/Weda-Helper/issues/562) - les variable type {variable1} sont également automatiquement supprimées dans les courriers.
 
-# [2.15] - Bonne année 2026 à toustes ! 🎉🎊
+# [2.15.0.5] - Bonne année 2026 à toustes ! 🎉🎊
 
 ## 🎯 Vos Pôles et Cabinets peuvent désormais créer des alertes personnalisées communes sur les antécédents ! 
 - ⚕️ Particulièrement utile pour repérer facilement les patients éligibles à un suivi spécifique comme l'inscription à un atelier ETP.

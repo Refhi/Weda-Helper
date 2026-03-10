@@ -75,6 +75,7 @@ Cf. ci-dessous pour les retours et les contributions.
 - Alt+R	Ouvre la recherche
 - Alt+W	Appuie sur W
 - Ctrl+U	Upload le dernier fichier du dossier envoyé par le Companion
+- Ctrl+K ouvre le mode "Quick Access" qui permet d’accéder à un grand nombre d’éléments de la page. Appuyez sur Echap pour en sortir, ou retour arrière pour revenir en arrière.
 
 ## Accueil dossier patient
 - Ajout d'icones pour copier automatiquement le NIR dans le presse-papier
