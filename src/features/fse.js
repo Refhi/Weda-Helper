@@ -25,118 +25,9 @@ let fseUrl = '/vitalzen/fse.aspx';
 
 
 /**
- * Gestion de la lecture automatique de la carte vitale et des boutons FSE dégradée/téléconsultation
+ * Gestion de la lecture automatique de la carte vitale
  */
 addTweak(fseUrl, 'TweakFSECreation', function tweakFSECarteVitale() {
-    function CarteVitaleNonLue() {
-        // Vérifie l'existence de conditions nécessitant la lecture de la cv :
-        // - soit la présence du texte d'erreur de cohérence
-        // - soit la présence du texte d'erreur de cv non lue
-        var carteVitaleLue = false; // Indicateur pour suivre si la carte vitale a été lue
-        console.log('CarteVitaleNonLue demarré : je vérifie la présence du texte d erreur ou de l absence de cv');
-        waitLegacyForElement('span', 'Le nom, le prénom et/ou la date de naissance sont différents entre les données du bénéficiaire et celles contenues dans le dossier patient Weda.', 5000, function (spanElement) {
-            if (carteVitaleLue) return; // Si la carte vitale a déjà été lue, arrête la surveillance
-            console.log('Détecté : nom/prenom != dossier patient Weda. Je clique sur le bouton de lecture de la carte vitale');
-            clickCarteVitale(); // cf. keyCommands.js
-            checkPatientName();
-            addFSEVariantButtons();
-            carteVitaleLue = true; // Indique que la carte vitale a été lue
-        });
-        setTimeout(function () {
-            waitLegacyForElement('span', 'Carte Vitale non lue', 5000, async function (spanElement) {
-                if (carteVitaleLue) return; // Si la carte vitale a déjà été lue, arrête la surveillance
-                console.log('Détecté : Carte Vitale non lue. Je clique sur le bouton de lecture de la carte vitale');
-                await sleep(200); // petit délai pour laisser le temps au système de se stabiliser
-                clickCarteVitale(); // cf. keyCommands.js
-                checkPatientName();
-                addFSEVariantButtons();
-                carteVitaleLue = true; // Indique que la carte vitale a été lue
-            });
-        }, 300); // Attendre 300 ms avant d'exécuter le code à l'intérieur de setTimeout (utile pour éviter une lecture cv trop rapide)
-    }
-
-    // Ajoute deux boutons : un pour les FSE dégradées, un pour les FSE Teleconsultation à côté de lecture carte vitale
-    function addFSEVariantButtons() {
-        function degradeTeleconsult(type) {
-            // fermer la fenêtre de lecture de carte vitale
-            var closeButton = document.querySelector('a[title="Fermer cette fenêtre"]');
-            if (closeButton) {
-                closeButton.click();
-                recordMetrics({ clicks: 1, drags: 1 });
-            }
-            // Trouver l'icône "fingerprint" et cliquer dessus
-            var fingerprintIcon = document.querySelector('.mat-icon.notranslate.material-icons.mat-icon-no-color');
-            console.log('Détecté : pression sur bouton dégradée. Je clique sur le bouton emprunte digitale');
-            fingerprintIcon.click();
-            recordMetrics({ clicks: 1, drags: 1 });
-            // Attendre que le bouton contenant le texte "Degradée" existe et cliquer dessus
-            waitLegacyForElement('[class="mat-button-wrapper"]', type, 5000, function (degradeeButton) {
-                setTimeout(function () {
-                    console.log('Détecté : pression sur bouton ', type, '. Je clique sur le bouton degradé');
-                    degradeeButton.click();
-                    recordMetrics({ clicks: 1, drags: 1 });
-                }, 200); // un clic trop précoce semble avoir des effets de bord
-                // Puis clique sur le bouton "Adri"
-                setTimeout(function () {
-                    console.log('Détecté : pression sur bouton ', type, '. Je clique sur le bouton de lecture adri');
-                    var adriElement = document.querySelector('img[src="/Images/adri.png"]');
-                    if (adriElement) {
-                        adriElement.click();
-                        recordMetrics({ clicks: 1, drags: 1 });
-                    }
-                }, 3000);
-            });
-        }
-        waitForElement({
-            selector: 'a[title="Relance une lecture de la carte vitale"]',
-            justOnce: false,
-            callback: function (elements) {
-                let lireCarteVitaleElement = elements[0];
-
-                // Vérifier si les boutons existent déjà
-                if (document.getElementById('targetValider') || document.getElementById('targetAnnuler')) {
-                    return;
-                }
-
-                // Style commun pour les boutons
-                const commonStyle = {
-                    backgroundColor: 'rgba(0, 0, 0, 0.32)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '8px 16px',
-                    margin: '0 4px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.3s ease'
-                };
-
-                // Créer le premier bouton
-                var button1 = document.createElement('button');
-                button1.id = 'targetValider';
-                button1.classList.add('boutonCustonWH');
-                button1.textContent = 'FSE dégradée';
-                Object.assign(button1.style, commonStyle);
-                button1.onclick = function () {
-                    degradeTeleconsult('Dégradé');
-                };
-
-                // Créer le deuxième bouton
-                var button2 = document.createElement('button');
-                button2.id = 'targetAnnuler';
-                button2.classList.add('boutonCustonWH');
-                button2.textContent = 'FSE Teleconsultation';
-                Object.assign(button2.style, commonStyle);
-                button2.onclick = function () {
-                    degradeTeleconsult('Téléconsultation');
-                };
-
-                // Insérer les boutons avant l'élément "Lire la carte vitale"
-                lireCarteVitaleElement.parentNode.insertBefore(button2, lireCarteVitaleElement);
-                lireCarteVitaleElement.parentNode.insertBefore(button1, lireCarteVitaleElement);
-            }
-        });
-    }
-
     // Vérifie la présence de l'élément avec title="Prénom du patient"
     function checkPatientName() {
         var specialCharsMap = {
@@ -187,10 +78,121 @@ addTweak(fseUrl, 'TweakFSECreation', function tweakFSECarteVitale() {
         });
     }
 
+    function CarteVitaleNonLue() {
+        // Vérifie l'existence de conditions nécessitant la lecture de la cv :
+        // - soit la présence du texte d'erreur de cohérence
+        // - soit la présence du texte d'erreur de cv non lue
+        var carteVitaleLue = false; // Indicateur pour suivre si la carte vitale a été lue
+        console.log('CarteVitaleNonLue demarré : je vérifie la présence du texte d erreur ou de l absence de cv');
+        waitLegacyForElement('span', 'Le nom, le prénom et/ou la date de naissance sont différents entre les données du bénéficiaire et celles contenues dans le dossier patient Weda.', 5000, function (spanElement) {
+            if (carteVitaleLue) return; // Si la carte vitale a déjà été lue, arrête la surveillance
+            console.log('Détecté : nom/prenom != dossier patient Weda. Je clique sur le bouton de lecture de la carte vitale');
+            clickCarteVitale(); // cf. keyCommands.js
+            checkPatientName();
+            carteVitaleLue = true; // Indique que la carte vitale a été lue
+        });
+        setTimeout(function () {
+            waitLegacyForElement('span', 'Carte Vitale non lue', 5000, async function (spanElement) {
+                if (carteVitaleLue) return; // Si la carte vitale a déjà été lue, arrête la surveillance
+                console.log('Détecté : Carte Vitale non lue. Je clique sur le bouton de lecture de la carte vitale');
+                await sleep(200); // petit délai pour laisser le temps au système de se stabiliser
+                clickCarteVitale(); // cf. keyCommands.js
+                checkPatientName();
+                carteVitaleLue = true; // Indique que la carte vitale a été lue
+            });
+        }, 300); // Attendre 300 ms avant d'exécuter le code à l'intérieur de setTimeout (utile pour éviter une lecture cv trop rapide)
+    }
+
     // vérifie la carte vitale
     setTimeout(function () {
         CarteVitaleNonLue();
-    }, 50); // Attendre 50 ms avant de vérifier la carte vitale
+    }, 200); // Attendre 200 ms avant de vérifier la carte vitale
+});
+
+/**
+ * Gestion des boutons FSE dégradée et téléconsultation
+ */
+addTweak(fseUrl, 'TweakFSECreation', function tweakFSEVariantButtons() {
+    function degradeTeleconsult(type) {
+        // fermer la fenêtre de lecture de carte vitale
+        var closeButton = document.querySelector('a[title="Fermer cette fenêtre"]');
+        if (closeButton) {
+            closeButton.click();
+            recordMetrics({ clicks: 1, drags: 1 });
+        }
+        // Trouver l'icône "fingerprint" et cliquer dessus
+        var fingerprintIcon = document.querySelector('.mat-icon.notranslate.material-icons.mat-icon-no-color');
+        console.log('Détecté : pression sur bouton dégradée. Je clique sur le bouton emprunte digitale');
+        fingerprintIcon.click();
+        recordMetrics({ clicks: 1, drags: 1 });
+        // Attendre que le bouton contenant le texte "Degradée" existe et cliquer dessus
+        waitLegacyForElement('[class="mat-button-wrapper"]', type, 5000, function (degradeeButton) {
+            setTimeout(function () {
+                console.log('Détecté : pression sur bouton ', type, '. Je clique sur le bouton degradé');
+                degradeeButton.click();
+                recordMetrics({ clicks: 1, drags: 1 });
+            }, 200); // un clic trop précoce semble avoir des effets de bord
+            // Puis clique sur le bouton "Adri"
+            setTimeout(function () {
+                console.log('Détecté : pression sur bouton ', type, '. Je clique sur le bouton de lecture adri');
+                var adriElement = document.querySelector('img[src="/Images/adri.png"]');
+                if (adriElement) {
+                    adriElement.click();
+                    recordMetrics({ clicks: 1, drags: 1 });
+                }
+            }, 3000);
+        });
+    }
+
+    // Ajoute deux boutons : un pour les FSE dégradées, un pour les FSE Teleconsultation à côté de lecture carte vitale
+    waitForElement({
+        selector: 'a[title="Relance une lecture de la carte vitale"]',
+        justOnce: false,
+        callback: function (elements) {
+            let lireCarteVitaleElement = elements[0];
+
+            // Vérifier si les boutons existent déjà
+            if (document.getElementById('targetValider') || document.getElementById('targetAnnuler')) {
+                return;
+            }
+
+            // Style commun pour les boutons
+            const commonStyle = {
+                backgroundColor: 'rgba(0, 0, 0, 0.32)',
+                color: 'white',
+                border: 'none',
+                padding: '8px 16px',
+                margin: '0 4px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                transition: 'background-color 0.3s ease'
+            };
+
+            // Créer le premier bouton
+            var button1 = document.createElement('button');
+            button1.id = 'targetValider';
+            button1.classList.add('boutonCustonWH');
+            button1.textContent = 'FSE dégradée';
+            Object.assign(button1.style, commonStyle);
+            button1.onclick = function () {
+                degradeTeleconsult('Dégradé');
+            };
+
+            // Créer le deuxième bouton
+            var button2 = document.createElement('button');
+            button2.id = 'targetAnnuler';
+            button2.classList.add('boutonCustonWH');
+            button2.textContent = 'FSE Teleconsultation';
+            Object.assign(button2.style, commonStyle);
+            button2.onclick = function () {
+                degradeTeleconsult('Téléconsultation');
+            };
+
+            // Insérer les boutons avant l'élément "Lire la carte vitale"
+            lireCarteVitaleElement.parentNode.insertBefore(button2, lireCarteVitaleElement);
+            lireCarteVitaleElement.parentNode.insertBefore(button1, lireCarteVitaleElement);
+        }
+    });
 });
 
 /**
