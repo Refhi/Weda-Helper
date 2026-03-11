@@ -21,39 +21,11 @@
  * @requires metrics.js (recordMetrics)
  */
 
-/**
- * Vérifie et sélectionne automatiquement le patient correspondant dans le widget de lecture CV.
- * Compare le prénom du patient avec les éléments affichés et clique sur la correspondance.
- */
-function checkPatientName() {
-    waitForElement({
-        selector: '[title="Prénom du patient"]', timeout: 5000,
-        callback: patientNameElements => {
-            var patientNameElement = patientNameElements[0];
-            var patientName = patientNameElement.value;
-            waitForElement({
-                selector: 'vz-lecture-cv-widget', timeout: 5000,
-                callback: widgetElements => {
-                    var widgetElement = widgetElements[0];
-                    var spans = widgetElement.getElementsByTagName('span');
-                    for (var i = 0; i < spans.length; i++) {
-                        if (spans[i].textContent.includes(patientName)) {
-                            console.log('Patient name found');
-                            spans[i].click();
-                            recordMetrics({ clicks: 1, drags: 1 });
-                            return true;
-                        }
-                    }
-                    console.log('Patient name not found');
-                    return false;
-                }
-            });
-        }
-    });
-}
 
 
 
+
+addTweak(fseUrl, 'TweakFSECreation', tweakFSECreation);
 
 /**
  * Fonction principale de gestion des améliorations de la page FSE.
@@ -487,70 +459,49 @@ function tweakFSECreation() {
 }
 
 
-// Création du tableau de tweak
-
 let fseUrl = '/vitalzen/fse.aspx';
-let fseTable =
-    [
-        {
-            option: 'TweakFSEDetectMT',
-            callBack: function () {
-                waitForElement({
-                    selector: 'vz-medecin-traitant-weda div.mt10.ng-star-inserted',
-                    callback: function (element) {
-                        let userName = loggedInUser();
-                        let isMT = estMTdeclareOuReferent(userName);
-                        if (isMT) {
-                            console.log('MT déclaré = utilisateur en cours => je coche MT déclaré');
-                            let select = document.querySelector('vz-orientation select');
-                            select.value = '03'; // Je suis le médecin traitant
-                        }
-                    }
-                });
-            }
-        },
-        {
-            option: 'TweakFSEGestionUnique',
-            callBack: function () {
-                waitForElement({
-                    selector: 'label[for=mat-checkbox-11-input] > span.mat-checkbox-inner-container.mat-checkbox-inner-container-no-side-margin > input',
-                    callback: function (element) {
-                        if (element[0].parentElement.parentElement.parentElement.parentElement.parentElement.textContent.includes('Réaliser une FSE en gestion unique')) //Fix un peu sale
-                        {
-                            console.log('Gestion unique activée clic sur element', element);
-                            element[0].click();
-                            recordMetrics({ clicks: 1, drags: 1 });
-                        }
-                    }
-                });
-            }
-        },
-        {
-            option: 'TweakFSEAccident',
-            callBack: function () {
 
-                waitForElement({
-                    selector: 'input[id="mat-radio-9-input"]',
-                    callback: function (element) {
-                        console.log('J trouve le bouton "non" pour accident de travail, je le coche', element);
-                        element[0].checked = true;
-                        recordMetrics({ clicks: 1, drags: 1 });
-                        element[0].dispatchEvent(new Event('change'));
-                    }
-                });
+addTweak(fseUrl, 'TweakFSEDetectMT', function () {
+    waitForElement({
+        selector: 'vz-medecin-traitant-weda div.mt10.ng-star-inserted',
+        callback: function (element) {
+            let userName = loggedInUser();
+            let isMT = estMTdeclareOuReferent(userName);
+            if (isMT) {
+                console.log('MT déclaré = utilisateur en cours => je coche MT déclaré');
+                let select = document.querySelector('vz-orientation select');
+                select.value = '03'; // Je suis le médecin traitant
             }
-        },
-        {
-            option: 'TweakFSECreation',
-            callBack: tweakFSECreation
-
         }
-
-    ];
-
-fseTable.forEach(tweak => {
-    addTweak(fseUrl, tweak.option, tweak.callBack);
+    });
 });
+
+addTweak(fseUrl, 'TweakFSEGestionUnique', function () {
+    waitForElement({
+        selector: 'label[for=mat-checkbox-11-input] > span.mat-checkbox-inner-container.mat-checkbox-inner-container-no-side-margin > input',
+        callback: function (element) {
+            if (element[0].parentElement.parentElement.parentElement.parentElement.parentElement.textContent.includes('Réaliser une FSE en gestion unique')) //Fix un peu sale
+            {
+                console.log('Gestion unique activée clic sur element', element);
+                element[0].click();
+                recordMetrics({ clicks: 1, drags: 1 });
+            }
+        }
+    });
+});
+
+addTweak(fseUrl, 'TweakFSEAccident', function () {
+    waitForElement({
+        selector: 'input[id="mat-radio-9-input"]',
+        callback: function (element) {
+            console.log('J trouve le bouton "non" pour accident de travail, je le coche', element);
+            element[0].checked = true;
+            recordMetrics({ clicks: 1, drags: 1 });
+            element[0].dispatchEvent(new Event('change'));
+        }
+    });
+});
+
 
 addTweak('/vitalzen/gestion.aspx', 'TweakSCORDegradee', function () {
     waitForElement({
@@ -667,67 +618,6 @@ addTweak('/vitalzen/fse.aspx', '*keepPrintDegradeeParameters', function () {
     });
 });
 
-// Utilitaires pour la FSE
-
-/**
- * Calcule et retourne l'âge du patient depuis la FSE.
- * Extrait la date de naissance de l'interface et calcule l'âge en années.
- * 
- * @returns {number|null} - Âge du patient en années, ou null si indisponible
- */
-function patientAgeInFSE() {
-    // Étape 1: Sélectionner le span et extraire la date de naissance du title
-    let spanWithTitle = document.querySelector('#LabelInfoPatientNom > span > span:last-child');
-    let title = spanWithTitle.getAttribute('title');
-    let birthDateString = title.match(/(\d{2}\/\d{2}\/\d{4})/)[0];
-
-    // Étape 2: Convertir la chaîne de date en un objet Date
-    let birthDateParts = birthDateString.split('/');
-    let birthDate = new Date(birthDateParts[2], birthDateParts[1] - 1, birthDateParts[0]);
-
-    // Étape 3: Calculer l'âge
-    let today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    let m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-    }
-
-    console.log('Age du patient :', age, 'ans');
-
-    // Étape 4: Retourner l'âge
-    return age;
-}
-
-/**
- * Vérifie si l'utilisateur connecté est le médecin traitant déclaré ou le référent.
- * 
- * @param {string} userName - Nom de l'utilisateur connecté
- * @returns {boolean} - True si MT déclaré ou référent, false sinon
- */
-function estMTdeclareOuReferent(userName) {
-    // Recherche dans les éléments .ng-star-inserted si le nom du MT est présent en text
-    let elements = document.querySelectorAll('.ng-star-inserted');
-    for (let i = 0; i < elements.length; i++) {
-        if (elements[i].textContent.includes(userName)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-/**
- * Récupère le nom de l'utilisateur actuellement connecté.
- * Recherche dans l'interface Weda l'élément contenant le nom d'utilisateur.
- * 
- * @returns {string|null} - Nom de l'utilisateur, ou null si non trouvé
- */
-function loggedInUser() {
-    // Récupère le nom de l'utilisateur connecté
-    let userName = document.getElementById('LabelUserLog').innerText;
-    return userName;
-}
-
 // Maintient de la sélection de la formule pour les AMC
 addTweak('/vitalzen/fse.aspx', '*TweakAMCFormule', function () {
     console.log('[TweakAMCFormule] Démarrage');
@@ -819,27 +709,6 @@ addTweak('/vitalzen/fse.aspx', '*autoSelectRienAMO', function () {
     });
 });
 
-
-/**
- * Envoie automatiquement le montant au TPE après sécurisationou facturation FSE.
- * Surveille les boutons de sécurisation et facturation pour déclencher l'envoi TPE.
- */
-async function tpesender() {
-    let modeReglement = document.querySelector("vz-facturation select").value;
-    let TPEOnlyForCB = await getOptionPromise('TPEOnlyForCB');
-    if (TPEOnlyForCB && modeReglement != "CB") {
-        return;
-    }
-    console.log('tpe_sender activé');
-    var montantElement = document.querySelector('input[placeholder="Montant"]');
-    // extraire le montant de l'élément
-    var amount = montantElement.value;
-    // retirer la virgule de amount
-    amount = amount.replace(/\./g, '');
-    console.log('amount', amount);
-    sendtpeinstruction(amount);
-}
-
 addTweak('/vitalzen/fse.aspx', '!RemoveLocalCompanionTPE', function () {
     waitForElement({
         selector: 'button',
@@ -850,6 +719,7 @@ addTweak('/vitalzen/fse.aspx', '!RemoveLocalCompanionTPE', function () {
         }
     });
 });
+
 
 // Validation automatique du PDF de la FSE dégradée en SCOR
 addTweak('/vitalzen/fse.aspx', 'autoValidateSCOR', function () {
@@ -876,4 +746,128 @@ addTweak('/vitalzen/fse.aspx', 'autoValidateSCOR', function () {
         }
     });
 });
+
+
+
+
+
+/**
+ * -------------------------------------------------------------
+ * Fonctions utilitaires pour la FSE
+ * -------------------------------------------------------------
+ */
+
+/**
+ * Calcule et retourne l'âge du patient depuis la FSE.
+ * Extrait la date de naissance de l'interface et calcule l'âge en années.
+ * 
+ * @returns {number|null} - Âge du patient en années, ou null si indisponible
+ */
+function patientAgeInFSE() {
+    // Étape 1: Sélectionner le span et extraire la date de naissance du title
+    let spanWithTitle = document.querySelector('#LabelInfoPatientNom > span > span:last-child');
+    let title = spanWithTitle.getAttribute('title');
+    let birthDateString = title.match(/(\d{2}\/\d{2}\/\d{4})/)[0];
+
+    // Étape 2: Convertir la chaîne de date en un objet Date
+    let birthDateParts = birthDateString.split('/');
+    let birthDate = new Date(birthDateParts[2], birthDateParts[1] - 1, birthDateParts[0]);
+
+    // Étape 3: Calculer l'âge
+    let today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    let m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+
+    console.log('Age du patient :', age, 'ans');
+
+    // Étape 4: Retourner l'âge
+    return age;
+}
+
+/**
+ * Vérifie si l'utilisateur connecté est le médecin traitant déclaré ou le référent.
+ * 
+ * @param {string} userName - Nom de l'utilisateur connecté
+ * @returns {boolean} - True si MT déclaré ou référent, false sinon
+ */
+function estMTdeclareOuReferent(userName) {
+    // Recherche dans les éléments .ng-star-inserted si le nom du MT est présent en text
+    let elements = document.querySelectorAll('.ng-star-inserted');
+    for (let i = 0; i < elements.length; i++) {
+        if (elements[i].textContent.includes(userName)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Récupère le nom de l'utilisateur actuellement connecté.
+ * Recherche dans l'interface Weda l'élément contenant le nom d'utilisateur.
+ * 
+ * @returns {string|null} - Nom de l'utilisateur, ou null si non trouvé
+ */
+function loggedInUser() {
+    // Récupère le nom de l'utilisateur connecté
+    let userName = document.getElementById('LabelUserLog').innerText;
+    return userName;
+}
+
+/**
+ * Vérifie et sélectionne automatiquement le patient correspondant dans le widget de lecture CV.
+ * Compare le prénom du patient avec les éléments affichés et clique sur la correspondance.
+ */
+function checkPatientName() {
+    waitForElement({
+        selector: '[title="Prénom du patient"]', timeout: 5000,
+        callback: patientNameElements => {
+            var patientNameElement = patientNameElements[0];
+            var patientName = patientNameElement.value;
+            waitForElement({
+                selector: 'vz-lecture-cv-widget', timeout: 5000,
+                callback: widgetElements => {
+                    var widgetElement = widgetElements[0];
+                    var spans = widgetElement.getElementsByTagName('span');
+                    for (var i = 0; i < spans.length; i++) {
+                        if (spans[i].textContent.includes(patientName)) {
+                            console.log('Patient name found');
+                            spans[i].click();
+                            recordMetrics({ clicks: 1, drags: 1 });
+                            return true;
+                        }
+                    }
+                    console.log('Patient name not found');
+                    return false;
+                }
+            });
+        }
+    });
+}
+
+
+
+/**
+ * Envoie automatiquement le montant au TPE après sécurisationou facturation FSE.
+ * Surveille les boutons de sécurisation et facturation pour déclencher l'envoi TPE.
+ */
+async function tpesender() {
+    let modeReglement = document.querySelector("vz-facturation select").value;
+    let TPEOnlyForCB = await getOptionPromise('TPEOnlyForCB');
+    if (TPEOnlyForCB && modeReglement != "CB") {
+        return;
+    }
+    console.log('tpe_sender activé');
+    var montantElement = document.querySelector('input[placeholder="Montant"]');
+    // extraire le montant de l'élément
+    var amount = montantElement.value;
+    // retirer la virgule de amount
+    amount = amount.replace(/\./g, '');
+    console.log('amount', amount);
+    sendtpeinstruction(amount);
+}
+
+
 
