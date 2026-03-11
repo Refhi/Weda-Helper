@@ -13,6 +13,11 @@
  */
 
 addTweak('/vitalzen/fse.aspx', 'showBillingHistory', async function () {
+    if (window.location.href.includes('Buffer=')) {
+        console.log('[showBillingHistory] Buffer mode detected, skipping billing history display to avoid conflicts with other features like omnidoc facturation');
+        return;
+    }
+
     const iframeId = 'WHHistoryIframe';
     const targetElement = document.querySelector('.fseContainer');
     const iframe = createIframe(targetElement, iframeId); // ici targetElement est nécessaire comme référence pour l'insertion de l'iframe
