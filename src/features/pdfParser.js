@@ -215,12 +215,12 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'debugModePdfParser', function () {
  *    failedSearches: ["InsSearch", "DateSearch"]
  * }
  */
-async function processFoundPdfIframeImport(elements) {
+async function processFoundPdfIframeImport(PDFIframeElements) {
     // ===========================================
     // ÉTAPE 1 : Extraction des données du PDF
     // (pas de modification du DOM ni de refresh)
     // ===========================================
-    const baseData = await extractBasePdfData(elements);
+    const baseData = await extractBasePdfData(PDFIframeElements);
     if (!baseData) return;
 
     const { urlPDF, fullText, hashId } = baseData;
@@ -228,8 +228,11 @@ async function processFoundPdfIframeImport(elements) {
     // Ajout d'un bouton de reset du sessionStorage correspondant
     addResetButton(hashId);
 
-    // Récupération des données déjà extraites pour ce PDF
-    let extractedData = getPdfData(hashId); // bien que déjà fait dans handleDataExtraction, on le refait ici pour le check suivant
+    /**Récupération des données déjà extraites pour ce PDF
+    * fait doublon emploi avec handleDataExtraction mais nécessaire pour
+    * renvoyer de façon précoce vers le champ de recherche si le PDF a déjà été traité
+    */
+    let extractedData = getPdfData(hashId);
 
     // Si déjà importé, on redirige vers le champ de recherche
     if (extractedData.alreadyImported) {
@@ -237,6 +240,7 @@ async function processFoundPdfIframeImport(elements) {
         selectFirstPatientOrSearchField();
         return;
     }
+    
     // Sinon, on extrait les données
     extractedData = await handleDataExtraction(fullText, urlPDF, hashId);
 
@@ -721,7 +725,7 @@ function checkSearchPossibility(searchOptionValue) {
  * @param {Object} extractedData - Les données extraites du PDF.
  * @param {Array} extractedData.nirMatches - Les NIR trouvés (priorité 1 et 2 : INS complet puis tronqué).
  * @param {string} extractedData.dateOfBirth - Date de naissance (priorité 3).
- * @param {Array} extractedData.nameMatches - Noms pour matcher dans la liste de résultats.
+ * @param {Array} extractedData.nameMatches - Liste de Noms potentiels pour matcher dans la liste de résultats.
  * @param {Array} extractedData.failedSearches - Méthodes de recherche déjà échouées (évite de les retenter).
  * @param {string} hashId - Identifiant unique du PDF pour persistance des données.
  * 
@@ -736,7 +740,8 @@ function handlePatientSearch(extractedData, hashId) {
     // Priorités de recherche : INS complet > NIR tronqué > Date de naissance
     const searchPriorities = [
         { type: "InsSearch", data: extractedData.nirMatches?.[0] || null },
-        { type: "Nom", data: extractedData.nirMatches?.[0] || null }, // "Nom" est mal nommé ici, on peut y chercher pas mal de choses, dont le NIR tronqué, utile pour les INS non validés"
+        // On va faire une recherche par NIR tronqué via le champ "Nom" (qui accepte aussi les NIR tronqués)
+        { type: "Nom", data: extractedData.nirMatches?.[0]?.substring(0, 13) || null },
         { type: "Naissance", data: extractedData.dateOfBirth !== formatDate(new Date()) ? extractedData.dateOfBirth : null },
     ];
 
@@ -755,17 +760,18 @@ function handlePatientSearch(extractedData, hashId) {
 
         if (lookupResult.status === 'refresh') {
             // Un changement de mode ou un clic sur "Rechercher" a été effectué
-            // => attendre le refresh avant de continuer
+            // => la page va se rafraichir et la fonction handlePatientSearch sera rappelée après le rechargement
             return { patientFound: false, needsPageRefresh: true, message: lookupResult.message };
         }
 
         if (lookupResult.status !== 'success') {
             // Cette méthode de recherche n'est pas disponible ou a échoué
             console.warn(`[pdfParser] Méthode ${search.type} échouée :`, lookupResult.message);
+            // On marque (via mutation de l'objet) que cette méthode a échoué pour éviter de la retenter
             extractedData.failedSearches = extractedData.failedSearches || [];
             extractedData.failedSearches.push(search.type);
             setPdfData(hashId, extractedData);
-            continue; // Essayer la méthode suivante
+            continue; // Essayer la méthode suivante (boucle for)
         }
 
         // ÉTAPE 2 : La recherche est prête, sélectionner le patient dans la liste
@@ -774,11 +780,12 @@ function handlePatientSearch(extractedData, hashId) {
 
         if (clicResult.status === 'success') {
             // Patient trouvé et cliqué => succès, mais un refresh DOM est attendu après le clic
+            // la suite de la procédure (remplissage du formulaire) sera exécutée après le rechargement de la page
             return { patientFound: true, needsPageRefresh: true, message: clicResult.message };
         }
 
         if (clicResult.status === 'continue') {
-            // Le bon patient est déjà sélectionné
+            // Le bon patient est déjà sélectionné, on va pouvoir passer au remplissage du formulaire sans refresh
             return { patientFound: true, needsPageRefresh: false, message: clicResult.message };
         }
 
@@ -1113,9 +1120,6 @@ function lookupPatient(searchType, data) {
         console.error(`[pdfParser] Type de recherche ${searchType} non disponible.`);
         return { status: 'searchTypeFail', message: `Type de recherche ${searchType} non disponible.` };
     }
-
-    // Petite conversion de donnée : si on recherche par nom, on veut en fait une recherche par NIR tronqué (sans clé)
-    if (searchType === "Nom") { data = data.substring(0, 13); }
 
     let dropDownResearch = document.querySelector("[id*='FindPatientUcForm'][id*='_DropDownListRechechePatient']");
 

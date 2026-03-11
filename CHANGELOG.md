@@ -4,6 +4,21 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.16.0] - Quick Access (Beta) ! 🚀
+## Qu'est-ce que le "Quick Access" ?
+- Appuyez sur Ctrl+K pour afficher des lettres de ciblage.
+- Appuyez sur la lettre de ciblage pour accéder rapidement à l'élément correspondant.
+## Fonctionnalité en Beta
+- Certaines zones ne sont pas encore peuplées correctement, ou les lettres de ciblages se placent incorrectement.
+
+## Fix :
+- [#568](https://github.com/Refhi/Weda-Helper/issues/568) - la date de fin d'une alerte spécifiée dans les options de Weda-Helper n'est plus obligatoire.
+- [#570](https://github.com/Refhi/Weda-Helper/issues/570) - la recherche des motifs d'arrêt de travail utilise désormais la liste officielle utilisée sur ameli.fr
+- [#574](https://github.com/Refhi/Weda-Helper/issues/574) - amélioration du message d'erreur si SumatraPDF n'est pas installé
+- [#572](https://github.com/Refhi/Weda-Helper/issues/572) - alt+V permet de nouveau de valider un import dans les échanges sécurisés. Alt+S est utilisable pour lancer la recherche du patient.
+- [#575](https://github.com/Refhi/Weda-Helper/issues/575) - dans la page des imports de masse, Ctrl+U clique sur le bouton "Télécharger" directement (préparation d'une prochaine évolution du fonctionnement de Weda et évite une déconnexion forcée)
+- [#555](https://github.com/Refhi/Weda-Helper/issues/555) - ajout d’une alerte si le plugin adobe pdf est détecté, ce qui empêche l’impression instantanée des arrêts de travail.
+
 # [2.15.1.2] - fixes et améliorations
 ## L’historique des facturations dans la page des FSE est désormais ouverte !
 - En allant dans les options de Weda-Helper, vous pouvez activer l’affichage de l’historique des facturations dans la page des FSE. Utile pour les facturations qui ne peuvent être faite que une seule fois par période (ex. ALQP003, GL1, etc.).

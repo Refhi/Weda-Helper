@@ -1,0 +1,1908 @@
+{
+  "Note sur ce fichier": "Ce fichier a été récupéré sur https://espacepro.ameli.fr/aatv3-api-metier/cms/donnees Merci Abel pour la découverte de cette ressource !",
+  "messages": {
+    "informations": "",
+    "alerte": "",
+    "regimeNonConnecte": "Votre patient est affilié à un régime pour lequel la transmission n'est pas possible. Une fois l'AAT renseigné, suite à la validation, vous devrez imprimer l'ensemble des volets du Cerfa.",
+    "regimeNonConnecteNoImp": "Votre patient est affilié à un régime pour lequel la transmission n'est pas possible. Vous ne pouvez pas réaliser d'arrêt de travail en ligne. Vous devez passer par un Cerfa sécurisé papier. Veuillez-nous excuser pour la gêne occasionnée.",
+    "ajoutDmpOk": "L'arrêt de travail a bien été déposé dans le DMP de votre patient",
+    "ajoutDmpWarning": "Conformément à la demande du patient, l'arrêt de travail n'a pas été déposé sur son DMP",
+    "ajoutDmpKo": "Le dépôt dans le DMP de votre patient n'a pas fonctionné, veuillez imprimer l'exemplaire patient",
+    "ajoutDmpInsiKo": "L'arrêt de travail n'a pas été déposé sur le DMP de votre patient",
+    "infoDmpSignature": "La signature numérique est disponible! Vous pouvez l'ajouter dès maintenant, elle vous permettra de déposer le volet 3 dans le DMP de votre patient.",
+    "infoDmpSignatureEcranTransmission": "N'oubliez pas, vos prochains arrêts peuvent être déposés dans le DMP du patient grâce à la signature numérique."
+  },
+  "motifs": {
+    "listeMotifs": [
+      {
+        "code": "00010001",
+        "libelle": "Angine",
+        "codeFonctionnel": "008",
+        "acronymes": "AEP",
+        "ref": "angine",
+        "refSynonymes": "amygdalite, l'oropharynx"
+      },
+      {
+        "code": "00010002",
+        "libelle": "Bronchite aiguë sans comorbidité",
+        "codeFonctionnel": "010",
+        "acronymes": "",
+        "ref": "bronchite aigue sans comorbidite",
+        "refSynonymes": "inflammation des bronches, bronchorrhée, bronchite asthmatiforme"
+      },
+      {
+        "code": "00010003",
+        "libelle": "Gastro-entérite ",
+        "codeFonctionnel": "005",
+        "acronymes": "GEA,GEV,DH+,GE",
+        "ref": "gastro-enterite",
+        "refSynonymes": "grippe intestinale,diarrhées,nausées,vomissements, turista, tourista"
+      },
+      {
+        "code": "00010004",
+        "libelle": "Syndrome grippal",
+        "codeFonctionnel": "009",
+        "acronymes": "",
+        "ref": "syndrome grippal",
+        "refSynonymes": "influenzae,état grippal, grippe saisonnière"
+      },
+      {
+        "code": "00010005",
+        "libelle": "Sinusite maxillaire ou frontale",
+        "codeFonctionnel": "007",
+        "acronymes": "",
+        "ref": "sinusite maxillaire frontale",
+        "refSynonymes": "infection "
+      },
+      {
+        "code": "00020001",
+        "libelle": "Cervicalgie non spécifique sans radiculopathie ",
+        "codeFonctionnel": "012",
+        "acronymes": "",
+        "ref": "cervicalgie non specifique sans radiculopathie",
+        "refSynonymes": "torticolis, raideur cervicale,cervicarthrose"
+      },
+      {
+        "code": "00020002",
+        "libelle": "Lombalgie commune",
+        "codeFonctionnel": "001",
+        "acronymes": "",
+        "ref": "lombalgie commune",
+        "refSynonymes": "lombaire,lumbago,rachialgie,lombo-dorsalgie,dorsalgie,dorso "
+      },
+      {
+        "code": "00020003",
+        "libelle": "Sciatique",
+        "codeFonctionnel": "016",
+        "acronymes": "L5S1,L5,S1,L4L5",
+        "ref": "sciatique",
+        "refSynonymes": "radiculopathie lombaire, lombosciatique, lombosciatalgies, sciatalgie, radiculalgies, lomboradiculalgies, conflit disco-radiculaire, hernie discale lombaire"
+      },
+      {
+        "code": "00020004",
+        "libelle": "Névralgie cervico-brachiale commune",
+        "codeFonctionnel": "067",
+        "acronymes": "NCB",
+        "ref": "nevralgie cervico-brachiale commune",
+        "refSynonymes": "paresthésies membre supérieur, cervicalgie,  hernie, discal, cervical, cervicarthrose, conflit disco-radiculaire"
+      },
+      {
+        "code": "00030001",
+        "libelle": "Troubles anxio-dépressifs mineurs",
+        "codeFonctionnel": "004",
+        "acronymes": "SAD,TADM",
+        "ref": "troubles anxio-depressifs mineurs",
+        "refSynonymes": "anxiété,stress,déprime,insomnie,sommeil,dépression, angoisse, syndrome anxio-dépressif"
+      },
+      {
+        "code": "00030002",
+        "libelle": "Episode dépressif léger",
+        "codeFonctionnel": "999",
+        "acronymes": "SD",
+        "ref": "episode depressif leger",
+        "refSynonymes": "Dépression,idées noires,réactionnel,insomnie,trouble de l'humeur,sommeil,caractérisé,  anhédonie, incurie"
+      },
+      {
+        "code": "00040001",
+        "libelle": "Syndrome du canal carpien - non opéré",
+        "codeFonctionnel": "002",
+        "acronymes": "SCC,CC",
+        "ref": "syndrome canal carpien non opere",
+        "refSynonymes": "poignet,compression du nerf médian,fourmillement de la main,paresthésie,dysesthésies"
+      },
+      {
+        "code": "00040002",
+        "libelle": "Varices des membres inférieurs - traitement chirurgical",
+        "codeFonctionnel": "006",
+        "acronymes": "VMI",
+        "ref": "varices membres inferieurs traitement chirurgical",
+        "refSynonymes": "crossectomie,eveinage,phlebectomie,resection,stripping"
+      },
+      {
+        "code": "00040003",
+        "libelle": "Cholécystectomie",
+        "codeFonctionnel": "014",
+        "acronymes": "CCE",
+        "ref": "cholecystectomie",
+        "refSynonymes": "ablation de vésicule biliaire"
+      },
+      {
+        "code": "00040004",
+        "libelle": "Cure de hernie discale par discectomie (lombaire, cervicale, dorsale)",
+        "codeFonctionnel": "015",
+        "acronymes": "HD, ",
+        "ref": "cure hernie discale discectomie lombaire cervicale dorsale",
+        "refSynonymes": "disque lombaire,  thoracique, arthrodèse, "
+      },
+      {
+        "code": "00040005",
+        "libelle": "Cure de hernie inguinale",
+        "codeFonctionnel": "021",
+        "acronymes": "CHI",
+        "ref": "cure hernie inguinale",
+        "refSynonymes": "aine,scrotale, herniorraphie inguinale, hernioplastie inguinale"
+      },
+      {
+        "code": "00040006",
+        "libelle": "Ligamentoplastie du croisé antérieur du genou",
+        "codeFonctionnel": "003",
+        "acronymes": "LCA,LCAG",
+        "ref": "ligamentoplastie croise anterieur genou",
+        "refSynonymes": "torsion du genou,instabilité,rupture des ligaments croisés,déchirure,réparation, reconstruction ligamentaire du genou, entorse"
+      },
+      {
+        "code": "00040007",
+        "libelle": "Lésions méniscales - traitement  chirurgical",
+        "codeFonctionnel": "022",
+        "acronymes": "",
+        "ref": "lesions meniscales traitement chirurgical",
+        "refSynonymes": "genou,pincement du ménisque,fissure , déchirure,dégénérescence,désinsertion,rupture en anse de seau,méniscose,kyste,méniscectomie partielle,totale"
+      },
+      {
+        "code": "00040008",
+        "libelle": "Hallux valgus - ostéotomie",
+        "codeFonctionnel": "020",
+        "acronymes": "HV,GO",
+        "ref": "hallux valgus osteotomie",
+        "refSynonymes": "déformation du gros orteil, oignon du pied"
+      },
+      {
+        "code": "00040009",
+        "libelle": "Thyroïdectomie ",
+        "codeFonctionnel": "013",
+        "acronymes": "",
+        "ref": "thyroidectomie",
+        "refSynonymes": "intervention,nodule,goitre,cancer,hyperthyroïdie,hémithyroïdectomie,basedow,lobectomie"
+      },
+      {
+        "code": "00040010",
+        "libelle": "Arthroplastie de la hanche par prothèse totale",
+        "codeFonctionnel": "027",
+        "acronymes": "PTH,PH",
+        "ref": "arthroplastie hanche prothese totale",
+        "refSynonymes": ""
+      },
+      {
+        "code": "00040011",
+        "libelle": "Arthroplastie du genou par prothèse totale",
+        "codeFonctionnel": "026",
+        "acronymes": "PTG,PG",
+        "ref": "arthroplastie genou prothese totale",
+        "refSynonymes": "gonarthrose, tri-compartimentale,"
+      },
+      {
+        "code": "00040012",
+        "libelle": "Chirurgie de la cataracte",
+        "codeFonctionnel": "028",
+        "acronymes": "",
+        "ref": "chirurgie cataracte",
+        "refSynonymes": "implant cristallin,phacoémulsification,oeil"
+      },
+      {
+        "code": "00040013",
+        "libelle": "Septoplastie nasale",
+        "codeFonctionnel": "029",
+        "acronymes": "",
+        "ref": "septoplastie nasale",
+        "refSynonymes": "déviation cloison nasale,rhinoseptoplastie, nez,correction du septum nasal"
+      },
+      {
+        "code": "00040014",
+        "libelle": "Hystérectomie",
+        "codeFonctionnel": "031",
+        "acronymes": "",
+        "ref": "hysterectomie",
+        "refSynonymes": "ablation de l'utérus,myomectomie,fibrome, uterine"
+      },
+      {
+        "code": "00040015",
+        "libelle": "Conisation du col de l'utérus",
+        "codeFonctionnel": "033",
+        "acronymes": "HPV,CCU",
+        "ref": "conisation col uterus",
+        "refSynonymes": "col de l'utérus,dysplasie cervicale, uterine"
+      },
+      {
+        "code": "00040016",
+        "libelle": "Mastoplastie de réduction",
+        "codeFonctionnel": "030",
+        "acronymes": "RM",
+        "ref": "mastoplastie reduction",
+        "refSynonymes": "hypertrophie des seins,réduction de volume,plastie,mammaire"
+      },
+      {
+        "code": "00040017",
+        "libelle": "Kystectomie ovarienne - ovariectomie",
+        "codeFonctionnel": "032",
+        "acronymes": "KO,KOD,KOG",
+        "ref": "kystectomie ovarienne ovariectomie",
+        "refSynonymes": "ablation d'un kyste ovarien,ovaire,annexectomie"
+      },
+      {
+        "code": "00040018",
+        "libelle": "Amygdalectomie",
+        "codeFonctionnel": "045",
+        "acronymes": "",
+        "ref": "amygdalectomie",
+        "refSynonymes": "ablation des amygdales"
+      },
+      {
+        "code": "00040019",
+        "libelle": "Appendicectomie",
+        "codeFonctionnel": "034",
+        "acronymes": "APP",
+        "ref": "appendicectomie",
+        "refSynonymes": ""
+      },
+      {
+        "code": "00040020",
+        "libelle": "Mastectomie / Tumorectomie du sein ",
+        "codeFonctionnel": "999",
+        "acronymes": "MP",
+        "ref": "mastectomie tumorectomie sein",
+        "refSynonymes": "ablation d'une tumeur du sein, mammaire, résection tumorale du sein, mastectomie partielle, totale "
+      },
+      {
+        "code": "00040021",
+        "libelle": "Cure de hernie de la paroi abdominale",
+        "codeFonctionnel": "035",
+        "acronymes": "CHA",
+        "ref": "cure hernie paroi abdominale",
+        "refSynonymes": "ombilicale,étranglée,abdomen,ligne blanche"
+      },
+      {
+        "code": "00040022",
+        "libelle": "Hémorroïdes - traitement chirurgical",
+        "codeFonctionnel": "036",
+        "acronymes": "",
+        "ref": "hemorroides traitement chirurgical",
+        "refSynonymes": "thrombose,saignements  hémorroïdectomie,hémorroïdopexie,ligatures,Saint Marck's,"
+      },
+      {
+        "code": "00040023",
+        "libelle": "Lésions anales - traitement chirurgical ",
+        "codeFonctionnel": "037",
+        "acronymes": "LAP",
+        "ref": "lesions anales traitement chirurgical",
+        "refSynonymes": "abcès,polype,fissures anales,fistule,ano-périnéale"
+      },
+      {
+        "code": "00040024",
+        "libelle": "Libération du nerf ulnaire au coude - traitement chirurgical",
+        "codeFonctionnel": "051",
+        "acronymes": "",
+        "ref": "liberation nerf ulnaire coude traitement chirurgical",
+        "refSynonymes": "décompression ,coude,compression, canal cubital"
+      },
+      {
+        "code": "00040025",
+        "libelle": "Chirurgie de l'obésité morbide",
+        "codeFonctionnel": "046",
+        "acronymes": "",
+        "ref": "chirurgie obesite morbide",
+        "refSynonymes": "gastrectomie longitudinale,Sleeve gastrectomy,Bypass,anneau gastrique ajustable,obèse"
+      },
+      {
+        "code": "00040026",
+        "libelle": "Plaies des tendons de la main - traitement chirurgical",
+        "codeFonctionnel": "048",
+        "acronymes": "",
+        "ref": "plaies tendons main traitement chirurgical",
+        "refSynonymes": "lésions des tendons,traumatique, tendineuse,extenseurs,section,fléchisseurs, déchirure des tendons"
+      },
+      {
+        "code": "00040027",
+        "libelle": "Sinus pilonidal - traitement chirurgical",
+        "codeFonctionnel": "038",
+        "acronymes": "SP, KP",
+        "ref": "sinus pilonidal traitement chirurgical",
+        "refSynonymes": "kyste pilonidal,pileux,folliculaire de la peau, interfessier, abcès,  sinus saccro-coccygien"
+      },
+      {
+        "code": "00040028",
+        "libelle": "Ténosynovectomie des muscles de la main",
+        "codeFonctionnel": "041",
+        "acronymes": "TSMH",
+        "ref": "tenosynovectomie muscles main",
+        "refSynonymes": "tendinite de De Quervain,tendons,téno-synovite, excision synoviale, doigt à ressort"
+      },
+      {
+        "code": "00040029",
+        "libelle": "Rupture du tendon d'Achille - traitement chirurgical",
+        "codeFonctionnel": "052",
+        "acronymes": "RTA",
+        "ref": "rupture tendon achille traitement chirurgical",
+        "refSynonymes": "tendinite,déchirure,achiléenne"
+      },
+      {
+        "code": "00040030",
+        "libelle": "Plaies profondes de la main et des doigts - traitement chirurgical",
+        "codeFonctionnel": "047",
+        "acronymes": "",
+        "ref": "plaies profondes main doigts traitement chirurgical",
+        "refSynonymes": "lésions traumatiques des doigts et de la main,plaies ouvertes, écrasement"
+      },
+      {
+        "code": "00040031",
+        "libelle": "Abrasion de la muqueuse utérine",
+        "codeFonctionnel": "057",
+        "acronymes": "",
+        "ref": "abrasion muqueuse uterine",
+        "refSynonymes": "utérin,curetage pour polypes de l'utérus,hyperplasie de l'endomètre,métrorragies, hémorragies, perforation utérine, endométrite"
+      },
+      {
+        "code": "00040032",
+        "libelle": "Artériopathie oblitérante des membres inférieurs - revascularisation",
+        "codeFonctionnel": "061",
+        "acronymes": "AOMI,ACOMI,IAMI,MIG,MID,MI",
+        "ref": "arteriopathie obliterante membres inferieurs revascularisation",
+        "refSynonymes": "artérite,membres inférieurs,athérosclérose,athérome,artériosclérose, arthérome, angioplastie,stent,maladie de Buerger,pontage iliaque,poplité,artériopathie"
+      },
+      {
+        "code": "00040033",
+        "libelle": "Ablation de corps étranger profond de la cornée",
+        "codeFonctionnel": "053",
+        "acronymes": "",
+        "ref": "ablation corps etranger profond cornee",
+        "refSynonymes": "extraction d'un corps étranger de l'oeil,yeux,oculaire"
+      },
+      {
+        "code": "00041001",
+        "libelle": "Epicondylite latérale rebelle - traitement chirurgical ",
+        "codeFonctionnel": "058",
+        "acronymes": "TMS,",
+        "ref": "epicondylite laterale rebelle traitement chirurgical",
+        "refSynonymes": "coude,musculo-squelettique,tennis elbow, tendinite des épicondyliens latéraux"
+      },
+      {
+        "code": "00041002",
+        "libelle": "Exérèse d'une tumeur lipomateuse bénigne",
+        "codeFonctionnel": "059",
+        "acronymes": "",
+        "ref": "exerese une tumeur lipomateuse benigne",
+        "refSynonymes": "lipome,tissu sous cutané,kyste,lipomatose"
+      },
+      {
+        "code": "00041003",
+        "libelle": "Exérèse des polypes du colonet/ou du rectum par coloscopie totale",
+        "codeFonctionnel": "054",
+        "acronymes": "",
+        "ref": "exerese polypes colonet rectum coloscopie totale",
+        "refSynonymes": "polypose du colon,endoscopie digestive,colorectal,adénome colique,polypectomie, caecum, sigmoïde"
+      },
+      {
+        "code": "00041004",
+        "libelle": "Hypertrophie bénigne de prostate - traitement chirurgical ",
+        "codeFonctionnel": "055",
+        "acronymes": "RTU, HBP",
+        "ref": "hypertrophie benigne prostate traitement chirurgical",
+        "refSynonymes": "adénome de la prostate,hyperplasie bénigne,résection transurétrale,adénomectomie, endoscopique"
+      },
+      {
+        "code": "00041005",
+        "libelle": "Incontinence urinaire d'effort chez la femme - traitement chirurgical",
+        "codeFonctionnel": "056",
+        "acronymes": "TVT,",
+        "ref": "incontinence urinaire effort chez femme traitement chirurgical",
+        "refSynonymes": "fuites urinaires,bandelettes sous urétrales pour incontinence, sphincter artificiel, effort, regorgement,impériosité"
+      },
+      {
+        "code": "00050001",
+        "libelle": "Arthrose du genou - hors  arthroplastie par prothèse totale",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "arthrose genou hors arthroplastie prothese totale",
+        "refSynonymes": "gonarthrose, prothèse partielle"
+      },
+      {
+        "code": "00050002",
+        "libelle": "Rupture des tendons de la coiffe des rotateurs",
+        "codeFonctionnel": "018",
+        "acronymes": "",
+        "ref": "rupture tendons coiffe rotateurs",
+        "refSynonymes": "déchirure,tendinite calcifiante de l'épaule,sus-épineux,infraépineux,sous-scapulaire,tendinopathie,scapulalgie"
+      },
+      {
+        "code": "00050003",
+        "libelle": "Tendinopathie de la coiffe des rotateurs",
+        "codeFonctionnel": "019",
+        "acronymes": "PSH,PASH",
+        "ref": "tendinopathie coiffe rotateurs",
+        "refSynonymes": ",tendinite,sus-épineux,périarthrite,tendinite du biceps, bursite,coiffe,scapulalgie,ténosite,tendinite calcifiante de l'épaule"
+      },
+      {
+        "code": "00060001",
+        "libelle": "Entorse et foulure de la cheville",
+        "codeFonctionnel": "011",
+        "acronymes": "",
+        "ref": "entorse foulure cheville",
+        "refSynonymes": "torsion,élongation ,rupture de ligament,étirement"
+      },
+      {
+        "code": "00060002",
+        "libelle": "Entorse du ligament collatéral médial du genou",
+        "codeFonctionnel": "017",
+        "acronymes": "LLI",
+        "ref": "entorse ligament collateral medial genou",
+        "refSynonymes": "foulure, torsion de genou,rupture de ligaments,étirement,déchirure,laxité,latéral interne"
+      },
+      {
+        "code": "00060004",
+        "libelle": "Fracture de la cheville",
+        "codeFonctionnel": "049",
+        "acronymes": "",
+        "ref": "fracture cheville",
+        "refSynonymes": "péronée,extrémité inférieure du péronée, malléole interne,externe,bi-malléolaire,tri-malléolaire,complexe ,supramalléolaire"
+      },
+      {
+        "code": "00060006",
+        "libelle": "Fracture du tibia et de la fibula - diaphyse",
+        "codeFonctionnel": "023",
+        "acronymes": "",
+        "ref": "fracture tibia fibula diaphyse",
+        "refSynonymes": "jambe,péronée"
+      },
+      {
+        "code": "00060007",
+        "libelle": "Fracture de la clavicule ou de la scapula - non opérée",
+        "codeFonctionnel": "043",
+        "acronymes": "",
+        "ref": "fracture clavicule scapula non operee",
+        "refSynonymes": "épaule,omoplate,ceinture scapulaire, extrémité ,acromion,apophyse coracoïde"
+      },
+      {
+        "code": "00060008",
+        "libelle": "Fracture de l'extrémité inférieure du radius",
+        "codeFonctionnel": "039",
+        "acronymes": "",
+        "ref": "fracture extremite inferieure radius",
+        "refSynonymes": "poignet,Pouteau Colles,Goyrand Smith"
+      },
+      {
+        "code": "00060009",
+        "libelle": "Fracture de l'extrémité supérieure de l'humérus",
+        "codeFonctionnel": "044",
+        "acronymes": "",
+        "ref": "fracture extremite superieure humerus",
+        "refSynonymes": "épaule,tête,col,épaule,trochiter"
+      },
+      {
+        "code": "00060010",
+        "libelle": "Fracture des os de la main - phalange et métacarpe",
+        "codeFonctionnel": "050",
+        "acronymes": "",
+        "ref": "fracture os main phalange metacarpe",
+        "refSynonymes": "doigt,métacarpiens,pouce ,index,annulaire"
+      },
+      {
+        "code": "00060011",
+        "libelle": "Fracture du coude",
+        "codeFonctionnel": "042",
+        "acronymes": "",
+        "ref": "fracture coude",
+        "refSynonymes": "l'extrémité inférieure de l'humérus,tête radiale,l'olécrâne Monteggia,apophyse coronoïde du coude"
+      },
+      {
+        "code": "00060012",
+        "libelle": "Fracture du scaphoïde de la main",
+        "codeFonctionnel": "040",
+        "acronymes": "",
+        "ref": "fracture scaphoide main",
+        "refSynonymes": "poignet,carpe"
+      },
+      {
+        "code": "00060013",
+        "libelle": "Entorse du poignet",
+        "codeFonctionnel": "063",
+        "acronymes": "",
+        "ref": "entorse poignet",
+        "refSynonymes": "foulure ,lésion du scapholunaire,lunotriquétrale, articulation carpienne, radiocarpienne, ligament radiocarpien"
+      },
+      {
+        "code": "00060014",
+        "libelle": "Fracture de côte",
+        "codeFonctionnel": "066",
+        "acronymes": "",
+        "ref": "fracture cote",
+        "refSynonymes": "gril costal,volet, costale"
+      },
+      {
+        "code": "00060015",
+        "libelle": "Fracture du calcanéum",
+        "codeFonctionnel": "065",
+        "acronymes": "",
+        "ref": "fracture calcaneum",
+        "refSynonymes": "talus,pied"
+      },
+      {
+        "code": "00060016",
+        "libelle": "Fracture du pied - phalange et métatarse",
+        "codeFonctionnel": "064",
+        "acronymes": "",
+        "ref": "fracture pied phalange metatarse",
+        "refSynonymes": "orteil, chopart, lisfranc"
+      },
+      {
+        "code": "00060099",
+        "libelle": "Lésion traumatique de muscles et de tendons d'une partie du corps non précisée",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "lesion traumatique muscles tendons une partie corps non precisee",
+        "refSynonymes": "claquage, arrachement, déchirure, élongation, lacération, section, rupture"
+      },
+      {
+        "code": "00070001",
+        "libelle": "Infarctus du myocarde - SCA - traitement non invasif ",
+        "codeFonctionnel": "024",
+        "acronymes": "IDM,SCA,IMNQ,IMQ",
+        "ref": "infarctus myocarde sca traitement non invasif",
+        "refSynonymes": "nécrose du myocarde,crise cardiaque,ischémie,insuffisance coronarienne"
+      },
+      {
+        "code": "00070002",
+        "libelle": "Infarctus du myocarde - SCA - avec revascularisation",
+        "codeFonctionnel": "025",
+        "acronymes": "ACP,ACTP,ATC, PAC",
+        "ref": "infarctus myocarde sca revascularisation",
+        "refSynonymes": "aorto,angioplastie,coronaire,stents pontage, dilatation, artères,transcutanée, nécrose du myocarde,crise cardiaque,ischémie,insuffisance coronarienne"
+      },
+      {
+        "code": "00070003",
+        "libelle": "Ulcère de jambe à prédominance veineuse",
+        "codeFonctionnel": "060",
+        "acronymes": "",
+        "ref": "ulcere jambe predominance veineuse",
+        "refSynonymes": "plaie de jambe d'origine veineuse,ulcère variqueux,varice ulcérée"
+      },
+      {
+        "code": "00080002",
+        "libelle": "Surveillance d'une grossesse à risque",
+        "codeFonctionnel": "999",
+        "acronymes": "FC,MAP,GEU",
+        "ref": "surveillance une grossesse risque",
+        "refSynonymes": "grossesse gémellaire,multiple,complication,contractions,menace de fausse couche,menace accouchement prématuré, grossesse pathologique "
+      },
+      {
+        "code": "00080001",
+        "libelle": "Interruption de grossesse",
+        "codeFonctionnel": "999",
+        "acronymes": "IVG,IMG,ITG",
+        "ref": "interruption grossesse",
+        "refSynonymes": "avortement, grossesse extra-utérine"
+      },
+      {
+        "code": "01000001",
+        "libelle": "Artériopathie oblitérante des membres inférieurs - non opéré",
+        "codeFonctionnel": "999",
+        "acronymes": "AOMI,ACOMI,IAMI, MID, MIG, MI",
+        "ref": "arteriopathie obliterante membres inferieurs non opere",
+        "refSynonymes": "artérite,athérosclérose,artériosclérose,athérome,maladie de Buerger,thromboangéite"
+      },
+      {
+        "code": "01000003",
+        "libelle": "Affection de la thyroïde - non opéré",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "affection thyroide non opere",
+        "refSynonymes": "nodule thyroïdien,hyperthyroïdie,hypothyroïdie,maladie de Basedow,hashimoto,goître,thyrotoxicose,thyroïdite"
+      },
+      {
+        "code": "01000005",
+        "libelle": "Epicondylite latérale - non opéré",
+        "codeFonctionnel": "999",
+        "acronymes": "TMS",
+        "ref": "epicondylite laterale non opere",
+        "refSynonymes": "coude,tennis elbow,musculo-squelettique,  tendinite des épicondyliens latéraux"
+      },
+      {
+        "code": "01000006",
+        "libelle": "Hémorroïdes - non opéré - complications",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "hemorroides non opere complications",
+        "refSynonymes": "thrombose,procidentes,saignements hémorroïdaires, prolapsus"
+      },
+      {
+        "code": "01000007",
+        "libelle": "Hypertrophie bénigne de la prostate compliquée - non opéré ",
+        "codeFonctionnel": "999",
+        "acronymes": "HBP",
+        "ref": "hypertrophie benigne prostate compliquee non opere",
+        "refSynonymes": "adénome,hyperplasie bénigne de la prostate,retention urinaire aiguë,infection"
+      },
+      {
+        "code": "01000008",
+        "libelle": "Lésions anales - non opéré",
+        "codeFonctionnel": "999",
+        "acronymes": "LAP",
+        "ref": "lesions anales non opere",
+        "refSynonymes": "abcès,polype,fissures anales,anite,fistule,lésion ano-périnéale"
+      },
+      {
+        "code": "01000009",
+        "libelle": "Lésions méniscales - non opéré",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "lesions meniscales non opere",
+        "refSynonymes": "pincement du ménisque,fissure,déchirure,dégénérescence,désinsertion,rupture en anse de seau,méniscose,kyste"
+      },
+      {
+        "code": "01000010",
+        "libelle": "Compression du nerf ulnaire au coude - non opéré",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "compression nerf ulnaire coude non opere",
+        "refSynonymes": "coude, cubital"
+      },
+      {
+        "code": "01000011",
+        "libelle": "Entorse du ligament croisé antérieur - non opéré",
+        "codeFonctionnel": "999",
+        "acronymes": "LCA",
+        "ref": "entorse ligament croise anterieur non opere",
+        "refSynonymes": "entorse du genou, foulure, torsion, rupture"
+      },
+      {
+        "code": "01000012",
+        "libelle": "Accident vasculaire cérébral",
+        "codeFonctionnel": "999",
+        "acronymes": "AVC,AIT",
+        "ref": "accident vasculaire cerebral",
+        "refSynonymes": "ictus ,ischémique transitoire,hémiplégie,hémorragique,aphasie,hémiparésie, séquelles"
+      },
+      {
+        "code": "01000013",
+        "libelle": "Asthme - complications",
+        "codeFonctionnel": "999",
+        "acronymes": "AAG",
+        "ref": "asthme complications",
+        "refSynonymes": "syndrome de Fernand Widal, état de mal asthmatique,crise,exacerbation,dyspnée "
+      },
+      {
+        "code": "01000014",
+        "libelle": "Diabète - complications",
+        "codeFonctionnel": "999",
+        "acronymes": "DT1,DT2,DB1,DB2,DBI,DBII,DID,DNID,DS1,DS2,DSI,DSII,DSID,DSNID",
+        "ref": "diabete complications",
+        "refSynonymes": "rétinopathie, neuropathie"
+      },
+      {
+        "code": "01000015",
+        "libelle": "Hépatite virale chronique",
+        "codeFonctionnel": "999",
+        "acronymes": "VHB,VHC,VHD",
+        "ref": "hepatite virale chronique",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000016",
+        "libelle": "Hypertension artérielle essentielle - complications",
+        "codeFonctionnel": "999",
+        "acronymes": "HTA,HTRV",
+        "ref": "hypertension arterielle essentielle complications",
+        "refSynonymes": "sténose artères rénales,cardiopathie hypertensive,encéphalopathie,poussée"
+      },
+      {
+        "code": "01000017",
+        "libelle": "Immunodéficience humaine virale ",
+        "codeFonctionnel": "999",
+        "acronymes": "VIH,HIV,SIDA,AIDS",
+        "ref": "immunodeficience humaine virale",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000018",
+        "libelle": "Maladie de Crohn",
+        "codeFonctionnel": "999",
+        "acronymes": "MICI",
+        "ref": "maladie crohn",
+        "refSynonymes": "granulomateuse,iléite terminale,entérite régionale,entérite de Crohn,iléocolite,iléal,pancolite, inflammatoire  chronique, intestinale"
+      },
+      {
+        "code": "01000019",
+        "libelle": "Maladie de Parkinson",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "maladie parkinson",
+        "refSynonymes": "syndrome, akinésie,hypertonie, rigidité, tremblements"
+      },
+      {
+        "code": "01000020",
+        "libelle": "Maladies chroniques actives du foie et cirrhoses",
+        "codeFonctionnel": "999",
+        "acronymes": "OH",
+        "ref": "maladies chroniques actives foie cirrhoses",
+        "refSynonymes": "post-hépatitique, alcool, virale,angiocholite, hémochromatose, fibrose,hépatique, biliaire, éthylisme, stéato hépatite, NASH,auto immune,biliaire primitive"
+      },
+      {
+        "code": "01000021",
+        "libelle": "Polyarthrite rhumatoïde",
+        "codeFonctionnel": "999",
+        "acronymes": "PR,PCE",
+        "ref": "polyarthrite rhumatoide",
+        "refSynonymes": "arthrite rhumatoïde,juvénile,polyarthrite, séronégative,polyarthropathie inflammatoire"
+      },
+      {
+        "code": "01000022",
+        "libelle": "Rectocolite hémorragique",
+        "codeFonctionnel": "999",
+        "acronymes": "RCH,MICI",
+        "ref": "rectocolite hemorragique",
+        "refSynonymes": "iléocolite ulcéreuse,rectite,pancolite,intestinale,rectosigmoïdite,entérocolite,inflammatoire chronique de l'intestin"
+      },
+      {
+        "code": "01000023",
+        "libelle": "Spondylarthrite ankylosante",
+        "codeFonctionnel": "999",
+        "acronymes": "SPA",
+        "ref": "spondylarthrite ankylosante",
+        "refSynonymes": "pelvispondylite rhumatismale,polyarthrite, sacro-iléite"
+      },
+      {
+        "code": "01000024",
+        "libelle": "Syndrome de Guillain Barré",
+        "codeFonctionnel": "999",
+        "acronymes": "SGB,PDIA",
+        "ref": "syndrome guillain barre",
+        "refSynonymes": "polyradiculonévrite"
+      },
+      {
+        "code": "01000025",
+        "libelle": "Trouble affectif bipolaire ",
+        "codeFonctionnel": "999",
+        "acronymes": "PMD,TB1,TB2,MAB, TBP",
+        "ref": "trouble affectif bipolaire",
+        "refSynonymes": "maniaque, Psychose maniaco-dépressive"
+      },
+      {
+        "code": "01000026",
+        "libelle": "Trouble obsessionnel compulsif",
+        "codeFonctionnel": "999",
+        "acronymes": "TOC",
+        "ref": "trouble obsessionnel compulsif",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000028",
+        "libelle": "Tumeur maligne du col de l'utérus",
+        "codeFonctionnel": "999",
+        "acronymes": "TM,K,ADK",
+        "ref": "tumeur maligne col uterus",
+        "refSynonymes": "carcinome ,cancer,adénocarcinome,néoplasie"
+      },
+      {
+        "code": "01000029",
+        "libelle": "Tumeur maligne du colon",
+        "codeFonctionnel": "999",
+        "acronymes": "TM,K,ADK",
+        "ref": "tumeur maligne colon",
+        "refSynonymes": "adénocarcinome,cancer,néoplasie, colorectal,sigmoïde"
+      },
+      {
+        "code": "01000031",
+        "libelle": "Tumeur maligne des bronches et du poumon",
+        "codeFonctionnel": "999",
+        "acronymes": "CBPC,CBNPC,TM,ADK,K",
+        "ref": "tumeur maligne bronches poumon",
+        "refSynonymes": "adenocarcinome ,carcinome, bronchique,cancer,broncho-pulmonaire,pulmonaire,néoplasie"
+      },
+      {
+        "code": "01000032",
+        "libelle": "Tumeur maligne du sein",
+        "codeFonctionnel": "999",
+        "acronymes": "TM,ADK, K",
+        "ref": "tumeur maligne sein",
+        "refSynonymes": "sarcome, mammaire, carcinome, cancer, adénocarcinome, néoplasie"
+      },
+      {
+        "code": "01000033",
+        "libelle": "Tumeur maligne prostate",
+        "codeFonctionnel": "999",
+        "acronymes": "TM,ADK, K",
+        "ref": "tumeur maligne prostate",
+        "refSynonymes": "cancer, carcinome, adénocarcinome, néoplasie"
+      },
+      {
+        "code": "01000034",
+        "libelle": "Tumeur maligne thyroïde",
+        "codeFonctionnel": "999",
+        "acronymes": "TM,ADK, K, CMT",
+        "ref": "tumeur maligne thyroide",
+        "refSynonymes": "carcinome néoplasie, cancer, adénocarcinome"
+      },
+      {
+        "code": "01000035",
+        "libelle": "Abcès cutané furoncle et anthrax",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "abces cutane furoncle anthrax",
+        "refSynonymes": "furonculose,maladie de Verneuil,kyste sébacé infecté,folliculite"
+      },
+      {
+        "code": "01000036",
+        "libelle": "Brûlures cutanées sévères",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "brûlures cutanees severes",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000037",
+        "libelle": "Conjonctivite",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "conjonctivite",
+        "refSynonymes": "oeil rouge,yeux rouges, inflammation de la conjonctive"
+      },
+      {
+        "code": "01000038",
+        "libelle": "Décollement et déchirure de la rétine",
+        "codeFonctionnel": "999",
+        "acronymes": "DR,DRR",
+        "ref": "decollement dechirure retine",
+        "refSynonymes": "vision, baisse de l'acuité visuelle,rétine rhegmatogène,vue, rétinopathie exsudative"
+      },
+      {
+        "code": "01000039",
+        "libelle": "Encéphalite",
+        "codeFonctionnel": "999",
+        "acronymes": "CMV",
+        "ref": "encephalite",
+        "refSynonymes": "méningo-encéphalite,encéphalopathie, méningoencéphalopathie, herpès"
+      },
+      {
+        "code": "01000041",
+        "libelle": "Laryngite et trachéite aigües",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "laryngite tracheite aigues",
+        "refSynonymes": "dysphonie, rhinotrachéite,laryngotrachéite,trachéo-bronchite, toux"
+      },
+      {
+        "code": "01000042",
+        "libelle": "Méningite",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "meningite",
+        "refSynonymes": "infection méningée"
+      },
+      {
+        "code": "01000044",
+        "libelle": "Panaris ou phlegmon",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "panaris phlegmon",
+        "refSynonymes": "abcès digital,Infection profonde des tissus mous"
+      },
+      {
+        "code": "01000045",
+        "libelle": "Psoriasis",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "psoriasis",
+        "refSynonymes": "rhumatisme psoriasique,dermatose"
+      },
+      {
+        "code": "01000047",
+        "libelle": "Urétrite et syndrome urétral",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "uretrite syndrome uretral",
+        "refSynonymes": "blenorragie, uretre"
+      },
+      {
+        "code": "01000048",
+        "libelle": "Traumatisme crânien",
+        "codeFonctionnel": "999",
+        "acronymes": "TC,TC PC,PDC",
+        "ref": "traumatisme cranien",
+        "refSynonymes": "commotion cérébrale,crâne,perte de connaissance,lésion, tête"
+      },
+      {
+        "code": "01000050",
+        "libelle": "Fibromyalgie",
+        "codeFonctionnel": "999",
+        "acronymes": "SPID",
+        "ref": "fibromyalgie",
+        "refSynonymes": "syndrome polyalgique idiopathique diffus,douleurs diffuses,myalgies, polymyalgies"
+      },
+      {
+        "code": "01000051",
+        "libelle": "Pneumopathie infectieuse",
+        "codeFonctionnel": "999",
+        "acronymes": "PNP",
+        "ref": "pneumopathie infectieuse",
+        "refSynonymes": "pneumonie, bronchopneumopathie,légionellose, pneumocoque,dyspnée"
+      },
+      {
+        "code": "01000052",
+        "libelle": "Pyélonéphrite aiguë",
+        "codeFonctionnel": "999",
+        "acronymes": "PNA",
+        "ref": "pyelonephrite aigue",
+        "refSynonymes": "infection urinaire haute"
+      },
+      {
+        "code": "01000053",
+        "libelle": "Otite",
+        "codeFonctionnel": "999",
+        "acronymes": "OMA,ORL",
+        "ref": "otite",
+        "refSynonymes": "otite moyenne aiguë, oreille"
+      },
+      {
+        "code": "01000054",
+        "libelle": "Emphysème pulmonaire - complications",
+        "codeFonctionnel": "999",
+        "acronymes": "IRC,IRCO, BPCO ",
+        "ref": "emphyseme pulmonaire complications",
+        "refSynonymes": "insuffisance respiratoire chronique grave,poumon,dyspnée"
+      },
+      {
+        "code": "01000055",
+        "libelle": "Cystite",
+        "codeFonctionnel": "999",
+        "acronymes": "IU",
+        "ref": "cystite",
+        "refSynonymes": "infection urinaire basse, vessie"
+      },
+      {
+        "code": "01000056",
+        "libelle": "Glaucome",
+        "codeFonctionnel": "999",
+        "acronymes": "GAFA, GCAO, GFA, GPAO,HTO",
+        "ref": "glaucome",
+        "refSynonymes": "hypertension oculaire, neuropathie optique glaucomateuse"
+      },
+      {
+        "code": "01000057",
+        "libelle": "Glomérulonéphrite aiguë",
+        "codeFonctionnel": "999",
+        "acronymes": "GNA",
+        "ref": "glomerulonephrite aigue",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000058",
+        "libelle": "Embolie pulmonaire",
+        "codeFonctionnel": "999",
+        "acronymes": "EP",
+        "ref": "embolie pulmonaire",
+        "refSynonymes": "poumon,dyspnée, douleur thoracique"
+      },
+      {
+        "code": "01000059",
+        "libelle": "Erysipèle",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "erysipele",
+        "refSynonymes": "dermohypodermite,dermite,dermatite,dermatose"
+      },
+      {
+        "code": "01000060",
+        "libelle": "Eczéma",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "eczema",
+        "refSynonymes": "dermite atopique,contact,dermatite,dermatose,allergie"
+      },
+      {
+        "code": "01000061",
+        "libelle": "Calcul du rein et/ou de l'uretère compliqué",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "calcul rein uretere complique",
+        "refSynonymes": "calculs rénaux, lithotritie,lithotripsie,coliques néphrétiques,  lithiase urinaire"
+      },
+      {
+        "code": "01000062",
+        "libelle": "Bronchite chronique - complications",
+        "codeFonctionnel": "999",
+        "acronymes": "BPCO",
+        "ref": "bronchite chronique complications",
+        "refSynonymes": "bronchopneumopathie obstructive,bronchopathie, surinfection, décompensation,dyspnée"
+      },
+      {
+        "code": "01000063",
+        "libelle": "Maladie de Lyme",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "maladie lyme",
+        "refSynonymes": "borréliose,tique"
+      },
+      {
+        "code": "01000064",
+        "libelle": "Coxarthrose - hors arthroplastie de hanche",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "coxarthrose hors arthroplastie hanche",
+        "refSynonymes": "arthrose de hanche,luxation congénitale"
+      },
+      {
+        "code": "01000065",
+        "libelle": "Epilepsie",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "epilepsie",
+        "refSynonymes": "crises comitiales, petit mal,grand mal,Bravais Jackson,partielles, convulsions, généralisée,tonico clonique"
+      },
+      {
+        "code": "01000066",
+        "libelle": "Polynévrite",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "polynevrite",
+        "refSynonymes": "neuropathie,périphérique"
+      },
+      {
+        "code": "01000067",
+        "libelle": "Schizophrénie",
+        "codeFonctionnel": "999",
+        "acronymes": "SCZ",
+        "ref": "schizophrenie",
+        "refSynonymes": "catatonie,hébéphrénie,psychose,paranoide,schizoïde,délire, hallucinations, agitation"
+      },
+      {
+        "code": "01000068",
+        "libelle": "Troubles du rythme cardiaque et de la conduction",
+        "codeFonctionnel": "999",
+        "acronymes": "FA,TAC/FA,ESV,AC/FA,ACFA, BAV, BBD, BBG",
+        "ref": "troubles rythme cardiaque conduction",
+        "refSynonymes": "Fibrillation, auriculaire, arythmie,bradycardie,tachycardie, paroxistique, ventriculaire, extrasystoles,Wolf, Parkinson,White, oreillette,flutter,Bouveret, bloc"
+      },
+      {
+        "code": "01000069",
+        "libelle": "Troubles mentaux et du comportement liés à l'utilisation d'alcool",
+        "codeFonctionnel": "999",
+        "acronymes": "DT, IAA, OH",
+        "ref": "troubles mentaux comportement lies utilisation alcool",
+        "refSynonymes": "éthylisme,énolisme,exogénose,sevrage,addiction,delirium tremens, Korsakoff, Gayet Wernicke ,addiction"
+      },
+      {
+        "code": "01000070",
+        "libelle": "Tuberculose",
+        "codeFonctionnel": "999",
+        "acronymes": "BK, TBC",
+        "ref": "tuberculose",
+        "refSynonymes": "Mal de Pott,méningite tuberculeuse,primo infection"
+      },
+      {
+        "code": "01000071",
+        "libelle": "Valvulopathies",
+        "codeFonctionnel": "999",
+        "acronymes": "IM,IT,RA,RAC,RAO,RM,RT,IA,IAO",
+        "ref": "valvulopathies",
+        "refSynonymes": "sténose, retrecissement,mitrale,aortique, pulmonaire, tricuspide, insuffisance valve, prothèse valvulaire"
+      },
+      {
+        "code": "01000072",
+        "libelle": "Rhinopharyngite",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "rhinopharyngite",
+        "refSynonymes": "oropharyngite,febrile,virale, coryza, pharyngite, rhume"
+      },
+      {
+        "code": "01000073",
+        "libelle": "Hépatite virale aigue",
+        "codeFonctionnel": "999",
+        "acronymes": "VHA,VHB, VHC",
+        "ref": "hepatite virale aigue",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000074",
+        "libelle": "Insuffisance rénale chronique décompensée",
+        "codeFonctionnel": "999",
+        "acronymes": "IRC",
+        "ref": "insuffisance renale chronique decompensee",
+        "refSynonymes": "dialyse,glomérulopathie,néphropathie"
+      },
+      {
+        "code": "01000075",
+        "libelle": "Insuffisance respiratoire chronique",
+        "codeFonctionnel": "999",
+        "acronymes": "IRC, IRCO, BPCO",
+        "ref": "insuffisance respiratoire chronique",
+        "refSynonymes": "décompensation, dyspnée"
+      },
+      {
+        "code": "01000076",
+        "libelle": "Sclérose en plaques",
+        "codeFonctionnel": "999",
+        "acronymes": "SEP,NORB",
+        "ref": "sclerose en plaques",
+        "refSynonymes": "névrite optique rétro bulbaire, myélite, poussée"
+      },
+      {
+        "code": "01000077",
+        "libelle": "Migraine réfractaire",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "migraine refractaire",
+        "refSynonymes": "céphalée,état de mal migraineux"
+      },
+      {
+        "code": "01000078",
+        "libelle": "Avortement spontané",
+        "codeFonctionnel": "999",
+        "acronymes": "FCS",
+        "ref": "avortement spontane",
+        "refSynonymes": "avortement spontané, fausse couche"
+      },
+      {
+        "code": "01000079",
+        "libelle": "Lithiase vésiculaire - complications",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "lithiase vesiculaire complications",
+        "refSynonymes": "cholecystite, calculs vésiculaires, coliques"
+      },
+      {
+        "code": "01000080",
+        "libelle": "Luxation de l'épaule",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "luxation epaule",
+        "refSynonymes": "instabilité de l'épaule,Bankart,butée de l'épaule"
+      },
+      {
+        "code": "01000081",
+        "libelle": "Polytraumatisme",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "polytraumatisme",
+        "refSynonymes": "contusions, multiples"
+      },
+      {
+        "code": "01000083",
+        "libelle": "Rhinite allergique",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "rhinite allergique",
+        "refSynonymes": "rhume des foins,allergie au pollen, rhinite saisonnière,congestion nasale"
+      },
+      {
+        "code": "01000085",
+        "libelle": "Anxiété généralisée",
+        "codeFonctionnel": "999",
+        "acronymes": "TAG",
+        "ref": "anxiete generalisee",
+        "refSynonymes": "anxiété,stress, insomnie,sommeil,angoisse,panique, névrose"
+      },
+      {
+        "code": "01000087",
+        "libelle": "Entorse, luxations - autres localisations",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "entorse luxations autres localisations",
+        "refSynonymes": "foulures,épaule, clavicule, tibia,bras, doigt,avant-bras, orteil, cuboide,  pouce, annulaire, coccyx, scaphoide, rachis, mandibule, rotule, index, vertèbre,cervical,bassin,os naviculaire,  ligaments"
+      },
+      {
+        "code": "01000089",
+        "libelle": "Autres fractures",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "autres fractures",
+        "refSynonymes": " avant-bras,bras,cuboide,coccyx,scaphoide,rachis,mandibule,rotule,vertèbre,cervical,bassin,os naviculaire,sacrum,fémur,nez,radius,col fémoral,genou"
+      },
+      {
+        "code": "01000090",
+        "libelle": "Prostatite",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "prostatite",
+        "refSynonymes": "Prostate, inflammation de la prostate, "
+      },
+      {
+        "code": "01000091",
+        "libelle": "Lymphome",
+        "codeFonctionnel": "999",
+        "acronymes": "LMNH,LNH,MDH",
+        "ref": "lymphome",
+        "refSynonymes": "Hodgkin, non hodgkin, hémopathie,tumeur,cancer, néoplasie"
+      },
+      {
+        "code": "01000092",
+        "libelle": "Leucémie",
+        "codeFonctionnel": "999",
+        "acronymes": "LMC,LMA,LAL,LLC,LLA",
+        "ref": "leucemie",
+        "refSynonymes": "lymphoblastique,lymphoïde,hémopathie,tumeur,cancer, néoplasie"
+      },
+      {
+        "code": "01000093",
+        "libelle": "Plaie ouverte de la tête",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "plaie ouverte tete",
+        "refSynonymes": "ulcération,excoriation, face, joue, paupière, cuir chevelu, nez, oreille, lèvre, arcade sourcilière, front"
+      },
+      {
+        "code": "01000096",
+        "libelle": "Plaie invalidante - autres localisations",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "plaie invalidante autres localisations",
+        "refSynonymes": "pied, cheville, jambe,genou,épaule,bras,coude, avant-bras, mollet,cuisse,ulcération,excoriation,tronc"
+      },
+      {
+        "code": "01000098",
+        "libelle": "Tumeur maligne de l'ovaire",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "tumeur maligne ovaire",
+        "refSynonymes": "cancer,carcinome,Krukenberg,néoplasie"
+      },
+      {
+        "code": "01000100",
+        "libelle": "Etat de stress post-traumatique",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "etat stress post-traumatique",
+        "refSynonymes": "souffrance au travail,burn-out,syndrôme épuisement professionnel,surmenage, bore-out, conflit, employeur, réactionnel, violence, menace de mort, attentat, agression, prise otage, catastrophe naturelle"
+      },
+      {
+        "code": "01000103",
+        "libelle": "Phlébite et thrombophlébite",
+        "codeFonctionnel": "999",
+        "acronymes": "TVP,TV,TVPMI,TVMI, TVPMIG, TVPMID, TVMIG,TVMID",
+        "ref": "phlebite thrombophlebite",
+        "refSynonymes": "thrombose veineuse, phlébite"
+      },
+      {
+        "code": "01000106",
+        "libelle": "Péritonite",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "peritonite",
+        "refSynonymes": "appendiciteabcès"
+      },
+      {
+        "code": "01000107",
+        "libelle": "Lésion superficielle de l'oeil",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "lesion superficielle oeil",
+        "refSynonymes": "cornée, projection,oculaire, abrasion, érosion, lacération "
+      },
+      {
+        "code": "01000108",
+        "libelle": "Pseudarthrose du scaphoïde de la main",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "pseudarthrose scaphoide main",
+        "refSynonymes": "poignet, carpe"
+      },
+      {
+        "code": "01000109",
+        "libelle": "Algoneurodystrophie",
+        "codeFonctionnel": "999",
+        "acronymes": "SRDC, SDRC",
+        "ref": "algoneurodystrophie",
+        "refSynonymes": "douloureux complexe,épaule,main, syndrome,capsulite rétractile de l'épaule"
+      },
+      {
+        "code": "01000110",
+        "libelle": "Insuffisance cardiaque",
+        "codeFonctionnel": "999",
+        "acronymes": "IC,ICD,ICG, IVG",
+        "ref": "insuffisance cardiaque",
+        "refSynonymes": "droite, gauche, cardiomyopathie, fraction, éjection"
+      },
+      {
+        "code": "01000112",
+        "libelle": "Syndrome abdominal aigu",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "syndrome abdominal aigu",
+        "refSynonymes": "épigastrique,spasmes,abdominaux,abdomen,ventre, algie,dlrs,dls"
+      },
+      {
+        "code": "01000113",
+        "libelle": "Polyarthralgie",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "polyarthralgie",
+        "refSynonymes": "ligamentaire,diffuse, inflammatoire,goutte"
+      },
+      {
+        "code": "01000114",
+        "libelle": "Symptômes pelviens invalidants (douleurs, hémorragies)",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "symptomes pelviens invalidants douleurs hemorragies",
+        "refSynonymes": "abdomino-pelvienne, gynéco, dysménorrhée, métrorragies, ménorragie"
+      },
+      {
+        "code": "01000116",
+        "libelle": "Douleurs thoraciques hors coronaropathie",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "douleurs thoraciques hors coronaropathie",
+        "refSynonymes": "costales,intercostale,basi,sterno-costal,vertébrale, côtes,névralgie,algie,dlrs,dls"
+      },
+      {
+        "code": "01000117",
+        "libelle": "Vertiges",
+        "codeFonctionnel": "999",
+        "acronymes": "PPB,VPPB,VPB",
+        "ref": "vertiges",
+        "refSynonymes": "sensation,vertigineuses,Meniere,vestibulaire,paroxystique,positionnel,rotatoire,bénin,périphérique, labyrinthite, oreille interne"
+      },
+      {
+        "code": "01000118",
+        "libelle": "Altération [Baisse] de l’état général",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "alteration baisse l’etat general",
+        "refSynonymes": "fatigue, asthénie, anorexie, amaigrissement"
+      },
+      {
+        "code": "01000119",
+        "libelle": "Autres douleurs du rachis",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "autres douleurs rachis",
+        "refSynonymes": "lombo-dorsalgie,hyperalgiques,rachidienne,lombo-fessalgie,rachialgie,dorso-lombaire,algie,lombarthrose"
+      },
+      {
+        "code": "01000120",
+        "libelle": "Ténosynovite de la main et/ou du poignet - non opéré",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "tenosynovite main poignet non opere",
+        "refSynonymes": "ténosite,De Quervain,tendons,pouce, doigt à ressort"
+      },
+      {
+        "code": "01000121",
+        "libelle": "Autres tendinites",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "autres tendinites",
+        "refSynonymes": "adducteurs,cuisse,calcifiante,quadriceps,coude,patte d'oie,fléchisseurs,moyen fessier,fessière,hanche,biceps,plante du pied, plantaire,talon, cheville,cervicale, bras, aponévrosite,talalgie,épine"
+      },
+      {
+        "code": "01000122",
+        "libelle": "Gonalgie",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "gonalgie",
+        "refSynonymes": "genou, entorse, traumatique, dégénérative, inflammatoire, épanchement articulaire"
+      },
+      {
+        "code": "01000123",
+        "libelle": "Endométriose",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "endometriose",
+        "refSynonymes": "Métrorragies,pelvienne, dysménorrhée"
+      },
+      {
+        "code": "01000127",
+        "libelle": "Autres tumeurs ",
+        "codeFonctionnel": "999",
+        "acronymes": "TM,K,ADK",
+        "ref": "autres tumeurs",
+        "refSynonymes": "cancer, carcinome, adénocarcinome, mélanome, peau, estomac, œsophage, foie, pancréas, digestif, lèvre, cavité buccale, pharynx, larynx, ORL, respiratoire, intrathoracique, os, cartilage, voies urinaires, rein, vessie,  génitaux, corps de l'utérus, endomètre, testicule, cerveau, cérébral, fosse postérieure, encéphale, système nerveux central, glandes endocrines, tissu mésothélial, tissus mous, myélome, hématopoïétique "
+      },
+      {
+        "code": "01000128",
+        "libelle": "Pneumothorax",
+        "codeFonctionnel": "999",
+        "acronymes": "PNO,PNOG,PNOD",
+        "ref": "pneumothorax",
+        "refSynonymes": "Idiopathique, cataménial, suffocant, compressif,dyspnée"
+      },
+      {
+        "code": "01000129",
+        "libelle": "Zona",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "zona",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000130",
+        "libelle": "Sarcoïdose",
+        "codeFonctionnel": "999",
+        "acronymes": "BBS",
+        "ref": "sarcoidose",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000131",
+        "libelle": "Angine de poitrine",
+        "codeFonctionnel": "999",
+        "acronymes": "MC,MCA",
+        "ref": "angine poitrine",
+        "refSynonymes": "angine de poitrine,insuffisance coronaire,coronarienne"
+      },
+      {
+        "code": "01000133",
+        "libelle": "Covid-19  symptomatique diagnostiqué (ou présumé) ",
+        "codeFonctionnel": "999",
+        "acronymes": "COV,SARS",
+        "ref": "covid-19 symptomatique diagnostique presume",
+        "refSynonymes": "coronavirus,pneumonie virale, sars-cov-2"
+      },
+      {
+        "code": "04002001",
+        "libelle": "Canal lombaire étroit - traitement chirurgical",
+        "codeFonctionnel": "062",
+        "acronymes": "",
+        "ref": "canal lombaire etroit traitement chirurgical",
+        "refSynonymes": "laminectomie,arthrectomie,hémiarthectomie, recalibrage, foraminotomie, arthrodèse"
+      },
+      {
+        "code": "01000154",
+        "libelle": "Autres maladies endocriniennes, nutritionnelles et métaboliques",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "autres maladies endocriniennes nutritionnelles metaboliques",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000155",
+        "libelle": "Autres affections de l'oeil et de ses annexes",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "autres affections oeil ses annexes",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000136",
+        "libelle": "Autres affections de l'oreille",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "autres affections oreille",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000137",
+        "libelle": "Autres maladies infectieuses et parasitaires",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "autres maladies infectieuses parasitaires",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000138",
+        "libelle": "Episode dépressif moyen",
+        "codeFonctionnel": "999",
+        "acronymes": "SD",
+        "ref": "episode depressif moyen",
+        "refSynonymes": "dépression, idées noires, réactionnel, insomnie, trouble de l'humeur, sommeil, caractérisé, anhédonie,incurie"
+      },
+      {
+        "code": "01000139",
+        "libelle": "Episode dépressif sévère",
+        "codeFonctionnel": "999",
+        "acronymes": "SD, TS",
+        "ref": "episode depressif severe",
+        "refSynonymes": "dépression caractérisée, majeure, vitale, suicidaire"
+      },
+      {
+        "code": "01000140",
+        "libelle": "Autres troubles mentaux et du comportement",
+        "codeFonctionnel": "999",
+        "acronymes": "BDA",
+        "ref": "autres troubles mentaux comportement",
+        "refSynonymes": "démence, Alzheimer, vasculaire, trouble de la personnalité, délire, trouble psychotique aigü transitoire,  trouble psychotique bref, bouffée délirante aigue, addiction, cocaïne, opiacés"
+      },
+      {
+        "code": "01000141",
+        "libelle": "Syndrome du canal carpien - traitement chirurgical",
+        "codeFonctionnel": "999",
+        "acronymes": "SCC,CC",
+        "ref": "syndrome canal carpien traitement chirurgical",
+        "refSynonymes": "poignet,compression du nerf médian,fourmillement de la main,paresthésie,dysesthésies"
+      },
+      {
+        "code": "01000142",
+        "libelle": "Autres maladies du système nerveux",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "autres maladies systeme nerveux",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000143",
+        "libelle": "Autres maladies de l'appareil circulatoire",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "autres maladies appareil circulatoire",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000144",
+        "libelle": "Autres maladies de l'appareil respiratoire",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "autres maladies appareil respiratoire",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000145",
+        "libelle": "Abcès dentaire",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "abces dentaire",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000146",
+        "libelle": "Extraction dentaire et autres chirurgies dentaires",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "extraction dentaire autres chirurgies dentaires",
+        "refSynonymes": "avulsion, dent de sagesse, alveolo,hyperalgique,dents, abcès,rage, extraction, dentaire, odontalgie,gingival,névralgie,algie,dlrs,dls"
+      },
+      {
+        "code": "01000147",
+        "libelle": "Autres maladies de l'appareil digestif",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "autres maladies appareil digestif",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000148",
+        "libelle": "Autres maladies de la peau et du tissu cellulaire sous-cutané",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "autres maladies peau tissu cellulaire sous-cutane",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000149",
+        "libelle": "Autres affections articulaires",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "autres affections articulaires",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000150",
+        "libelle": "Autres maladies systémiques du tissu conjonctif",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "autres maladies systemiques tissu conjonctif",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000151",
+        "libelle": "Autres maladies de l'appareil génito-urinaire",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "autres maladies appareil genito-urinaire",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000152",
+        "libelle": "Fièvre d'origine autre et inconnue",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "fievre origine autre inconnue",
+        "refSynonymes": ""
+      },
+      {
+        "code": "01000153",
+        "libelle": "Entorse du pied",
+        "codeFonctionnel": "999",
+        "acronymes": "",
+        "ref": "entorse pied",
+        "refSynonymes": "lisfranc, chopart, mediotarsien"
+      }
+    ],
+    "listeCategories": [
+      "Maladies du système ostéo-articulaire, des muscles et du tissu conjonctif",
+      "Troubles mentaux et du comportement",
+      "Lésions traumatiques",
+      "Tumeurs",
+      "Maladies de l'appareil circulatoire",
+      "Maladies infectieuses et parasitaires",
+      "Maladies du système nerveux",
+      "Maladies de l'appareil digestif",
+      "Maladies de l'appareil respiratoire",
+      "Autres maladies"
+    ],
+    "listeMotifsDuMoment": [
+      {
+        "ordre": 1,
+        "libelleCourt": "COVID-19 SYMPTOMATIQUE",
+        "dateDebut": "01/01",
+        "dateFin": "31/12",
+        "libelle": "Covid-19 Symptomatique",
+        "code": "01000133",
+        "duree": "NON"
+      },
+      {
+        "ordre": 2,
+        "libelleCourt": "GASTRO-ENTERITE",
+        "dateDebut": "01/12",
+        "dateFin": "31/05",
+        "libelle": "Gastro-entérite",
+        "code": "00010003",
+        "duree": "OUI"
+      },
+      {
+        "ordre": 3,
+        "libelleCourt": "GRIPPE SAISONNIERE",
+        "dateDebut": "01/01",
+        "dateFin": "30/04",
+        "libelle": "Grippe saisonnière",
+        "code": "00010004",
+        "duree": "OUI"
+      },
+      {
+        "ordre": 4,
+        "libelleCourt": "BRONCHITE",
+        "dateDebut": "01/01",
+        "dateFin": "30/04",
+        "libelle": "Bronchite aiguë sans comorbidité",
+        "code": "00010002",
+        "duree": "OUI"
+      },
+      {
+        "ordre": 5,
+        "libelleCourt": "RHINOPHARYNGITE",
+        "dateDebut": "01/10",
+        "dateFin": "30/04",
+        "libelle": "Rhinopharyngite",
+        "code": "01000072",
+        "duree": "NON"
+      }
+    ],
+    "motsIgnores": {
+      "listeMotsLucene": {
+        "listeMots": [
+          "chez",
+          "eues",
+          "serais",
+          "fûtes",
+          "serait",
+          "lui",
+          "eussions",
+          "est",
+          "étant",
+          "pour",
+          "avez",
+          "on",
+          "avions",
+          "ceci",
+          "serez",
+          "avec",
+          "moi",
+          "ou",
+          "eue",
+          "mon",
+          "son",
+          "eussiez",
+          "aurez",
+          "notre",
+          "nos",
+          "avais",
+          "avait",
+          "soi",
+          "une",
+          "seraient",
+          "eûmes",
+          "aurais",
+          "aurait",
+          "fûmes",
+          "du",
+          "eusse",
+          "étées",
+          "serions",
+          "des",
+          "aurions",
+          "fût",
+          "seront",
+          "sois",
+          "seriez",
+          "serons",
+          "soit",
+          "eût",
+          "aie",
+          "avons",
+          "ces",
+          "cet",
+          "de",
+          "eut",
+          "eus",
+          "ma",
+          "me",
+          "eusses",
+          "furent",
+          "eux",
+          "fus",
+          "fut",
+          "eu",
+          "leurs",
+          "ayez",
+          "les",
+          "aviez",
+          "auront",
+          "aurons",
+          "un",
+          "fussiez",
+          "elle",
+          "nous",
+          "eûtes",
+          "tu",
+          "soyez",
+          "ne",
+          "sans",
+          "en",
+          "et",
+          "es",
+          "étée",
+          "même",
+          "seras",
+          "cette",
+          "auraient",
+          "sommes",
+          "te",
+          "aux",
+          "quels",
+          "soyons",
+          "êtes",
+          "étais",
+          "quelles",
+          "était",
+          "étés",
+          "celà",
+          "leur",
+          "aies",
+          "ta",
+          "serai",
+          "fusse",
+          "fussions",
+          "auras",
+          "fussent",
+          "votre",
+          "se",
+          "auriez",
+          "aurai",
+          "le",
+          "étiez",
+          "sa",
+          "la",
+          "ce",
+          "tes",
+          "été",
+          "ses",
+          "toi",
+          "vous",
+          "sera",
+          "aient",
+          "par",
+          "étions",
+          "ici",
+          "pas",
+          "sur",
+          "avaient",
+          "ayant",
+          "ont",
+          "mes",
+          "quelle",
+          "étaient",
+          "ton",
+          "que",
+          "qu",
+          "eurent",
+          "vos",
+          "qui",
+          "fusses",
+          "mais",
+          "as",
+          "dans",
+          "il",
+          "au",
+          "je",
+          "ai",
+          "sont",
+          "quel",
+          "aura",
+          "soient",
+          "suis",
+          "ayons",
+          "ils",
+          "eussent"
+        ]
+      },
+      "listeMotsMetier": {
+        "listeMots": [
+          "aigu",
+          "aigue",
+          "aigues",
+          "aigus",
+          "bilat",
+          "bilater",
+          "bilatéral",
+          "bilatérale",
+          "chez",
+          "chronioque",
+          "chronique",
+          "chroniques",
+          "droit",
+          "droite",
+          "droites",
+          "drt",
+          "drte",
+          "dte",
+          "épisode",
+          "épisodes",
+          "état",
+          "états",
+          "gau",
+          "gauche",
+          "gauches",
+          "gch",
+          "gche",
+          "gches",
+          "invalidant",
+          "invalidante",
+          "invalidantes",
+          "invalidants",
+          "pb",
+          "pbl",
+          "pbls",
+          "pbm",
+          "pbms",
+          "pbs",
+          "problème",
+          "problèmes",
+          "s ",
+          "sd",
+          "sévère",
+          "sévères",
+          "suite",
+          "suites",
+          "synd",
+          "syndome",
+          "syndr",
+          "syndrme",
+          "syndrom",
+          "syndromes",
+          "tb",
+          "tbls",
+          "tbrl",
+          "tbrls",
+          "tbs",
+          "trb",
+          "trble",
+          "trbles",
+          "trbs",
+          "trouble",
+          "troubles",
+          "à",
+          "multiple",
+          "multiples"
+        ]
+      }
+    },
+    "typesTravail": "[\r\n  {\r\n    \"id\": 1,\r\n    \"types\": [\r\n      {\r\n        \"titre\": \"Travail léger\",\r\n        \"texte\": \"Charge ponctuelle < 10 kg ou charge répétée < 5 kg\"\r\n      },\r\n      {\r\n        \"titre\": \"Travail modéré\",\r\n        \"texte\": \"Charge ponctuelle < 25 kg ou charge répétée < 10 kg\"\r\n      },\r\n      {\r\n        \"titre\": \"Travail lourd\",\r\n        \"texte\": \"Charge > 25 kg\"\r\n      }\r\n    ]\r\n  },\r\n  {\r\n    \"id\": 2,\r\n    \"types\": [\r\n      {\r\n        \"titre\": \"Travail léger\",\r\n        \"texte\": \"Charge ponctuelle < 10 kg ou charge répétée < 5 kg\"\r\n      },\r\n      {\r\n        \"titre\": \"Travail modéré\",\r\n        \"texte\": \"Charge ponctuelle < 20 kg ou charge répétée < 10 kg\"\r\n      },\r\n      {\r\n        \"titre\": \"Travail lourd\",\r\n        \"texte\": \"Charge > 20 kg\"\r\n      }\r\n    ]\r\n  },\r\n  {\r\n    \"id\": 3,\r\n    \"types\": [\r\n      {\r\n        \"titre\": \"Travail léger\",\r\n        \"texte\": \"Charge ponctuelle < 10 kg ou charge répétée < 5 kg\"\r\n      },\r\n      {\r\n        \"titre\": \"Travail modéré\",\r\n        \"texte\": \"Charge ponctuelle > 10 kg ou charge répétée < 5 kg\"\r\n      },\r\n      {\r\n        \"titre\": \"Travail lourd\",\r\n        \"texte\": \"Charge > 25 kg\"\r\n      }\r\n    ]\r\n  }\r\n]\r\n"
+  }
+}

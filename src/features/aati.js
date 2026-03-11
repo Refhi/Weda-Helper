@@ -160,6 +160,21 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
 // depuis la page de prévisualisation de l'arrêt de travail
 addTweak('/BinaryData.aspx', "*sendDocToCompanion", async function () {
     console.log("[sendDocToCompanion] called");
+
+    // Détection du conflit avec l'extension Adobe Acrobat
+    // L'extension Adobe tente de charger ses propres scripts sur les pages PDF, ce qui est
+    // bloqué par la CSP de Weda (default-src 'none') et peut interférer avec l'envoi à Companion.
+    let adobeConflictAlerted = false;
+    document.addEventListener('securitypolicyviolation', function (e) {
+        if (!adobeConflictAlerted && e.blockedURI && e.blockedURI.includes('acrobat.adobe.com')) {
+            adobeConflictAlerted = true;
+            console.warn('[Weda-Helper] Conflit détecté avec l\'extension Adobe Acrobat :', e.blockedURI);
+            sendWedaNotif({
+                message: "Impression automatique de l’arrêt de travail impossible à cause de l’extension Adobe Acrobat. Veuillez la désactiver si vous souhaitez l’impression auto des arrêts de travail.",
+                icon: 'warning'
+            });
+        }
+    });
     // récupération des valeurs et options importantes
     const autoAATIexitTimestamp = await chrome.storage.local.get(['autoAATIexit']);
     const isRecentExit = Date.now() - autoAATIexitTimestamp.autoAATIexit < 10000;
@@ -336,86 +351,51 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
     const selecteurCategories = '.flexColumn select.entry';
     const selecteurSousCategories = '.flexColumn select.entry.ml10';
 
-    // Dictionnaire de synonymes médicaux pour améliorer la recherche
-    const synonymesMedicaux = {
-        // Système nerveux
-        'avc': ['accident', 'vasculaire', 'cérébral'],
-        'ulnaire': ['nerf', 'compression', 'libération', 'coude'],
-        'algodystrophie': ['algoneurodystrophie'],
+    // Import des données AATI (synonymes + motifs officiels) depuis le fichier JSON embarqué
+    const donneesAATIPromise = fetch(chrome.runtime.getURL('src/features/AATI_synonymes_donnees.json'))
+        .then(response => response.json())
+        .catch(err => {
+            console.error('[AATI Search] Erreur lors du chargement de AATI_synonymes_donnees.json :', err);
+            return null;
+        });
 
-        // Appareil respiratoire
-        'rhume': ['rhinopharyngite'],
-        'laryngite': ['trachéite', 'aigües'],
-        'grippe': ['grippal', 'saisonnière', 'syndrome'],
-        'pneumonie': ['pneumopathie'],
-        'pnp': ['pneumopathie'],
-        'allergie': ['allergique'],
-        'poumon': ['bronches'],
-        'pulmonaire': ['bronche', 'bronchique'],
-        'bronche': ['pulmonaire', 'poumon'],
-
-        // Traumatismes
-        'genou': ['arthroplastie', 'prothèse', 'totale', 'arthrose'],
-        'côte': ['costal'],
-        'omoplate': ['scapula'],
-        'ménisque': ['méniscales'],
-
-        // Tumeurs
-        'cancer': ['tumeur', 'maligne'],
-        'mammaire': ['sein'],
-        'colon': ['polypes', 'rectum'],
-        'col': ['utérus'],
-        'ovaire': ['kystectomie', 'ovariectomie'],
-
-
-        // Troubles mentaux
-        'bipolaire': ['dépression', 'maniaque'],
-        'toc': ['trouble', 'obsessionnel', 'compulsif'],
-        'stress': ['angoisse', 'anxiété'],
-        'burnout': ['dépressif', 'anxiété', 'stress'],
-
-        // Appareil digestif
-        'gastro': ['gastro-entérite', 'virale'],
-        'gea': ['gastro-entérite'],
-        'surpoids': ['obésité'],
-        'bariatrie': ['obésité'],
-        'dentaire': ['abcès', 'extraction', 'chirurgies'],
-        'appendice': ['appendicectomie'],
-        'rch': ['reco-colite'],
-
-        // Système ostéoarticulaire
-        'hanche': ['arthroplastie', 'prothèse', 'totale', 'coxarthrose'],
-        'coxarthrose': ['hanche'],
-        'ncb': ['cervico-brachiale'],
-        'lumbago': ['lombalgie'],
-        // Appareil génito-urinaire
-        'ovaire': ['genito-urinaire'],
-        'pelvien': ['symptômes', 'invalidants', 'douleurs', 'hémorragies'],
-
-        // Symptômes généraux
-        'aeg': ['altération', 'baisse', 'état', 'général'],
-
-        // Appareil circulatoire
-        'hta': ['hypertension'],
-        'sca': ['coronaropathie', 'infarctus', 'thoracique'],
-        'aomi': ['artériopathie'],
-        'rétrecissement': ['valvulopathie'],
-
-        // Oreille
-        'vppb': ['vertiges'],
-        'nez': ['septoplastie', 'nasale'],
-    };
-
-    // Fonction pour enrichir le terme de recherche avec les synonymes
-    function enrichirRecherche(searchTerm) {
+    // Fonction pour enrichir le terme de recherche avec les synonymes issus du JSON officiel AATI
+    async function enrichirRecherche(searchTerm) {
         const termsToSearch = [searchTerm];
         const normalizedTerm = searchTerm.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-        // Ajouter les synonymes si trouvés
-        for (const [key, synonyms] of Object.entries(synonymesMedicaux)) {
-            if (normalizedTerm.includes(key) || key.includes(normalizedTerm)) {
-                termsToSearch.push(...synonyms);
-            }
+        // Ne pas enrichir pour des termes trop courts (évite les faux positifs)
+        if (normalizedTerm.length < 3) return termsToSearch;
+
+        const donneesAATI = await donneesAATIPromise;
+        if (!donneesAATI || !donneesAATI.motifs || !donneesAATI.motifs.listeMotifs) {
+            console.warn('[AATI Search] Données JSON non disponibles pour l\'enrichissement');
+            return termsToSearch;
+        }
+
+        for (const motif of donneesAATI.motifs.listeMotifs) {
+            // Collecter tous les termes candidats de ce motif (ref, libelle, acronymes, refSynonymes)
+            const normalize = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const acronymesArr = (motif.acronymes || '').split(',').map(s => s.trim()).filter(Boolean);
+            const synonymesArr = (motif.refSynonymes || '').split(',').map(s => s.trim()).filter(Boolean);
+            const candidats = [
+                normalize(motif.ref),
+                normalize(motif.libelle),
+                ...acronymesArr.map(normalize),
+                ...synonymesArr.map(normalize)
+            ].filter(Boolean);
+
+            // Si le terme de recherche correspond à l'un des candidats, enrichir avec tous les synonymes du motif
+            const normalizedWords = normalizedTerm.split(/\s+/).filter(w => w.length >= 3);
+            const correspond = candidats.some(c => {
+                if (c.length < 3) return false;
+                // Le candidat contient le terme recherché (ex: "fracture cheville" contient "fracture")
+                if (c.includes(normalizedTerm)) return true;
+                // Chaque mot du terme recherché doit être un mot entier dans le candidat
+                return normalizedWords.every(word =>
+                    new RegExp(`\\b${word}\\b`).test(c) || c === word
+                );
+            });
         }
 
         return [...new Set(termsToSearch)]; // Supprimer les doublons
@@ -445,60 +425,93 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
                     categorieLabel: categorieData.label,
                     sousCategorieValue: sousCategorie.value,
                     sousCategorieLabel: sousCategorie.label,
-                    // Combinaison de label et title pour la recherche
                     searchText: `${sousCategorie.label} ${sousCategorie.title}`
                 });
             }
         }
 
         // Enrichir la recherche avec les synonymes
-        const enrichedTerms = enrichirRecherche(searchTerm);
+        const enrichedTerms = await enrichirRecherche(searchTerm);
         console.log('[AATI Search] Termes enrichis:', enrichedTerms);
 
         // Configuration de Fuse.js
         const fuseOptions = {
             keys: ['searchText', 'sousCategorieLabel', 'categorieLabel'],
-            threshold: 0.4, // 0 = correspondance parfaite, 1 = correspondance très lâche
-            ignoreLocation: true, // Ignore la position des mots dans le texte
+            threshold: 0.4,
+            ignoreLocation: true,
             minMatchCharLength: 2,
             includeScore: true,
             useExtendedSearch: false
         };
 
-        // Initialiser Fuse
         const fuse = new Fuse(searchableData, fuseOptions);
-
-        // Effectuer la recherche avec tous les termes enrichis
-        const allResults = new Map(); // Utiliser une Map pour éviter les doublons
+        const allResults = new Map();
 
         for (const term of enrichedTerms) {
-            const fuseResults = fuse.search(term);
-            fuseResults.forEach(result => {
-                const key = `${result.item.categorieValue}-${result.item.sousCategorieValue}`;
-                // Garder le meilleur score pour chaque résultat
-                if (!allResults.has(key) || allResults.get(key).score > result.score) {
-                    allResults.set(key, result);
-                }
-            });
+            // Décomposer le terme en mots individuels (>= 2 caractères)
+            const words = term.trim().split(/\s+/).filter(w => w.length >= 2);
+
+            if (words.length <= 1) {
+                // Recherche simple si un seul mot
+                fuse.search(term).forEach(r => {
+                    const key = `${r.item.categorieValue}-${r.item.sousCategorieValue}`;
+                    if (!allResults.has(key) || allResults.get(key).score > r.score) {
+                        allResults.set(key, r);
+                    }
+                });
+            } else {
+                // Recherche multi-mots : chaque mot doit matcher, on combine les scores
+                const resultsByWord = words.map(word => {
+                    const res = fuse.search(word);
+                    const map = new Map();
+                    res.forEach(r => {
+                        const key = `${r.item.categorieValue}-${r.item.sousCategorieValue}`;
+                        map.set(key, r.score);
+                    });
+                    return map;
+                });
+
+                // Intersecter : ne garder que les items qui matchent TOUS les mots
+                const [firstMap, ...restMaps] = resultsByWord;
+                firstMap.forEach((score, key) => {
+                    const allMatch = restMaps.every(m => m.has(key));
+                    if (allMatch) {
+                        // Score combiné = moyenne des scores de chaque mot
+                        const totalScore = restMaps.reduce((sum, m) => sum + m.get(key), score);
+                        const combinedScore = totalScore / words.length;
+
+                        // Bonus si le dernier mot est un préfixe du label (ex: "ch" dans "cheville")
+                        const lastWord = words[words.length - 1];
+                        const item = searchableData.find(d =>
+                            `${d.categorieValue}-${d.sousCategorieValue}` === key
+                        );
+                        const normalize = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                        const labelNorm = normalize(item?.searchText || '');
+                        const prefixBonus = labelNorm.split(/\s+/).some(w => w.startsWith(lastWord)) ? 0.8 : 1.0;
+
+                        const finalScore = combinedScore * prefixBonus;
+
+                        if (!allResults.has(key) || allResults.get(key).score > finalScore) {
+                            allResults.set(key, { item, score: finalScore });
+                        }
+                    }
+                });
+            }
         }
 
-        // Convertir en tableau et trier par score
-        const sortedResults = Array.from(allResults.values())
-            .sort((a, b) => a.score - b.score);
+        const sortedResults = Array.from(allResults.values()).sort((a, b) => a.score - b.score);
 
-        // Extraire les 5 meilleurs résultats
         const topMatches = sortedResults.slice(0, 5).map(result => ({
             categorieValue: result.item.categorieValue,
             categorieLabel: result.item.categorieLabel,
             sousCategorieValue: result.item.sousCategorieValue,
             sousCategorieLabel: result.item.sousCategorieLabel,
-            score: result.score // Score Fuse (plus bas = meilleur)
+            score: result.score
         }));
 
         console.log('[AATI Search] Top 5 résultats:', topMatches);
         return topMatches;
     }
-
     // Fonction pour sélectionner un motif
     function selectMotif(categorieValue, sousCategorieValue) {
         const selectCategories = document.querySelector(selecteurCategories);
