@@ -160,6 +160,21 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
 // depuis la page de prévisualisation de l'arrêt de travail
 addTweak('/BinaryData.aspx', "*sendDocToCompanion", async function () {
     console.log("[sendDocToCompanion] called");
+
+    // Détection du conflit avec l'extension Adobe Acrobat
+    // L'extension Adobe tente de charger ses propres scripts sur les pages PDF, ce qui est
+    // bloqué par la CSP de Weda (default-src 'none') et peut interférer avec l'envoi à Companion.
+    let adobeConflictAlerted = false;
+    document.addEventListener('securitypolicyviolation', function (e) {
+        if (!adobeConflictAlerted && e.blockedURI && e.blockedURI.includes('acrobat.adobe.com')) {
+            adobeConflictAlerted = true;
+            console.warn('[Weda-Helper] Conflit détecté avec l\'extension Adobe Acrobat :', e.blockedURI);
+            sendWedaNotif({
+                message: "Impression automatique de l’arrêt de travail impossible à cause de l’extension Adobe Acrobat. Veuillez la désactiver si vous souhaitez l’impression auto des arrêts de travail.",
+                icon: 'warning'
+            });
+        }
+    });
     // récupération des valeurs et options importantes
     const autoAATIexitTimestamp = await chrome.storage.local.get(['autoAATIexit']);
     const isRecentExit = Date.now() - autoAATIexitTimestamp.autoAATIexit < 10000;
