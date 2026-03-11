@@ -371,12 +371,16 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
             ].filter(Boolean);
 
             // Si le terme de recherche correspond à l'un des candidats, enrichir avec tous les synonymes du motif
-            const correspond = candidats.some(c => c.length >= 3 && (c.includes(normalizedTerm) || normalizedTerm.includes(c)));
-            if (correspond) {
-                if (motif.ref) termsToSearch.push(motif.ref);
-                termsToSearch.push(...synonymesArr);
-                termsToSearch.push(...acronymesArr);
-            }
+            const normalizedWords = normalizedTerm.split(/\s+/).filter(w => w.length >= 3);
+            const correspond = candidats.some(c => {
+                if (c.length < 3) return false;
+                // Le candidat contient le terme recherché (ex: "fracture cheville" contient "fracture")
+                if (c.includes(normalizedTerm)) return true;
+                // Chaque mot du terme recherché doit être un mot entier dans le candidat
+                return normalizedWords.every(word =>
+                    new RegExp(`\\b${word}\\b`).test(c) || c === word
+                );
+            });
         }
 
         return [...new Set(termsToSearch)]; // Supprimer les doublons
@@ -406,7 +410,6 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
                     categorieLabel: categorieData.label,
                     sousCategorieValue: sousCategorie.value,
                     sousCategorieLabel: sousCategorie.label,
-                    // Combinaison de label et title pour la recherche
                     searchText: `${sousCategorie.label} ${sousCategorie.title}`
                 });
             }
@@ -419,47 +422,81 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
         // Configuration de Fuse.js
         const fuseOptions = {
             keys: ['searchText', 'sousCategorieLabel', 'categorieLabel'],
-            threshold: 0.4, // 0 = correspondance parfaite, 1 = correspondance très lâche
-            ignoreLocation: true, // Ignore la position des mots dans le texte
+            threshold: 0.4,
+            ignoreLocation: true,
             minMatchCharLength: 2,
             includeScore: true,
             useExtendedSearch: false
         };
 
-        // Initialiser Fuse
         const fuse = new Fuse(searchableData, fuseOptions);
-
-        // Effectuer la recherche avec tous les termes enrichis
-        const allResults = new Map(); // Utiliser une Map pour éviter les doublons
+        const allResults = new Map();
 
         for (const term of enrichedTerms) {
-            const fuseResults = fuse.search(term);
-            fuseResults.forEach(result => {
-                const key = `${result.item.categorieValue}-${result.item.sousCategorieValue}`;
-                // Garder le meilleur score pour chaque résultat
-                if (!allResults.has(key) || allResults.get(key).score > result.score) {
-                    allResults.set(key, result);
-                }
-            });
+            // Décomposer le terme en mots individuels (>= 2 caractères)
+            const words = term.trim().split(/\s+/).filter(w => w.length >= 2);
+
+            if (words.length <= 1) {
+                // Recherche simple si un seul mot
+                fuse.search(term).forEach(r => {
+                    const key = `${r.item.categorieValue}-${r.item.sousCategorieValue}`;
+                    if (!allResults.has(key) || allResults.get(key).score > r.score) {
+                        allResults.set(key, r);
+                    }
+                });
+            } else {
+                // Recherche multi-mots : chaque mot doit matcher, on combine les scores
+                const resultsByWord = words.map(word => {
+                    const res = fuse.search(word);
+                    const map = new Map();
+                    res.forEach(r => {
+                        const key = `${r.item.categorieValue}-${r.item.sousCategorieValue}`;
+                        map.set(key, r.score);
+                    });
+                    return map;
+                });
+
+                // Intersecter : ne garder que les items qui matchent TOUS les mots
+                const [firstMap, ...restMaps] = resultsByWord;
+                firstMap.forEach((score, key) => {
+                    const allMatch = restMaps.every(m => m.has(key));
+                    if (allMatch) {
+                        // Score combiné = moyenne des scores de chaque mot
+                        const totalScore = restMaps.reduce((sum, m) => sum + m.get(key), score);
+                        const combinedScore = totalScore / words.length;
+
+                        // Bonus si le dernier mot est un préfixe du label (ex: "ch" dans "cheville")
+                        const lastWord = words[words.length - 1];
+                        const item = searchableData.find(d =>
+                            `${d.categorieValue}-${d.sousCategorieValue}` === key
+                        );
+                        const normalize = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                        const labelNorm = normalize(item?.searchText || '');
+                        const prefixBonus = labelNorm.split(/\s+/).some(w => w.startsWith(lastWord)) ? 0.8 : 1.0;
+
+                        const finalScore = combinedScore * prefixBonus;
+
+                        if (!allResults.has(key) || allResults.get(key).score > finalScore) {
+                            allResults.set(key, { item, score: finalScore });
+                        }
+                    }
+                });
+            }
         }
 
-        // Convertir en tableau et trier par score
-        const sortedResults = Array.from(allResults.values())
-            .sort((a, b) => a.score - b.score);
+        const sortedResults = Array.from(allResults.values()).sort((a, b) => a.score - b.score);
 
-        // Extraire les 5 meilleurs résultats
         const topMatches = sortedResults.slice(0, 5).map(result => ({
             categorieValue: result.item.categorieValue,
             categorieLabel: result.item.categorieLabel,
             sousCategorieValue: result.item.sousCategorieValue,
             sousCategorieLabel: result.item.sousCategorieLabel,
-            score: result.score // Score Fuse (plus bas = meilleur)
+            score: result.score
         }));
 
         console.log('[AATI Search] Top 5 résultats:', topMatches);
         return topMatches;
     }
-
     // Fonction pour sélectionner un motif
     function selectMotif(categorieValue, sousCategorieValue) {
         const selectCategories = document.querySelector(selecteurCategories);
