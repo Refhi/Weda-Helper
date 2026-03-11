@@ -7,6 +7,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 # [2.16.1.0] - fix
 ## Fix :
 - [#573](https://github.com/Refhi/Weda-Helper/issues/573) - L’historique des facturations est inhibé lors d’une facturation omnidoc (évite un échec des fses omnidoc)
+- Refactorisation du code gérant les FSE
 
 
 # [2.16.0] - Quick Access (Beta) ! 🚀

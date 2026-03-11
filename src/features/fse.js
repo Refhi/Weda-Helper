@@ -20,8 +20,9 @@
  * @requires notifications.js (sendWedaNotif, sendWedaNotifAllTabs)
  * @requires metrics.js (recordMetrics)
  */
-let fseUrl = '/vitalzen/fse.aspx';
 
+
+let fseUrl = '/vitalzen/fse.aspx';
 
 
 /**
@@ -60,11 +61,18 @@ addTweak(fseUrl, 'TweakFSECreation', function tweakFSECarteVitale() {
         }
 
         console.log('checkPatientName démarré');
-        waitLegacyForElement('[title="Prénom du patient"]', null, 5000, function (patientNameElement) {
-            var patientName = patientNameElement.textContent;
-            patientName = replaceSpecialChars(patientName).toUpperCase(); // convertie un prénom classique en majuscules sans accents
-            console.log('Le prénom du patient est : ' + patientName);
-            waitLegacyForElement('[class="grid-item pointer"]', patientName, 5000, function (widgetElement) {
+
+        // On récupère le prénom du patient dans l’en-tête de la FSE
+        const patientNameElement = document.querySelector('[title="Prénom du patient"]');
+        var patientName = patientNameElement.textContent;
+        patientName = replaceSpecialChars(patientName).toUpperCase(); // convertie un prénom classique en majuscules sans accents
+        console.log('Le prénom du patient est : ' + patientName);
+
+        // Ensuite on attends que les éléments issus de la CV soient chargés et on clique sur le bon
+        waitForElement({
+            selector: '[class="grid-item pointer"]',
+            justOnce: true,
+            callback: function (elements) {
                 console.log('patient trouvé, je clique sur son nom');
                 elements = document.getElementsByClassName('grid-item pointer');
                 for (var i = 0; i < elements.length; i++) {
@@ -74,7 +82,7 @@ addTweak(fseUrl, 'TweakFSECreation', function tweakFSECarteVitale() {
                         break;
                     }
                 }
-            });
+            }
         });
     }
 
@@ -113,7 +121,7 @@ addTweak(fseUrl, 'TweakFSECreation', function tweakFSECarteVitale() {
  * Gestion des boutons FSE dégradée et téléconsultation
  */
 addTweak(fseUrl, 'TweakFSECreation', function tweakFSEVariantButtons() {
-    function degradeTeleconsult(type) {
+    function startFSEsansCV(type) {
         // fermer la fenêtre de lecture de carte vitale
         var closeButton = document.querySelector('a[title="Fermer cette fenêtre"]');
         if (closeButton) {
@@ -175,7 +183,7 @@ addTweak(fseUrl, 'TweakFSECreation', function tweakFSEVariantButtons() {
             button1.textContent = 'FSE dégradée';
             Object.assign(button1.style, commonStyle);
             button1.onclick = function () {
-                degradeTeleconsult('Dégradé');
+                startFSEsansCV('Dégradé');
             };
 
             // Créer le deuxième bouton
@@ -185,7 +193,7 @@ addTweak(fseUrl, 'TweakFSECreation', function tweakFSEVariantButtons() {
             button2.textContent = 'FSE Teleconsultation';
             Object.assign(button2.style, commonStyle);
             button2.onclick = function () {
-                degradeTeleconsult('Téléconsultation');
+                startFSEsansCV('Téléconsultation');
             };
 
             // Insérer les boutons avant l'élément "Lire la carte vitale"
@@ -334,7 +342,7 @@ addTweak(fseUrl, 'TweakFSECreation', function tweakFSENavigationNO() {
  * Gestion des cotations par défaut en fonction des conditions (ALD, âge, téléconsultation, etc.)
  */
 addTweak(fseUrl, 'defaultCotation', function tweakFSECotationDefaut() {
-    function setDefaultValue() {
+    function setDefaultValue() { // !! déclenche un rafraichissement partiel
         // va parcourir dans l'ordre le tableau de conditions et appliquer la première qui est remplie
         let conditionalCotations = [
             {
@@ -459,7 +467,9 @@ addTweak(fseUrl, 'defaultCotation', function tweakFSECotationDefaut() {
 
 
 
-
+/**
+ * Détection automatique du médecin traitant et sélection de "Je suis le médecin traitant" dans la FSE
+ */
 addTweak(fseUrl, 'TweakFSEDetectMT', function () {
     waitForElement({
         selector: 'vz-medecin-traitant-weda div.mt10.ng-star-inserted',
@@ -475,6 +485,9 @@ addTweak(fseUrl, 'TweakFSEDetectMT', function () {
     });
 });
 
+/**
+ * Gestion automatique de la FSE en gestion unique
+ */
 addTweak(fseUrl, 'TweakFSEGestionUnique', function () {
     waitForElement({
         selector: 'label[for=mat-checkbox-11-input] > span.mat-checkbox-inner-container.mat-checkbox-inner-container-no-side-margin > input',
@@ -489,6 +502,9 @@ addTweak(fseUrl, 'TweakFSEGestionUnique', function () {
     });
 });
 
+/**
+ * Coche automatiquement "Accident du travail / Maladie professionnelle : Non"
+ */
 addTweak(fseUrl, 'TweakFSEAccident', function () {
     waitForElement({
         selector: 'input[id="mat-radio-9-input"]',
@@ -502,122 +518,8 @@ addTweak(fseUrl, 'TweakFSEAccident', function () {
 });
 
 
-addTweak('/vitalzen/gestion.aspx', 'TweakSCORDegradee', function () {
-    waitForElement({
-        selector: 'mat-select[name=selectedType]',
-        callback: function (element) {
-            console.log('menu déroulant trouvé, je clique dessus', element);
-            element[0].click();
-            recordMetrics({ clicks: 1, drags: 1 });
-        }
-    });
-
-    waitForElement({
-        selector: '#mat-select-8-panel mat-option .mat-option-text',
-        callback: function (elements) {
-            console.log('options trouvées', elements);
-            elements[1].click();
-            recordMetrics({ clicks: 1, drags: 1 });
-        }
-    });
-});
-
-// Coche automatiquement la case "Inclure la FSP en SCOR" dans la FSE
-addTweak('/vitalzen/fse.aspx', 'SCORAutoSelectPJ', function () {
-    waitForElement({
-        selector: 'span',
-        textContent: 'Inclure la FSP en SCOR',
-        callback: function (elements) {
-            console.log('[SCORAutoSelectPJ] Case SCOR PJ trouvée, je clique dessus si pas déjà cochée', elements[0]);
-            // On cherche l'élément qui est coché ou non : c'est le fils 'input' de l'ainé du parent
-            let checkbox = elements[0].parentElement.parentElement.querySelector('input');
-            if (!checkbox.checked) {
-                console.log('[SCORAutoSelectPJ] Case SCOR PJ non cochée, je clique dessus');
-                elements[0].click();
-                recordMetrics({ clicks: 1, drags: 1 });
-            } else {
-                console.log('[SCORAutoSelectPJ] Case SCOR PJ déjà cochée');
-            }
-        }
-    });
-});
-
-
-addTweak('/vitalzen/fse.aspx', '*keepPrintDegradeeParameters', function () {
-    waitForElement({
-        selector: '.mat-slide-toggle-label span',
-        textContent: "le patient peut signer",
-        callback: function (element) { // on cherche aussi le texte, mais cf. Fin de fonction
-            // d'abord rechercher tout les éléments avec comme role="switch"
-            let toggles = document.querySelectorAll('[role="switch"]');
-            let backgroundToggle;
-            let canSignToggle;
-
-            // retourne le texte de l'élément "switch" passé en paramètre
-            function textOfToggle(toggle) {
-                let parentParent = toggle.parentElement.parentElement;
-                let textElement = parentParent.querySelector('span');
-                return textElement.innerText;
-            }
-
-            toggles.forEach(function (toggle) {
-                let textofTheToggle = textOfToggle(toggle);
-                if (textofTheToggle === 'Retirer le fond') {
-                    backgroundToggle = toggle;
-                    console.log('[keepPrintDegradeeParameters] found backgroundToggle', backgroundToggle, ' dont le texte est: ', textofTheToggle);
-                } else if (textofTheToggle === 'le patient peut signer') {
-                    canSignToggle = toggle;
-                    console.log('[keepPrintDegradeeParameters] found canSignToggle', canSignToggle, ' dont le texte est: ', textofTheToggle);
-                } else {
-                    console.log('[keepPrintDegradeeParameters] found an unknown toggle : ', toggle, ' . With text :', textofTheToggle);
-                }
-            });
-
-
-            // surveille les changements de valeur des boutons et les enregistre dans le stockage local
-            function addToggleWatcher(toggleElement, storageKey) {
-                toggleElement.addEventListener('change', function () {
-                    let saveObj = {};
-                    saveObj[storageKey] = toggleElement.checked;
-                    chrome.storage.local.set(saveObj, function () {
-                        console.log(`[${storageKey}] ${storageKey} saved`, toggleElement.checked);
-                    });
-                });
-            }
-
-            // Ajoute un écouteur d'événement pour chaque bouton
-            addToggleWatcher(backgroundToggle, 'backgroundToggle');
-            addToggleWatcher(canSignToggle, 'canSignToggle');
-
-            // If their state is different from the last time, set them to the last state
-            chrome.storage.local.get(['backgroundToggle', 'canSignToggle'], function (result) {
-                console.log('[keepPrintDegradeeParameters] Value currently is backgroundToggle : ' + result.backgroundToggle, 'canSignToggle : ' + result.canSignToggle);
-                function changeToggleIfDifferent(toggleElement, storageKey) {
-                    if (result[storageKey] !== undefined && toggleElement.checked !== result[storageKey]) {
-                        toggleElement.click();
-                        console.log('[keepPrintDegradeeParameters] ', storageKey, ' set to', result[storageKey]);
-                        return true
-                    } else {
-                        console.log('[keepPrintDegradeeParameters] ', storageKey, ' already set to', result[storageKey]);
-                        return false
-                    }
-                }
-                let backGroundToggleIsNotSet = changeToggleIfDifferent(backgroundToggle, 'backgroundToggle');
-                let canSignToggleIsNotSet = changeToggleIfDifferent(canSignToggle, 'canSignToggle');
-                if (!backGroundToggleIsNotSet && !canSignToggleIsNotSet) {
-                    console.log('[keepPrintDegradeeParameters] No toggle was changed, greenLight for printing');
-                    let date = new Date();
-                    let timestamp = date.getTime();
-                    chrome.storage.local.set({ FSEPrintGreenLightTimestamp: timestamp }, function () {
-                        console.log('[keepPrintDegradeeParameters] FSEPrintGreenLightTimestamp saved', timestamp);
-                    });
-                };
-            });
-        }
-    });
-});
-
-// Maintient de la sélection de la formule pour les AMC
+// Dans le cas où est utilisé des paramètres AMC spécifiques (en cliquant sur AMC)
+// cette partie permet de conserver le dernier choix
 addTweak('/vitalzen/fse.aspx', '*TweakAMCFormule', function () {
     console.log('[TweakAMCFormule] Démarrage');
     // D'abord on attends l'élément encadrant le menu déroulant
@@ -708,6 +610,8 @@ addTweak('/vitalzen/fse.aspx', '*autoSelectRienAMO', function () {
     });
 });
 
+
+// Envoie automatiquement le montant de la FSE au TPE lors de la validation de la FSE
 addTweak('/vitalzen/fse.aspx', '!RemoveLocalCompanionTPE', function () {
     waitForElement({
         selector: 'button',
