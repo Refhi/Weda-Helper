@@ -20,89 +20,14 @@
  * @requires notifications.js (sendWedaNotif, sendWedaNotifAllTabs)
  * @requires metrics.js (recordMetrics)
  */
+let fseUrl = '/vitalzen/fse.aspx';
 
 
-
-
-
-addTweak(fseUrl, 'TweakFSECreation', tweakFSECreation);
 
 /**
- * Fonction principale de gestion des améliorations de la page FSE.
- * Gère les raccourcis clavier, les indices visuels, et la validation automatique.
- * Configure les écouteurs d'événements pour la navigation et l'aide à la saisie.
+ * Gestion de la lecture automatique de la carte vitale et des boutons FSE dégradée/téléconsultation
  */
-function tweakFSECreation() {
-    // Make a dictionnary with keystrokes and their corresponding actions
-    var index = {
-        'n': ['mat-radio-9-input', 'mat-radio-3-input'],
-        'o': ['mat-radio-8-input', 'mat-radio-2-input'],
-        't': ['mat-checkbox-1-input'],
-        'c': ['mat-checkbox-2-input'],
-        // add an entry for the enter key
-        'Enter': ['secure_FSE'],
-    }
-    var clue_index = {
-        'n': ['mat-radio-9', 'mat-radio-3'],
-        'o': ['mat-radio-8', 'mat-radio-2'],
-    }
-
-    // Vérifie si un bouton "oui" ou "non" est coché pour la question question_number
-    // Renvoie également true si la première question n'existe pas
-    function YesNoButtonChecked(question_number) {
-        var element1 = document.getElementById(index['n'][question_number]);
-        var element2 = document.getElementById(index['o'][question_number]);
-        // Si la première question n'existe pas, renvoie true
-        if (question_number == 0 && (!element1 || !element2)) {
-            return true;
-        }
-        // Sinon renvoie true si l'un des deux boutons est coché
-        if (element1.checked || element2.checked) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-    // add a visual clue to the element with id element_id
-    function addVisualClue(element_id) {
-        var checkExist = setInterval(function () {
-            var radioButton = document.getElementById(element_id);
-            if (radioButton) {
-                clearInterval(checkExist); // Arrête de vérifier une fois que l'élément est trouvé
-                var labelContents = radioButton.getElementsByClassName('mat-radio-label-content');
-                console.log('labelContents', labelContents);
-                if (labelContents.length > 0) {
-                    var labelContent = labelContents[0];
-                    var text = labelContent.innerHTML;
-                    console.log('Texte à souligner', text);
-                    text = text.replace('N', '<span style="text-decoration: underline;">N</span>');
-                    text = text.replace('O', '<span style="text-decoration: underline;">O</span>');
-                    labelContent.innerHTML = text;
-                }
-            }
-        }, 100); // Vérifie l'existence de l'élément toutes les 100ms
-    }
-    function removeVisualClue(element_id) {
-        console.log('removeVisualClue', element_id);
-        var radioButton = document.getElementById(element_id);
-        if (radioButton) {
-            var labelContents = radioButton.getElementsByClassName('mat-radio-label-content');
-            console.log('labelContents', labelContents);
-            if (labelContents.length > 0) {
-                var labelContent = labelContents[0];
-                var text = labelContent.innerHTML;
-                console.log('Texte à de-souligner', text);
-                text = text.replace('<span style="text-decoration: underline;">N</span>', 'N');
-                text = text.replace('<span style="text-decoration: underline;">O</span>', 'O');
-                labelContent.innerHTML = text;
-            }
-        }
-    }
-
-    // // Travail sur l'automatisation de la lecture de la carte vitale
-    // Vérifie la présence du texte "Carte Vitale non lue" dans le texte de l'élément avec class = lectureCvContainer
-
-
+addTweak(fseUrl, 'TweakFSECreation', function tweakFSECarteVitale() {
     function CarteVitaleNonLue() {
         // Vérifie l'existence de conditions nécessitant la lecture de la cv :
         // - soit la présence du texte d'erreur de cohérence
@@ -129,6 +54,7 @@ function tweakFSECreation() {
             });
         }, 300); // Attendre 300 ms avant d'exécuter le code à l'intérieur de setTimeout (utile pour éviter une lecture cv trop rapide)
     }
+
     // Ajoute deux boutons : un pour les FSE dégradées, un pour les FSE Teleconsultation à côté de lecture carte vitale
     function addFSEVariantButtons() {
         function degradeTeleconsult(type) {
@@ -242,7 +168,6 @@ function tweakFSECreation() {
             return str;
         }
 
-
         console.log('checkPatientName démarré');
         waitLegacyForElement('[title="Prénom du patient"]', null, 5000, function (patientNameElement) {
             var patientName = patientNameElement.textContent;
@@ -260,11 +185,153 @@ function tweakFSECreation() {
                 }
             });
         });
-
-
     }
 
+    // vérifie la carte vitale
+    setTimeout(function () {
+        CarteVitaleNonLue();
+    }, 50); // Attendre 50 ms avant de vérifier la carte vitale
+});
 
+/**
+ * Gestion des raccourcis clavier n/o et des indices visuels pour les boutons radio
+ */
+addTweak(fseUrl, 'TweakFSECreation', function tweakFSENavigationNO() {
+    // Make a dictionnary with keystrokes and their corresponding actions
+    var index = {
+        'n': ['mat-radio-9-input', 'mat-radio-3-input'],
+        'o': ['mat-radio-8-input', 'mat-radio-2-input'],
+        't': ['mat-checkbox-1-input'],
+        'c': ['mat-checkbox-2-input'],
+        // add an entry for the enter key
+        'Enter': ['secure_FSE'],
+    }
+    var clue_index = {
+        'n': ['mat-radio-9', 'mat-radio-3'],
+        'o': ['mat-radio-8', 'mat-radio-2'],
+    }
+
+    // Vérifie si un bouton "oui" ou "non" est coché pour la question question_number
+    // Renvoie également true si la première question n'existe pas
+    function YesNoButtonChecked(question_number) {
+        var element1 = document.getElementById(index['n'][question_number]);
+        var element2 = document.getElementById(index['o'][question_number]);
+        // Si la première question n'existe pas, renvoie true
+        if (question_number == 0 && (!element1 || !element2)) {
+            return true;
+        }
+        // Sinon renvoie true si l'un des deux boutons est coché
+        if (element1.checked || element2.checked) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    // add a visual clue to the element with id element_id
+    function addVisualClue(element_id) {
+        var checkExist = setInterval(function () {
+            var radioButton = document.getElementById(element_id);
+            if (radioButton) {
+                clearInterval(checkExist); // Arrête de vérifier une fois que l'élément est trouvé
+                var labelContents = radioButton.getElementsByClassName('mat-radio-label-content');
+                console.log('labelContents', labelContents);
+                if (labelContents.length > 0) {
+                    var labelContent = labelContents[0];
+                    var text = labelContent.innerHTML;
+                    console.log('Texte à souligner', text);
+                    text = text.replace('N', '<span style="text-decoration: underline;">N</span>');
+                    text = text.replace('O', '<span style="text-decoration: underline;">O</span>');
+                    labelContent.innerHTML = text;
+                }
+            }
+        }, 100); // Vérifie l'existence de l'élément toutes les 100ms
+    }
+
+    function removeVisualClue(element_id) {
+        console.log('removeVisualClue', element_id);
+        var radioButton = document.getElementById(element_id);
+        if (radioButton) {
+            var labelContents = radioButton.getElementsByClassName('mat-radio-label-content');
+            console.log('labelContents', labelContents);
+            if (labelContents.length > 0) {
+                var labelContent = labelContents[0];
+                var text = labelContent.innerHTML;
+                console.log('Texte à de-souligner', text);
+                text = text.replace('<span style="text-decoration: underline;">N</span>', 'N');
+                text = text.replace('<span style="text-decoration: underline;">O</span>', 'O');
+                labelContent.innerHTML = text;
+            }
+        }
+    }
+
+    // Ajoute un indice visuel pour les touches "n" et "o"
+    // selon la présence ou non de la première question oui/non
+    let firstQuestionExist = document.getElementById('mat-radio-9-input');
+    if (firstQuestionExist) {
+        addVisualClue(clue_index['n'][0]);
+        addVisualClue(clue_index['o'][0]);
+    } else {
+        addVisualClue(clue_index['n'][1]);
+        addVisualClue(clue_index['o'][1]);
+    }
+
+    // Détecte les touches "n" et "o" et cochent les boutons correspondants
+    document.addEventListener('keydown', function (event) {
+        if (event.key in index) {
+            console.log('key pressed:', event.key);
+            var element = document.getElementById(index[event.key][0]);
+            if (event.key == 'n' || event.key == 'o') {
+                if (!YesNoButtonChecked(0)) {
+                    console.log('No button checked on first yes/no question');
+                    setTimeout(function () {
+                        addVisualClue(clue_index['n'][1]);
+                        addVisualClue(clue_index['o'][1]);
+                    }, 100);
+                    setTimeout(function () {
+                        removeVisualClue(clue_index['n'][0]);
+                        removeVisualClue(clue_index['o'][0]);
+                    }, 100);
+
+                } else if (YesNoButtonChecked(0) && !YesNoButtonChecked(1)) {
+                    element = document.getElementById(index[event.key][1]);
+                    console.log('A button is checked on first yes/no question but not the second one');
+                    setTimeout(function () {
+                        removeVisualClue(clue_index['n'][1]);
+                        removeVisualClue(clue_index['o'][1]);
+                    }, 100);
+                } else {
+                    console.log('Both yes/no questions have an answer');
+                }
+            }
+            console.log('element to act on is', element);
+
+            // Do nothing if the focus is in a text input field
+            let focusedElement = document.activeElement;
+            if (focusedElement && focusedElement.tagName.toLowerCase() === 'input' && focusedElement.type === 'text') {
+                console.log('Entrée clavier détectée dans un champ de texte, je ne fais rien');
+            } else {
+                if (element && element.type === 'radio') {
+                    console.log('trying to check element', element);
+                    element.checked = true;
+                    recordMetrics({ clicks: 1, drags: 1 });
+                    element.dispatchEvent(new Event('change'));
+                }
+                else if (element && element.type == 'checkbox' && !event.altKey) { //checked puis un event change ne fonctionnent pas sur une Checkbox donc on trigger un click()
+                    console.log('trying to click element', element);
+                    element.click();
+                    recordMetrics({ clicks: 1, drags: 1 });
+                }
+            }
+
+        }
+    });
+});
+
+/**
+ * Gestion des cotations par défaut en fonction des conditions (ALD, âge, téléconsultation, etc.)
+ */
+addTweak(fseUrl, 'defaultCotation', function tweakFSECotationDefaut() {
     function setDefaultValue() {
         // va parcourir dans l'ordre le tableau de conditions et appliquer la première qui est remplie
         let conditionalCotations = [
@@ -358,7 +425,6 @@ function tweakFSECreation() {
                         return; // Arrête la fonction après avoir appliqué une cotation
                     } else if (action === 'Défaut') {
                         console.log('Action "Défaut" spécifiée mais non trouvée parmi les éléments.');
-                        // alert('Weda-Helper : "cotation par défaut" n\'est pas désactivé dans les options, mais aucune cotation favorite nommée "Défaut" n\'a été trouvé. Vous devez soit ajouter un favori nommé exactement "Défaut", soit désactiver l\'option "cotation par défaut" dans les options de Weda-Helper. Vous pouvez également définir DéfautPédia et DéfautALD.');
                         sendWedaNotifAllTabs({
                             message: "\"cotation par défaut\" n\'est pas désactivé dans les options, mais aucune cotation favorite nommée \"Défaut\" n\'a été trouvé. Vous devez soit ajouter un favori nommé exactement \"Défaut\", soit désactiver l\'option `\"cotation par défaut\" dans les options de Weda-Helper. Vous pouvez également définir DéfautPédia et DéfautALD.",
                             type: 'undefined',
@@ -374,76 +440,7 @@ function tweakFSECreation() {
         });
     }
 
-    // vérifie la carte vitale
-    setTimeout(function () {
-        CarteVitaleNonLue();
-    }, 50); // Attendre 50 ms avant de vérifier la carte vitale
-
-
-    // Ajoute un indice visuel pour les touches "n" et "o"
-    // selon la présence ou non de la première question oui/non
-    let firstQuestionExist = document.getElementById('mat-radio-9-input');
-    if (firstQuestionExist) {
-        addVisualClue(clue_index['n'][0]);
-        addVisualClue(clue_index['o'][0]);
-    } else {
-        addVisualClue(clue_index['n'][1]);
-        addVisualClue(clue_index['o'][1]);
-    }
-
-    // Détecte les touches "n" et "o" et cochent les boutons correspondants
-    document.addEventListener('keydown', function (event) {
-        if (event.key in index) {
-            console.log('key pressed:', event.key);
-            var element = document.getElementById(index[event.key][0]);
-            if (event.key == 'n' || event.key == 'o') {
-                if (!YesNoButtonChecked(0)) {
-                    console.log('No button checked on first yes/no question');
-                    setTimeout(function () {
-                        addVisualClue(clue_index['n'][1]);
-                        addVisualClue(clue_index['o'][1]);
-                    }, 100);
-                    setTimeout(function () {
-                        removeVisualClue(clue_index['n'][0]);
-                        removeVisualClue(clue_index['o'][0]);
-                    }, 100);
-
-                } else if (YesNoButtonChecked(0) && !YesNoButtonChecked(1)) {
-                    element = document.getElementById(index[event.key][1]);
-                    console.log('A button is checked on first yes/no question but not the second one');
-                    setTimeout(function () {
-                        removeVisualClue(clue_index['n'][1]);
-                        removeVisualClue(clue_index['o'][1]);
-                    }, 100);
-                } else {
-                    console.log('Both yes/no questions have an answer');
-                }
-            }
-            console.log('element to act on is', element);
-
-            // Do nothing if the focus is in a text input field
-            let focusedElement = document.activeElement;
-            if (focusedElement && focusedElement.tagName.toLowerCase() === 'input' && focusedElement.type === 'text') {
-                console.log('Entrée clavier détectée dans un champ de texte, je ne fais rien');
-            } else {
-                if (element && element.type === 'radio') {
-                    console.log('trying to check element', element);
-                    element.checked = true;
-                    recordMetrics({ clicks: 1, drags: 1 });
-                    element.dispatchEvent(new Event('change'));
-                }
-                else if (element && element.type == 'checkbox' && !event.altKey) { //checked puis un event change ne fonctionnent pas sur une Checkbox donc on trigger un click()
-                    console.log('trying to click element', element);
-                    element.click();
-                    recordMetrics({ clicks: 1, drags: 1 });
-                }
-            }
-
-        }
-    });
-
     // Détecte le fait de cocher un élément contenant for='mat-radio-3-input' et for='mat-radio-2-input' puis déclencher setDefaultValue
-
     waitForElement({
         selector: '#mat-radio-3-input',
         callback: function () {
@@ -456,10 +453,10 @@ function tweakFSECreation() {
             });
         }
     });
-}
+});
 
 
-let fseUrl = '/vitalzen/fse.aspx';
+
 
 addTweak(fseUrl, 'TweakFSEDetectMT', function () {
     waitForElement({
