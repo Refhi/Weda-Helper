@@ -105,7 +105,7 @@ function returnQuickAccessConfig() {
 
     // ================= Eléments principaux du Bandeau supérieur =================
     const menuHorizontalConfig = {
-        _urlPatterns: ['/FolderMedical/PatientViewForm.aspx'],
+        _urlPatterns: ['/FolderMedical/PatientViewForm.aspx', '/FolderTools/BiblioForm.aspx'],
         'medical': {
             selector: '#nav-menu > li > a.nav-icon__link--doctor',
             hotkey: 'm',
@@ -295,6 +295,10 @@ function returnQuickAccessConfig() {
             subItems: function(element) {
                 return generateInternalSubItems(element);
             }
+        },
+        '+1click_vsm': {
+            selector: '#oneClickVSMButton',
+            onTap: 'clic'
         },
         'documents_joints_meta_top_bar': {
             selector: '#ContentPlaceHolder1_PanelVisuDocument tr',
@@ -639,6 +643,8 @@ function returnQuickAccessConfig() {
         }
     }
 
+    // =============== page de prescription médicamenteuse ==================
+    // todo : à poursuivre
 
 
 
