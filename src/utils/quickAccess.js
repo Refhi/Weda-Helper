@@ -36,13 +36,15 @@ function returnQuickAccessConfig() {
     * ----------------------------------------------------------------------------------
     */
     // ================= Bandeau supérieur de la page d’accueil =================
+    const urlPatternsBandeau = ['/FolderMedical/PatientViewForm.aspx', '/FolderTools/BiblioForm.aspx'];
     const bandeauSuperieurConfig = {
+        _urlPatterns: urlPatternsBandeau,
         'large_top_menu': {
             selector: 'table.bandeau',
             subItems: {
                 'recherche_patient_input': {
                     selector: '#TextBoxFindPatient',
-                    onTap: function(element) {
+                    onTap: function (element) {
                         element.focus();
                         element.select();
                     }
@@ -105,11 +107,11 @@ function returnQuickAccessConfig() {
 
     // ================= Eléments principaux du Bandeau supérieur =================
     const menuHorizontalConfig = {
-        _urlPatterns: ['/FolderMedical/PatientViewForm.aspx', '/FolderTools/BiblioForm.aspx'],
+        _urlPatterns: urlPatternsBandeau,
         'medical': {
             selector: '#nav-menu > li > a.nav-icon__link--doctor',
             hotkey: 'm',
-            onTap: function(element, state) { horizontalMenuPseudoMouseover(element, state); },
+            onTap: function (element, state) { horizontalMenuPseudoMouseover(element, state); },
             onDoubleTap: 'clic',
             subItems: function (element) {
                 const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
@@ -120,7 +122,7 @@ function returnQuickAccessConfig() {
         'applicatifs': {
             selector: '#nav-menu > li > a.nav-icon__link--tools',
             hotkey: 'p',
-            onTap: function(element, state) { horizontalMenuPseudoMouseover(element, state); },
+            onTap: function (element, state) { horizontalMenuPseudoMouseover(element, state); },
             onDoubleTap: 'clic',
             subItems: function (element) {
                 const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
@@ -131,7 +133,7 @@ function returnQuickAccessConfig() {
         'gestion': {
             selector: '#nav-menu > li > a.nav-icon__link--safe-open',
             hotkey: 'g',
-            onTap: function(element, state) { horizontalMenuPseudoMouseover(element, state); },
+            onTap: function (element, state) { horizontalMenuPseudoMouseover(element, state); },
             onDoubleTap: 'clic',
             subItems: function (element) {
                 const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
@@ -142,7 +144,7 @@ function returnQuickAccessConfig() {
         'parametres': {
             selector: '#nav-menu > li > a.nav-icon__link--mixing-desk',
             hotkey: 'e',
-            onTap: function(element, state) { horizontalMenuPseudoMouseover(element, state); },
+            onTap: function (element, state) { horizontalMenuPseudoMouseover(element, state); },
             onDoubleTap: 'clic',
             subItems: function (element) {
                 const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
@@ -153,6 +155,7 @@ function returnQuickAccessConfig() {
 
     // ================= Menu vertical gauche (sidebar) de la page d’accueil =================
     const sidebarConfig = {
+        _urlPatterns: urlPatternsBandeau,
         'menu_vertical_gauche': {
             selector: ".menu-sidebar",
             onTap: null,
@@ -161,7 +164,7 @@ function returnQuickAccessConfig() {
                 // Menu W - Navigation événements
                 'menu_w_sidebar': {
                     selector: '#ContentPlaceHolder1_MenuNavigate > ul.level1 > li > a.level1',
-                    onTap: function(element, state) { WMenuPseudoMouseover(element, state); },
+                    onTap: function (element, state) { WMenuPseudoMouseover(element, state); },
                     onDoubleTap: 'clic',
                     subItems: function (element) {
                         const parentLi = element.parentElement;
@@ -185,7 +188,7 @@ function returnQuickAccessConfig() {
                 // Menu périphériques (scanner, doctolib, DMP, omnidoc)
                 'peripheriques': {
                     selector: '#ContentPlaceHolder1_DivMenuPeripherique',
-                    onTap: function(element, state) { peripheriquesPseudoMouseover(element, state); },
+                    onTap: function (element, state) { peripheriquesPseudoMouseover(element, state); },
                     onDoubleTap: 'clic',
                     subItems: function (element) {
                         const submenu = element.querySelector('#ContentPlaceHolder1_MenuPeripherique ul.level2.dynamic');
@@ -238,7 +241,7 @@ function returnQuickAccessConfig() {
 
                 'documents_joints': {
                     selector: '#ButtonDocumentJointAction',
-                    onTap: function(element, state) { documentsJointsPseudoMouseover(element, state); },
+                    onTap: function (element, state) { documentsJointsPseudoMouseover(element, state); },
                     onDoubleTap: 'clic',
                     subItems: function (element) {
                         const submenu = document.querySelector('#DivMenuDocumentJoint table');
@@ -259,7 +262,7 @@ function returnQuickAccessConfig() {
                 // Menu impression
                 'impression': {
                     selector: '#ContentPlaceHolder1_MenuPrint > ul.level1.static',
-                    onTap: function(element, state) { impressionPseudoMouseover(element, state); },
+                    onTap: function (element, state) { impressionPseudoMouseover(element, state); },
                     onDoubleTap: 'clic',
                     subItems: function (element) {
                         const submenu = element.querySelector('ul.level2.dynamic');
@@ -282,17 +285,18 @@ function returnQuickAccessConfig() {
         }
     };
 
-    // ================= éléments internes =====================
-    /** Éléments internes - Items terminaux
-     * Cette partie gère les éléments avec lesquels l'utilisateur peut interagir à la souris.
-     * 
-     * cf. @generateInternalSubItems pour la logique de génération des subItems de ces éléments internes
-     * 
-     */
+    // ================= éléments internes page d’accueil =====================
     const internalElementsConfig = {
+        _urlPatterns: urlPatternsBandeau,
+        /** Éléments internes - Items terminaux
+         * Cette partie gère les éléments avec lesquels l'utilisateur peut interagir à la souris.
+         * 
+         * cf. @generateInternalSubItems pour la logique de génération des subItems de ces éléments internes
+         * 
+         */
         'panel_patient': {
             selector: '#ContentPlaceHolder1_PanelPatient',
-            subItems: function(element) {
+            subItems: function (element) {
                 return generateInternalSubItems(element);
             }
         },
@@ -302,30 +306,30 @@ function returnQuickAccessConfig() {
         },
         'documents_joints_meta_top_bar': {
             selector: '#ContentPlaceHolder1_PanelVisuDocument tr',
-            subItems: function(element) {
+            subItems: function (element) {
                 return generateInternalSubItems(element);
             }
         },
         'documents_joints_meta_etiquettes': {
             selector: '#ContentPlaceHolder1_PanelStatEtiquette',
-            subItems: function(element) {
+            subItems: function (element) {
                 const subItems = {};
-                
+
                 // Cibler spécifiquement les étiquettes et leurs éléments interactifs
                 const etiquettes = element.querySelectorAll('.eti');
-                
+
                 etiquettes.forEach((eti, index) => {
                     // Pour chaque étiquette, on crée un sous-item pour la checkbox et la croix
                     const checkbox = eti.querySelector('input[type="checkbox"]');
                     const cross = eti.querySelector('.cross');
-                    
+
                     if (checkbox) { // Pour l'instant c'est bugé : ces items sont bizarrement hidden
                         subItems[checkbox.id] = {
                             selector: `#${checkbox.id}`,
                             onTap: 'clic'
                         };
                     }
-                    
+
                     if (cross) {
                         // Créer un id unique pour la croix, basée sur l'id de la checkbox
                         cross.id = `cross_${checkbox.id}`;
@@ -335,13 +339,13 @@ function returnQuickAccessConfig() {
                         };
                     }
                 });
-                
+
                 // Ajouter aussi les autres éléments interactifs génériques
                 const otherItems = generateInternalSubItems(element);
                 if (otherItems) {
                     Object.assign(subItems, otherItems);
                 }
-                
+
                 const subItemObject = Object.keys(subItems).length > 0 ? subItems : null;
                 console.log(`[QuickAccess] SubItems générés pour documents_joints_meta_etiquettes`, subItemObject);
                 return subItemObject;
@@ -353,13 +357,13 @@ function returnQuickAccessConfig() {
         },
         'documents_joints_corps': { // Niveau 1 : le panneau contenant toutes les cs
             selector: '#ContentPlaceHolder1_HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda',
-            subItems: function(element) {
+            subItems: function (element) {
                 return generateConsultationHistorySubItems(element, 'documents_joints_corps');
             }
         },
         'copilot_vidal': {
             selector: '.copilot-vidal-project',
-            subItems: function(element) {
+            subItems: function (element) {
                 return generateInternalSubItems(element);
             }
         }
@@ -370,14 +374,16 @@ function returnQuickAccessConfig() {
      *               Pages de consultation
      * ----------------------------------------------------------------------------------
      */
+    const urlPatternsConsultation = ['/FolderMedical/ConsultationForm.aspx'];
     // =============== Les iframes =============================
     const iframeConfig = {
+        _urlPatterns: urlPatternsConsultation,
         'consultation_history_iframe': {
             selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> #HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda',
-            subItems: function(element) {
+            subItems: function (element) {
                 // Utiliser la fonction partagée avec le préfixe iframe pour les sélecteurs
                 return generateConsultationHistorySubItems(
-                    element, 
+                    element,
                     'consultation_iframe',
                     '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> '
                 );
@@ -385,7 +391,7 @@ function returnQuickAccessConfig() {
         },
         'weda_helper_iframe': { // L'historique affiché via WH
             selector: '#WedaHelperIframe >> #HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda',
-            subItems: function(element) {
+            subItems: function (element) {
                 return generateConsultationHistorySubItems(
                     element,
                     'weda_helper_iframe',
@@ -464,10 +470,11 @@ function returnQuickAccessConfig() {
     }
 
     const iframeTextZonesConfig = {
+        _urlPatterns: urlPatternsConsultation,
         // -------- pour la page des consultation ------------
         'consultation_iframe_text_config_area_1': {
             selector: '#ContentPlaceHolder1_divZone1',
-            subItems: function(element) {
+            subItems: function (element) {
                 return generateInternalSubItems(element);
             }
         },
@@ -477,7 +484,7 @@ function returnQuickAccessConfig() {
         },
         'consultation_iframe_text_config_area_2': {
             selector: '#ContentPlaceHolder1_divZone2',
-            subItems: function(element) {
+            subItems: function (element) {
                 return generateInternalSubItems(element);
             }
         },
@@ -487,7 +494,7 @@ function returnQuickAccessConfig() {
         },
         'consultation_iframe_text_config_area_3': {
             selector: '#ContentPlaceHolder1_divZone3',
-            subItems: function(element) {
+            subItems: function (element) {
                 return generateInternalSubItems(element);
             }
         },
@@ -497,7 +504,7 @@ function returnQuickAccessConfig() {
         },
         'consultation_iframe_text_config_area_4': {
             selector: '#ContentPlaceHolder1_divZone4',
-            subItems: function(element) {
+            subItems: function (element) {
                 return generateInternalSubItems(element);
             }
         },
@@ -507,7 +514,7 @@ function returnQuickAccessConfig() {
         },
         'consultation_iframe_text_config_area_5': {
             selector: '#ContentPlaceHolder1_PanelEvenementZone5',
-            subItems: function(element) {
+            subItems: function (element) {
                 return generateInternalSubItems(element);
             }
         },
@@ -528,9 +535,10 @@ function returnQuickAccessConfig() {
 
     // =============== Les autres éléments =====================
     const menuIconsLeft = {
+        _urlPatterns: urlPatternsConsultation,
         'menuW': {
             selector: '#ContentPlaceHolder1_EvenementUcForm1_MenuNavigate a.level1',
-            onTap: function(element, state) { WMenuPseudoMouseover(element, state); },
+            onTap: function (element, state) { WMenuPseudoMouseover(element, state); },
             onDoubleTap: 'clic',
             subItems: function (element) {
                 console.log(`[QuickAccess] Génération des subItems pour menuW`, element);
@@ -581,9 +589,10 @@ function returnQuickAccessConfig() {
 
     // ============== Les grandes zones (titres, items, etc.) =================
     const generalZonesConfig = {
+        _urlPatterns: urlPatternsConsultation,
         'zone_titre': {
             selector: '#ContentPlaceHolder1_EvenementUcForm1_DivCadreEvenement',
-            subItems: function(element) {
+            subItems: function (element) {
                 return generateInternalSubItems(element);
             }
         },
@@ -593,7 +602,7 @@ function returnQuickAccessConfig() {
         },
         'zone_items': {
             selector: '#ContentPlaceHolder1_PanelBlocagePatientSuiviVisible',
-            subItems: function(element) {
+            subItems: function (element) {
                 return generateMultipleSelectorSubItems({
                     parentElement: element,
                     selector: '[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]',
@@ -603,23 +612,47 @@ function returnQuickAccessConfig() {
         },
         'zone_cim10': {
             selector: '#ContentPlaceHolder1_UpdatePanelDiagnosticsGrid',
-            subItems: function(element) {
+            subItems: function (element) {
                 return generateInternalSubItems(element);
             }
         }
     }
 
+    /**
+     * ----------------------------------------------------------------------------------
+     * transversalité : éléments présents à la fois en consultation et en hospitalisation, ou éléments génériques présents sur plusieurs pages
+     * ----------------------------------------------------------------------------------
+     */
+
     // =============== modèles de documents ==================
     const documentTemplatesConfig = {
+        'search_certificat_template': {
+            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_TextBoxContient',
+            onTap: 'focus',
+        },
         'certificat_templates': {
-            selector: '.base-glossaire-uc-form',
-            subItems: function(element) {
-                return generateInternalSubItems(element);
-            }
+            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossaire',
+            subItems: 
+                function (element) {
+                    return generateMultipleSelectorSubItems({
+                        parentElement: element,
+                        selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossaire > table',
+                        onTap: 'clic',
+                        subItemsGenerator: function(tableElement) {
+                            // Générer des sub-sub-items pour chaque table
+                            // Cibler les lignes ou liens à l'intérieur de chaque table
+                            return generateMultipleSelectorSubItems({
+                                parentElement: tableElement,
+                                selector: 'tr, a', // ajuster selon la structure HTML
+                                onTap: 'clic'
+                            });
+                        }
+                    });
+                }
         },
         'prescription_top_templace_bar': {
             selector: '#ContentPlaceHolder1_PanelGlossaire > div > table > tbody > tr:nth-child(1) > td > table > tbody > tr',
-            subItems: function(element) {
+            subItems: function (element) {
                 return generateInternalSubItems(element);
             }
         },
@@ -635,12 +668,12 @@ function returnQuickAccessConfig() {
             selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonDemandeKineType',
             onTap: 'clic'
         },
-        'prescription_templates': {
-            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_DivGlossaire',
-            subItems: function(element) {
-                return generateInternalSubItems(element); // TODO : à réparer car ignore le premier groupe
-            }
-        }
+        // 'prescription_templates': {
+        //     selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_DivGlossaire',
+        //     subItems: function (element) {
+        //        return generateInternalSubItems(element); // TODO : à réparer car ignore le premier groupe
+        //     }
+        // }
     }
 
     // =============== page de prescription médicamenteuse ==================
@@ -663,12 +696,12 @@ function returnQuickAccessConfig() {
     ];
 
     const quickAccessConfig = {};
-    
+
     // Filtrer les configurations selon l'URL actuelle
     const currentUrl = window.location.pathname;
     for (const configGroup of allConfigs) {
         const urlPatterns = configGroup._urlPatterns;
-        
+
         // Si pas de restriction (_urlPatterns null/undefined) ou si l'URL correspond
         if (!urlPatterns || matchesUrlPatterns(currentUrl, urlPatterns)) {
             // Copier tous les items sauf _urlPatterns
@@ -694,7 +727,7 @@ function matchesUrlPatterns(url, patterns) {
     if (!patterns || patterns.length === 0) {
         return false;
     }
-    
+
     return patterns.some(pattern => {
         if (typeof pattern === 'string') {
             return url.includes(pattern);
@@ -1144,7 +1177,7 @@ function ensureHotkeysForItems(config) {
             if (item.selector) {
                 const element = querySelectorWithIframe(item.selector);
                 if (!element) continue; // pas de hotkey généré si l'élément n'existe pas
-                
+
                 // Déterminer le texte source pour la génération de hotkey
                 let sourceText = itemId;
                 if (element && element.textContent) {
@@ -1152,7 +1185,7 @@ function ensureHotkeysForItems(config) {
                 } else if (element) {
                     sourceText = element.getAttribute('title') || element.getAttribute('alt') || itemId;
                 }
-    
+
                 const generatedHotkey = generateHotkeyFromText(sourceText, usedHotkeys);
                 item.hotkey = generatedHotkey;
                 usedHotkeys.add(generatedHotkey);
@@ -1243,22 +1276,22 @@ function isElementVisible(element, requirePartiallyInViewport = true) {
 
     // 2. Vérification des styles CSS calculés
     const style = getComputedStyle(element);
-    
+
     // display: none
     if (style.display === 'none') {
         return false;
     }
-    
+
     // visibility: hidden
     if (style.visibility === 'hidden') {
         return false;
     }
-    
+
     // opacity: 0 ou proche de 0
     if (parseFloat(style.opacity) < 0.01) {
         return false;
     }
-    
+
     // pointer-events: none (l'élément n'est pas interactif)
     if (style.pointerEvents === 'none') {
         return false;
@@ -1267,7 +1300,7 @@ function isElementVisible(element, requirePartiallyInViewport = true) {
     // 3. Vérification de la visibilité dans le viewport (optionnel)
     if (requirePartiallyInViewport) {
         const rect = element.getBoundingClientRect();
-        
+
         // Vérifier si l'élément est au moins partiellement visible dans le viewport
         const isInViewport = (
             rect.bottom > 0 &&
@@ -1275,11 +1308,11 @@ function isElementVisible(element, requirePartiallyInViewport = true) {
             rect.top < window.innerHeight &&
             rect.left < window.innerWidth
         );
-        
+
         if (!isInViewport) {
             return false;
         }
-        
+
         // Vérifier que l'élément a une taille non nulle
         if (rect.width === 0 || rect.height === 0) {
             return false;
@@ -1305,12 +1338,12 @@ function querySelectorWithIframe(selector, doc = document) {
     if (selector.includes(' >> ')) {
         const [iframeSelector, innerSelector] = selector.split(' >> ').map(s => s.trim());
         const iframe = doc.querySelector(iframeSelector);
-        
+
         if (!iframe || iframe.tagName !== 'IFRAME') {
             // console.warn(`[QuickAccess] Iframe non trouvée: ${iframeSelector}, il faut nécessairement que l'iframe existe et soit déclarée juste avant le '>>' pour accéder à son contenu.`);
             return null;
         }
-        
+
         try {
             // Vérifier l'accès au contentDocument (same-origin)
             const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
@@ -1318,7 +1351,7 @@ function querySelectorWithIframe(selector, doc = document) {
                 console.warn(`[QuickAccess] Accès bloqué à l'iframe (cross-origin): ${iframeSelector}`);
                 return null;
             }
-            
+
             // Chercher dans l'iframe récursivement
             return querySelectorWithIframe(innerSelector, iframeDoc);
         } catch (e) {
@@ -1326,7 +1359,7 @@ function querySelectorWithIframe(selector, doc = document) {
             return null;
         }
     }
-    
+
     // Sélecteur classique
     return doc.querySelector(selector);
 }
@@ -1343,19 +1376,19 @@ function querySelectorWithIframe(selector, doc = document) {
  */
 function getAbsoluteBoundingRect(element) {
     const rect = element.getBoundingClientRect();
-    
+
     // Vérifier si l'élément est dans une iframe
     const ownerDoc = element.ownerDocument;
-    
+
     // Si l'élément est dans le document principal, retourner rect tel quel
     if (ownerDoc === document) {
         return rect;
     }
-    
+
     // Sinon, l'élément est dans une iframe
     // Trouver l'iframe contenant cet élément
     let iframe = null;
-    
+
     // Chercher dans toutes les iframes du document principal
     const allIframes = document.querySelectorAll('iframe');
     for (const frame of allIframes) {
@@ -1369,15 +1402,15 @@ function getAbsoluteBoundingRect(element) {
             continue;
         }
     }
-    
+
     if (!iframe) {
         console.warn('[QuickAccess] Impossible de trouver l\'iframe parente pour le positionnement du tooltip');
         return rect;
     }
-    
+
     // Obtenir la position de l'iframe (récursif si iframe imbriquée)
     const iframeRect = getAbsoluteBoundingRect(iframe);
-    
+
     // Combiner les positions
     return {
         top: rect.top + iframeRect.top,
@@ -1549,7 +1582,7 @@ function showTooltips(state, config) {
  */
 function clearTooltipsInDocument(doc) {
     if (!doc) return;
-    
+
     // Supprimer les tooltips
     const tooltips = doc.querySelectorAll('.wh-quickaccess-tooltip');
     tooltips.forEach(tooltip => tooltip.remove());
@@ -1687,7 +1720,7 @@ function prepareSubmenuForDisplay(element, submenuSelector, state, contextName) 
 function horizontalMenuPseudoMouseover(element, state) {
     // Utiliser la fonction support pour préparer le sous-menu
     const { submenu } = prepareSubmenuForDisplay(element, '.nav-menu__submenu', state, 'HorizontalMenu');
-    
+
     if (!submenu) {
         return;
     }
@@ -1765,7 +1798,7 @@ function revertMovedElement(QALevelTarget) {
 function WMenuPseudoMouseover(element, state) {
     // Utiliser la fonction support pour préparer le sous-menu
     const { submenu } = prepareSubmenuForDisplay(element, 'ul[class*="level"][class*="dynamic"]', state, 'WMenu');
-    
+
     if (!submenu) {
         return;
     }
@@ -1787,7 +1820,7 @@ function WMenuPseudoMouseover(element, state) {
 function peripheriquesPseudoMouseover(element, state) {
     // Le menu périphériques a une structure spéciale : le sous-menu est dans #ContentPlaceHolder1_MenuPeripherique
     const submenu = document.querySelector('#ContentPlaceHolder1_MenuPeripherique ul.level2.dynamic');
-    
+
     if (!submenu) {
         console.warn('[QuickAccess][Peripheriques] Sous-menu non trouvé');
         return;
@@ -1823,7 +1856,7 @@ function peripheriquesPseudoMouseover(element, state) {
  */
 function documentsJointsPseudoMouseover(element, state) {
     const submenu = document.querySelector('#DivMenuDocumentJoint');
-    
+
     if (!submenu) {
         console.warn('[QuickAccess][DocumentsJoints] Sous-menu non trouvé');
         return;
@@ -1860,7 +1893,7 @@ function documentsJointsPseudoMouseover(element, state) {
 function impressionPseudoMouseover(element, state) {
     // Le menu impression a une structure similaire au menu W standard
     const submenu = element.querySelector('ul.level2.dynamic');
-    
+
     if (!submenu) {
         console.warn('[QuickAccess][Impression] Sous-menu non trouvé');
         return;
@@ -2038,7 +2071,7 @@ function generateWMenuSubItems(submenuElement, parentId) {
         const item = {
             selector: selector,
             hotkey: null, // Sera généré automatiquement par ensureHotkeysForItems
-            onTap: nestedSubmenu ? function(element, state) { WMenuPseudoMouseover(element, state); } : 'clic',
+            onTap: nestedSubmenu ? function (element, state) { WMenuPseudoMouseover(element, state); } : 'clic',
             onDoubleTap: nestedSubmenu ? 'clic' : null,
             element: link // Sauvegarder la référence à l'élément pour un accès ultérieur
         };
@@ -2092,7 +2125,7 @@ function generateImpressionSubItems(submenuElement, parentId) {
     printerItems.forEach(li => {
         // Récupérer le lien de l'imprimante
         const printerLink = li.querySelector(':scope > a.level2.dynamic');
-        
+
         if (!printerLink) {
             console.warn('[QuickAccess][Impression] Lien d\'imprimante non trouvé, ignoré');
             return;
@@ -2180,7 +2213,7 @@ function generateHorizMenuSubItems(submenuElement, parentId) {
 
         const item = {
             selector: selector,
-            onTap: hasArrow ? function(element, state) { horizontalMenuPseudoMouseover(element, state); } : 'clic'
+            onTap: hasArrow ? function (element, state) { horizontalMenuPseudoMouseover(element, state); } : 'clic'
         };
 
         // Si a un sous-menu, configurer le double-tap pour ouvrir directement
@@ -2207,7 +2240,7 @@ function generateHorizMenuSubItems(submenuElement, parentId) {
  */
 function generateConsultationHistorySubItems(element, parentId, selectorPrefix = '') {
     const generatedSubItems = {};
-    
+
     // 1. Directement les éléments qui permettent d'agir sur les éléments de consultation
     // (modifier, supprimer, etc.), qui ne sont pas accessibles via le DOM tant qu'on 
     // n'a pas fait de mouseover dessus
@@ -2216,33 +2249,33 @@ function generateConsultationHistorySubItems(element, parentId, selectorPrefix =
         // Révéler les éléments
         actionDiv.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
         if (!isElementVisible(actionDiv)) return;
-        
+
         // Ils ont déjà chacun un element.id
         generatedSubItems[`${parentId}_action_${index + 1}`] = {
             selector: `${selectorPrefix}#${actionDiv.id}`,
             onTap: 'clic'
         };
     });
-    
+
     // 2. Sous-niveaux : un par bloc de consultation
     const consultationBlocks = element.querySelectorAll('div.sc[name="divwc"]');
     consultationBlocks.forEach((block, index) => {
         if (!isElementVisible(block)) return;
-        
+
         // Les blocs de cs n'ont pas d'id, on leur en crée un
         const blockId = `${parentId}_block_${index + 1}`;
         if (!block.id) {
             block.id = blockId;
         }
-        
+
         generatedSubItems[blockId] = {
             selector: `${selectorPrefix}#${block.id}`,
-            subItems: function() {
+            subItems: function () {
                 return generateInternalSubItems(block, selectorPrefix);
             }
         };
     });
-    
+
     return generatedSubItems;
 }
 
@@ -2306,10 +2339,10 @@ function generateInternalSubItems(element, selectorPrefix = '') {
 
     // Collecter tous les éléments d'action avec leur action associée
     const allActionElements = [];
-    
+
     for (const [groupName, groupConfig] of Object.entries(targetGroups)) {
         const elements = element.querySelectorAll(groupConfig.selector);
-        
+
         elements.forEach(el => {
             // Éviter les doublons (un élément peut matcher plusieurs groupes)
             if (!allActionElements.some(item => item.element === el)) {
@@ -2327,10 +2360,10 @@ function generateInternalSubItems(element, selectorPrefix = '') {
     // Filtrer pour ne garder que les éléments qui ne sont pas descendants d'une autre target
     const actionElements = allActionElements.filter(item => {
         const el = item.element;
-        
+
         // Reconstruire le sélecteur complet pour tester
         const allSelectors = Object.values(targetGroups).map(g => g.selector).join(',');
-        
+
         // Trouver le parent le plus proche qui est une target (en excluant l'élément lui-même)
         let parent = el.parentElement;
         while (parent && parent !== element) {
@@ -2352,12 +2385,12 @@ function generateInternalSubItems(element, selectorPrefix = '') {
     // Sinon, créer les items directement (cas normal)
     const subItems = {};
     let itemIndex = 0;
-    
+
     for (let i = 0; i < actionElements.length; i++) {
         const { element: actionElement, action } = actionElements[i];
         const itemId = generateUniqueQAItemId(actionElement, itemIndex++);
         const baseSelector = QASelectorFinder(actionElement, itemId);
-        
+
         subItems[itemId] = {
             selector: selectorPrefix + baseSelector,
             onTap: action,
@@ -2401,15 +2434,15 @@ function createGroupedSubItems(actionElements, selectorPrefix = '') {
             selector: selectorPrefix + groupSelector,
             onTap: null, // Pas d'action sur le groupe lui-même (navigation seulement)
             onDoubleTap: null,
-            subItems: function() {
+            subItems: function () {
                 // Générer les subItems de ce groupe à la demande
                 const groupSubItems = {};
-                
+
                 for (let i = 0; i < groupElements.length; i++) {
                     const { element: actionElement, action } = groupElements[i];
                     const itemId = generateUniqueQAItemId(actionElement, startIdx + i);
                     const baseSelector = QASelectorFinder(actionElement, itemId);
-                    
+
                     groupSubItems[itemId] = {
                         selector: selectorPrefix + baseSelector,
                         onTap: action,
@@ -2417,7 +2450,7 @@ function createGroupedSubItems(actionElements, selectorPrefix = '') {
                         subItems: null,
                     };
                 }
-                
+
                 console.log(`[QuickAccess] Groupe ${groupIndex + 1}/${totalGroups} généré avec ${Object.keys(groupSubItems).length} items`);
                 return groupSubItems;
             }
@@ -2431,7 +2464,7 @@ function generateUniqueQAItemId(element, index) {
     /**
      * Construire un identifiant basé sur les caractéristiques de l'élément :
      * elementType_index
-    */ 
+    */
 
     let identifier = '';
 
@@ -2443,10 +2476,10 @@ function generateUniqueQAItemId(element, index) {
 
     if (element.className) {
         // Gérer les éléments SVG dont className est un SVGAnimatedString
-        const classValue = typeof element.className === 'string' 
-            ? element.className 
+        const classValue = typeof element.className === 'string'
+            ? element.className
             : element.className.baseVal || '';
-        
+
         if (classValue) {
             const classPart = classValue.trim().split(/\s+/).join('-');
             identifier += `_${classPart}`;
@@ -2494,36 +2527,39 @@ function QASelectorFinder(element, itemId) {
  * @param {string} options.selector - Sélecteur CSS pour trouver tous les éléments
  * @param {string|Function} options.onTap - Action à exécuter sur chaque élément
  * @param {string} [options.selectorPrefix=''] - Préfixe pour les sélecteurs (pour iframes)
+ * @param {Function} [options.subItemsGenerator=null] - Fonction pour générer des sub-sub-items pour chaque élément trouvé
  * @returns {Object} Configuration des sous-items
  */
-function generateMultipleSelectorSubItems({ parentElement, selector, onTap, selectorPrefix = '' }) {
+function generateMultipleSelectorSubItems({ parentElement, selector, onTap, selectorPrefix = '', subItemsGenerator = null }) {
+    console.log(`[QuickAccess] Génération de subItems pour le sélecteur multiple: "${selector}" avec le préfixe "${selectorPrefix}"`);
     const generatedSubItems = {};
-    
+
     // Trouver tous les éléments correspondant au sélecteur
     const elements = parentElement.querySelectorAll(selector);
-    
+
     if (!elements || elements.length === 0) {
         console.warn(`[QuickAccess] Aucun élément trouvé avec le sélecteur: "${selector}"`);
         return {};
     }
-    
+
     console.log(`[QuickAccess] ${elements.length} éléments trouvés avec le sélecteur: "${selector}"`);
-    
+
     // Créer un subItem pour chaque élément trouvé
-    elements.forEach((element, index) => {        
+    elements.forEach((element, index) => {
         // Générer un ID unique pour l'élément s'il n'en a pas
         if (!element.id) {
             element.id = `qa_multiple_${index}`;
         }
-        
+
         // Créer le subItem
         const itemId = `item_${index}`;
         generatedSubItems[itemId] = {
             selector: `${selectorPrefix}#${element.id}`,
-            onTap: onTap
+            onTap: onTap,
+            subItems: subItemsGenerator ? function(elem) { return subItemsGenerator(element); } : undefined
         };
     });
-    
+
     console.log(`[QuickAccess] ${Object.keys(generatedSubItems).length} subItems générés pour le sélecteur: "${selector}"`);
     return generatedSubItems;
 }
