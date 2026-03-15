@@ -405,6 +405,13 @@ function populateSubItems(config, targetQALevel) {
 
     console.log(`[QuickAccess] Configuration après peuplement pour le niveau`, targetQALevel, config);
 
+    // Si l'item courant est un inlineSubTooltips, ses subItems s'affichent directement
+    // sans passer par flattenedCurrentLevelConfig → leurs hotkeys ne sont jamais générés
+    // automatiquement. On le fait ici, juste après le peuplement.
+    if (targetItem.inlineSubTooltips && targetItem.subItems && typeof targetItem.subItems === 'object') {
+        ensureHotkeysForItems(targetItem.subItems);
+    }
+
     // Après peuplement initial (frais ou en cache), peupler récursivement les subItems
     // des items marqués inlineSubTooltips — ceux-ci s'affichent sans navigation, donc
     // leurs subItems doivent être disponibles immédiatement.
@@ -874,7 +881,7 @@ function showTooltips(state, config) {
         }
 
         // Si l'item a inlineSubTooltips : afficher directement ses sous-items avec la hotkey combinée (ex: "SI", "SL")
-        // ⚠️ Les hotkeys des sous-items doivent être définies explicitement dans la config
+        // Les hotkeys des sous-items sont générées automatiquement dans populateSubItems si absentes.
         if (item.inlineSubTooltips && item.subItems && typeof item.subItems === 'object') {
             for (const [, subItem] of Object.entries(item.subItems)) {
                 if (!subItem.selector || !subItem.hotkey) continue;

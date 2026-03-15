@@ -26,7 +26,7 @@ function returnQuickAccessConfig() {
      *     },
      *   inlineSubTooltips: true // (optionnel) L'item n'affiche pas son propre tooltip, mais ses sous-items affichent
      *                           // la combinaison de touches parent+enfant (ex: "SI", "SL", "SW").
-     *                           // ⚠️ Les hotkeys des sous-items DOIVENT être définies explicitement (pas auto-générées).
+     *                           // Les hotkeys des sous-items sont générées automatiquement si absentes.
      *                           // La navigation reste inchangée : l'utilisateur appuie d'abord sur la hotkey du parent,
      *                           // puis sur celle du sous-item.
      *   }
