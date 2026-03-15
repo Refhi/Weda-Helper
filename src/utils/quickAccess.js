@@ -160,8 +160,16 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
     } else { // Sinon, on descend dans les subItems
         const targetQALevel = [...state.currentLevel, matchedItemId];
         moveToTargetConfig(targetQALevel, state, config);
-        setTimeout(() => {
-            showTooltips(state, config);
+        // Annuler le timeout précédent pour éviter les tooltips fantômes en cas de frappe rapide
+        if (state.pendingShowTooltips) {
+            clearTimeout(state.pendingShowTooltips);
+        }
+        state.pendingShowTooltips = setTimeout(() => {
+            state.pendingShowTooltips = null;
+            // Vérifier que le Quick Access est encore actif avant d'afficher les tooltips
+            if (document.getElementById('wh-quickaccess-overlay')) {
+                showTooltips(state, config);
+            }
         }, 100); // Petit délai pour laisser le temps au DOM de se mettre à jour si besoin
     }
 
