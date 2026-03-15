@@ -124,6 +124,7 @@ function addListenersToOverlay(overlay, state, config) {
 function handleQuickAccessKey(e, state, config) {
     // Vérifier que la touche pressée est associée à un élément **du niveau actuel**
     const currentConfig = flattenedCurrentLevelConfig(state, config);
+    console.log(`[QuickAccess] Touche pressée : "${e.key}". Configuration actuelle des hotkeys :`, Object.fromEntries(Object.entries(currentConfig).map(([id, item]) => [id, item.hotkey])));
     const matchedEntry = Object.entries(currentConfig).find(([, item]) => item.hotkey === e.key);
 
     if (matchedEntry) {
@@ -140,6 +141,7 @@ function handleQuickAccessKey(e, state, config) {
  * +/- une sortie.
 */
 function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
+    console.log(`[QuickAccess] Item sélectionné`, { matchedItemId, matchedItem, currentLevel: state.currentLevel });
     const currentConfig = flattenedCurrentLevelConfig(state, config);
     // Si le premier item du flattened a un onDoubleTap et qu'il est appelé
     // alors c'est un doubleTap. (logique navigationnelle, pas temporelle)
@@ -287,6 +289,8 @@ function getItemAndSubItems(config, QALevel, context = 'navigation') {
         if (!currentSubItems[itemId]) {
             console.warn(`[QuickAccess] Élément "${itemId}" introuvable lors de ${context}`, QALevel);
             return { item: null, subItems: null, itemId: null };
+        } else {
+             console.log(`[QuickAccess] Élément "${itemId}" trouvé lors de ${context}`, QALevel);
         }
 
         // ✅ Sauvegarder le conteneur et l'item complet AVANT de descendre
@@ -323,6 +327,7 @@ function getItemAndSubItems(config, QALevel, context = 'navigation') {
  */
 function moveToTargetConfig(targetQALevel, state, config) {
     const actualQALevel = state.currentLevel;
+    console.log(`[QuickAccess] Tentative de changement de niveau vers ${targetQALevel} depuis ${actualQALevel}`);
 
     // Vérifier que la demande de changement de niveau est d'un niveau exactement
     const levelDiff = Math.abs(targetQALevel.length - actualQALevel.length);
@@ -418,8 +423,12 @@ function populateSubItems(config, targetQALevel) {
     // Assigner les hotkeys manquants des subItems dès le peuplement.
     // Cela couvre les items inlineSubTooltips (qui ne passent jamais par
     // flattenedCurrentLevelConfig) et pré-remplit les autres (idempotent).
+    // Le hotkey du parent est réservé pour que les sub-items ne puissent pas le prendre.
     if (targetItem.subItems && typeof targetItem.subItems === 'object') {
-        ensureHotkeysForItems(targetItem.subItems);
+        const parentReserved = targetItem.hotkey
+            ? new Set([targetItem.hotkey.toLowerCase()])
+            : new Set();
+        ensureHotkeysForItems(targetItem.subItems, parentReserved);
     }
 
     // Après peuplement initial (frais ou en cache), peupler récursivement les subItems
@@ -472,9 +481,11 @@ function checkForKeyDuplication(config, QALevel) {
  * S'assure que tous les items dans une configuration ont un hotkey
  * Génère automatiquement les hotkeys manquants en utilisant generateHotkeyFromText
  * @param {Object} config - Configuration à vérifier et compléter
+ * @param {Set<string>} [reservedHotkeys=new Set()] - Hotkeys à exclure dès le départ (ex : hotkey du parent)
  */
-function ensureHotkeysForItems(config) {
-    const usedHotkeys = new Set();
+function ensureHotkeysForItems(config, reservedHotkeys = new Set()) {
+    // usedHotkeys est initialisé avec les hotkeys réservées (ex : hotkey du parent)
+    const usedHotkeys = new Set([...reservedHotkeys]);
 
     if (Object.keys(config).length === 0) {
         return;
@@ -487,15 +498,25 @@ function ensureHotkeysForItems(config) {
             if (!element) {
                 // L'élément n'existe pas dans le DOM, supprimer le hotkey hardcodé
                 console.log(`[QuickAccess] Hotkey "${item.hotkey}" supprimée pour "${itemId}" (élément absent du DOM)`);
-                delete item.hotkey; // ou item.hotkey = null;
+                delete item.hotkey;
             }
         }
     }
 
-    // Première passe : collecter les hotkeys déjà définies
+    // Première passe : collecter les hotkeys déjà définies.
+    // En cas de doublon (ou conflit avec reservedHotkeys), le premier item gagne :
+    // dans flattenedCurrentLevelConfig, l'item parent est toujours en tête → il conserve
+    // son hotkey et les sub-items en doublon sont réinitialisés pour régénération.
     for (const [itemId, item] of Object.entries(config)) {
         if (item.hotkey) {
-            usedHotkeys.add(item.hotkey.toLowerCase());
+            const hotkey = item.hotkey.toLowerCase();
+            if (usedHotkeys.has(hotkey)) {
+                // Doublon détecté : vider le hotkey pour qu'il soit régénéré proprement
+                console.log(`[QuickAccess] Doublon de hotkey "${hotkey}" pour "${itemId}" → réassignation`);
+                delete item.hotkey;
+            } else {
+                usedHotkeys.add(hotkey);
+            }
         }
     }
 
