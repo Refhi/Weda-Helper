@@ -522,6 +522,7 @@ function returnQuickAccessConfig() {
                         parentElement: element,
                         selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossaire > table',
                         onTap: 'clic',
+                        inlineSubTooltips: true,
                         subItemsGenerator: function(tableElement) {
                             // Générer des sub-sub-items pour chaque table
                             // Cibler les lignes ou liens à l'intérieur de chaque table

@@ -405,10 +405,10 @@ function populateSubItems(config, targetQALevel) {
 
     console.log(`[QuickAccess] Configuration après peuplement pour le niveau`, targetQALevel, config);
 
-    // Si l'item courant est un inlineSubTooltips, ses subItems s'affichent directement
-    // sans passer par flattenedCurrentLevelConfig → leurs hotkeys ne sont jamais générés
-    // automatiquement. On le fait ici, juste après le peuplement.
-    if (targetItem.inlineSubTooltips && targetItem.subItems && typeof targetItem.subItems === 'object') {
+    // Assigner les hotkeys manquants des subItems dès le peuplement.
+    // Cela couvre les items inlineSubTooltips (qui ne passent jamais par
+    // flattenedCurrentLevelConfig) et pré-remplit les autres (idempotent).
+    if (targetItem.subItems && typeof targetItem.subItems === 'object') {
         ensureHotkeysForItems(targetItem.subItems);
     }
 
@@ -854,6 +854,28 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = fal
 }
 
 /**
+ * Affiche récursivement les tooltips des items inlineSubTooltips en accumulant le préfixe de hotkeys.
+ * Supporte N niveaux de inlineSubTooltips (tooltips à 2, 3, 4+ lettres).
+ * @param {Object} subItems - Les subItems à afficher
+ * @param {string} hotkeyPrefix - Préfixe accumulé des hotkeys parentes (ex: 'C', 'CT')
+ */
+function showInlineSubTooltips(subItems, hotkeyPrefix) {
+    for (const [, subItem] of Object.entries(subItems)) {
+        if (!subItem.selector || !subItem.hotkey) continue;
+        const combinedHotkey = hotkeyPrefix + subItem.hotkey;
+
+        if (subItem.inlineSubTooltips && subItem.subItems && typeof subItem.subItems === 'object') {
+            // Descente récursive : ce sous-item délègue aussi l'affichage à ses enfants
+            showInlineSubTooltips(subItem.subItems, combinedHotkey);
+        } else {
+            const hasDoubleTap = subItem.onDoubleTap != null;
+            const isContainer = subItem.subItems != null && subItem.onTap == null && !hasDoubleTap;
+            createTooltip(subItem.selector, combinedHotkey, hasDoubleTap, isContainer);
+        }
+    }
+}
+
+/**
  * Affiche les tooltips pour le niveau actuel
  * @param {Object} state - Objet d'état contenant currentLevel
  * @param {Object} config - Configuration racine
@@ -883,13 +905,7 @@ function showTooltips(state, config) {
         // Si l'item a inlineSubTooltips : afficher directement ses sous-items avec la hotkey combinée (ex: "SI", "SL")
         // Les hotkeys des sous-items sont générées automatiquement dans populateSubItems si absentes.
         if (item.inlineSubTooltips && item.subItems && typeof item.subItems === 'object') {
-            for (const [, subItem] of Object.entries(item.subItems)) {
-                if (!subItem.selector || !subItem.hotkey) continue;
-                const combinedHotkey = (item.hotkey || '') + subItem.hotkey;
-                const hasSubDoubleTap = subItem.onDoubleTap != null;
-                const isSubContainer = subItem.subItems != null && subItem.onTap == null && !hasSubDoubleTap;
-                createTooltip(subItem.selector, combinedHotkey, hasSubDoubleTap, isSubContainer);
-            }
+            showInlineSubTooltips(item.subItems, item.hotkey || '');
             continue; // L'item parent lui-même n'affiche pas de tooltip
         }
 
@@ -1857,9 +1873,10 @@ function QASelectorFinder(element, itemId) {
  * @param {string|Function} options.onTap - Action à exécuter sur chaque élément
  * @param {string} [options.selectorPrefix=''] - Préfixe pour les sélecteurs (pour iframes)
  * @param {Function} [options.subItemsGenerator=null] - Fonction pour générer des sub-sub-items pour chaque élément trouvé
+ * @param {boolean} [options.inlineSubTooltips=false] - Si true, propage inlineSubTooltips aux items générés (affichage combiné des tooltips)
  * @returns {Object} Configuration des sous-items
  */
-function generateMultipleSelectorSubItems({ parentElement, selector, onTap, selectorPrefix = '', subItemsGenerator = null }) {
+function generateMultipleSelectorSubItems({ parentElement, selector, onTap, selectorPrefix = '', subItemsGenerator = null, inlineSubTooltips = false }) {
     console.log(`[QuickAccess] Génération de subItems pour le sélecteur multiple: "${selector}" avec le préfixe "${selectorPrefix}", parentElement:`, parentElement);
     const generatedSubItems = {};
 
@@ -1894,7 +1911,8 @@ function generateMultipleSelectorSubItems({ parentElement, selector, onTap, sele
         generatedSubItems[itemId] = {
             selector: `${selectorPrefix}#${element.id}`,
             onTap: onTap,
-            subItems: subItemsGenerator ? function(elem) { return subItemsGenerator(element); } : undefined
+            subItems: subItemsGenerator ? function(elem) { return subItemsGenerator(element); } : undefined,
+            ...(inlineSubTooltips && subItemsGenerator ? { inlineSubTooltips: true } : {})
         };
     });
 
