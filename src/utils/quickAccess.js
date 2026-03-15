@@ -428,7 +428,9 @@ function populateSubItems(config, targetQALevel) {
     const currentSubItems = targetItem.subItems;
     if (currentSubItems && typeof currentSubItems === 'object') {
         for (const [subItemId, subItem] of Object.entries(currentSubItems)) {
-            if (subItem.inlineSubTooltips) {
+            // Récurser pour tout item inlineSubTooltips ayant des subItems (fonction OU objet déjà résolu),
+            // car populateSubItems gère les deux cas et appellera ensureHotkeysForItems dans tous les cas.
+            if (subItem.inlineSubTooltips && subItem.subItems) {
                 populateSubItems(config, [...targetQALevel, subItemId]);
             }
         }
@@ -1908,11 +1910,18 @@ function generateMultipleSelectorSubItems({ parentElement, selector, onTap, sele
 
         // Créer le subItem
         const itemId = `item_${index}`;
+        const subItems = subItemsGenerator ? subItemsGenerator(element) : undefined;
+        const hasValidSubItems = subItems && Object.keys(subItems).length > 0;
+        if (inlineSubTooltips && subItemsGenerator && !hasValidSubItems) {
+            console.warn(`[QuickAccess] inlineSubTooltips ignoré pour l'item "${itemId}" (#${element.id}) : subItemsGenerator a retourné ${subItems ? 'un objet vide' : 'null/undefined'}`);
+        } else {
+            console.log(`[QuickAccess] SubItems générés pour l'item "${itemId}" (#${element.id}):`, subItems);
+        }
         generatedSubItems[itemId] = {
             selector: `${selectorPrefix}#${element.id}`,
             onTap: onTap,
-            subItems: subItemsGenerator ? function(elem) { return subItemsGenerator(element); } : undefined,
-            ...(inlineSubTooltips && subItemsGenerator ? { inlineSubTooltips: true } : {})
+            subItems: hasValidSubItems ? subItems : undefined,
+            ...(inlineSubTooltips && hasValidSubItems ? { inlineSubTooltips: true } : {})
         };
     });
 
