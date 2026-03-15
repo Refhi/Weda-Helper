@@ -1,5 +1,6 @@
 /**
  * @file quickAccess.js
+ * La configuration de Quick Access est définie dans quickAccessConfig.js
  * @description Système de navigation rapide par raccourcis clavier avec affichage d'infobulles.
  * Permet d'activer un mode "Quick Access" où tous les éléments configurés affichent
  * une lettre de raccourci pour y accéder rapidement.
