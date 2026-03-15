@@ -2551,7 +2551,7 @@ function generateMultipleSelectorSubItems({ parentElement, selector, onTap, sele
         return {};
     }
 
-    console.log(`[QuickAccess] ${elements.length} éléments trouvés avec le sélecteur: "${selector}"`);
+    console.log(`[QuickAccess] ${elements.length} éléments trouvés avec le sélecteur: "${selector}", éléments:`, elements);
 
     // Créer un subItem pour chaque élément trouvé
     elements.forEach((element, index) => {
