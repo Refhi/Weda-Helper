@@ -643,7 +643,7 @@ function returnQuickAccessConfig() {
                             // Cibler les lignes ou liens à l'intérieur de chaque table
                             return generateMultipleSelectorSubItems({
                                 parentElement: tableElement,
-                                selector: 'tr, a', // ajuster selon la structure HTML
+                                selector: '+ [id^="ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossairet"]',
                                 onTap: 'clic'
                             });
                         }
@@ -2531,11 +2531,20 @@ function QASelectorFinder(element, itemId) {
  * @returns {Object} Configuration des sous-items
  */
 function generateMultipleSelectorSubItems({ parentElement, selector, onTap, selectorPrefix = '', subItemsGenerator = null }) {
-    console.log(`[QuickAccess] Génération de subItems pour le sélecteur multiple: "${selector}" avec le préfixe "${selectorPrefix}"`);
+    console.log(`[QuickAccess] Génération de subItems pour le sélecteur multiple: "${selector}" avec le préfixe "${selectorPrefix}", parentElement:`, parentElement);
     const generatedSubItems = {};
 
-    // Trouver tous les éléments correspondant au sélecteur
-    const elements = parentElement.querySelectorAll(selector);
+    // Trouver tous les éléments correspondant au sélecteur, ou si le selecteur commence par +, on prend directement le premier sibling trouvé comme parentElement
+    let elements = [];
+    if (selector.startsWith('+')) {
+        // on prend le premier sibling de parentElement qui correspond au sélecteur après le +
+        parentElement = parentElement.nextElementSibling;
+        selector = selector.substring(1).trim();
+        console.log(`[QuickAccess] Sélecteur multiple avec "+", recherche du sibling pour "${selector}" et utilisation comme parentElement:`, parentElement);
+    }
+    
+    elements = parentElement.querySelectorAll(selector);
+
 
     if (!elements || elements.length === 0) {
         console.warn(`[QuickAccess] Aucun élément trouvé avec le sélecteur: "${selector}"`);
