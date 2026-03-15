@@ -1887,6 +1887,10 @@ function generateMultipleSelectorSubItems({ parentElement, selector, onTap, sele
         parentElement = parentElement.nextElementSibling;
         selector = selector.substring(1).trim();
         console.log(`[QuickAccess] Sélecteur multiple avec "+", recherche du sibling pour "${selector}" et utilisation comme parentElement:`, parentElement);
+        if (!parentElement) {
+            console.warn(`[QuickAccess] Aucun sibling trouvé pour le sélecteur "+${selector}"`);
+            return {};
+        }
     }
     
     elements = parentElement.querySelectorAll(selector);
