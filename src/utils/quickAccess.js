@@ -1919,7 +1919,8 @@ function generateMultipleSelectorSubItems({ parentElement, selector, onTap, sele
         }
         generatedSubItems[itemId] = {
             selector: `${selectorPrefix}#${element.id}`,
-            onTap: onTap,
+            onTap: hasValidSubItems ? null : onTap,
+            onDoubleTap: hasValidSubItems ? onTap : null,
             subItems: hasValidSubItems ? subItems : undefined,
             ...(inlineSubTooltips && hasValidSubItems ? { inlineSubTooltips: true } : {})
         };
