@@ -36,19 +36,29 @@ function matchesUrlPatterns(url, patterns) {
  * Fonction d'entrée de activation du Quick Access
 */
 function activateQuickAccess() {
-    // Les objets de conf sont définies ici pour être réinitialisées à chaque activation du Quick Access et éviter les problèmes de cache
-    const quickAccessConfig = returnQuickAccessConfig();
+    // La config est enveloppée dans un item racine virtuel '__root__' pour uniformiser
+    // le comportement du niveau racine avec celui des sous-niveaux.
+    // '__root__' est un item sans selector ni action : il est ignoré par showTooltips
+    // exactement comme un item de regroupement ordinaire (onTap == null).
+    const quickAccessConfig = {
+        '__root__': {
+            selector: null,
+            onTap: null,
+            onDoubleTap: null,
+            subItems: returnQuickAccessConfig()
+        }
+    };
+
     /**
     * state.currentLevel correspond au niveau actuel du QuickAccess (QALevel)
     * C'est un tableau de clés représentant le chemin dans l'arborescence.
     * Exemples :
-    * - [] = niveau racine
-    * - ["menu_vertical_gauche"] = premier niveau de profondeur
-    * - ["menu_vertical_gauche", "menu_w_sidebar"] = second niveau de profondeur
+    * - ['__root__'] = niveau racine (items de la config principale)
+    * - ['__root__', 'menu_vertical_gauche'] = premier niveau de profondeur
+    * - ['__root__', 'menu_vertical_gauche', 'menu_w_sidebar'] = second niveau
     */
-
     const state = { // Objet pour la rémanence de l'état du Quick Access
-        currentLevel: []  // Correspond au niveau racine
+        currentLevel: ['__root__']  // Démarre au niveau racine virtuel
     };
 
     // Commencer par activer l'overlay
@@ -74,8 +84,8 @@ function addListenersToOverlay(overlay, state, config) {
     overlay.addEventListener('keydown', (e) => {
         e.preventDefault();
         if (e.key === 'Backspace') { // Permet de remonter d'un niveau dans l'arborescence du Quick Access
-            if (state.currentLevel.length === 0) {
-                // Déjà à la racine : fermer le Quick Access
+            if (state.currentLevel.length <= 1) {
+                // Déjà à la racine virtuelle (ou moins) : fermer le Quick Access
                 deactivateQuickAccess();
             } else {
                 // Remontée : récupérer l'élément qu'on quitte et revert son sous-menu
@@ -217,21 +227,17 @@ function flattenedCurrentLevelConfig(state, config) {
     const flattenedConfig = {};
     const actualQALevel = state.currentLevel;
 
-    // Cas 1 : Niveau racine - retourner tous les éléments racine
-    if (actualQALevel.length === 0) {
-        Object.assign(flattenedConfig, config);
-    } else {
-        // Cas 2 : Niveau subItem - naviguer jusqu'à l'élément cible
-        const { item, subItems, itemId } = getItemAndSubItems(config, actualQALevel, 'flattenedCurrentLevelConfig');
+    // Naviguer jusqu'à l'élément cible (fonctionne à tous les niveaux, y compris '__root__')
+    const { item, subItems, itemId } = getItemAndSubItems(config, actualQALevel, 'flattenedCurrentLevelConfig');
 
-        if (!item || !itemId) {
-            console.warn('[QuickAccess] Impossible de construire la configuration aplatie', actualQALevel);
-            return {};
-        }
-
-        // Aplatir : l'item et ses subItems au même niveau
-        Object.assign(flattenedConfig, { [itemId]: item[itemId] }, subItems);
+    if (!item || !itemId) {
+        console.warn('[QuickAccess] Impossible de construire la configuration aplatie', actualQALevel);
+        return {};
     }
+
+    // Aplatir : l'item actuel et ses subItems au même niveau
+    // L'item en position [0] est l'item "parent actuel" (ex: '__root__', 'menu_vertical_gauche'...)
+    Object.assign(flattenedConfig, { [itemId]: item[itemId] }, subItems);
 
     // Générer automatiquement les hotkeys manquants
     ensureHotkeysForItems(flattenedConfig);
@@ -353,15 +359,13 @@ function moveToTargetConfig(targetQALevel, state, config) {
  * @param {string[]} targetQALevel - Chemin vers le niveau à peupler
  */
 function populateSubItems(config, targetQALevel) {
-    // Si niveau racine, rien à peupler
-    if (targetQALevel.length === 0) {
-        return;
-    }
+    console.log(`[QuickAccess] Tentative de peuplement des subItems pour le niveau`, targetQALevel);
 
     // Naviguer jusqu'à l'élément cible et obtenir son conteneur
     const { subItems: subItemsContent, item: itemContainer, itemId } = getItemAndSubItems(config, targetQALevel, 'populateSubItems');
 
     if (!itemContainer || !itemId) {
+        console.warn(`[QuickAccess] Impossible de trouver l'item cible pour le peuplement des subItems`, targetQALevel);
         return;
     }
 
@@ -842,11 +846,11 @@ function showTooltips(state, config) {
     // console.log('[QuickAccess] Affichage des tooltips pour le niveau', state.currentLevel, flattenedConfig);
 
     const entries = Object.entries(flattenedConfig);
-    const isRootLevel = state.currentLevel.length === 0;
 
     for (let i = 0; i < entries.length; i++) {
         const [itemId, item] = entries[i];
-        const isCurrentItem = !isRootLevel && i === 0;
+        // L'item en position [0] est toujours le parent actuel (ex: '__root__', 'menu_vertical_gauche'...)
+        const isCurrentItem = i === 0;
 
         // Si c'est l'item actuel et qu'il n'a ni onTap ni onDoubleTap (pur conteneur), ne pas afficher le tooltip
         if (isCurrentItem && item.onTap == null && item.onDoubleTap == null) { // Egalité intentionnelle (null ou undefined)
