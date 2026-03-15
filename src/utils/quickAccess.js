@@ -404,6 +404,18 @@ function populateSubItems(config, targetQALevel) {
     }
 
     console.log(`[QuickAccess] Configuration après peuplement pour le niveau`, targetQALevel, config);
+
+    // Après peuplement initial (frais ou en cache), peupler récursivement les subItems
+    // des items marqués inlineSubTooltips — ceux-ci s'affichent sans navigation, donc
+    // leurs subItems doivent être disponibles immédiatement.
+    const currentSubItems = targetItem.subItems;
+    if (currentSubItems && typeof currentSubItems === 'object') {
+        for (const [subItemId, subItem] of Object.entries(currentSubItems)) {
+            if (subItem.inlineSubTooltips) {
+                populateSubItems(config, [...targetQALevel, subItemId]);
+            }
+        }
+    }
 }
 
 // ============================================================================
