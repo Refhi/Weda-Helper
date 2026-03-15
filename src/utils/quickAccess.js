@@ -1558,9 +1558,9 @@ function showTooltips(state, config) {
         const [itemId, item] = entries[i];
         const isCurrentItem = !isRootLevel && i === 0;
 
-        // Si c'est l'item actuel et que doubleTap est null, ne pas afficher le tooltip
-        if (isCurrentItem && item.onDoubleTap == null) { // Egalité intentionnelle (null ou undefined)
-            console.log(`[QuickAccess] Item actuel "${itemId}" ignoré (onDoubleTap est null)`);
+        // Si c'est l'item actuel et qu'il n'a ni onTap ni onDoubleTap (pur conteneur), ne pas afficher le tooltip
+        if (isCurrentItem && item.onTap == null && item.onDoubleTap == null) { // Egalité intentionnelle (null ou undefined)
+            console.log(`[QuickAccess] Item actuel "${itemId}" ignoré (pur conteneur sans action)`);
             continue;
         }
 
