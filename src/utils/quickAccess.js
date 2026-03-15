@@ -245,9 +245,9 @@ function flattenedCurrentLevelConfig(state, config) {
     // Générer automatiquement les hotkeys manquants
     ensureHotkeysForItems(flattenedConfig);
 
-    // Vérifier que les items de l'élément cible et ses subItems
-    // n'ont pas de lettre de raccourci en double
-    checkForKeyDuplication(flattenedConfig, state.currentLevel);
+    // Vérifier les conflits uniquement entre les sub-items (pas l'item parent,
+    // dont la hotkey appartient au niveau supérieur)
+    checkForKeyDuplication(subItems || {}, state.currentLevel);
 
     return flattenedConfig;
 }
