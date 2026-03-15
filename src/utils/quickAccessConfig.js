@@ -376,8 +376,216 @@ function returnQuickAccessConfig() {
      */
     const urlPatternsConsultation = ['/FolderMedical/ConsultationForm.aspx'];
     // =============== Les iframes =============================
-    const iframeConfig = {
+    const iframeTextZonesConfig = {
         _urlPatterns: urlPatternsConsultation,
+        // -------- pour la page des consultation ------------
+        'consultation_iframe_text_config_area_1': {
+            selector: '#ContentPlaceHolder1_divZone1',
+            subItems: function (element) {
+                return generateInternalSubItems(element);
+            }
+        },
+        'consultation_iframe_text_area_1': {
+            selector: '#ContentPlaceHolder1_divZone1 iframe >> body',
+            onTap: 'focus',
+        },
+        'consultation_iframe_text_config_area_2': {
+            selector: '#ContentPlaceHolder1_divZone2',
+            subItems: function (element) {
+                return generateInternalSubItems(element);
+            }
+        },
+        'consultation_iframe_text_area_2': {
+            selector: '#ContentPlaceHolder1_divZone2 iframe >> body',
+            onTap: 'focus',
+        },
+        'consultation_iframe_text_config_area_3': {
+            selector: '#ContentPlaceHolder1_divZone3',
+            subItems: function (element) {
+                return generateInternalSubItems(element);
+            }
+        },
+        'consultation_iframe_text_area_3': {
+            selector: '#ContentPlaceHolder1_divZone3 iframe >> body',
+            onTap: 'focus',
+        },
+        'consultation_iframe_text_config_area_4': {
+            selector: '#ContentPlaceHolder1_divZone4',
+            subItems: function (element) {
+                return generateInternalSubItems(element);
+            }
+        },
+        'consultation_iframe_text_area_4': {
+            selector: '#ContentPlaceHolder1_divZone4 iframe >> body',
+            onTap: 'focus',
+        },
+        'consultation_iframe_text_config_area_5': {
+            selector: '#ContentPlaceHolder1_PanelEvenementZone5',
+            subItems: function (element) {
+                return generateInternalSubItems(element);
+            }
+        },
+        'consultation_iframe_text_area_5': {
+            selector: '#ContentPlaceHolder1_PanelEvenementZone5 iframe >> body',
+            onTap: 'focus',
+        },
+        // ---------------- et pour les autres  ---------------
+        'zone_texte_iframe_certif': { // Certif
+            selector: '#CE_ContentPlaceHolder1_EditorCertificat_ID_Frame >> body',
+            onTap: 'focus',
+        },
+        'zone_texte_iframe_prescription': { // Prescription
+            selector: '#CE_ContentPlaceHolder1_EditorPrescription_ID_Frame >> body',
+            onTap: 'focus',
+        }
+    }
+
+    // ============== Les grandes zones (titres, items, etc.) =================
+    const generalZonesConfig = {
+        _urlPatterns: urlPatternsConsultation,
+        'suivi_preferences': {
+            selector: '#ContentPlaceHolder1_ButtonSuiviPreference',
+            onTap: 'clic'
+        },
+        'zone_items': {
+            selector: '#ContentPlaceHolder1_PanelBlocagePatientSuiviVisible',
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]',
+                    onTap: 'focus'
+                });
+            }
+        },
+        'zone_cim10': {
+            selector: '#ContentPlaceHolder1_UpdatePanelDiagnosticsGrid',
+            subItems: function (element) {
+                return generateInternalSubItems(element);
+            }
+        }
+    }
+
+    /**
+     * ----------------------------------------------------------------------------------
+     *              Pages de certificats
+     * ----------------------------------------------------------------------------------
+     */
+    const textZoneIframeConfigCertificat = {
+        _urlPatterns: ['/FolderMedical/CertificatForm.aspx'],
+        'certificat_iframe_text_area': {
+            selector: '#CE_ContentPlaceHolder1_EditorCertificat_ID_Frame >> body',
+            onTap: 'focus',
+        }
+    }
+
+    /**
+     * ----------------------------------------------------------------------------------
+     *             Pages de Demandes
+     * ----------------------------------------------------------------------------------
+     */
+    const textZoneIframeConfigDemande = {
+        _urlPatterns: ['/FolderMedical/DemandeForm.aspx'],
+        'demande_iframe_text_area': {
+            selector: '#CE_ContentPlaceHolder1_EditorPrescription_ID_Frame >> body',
+            onTap: 'focus',
+        },
+        'demande_iframe_text_area_ALD': {
+            selector: '#CE_ContentPlaceHolder1_EditorPrescriptionBizone_ID_Frame >> body',
+            onTap: 'focus',
+        }
+    }
+
+
+    /**
+     * ----------------------------------------------------------------------------------
+     * transversalité : éléments présents à la fois en consultation et en hospitalisation, ou éléments génériques présents sur plusieurs pages
+     * ----------------------------------------------------------------------------------
+     */
+
+    // =============== modèles de documents ==================
+    const documentTemplatesConfig = {
+        'search_certificat_template': {
+            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_TextBoxContient',
+            onTap: 'focus',
+        },
+        'certificat_templates': {
+            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossaire',
+            subItems: 
+                function (element) {
+                    return generateMultipleSelectorSubItems({
+                        parentElement: element,
+                        selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossaire > table',
+                        onTap: 'clic',
+                        subItemsGenerator: function(tableElement) {
+                            // Générer des sub-sub-items pour chaque table
+                            // Cibler les lignes ou liens à l'intérieur de chaque table
+                            return generateMultipleSelectorSubItems({
+                                parentElement: tableElement,
+                                selector: '+ [id^="ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossairet"]',
+                                onTap: 'clic'
+                            });
+                        }
+                    });
+                }
+        },
+        'prescription_top_templace_bar': {
+            selector: '#ContentPlaceHolder1_PanelGlossaire > div > table > tbody > tr:nth-child(1) > td > table > tbody > tr',
+            subItems: function (element) {
+                return generateInternalSubItems(element);
+            }
+        },
+        'prescription_types_template_labo': {
+            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonDemandeAnalyseType',
+            onTap: 'clic'
+        },
+        'prescription_types_template_img': {
+            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonDemandeRadioType',
+            onTap: 'clic'
+        },
+        'prescription_types_template_para': {
+            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonDemandeKineType',
+            onTap: 'clic'
+        },
+        // 'prescription_templates': {
+        //     selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_DivGlossaire',
+        //     subItems: function (element) {
+        //        return generateInternalSubItems(element); // TODO : à réparer car ignore le premier groupe
+        //     }
+        // }
+    }
+
+    // =============== Titres et sous-titres =================
+    const mainTextZonesConfig = {
+        'zone_titre': {
+            selector: '#ContentPlaceHolder1_EvenementUcForm1_DivCadreEvenement',
+            subItems: function (element) {
+                return generateInternalSubItems(element);
+            }
+        },
+        'titre_input': {
+            selector: '#TextBoxEvenementTitre',
+            onTap: 'focus'
+        },
+        'sous_titre_input': {
+            selector: '#TextBoxDocumentTitre',
+            onTap: 'focus'
+        }
+    }
+
+    // =============== Boutons atcd et historique =================
+    const atcdHistoriqueConfig = {
+        'atcd_link': {
+            selector: '#ContentPlaceHolder1_EvenementUcForm1_LinkButtonShowAntecedent',
+            onTap: 'clic',
+        },
+        'historique_link': {
+            selector: '#ContentPlaceHolder1_EvenementUcForm1_LinkButtonShowHistoriqueFrame',
+            onTap: 'clic',
+        }
+    }
+
+    // =============== iframes communes à plusieurs pages ==================
+        const iframeConfig = {
         'consultation_history_iframe': {
             selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> #HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda',
             subItems: function (element) {
@@ -469,73 +677,8 @@ function returnQuickAccessConfig() {
         }
     }
 
-    const iframeTextZonesConfig = {
-        _urlPatterns: urlPatternsConsultation,
-        // -------- pour la page des consultation ------------
-        'consultation_iframe_text_config_area_1': {
-            selector: '#ContentPlaceHolder1_divZone1',
-            subItems: function (element) {
-                return generateInternalSubItems(element);
-            }
-        },
-        'consultation_iframe_text_area_1': {
-            selector: '#ContentPlaceHolder1_divZone1 iframe >> body',
-            onTap: 'focus',
-        },
-        'consultation_iframe_text_config_area_2': {
-            selector: '#ContentPlaceHolder1_divZone2',
-            subItems: function (element) {
-                return generateInternalSubItems(element);
-            }
-        },
-        'consultation_iframe_text_area_2': {
-            selector: '#ContentPlaceHolder1_divZone2 iframe >> body',
-            onTap: 'focus',
-        },
-        'consultation_iframe_text_config_area_3': {
-            selector: '#ContentPlaceHolder1_divZone3',
-            subItems: function (element) {
-                return generateInternalSubItems(element);
-            }
-        },
-        'consultation_iframe_text_area_3': {
-            selector: '#ContentPlaceHolder1_divZone3 iframe >> body',
-            onTap: 'focus',
-        },
-        'consultation_iframe_text_config_area_4': {
-            selector: '#ContentPlaceHolder1_divZone4',
-            subItems: function (element) {
-                return generateInternalSubItems(element);
-            }
-        },
-        'consultation_iframe_text_area_4': {
-            selector: '#ContentPlaceHolder1_divZone4 iframe >> body',
-            onTap: 'focus',
-        },
-        'consultation_iframe_text_config_area_5': {
-            selector: '#ContentPlaceHolder1_PanelEvenementZone5',
-            subItems: function (element) {
-                return generateInternalSubItems(element);
-            }
-        },
-        'consultation_iframe_text_area_5': {
-            selector: '#ContentPlaceHolder1_PanelEvenementZone5 iframe >> body',
-            onTap: 'focus',
-        },
-        // ---------------- et pour les autres  ---------------
-        'zone_texte_iframe_certif': { // Certif
-            selector: '#CE_ContentPlaceHolder1_EditorCertificat_ID_Frame >> body',
-            onTap: 'focus',
-        },
-        'zone_texte_iframe_prescription': { // Prescription
-            selector: '#CE_ContentPlaceHolder1_EditorPrescription_ID_Frame >> body',
-            onTap: 'focus',
-        }
-    }
-
-    // =============== Les autres éléments =====================
-    const menuIconsLeft = {
-        _urlPatterns: urlPatternsConsultation,
+    // =============== icones communes commes W, renouvellement, print etc. ==================
+        const menuIconsLeft = {
         'menuW': {
             selector: '#ContentPlaceHolder1_EvenementUcForm1_MenuNavigate a.level1',
             onTap: function (element, state) { WMenuPseudoMouseover(element, state); },
@@ -587,100 +730,24 @@ function returnQuickAccessConfig() {
         }
     }
 
-    // ============== Les grandes zones (titres, items, etc.) =================
-    const generalZonesConfig = {
-        _urlPatterns: urlPatternsConsultation,
-        'zone_titre': {
-            selector: '#ContentPlaceHolder1_EvenementUcForm1_DivCadreEvenement',
-            subItems: function (element) {
-                return generateInternalSubItems(element);
-            }
+    // =============== page de prescription médicamenteuse ==================
+    const prescriptionMedicamenteuseConfig = {
+        _urlPatterns: ['/FolderMedical/PrescriptionForm.aspx'],
+        'zone_texte_poids': {
+            selector: '#ContentPlaceHolder1_TextBoxPatientPoids',
+            onTap: 'focus'
         },
-        'suivi_preferences': {
-            selector: '#ContentPlaceHolder1_ButtonSuiviPreference',
-            onTap: 'clic'
+        'zone_texte_taille': {
+            selector: '#ContentPlaceHolder1_TextBoxPatientTaille',
+            onTap: 'focus'
         },
-        'zone_items': {
-            selector: '#ContentPlaceHolder1_PanelBlocagePatientSuiviVisible',
-            subItems: function (element) {
-                return generateMultipleSelectorSubItems({
-                    parentElement: element,
-                    selector: '[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]',
-                    onTap: 'focus'
-                });
-            }
-        },
-        'zone_cim10': {
-            selector: '#ContentPlaceHolder1_UpdatePanelDiagnosticsGrid',
+        'zone_options_recherche_medicaments': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_UpdatePanelVidal',
             subItems: function (element) {
                 return generateInternalSubItems(element);
             }
         }
-    }
-
-    /**
-     * ----------------------------------------------------------------------------------
-     * transversalité : éléments présents à la fois en consultation et en hospitalisation, ou éléments génériques présents sur plusieurs pages
-     * ----------------------------------------------------------------------------------
-     */
-
-    // =============== modèles de documents ==================
-    const documentTemplatesConfig = {
-        'search_certificat_template': {
-            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_TextBoxContient',
-            onTap: 'focus',
-        },
-        'certificat_templates': {
-            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossaire',
-            subItems: 
-                function (element) {
-                    return generateMultipleSelectorSubItems({
-                        parentElement: element,
-                        selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossaire > table',
-                        onTap: 'clic',
-                        subItemsGenerator: function(tableElement) {
-                            // Générer des sub-sub-items pour chaque table
-                            // Cibler les lignes ou liens à l'intérieur de chaque table
-                            return generateMultipleSelectorSubItems({
-                                parentElement: tableElement,
-                                selector: '+ [id^="ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossairet"]',
-                                onTap: 'clic'
-                            });
-                        }
-                    });
-                }
-        },
-        'prescription_top_templace_bar': {
-            selector: '#ContentPlaceHolder1_PanelGlossaire > div > table > tbody > tr:nth-child(1) > td > table > tbody > tr',
-            subItems: function (element) {
-                return generateInternalSubItems(element);
-            }
-        },
-        'prescription_types_template_labo': {
-            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonDemandeAnalyseType',
-            onTap: 'clic'
-        },
-        'prescription_types_template_img': {
-            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonDemandeRadioType',
-            onTap: 'clic'
-        },
-        'prescription_types_template_para': {
-            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonDemandeKineType',
-            onTap: 'clic'
-        },
-        // 'prescription_templates': {
-        //     selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_DivGlossaire',
-        //     subItems: function (element) {
-        //        return generateInternalSubItems(element); // TODO : à réparer car ignore le premier groupe
-        //     }
-        // }
-    }
-
-    // =============== page de prescription médicamenteuse ==================
-    // todo : à poursuivre
-
-
-
+    };
 
     // ================= Configuration finale avec filtrage =================
     const allConfigs = [
@@ -692,7 +759,12 @@ function returnQuickAccessConfig() {
         iframeTextZonesConfig,
         menuIconsLeft,
         generalZonesConfig,
-        documentTemplatesConfig
+        documentTemplatesConfig,
+        mainTextZonesConfig,
+        atcdHistoriqueConfig,
+        textZoneIframeConfigCertificat,
+        textZoneIframeConfigDemande,
+        prescriptionMedicamenteuseConfig
     ];
 
     const quickAccessConfig = {};
