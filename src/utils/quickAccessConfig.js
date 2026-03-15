@@ -23,7 +23,12 @@ function returnQuickAccessConfig() {
      *   subItems: {             // sous-éléments (optionnel, pour les items non-terminaux). Générés une seule fois puis mis en cache.
      *     'sous_item_1': { ... },
      *     'sous_item_2': { ... }
-     *     }
+     *     },
+     *   inlineSubTooltips: true // (optionnel) L'item n'affiche pas son propre tooltip, mais ses sous-items affichent
+     *                           // la combinaison de touches parent+enfant (ex: "SI", "SL", "SW").
+     *                           // ⚠️ Les hotkeys des sous-items DOIVENT être définies explicitement (pas auto-générées).
+     *                           // La navigation reste inchangée : l'utilisateur appuie d'abord sur la hotkey du parent,
+     *                           // puis sur celle du sous-item.
      *   }
      * 
      * Nomenclature : (à des fin de commentaire uniquement)
@@ -509,6 +514,7 @@ function returnQuickAccessConfig() {
             onTap: 'focus',
         },
         'certificat_templates': {
+            inlineSubTooltips: true,
             selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossaire',
             subItems: 
                 function (element) {

@@ -854,6 +854,19 @@ function showTooltips(state, config) {
             continue;
         }
 
+        // Si l'item a inlineSubTooltips : afficher directement ses sous-items avec la hotkey combinée (ex: "SI", "SL")
+        // ⚠️ Les hotkeys des sous-items doivent être définies explicitement dans la config
+        if (item.inlineSubTooltips && item.subItems && typeof item.subItems === 'object') {
+            for (const [, subItem] of Object.entries(item.subItems)) {
+                if (!subItem.selector || !subItem.hotkey) continue;
+                const combinedHotkey = (item.hotkey || '') + subItem.hotkey;
+                const hasSubDoubleTap = subItem.onDoubleTap != null;
+                const isSubContainer = subItem.subItems != null && subItem.onTap == null && !hasSubDoubleTap;
+                createTooltip(subItem.selector, combinedHotkey, hasSubDoubleTap, isSubContainer);
+            }
+            continue; // L'item parent lui-même n'affiche pas de tooltip
+        }
+
         const hasOnTap = item.onTap != null;
         const hasDoubleTap = item.onDoubleTap != null;
         // Un item sans onTap et avec subItems est un conteneur
