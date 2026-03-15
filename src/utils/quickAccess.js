@@ -70,6 +70,9 @@ function activateQuickAccess() {
     // On ajoute sur l'overlay les évents Listeners chargés d'écouter les entrées clavier
     addListenersToOverlay(overlay, state, quickAccessConfig)
 
+    // On peuple le niveau racine
+    populateSubItems(quickAccessConfig, state.currentLevel);
+
     // Afficher les tooltips du niveau racine
     showTooltips(state, quickAccessConfig);
 
