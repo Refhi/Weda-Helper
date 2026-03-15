@@ -255,6 +255,8 @@ function flattenedCurrentLevelConfig(state, config) {
 
     // Vérifier les conflits uniquement entre les sub-items (pas l'item parent,
     // dont la hotkey appartient au niveau supérieur)
+    // en effet si les items inférieurs sont peuplés de façon anticipée (ex. inlineSubTooltips)
+    // il peut y avoir des hotkeys en double sans qu'ils ne soient jamais affichés en même temps, donc pas de conflit réel.
     checkForKeyDuplication(subItems || {}, state.currentLevel);
 
     return flattenedConfig;
@@ -1888,28 +1890,14 @@ function generateMultipleSelectorSubItems({ parentElement, selector, onTap, sele
     console.log(`[QuickAccess] Génération de subItems pour le sélecteur multiple: "${selector}" avec le préfixe "${selectorPrefix}", parentElement:`, parentElement);
     const generatedSubItems = {};
 
-    // Trouver tous les éléments correspondant au sélecteur, ou si le selecteur commence par +, on prend directement le premier sibling trouvé comme parentElement
-    let elements = [];
-    if (selector.startsWith('+')) {
-        // on prend le premier sibling de parentElement qui correspond au sélecteur après le +
-        parentElement = parentElement.nextElementSibling;
-        selector = selector.substring(1).trim();
-        console.log(`[QuickAccess] Sélecteur multiple avec "+", recherche du sibling pour "${selector}" et utilisation comme parentElement:`, parentElement);
-        if (!parentElement) {
-            console.warn(`[QuickAccess] Aucun sibling trouvé pour le sélecteur "+${selector}"`);
-            return {};
-        }
-    }
-    
-    elements = parentElement.querySelectorAll(selector);
-
+    const elements = parentElement.querySelectorAll(selector);
 
     if (!elements || elements.length === 0) {
         console.warn(`[QuickAccess] Aucun élément trouvé avec le sélecteur: "${selector}"`);
         return {};
     }
 
-    console.log(`[QuickAccess] ${elements.length} éléments trouvés avec le sélecteur: "${selector}", éléments:`, elements);
+    console.log(`[QuickAccess] ${elements.length} éléments trouvés avec le sélecteur: "${selector}" sur le parentElement:`, parentElement, 'éléments:', elements);
 
     // Créer un subItem pour chaque élément trouvé
     elements.forEach((element, index) => {

@@ -520,15 +520,17 @@ function returnQuickAccessConfig() {
                 function (element) {
                     return generateMultipleSelectorSubItems({
                         parentElement: element,
-                        selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossaire > table',
+                        selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossaire > table [id^="ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossairet"]',
                         onTap: 'clic',
                         inlineSubTooltips: true,
-                        subItemsGenerator: function(tableElement) {
-                            // Générer des sub-sub-items pour chaque table
-                            // Cibler les lignes ou liens à l'intérieur de chaque table
+                        subItemsGenerator: function(folderElement) {
+                            // Le <div id="...Nodes"> contenant les sous-modèles est le sibling immédiat de la table
+                            const nodesDiv = folderElement.closest('table').nextElementSibling;
+                            // On vérifie que ce sibling est bien un élément type div
+                            if (!nodesDiv || nodesDiv.tagName !== 'DIV') return {};
                             return generateMultipleSelectorSubItems({
-                                parentElement: tableElement,
-                                selector: '+ [id^="ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossairet"]',
+                                parentElement: nodesDiv,
+                                selector: '[id^="ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossairet"]',
                                 onTap: 'clic'
                             });
                         }
