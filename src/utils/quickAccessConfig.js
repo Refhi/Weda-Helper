@@ -165,6 +165,7 @@ function returnQuickAccessConfig() {
             selector: ".menu-sidebar",
             onTap: null,
             onDoubleTap: null,
+            inlineSubTooltips: true, 
             subItems: {
                 // Menu W - Navigation événements
                 'menu_w_sidebar': {
@@ -752,6 +753,7 @@ function returnQuickAccessConfig() {
         },
         'zone_options_recherche_medicaments': {
             selector: '#ContentPlaceHolder1_BaseVidalUcForm1_UpdatePanelVidal',
+            inlineSubTooltips: true,
             subItems: function (element) {
                 return generateInternalSubItems(element);
             }
