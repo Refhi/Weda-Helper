@@ -342,6 +342,7 @@ addTweak(fseUrl, 'TweakFSECreation', function tweakFSENavigationNO() {
  * Gestion des cotations par défaut en fonction des conditions (ALD, âge, téléconsultation, etc.)
  */
 addTweak(fseUrl, 'defaultCotation', function tweakFSECotationDefaut() {
+    let aDefaultCotationHasBeenApplied = false; // Flag pour éviter d'appliquer plusieurs cotations par défaut
     function setDefaultValue() { // !! déclenche un rafraichissement partiel
         // va parcourir dans l'ordre le tableau de conditions et appliquer la première qui est remplie
         let conditionalCotations = [
@@ -458,7 +459,12 @@ addTweak(fseUrl, 'defaultCotation', function tweakFSECotationDefaut() {
             boutonsRadioASurveiller.forEach(function (bouton) {
                 bouton.addEventListener('change', function () {
                     console.log('[debug] change event detected');
-                    setDefaultValue();
+                    if (!aDefaultCotationHasBeenApplied) {
+                        setDefaultValue();
+                        aDefaultCotationHasBeenApplied = true;
+                    } else {
+                        console.log('Une cotation par défaut a déjà été appliquée, je n\'en applique pas une autre');
+                    }
                 });
             });
         }
