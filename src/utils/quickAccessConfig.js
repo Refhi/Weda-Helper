@@ -559,12 +559,17 @@ function returnQuickAccessConfig() {
             selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonDemandeKineType',
             onTap: 'clic'
         },
-        // 'prescription_templates': {
-        //     selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_DivGlossaire',
-        //     subItems: function (element) {
-        //        return generateInternalSubItems(element); // TODO : à réparer car ignore le premier groupe
-        //     }
-        // }
+        'toClick_template': { // Les modèles où on clique pour remplir certains champs pré-définis
+            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_DivQuestionnaire',
+            inlineSubTooltips: true,    
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_DivQuestionnaire tr td',
+                    onTap: 'clic'
+                });
+            }
+        }
     }
 
     // =============== Titres et sous-titres =================
