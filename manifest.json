@@ -55,6 +55,7 @@
         "src/features/content.js",
         "src/features/accueil.js",
         "src/features/consultation.js",
+        "src/features/forms.js",
         "src/features/fse.js",
         "src/features/fse_history.js",
         "src/features/fse_cotation_helper.js",

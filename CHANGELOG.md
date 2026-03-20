@@ -9,7 +9,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#573](https://github.com/Refhi/Weda-Helper/issues/573) - L’historique des facturations est inhibé lors d’une facturation omnidoc (évite un échec des fses omnidoc)
 - Refactorisation du code gérant les FSE
 - [#565](https://github.com/Refhi/Weda-Helper/issues/565) - Fix de l'application incorrecte d'une double cotation au moment de la validation de la FSE dans certains cas.
-
+- [#580](https://github.com/Refhi/Weda-Helper/issues/580) - Inhibition de la touche "Entrée" dans certains champs de formulaires (qui, sinon, fait perdre le formulaire)
 
 # [2.16.0] - Quick Access (Beta) ! 🚀
 ## Qu'est-ce que le "Quick Access" ?
