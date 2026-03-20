@@ -302,6 +302,7 @@ function returnQuickAccessConfig() {
          */
         'panel_patient': {
             selector: '#ContentPlaceHolder1_PanelPatient',
+            inlineSubTooltips: true,
             subItems: function (element) {
                 return generateInternalSubItems(element);
             }
@@ -363,6 +364,7 @@ function returnQuickAccessConfig() {
         },
         'documents_joints_corps': { // Niveau 1 : le panneau contenant toutes les cs
             selector: '#ContentPlaceHolder1_HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda',
+            inlineSubTooltips: true,
             subItems: function (element) {
                 return generateConsultationHistorySubItems(element, 'documents_joints_corps');
             }
@@ -455,6 +457,7 @@ function returnQuickAccessConfig() {
         },
         'zone_items': {
             selector: '#ContentPlaceHolder1_PanelBlocagePatientSuiviVisible',
+            inlineSubTooltips: true,
             subItems: function (element) {
                 return generateMultipleSelectorSubItems({
                     parentElement: element,
@@ -653,6 +656,7 @@ function returnQuickAccessConfig() {
         },
         'other_iframe_sidebar': { // L'historique affiché via WH
             selector: '#WedaHelperIframe >> .cadreicon',
+            inlineSubTooltips: true,
             subItems: {
                 // Documents
                 'Consultations': {
