@@ -29,6 +29,10 @@ function returnQuickAccessConfig() {
      *                           // Les hotkeys des sous-items sont générées automatiquement si absentes.
      *                           // La navigation reste inchangée : l'utilisateur appuie d'abord sur la hotkey du parent,
      *                           // puis sur celle du sous-item.
+     *   priorityLvl: true       // (optionnel) Si au moins un item du niveau actuel a priorityLvl: true,
+     *                           // tous les autres items sans priorityLvl: true sont inhibés (pas de tooltip,
+     *                           // pas de raccourci). Utile quand une fenêtre est au premier plan et ne doit
+     *                           // pas être perturbée par les raccourcis sous-jacents.
      *   }
      * 
      * Nomenclature : (à des fin de commentaire uniquement)
@@ -561,7 +565,8 @@ function returnQuickAccessConfig() {
         },
         'toClick_template': { // Les modèles où on clique pour remplir certains champs pré-définis
             selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_DivQuestionnaire',
-            inlineSubTooltips: true,    
+            inlineSubTooltips: true,
+            priorityLvl: true,
             subItems: function (element) {
                 return generateMultipleSelectorSubItems({
                     parentElement: element,

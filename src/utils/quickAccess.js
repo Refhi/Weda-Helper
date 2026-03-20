@@ -255,6 +255,20 @@ function flattenedCurrentLevelConfig(state, config) {
     // Générer automatiquement les hotkeys manquants
     ensureHotkeysForItems(flattenedConfig);
 
+    // Appliquer le filtre de priorité : si au moins un sub-item a priorityLvl: true,
+    // inhiber tous les sub-items sans priorityLvl: true (l'item parent en position [0] est toujours conservé).
+    const allFlatEntries = Object.entries(flattenedConfig);
+    const subEntries = allFlatEntries.slice(1);
+    const hasPriorityItems = subEntries.some(([, item]) => item.priorityLvl === true && (!item.selector || !!querySelectorWithIframe(item.selector)));
+    if (hasPriorityItems) {
+        for (const [subItemId, subItem] of subEntries) {
+            if (subItem.priorityLvl !== true || (subItem.selector && !querySelectorWithIframe(subItem.selector))) {
+                delete flattenedConfig[subItemId];
+            }
+        }
+        console.log(`[QuickAccess] Filtre prioritaire actif au niveau`, state.currentLevel);
+    }
+
     // Vérifier les conflits uniquement entre les sub-items (pas l'item parent,
     // dont la hotkey appartient au niveau supérieur)
     // en effet si les items inférieurs sont peuplés de façon anticipée (ex. inlineSubTooltips)
