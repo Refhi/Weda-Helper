@@ -574,6 +574,53 @@ function returnQuickAccessConfig() {
      *            Pages de FSE - TODO
      * ----------------------------------------------------------------------------------
      */
+    const fseConfig = {
+    }
+
+    /**
+     * ----------------------------------------------------------------------------------
+     *            Pages des imports - TODO
+     * ----------------------------------------------------------------------------------
+     */
+    const importConfig = {
+        _urlPatterns: ['/FolderMedical/UpLoaderForm.aspx'],
+        'panneau_valeurs_defaut': {
+            selector: '.frameback',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateInternalSubItems(element);
+            }
+        },
+        'zone_import': {
+            selector: '#ContentPlaceHolder1_UpdatePanelClassementGrid',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: [
+                        '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate"]', // dates (docuument et rappel)
+                        '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_"]', // titre
+                        '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementEvenementType_"]',
+                        '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_"]',
+                        '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_DeleteButtonGridFileStreamClassement_"]',
+                        '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementUser_"]'
+                    ].join(', '),
+                    onTap: 'focus',
+                });
+            }
+        },
+        'zone_page_number': {
+            selector: '.grid-pager',
+            inlineSubTooltips: false,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '.grid-pager a',
+                    onTap: 'clic',
+                });
+            }
+        }
+    }
 
 
     /**
@@ -837,7 +884,9 @@ function returnQuickAccessConfig() {
         textZoneIframeConfigCertificat,
         textZoneIframeConfigDemande,
         prescriptionMedicamenteuseConfig,
-        textZoneIframeConfigCourrier
+        textZoneIframeConfigCourrier,
+        fseConfig,
+        importConfig
     ];
 
     const quickAccessConfig = {};

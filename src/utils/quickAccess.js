@@ -887,7 +887,7 @@ function createInfoMessage() {
 function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = false) {
     const element = querySelectorWithIframe(selector);
     if (!element) {
-        console.warn(`[QuickAccess] Tooltip "${hotkey}" : élément non trouvé pour le sélecteur "${selector}"`);
+        // console.warn(`[QuickAccess] Tooltip "${hotkey}" : élément non trouvé pour le sélecteur "${selector}"`);
         return;
     }
 
@@ -896,7 +896,7 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = fal
     const computedStyle = getComputedStyle(element);
     
     if (computedStyle.overflow === 'hidden' || computedStyle.overflow === 'clip') {
-        console.log(`[QuickAccess] Tooltip "${hotkey}" : overflow détecté (${computedStyle.overflow}), recherche d'un parent sans overflow`);
+        // console.log(`[QuickAccess] Tooltip "${hotkey}" : overflow détecté (${computedStyle.overflow}), recherche d'un parent sans overflow`);
         
         // Remonter dans l'arbre DOM pour trouver un parent sans overflow problématique
         let current = element.parentElement;
@@ -970,8 +970,25 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = fal
     // Contenu : uniquement la touche
     tooltip.textContent = hotkey.toUpperCase();
 
-    // Rattacher le tooltip à l'élément cible (élément original ou parent sans overflow)
-    targetElement.appendChild(tooltip);
+    // Déterminer si l'élément peut avoir des enfants
+    // Les éléments comme <select>, <input>, <textarea>, <img>, <br>, <hr> ne peuvent pas avoir d'enfants directs valides
+    const cannotHaveChildren = ['SELECT', 'INPUT', 'TEXTAREA', 'IMG', 'BR', 'HR', 'VIDEO', 'AUDIO'].includes(element.tagName);
+    
+    if (cannotHaveChildren) {
+        // Pour ces éléments, insérer le tooltip comme sibling et ajuster le positionnement
+        const rect = element.getBoundingClientRect();
+        tooltip.style.position = 'absolute';
+        tooltip.style.top = `${element.offsetTop}px`;
+        tooltip.style.left = `${element.offsetLeft}px`;
+        
+        // Insérer après l'élément
+        element.parentElement.insertBefore(tooltip, element.nextSibling);
+        console.log(`[QuickAccess] Tooltip créé pour "${hotkey}" sur l'élément ${element.tagName}`, element, '(inséré comme sibling)');
+    } else {
+        // Rattacher le tooltip à l'élément cible (élément original ou parent sans overflow)
+        targetElement.appendChild(tooltip);
+        console.log(`[QuickAccess] Tooltip créé pour "${hotkey}" sur l'élément`, element, `(attaché à ${targetElement === element ? 'l\'élément lui-même' : 'un parent sans overflow'})`);
+    }
 }
 
 /**
@@ -2039,7 +2056,7 @@ function generateMultipleSelectorSubItems({ parentElement, selector, onTap, sele
         if (inlineSubTooltips && subItemsGenerator && !hasValidSubItems) {
             console.warn(`[QuickAccess] inlineSubTooltips ignoré pour l'item "${itemId}" (#${element.id}) : subItemsGenerator a retourné ${subItems ? 'un objet vide' : 'null/undefined'}`);
         } else {
-            console.log(`[QuickAccess] SubItems générés pour l'item "${itemId}" (#${element.id}):`, subItems);
+            // console.log(`[QuickAccess] SubItems générés pour l'item "${itemId}" (#${element.id}):`, subItems);
         }
         generatedSubItems[itemId] = {
             selector: `${selectorPrefix}#${element.id}`,
