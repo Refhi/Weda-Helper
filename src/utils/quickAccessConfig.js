@@ -169,7 +169,7 @@ function returnQuickAccessConfig() {
             selector: ".menu-sidebar",
             onTap: null,
             onDoubleTap: null,
-            inlineSubTooltips: true, 
+            inlineSubTooltips: true,
             subItems: {
                 // Menu W - Navigation événements
                 'menu_w_sidebar': {
@@ -508,6 +508,73 @@ function returnQuickAccessConfig() {
         }
     }
 
+    /**
+     * ----------------------------------------------------------------------------------
+     *            Pages de prescriptions médicamenteuses
+     * ----------------------------------------------------------------------------------
+     */
+    const prescriptionMedicamenteuseConfig = {
+        _urlPatterns: ['/FolderMedical/PrescriptionForm.aspx'],
+        'zone_texte_poids': {
+            selector: '#ContentPlaceHolder1_TextBoxPatientPoids',
+            onTap: 'focus'
+        },
+        'zone_texte_taille': {
+            selector: '#ContentPlaceHolder1_TextBoxPatientTaille',
+            onTap: 'focus'
+        },
+        'zone_resultats_recherche_medicaments': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_UpdatePanelVidal',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '[id^="ContentPlaceHolder1_BaseVidalUcForm1_VidalPacksGrid_LinkButtonVidalPacksGridName_"]',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'zone_resultats_recherche_medicaments_fav': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_UpdatePanelVidal',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '[id^="ContentPlaceHolder1_BaseVidalUcForm1_VidalPacksGrid_LinkButtonVidalPacksGridPosologieType_"]',
+                    onTap: 'clic',
+                });
+            }
+        },
+
+        'zone_options_recherche_medicaments': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_UpdatePanelVidal table',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateInternalSubItems(element);
+            }
+        }
+    };
+
+
+    /**
+     * ----------------------------------------------------------------------------------
+     *             Pages de courriers
+     * ----------------------------------------------------------------------------------
+     */
+    const textZoneIframeConfigCourrier = {
+        _urlPatterns: ['/FolderMedical/CourrierForm.aspx'],
+        'courrier_iframe_text_area': {
+            selector: '#CE_ContentPlaceHolder1_EditorCourrier_ID_Frame >> body',
+            onTap: 'focus',
+        }
+    }
+
+    /**
+     * ----------------------------------------------------------------------------------
+     *            Pages de FSE - TODO
+     * ----------------------------------------------------------------------------------
+     */
+
 
     /**
      * ----------------------------------------------------------------------------------
@@ -524,14 +591,14 @@ function returnQuickAccessConfig() {
         'certificat_templates': {
             inlineSubTooltips: true,
             selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossaire',
-            subItems: 
+            subItems:
                 function (element) {
                     return generateMultipleSelectorSubItems({
                         parentElement: element,
                         selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossaire > table [id^="ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossairet"]',
                         onTap: 'clic',
                         inlineSubTooltips: true,
-                        subItemsGenerator: function(folderElement) {
+                        subItemsGenerator: function (folderElement) {
                             // Le <div id="...Nodes"> contenant les sous-modèles est le sibling immédiat de la table
                             const nodesDiv = folderElement.closest('table').nextElementSibling;
                             // On vérifie que ce sibling est bien un élément type div
@@ -608,7 +675,7 @@ function returnQuickAccessConfig() {
     }
 
     // =============== iframes communes à plusieurs pages ==================
-        const iframeConfig = {
+    const iframeConfig = {
         'consultation_history_iframe': {
             selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> #HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda',
             subItems: function (element) {
@@ -702,7 +769,7 @@ function returnQuickAccessConfig() {
     }
 
     // =============== icones communes commes W, renouvellement, print etc. ==================
-        const menuIconsLeft = {
+    const menuIconsLeft = {
         'menuW': {
             selector: '#ContentPlaceHolder1_EvenementUcForm1_MenuNavigate a.level1',
             onTap: function (element, state) { WMenuPseudoMouseover(element, state); },
@@ -754,49 +821,6 @@ function returnQuickAccessConfig() {
         }
     }
 
-    // =============== page de prescription médicamenteuse ==================
-    const prescriptionMedicamenteuseConfig = {
-        _urlPatterns: ['/FolderMedical/PrescriptionForm.aspx'],
-        'zone_texte_poids': {
-            selector: '#ContentPlaceHolder1_TextBoxPatientPoids',
-            onTap: 'focus'
-        },
-        'zone_texte_taille': {
-            selector: '#ContentPlaceHolder1_TextBoxPatientTaille',
-            onTap: 'focus'
-        },
-        'zone_resultats_recherche_medicaments': {
-            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_UpdatePanelVidal',
-            inlineSubTooltips: true,
-            subItems: function (element) {
-                return generateMultipleSelectorSubItems({
-                    parentElement: element,
-                    selector: '[id^="ContentPlaceHolder1_BaseVidalUcForm1_VidalPacksGrid_LinkButtonVidalPacksGridName_"]',
-                    onTap: 'clic',
-                });
-            }
-        },
-        'zone_resultats_recherche_medicaments_fav': {
-            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_UpdatePanelVidal',
-            inlineSubTooltips: true,
-            subItems: function (element) {
-                return generateMultipleSelectorSubItems({
-                    parentElement: element,
-                    selector: '[id^="ContentPlaceHolder1_BaseVidalUcForm1_VidalPacksGrid_LinkButtonVidalPacksGridPosologieType_"]',
-                    onTap: 'clic',
-                });
-            }
-        },
-
-        'zone_options_recherche_medicaments': {
-            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_UpdatePanelVidal table',
-            inlineSubTooltips: true,
-            subItems: function (element) {
-                return generateInternalSubItems(element);
-            }
-        }
-    };
-
     // ================= Configuration finale avec filtrage =================
     const allConfigs = [
         bandeauSuperieurConfig,
@@ -812,7 +836,8 @@ function returnQuickAccessConfig() {
         atcdHistoriqueConfig,
         textZoneIframeConfigCertificat,
         textZoneIframeConfigDemande,
-        prescriptionMedicamenteuseConfig
+        prescriptionMedicamenteuseConfig,
+        textZoneIframeConfigCourrier
     ];
 
     const quickAccessConfig = {};
