@@ -33,8 +33,16 @@ function matchesUrlPatterns(url, patterns) {
 // ============================================================================
 
 /** 
- * Fonction d'entrée de activation du Quick Access
-*/
+ * Active le mode Quick Access.
+ * Crée des listeners sur le document principal et tous les documents des iframes
+ * pour capturer les événements clavier et affiche les tooltips de navigation.
+ * 
+ * @description Cette fonction initialise le système Quick Access en :
+ * - Créant la configuration de navigation hiérarchique
+ * - Ajoutant un message d'information à l'écran
+ * - Installant des listeners keyboard sur tous les documents accessibles
+ * - Affichant les tooltips du niveau racine
+ */
 function activateQuickAccess() {
     // La config est enveloppée dans un item racine virtuel '__root__' pour uniformiser
     // le comportement du niveau racine avec celui des sous-niveaux.
@@ -58,17 +66,18 @@ function activateQuickAccess() {
     * - ['__root__', 'menu_vertical_gauche', 'menu_w_sidebar'] = second niveau
     */
     const state = { // Objet pour la rémanence de l'état du Quick Access
-        currentLevel: ['__root__']  // Démarre au niveau racine virtuel
+        currentLevel: ['__root__'],  // Démarre au niveau racine virtuel
+        listeners: []  // Stocke les références aux listeners pour pouvoir les retirer
     };
 
-    // Commencer par activer l'overlay
-    let overlay = createOverlay();
+    // Afficher un message d'information
+    createInfoMessage();
 
-    // Y mettre le focus pour faciliter les écoutes clavier et éviter les interractions malheureuses avec les champs inf. (comme les inputs)
-    overlay.focus()
+    // Récupérer tous les documents (principal + iframes)
+    const documents = getAllDocuments();
 
-    // On ajoute sur l'overlay les évents Listeners chargés d'écouter les entrées clavier
-    addListenersToOverlay(overlay, state, quickAccessConfig)
+    // On ajoute les listeners sur tous les documents
+    addListenersToDocuments(documents, state, quickAccessConfig);
 
     // On peuple le niveau racine
     populateSubItems(quickAccessConfig, state.currentLevel);
@@ -83,42 +92,95 @@ function activateQuickAccess() {
 // GESTION DES ÉVÉNEMENTS CLAVIER
 // ============================================================================
 
-function addListenersToOverlay(overlay, state, config) {
-    overlay.addEventListener('keydown', (e) => {
-        e.preventDefault();
-        if (e.key === 'Backspace') { // Permet de remonter d'un niveau dans l'arborescence du Quick Access
-            if (state.currentLevel.length <= 1) {
-                // Déjà à la racine virtuelle (ou moins) : fermer le Quick Access
-                deactivateQuickAccess();
-            } else {
-                // Remontée : récupérer l'élément qu'on quitte et revert son sous-menu
-                console.log(`[QuickAccess] Item à quitter lors de la remontée`, state.currentLevel);
-                if (state.currentLevel && state.currentLevel.length > 0) {
-                    // Certains éléments sont déplacés lors de la navigation
-                    // on les remet en place à la remontée.
-                    revertMovedElement(state.currentLevel);
-                }
-
-                // Remontée d'un niveau
-                const previousLevel = state.currentLevel.slice(0, -1); // On enlève le dernier élément du chemin
-                moveToTargetConfig(previousLevel, state, config) // Change le state.currentLevel et vérifie la validité du changement
-                // showToolTips contiens également un reset
-                showTooltips(state, config);
+/**
+ * Récupère tous les documents accessibles (document principal + tous les documents dans les iframes)
+ * @returns {Document[]} Tableau de documents
+ */
+function getAllDocuments() {
+    const docs = [document];
+    
+    // Parcourir toutes les iframes du document principal
+    const iframes = document.querySelectorAll('iframe');
+    iframes.forEach(iframe => {
+        try {
+            // Vérifier l'accès au contentDocument (same-origin)
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+            if (iframeDoc) {
+                docs.push(iframeDoc);
+                // Récursivement, chercher les iframes dans les iframes
+                const nestedIframes = iframeDoc.querySelectorAll('iframe');
+                nestedIframes.forEach(nestedIframe => {
+                    try {
+                        const nestedDoc = nestedIframe.contentDocument || nestedIframe.contentWindow?.document;
+                        if (nestedDoc) {
+                            docs.push(nestedDoc);
+                        }
+                    } catch (e) {
+                        // Iframe cross-origin, on ignore
+                    }
+                });
             }
-        } else {
-            // Pour tout le reste des touches, c'est géré dans :
-            handleQuickAccessKey(e, state, config);
+        } catch (e) {
+            // Iframe cross-origin, on ignore
         }
     });
+    
+    return docs;
+}
 
-    // L'action deactivateQuickAccess ferme le Quick Access
-    // la touche Echap permet de l'appeler à tout moment
-    overlay.addEventListener('keyup', (e) => {
-        e.preventDefault();
-        if (e.key === 'Escape') {
-            deactivateQuickAccess()
-        }
-    })
+/**
+ * Ajoute les listeners de Quick Access à tous les documents fournis
+ * @param {Document[]} documents - Tableaux de documents sur lesquels ajouter les listeners
+ * @param {Object} state - État du Quick Access
+ * @param {Object} config - Configuration du Quick Access
+ */
+function addListenersToDocuments(documents, state, config) {
+    documents.forEach(doc => {
+        const keydownHandler = (e) => {
+            e.preventDefault();
+            if (e.key === 'Backspace') { // Permet de remonter d'un niveau dans l'arborescence du Quick Access
+                if (state.currentLevel.length <= 1) {
+                    // Déjà à la racine virtuelle (ou moins) : fermer le Quick Access
+                    deactivateQuickAccess(state);
+                } else {
+                    // Remontée : récupérer l'élément qu'on quitte et revert son sous-menu
+                    console.log(`[QuickAccess] Item à quitter lors de la remontée`, state.currentLevel);
+                    if (state.currentLevel && state.currentLevel.length > 0) {
+                        // Certains éléments sont déplacés lors de la navigation
+                        // on les remet en place à la remontée.
+                        revertMovedElement(state.currentLevel);
+                    }
+
+                    // Remontée d'un niveau
+                    const previousLevel = state.currentLevel.slice(0, -1); // On enlève le dernier élément du chemin
+                    moveToTargetConfig(previousLevel, state, config) // Change le state.currentLevel et vérifie la validité du changement
+                    // showToolTips contiens également un reset
+                    showTooltips(state, config);
+                }
+            } else {
+                // Pour tout le reste des touches, c'est géré dans :
+                handleQuickAccessKey(e, state, config);
+            }
+        };
+
+        const keyupHandler = (e) => {
+            e.preventDefault();
+            if (e.key === 'Escape') {
+                deactivateQuickAccess(state);
+            }
+        };
+
+        // Ajouter les listeners
+        doc.addEventListener('keydown', keydownHandler);
+        doc.addEventListener('keyup', keyupHandler);
+
+        // Stocker les références pour pouvoir les retirer plus tard
+        state.listeners.push({
+            doc: doc,
+            keydown: keydownHandler,
+            keyup: keyupHandler
+        });
+    });
 }
 
 function handleQuickAccessKey(e, state, config) {
@@ -158,7 +220,7 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
 
     if (isTerminal) { // On sort du Quick Access après l'action
         recordMetrics({ clicks: 1, drags: 1 }); // Définie dans metrics.js
-        deactivateQuickAccess();
+        deactivateQuickAccess(state);
     } else { // Sinon, on descend dans les subItems
         const targetQALevel = [...state.currentLevel, matchedItemId];
         moveToTargetConfig(targetQALevel, state, config);
@@ -169,7 +231,7 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
         state.pendingShowTooltips = setTimeout(() => {
             state.pendingShowTooltips = null;
             // Vérifier que le Quick Access est encore actif avant d'afficher les tooltips
-            if (document.getElementById('wh-quickaccess-overlay')) {
+            if (document.getElementById('wh-quickaccess-info-message')) {
                 showTooltips(state, config);
             }
         }, 100); // Petit délai pour laisser le temps au DOM de se mettre à jour si besoin
@@ -728,7 +790,7 @@ function querySelectorWithIframe(selector, doc = document) {
 }
 
 // ============================================================================
-// INTERFACE UTILISATEUR - OVERLAY ET TOOLTIPS
+// INTERFACE UTILISATEUR - TOOLTIPS ET MESSAGE D'INFORMATION
 // ============================================================================
 
 /**
@@ -788,27 +850,14 @@ function getAbsoluteBoundingRect(element) {
 }
 
 /**
- * Crée et affiche l'overlay semi-transparent
- * @returns {HTMLElement} L'élément overlay créé
+ * Crée et affiche un message d'information pour le Quick Access.
+ * Ce message indique à l'utilisateur que le mode Quick Access est actif
+ * et comment le quitter (touche Échap).
  */
-function createOverlay() {
-    const overlay = document.createElement('div');
-    overlay.id = 'wh-quickaccess-overlay';
-    overlay.tabIndex = -1; // pour pouvoir y mettre le focus et écouter les événements clavier
-    overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.1);
-        z-index: 99998;
-        pointer-events: none;
-        cursor: default;
-    `;
-
+function createInfoMessage() {
     // Message d'information
     const message = document.createElement('div');
+    message.id = 'wh-quickaccess-info-message';
     message.style.cssText = `
         position: fixed;
         bottom: 20px;
@@ -825,10 +874,7 @@ function createOverlay() {
         font-family: Arial, sans-serif;
     `;
     message.textContent = 'Quick Access (Échap pour quitter)';
-
-    overlay.appendChild(message);
-    document.body.appendChild(overlay);
-    return overlay;
+    document.body.appendChild(message);
 }
 
 /**
@@ -1038,13 +1084,28 @@ function clearAllTooltips() {
 }
 
 /**
- * Désactive le mode Quick Access en supprimant l'overlay et les listeners associés
- * et en supprimant les infobulles affichées.
+ * Désactive le mode Quick Access.
+ * Retire tous les listeners installés sur les documents, supprime le message d'information
+ * et nettoie les infobulles affichées.
+ * 
+ * @param {Object} state - État du Quick Access contenant les références aux listeners
+ * @param {Array} state.listeners - Tableau des listeners à retirer
  */
-function deactivateQuickAccess() {
-    // supprimer l'overlay (les listeners y étant attachés, ils seront automatiquement supprimés)
-    const overlay = document.getElementById('wh-quickaccess-overlay');
-    overlay.remove();
+function deactivateQuickAccess(state) {
+    // Retirer tous les listeners
+    if (state && state.listeners) {
+        state.listeners.forEach(({ doc, keydown, keyup }) => {
+            doc.removeEventListener('keydown', keydown);
+            doc.removeEventListener('keyup', keyup);
+        });
+        state.listeners = [];
+    }
+
+    // Supprimer le message d'information
+    const message = document.getElementById('wh-quickaccess-info-message');
+    if (message) {
+        message.remove();
+    }
 
     // supprimer les infobulles affichées
     clearAllTooltips();
