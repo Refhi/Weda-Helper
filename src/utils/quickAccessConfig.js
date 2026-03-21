@@ -765,8 +765,31 @@ function returnQuickAccessConfig() {
             selector: '#ContentPlaceHolder1_TextBoxPatientTaille',
             onTap: 'focus'
         },
-        'zone_options_recherche_medicaments': {
+        'zone_resultats_recherche_medicaments': {
             selector: '#ContentPlaceHolder1_BaseVidalUcForm1_UpdatePanelVidal',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '[id^="ContentPlaceHolder1_BaseVidalUcForm1_VidalPacksGrid_LinkButtonVidalPacksGridName_"]',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'zone_resultats_recherche_medicaments_fav': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_UpdatePanelVidal',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '[id^="ContentPlaceHolder1_BaseVidalUcForm1_VidalPacksGrid_LinkButtonVidalPacksGridPosologieType_"]',
+                    onTap: 'clic',
+                });
+            }
+        },
+
+        'zone_options_recherche_medicaments': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_UpdatePanelVidal table',
             inlineSubTooltips: true,
             subItems: function (element) {
                 return generateInternalSubItems(element);
