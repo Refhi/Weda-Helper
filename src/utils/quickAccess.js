@@ -1,682 +1,11 @@
 /**
  * @file quickAccess.js
+ * La configuration de Quick Access est définie dans quickAccessConfig.js
  * @description Système de navigation rapide par raccourcis clavier avec affichage d'infobulles.
  * Permet d'activer un mode "Quick Access" où tous les éléments configurés affichent
  * une lettre de raccourci pour y accéder rapidement.
  * 
  */
-
-// ============================================================================
-// CONFIGURATION
-// ============================================================================
-
-function returnQuickAccessConfig() {
-    /**
-     * Configuration du Quick Access
-     * Un Item correspond à un élément présent dans le DOM :
-     * 
-     * 'ceci_est_un_item': {     // ID de l'item, utilisé pour la navigation dans les niveaux
-     *   selector: 'a.mon-lien', // sélecteur CSS pour trouver l'élément dans le DOM
-     *   hotkey: 'c',            // lettre de raccourci (de préférence null pour génération automatique)
-     *   onTap: 'mouseover',     // action à exécuter au tap (cf. executeAction)
-     *   onDouble: 'clic',       // action à exécuter au double-tap (optionnel, cf. executeAction)
-     *   subItems: {             // sous-éléments (optionnel, pour les items non-terminaux). Générés une seule fois puis mis en cache.
-     *     'sous_item_1': { ... },
-     *     'sous_item_2': { ... }
-     *     }
-     *   }
-     * 
-     * Nomenclature : (à des fin de commentaire uniquement)
-     * - un item de REGROUPEMENT est un item sans onTap ni onDoubleTap
-     * - un item TERMINAL est un item sans subItems
-     * - un item ACTION est un item avec une action onTap ou onDoubleTap, qu'il ait ou non des subItems
-     */
-    /** --------------------------------------------------------------------------------
-    *                Configuration spécifique à la page d’accueil
-    * ----------------------------------------------------------------------------------
-    */
-    // ================= Bandeau supérieur de la page d’accueil =================
-    const bandeauSuperieurConfig = {
-        'large_top_menu': {
-            selector: 'table.bandeau',
-            subItems: {
-                'recherche_patient_input': {
-                    selector: '#TextBoxFindPatient',
-                    onTap: function(element) {
-                        element.focus();
-                        element.select();
-                    }
-                },
-                'coller_presse_papiers': {
-                    selector: 'span[title="Coller le contenu du presse-papiers"]',
-                    onTap: 'clic'
-                },
-                'aide': {
-                    selector: '#ImageAide',
-                    onTap: 'clic'
-                },
-                'vidal': {
-                    selector: '#ImageVidal',
-                    onTap: 'clic'
-                },
-                'vidal_recos': {
-                    selector: '#ImageRoco',
-                    onTap: 'clic'
-                },
-                'expert_weda': {
-                    selector: '#ImageButtonExpertWeda',
-                    onTap: 'clic'
-                },
-                'negatoscope': {
-                    selector: '#ImageNegatoscope',
-                    onTap: 'clic'
-                },
-                'messagerie': {
-                    selector: '.messagerieWidget',
-                    onTap: 'clic'
-                },
-                'postits': {
-                    selector: '#postitWidget_divContainer',
-                    onTap: 'clic'
-                },
-                'lecture_cps': {
-                    selector: 'vz-lecture-cps-widget button[mat-raised-button]',
-                    onTap: 'clic'
-                },
-                'idomed': {
-                    selector: '#idomed_icon img[alt="idomed"]',
-                    onTap: 'clic'
-                },
-                'resultats_icon': {
-                    selector: 'resultats-icon div.icon',
-                    onTap: 'clic'
-                },
-                'weda_connect': {
-                    selector: 'weda-connect-update-invite div.icon',
-                    onTap: 'clic'
-                },
-                'deconnexion': {
-                    selector: '.imgDeconnexion',
-                    onTap: 'clic'
-                }
-            }
-        }
-    };
-
-    // ================= Eléments principaux du Bandeau supérieur =================
-    const menuHorizontalConfig = {
-        _urlPatterns: ['/FolderMedical/PatientViewForm.aspx'],
-        'medical': {
-            selector: '#nav-menu > li > a.nav-icon__link--doctor',
-            hotkey: 'm',
-            onTap: function(element, state) { horizontalMenuPseudoMouseover(element, state); },
-            onDoubleTap: 'clic',
-            subItems: function (element) {
-                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-                return submenu ? generateHorizMenuSubItems(submenu, 'medical') : {};
-            }
-        },
-
-        'applicatifs': {
-            selector: '#nav-menu > li > a.nav-icon__link--tools',
-            hotkey: 'p',
-            onTap: function(element, state) { horizontalMenuPseudoMouseover(element, state); },
-            onDoubleTap: 'clic',
-            subItems: function (element) {
-                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-                return submenu ? generateHorizMenuSubItems(submenu, 'applicatifs') : {};
-            }
-        },
-
-        'gestion': {
-            selector: '#nav-menu > li > a.nav-icon__link--safe-open',
-            hotkey: 'g',
-            onTap: function(element, state) { horizontalMenuPseudoMouseover(element, state); },
-            onDoubleTap: 'clic',
-            subItems: function (element) {
-                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-                return submenu ? generateHorizMenuSubItems(submenu, 'gestion') : {};
-            }
-        },
-
-        'parametres': {
-            selector: '#nav-menu > li > a.nav-icon__link--mixing-desk',
-            hotkey: 'e',
-            onTap: function(element, state) { horizontalMenuPseudoMouseover(element, state); },
-            onDoubleTap: 'clic',
-            subItems: function (element) {
-                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-                return submenu ? generateHorizMenuSubItems(submenu, 'parametres') : {};
-            }
-        }
-    };
-
-    // ================= Menu vertical gauche (sidebar) de la page d’accueil =================
-    const sidebarConfig = {
-        'menu_vertical_gauche': {
-            selector: ".menu-sidebar",
-            onTap: null,
-            onDoubleTap: null,
-            subItems: {
-                // Menu W - Navigation événements
-                'menu_w_sidebar': {
-                    selector: '#ContentPlaceHolder1_MenuNavigate > ul.level1 > li > a.level1',
-                    onTap: function(element, state) { WMenuPseudoMouseover(element, state); },
-                    onDoubleTap: 'clic',
-                    subItems: function (element) {
-                        const parentLi = element.parentElement;
-                        const submenu = parentLi?.querySelector('ul.level2.dynamic');
-                        return submenu ? generateWMenuSubItems(submenu, 'menu_w_sidebar') : {};
-                    }
-                },
-
-                // Fiche patient
-                'modifier_patient': {
-                    selector: '#ContentPlaceHolder1_ButtonModifierPatient',
-                    onTap: 'clic'
-                },
-
-                // Carte Vitale
-                'cv_sidebar': {
-                    selector: '.cv',
-                    onTap: 'clic'
-                },
-
-                // Menu périphériques (scanner, doctolib, DMP, omnidoc)
-                'peripheriques': {
-                    selector: '#ContentPlaceHolder1_DivMenuPeripherique',
-                    onTap: function(element, state) { peripheriquesPseudoMouseover(element, state); },
-                    onDoubleTap: 'clic',
-                    subItems: function (element) {
-                        const submenu = element.querySelector('#ContentPlaceHolder1_MenuPeripherique ul.level2.dynamic');
-                        return submenu ? generateWMenuSubItems(submenu, 'peripheriques') : {};
-                    }
-                },
-
-                // Recherche patient
-                'recherche_sidebar': {
-                    selector: '.imgChercher',
-                    onTap: 'clic'
-                },
-
-                // Ajouter patient
-                'ajouter_patient': {
-                    selector: '.imgAddNewPatient',
-                    onTap: 'clic'
-                },
-
-                // Documents
-                'consultations': {
-                    selector: '#ContentPlaceHolder1_ButtonConsultation',
-                    onTap: 'clic'
-                },
-
-                'resultats_examen': {
-                    selector: '#ContentPlaceHolder1_ButtonResultatExamen',
-                    onTap: 'clic'
-                },
-
-                'courriers': {
-                    selector: '#ContentPlaceHolder1_ButtonCourrier',
-                    onTap: 'clic'
-                },
-
-                'vaccins': {
-                    selector: '#ContentPlaceHolder1_ButtonVaccins',
-                    onTap: 'clic'
-                },
-
-                'traitements': {
-                    selector: '#ContentPlaceHolder1_ButtonPanneauxSynthetique',
-                    onTap: 'clic'
-                },
-
-                'graphiques': {
-                    selector: '#ContentPlaceHolder1_ButtonChart',
-                    onTap: 'clic'
-                },
-
-                'documents_joints': {
-                    selector: '#ButtonDocumentJointAction',
-                    onTap: function(element, state) { documentsJointsPseudoMouseover(element, state); },
-                    onDoubleTap: 'clic',
-                    subItems: function (element) {
-                        const submenu = document.querySelector('#DivMenuDocumentJoint table');
-                        return submenu ? generateDocumentsJointsSubItems(submenu, 'documents_joints') : {};
-                    }
-                },
-
-                'grossesse': {
-                    selector: '#ContentPlaceHolder1_ButtonPregnant',
-                    onTap: 'clic'
-                },
-
-                'arrets_travail': {
-                    selector: '#ContentPlaceHolder1_ButtonAT',
-                    onTap: 'clic'
-                },
-
-                // Menu impression
-                'impression': {
-                    selector: '#ContentPlaceHolder1_MenuPrint > ul.level1.static',
-                    onTap: function(element, state) { impressionPseudoMouseover(element, state); },
-                    onDoubleTap: 'clic',
-                    subItems: function (element) {
-                        const submenu = element.querySelector('ul.level2.dynamic');
-                        return submenu ? generateWMenuSubItems(submenu, 'impression') : {};
-                    }
-                },
-
-                // Recherche prescriptions
-                'recherche_prescriptions': {
-                    selector: '#ContentPlaceHolder1_ButtonHasStat',
-                    onTap: 'clic'
-                },
-
-                // Séquenceur
-                'sequenceur': {
-                    selector: '#ContentPlaceHolder1_ButtonSequenceur',
-                    onTap: 'clic'
-                }
-            }
-        }
-    };
-
-    // ================= éléments internes =====================
-    /** Éléments internes - Items terminaux
-     * Cette partie gère les éléments avec lesquels l'utilisateur peut interagir à la souris.
-     * 
-     * cf. @generateInternalSubItems pour la logique de génération des subItems de ces éléments internes
-     * 
-     */
-    const internalElementsConfig = {
-        'panel_patient': {
-            selector: '#ContentPlaceHolder1_PanelPatient',
-            subItems: function(element) {
-                return generateInternalSubItems(element);
-            }
-        },
-        'documents_joints_meta_top_bar': {
-            selector: '#ContentPlaceHolder1_PanelVisuDocument tr',
-            subItems: function(element) {
-                return generateInternalSubItems(element);
-            }
-        },
-        'documents_joints_meta_etiquettes': {
-            selector: '#ContentPlaceHolder1_PanelStatEtiquette',
-            subItems: function(element) {
-                const subItems = {};
-                
-                // Cibler spécifiquement les étiquettes et leurs éléments interactifs
-                const etiquettes = element.querySelectorAll('.eti');
-                
-                etiquettes.forEach((eti, index) => {
-                    // Pour chaque étiquette, on crée un sous-item pour la checkbox et la croix
-                    const checkbox = eti.querySelector('input[type="checkbox"]');
-                    const cross = eti.querySelector('.cross');
-                    
-                    if (checkbox) { // Pour l'instant c'est bugé : ces items sont bizarrement hidden
-                        subItems[checkbox.id] = {
-                            selector: `#${checkbox.id}`,
-                            onTap: 'clic'
-                        };
-                    }
-                    
-                    if (cross) {
-                        // Créer un id unique pour la croix, basée sur l'id de la checkbox
-                        cross.id = `cross_${checkbox.id}`;
-                        subItems[cross.id] = {
-                            selector: `#${cross.id}`,
-                            onTap: 'clic'
-                        };
-                    }
-                });
-                
-                // Ajouter aussi les autres éléments interactifs génériques
-                const otherItems = generateInternalSubItems(element);
-                if (otherItems) {
-                    Object.assign(subItems, otherItems);
-                }
-                
-                const subItemObject = Object.keys(subItems).length > 0 ? subItems : null;
-                console.log(`[QuickAccess] SubItems générés pour documents_joints_meta_etiquettes`, subItemObject);
-                return subItemObject;
-            }
-        },
-        'documents_joints_meta_bouton_suite_dossier': {
-            selector: '#ContentPlaceHolder1_HistoriqueUCForm1_LinkButtonSuiteWeda',
-            onTap: 'clic',
-        },
-        'documents_joints_corps': { // Niveau 1 : le panneau contenant toutes les cs
-            selector: '#ContentPlaceHolder1_HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda',
-            subItems: function(element) {
-                return generateConsultationHistorySubItems(element, 'documents_joints_corps');
-            }
-        },
-        'copilot_vidal': {
-            selector: '.copilot-vidal-project',
-            subItems: function(element) {
-                return generateInternalSubItems(element);
-            }
-        }
-    };
-
-    /**
-     * ----------------------------------------------------------------------------------
-     *               Pages de consultation
-     * ----------------------------------------------------------------------------------
-     */
-    // =============== Les iframes =============================
-    const iframeConfig = {
-        'consultation_history_iframe': {
-            selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> #HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda',
-            subItems: function(element) {
-                // Utiliser la fonction partagée avec le préfixe iframe pour les sélecteurs
-                return generateConsultationHistorySubItems(
-                    element, 
-                    'consultation_iframe',
-                    '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> '
-                );
-            }
-        },
-        'weda_helper_iframe': { // L'historique affiché via WH
-            selector: '#WedaHelperIframe >> #HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda',
-            subItems: function(element) {
-                return generateConsultationHistorySubItems(
-                    element,
-                    'weda_helper_iframe',
-                    '#WedaHelperIframe >> '
-                );
-            }
-        },
-        'consultation_iframe_sidebar': {
-            selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> .cadreicon',
-            subItems: {
-                // Documents
-                'Consultations': {
-                    selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> #ButtonConsultation',
-                    onTap: 'clic'
-                },
-                'resultats_examen': {
-                    selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> #ButtonResultatExamen',
-                    onTap: 'clic'
-                },
-                'courriers': {
-                    selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> #ButtonCourrier',
-                    onTap: 'clic'
-                },
-                'vaccins': {
-                    selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> #ButtonVaccins',
-                    onTap: 'clic'
-                },
-                'visugraphiques': {
-                    selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> .imgChart',
-                    onTap: 'clic'
-                },
-                'grossesse': {
-                    selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> #ButtonPregnant',
-                    onTap: 'clic'
-                },
-                'arretTravail': {
-                    selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> .imgAT',
-                    onTap: 'clic'
-                }
-            }
-        },
-        'other_iframe_sidebar': { // L'historique affiché via WH
-            selector: '#WedaHelperIframe >> .cadreicon',
-            subItems: {
-                // Documents
-                'Consultations': {
-                    selector: '#WedaHelperIframe >> #ButtonConsultation',
-                    onTap: 'clic'
-                },
-                'resultats_examen': {
-                    selector: '#WedaHelperIframe >> #ButtonResultatExamen',
-                    onTap: 'clic'
-                },
-                'courriers': {
-                    selector: '#WedaHelperIframe >> #ButtonCourrier',
-                    onTap: 'clic'
-                },
-                'vaccins': {
-                    selector: '#WedaHelperIframe >> #ButtonVaccins',
-                    onTap: 'clic'
-                },
-                'visugraphiques': {
-                    selector: '#WedaHelperIframe >> .imgChart',
-                    onTap: 'clic'
-                },
-                'grossesse': {
-                    selector: '#WedaHelperIframe >> #ButtonPregnant',
-                    onTap: 'clic'
-                },
-                'arretTravail': {
-                    selector: '#WedaHelperIframe >> .imgAT',
-                    onTap: 'clic'
-                }
-            }
-        }
-    }
-
-    const iframeTextZonesConfig = {
-        // -------- pour la page des consultation ------------
-        'consultation_iframe_text_config_area_1': {
-            selector: '#ContentPlaceHolder1_divZone1',
-            subItems: function(element) {
-                return generateInternalSubItems(element);
-            }
-        },
-        'consultation_iframe_text_area_1': {
-            selector: '#ContentPlaceHolder1_divZone1 iframe >> body',
-            onTap: 'focus',
-        },
-        'consultation_iframe_text_config_area_2': {
-            selector: '#ContentPlaceHolder1_divZone2',
-            subItems: function(element) {
-                return generateInternalSubItems(element);
-            }
-        },
-        'consultation_iframe_text_area_2': {
-            selector: '#ContentPlaceHolder1_divZone2 iframe >> body',
-            onTap: 'focus',
-        },
-        'consultation_iframe_text_config_area_3': {
-            selector: '#ContentPlaceHolder1_divZone3',
-            subItems: function(element) {
-                return generateInternalSubItems(element);
-            }
-        },
-        'consultation_iframe_text_area_3': {
-            selector: '#ContentPlaceHolder1_divZone3 iframe >> body',
-            onTap: 'focus',
-        },
-        'consultation_iframe_text_config_area_4': {
-            selector: '#ContentPlaceHolder1_divZone4',
-            subItems: function(element) {
-                return generateInternalSubItems(element);
-            }
-        },
-        'consultation_iframe_text_area_4': {
-            selector: '#ContentPlaceHolder1_divZone4 iframe >> body',
-            onTap: 'focus',
-        },
-        'consultation_iframe_text_config_area_5': {
-            selector: '#ContentPlaceHolder1_PanelEvenementZone5',
-            subItems: function(element) {
-                return generateInternalSubItems(element);
-            }
-        },
-        'consultation_iframe_text_area_5': {
-            selector: '#ContentPlaceHolder1_PanelEvenementZone5 iframe >> body',
-            onTap: 'focus',
-        },
-        // ---------------- et pour les autres  ---------------
-        'zone_texte_iframe_certif': { // Certif
-            selector: '#CE_ContentPlaceHolder1_EditorCertificat_ID_Frame >> body',
-            onTap: 'focus',
-        },
-        'zone_texte_iframe_prescription': { // Prescription
-            selector: '#CE_ContentPlaceHolder1_EditorPrescription_ID_Frame >> body',
-            onTap: 'focus',
-        }
-    }
-
-    // =============== Les autres éléments =====================
-    const menuIconsLeft = {
-        'menuW': {
-            selector: '#ContentPlaceHolder1_EvenementUcForm1_MenuNavigate a.level1',
-            onTap: function(element, state) { WMenuPseudoMouseover(element, state); },
-            onDoubleTap: 'clic',
-            subItems: function (element) {
-                console.log(`[QuickAccess] Génération des subItems pour menuW`, element);
-                const submenu = element.parentElement.querySelector('ul.level2.dynamic');
-                console.log(`[QuickAccess] Génération des subItems pour menuW`, submenu);
-                return submenu ? generateWMenuSubItems(submenu, 'menuW') : {};
-            }
-        },
-        'historique_popup': {
-            selector: '#ContentPlaceHolder1_EvenementUcForm1_DivHistorique',
-            onTap: 'clic'
-        },
-        'duplicata_ordo': {
-            selector: '#ContentPlaceHolder1_ButtonDuplicata',
-            onTap: 'clic'
-        },
-        'impression': {
-            selector: '#ContentPlaceHolder1_MenuPrint li.has-popup',
-            onTap: 'mouseover',
-            subItems: function (element) {
-                const submenu = element.querySelector('ul.level2.dynamic');
-                return submenu ? generateImpressionSubItems(submenu, 'impression') : {};
-            }
-        },
-        'suivi_specifique': {
-            selector: '#ContentPlaceHolder1_ButtonSuivi',
-            onTap: 'clic'
-        },
-        // ------------------ pour les prescriptions ------------------
-        'bouton_bizone': {
-            selector: '#ContentPlaceHolder1_ButtonBizone',
-            onTap: 'clic'
-        },
-        'champ_date_atmp': {
-            selector: '#ContentPlaceHolder1_TextBoxAccidentArretTravailDateDebut',
-            onTap: 'focus'
-        },
-        'coche_atmp': {
-            selector: '#ContentPlaceHolder1_CheckBoxAT',
-            onTap: 'clic'
-        },
-        // ----------------- pour les médicaments -------------------
-        'templates_medicaments': {
-            selector: '#ContentPlaceHolder1_ButtonPrescritionType',
-            onTap: 'clic'
-        }
-    }
-
-    // ============== Les grandes zones (titres, items, etc.) =================
-    const generalZonesConfig = {
-        'zone_titre': {
-            selector: '#ContentPlaceHolder1_EvenementUcForm1_DivCadreEvenement',
-            subItems: function(element) {
-                return generateInternalSubItems(element);
-            }
-        },
-        'suivi_preferences': {
-            selector: '#ContentPlaceHolder1_ButtonSuiviPreference',
-            onTap: 'clic'
-        },
-        'zone_items': {
-            selector: '#ContentPlaceHolder1_PanelBlocagePatientSuiviVisible',
-            subItems: function(element) {
-                return generateMultipleSelectorSubItems({
-                    parentElement: element,
-                    selector: '[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]',
-                    onTap: 'focus'
-                });
-            }
-        },
-        'zone_cim10': {
-            selector: '#ContentPlaceHolder1_UpdatePanelDiagnosticsGrid',
-            subItems: function(element) {
-                return generateInternalSubItems(element);
-            }
-        }
-    }
-
-    // =============== modèles de documents ==================
-    const documentTemplatesConfig = {
-        'certificat_templates': {
-            selector: '.base-glossaire-uc-form',
-            subItems: function(element) {
-                return generateInternalSubItems(element);
-            }
-        },
-        'prescription_top_templace_bar': {
-            selector: '#ContentPlaceHolder1_PanelGlossaire > div > table > tbody > tr:nth-child(1) > td > table > tbody > tr',
-            subItems: function(element) {
-                return generateInternalSubItems(element);
-            }
-        },
-        'prescription_types_template_labo': {
-            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonDemandeAnalyseType',
-            onTap: 'clic'
-        },
-        'prescription_types_template_img': {
-            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonDemandeRadioType',
-            onTap: 'clic'
-        },
-        'prescription_types_template_para': {
-            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_ButtonDemandeKineType',
-            onTap: 'clic'
-        },
-        'prescription_templates': {
-            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_DivGlossaire',
-            subItems: function(element) {
-                return generateInternalSubItems(element); // TODO : à réparer car ignore le premier groupe
-            }
-        }
-    }
-
-
-
-
-
-    // ================= Configuration finale avec filtrage =================
-    const allConfigs = [
-        bandeauSuperieurConfig,
-        menuHorizontalConfig,
-        sidebarConfig,
-        internalElementsConfig,
-        iframeConfig,
-        iframeTextZonesConfig,
-        menuIconsLeft,
-        generalZonesConfig,
-        documentTemplatesConfig
-    ];
-
-    const quickAccessConfig = {};
-    
-    // Filtrer les configurations selon l'URL actuelle
-    const currentUrl = window.location.pathname;
-    for (const configGroup of allConfigs) {
-        const urlPatterns = configGroup._urlPatterns;
-        
-        // Si pas de restriction (_urlPatterns null/undefined) ou si l'URL correspond
-        if (!urlPatterns || matchesUrlPatterns(currentUrl, urlPatterns)) {
-            // Copier tous les items sauf _urlPatterns
-            for (const [key, value] of Object.entries(configGroup)) {
-                if (key !== '_urlPatterns') {
-                    quickAccessConfig[key] = value;
-                }
-            }
-        }
-    }
-
-    return quickAccessConfig;
-}
-
 
 /**
  * Vérifie si l'URL actuelle correspond à au moins un des patterns fournis
@@ -688,7 +17,7 @@ function matchesUrlPatterns(url, patterns) {
     if (!patterns || patterns.length === 0) {
         return false;
     }
-    
+
     return patterns.some(pattern => {
         if (typeof pattern === 'string') {
             return url.includes(pattern);
@@ -707,19 +36,29 @@ function matchesUrlPatterns(url, patterns) {
  * Fonction d'entrée de activation du Quick Access
 */
 function activateQuickAccess() {
-    // Les objets de conf sont définies ici pour être réinitialisées à chaque activation du Quick Access et éviter les problèmes de cache
-    const quickAccessConfig = returnQuickAccessConfig();
+    // La config est enveloppée dans un item racine virtuel '__root__' pour uniformiser
+    // le comportement du niveau racine avec celui des sous-niveaux.
+    // '__root__' est un item sans selector ni action : il est ignoré par showTooltips
+    // exactement comme un item de regroupement ordinaire (onTap == null).
+    const quickAccessConfig = {
+        '__root__': {
+            selector: null,
+            onTap: null,
+            onDoubleTap: null,
+            subItems: returnQuickAccessConfig()
+        }
+    };
+
     /**
     * state.currentLevel correspond au niveau actuel du QuickAccess (QALevel)
     * C'est un tableau de clés représentant le chemin dans l'arborescence.
     * Exemples :
-    * - [] = niveau racine
-    * - ["menu_vertical_gauche"] = premier niveau de profondeur
-    * - ["menu_vertical_gauche", "menu_w_sidebar"] = second niveau de profondeur
+    * - ['__root__'] = niveau racine (items de la config principale)
+    * - ['__root__', 'menu_vertical_gauche'] = premier niveau de profondeur
+    * - ['__root__', 'menu_vertical_gauche', 'menu_w_sidebar'] = second niveau
     */
-
     const state = { // Objet pour la rémanence de l'état du Quick Access
-        currentLevel: []  // Correspond au niveau racine
+        currentLevel: ['__root__']  // Démarre au niveau racine virtuel
     };
 
     // Commencer par activer l'overlay
@@ -730,6 +69,9 @@ function activateQuickAccess() {
 
     // On ajoute sur l'overlay les évents Listeners chargés d'écouter les entrées clavier
     addListenersToOverlay(overlay, state, quickAccessConfig)
+
+    // On peuple le niveau racine
+    populateSubItems(quickAccessConfig, state.currentLevel);
 
     // Afficher les tooltips du niveau racine
     showTooltips(state, quickAccessConfig);
@@ -745,8 +87,8 @@ function addListenersToOverlay(overlay, state, config) {
     overlay.addEventListener('keydown', (e) => {
         e.preventDefault();
         if (e.key === 'Backspace') { // Permet de remonter d'un niveau dans l'arborescence du Quick Access
-            if (state.currentLevel.length === 0) {
-                // Déjà à la racine : fermer le Quick Access
+            if (state.currentLevel.length <= 1) {
+                // Déjà à la racine virtuelle (ou moins) : fermer le Quick Access
                 deactivateQuickAccess();
             } else {
                 // Remontée : récupérer l'élément qu'on quitte et revert son sous-menu
@@ -782,6 +124,7 @@ function addListenersToOverlay(overlay, state, config) {
 function handleQuickAccessKey(e, state, config) {
     // Vérifier que la touche pressée est associée à un élément **du niveau actuel**
     const currentConfig = flattenedCurrentLevelConfig(state, config);
+    console.log(`[QuickAccess] Touche pressée : "${e.key}". Configuration actuelle des hotkeys :`, Object.fromEntries(Object.entries(currentConfig).map(([id, item]) => [id, item.hotkey])));
     const matchedEntry = Object.entries(currentConfig).find(([, item]) => item.hotkey === e.key);
 
     if (matchedEntry) {
@@ -798,6 +141,7 @@ function handleQuickAccessKey(e, state, config) {
  * +/- une sortie.
 */
 function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
+    console.log(`[QuickAccess] Item sélectionné`, { matchedItemId, matchedItem, currentLevel: state.currentLevel });
     const currentConfig = flattenedCurrentLevelConfig(state, config);
     // Si le premier item du flattened a un onDoubleTap et qu'il est appelé
     // alors c'est un doubleTap. (logique navigationnelle, pas temporelle)
@@ -818,8 +162,16 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
     } else { // Sinon, on descend dans les subItems
         const targetQALevel = [...state.currentLevel, matchedItemId];
         moveToTargetConfig(targetQALevel, state, config);
-        setTimeout(() => {
-            showTooltips(state, config);
+        // Annuler le timeout précédent pour éviter les tooltips fantômes en cas de frappe rapide
+        if (state.pendingShowTooltips) {
+            clearTimeout(state.pendingShowTooltips);
+        }
+        state.pendingShowTooltips = setTimeout(() => {
+            state.pendingShowTooltips = null;
+            // Vérifier que le Quick Access est encore actif avant d'afficher les tooltips
+            if (document.getElementById('wh-quickaccess-overlay')) {
+                showTooltips(state, config);
+            }
         }, 100); // Petit délai pour laisser le temps au DOM de se mettre à jour si besoin
     }
 
@@ -888,28 +240,40 @@ function flattenedCurrentLevelConfig(state, config) {
     const flattenedConfig = {};
     const actualQALevel = state.currentLevel;
 
-    // Cas 1 : Niveau racine - retourner tous les éléments racine
-    if (actualQALevel.length === 0) {
-        Object.assign(flattenedConfig, config);
-    } else {
-        // Cas 2 : Niveau subItem - naviguer jusqu'à l'élément cible
-        const { item, subItems, itemId } = getItemAndSubItems(config, actualQALevel, 'flattenedCurrentLevelConfig');
+    // Naviguer jusqu'à l'élément cible (fonctionne à tous les niveaux, y compris '__root__')
+    const { item, subItems, itemId } = getItemAndSubItems(config, actualQALevel, 'flattenedCurrentLevelConfig');
 
-        if (!item || !itemId) {
-            console.warn('[QuickAccess] Impossible de construire la configuration aplatie', actualQALevel);
-            return {};
-        }
-
-        // Aplatir : l'item et ses subItems au même niveau
-        Object.assign(flattenedConfig, { [itemId]: item[itemId] }, subItems);
+    if (!item || !itemId) {
+        console.warn('[QuickAccess] Impossible de construire la configuration aplatie', actualQALevel);
+        return {};
     }
+
+    // Aplatir : l'item actuel et ses subItems au même niveau
+    // L'item en position [0] est l'item "parent actuel" (ex: '__root__', 'menu_vertical_gauche'...)
+    Object.assign(flattenedConfig, { [itemId]: item[itemId] }, subItems);
 
     // Générer automatiquement les hotkeys manquants
     ensureHotkeysForItems(flattenedConfig);
 
-    // Vérifier que les items de l'élément cible et ses subItems
-    // n'ont pas de lettre de raccourci en double
-    checkForKeyDuplication(flattenedConfig, state.currentLevel);
+    // Appliquer le filtre de priorité : si au moins un sub-item a priorityLvl: true,
+    // inhiber tous les sub-items sans priorityLvl: true (l'item parent en position [0] est toujours conservé).
+    const allFlatEntries = Object.entries(flattenedConfig);
+    const subEntries = allFlatEntries.slice(1);
+    const hasPriorityItems = subEntries.some(([, item]) => item.priorityLvl === true && (!item.selector || !!querySelectorWithIframe(item.selector)));
+    if (hasPriorityItems) {
+        for (const [subItemId, subItem] of subEntries) {
+            if (subItem.priorityLvl !== true || (subItem.selector && !querySelectorWithIframe(subItem.selector))) {
+                delete flattenedConfig[subItemId];
+            }
+        }
+        console.log(`[QuickAccess] Filtre prioritaire actif au niveau`, state.currentLevel);
+    }
+
+    // Vérifier les conflits uniquement entre les sub-items (pas l'item parent,
+    // dont la hotkey appartient au niveau supérieur)
+    // en effet si les items inférieurs sont peuplés de façon anticipée (ex. inlineSubTooltips)
+    // il peut y avoir des hotkeys en double sans qu'ils ne soient jamais affichés en même temps, donc pas de conflit réel.
+    checkForKeyDuplication(subItems || {}, state.currentLevel);
 
     return flattenedConfig;
 }
@@ -939,6 +303,8 @@ function getItemAndSubItems(config, QALevel, context = 'navigation') {
         if (!currentSubItems[itemId]) {
             console.warn(`[QuickAccess] Élément "${itemId}" introuvable lors de ${context}`, QALevel);
             return { item: null, subItems: null, itemId: null };
+        } else {
+             console.log(`[QuickAccess] Élément "${itemId}" trouvé lors de ${context}`, QALevel);
         }
 
         // ✅ Sauvegarder le conteneur et l'item complet AVANT de descendre
@@ -975,6 +341,7 @@ function getItemAndSubItems(config, QALevel, context = 'navigation') {
  */
 function moveToTargetConfig(targetQALevel, state, config) {
     const actualQALevel = state.currentLevel;
+    console.log(`[QuickAccess] Tentative de changement de niveau vers ${targetQALevel} depuis ${actualQALevel}`);
 
     // Vérifier que la demande de changement de niveau est d'un niveau exactement
     const levelDiff = Math.abs(targetQALevel.length - actualQALevel.length);
@@ -1024,15 +391,13 @@ function moveToTargetConfig(targetQALevel, state, config) {
  * @param {string[]} targetQALevel - Chemin vers le niveau à peupler
  */
 function populateSubItems(config, targetQALevel) {
-    // Si niveau racine, rien à peupler
-    if (targetQALevel.length === 0) {
-        return;
-    }
+    console.log(`[QuickAccess] Tentative de peuplement des subItems pour le niveau`, targetQALevel);
 
     // Naviguer jusqu'à l'élément cible et obtenir son conteneur
     const { subItems: subItemsContent, item: itemContainer, itemId } = getItemAndSubItems(config, targetQALevel, 'populateSubItems');
 
     if (!itemContainer || !itemId) {
+        console.warn(`[QuickAccess] Impossible de trouver l'item cible pour le peuplement des subItems`, targetQALevel);
         return;
     }
 
@@ -1068,6 +433,31 @@ function populateSubItems(config, targetQALevel) {
     }
 
     console.log(`[QuickAccess] Configuration après peuplement pour le niveau`, targetQALevel, config);
+
+    // Assigner les hotkeys manquants des subItems dès le peuplement.
+    // Cela couvre les items inlineSubTooltips (qui ne passent jamais par
+    // flattenedCurrentLevelConfig) et pré-remplit les autres (idempotent).
+    // Le hotkey du parent est réservé pour que les sub-items ne puissent pas le prendre.
+    if (targetItem.subItems && typeof targetItem.subItems === 'object') {
+        const parentReserved = targetItem.hotkey
+            ? new Set([targetItem.hotkey.toLowerCase()])
+            : new Set();
+        ensureHotkeysForItems(targetItem.subItems, parentReserved);
+    }
+
+    // Après peuplement initial (frais ou en cache), peupler récursivement les subItems
+    // des items marqués inlineSubTooltips — ceux-ci s'affichent sans navigation, donc
+    // leurs subItems doivent être disponibles immédiatement.
+    const currentSubItems = targetItem.subItems;
+    if (currentSubItems && typeof currentSubItems === 'object') {
+        for (const [subItemId, subItem] of Object.entries(currentSubItems)) {
+            // Récurser pour tout item inlineSubTooltips ayant des subItems (fonction OU objet déjà résolu),
+            // car populateSubItems gère les deux cas et appellera ensureHotkeysForItems dans tous les cas.
+            if (subItem.inlineSubTooltips && subItem.subItems) {
+                populateSubItems(config, [...targetQALevel, subItemId]);
+            }
+        }
+    }
 }
 
 // ============================================================================
@@ -1105,9 +495,11 @@ function checkForKeyDuplication(config, QALevel) {
  * S'assure que tous les items dans une configuration ont un hotkey
  * Génère automatiquement les hotkeys manquants en utilisant generateHotkeyFromText
  * @param {Object} config - Configuration à vérifier et compléter
+ * @param {Set<string>} [reservedHotkeys=new Set()] - Hotkeys à exclure dès le départ (ex : hotkey du parent)
  */
-function ensureHotkeysForItems(config) {
-    const usedHotkeys = new Set();
+function ensureHotkeysForItems(config, reservedHotkeys = new Set()) {
+    // usedHotkeys est initialisé avec les hotkeys réservées (ex : hotkey du parent)
+    const usedHotkeys = new Set([...reservedHotkeys]);
 
     if (Object.keys(config).length === 0) {
         return;
@@ -1120,15 +512,25 @@ function ensureHotkeysForItems(config) {
             if (!element) {
                 // L'élément n'existe pas dans le DOM, supprimer le hotkey hardcodé
                 console.log(`[QuickAccess] Hotkey "${item.hotkey}" supprimée pour "${itemId}" (élément absent du DOM)`);
-                delete item.hotkey; // ou item.hotkey = null;
+                delete item.hotkey;
             }
         }
     }
 
-    // Première passe : collecter les hotkeys déjà définies
+    // Première passe : collecter les hotkeys déjà définies.
+    // En cas de doublon (ou conflit avec reservedHotkeys), le premier item gagne :
+    // dans flattenedCurrentLevelConfig, l'item parent est toujours en tête → il conserve
+    // son hotkey et les sub-items en doublon sont réinitialisés pour régénération.
     for (const [itemId, item] of Object.entries(config)) {
         if (item.hotkey) {
-            usedHotkeys.add(item.hotkey.toLowerCase());
+            const hotkey = item.hotkey.toLowerCase();
+            if (usedHotkeys.has(hotkey)) {
+                // Doublon détecté : vider le hotkey pour qu'il soit régénéré proprement
+                console.log(`[QuickAccess] Doublon de hotkey "${hotkey}" pour "${itemId}" → réassignation`);
+                delete item.hotkey;
+            } else {
+                usedHotkeys.add(hotkey);
+            }
         }
     }
 
@@ -1138,7 +540,7 @@ function ensureHotkeysForItems(config) {
             if (item.selector) {
                 const element = querySelectorWithIframe(item.selector);
                 if (!element) continue; // pas de hotkey généré si l'élément n'existe pas
-                
+
                 // Déterminer le texte source pour la génération de hotkey
                 let sourceText = itemId;
                 if (element && element.textContent) {
@@ -1146,7 +548,7 @@ function ensureHotkeysForItems(config) {
                 } else if (element) {
                     sourceText = element.getAttribute('title') || element.getAttribute('alt') || itemId;
                 }
-    
+
                 const generatedHotkey = generateHotkeyFromText(sourceText, usedHotkeys);
                 item.hotkey = generatedHotkey;
                 usedHotkeys.add(generatedHotkey);
@@ -1237,22 +639,22 @@ function isElementVisible(element, requirePartiallyInViewport = true) {
 
     // 2. Vérification des styles CSS calculés
     const style = getComputedStyle(element);
-    
+
     // display: none
     if (style.display === 'none') {
         return false;
     }
-    
+
     // visibility: hidden
     if (style.visibility === 'hidden') {
         return false;
     }
-    
+
     // opacity: 0 ou proche de 0
     if (parseFloat(style.opacity) < 0.01) {
         return false;
     }
-    
+
     // pointer-events: none (l'élément n'est pas interactif)
     if (style.pointerEvents === 'none') {
         return false;
@@ -1261,7 +663,7 @@ function isElementVisible(element, requirePartiallyInViewport = true) {
     // 3. Vérification de la visibilité dans le viewport (optionnel)
     if (requirePartiallyInViewport) {
         const rect = element.getBoundingClientRect();
-        
+
         // Vérifier si l'élément est au moins partiellement visible dans le viewport
         const isInViewport = (
             rect.bottom > 0 &&
@@ -1269,11 +671,11 @@ function isElementVisible(element, requirePartiallyInViewport = true) {
             rect.top < window.innerHeight &&
             rect.left < window.innerWidth
         );
-        
+
         if (!isInViewport) {
             return false;
         }
-        
+
         // Vérifier que l'élément a une taille non nulle
         if (rect.width === 0 || rect.height === 0) {
             return false;
@@ -1299,12 +701,12 @@ function querySelectorWithIframe(selector, doc = document) {
     if (selector.includes(' >> ')) {
         const [iframeSelector, innerSelector] = selector.split(' >> ').map(s => s.trim());
         const iframe = doc.querySelector(iframeSelector);
-        
+
         if (!iframe || iframe.tagName !== 'IFRAME') {
             // console.warn(`[QuickAccess] Iframe non trouvée: ${iframeSelector}, il faut nécessairement que l'iframe existe et soit déclarée juste avant le '>>' pour accéder à son contenu.`);
             return null;
         }
-        
+
         try {
             // Vérifier l'accès au contentDocument (same-origin)
             const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
@@ -1312,7 +714,7 @@ function querySelectorWithIframe(selector, doc = document) {
                 console.warn(`[QuickAccess] Accès bloqué à l'iframe (cross-origin): ${iframeSelector}`);
                 return null;
             }
-            
+
             // Chercher dans l'iframe récursivement
             return querySelectorWithIframe(innerSelector, iframeDoc);
         } catch (e) {
@@ -1320,7 +722,7 @@ function querySelectorWithIframe(selector, doc = document) {
             return null;
         }
     }
-    
+
     // Sélecteur classique
     return doc.querySelector(selector);
 }
@@ -1337,19 +739,19 @@ function querySelectorWithIframe(selector, doc = document) {
  */
 function getAbsoluteBoundingRect(element) {
     const rect = element.getBoundingClientRect();
-    
+
     // Vérifier si l'élément est dans une iframe
     const ownerDoc = element.ownerDocument;
-    
+
     // Si l'élément est dans le document principal, retourner rect tel quel
     if (ownerDoc === document) {
         return rect;
     }
-    
+
     // Sinon, l'élément est dans une iframe
     // Trouver l'iframe contenant cet élément
     let iframe = null;
-    
+
     // Chercher dans toutes les iframes du document principal
     const allIframes = document.querySelectorAll('iframe');
     for (const frame of allIframes) {
@@ -1363,15 +765,15 @@ function getAbsoluteBoundingRect(element) {
             continue;
         }
     }
-    
+
     if (!iframe) {
         console.warn('[QuickAccess] Impossible de trouver l\'iframe parente pour le positionnement du tooltip');
         return rect;
     }
-    
+
     // Obtenir la position de l'iframe (récursif si iframe imbriquée)
     const iframeRect = getAbsoluteBoundingRect(iframe);
-    
+
     // Combiner les positions
     return {
         top: rect.top + iframeRect.top,
@@ -1499,6 +901,28 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = fal
 }
 
 /**
+ * Affiche récursivement les tooltips des items inlineSubTooltips en accumulant le préfixe de hotkeys.
+ * Supporte N niveaux de inlineSubTooltips (tooltips à 2, 3, 4+ lettres).
+ * @param {Object} subItems - Les subItems à afficher
+ * @param {string} hotkeyPrefix - Préfixe accumulé des hotkeys parentes (ex: 'C', 'CT')
+ */
+function showInlineSubTooltips(subItems, hotkeyPrefix) {
+    for (const [, subItem] of Object.entries(subItems)) {
+        if (!subItem.selector || !subItem.hotkey) continue;
+        const combinedHotkey = hotkeyPrefix + subItem.hotkey;
+
+        if (subItem.inlineSubTooltips && subItem.subItems && typeof subItem.subItems === 'object') {
+            // Descente récursive : ce sous-item délègue aussi l'affichage à ses enfants
+            showInlineSubTooltips(subItem.subItems, combinedHotkey);
+        } else {
+            const hasDoubleTap = subItem.onDoubleTap != null;
+            const isContainer = subItem.subItems != null && subItem.onTap == null && !hasDoubleTap;
+            createTooltip(subItem.selector, combinedHotkey, hasDoubleTap, isContainer);
+        }
+    }
+}
+
+/**
  * Affiche les tooltips pour le niveau actuel
  * @param {Object} state - Objet d'état contenant currentLevel
  * @param {Object} config - Configuration racine
@@ -1513,16 +937,23 @@ function showTooltips(state, config) {
     // console.log('[QuickAccess] Affichage des tooltips pour le niveau', state.currentLevel, flattenedConfig);
 
     const entries = Object.entries(flattenedConfig);
-    const isRootLevel = state.currentLevel.length === 0;
 
     for (let i = 0; i < entries.length; i++) {
         const [itemId, item] = entries[i];
-        const isCurrentItem = !isRootLevel && i === 0;
+        // L'item en position [0] est toujours le parent actuel (ex: '__root__', 'menu_vertical_gauche'...)
+        const isCurrentItem = i === 0;
 
-        // Si c'est l'item actuel et que doubleTap est null, ne pas afficher le tooltip
-        if (isCurrentItem && item.onDoubleTap == null) { // Egalité intentionnelle (null ou undefined)
-            console.log(`[QuickAccess] Item actuel "${itemId}" ignoré (onDoubleTap est null)`);
+        // Si c'est l'item actuel et qu'il n'a ni onTap ni onDoubleTap (pur conteneur), ne pas afficher le tooltip
+        if (isCurrentItem && item.onTap == null && item.onDoubleTap == null) { // Egalité intentionnelle (null ou undefined)
+            console.log(`[QuickAccess] Item actuel "${itemId}" ignoré (pur conteneur sans action)`);
             continue;
+        }
+
+        // Si l'item a inlineSubTooltips : afficher directement ses sous-items avec la hotkey combinée (ex: "SI", "SL")
+        // Les hotkeys des sous-items sont générées automatiquement dans populateSubItems si absentes.
+        if (item.inlineSubTooltips && item.subItems && typeof item.subItems === 'object') {
+            showInlineSubTooltips(item.subItems, item.hotkey || '');
+            continue; // L'item parent lui-même n'affiche pas de tooltip
         }
 
         const hasOnTap = item.onTap != null;
@@ -1543,7 +974,7 @@ function showTooltips(state, config) {
  */
 function clearTooltipsInDocument(doc) {
     if (!doc) return;
-    
+
     // Supprimer les tooltips
     const tooltips = doc.querySelectorAll('.wh-quickaccess-tooltip');
     tooltips.forEach(tooltip => tooltip.remove());
@@ -1681,7 +1112,7 @@ function prepareSubmenuForDisplay(element, submenuSelector, state, contextName) 
 function horizontalMenuPseudoMouseover(element, state) {
     // Utiliser la fonction support pour préparer le sous-menu
     const { submenu } = prepareSubmenuForDisplay(element, '.nav-menu__submenu', state, 'HorizontalMenu');
-    
+
     if (!submenu) {
         return;
     }
@@ -1759,7 +1190,7 @@ function revertMovedElement(QALevelTarget) {
 function WMenuPseudoMouseover(element, state) {
     // Utiliser la fonction support pour préparer le sous-menu
     const { submenu } = prepareSubmenuForDisplay(element, 'ul[class*="level"][class*="dynamic"]', state, 'WMenu');
-    
+
     if (!submenu) {
         return;
     }
@@ -1781,7 +1212,7 @@ function WMenuPseudoMouseover(element, state) {
 function peripheriquesPseudoMouseover(element, state) {
     // Le menu périphériques a une structure spéciale : le sous-menu est dans #ContentPlaceHolder1_MenuPeripherique
     const submenu = document.querySelector('#ContentPlaceHolder1_MenuPeripherique ul.level2.dynamic');
-    
+
     if (!submenu) {
         console.warn('[QuickAccess][Peripheriques] Sous-menu non trouvé');
         return;
@@ -1817,7 +1248,7 @@ function peripheriquesPseudoMouseover(element, state) {
  */
 function documentsJointsPseudoMouseover(element, state) {
     const submenu = document.querySelector('#DivMenuDocumentJoint');
-    
+
     if (!submenu) {
         console.warn('[QuickAccess][DocumentsJoints] Sous-menu non trouvé');
         return;
@@ -1854,7 +1285,7 @@ function documentsJointsPseudoMouseover(element, state) {
 function impressionPseudoMouseover(element, state) {
     // Le menu impression a une structure similaire au menu W standard
     const submenu = element.querySelector('ul.level2.dynamic');
-    
+
     if (!submenu) {
         console.warn('[QuickAccess][Impression] Sous-menu non trouvé');
         return;
@@ -2032,7 +1463,7 @@ function generateWMenuSubItems(submenuElement, parentId) {
         const item = {
             selector: selector,
             hotkey: null, // Sera généré automatiquement par ensureHotkeysForItems
-            onTap: nestedSubmenu ? function(element, state) { WMenuPseudoMouseover(element, state); } : 'clic',
+            onTap: nestedSubmenu ? function (element, state) { WMenuPseudoMouseover(element, state); } : 'clic',
             onDoubleTap: nestedSubmenu ? 'clic' : null,
             element: link // Sauvegarder la référence à l'élément pour un accès ultérieur
         };
@@ -2086,7 +1517,7 @@ function generateImpressionSubItems(submenuElement, parentId) {
     printerItems.forEach(li => {
         // Récupérer le lien de l'imprimante
         const printerLink = li.querySelector(':scope > a.level2.dynamic');
-        
+
         if (!printerLink) {
             console.warn('[QuickAccess][Impression] Lien d\'imprimante non trouvé, ignoré');
             return;
@@ -2174,7 +1605,7 @@ function generateHorizMenuSubItems(submenuElement, parentId) {
 
         const item = {
             selector: selector,
-            onTap: hasArrow ? function(element, state) { horizontalMenuPseudoMouseover(element, state); } : 'clic'
+            onTap: hasArrow ? function (element, state) { horizontalMenuPseudoMouseover(element, state); } : 'clic'
         };
 
         // Si a un sous-menu, configurer le double-tap pour ouvrir directement
@@ -2201,7 +1632,7 @@ function generateHorizMenuSubItems(submenuElement, parentId) {
  */
 function generateConsultationHistorySubItems(element, parentId, selectorPrefix = '') {
     const generatedSubItems = {};
-    
+
     // 1. Directement les éléments qui permettent d'agir sur les éléments de consultation
     // (modifier, supprimer, etc.), qui ne sont pas accessibles via le DOM tant qu'on 
     // n'a pas fait de mouseover dessus
@@ -2210,33 +1641,33 @@ function generateConsultationHistorySubItems(element, parentId, selectorPrefix =
         // Révéler les éléments
         actionDiv.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
         if (!isElementVisible(actionDiv)) return;
-        
+
         // Ils ont déjà chacun un element.id
         generatedSubItems[`${parentId}_action_${index + 1}`] = {
             selector: `${selectorPrefix}#${actionDiv.id}`,
             onTap: 'clic'
         };
     });
-    
+
     // 2. Sous-niveaux : un par bloc de consultation
     const consultationBlocks = element.querySelectorAll('div.sc[name="divwc"]');
     consultationBlocks.forEach((block, index) => {
         if (!isElementVisible(block)) return;
-        
+
         // Les blocs de cs n'ont pas d'id, on leur en crée un
         const blockId = `${parentId}_block_${index + 1}`;
         if (!block.id) {
             block.id = blockId;
         }
-        
+
         generatedSubItems[blockId] = {
             selector: `${selectorPrefix}#${block.id}`,
-            subItems: function() {
+            subItems: function () {
                 return generateInternalSubItems(block, selectorPrefix);
             }
         };
     });
-    
+
     return generatedSubItems;
 }
 
@@ -2300,10 +1731,10 @@ function generateInternalSubItems(element, selectorPrefix = '') {
 
     // Collecter tous les éléments d'action avec leur action associée
     const allActionElements = [];
-    
+
     for (const [groupName, groupConfig] of Object.entries(targetGroups)) {
         const elements = element.querySelectorAll(groupConfig.selector);
-        
+
         elements.forEach(el => {
             // Éviter les doublons (un élément peut matcher plusieurs groupes)
             if (!allActionElements.some(item => item.element === el)) {
@@ -2321,10 +1752,10 @@ function generateInternalSubItems(element, selectorPrefix = '') {
     // Filtrer pour ne garder que les éléments qui ne sont pas descendants d'une autre target
     const actionElements = allActionElements.filter(item => {
         const el = item.element;
-        
+
         // Reconstruire le sélecteur complet pour tester
         const allSelectors = Object.values(targetGroups).map(g => g.selector).join(',');
-        
+
         // Trouver le parent le plus proche qui est une target (en excluant l'élément lui-même)
         let parent = el.parentElement;
         while (parent && parent !== element) {
@@ -2346,12 +1777,12 @@ function generateInternalSubItems(element, selectorPrefix = '') {
     // Sinon, créer les items directement (cas normal)
     const subItems = {};
     let itemIndex = 0;
-    
+
     for (let i = 0; i < actionElements.length; i++) {
         const { element: actionElement, action } = actionElements[i];
         const itemId = generateUniqueQAItemId(actionElement, itemIndex++);
         const baseSelector = QASelectorFinder(actionElement, itemId);
-        
+
         subItems[itemId] = {
             selector: selectorPrefix + baseSelector,
             onTap: action,
@@ -2395,15 +1826,15 @@ function createGroupedSubItems(actionElements, selectorPrefix = '') {
             selector: selectorPrefix + groupSelector,
             onTap: null, // Pas d'action sur le groupe lui-même (navigation seulement)
             onDoubleTap: null,
-            subItems: function() {
+            subItems: function () {
                 // Générer les subItems de ce groupe à la demande
                 const groupSubItems = {};
-                
+
                 for (let i = 0; i < groupElements.length; i++) {
                     const { element: actionElement, action } = groupElements[i];
                     const itemId = generateUniqueQAItemId(actionElement, startIdx + i);
                     const baseSelector = QASelectorFinder(actionElement, itemId);
-                    
+
                     groupSubItems[itemId] = {
                         selector: selectorPrefix + baseSelector,
                         onTap: action,
@@ -2411,7 +1842,7 @@ function createGroupedSubItems(actionElements, selectorPrefix = '') {
                         subItems: null,
                     };
                 }
-                
+
                 console.log(`[QuickAccess] Groupe ${groupIndex + 1}/${totalGroups} généré avec ${Object.keys(groupSubItems).length} items`);
                 return groupSubItems;
             }
@@ -2425,7 +1856,7 @@ function generateUniqueQAItemId(element, index) {
     /**
      * Construire un identifiant basé sur les caractéristiques de l'élément :
      * elementType_index
-    */ 
+    */
 
     let identifier = '';
 
@@ -2437,10 +1868,10 @@ function generateUniqueQAItemId(element, index) {
 
     if (element.className) {
         // Gérer les éléments SVG dont className est un SVGAnimatedString
-        const classValue = typeof element.className === 'string' 
-            ? element.className 
+        const classValue = typeof element.className === 'string'
+            ? element.className
             : element.className.baseVal || '';
-        
+
         if (classValue) {
             const classPart = classValue.trim().split(/\s+/).join('-');
             identifier += `_${classPart}`;
@@ -2488,36 +1919,48 @@ function QASelectorFinder(element, itemId) {
  * @param {string} options.selector - Sélecteur CSS pour trouver tous les éléments
  * @param {string|Function} options.onTap - Action à exécuter sur chaque élément
  * @param {string} [options.selectorPrefix=''] - Préfixe pour les sélecteurs (pour iframes)
+ * @param {Function} [options.subItemsGenerator=null] - Fonction pour générer des sub-sub-items pour chaque élément trouvé
+ * @param {boolean} [options.inlineSubTooltips=false] - Si true, propage inlineSubTooltips aux items générés (affichage combiné des tooltips)
  * @returns {Object} Configuration des sous-items
  */
-function generateMultipleSelectorSubItems({ parentElement, selector, onTap, selectorPrefix = '' }) {
+function generateMultipleSelectorSubItems({ parentElement, selector, onTap, selectorPrefix = '', subItemsGenerator = null, inlineSubTooltips = false }) {
+    console.log(`[QuickAccess] Génération de subItems pour le sélecteur multiple: "${selector}" avec le préfixe "${selectorPrefix}", parentElement:`, parentElement);
     const generatedSubItems = {};
-    
-    // Trouver tous les éléments correspondant au sélecteur
+
     const elements = parentElement.querySelectorAll(selector);
-    
+
     if (!elements || elements.length === 0) {
         console.warn(`[QuickAccess] Aucun élément trouvé avec le sélecteur: "${selector}"`);
         return {};
     }
-    
-    console.log(`[QuickAccess] ${elements.length} éléments trouvés avec le sélecteur: "${selector}"`);
-    
+
+    console.log(`[QuickAccess] ${elements.length} éléments trouvés avec le sélecteur: "${selector}" sur le parentElement:`, parentElement, 'éléments:', elements);
+
     // Créer un subItem pour chaque élément trouvé
-    elements.forEach((element, index) => {        
+    elements.forEach((element, index) => {
         // Générer un ID unique pour l'élément s'il n'en a pas
         if (!element.id) {
             element.id = `qa_multiple_${index}`;
         }
-        
+
         // Créer le subItem
         const itemId = `item_${index}`;
+        const subItems = subItemsGenerator ? subItemsGenerator(element) : undefined;
+        const hasValidSubItems = subItems && Object.keys(subItems).length > 0;
+        if (inlineSubTooltips && subItemsGenerator && !hasValidSubItems) {
+            console.warn(`[QuickAccess] inlineSubTooltips ignoré pour l'item "${itemId}" (#${element.id}) : subItemsGenerator a retourné ${subItems ? 'un objet vide' : 'null/undefined'}`);
+        } else {
+            console.log(`[QuickAccess] SubItems générés pour l'item "${itemId}" (#${element.id}):`, subItems);
+        }
         generatedSubItems[itemId] = {
             selector: `${selectorPrefix}#${element.id}`,
-            onTap: onTap
+            onTap: hasValidSubItems ? null : onTap,
+            onDoubleTap: hasValidSubItems ? onTap : null,
+            subItems: hasValidSubItems ? subItems : undefined,
+            ...(inlineSubTooltips && hasValidSubItems ? { inlineSubTooltips: true } : {})
         };
     });
-    
+
     console.log(`[QuickAccess] ${Object.keys(generatedSubItems).length} subItems générés pour le sélecteur: "${selector}"`);
     return generatedSubItems;
 }

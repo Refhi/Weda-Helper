@@ -16,28 +16,42 @@
  */
 
 // Arrêts de travail automatisés
-// Ajout d'un 2e bouton à côté de AT nommé "AT sans CV" pour shunter la lecture automatique de la carte vitale
+// Ajout d'un bouton "AT sans CV" à côté du bouton original "AT avec CV" pour shunter la lecture automatique de la carte vitale
 addTweak('/FolderMedical/PatientViewForm.aspx', 'autoAATI', function () {
     let selecteurBoutonAT = '[title="Transmettre un avis d\'arrêt de travail via le téléservice AATi"]';
     function processButton(elements) {
-        // remplace le texte "AT" par "AT avec CV | AT sans CV"
-        elements[0].textContent = 'AT avec CV | AT sans CV';
+        const boutonAvecCV = elements[0];
 
-        // ajoute sur la partie droite de l'élément un event listener pour le click qui met dans le local storage la valeur "timestampAATIsansCV" au moment du click
-        elements[0].addEventListener('click', function (e) {
-            // Récupère la largeur de l'élément
-            let boutonWidth = elements[0].offsetWidth;
+        // Éviter les doublons si déjà traité
+        if (document.getElementById('aati-btn-avec-cv')) return;
 
-            // Récupère la position du clic relative à l'élément
-            let clickPosition = e.clientX - elements[0].getBoundingClientRect().left;
+        // Renommer et identifier le bouton original
+        boutonAvecCV.id = 'aati-lien-avec-cv';
+        boutonAvecCV.textContent = 'AT avec CV';
 
-            // Si le clic est sur la moitié droite de l'élément
-            if (clickPosition > boutonWidth / 2) {
-                console.log('Clic sur AT sans CV détecté au timestamp', Date.now());
-                // Stocke le timestamp actuel dans le stockage local avec la clé "timestampAATIsansCV"
-                chrome.storage.local.set({ timestampAATIsansCV: Date.now() });
-            }
+        // Créer le lien "AT sans CV" avec le même style que le lien original
+        const boutonSansCV = document.createElement('a');
+        boutonSansCV.id = 'aati-lien-sans-cv';
+        boutonSansCV.textContent = 'AT sans CV';
+        boutonSansCV.className = boutonAvecCV.className;
+        boutonSansCV.href = '#';
+
+        boutonSansCV.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('[autoAATI] Clic sur AT sans CV détecté au timestamp', Date.now());
+            // Stocke le timestamp actuel dans le stockage local avec la clé "timestampAATIsansCV"
+            chrome.storage.local.set({ timestampAATIsansCV: Date.now() });
+            // Déclenche le comportement normal du bouton original
+            clicCSPLockedElement('#aati-lien-avec-cv');
         });
+
+        // Envelopper les deux liens dans un conteneur flex pour les afficher côte à côte
+        const wrapper = document.createElement('span');
+        wrapper.style.cssText = 'display: inline-flex; gap: 4px; align-items: center;';
+        boutonAvecCV.replaceWith(wrapper);
+        wrapper.appendChild(boutonAvecCV);
+        wrapper.appendChild(boutonSansCV);
     }
 
     waitForElement({ selector: selecteurBoutonAT, justOnce: false, callback: processButton });
@@ -160,6 +174,21 @@ addTweak('/FolderMedical/Aati.aspx', 'autoAATI', function () {
 // depuis la page de prévisualisation de l'arrêt de travail
 addTweak('/BinaryData.aspx', "*sendDocToCompanion", async function () {
     console.log("[sendDocToCompanion] called");
+
+    // Détection du conflit avec l'extension Adobe Acrobat
+    // L'extension Adobe tente de charger ses propres scripts sur les pages PDF, ce qui est
+    // bloqué par la CSP de Weda (default-src 'none') et peut interférer avec l'envoi à Companion.
+    let adobeConflictAlerted = false;
+    document.addEventListener('securitypolicyviolation', function (e) {
+        if (!adobeConflictAlerted && e.blockedURI && e.blockedURI.includes('acrobat.adobe.com')) {
+            adobeConflictAlerted = true;
+            console.warn('[Weda-Helper] Conflit détecté avec l\'extension Adobe Acrobat :', e.blockedURI);
+            sendWedaNotif({
+                message: "Impression automatique de l’arrêt de travail impossible à cause de l’extension Adobe Acrobat. Veuillez la désactiver si vous souhaitez l’impression auto des arrêts de travail.",
+                icon: 'warning'
+            });
+        }
+    });
     // récupération des valeurs et options importantes
     const autoAATIexitTimestamp = await chrome.storage.local.get(['autoAATIexit']);
     const isRecentExit = Date.now() - autoAATIexitTimestamp.autoAATIexit < 10000;
@@ -371,12 +400,16 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
             ].filter(Boolean);
 
             // Si le terme de recherche correspond à l'un des candidats, enrichir avec tous les synonymes du motif
-            const correspond = candidats.some(c => c.length >= 3 && (c.includes(normalizedTerm) || normalizedTerm.includes(c)));
-            if (correspond) {
-                if (motif.ref) termsToSearch.push(motif.ref);
-                termsToSearch.push(...synonymesArr);
-                termsToSearch.push(...acronymesArr);
-            }
+            const normalizedWords = normalizedTerm.split(/\s+/).filter(w => w.length >= 3);
+            const correspond = candidats.some(c => {
+                if (c.length < 3) return false;
+                // Le candidat contient le terme recherché (ex: "fracture cheville" contient "fracture")
+                if (c.includes(normalizedTerm)) return true;
+                // Chaque mot du terme recherché doit être un mot entier dans le candidat
+                return normalizedWords.every(word =>
+                    new RegExp(`\\b${word}\\b`).test(c) || c === word
+                );
+            });
         }
 
         return [...new Set(termsToSearch)]; // Supprimer les doublons
@@ -406,7 +439,6 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
                     categorieLabel: categorieData.label,
                     sousCategorieValue: sousCategorie.value,
                     sousCategorieLabel: sousCategorie.label,
-                    // Combinaison de label et title pour la recherche
                     searchText: `${sousCategorie.label} ${sousCategorie.title}`
                 });
             }
@@ -419,47 +451,81 @@ addTweak('/FolderMedical/Aati.aspx', 'speedSearchAATI', function () {
         // Configuration de Fuse.js
         const fuseOptions = {
             keys: ['searchText', 'sousCategorieLabel', 'categorieLabel'],
-            threshold: 0.4, // 0 = correspondance parfaite, 1 = correspondance très lâche
-            ignoreLocation: true, // Ignore la position des mots dans le texte
+            threshold: 0.4,
+            ignoreLocation: true,
             minMatchCharLength: 2,
             includeScore: true,
             useExtendedSearch: false
         };
 
-        // Initialiser Fuse
         const fuse = new Fuse(searchableData, fuseOptions);
-
-        // Effectuer la recherche avec tous les termes enrichis
-        const allResults = new Map(); // Utiliser une Map pour éviter les doublons
+        const allResults = new Map();
 
         for (const term of enrichedTerms) {
-            const fuseResults = fuse.search(term);
-            fuseResults.forEach(result => {
-                const key = `${result.item.categorieValue}-${result.item.sousCategorieValue}`;
-                // Garder le meilleur score pour chaque résultat
-                if (!allResults.has(key) || allResults.get(key).score > result.score) {
-                    allResults.set(key, result);
-                }
-            });
+            // Décomposer le terme en mots individuels (>= 2 caractères)
+            const words = term.trim().split(/\s+/).filter(w => w.length >= 2);
+
+            if (words.length <= 1) {
+                // Recherche simple si un seul mot
+                fuse.search(term).forEach(r => {
+                    const key = `${r.item.categorieValue}-${r.item.sousCategorieValue}`;
+                    if (!allResults.has(key) || allResults.get(key).score > r.score) {
+                        allResults.set(key, r);
+                    }
+                });
+            } else {
+                // Recherche multi-mots : chaque mot doit matcher, on combine les scores
+                const resultsByWord = words.map(word => {
+                    const res = fuse.search(word);
+                    const map = new Map();
+                    res.forEach(r => {
+                        const key = `${r.item.categorieValue}-${r.item.sousCategorieValue}`;
+                        map.set(key, r.score);
+                    });
+                    return map;
+                });
+
+                // Intersecter : ne garder que les items qui matchent TOUS les mots
+                const [firstMap, ...restMaps] = resultsByWord;
+                firstMap.forEach((score, key) => {
+                    const allMatch = restMaps.every(m => m.has(key));
+                    if (allMatch) {
+                        // Score combiné = moyenne des scores de chaque mot
+                        const totalScore = restMaps.reduce((sum, m) => sum + m.get(key), score);
+                        const combinedScore = totalScore / words.length;
+
+                        // Bonus si le dernier mot est un préfixe du label (ex: "ch" dans "cheville")
+                        const lastWord = words[words.length - 1];
+                        const item = searchableData.find(d =>
+                            `${d.categorieValue}-${d.sousCategorieValue}` === key
+                        );
+                        const normalize = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                        const labelNorm = normalize(item?.searchText || '');
+                        const prefixBonus = labelNorm.split(/\s+/).some(w => w.startsWith(lastWord)) ? 0.8 : 1.0;
+
+                        const finalScore = combinedScore * prefixBonus;
+
+                        if (!allResults.has(key) || allResults.get(key).score > finalScore) {
+                            allResults.set(key, { item, score: finalScore });
+                        }
+                    }
+                });
+            }
         }
 
-        // Convertir en tableau et trier par score
-        const sortedResults = Array.from(allResults.values())
-            .sort((a, b) => a.score - b.score);
+        const sortedResults = Array.from(allResults.values()).sort((a, b) => a.score - b.score);
 
-        // Extraire les 5 meilleurs résultats
         const topMatches = sortedResults.slice(0, 5).map(result => ({
             categorieValue: result.item.categorieValue,
             categorieLabel: result.item.categorieLabel,
             sousCategorieValue: result.item.sousCategorieValue,
             sousCategorieLabel: result.item.sousCategorieLabel,
-            score: result.score // Score Fuse (plus bas = meilleur)
+            score: result.score
         }));
 
         console.log('[AATI Search] Top 5 résultats:', topMatches);
         return topMatches;
     }
-
     // Fonction pour sélectionner un motif
     function selectMotif(categorieValue, sousCategorieValue) {
         const selectCategories = document.querySelector(selecteurCategories);

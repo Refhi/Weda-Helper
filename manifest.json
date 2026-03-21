@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper Beta",
-  "version": "2.16.0",
+  "version": "2.16.1.1",
   "options_page": "src/ui/options.html",
   "permissions": [
     "storage"
@@ -45,6 +45,7 @@
         "src/utils/companionLink.js",
         "src/utils/keyCommands.js",
         "src/utils/quickAccess.js",
+        "src/utils/quickAccessConfig.js",
         "src/ui/tooltip.js",
         "src/ui/update.js",
         "src/ui/popupFunctions.js",
@@ -54,7 +55,11 @@
         "src/features/content.js",
         "src/features/accueil.js",
         "src/features/consultation.js",
+        "src/features/forms.js",
         "src/features/fse.js",
+        "src/features/fse_history.js",
+        "src/features/fse_cotation_helper.js",
+        "src/features/fse_autoscor.js",
         "src/features/searchUpload.js",
         "src/features/prescription.js",
         "src/features/aati.js",

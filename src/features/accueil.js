@@ -261,6 +261,7 @@ addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', 
             if (!document.querySelector('#oneClickVSMButton')) {
                 const oneClickVSMButton = document.createElement('button');
                 oneClickVSMButton.textContent = '+1clickVSM';
+                oneClickVSMButton.id = 'oneClickVSMButton';
                 oneClickVSMButton.title = 'Weda-Helper : Créer un VSM en un clic. Ne fonctionne que si au moins 70% des champs sont au format CIM-10';
 
                 // Copier le style du bouton de référence
@@ -328,6 +329,7 @@ function setupPatientViewButton() {
     // Création du bouton de raccourci
     const oneClickVSMButton = document.createElement('a');
     oneClickVSMButton.textContent = '+1clickVSM';
+    oneClickVSMButton.id = 'oneClickVSMButton';
     oneClickVSMButton.title = 'Weda-Helper : Créer un VSM en un clic. Ne fonctionne que si au moins 70% des champs sont au format CIM-10';
     oneClickVSMButton.style.cssText = 'cursor: pointer; color: blue; text-decoration: underline; margin-left: 10px;';
 

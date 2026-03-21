@@ -4,6 +4,13 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.16.1.0] - fix
+## Fix :
+- [#573](https://github.com/Refhi/Weda-Helper/issues/573) - L’historique des facturations est inhibé lors d’une facturation omnidoc (évite un échec des fses omnidoc)
+- Refactorisation du code gérant les FSE
+- [#565](https://github.com/Refhi/Weda-Helper/issues/565) - Fix de l'application incorrecte d'une double cotation au moment de la validation de la FSE dans certains cas.
+- [#580](https://github.com/Refhi/Weda-Helper/issues/580) - Inhibition de la touche "Entrée" dans certains champs de formulaires (qui, sinon, fait perdre le formulaire)
+
 # [2.16.0] - Quick Access (Beta) ! 🚀
 ## Qu'est-ce que le "Quick Access" ?
 - Appuyez sur Ctrl+K pour afficher des lettres de ciblage.
@@ -17,6 +24,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#574](https://github.com/Refhi/Weda-Helper/issues/574) - amélioration du message d'erreur si SumatraPDF n'est pas installé
 - [#572](https://github.com/Refhi/Weda-Helper/issues/572) - alt+V permet de nouveau de valider un import dans les échanges sécurisés. Alt+S est utilisable pour lancer la recherche du patient.
 - [#575](https://github.com/Refhi/Weda-Helper/issues/575) - dans la page des imports de masse, Ctrl+U clique sur le bouton "Télécharger" directement (préparation d'une prochaine évolution du fonctionnement de Weda et évite une déconnexion forcée)
+- [#555](https://github.com/Refhi/Weda-Helper/issues/555) - ajout d’une alerte si le plugin adobe pdf est détecté, ce qui empêche l’impression instantanée des arrêts de travail.
 
 # [2.15.1.2] - fixes et améliorations
 ## L’historique des facturations dans la page des FSE est désormais ouverte !
