@@ -803,7 +803,7 @@ function createOverlay() {
         height: 100%;
         background-color: rgba(0, 0, 0, 0.1);
         z-index: 99998;
-        pointer-events: auto;
+        pointer-events: none;
         cursor: default;
     `;
 
