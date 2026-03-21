@@ -579,7 +579,7 @@ function returnQuickAccessConfig() {
 
     /**
      * ----------------------------------------------------------------------------------
-     *            Pages des imports - TODO
+     *            Pages des imports
      * ----------------------------------------------------------------------------------
      */
     const importConfig = {
@@ -595,17 +595,27 @@ function returnQuickAccessConfig() {
             selector: '#ContentPlaceHolder1_UpdatePanelClassementGrid',
             inlineSubTooltips: true,
             subItems: function (element) {
+                // Niveau intermédiaire : les lignes du tableau
                 return generateMultipleSelectorSubItems({
                     parentElement: element,
-                    selector: [
-                        '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate"]', // dates (docuument et rappel)
-                        '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_"]', // titre
-                        '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementEvenementType_"]',
-                        '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_"]',
-                        '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_DeleteButtonGridFileStreamClassement_"]',
-                        '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementUser_"]'
-                    ].join(', '),
-                    onTap: 'focus',
+                    selector: 'tbody > tr',
+                    inlineSubTooltips: true,
+                    subItemsGenerator: function (trElement) {
+                        // Niveau final : les champs dans chaque ligne
+                        return generateMultipleSelectorSubItems({
+                            parentElement: trElement,
+                            selector: [
+                                '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate"]', // dates (document et rappel)
+                                '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_"]:not([id$="_dropWrapper"])', // titre (sans dropWrapper)
+                                '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementEvenementType_"]', // type événement
+                                '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_"]', // classification
+                                '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_DeleteButtonGridFileStreamClassement_"]', // bouton supprimer
+                                '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementUser_"]', // utilisateur
+                                '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_"]' // lien vers "patient à définir"
+                            ].join(', '),
+                            onTap: 'focus',
+                        });
+                    }
                 });
             }
         },
@@ -619,6 +629,14 @@ function returnQuickAccessConfig() {
                     onTap: 'clic',
                 });
             }
+        },
+        'zone_recherche_patient': {
+            selector: '[id^="ContentPlaceHolder1_FindPatientUcForm"][id$="_TextBoxRecherche"]',
+            onTap: 'focus',
+        },
+        'zone_type_recherche_patient': {
+            selector: '[id^="ContentPlaceHolder1_FindPatientUcForm"][id$="_DropDownListRechechePatient"]',
+            onTap: 'focus',
         }
     }
 
