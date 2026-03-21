@@ -840,39 +840,70 @@ function createOverlay() {
  */
 function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = false) {
     const element = querySelectorWithIframe(selector);
-    // console.log(`[QuickAccess] Création du tooltip pour la touche "${hotkey}" sur l'élément:`, element, "Selector:", selector);
-    if (!element) return;
+    if (!element) {
+        console.warn(`[QuickAccess] Tooltip "${hotkey}" : élément non trouvé pour le sélecteur "${selector}"`);
+        return;
+    }
 
+    // Vérifier si l'élément a overflow qui couperait le tooltip
+    let targetElement = element;
+    const computedStyle = getComputedStyle(element);
+    
+    if (computedStyle.overflow === 'hidden' || computedStyle.overflow === 'clip') {
+        console.log(`[QuickAccess] Tooltip "${hotkey}" : overflow détecté (${computedStyle.overflow}), recherche d'un parent sans overflow`);
+        
+        // Remonter dans l'arbre DOM pour trouver un parent sans overflow problématique
+        let current = element.parentElement;
+        while (current && current !== document.body) {
+            const parentStyle = getComputedStyle(current);
+            if (parentStyle.overflow !== 'hidden' && parentStyle.overflow !== 'clip') {
+                targetElement = current;
+                break;
+            }
+            current = current.parentElement;
+        }
+    }
+    
+    // Sauvegarder la position originale de l'élément cible
+    const originalPosition = targetElement.style.position;
+    
+    // S'assurer que l'élément a une position relative pour que le tooltip puisse se positionner par rapport à lui
+    if (!originalPosition || originalPosition === 'static') {
+        saveElementStyles(targetElement, {
+            position: originalPosition || ''
+        });
+        targetElement.style.position = 'relative';
+    }
 
     const tooltip = document.createElement('span');
     tooltip.className = 'wh-quickaccess-tooltip';
 
-    // Calculer la position de l'élément (en tenant compte des iframes)
-    const rect = getAbsoluteBoundingRect(element);
-
-    // Style avec positionnement fixed pour garantir la visibilité
+    // Style avec positionnement absolu par rapport à l'élément parent
     tooltip.style.cssText = `
-        position: fixed;
+        position: absolute;
         color: #000000;
-        font-size: 1em;
-        background-color: rgba(240, 240, 240, 0.50);
-        padding: 4px 8px;
-        border-radius: 10px;
+        font-size: 0.75em;
+        background-color: rgba(255, 255, 0, 0.75);
+        padding: 2px 4px;
+        border: 1px solid #000000;
+        border-radius: 1px;
         pointer-events: none;
         white-space: nowrap;
         z-index: 99999;
-        top: ${rect.top + rect.height * 0.15}px;
-        left: ${rect.left}px;
+        top: 15%;
+        left: 0;
         height: auto;
         line-height: normal;
         display: inline-block;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     `;
 
-    // Si double-tap disponible, mettre le background en bleu
+    // Si double-tap disponible, utiliser une bordure bleue pour le distinguer
     if (hasDoubleTap) {
-        tooltip.style.backgroundColor = 'rgba(0, 123, 255, 0.125)'; // Bleu clair avec transparence
+        tooltip.style.backgroundColor = 'rgba(0, 123, 255, 0.75)';
+        tooltip.style.color = '#FFFFFF';
+        tooltip.style.borderWidth = '1px';
     }
+    
     // Si l'item est un conteneur pur (sert uniquement à la navigation vers subItems),
     // mettre en évidence l'élément DOM avec un outline pour le distinguer visuellement
     if (isContainer) {
@@ -893,11 +924,8 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = fal
     // Contenu : uniquement la touche
     tooltip.textContent = hotkey.toUpperCase();
 
-    // Ajouter le tooltip au body plutôt qu'à l'élément
-    document.body.appendChild(tooltip);
-
-    // Stocker une référence à l'élément pour repositionner si nécessaire
-    tooltip.dataset.targetElement = element;
+    // Rattacher le tooltip à l'élément cible (élément original ou parent sans overflow)
+    targetElement.appendChild(tooltip);
 }
 
 /**
