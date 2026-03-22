@@ -591,7 +591,7 @@ function returnQuickAccessConfig() {
             subItems: function (element) {
                 return generateMultipleSelectorSubItems({
                     parentElement: element,
-                    selector: 'select',
+                    selector: '.fseInnerContainer select',
                     onTap: 'focus',
                 });
             }
@@ -602,7 +602,7 @@ function returnQuickAccessConfig() {
             subItems: function (element) {
                 return generateMultipleSelectorSubItems({
                     parentElement: element,
-                    selector: '[id^="mat-radio-"][id$="-input"]',
+                    selector: '.fseInnerContainer[id^="mat-radio-"][id$="-input"]',
                     onTap: 'clic',
                 });
             }
