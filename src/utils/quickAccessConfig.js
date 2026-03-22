@@ -585,9 +585,16 @@ function returnQuickAccessConfig() {
             hotkey: 'd',
             onTap: 'clic'
         },
-        'amo_type': { // un tableau
-            selector: '.flexColStart > select',
-            onTap: 'focus'
+        'tableaux': { // un tableau
+            selector: '.fseInnerContainer',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: 'select',
+                    onTap: 'focus',
+                });
+            }
         },
         'radio_inputs': {
             selector: '.fseInnerContainer',
@@ -596,6 +603,17 @@ function returnQuickAccessConfig() {
                 return generateMultipleSelectorSubItems({
                     parentElement: element,
                     selector: '[id^="mat-radio-"][id$="-input"]',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'cotations': {
+            selector: 'vz-favoris-quick div',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: 'vz-favoris-quick > div > div',
                     onTap: 'clic',
                 });
             }
