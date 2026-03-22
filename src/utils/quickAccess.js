@@ -249,7 +249,7 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
  * Fonction utilitaire pour exécuter une action qui peut être une string (clic, mouseover, enter) ou une fonction personnalisée
  */
 function executeAction(action, selector, state) {
-    const element = querySelectorWithIframe(selector);
+    let element = querySelectorWithIframe(selector);
     if (!element) {
         console.error(`[QuickAccess] Impossible d'exécuter l'action : élément non trouvé pour le sélecteur "${selector}"`);
         return;

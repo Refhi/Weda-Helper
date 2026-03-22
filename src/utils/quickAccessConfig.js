@@ -653,6 +653,12 @@ function returnQuickAccessConfig() {
                         onTap: 'focus',
                         keyPrefix: 'input'
                     }),
+                    ...generateMultipleSelectorSubItems({
+                        parentElement: vzActesElement,
+                        selector: '[mattooltip="Supprimer la ligne"]',
+                        onTap: 'clic',
+                        keyPrefix: 'delete'
+                    })
                 };
             }
         });
