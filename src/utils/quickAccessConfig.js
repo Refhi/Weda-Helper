@@ -619,21 +619,31 @@ function returnQuickAccessConfig() {
             }
         },
         'cotations_appliquées': {
-            selector: 'vz-actes', // chaque élément correspond à une ligne de cotation appliquée
+            selector: '.actesList',
             inlineSubTooltips: true,
             subItems: function (element) {
-                return {
-                    ...generateMultipleSelectorSubItems({
-                        parentElement: element,
-                        selector: 'vz-actes .mat-checkbox input',
-                        onTap: 'clic',
-                    }),
-                    ...generateMultipleSelectorSubItems({
-                        parentElement: element,
-                        selector: 'vz-actes input',
-                        onTap: 'focus',
-                    }),
-                };
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: 'vz-actes',
+                    inlineSubTooltips: true,
+                    keyPrefix: 'acte',
+                    subItemsGenerator: function (vzActesElement) {
+                        return {
+                            ...generateMultipleSelectorSubItems({
+                                parentElement: vzActesElement,
+                                selector: '.mat-checkbox input',
+                                onTap: 'clic',
+                                keyPrefix: 'checkbox'
+                            }),
+                            ...generateMultipleSelectorSubItems({
+                                parentElement: vzActesElement,
+                                selector: 'input',
+                                onTap: 'focus',
+                                keyPrefix: 'input'
+                            }),
+                        };
+                    }
+                });
             }
         },
     };

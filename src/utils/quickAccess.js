@@ -216,6 +216,8 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
     const action = isDoubleTap ? matchedItem.onDoubleTap : matchedItem.onTap;
     const targetElementSelector = matchedItem.selector;
 
+    console.log(`[QuickAccess] Action à exécuter :`, { action, targetElementSelector, isTerminal });
+
 
 
     if (isTerminal) { // On sort du Quick Access après l'action
@@ -2025,11 +2027,12 @@ function QASelectorFinder(element, itemId) {
  * @param {string} options.selector - Sélecteur CSS pour trouver tous les éléments
  * @param {string|Function} options.onTap - Action à exécuter sur chaque élément
  * @param {string} [options.selectorPrefix=''] - Préfixe pour les sélecteurs (pour iframes)
+ * @param {string} [options.keyPrefix='item'] - Préfixe pour les clés des items générés (pour éviter les collisions)
  * @param {Function} [options.subItemsGenerator=null] - Fonction pour générer des sub-sub-items pour chaque élément trouvé
  * @param {boolean} [options.inlineSubTooltips=false] - Si true, propage inlineSubTooltips aux items générés (affichage combiné des tooltips)
  * @returns {Object} Configuration des sous-items
  */
-function generateMultipleSelectorSubItems({ parentElement, selector, onTap, selectorPrefix = '', subItemsGenerator = null, inlineSubTooltips = false }) {
+function generateMultipleSelectorSubItems({ parentElement, selector, onTap, selectorPrefix = '', keyPrefix = 'item', subItemsGenerator = null, inlineSubTooltips = false }) {
     console.log(`[QuickAccess] Génération de subItems pour le sélecteur multiple: "${selector}" avec le préfixe "${selectorPrefix}", parentElement:`, parentElement);
     const generatedSubItems = {};
 
@@ -2040,7 +2043,7 @@ function generateMultipleSelectorSubItems({ parentElement, selector, onTap, sele
         return {};
     }
 
-    console.log(`[QuickAccess] ${elements.length} éléments trouvés avec le sélecteur: "${selector}" sur le parentElement:`, parentElement, 'éléments:', elements);
+    console.log(`[QuickAccvz-actes .mat-checkbox inputvz-actes .mat-checkbox inputvz-actes .mat-checkbox inputvz-actes .mat-checkbox inputvz-actes .mat-checkbox inputs] ${elements.length} éléments trouvés avec le sélecteur: "${selector}" sur le parentElement:`, parentElement, 'éléments:', elements);
 
     // Créer un subItem pour chaque élément trouvé
     elements.forEach((element, index) => {
@@ -2057,7 +2060,7 @@ function generateMultipleSelectorSubItems({ parentElement, selector, onTap, sele
         }
 
         // Créer le subItem
-        const itemId = `item_${index}`;
+        const itemId = `${keyPrefix}_${index}`;
         const subItems = subItemsGenerator ? subItemsGenerator(element) : undefined;
         const hasValidSubItems = subItems && Object.keys(subItems).length > 0;
         if (inlineSubTooltips && subItemsGenerator && !hasValidSubItems) {
