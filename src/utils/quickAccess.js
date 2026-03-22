@@ -268,6 +268,9 @@ function executeAction(action, selector, state) {
                     }));
                 }
                 break;
+            case 'mousedown':
+                element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                break;
             case 'mouseover':
                 element.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
                 break;

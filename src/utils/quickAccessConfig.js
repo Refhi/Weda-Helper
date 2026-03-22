@@ -602,7 +602,7 @@ function returnQuickAccessConfig() {
             subItems: function (element) {
                 return generateMultipleSelectorSubItems({
                     parentElement: element,
-                    selector: '.fseInnerContainer[id^="mat-radio-"][id$="-input"]',
+                    selector: '.fseInnerContainer [id^="mat-radio-"][id$="-input"]',
                     onTap: 'clic',
                 });
             }
@@ -613,15 +613,30 @@ function returnQuickAccessConfig() {
             subItems: function (element) {
                 return generateMultipleSelectorSubItems({
                     parentElement: element,
-                    selector: 'vz-favoris-quick > div > div',
+                    selector: 'vz-favoris-quick > div > div.ng-star-inserted',
                     onTap: 'clic',
                 });
             }
-        }
-    }
-
-
-
+        },
+        'cotations_appliquées': {
+            selector: 'vz-actes', // chaque élément correspond à une ligne de cotation appliquée
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return {
+                    ...generateMultipleSelectorSubItems({
+                        parentElement: element,
+                        selector: 'vz-actes .mat-checkbox',
+                        onTap: 'mousedown',
+                    }),
+                    ...generateMultipleSelectorSubItems({
+                        parentElement: element,
+                        selector: 'vz-actes input',
+                        onTap: 'focus',
+                    }),
+                };
+            }
+        },
+    };
 
     /**
      * ----------------------------------------------------------------------------------
