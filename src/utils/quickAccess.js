@@ -186,7 +186,10 @@ function addListenersToDocuments(documents, state, config) {
 function handleQuickAccessKey(e, state, config) {
     // Vérifier que la touche pressée est associée à un élément **du niveau actuel**
     const currentConfig = flattenedCurrentLevelConfig(state, config);
-    console.log(`[QuickAccess] Touche pressée : "${e.key}". Configuration actuelle des hotkeys :`, Object.fromEntries(Object.entries(currentConfig).map(([id, item]) => [id, item.hotkey])));
+    // Ne logger que les touches réelles, pas les modificateurs
+    if (!['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) {
+        console.log(`[QuickAccess] Touche: "${e.key}", hotkeys disponibles:`, Object.fromEntries(Object.entries(currentConfig).map(([id, item]) => [id, item.hotkey])));
+    }
     const matchedEntry = Object.entries(currentConfig).find(([, item]) => item.hotkey === e.key);
 
     if (matchedEntry) {
@@ -360,16 +363,17 @@ function getItemAndSubItems(config, QALevel, context = 'navigation') {
     let currentSubItems = config;
     let currentItemContainer = null;
     let currentItemId = null;
+    const foundPath = [];
 
     for (let i = 0; i < QALevel.length; i++) {
         const itemId = QALevel[i];
 
         if (!currentSubItems[itemId]) {
-            console.warn(`[QuickAccess] Élément "${itemId}" introuvable lors de ${context}`, QALevel);
+            console.warn(`[QuickAccess] Element "${itemId}" introuvable lors de ${context}, chemin parcouru: ${foundPath.join('/')}`, QALevel);
             return { item: null, subItems: null, itemId: null };
-        } else {
-             console.log(`[QuickAccess] Élément "${itemId}" trouvé lors de ${context}`, QALevel);
         }
+        
+        foundPath.push(itemId);
 
         // ✅ Sauvegarder le conteneur et l'item complet AVANT de descendre
         currentItemContainer = currentSubItems;
@@ -379,7 +383,7 @@ function getItemAndSubItems(config, QALevel, context = 'navigation') {
         // Si ce n'est pas le dernier niveau, descendre dans subItems
         if (i < QALevel.length - 1) {
             if (!fullItem.subItems) {
-                console.warn(`[QuickAccess] Pas de subItems pour "${itemId}" lors de ${context}`, QALevel);
+                console.warn(`[QuickAccess] Pas de subItems pour "${itemId}" lors de ${context}, chemin parcouru: ${foundPath.join('/')}`, QALevel);
                 return { item: null, subItems: null, itemId: null };
             }
             currentSubItems = fullItem.subItems;
@@ -405,7 +409,7 @@ function getItemAndSubItems(config, QALevel, context = 'navigation') {
  */
 function moveToTargetConfig(targetQALevel, state, config) {
     const actualQALevel = state.currentLevel;
-    console.log(`[QuickAccess] Tentative de changement de niveau vers ${targetQALevel} depuis ${actualQALevel}`);
+    // Log supprimé car redondant avec populateSubItems qui suit
 
     // Vérifier que la demande de changement de niveau est d'un niveau exactement
     const levelDiff = Math.abs(targetQALevel.length - actualQALevel.length);
@@ -455,7 +459,7 @@ function moveToTargetConfig(targetQALevel, state, config) {
  * @param {string[]} targetQALevel - Chemin vers le niveau à peupler
  */
 function populateSubItems(config, targetQALevel) {
-    console.log(`[QuickAccess] Tentative de peuplement des subItems pour le niveau`, targetQALevel);
+    const logData = { level: targetQALevel, status: null, subItemsCount: 0 };
 
     // Naviguer jusqu'à l'élément cible et obtenir son conteneur
     const { subItems: subItemsContent, item: itemContainer, itemId } = getItemAndSubItems(config, targetQALevel, 'populateSubItems');
@@ -470,8 +474,6 @@ function populateSubItems(config, targetQALevel) {
 
     // Vérifier si subItems est une fonction à évaluer
     if (typeof targetItem.subItems === 'function') {
-        console.log(`[QuickAccess] Peuplement des subItems pour le niveau`, targetQALevel);
-
         // Trouver l'élément DOM si nécessaire
         let element = targetItem.element;
         if (!element && targetItem.selector) {
@@ -486,17 +488,17 @@ function populateSubItems(config, targetQALevel) {
 
             // ✅ Modifier directement la référence dans quickAccessConfig via le conteneur
             itemContainer[itemId].subItems = generatedSubItems;
-
-            console.log(`[QuickAccess] SubItems peuplés avec succès pour`, targetQALevel);
+            logData.status = 'generated';
+            logData.subItemsCount = Object.keys(generatedSubItems || {}).length;
         } else {
             console.warn(`[QuickAccess] Impossible de trouver l'élément pour peupler les subItems`, targetQALevel);
+            return;
         }
     } else if (typeof targetItem.subItems === 'object') {
         // Les subItems ont déjà été générés (cache) ou sont statiques
-        console.log(`[QuickAccess] Réutilisation du cache subItems pour`, targetQALevel);
+        logData.status = 'cached';
+        logData.subItemsCount = Object.keys(targetItem.subItems || {}).length;
     }
-
-    console.log(`[QuickAccess] Configuration après peuplement pour le niveau`, targetQALevel, config);
 
     // Assigner les hotkeys manquants des subItems dès le peuplement.
     // Cela couvre les items inlineSubTooltips (qui ne passent jamais par
@@ -508,6 +510,8 @@ function populateSubItems(config, targetQALevel) {
             : new Set();
         ensureHotkeysForItems(targetItem.subItems, parentReserved);
     }
+
+    console.log(`[QuickAccess] SubItems peuplés pour niveau ${targetQALevel.join('/')}:`, logData);
 
     // Après peuplement initial (frais ou en cache), peupler récursivement les subItems
     // des items marqués inlineSubTooltips — ceux-ci s'affichent sans navigation, donc
@@ -569,13 +573,17 @@ function ensureHotkeysForItems(config, reservedHotkeys = new Set()) {
         return;
     }
 
+    const removedHotkeys = [];
+    const duplicateHotkeys = [];
+    const generatedHotkeys = [];
+
     // ⚠️ PASSE 0 : Nettoyer les hotkeys hardcodés pour les éléments absents du DOM
     for (const [itemId, item] of Object.entries(config)) {
         if (item.hotkey && item.selector) {
             const element = querySelectorWithIframe(item.selector);
             if (!element) {
                 // L'élément n'existe pas dans le DOM, supprimer le hotkey hardcodé
-                console.log(`[QuickAccess] Hotkey "${item.hotkey}" supprimée pour "${itemId}" (élément absent du DOM)`);
+                removedHotkeys.push({ itemId, hotkey: item.hotkey });
                 delete item.hotkey;
             }
         }
@@ -590,7 +598,7 @@ function ensureHotkeysForItems(config, reservedHotkeys = new Set()) {
             const hotkey = item.hotkey.toLowerCase();
             if (usedHotkeys.has(hotkey)) {
                 // Doublon détecté : vider le hotkey pour qu'il soit régénéré proprement
-                console.log(`[QuickAccess] Doublon de hotkey "${hotkey}" pour "${itemId}" → réassignation`);
+                duplicateHotkeys.push({ itemId, hotkey });
                 delete item.hotkey;
             } else {
                 usedHotkeys.add(hotkey);
@@ -616,10 +624,20 @@ function ensureHotkeysForItems(config, reservedHotkeys = new Set()) {
                 const generatedHotkey = generateHotkeyFromText(sourceText, usedHotkeys);
                 item.hotkey = generatedHotkey;
                 usedHotkeys.add(generatedHotkey);
+                generatedHotkeys.push({ itemId, hotkey: generatedHotkey });
             }
         }
     }
-    console.log(`[QuickAccess] Hotkeys après génération automatique :`, Object.fromEntries(Object.entries(config).map(([id, item]) => [id, item.hotkey])));
+    
+    // Ne logger que si des changements ont été effectués
+    if (removedHotkeys.length > 0 || duplicateHotkeys.length > 0 || generatedHotkeys.length > 0) {
+        console.log(`[QuickAccess] Hotkeys: ${removedHotkeys.length} supprimées, ${duplicateHotkeys.length} doublons réassignés, ${generatedHotkeys.length} générées`, {
+            removed: removedHotkeys,
+            duplicates: duplicateHotkeys,
+            generated: generatedHotkeys,
+            final: Object.fromEntries(Object.entries(config).map(([id, item]) => [id, item.hotkey]))
+        });
+    }
 }
 
 /**
@@ -885,12 +903,12 @@ function createInfoMessage() {
  * @param {string} hotkey - Touche de raccourci
  * @param {boolean} hasDoubleTap - Indique si un double-tap est disponible
  * @param {boolean} isContainer - Indique si l'item sert uniquement de conteneur pour la navigation (pas d'action directe)
+ * @returns {Object|null} Informations sur le tooltip créé, ou null si l'élément n'est pas trouvé
  */
 function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = false) {
     const element = querySelectorWithIframe(selector);
     if (!element) {
-        // console.warn(`[QuickAccess] Tooltip "${hotkey}" : élément non trouvé pour le sélecteur "${selector}"`);
-        return;
+        return null;
     }
 
     // Vérifier si l'élément a overflow qui couperait le tooltip
@@ -976,6 +994,7 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = fal
     // Les éléments comme <select>, <input>, <textarea>, <img>, <br>, <hr> ne peuvent pas avoir d'enfants directs valides
     const cannotHaveChildren = ['SELECT', 'INPUT', 'TEXTAREA', 'IMG', 'BR', 'HR', 'VIDEO', 'AUDIO'].includes(element.tagName);
     
+    let attachmentType;
     if (cannotHaveChildren) {
         // Pour ces éléments, insérer le tooltip comme sibling et ajuster le positionnement
         const rect = element.getBoundingClientRect();
@@ -985,12 +1004,19 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = fal
         
         // Insérer après l'élément
         element.parentElement.insertBefore(tooltip, element.nextSibling);
-        console.log(`[QuickAccess] Tooltip créé pour "${hotkey}" sur l'élément ${element.tagName}`, element, '(inséré comme sibling)');
+        attachmentType = 'sibling';
     } else {
         // Rattacher le tooltip à l'élément cible (élément original ou parent sans overflow)
         targetElement.appendChild(tooltip);
-        console.log(`[QuickAccess] Tooltip créé pour "${hotkey}" sur l'élément`, element, `(attaché à ${targetElement === element ? 'l\'élément lui-même' : 'un parent sans overflow'})`);
+        attachmentType = targetElement === element ? 'self' : 'parent';
     }
+    
+    return {
+        hotkey,
+        tagName: element.tagName,
+        attachmentType,
+        element
+    };
 }
 
 /**
@@ -998,21 +1024,25 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = fal
  * Supporte N niveaux de inlineSubTooltips (tooltips à 2, 3, 4+ lettres).
  * @param {Object} subItems - Les subItems à afficher
  * @param {string} hotkeyPrefix - Préfixe accumulé des hotkeys parentes (ex: 'C', 'CT')
+ * @returns {Array} Tableau des tooltips créés
  */
 function showInlineSubTooltips(subItems, hotkeyPrefix) {
+    const results = [];
     for (const [, subItem] of Object.entries(subItems)) {
         if (!subItem.selector || !subItem.hotkey) continue;
         const combinedHotkey = hotkeyPrefix + subItem.hotkey;
 
         if (subItem.inlineSubTooltips && subItem.subItems && typeof subItem.subItems === 'object') {
             // Descente récursive : ce sous-item délègue aussi l'affichage à ses enfants
-            showInlineSubTooltips(subItem.subItems, combinedHotkey);
+            results.push(...showInlineSubTooltips(subItem.subItems, combinedHotkey));
         } else {
             const hasDoubleTap = subItem.onDoubleTap != null;
             const isContainer = subItem.subItems != null && subItem.onTap == null && !hasDoubleTap;
-            createTooltip(subItem.selector, combinedHotkey, hasDoubleTap, isContainer);
+            const result = createTooltip(subItem.selector, combinedHotkey, hasDoubleTap, isContainer);
+            if (result) results.push(result);
         }
     }
+    return results;
 }
 
 /**
@@ -1030,6 +1060,8 @@ function showTooltips(state, config) {
     // console.log('[QuickAccess] Affichage des tooltips pour le niveau', state.currentLevel, flattenedConfig);
 
     const entries = Object.entries(flattenedConfig);
+    const createdTooltips = [];
+    const ignoredContainers = [];
 
     for (let i = 0; i < entries.length; i++) {
         const [itemId, item] = entries[i];
@@ -1038,14 +1070,14 @@ function showTooltips(state, config) {
 
         // Si c'est l'item actuel et qu'il n'a ni onTap ni onDoubleTap (pur conteneur), ne pas afficher le tooltip
         if (isCurrentItem && item.onTap == null && item.onDoubleTap == null) { // Egalité intentionnelle (null ou undefined)
-            console.log(`[QuickAccess] Item actuel "${itemId}" ignoré (pur conteneur sans action)`);
+            ignoredContainers.push(itemId);
             continue;
         }
 
         // Si l'item a inlineSubTooltips : afficher directement ses sous-items avec la hotkey combinée (ex: "SI", "SL")
         // Les hotkeys des sous-items sont générées automatiquement dans populateSubItems si absentes.
         if (item.inlineSubTooltips && item.subItems && typeof item.subItems === 'object') {
-            showInlineSubTooltips(item.subItems, item.hotkey || '');
+            createdTooltips.push(...showInlineSubTooltips(item.subItems, item.hotkey || ''));
             continue; // L'item parent lui-même n'affiche pas de tooltip
         }
 
@@ -1054,11 +1086,14 @@ function showTooltips(state, config) {
         // Un item sans onTap et avec subItems est un conteneur
         const isContainer = item.subItems != null && !hasOnTap && !hasDoubleTap;
 
-        // console.log(`[QuickAccess] Traitement de l'item "${itemId}" pour affichage du tooltip:`, item, "Selector:", item.selector, "Hotkey:", item.hotkey, "HasDoubleTap:", hasDoubleTap, "IsContainerOnly:", isContainerOnly);
-        createTooltip(item.selector, item.hotkey, hasDoubleTap, isContainer);
+        const result = createTooltip(item.selector, item.hotkey, hasDoubleTap, isContainer);
+        if (result) createdTooltips.push(result);
     }
 
-    console.log('[QuickAccess] Tooltips affichés pour le niveau', state.currentLevel, Object.entries(flattenedConfig).map(([id, item]) => ({ id, hotkey: item.hotkey, selector: item.selector })));
+    console.log(`[QuickAccess] Tooltips pour niveau ${state.currentLevel.join('/')}: ${createdTooltips.length} créés${ignoredContainers.length > 0 ? `, ${ignoredContainers.length} conteneurs ignorés` : ''}`, {
+        created: createdTooltips,
+        ignored: ignoredContainers
+    });
 }
 
 /**
@@ -2033,7 +2068,6 @@ function QASelectorFinder(element, itemId) {
  * @returns {Object} Configuration des sous-items
  */
 function generateMultipleSelectorSubItems({ parentElement, selector, onTap, selectorPrefix = '', keyPrefix = 'item', subItemsGenerator = null, inlineSubTooltips = false }) {
-    console.log(`[QuickAccess] Génération de subItems pour le sélecteur multiple: "${selector}" avec le préfixe "${selectorPrefix}", parentElement:`, parentElement);
     const generatedSubItems = {};
 
     const elements = parentElement.querySelectorAll(selector);
@@ -2042,8 +2076,6 @@ function generateMultipleSelectorSubItems({ parentElement, selector, onTap, sele
         console.warn(`[QuickAccess] Aucun élément trouvé avec le sélecteur: "${selector}"`);
         return {};
     }
-
-    console.log(`[QuickAccvz-actes .mat-checkbox inputvz-actes .mat-checkbox inputvz-actes .mat-checkbox inputvz-actes .mat-checkbox inputvz-actes .mat-checkbox inputs] ${elements.length} éléments trouvés avec le sélecteur: "${selector}" sur le parentElement:`, parentElement, 'éléments:', elements);
 
     // Créer un subItem pour chaque élément trouvé
     elements.forEach((element, index) => {
@@ -2077,6 +2109,6 @@ function generateMultipleSelectorSubItems({ parentElement, selector, onTap, sele
         };
     });
 
-    console.log(`[QuickAccess] ${Object.keys(generatedSubItems).length} subItems générés pour le sélecteur: "${selector}"`);
+    console.log(`[QuickAccess] Sélecteur "${selector}": ${Object.keys(generatedSubItems).length} subItems générés`);
     return generatedSubItems;
 }
