@@ -618,35 +618,50 @@ function returnQuickAccessConfig() {
                 });
             }
         },
-        'cotations_appliquées': {
-            selector: '.actesList',
-            inlineSubTooltips: true,
-            subItems: function (element) {
-                return generateMultipleSelectorSubItems({
-                    parentElement: element,
-                    selector: 'vz-actes',
-                    inlineSubTooltips: true,
-                    keyPrefix: 'acte',
-                    subItemsGenerator: function (vzActesElement) {
-                        return {
-                            ...generateMultipleSelectorSubItems({
-                                parentElement: vzActesElement,
-                                selector: '.mat-checkbox input',
-                                onTap: 'clic',
-                                keyPrefix: 'checkbox'
-                            }),
-                            ...generateMultipleSelectorSubItems({
-                                parentElement: vzActesElement,
-                                selector: 'input',
-                                onTap: 'focus',
-                                keyPrefix: 'input'
-                            }),
-                        };
-                    }
-                });
-            }
-        },
+        'lecture_cps_fse': {
+            selector: '[weda-test="vitalzen/cps/lire/button"]',
+            onTap: 'clic'
+        }
     };
+
+    // génère les items de cotations appliquées
+    function generateFseCotationsAppliqueesConfig() {
+        const actesListElement = document.querySelector('.actesList');
+        
+        // Si l'élément n'existe pas, retourner une config vide (ou avec juste _urlPatterns)
+        if (!actesListElement) {
+            return { _urlPatterns: ['/vitalzen/fse.aspx'] };
+        }
+        
+        // Générer les items directement au premier niveau
+        const items = generateMultipleSelectorSubItems({
+            parentElement: actesListElement,
+            selector: 'vz-actes > table > tr',
+            inlineSubTooltips: true,
+            keyPrefix: 'cotation_appliquee',
+            subItemsGenerator: function (vzActesElement) {
+                return {
+                    ...generateMultipleSelectorSubItems({
+                        parentElement: vzActesElement,
+                        selector: '.mat-checkbox input',
+                        onTap: 'clic',
+                        keyPrefix: 'checkbox'
+                    }),
+                    ...generateMultipleSelectorSubItems({
+                        parentElement: vzActesElement,
+                        selector: 'input',
+                        onTap: 'focus',
+                        keyPrefix: 'input'
+                    }),
+                };
+            }
+        });
+        
+        return {
+            _urlPatterns: ['/vitalzen/fse.aspx'],
+            ...items
+        };
+    }
 
     /**
      * ----------------------------------------------------------------------------------
@@ -958,6 +973,12 @@ function returnQuickAccessConfig() {
     }
 
     // ================= Configuration finale avec filtrage =================
+    /**
+     * allConfigs peut contenir :
+     * - des objets de configuration statiques
+     * - des fonctions qui retournent des objets de configuration
+     *
+     */
     const allConfigs = [
         bandeauSuperieurConfig,
         menuHorizontalConfig,
@@ -975,6 +996,7 @@ function returnQuickAccessConfig() {
         prescriptionMedicamenteuseConfig,
         textZoneIframeConfigCourrier,
         fseConfig,
+        generateFseCotationsAppliqueesConfig, // fonction génératrice
         importConfig
     ];
 
@@ -982,7 +1004,15 @@ function returnQuickAccessConfig() {
 
     // Filtrer les configurations selon l'URL actuelle
     const currentUrl = window.location.pathname;
-    for (const configGroup of allConfigs) {
+    for (const configGroupOrFunction of allConfigs) {
+        // Si c'est une fonction, l'appeler pour obtenir la configuration
+        const configGroup = typeof configGroupOrFunction === 'function' 
+            ? configGroupOrFunction() 
+            : configGroupOrFunction;
+
+        // Ignorer si la fonction retourne null/undefined
+        if (!configGroup) continue;
+
         const urlPatterns = configGroup._urlPatterns;
 
         // Si pas de restriction (_urlPatterns null/undefined) ou si l'URL correspond

@@ -931,7 +931,7 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = fal
         position: absolute;
         color: #000000;
         font-size: 0.75em;
-        background-color: rgba(255, 255, 0, 0.75);
+        background-color: rgba(255, 255, 0, 1);
         padding: 2px 4px;
         border: 1px solid #000000;
         border-radius: 1px;
@@ -947,7 +947,7 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = fal
 
     // Si double-tap disponible, utiliser une bordure bleue pour le distinguer
     if (hasDoubleTap) {
-        tooltip.style.backgroundColor = 'rgba(0, 123, 255, 0.75)';
+        tooltip.style.backgroundColor = 'rgba(0, 123, 255, 1)';
         tooltip.style.color = '#FFFFFF';
         tooltip.style.borderWidth = '1px';
     }
@@ -964,7 +964,7 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = fal
         });
 
         // Appliquer l'entourage
-        element.style.outline = '2px solid rgba(0, 123, 255, 0.8)';
+        element.style.outline = '2px solid rgba(0, 123, 255, 1)';
         element.style.outlineOffset = '2px';
         element.classList.add('wh-quickaccess-highlighted');
     }
