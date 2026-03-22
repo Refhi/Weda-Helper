@@ -2046,7 +2046,14 @@ function generateMultipleSelectorSubItems({ parentElement, selector, onTap, sele
     elements.forEach((element, index) => {
         // Générer un ID unique pour l'élément s'il n'en a pas
         if (!element.id) {
-            element.id = `qa_multiple_${index}`;
+            let uniqueId = `qa_multiple_${index}`;
+            let counter = 0;
+            // Vérifier que l'ID n'existe pas déjà dans le DOM
+            while (document.getElementById(uniqueId)) {
+                uniqueId = `qa_multiple_${index}_${counter}`;
+                counter++;
+            }
+            element.id = uniqueId;
         }
 
         // Créer le subItem
