@@ -625,8 +625,8 @@ function returnQuickAccessConfig() {
                 return {
                     ...generateMultipleSelectorSubItems({
                         parentElement: element,
-                        selector: 'vz-actes .mat-checkbox',
-                        onTap: 'mousedown',
+                        selector: 'vz-actes .mat-checkbox input',
+                        onTap: 'clic',
                     }),
                     ...generateMultipleSelectorSubItems({
                         parentElement: element,
