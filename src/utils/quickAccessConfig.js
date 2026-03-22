@@ -575,7 +575,35 @@ function returnQuickAccessConfig() {
      * ----------------------------------------------------------------------------------
      */
     const fseConfig = {
+        _urlPatterns: ['/vitalzen/fse.aspx'],
+        'amo_fse': {
+            selector: '#mat-checkbox-1-input',
+            onTap: 'clic'
+        },
+        'amc_fse': {
+            selector: '#mat-checkbox-2-input',
+            hotkey: 'd',
+            onTap: 'clic'
+        },
+        'amo_type': { // un tableau
+            selector: '.flexColStart > select',
+            onTap: 'focus'
+        },
+        'radio_inputs': {
+            selector: '.fseInnerContainer',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '[id^="mat-radio-"][id$="-input"]',
+                    onTap: 'clic',
+                });
+            }
+        }
     }
+
+
+
 
     /**
      * ----------------------------------------------------------------------------------
