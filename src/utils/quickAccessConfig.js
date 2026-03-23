@@ -991,6 +991,7 @@ function returnQuickAccessConfig() {
      * les items de l’aati et cpie ne sont plus fonctionnels
      * viser également les documents importés pour permettre leur renommage/suppression rapide depuis le qa
      * viser le "définir les antécédents du patient"
+     * permettre la sélection d’un patient sur la carte vitale
      */
 
     /**
@@ -1006,6 +1007,15 @@ function returnQuickAccessConfig() {
     /**
      * TODO antécédents
      * permettre la navigation dans les champs de saisie notamment saisie libre
+     */
+
+    /**
+     * TODO éléments génériques
+     * la barre de titre du haut n’est pas accessible partout, peut-être l’activer systématiquement dès qu’elle est présente ? 
+     */
+
+    /**
+     * TODO zone d’imports de bio
      */
 
 
