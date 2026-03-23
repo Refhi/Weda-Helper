@@ -978,6 +978,37 @@ function returnQuickAccessConfig() {
         }
     }
 
+    /**
+     * TODO : d'autres éléments à ajouter dans les prescriptions médicamenteuses :
+     * ajouter les pharmacies dans les prescriptions de médicaments
+     * ajouter le choix de la ligne à renouveller/ordo type dans les prescriptions de médicaments
+     * ajouter les items de chaque ligne de prescription (dosage, posologie, durée, etc.) dans les prescriptions de médicaments
+     * ajouter la calculette dans les prescriptions de médicaments
+     * posos types de la calculette
+     */
+
+    /** TODO page d’accueil
+     * les items de l’aati et cpie ne sont plus fonctionnels
+     * viser également les documents importés pour permettre leur renommage/suppression rapide depuis le qa
+     * viser le "définir les antécédents du patient"
+     */
+
+    /**
+     * TODO prescriptions autres
+     * lors de l’usage du qa de bascule, un élément html est introduit dans le champ de texte : nettoyer les tooltips avant l’action ?
+     */
+
+    /**
+     * TODO /FolderTools/BiblioForm.aspx
+     * peupler les documents
+     */
+
+    /**
+     * TODO antécédents
+     * permettre la navigation dans les champs de saisie notamment saisie libre
+     */
+
+
     // ================= Configuration finale avec filtrage =================
     /**
      * allConfigs peut contenir :
