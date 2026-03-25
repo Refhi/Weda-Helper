@@ -244,7 +244,9 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
 
     // Ne rien exécuter si l'action est null/undefined
     if (action) {
-        executeAction(action, targetElementSelector, state);
+        setTimeout(() => {
+            executeAction(action, targetElementSelector, state);
+        }, 10); // Léger délais pour être sur que l'ensemble des tooltips ont bien été supprimés avant d'exécuter l'action
     }
 }
 

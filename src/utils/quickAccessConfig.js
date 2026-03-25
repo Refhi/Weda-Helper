@@ -1061,13 +1061,6 @@ function returnQuickAccessConfig() {
      * posos types de la calculette
      */
 
-
-
-    /**
-     * TODO prescriptions autres
-     * lors de l’usage du qa de bascule, un élément html est introduit dans le champ de texte : nettoyer les tooltips avant l’action ?
-     */
-
     /**
      * TODO /FolderTools/BiblioForm.aspx
      * peupler les documents
