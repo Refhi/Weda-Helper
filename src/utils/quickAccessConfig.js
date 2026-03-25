@@ -46,7 +46,6 @@ function returnQuickAccessConfig() {
     */
 
     /** TODO page d’accueil
-     * viser également les documents importés pour permettre leur renommage/suppression rapide depuis le qa
      * permettre la sélection d’un patient sur la carte vitale
      */
     // ================= Bandeau supérieur de la page d’accueil =================
@@ -541,6 +540,13 @@ function returnQuickAccessConfig() {
      *            Pages de prescriptions médicamenteuses
      * ----------------------------------------------------------------------------------
      */
+    /**
+     * TODO : d'autres éléments à ajouter dans les prescriptions médicamenteuses :
+     * ajouter les items de chaque ligne de prescription (dosage, posologie, durée, etc.) dans les prescriptions de médicaments
+     * ajouter la calculette dans les prescriptions de médicaments
+     * posos types de la calculette
+     */
+
     const prescriptionMedicamenteuseConfig = {
         _urlPatterns: ['/FolderMedical/PrescriptionForm.aspx'],
         'zone_texte_poids': {
@@ -573,14 +579,30 @@ function returnQuickAccessConfig() {
                 });
             }
         },
-
         'zone_options_recherche_medicaments': {
             selector: '#ContentPlaceHolder1_BaseVidalUcForm1_UpdatePanelVidal table',
             inlineSubTooltips: true,
             subItems: function (element) {
                 return generateInternalSubItems(element);
             }
-        }
+        },
+        'bouton_pharmacien': {
+            selector: '#ContentPlaceHolder1_ImageButtonOpenPharmacie',
+            onTap: 'clic'
+        },
+        'choix_ligne_renouvellement': {
+            selector: '#ContentPlaceHolder1_RenouvellementUCForm1_DocumentsGrid',
+            onTap: 'clic',
+            priorityLvl: true,
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '[id^="ContentPlaceHolder1_RenouvellementUCForm1_DocumentsGrid_LinkButtonDocumentEvenementTitre_"]',
+                    onTap: 'clic',
+                });
+            }
+        },
     };
 
 
@@ -1155,17 +1177,6 @@ function returnQuickAccessConfig() {
             onTap: 'clic'
         }
     }
-
-    /**
-     * TODO : d'autres éléments à ajouter dans les prescriptions médicamenteuses :
-     * ajouter les pharmacies dans les prescriptions de médicaments
-     * ajouter le choix de la ligne à renouveller/ordo type dans les prescriptions de médicaments
-     * ajouter les items de chaque ligne de prescription (dosage, posologie, durée, etc.) dans les prescriptions de médicaments
-     * ajouter la calculette dans les prescriptions de médicaments
-     * posos types de la calculette
-     */
-
-
 
 
     /**
