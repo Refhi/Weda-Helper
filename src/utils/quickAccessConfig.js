@@ -1063,7 +1063,19 @@ function returnQuickAccessConfig() {
                 return generateMultipleSelectorSubItems({
                     parentElement: element,
                     selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_DivQuestionnaire tr td',
-                    onTap: 'clic',
+                    onTap: function (element) {
+                        // .qt est la classe du <tr> titre de groupe, pas d'un enfant
+                        // on remonte les siblings précédents pour trouver le <tr class="qt"> le plus proche
+                        let qtRow = element.closest('tr');
+                        while (qtRow && !qtRow.classList.contains('qt')) {
+                            qtRow = qtRow.nextElementSibling;
+                        }
+                        if (qtRow) {
+                            console.log(`[QuickAccess] Scrolling to the closest .qt element:`, qtRow);
+                            qtRow.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+                        }
+                        element.click();
+                    },
                     reQuickAction: true,
                 });
             }
