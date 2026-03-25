@@ -46,9 +46,7 @@ function returnQuickAccessConfig() {
     */
 
     /** TODO page d’accueil
-     * les items de l’aati et cpie ne sont plus fonctionnels
      * viser également les documents importés pour permettre leur renommage/suppression rapide depuis le qa
-     * viser le "définir les antécédents du patient"
      * permettre la sélection d’un patient sur la carte vitale
      */
     // ================= Bandeau supérieur de la page d’accueil =================
@@ -318,10 +316,59 @@ function returnQuickAccessConfig() {
                 return generateInternalSubItems(element);
             }
         },
-        '+1click_vsm': { // Certe dans le panneau état civil, mais on veut un accès direct
-            selector: '#oneClickVSMButton',
-            onTap: 'clic'
+        'colonne_de_gauche_sous_etat_civil' :{
+            selector: '#ContentPlaceHolder1_PanelPatient',
+            inlineSubTooltips: true,
+            subItems:{
+                '+1click_vsm': { // Certes dans le panneau état civil, mais on veut un accès direct
+                    selector: '#oneClickVSMButton',
+                    onTap: 'clic'
+                },
+                'lien_arrets_travail': { // Le panneau clicable emmenant vers les arrêts de travail, sous le panneau état civil
+                    selector: '[title^="Dernier A.T."]',
+                    onTap: 'clic'
+                },
+                'panneau_contacts': {
+                    selector: '[title^="Cliquez ici pour renseigner les contacts du patient"]',
+                    onTap: 'clic'
+                },
+                'services_imti': {
+                    selector: '#ContentPlaceHolder1_imtiContainer',
+                    inlineSubTooltips: true,
+                    subItems: {
+                        'recup_mt': {
+                            selector: "[title^=\"Récupère l'identité du médecin traitant en interrogeant le téléservice IMTi\"]",
+                            onTap: 'clic'
+                        },
+                        'decla_mt': {
+                            selector: "[title^=\"Vous déclarer médecin traitant de ce patient grâce au téléservice DMTi\"]",
+                            onTap: 'clic'
+                        },
+                        'consult_ALD': {
+                            selector: "[title^=\"Permet de savoir quelles ALD sont reconnues par l’Assurance Maladie pour le patient dans le cadre d’un protocole de soins, en interrogeant le téléservice ALDi.\"]",
+                            onTap: 'clic'
+                        },
+                        'decla_AT': {
+                            selector: "[title^=\"Transmettre un avis d'arrêt de travail via le téléservice AATi\"]",
+                            onTap: 'clic'
+                        },
+                        'decla_AT_sans_CV': {
+                            selector: '#aati-lien-sans-cv', // le selecteur est différent car celui-ci est ajouté par WH
+                            onTap: 'clic'
+                        },
+                        'ordo_numerique': {
+                            selector: "[title^=\"Rechercher les ordonnances numériques liées à ce patient\"]",
+                            onTap: 'clic'
+                        }
+                    }
+                },
+                'panneau_atcd': {
+                    selector: '[title^="Cliquez ici pour modifier le volet médical du patient"]',
+                    onTap: 'clic'
+                }
+            }
         },
+        
         'documents_joints_meta_top_bar': { // Barre tout en haut marquée "Consultation" ou équivalent. A supprimer car peu utile ?
             selector: '#ContentPlaceHolder1_PanelVisuDocument tr',
             subItems: function (element) {
@@ -378,6 +425,16 @@ function returnQuickAccessConfig() {
             inlineSubTooltips: true,
             subItems: function (element) {
                 return generateConsultationHistorySubItems(element, 'documents_joints_corps');
+            }
+        },
+        'pieces_jointes': { // TODO : tofix
+            selector: '.pjm',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '.soc1'
+                });
             }
         },
         'copilot_vidal': { // Le pannneau 
