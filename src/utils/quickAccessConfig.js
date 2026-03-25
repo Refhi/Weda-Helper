@@ -599,7 +599,7 @@ function returnQuickAccessConfig() {
 
     /**
      * ----------------------------------------------------------------------------------
-     *            Pages de FSE - TODO
+     *            Pages de FSE
      * ----------------------------------------------------------------------------------
      */
     const fseConfig = {
@@ -1165,11 +1165,6 @@ function returnQuickAccessConfig() {
      * posos types de la calculette
      */
 
-
-    /**
-     * TODO antécédents
-     * permettre la navigation dans les champs de saisie notamment saisie libre
-     */
 
 
 
