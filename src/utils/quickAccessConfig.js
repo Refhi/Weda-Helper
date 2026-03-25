@@ -622,44 +622,48 @@ function returnQuickAccessConfig() {
             subItems: function (element) {
                 return generateMultipleSelectorSubItems({
                     parentElement: element,
-                    selector: 'tbody > tr',
-                    inlineSubTooltips: true,
-                    subItems: {
-                        'titre_medicament': {
-                            selector: '[id^="ContentPlaceHolder1_PrescriptionsGrid_LinkButtonPrescriptionCommonNameGroupName_"]',
-                            onTap: 'clic',
-                        },
-                        'ALD_trigger': {
-                            selector: '[id^="ContentPlaceHolder1_PrescriptionsGrid_LinkButtonPrescriptionBizone_"]',
-                            onTap: 'clic',
-                        },
-                        'TC_trigger': {
-                            selector: '[id^="ContentPlaceHolder1_PrescriptionsGrid_LinkButtonTC_"]',
-                            onTap: 'clic',
-                        },
-                        'impr_boites': {
-                            selector: '[id^="ContentPlaceHolder1_PrescriptionsGrid_PrescriptionPrintBoite_"]',
-                            onTap: 'clic',
-                        },
-                        '+boites': {
-                            selector: '[id^="ContentPlaceHolder1_PrescriptionsGrid_BoitePlusButtonGridPrescription_"]',
-                            onTap: 'clic',
-                            hotkey: '+',
-                        },
-                        '-boites': {
-                            selector: '[id^="ContentPlaceHolder1_PrescriptionsGrid_MoinsPlusButtonGridPrescription_"]',
-                            onTap: 'clic',
-                            hotkey: '-',
-                        },
-                        'menu': {
-                            selector: '[id^="ContentPlaceHolder1_PrescriptionsGrid_DivOptionMenu_"]',
-                            onTap: 'clic',
-                        },
-                        'supprimer_ligne': {
-                            selector: '[id^="ContentPlaceHolder1_PrescriptionsGrid_DivOptionMenu_"]',
-                            onTap: 'clic',
-                        }
-                    }
+                    selector: '#ContentPlaceHolder1_PrescriptionsGrid > tbody > tr',
+                    inlineSubTooltips: false,
+                    subItems: function (trElement) {
+                        const closestPertinentElement = trElement.querySelector('[id^="ContentPlaceHolder1_PrescriptionsGrid_LinkButtonPrescriptionCommonNameGroupName_"]');
+                        const numbersAtEndOfId = closestPertinentElement ? closestPertinentElement.id.match(/\d+$/)?.[0] : null;
+                        return {
+                            'titre_medicament': {
+                                selector: `[id^="ContentPlaceHolder1_PrescriptionsGrid_LinkButtonPrescriptionCommonNameGroupName_${numbersAtEndOfId}"]`,
+                                onTap: 'clic',
+                            },
+                            'ALD_trigger': {
+                                selector: `[id^="ContentPlaceHolder1_PrescriptionsGrid_LinkButtonPrescriptionBizone_${numbersAtEndOfId}"]`,
+                                onTap: 'clic',
+                            },
+                            'TC_trigger': {
+                                selector: `[id^="ContentPlaceHolder1_PrescriptionsGrid_LinkButtonTC_${numbersAtEndOfId}"]`,
+                                onTap: 'clic',
+                            },
+                            'impr_boites': {
+                                selector: `[id^="ContentPlaceHolder1_PrescriptionsGrid_PrescriptionPrintBoite_${numbersAtEndOfId}"]`,
+                                onTap: 'clic',
+                            },
+                            '+boites': {
+                                selector: `[id^="ContentPlaceHolder1_PrescriptionsGrid_BoitePlusButtonGridPrescription_${numbersAtEndOfId}"]`,
+                                onTap: 'clic',
+                                hotkey: '+',
+                            },
+                            '-boites': {
+                                selector: `[id^="ContentPlaceHolder1_PrescriptionsGrid_MoinsPlusButtonGridPrescription_${numbersAtEndOfId}"]`,
+                                onTap: 'clic',
+                                hotkey: '-',
+                            },
+                            'menu': {
+                                selector: `[id^="ContentPlaceHolder1_PrescriptionsGrid_DivOptionMenu_${numbersAtEndOfId}"]`,
+                                onTap: 'clic',
+                            },
+                            'supprimer_ligne': {
+                                selector: `[id^="ContentPlaceHolder1_PrescriptionsGrid_DeleteButtonGridPrescription_${numbersAtEndOfId}"]`,
+                                onTap: 'clic',
+                            }
+                        };
+                    } 
                 });
             }
         }
