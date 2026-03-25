@@ -532,7 +532,20 @@ function returnQuickAccessConfig() {
         'demande_iframe_text_area_ALD': {
             selector: '#CE_ContentPlaceHolder1_EditorPrescriptionBizone_ID_Frame >> body',
             onTap: 'focus',
-        }
+        },
+        'choix_ligne_renouvellement': {
+            selector: '#ContentPlaceHolder1_RenouvellementUCForm1_PanelFindDocument',
+            onTap: 'clic',
+            priorityLvl: true,
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '[id^="ContentPlaceHolder1_RenouvellementUCForm1_DocumentsGrid_LinkButtonDocumentEvenementTitre_"]',
+                    onTap: 'clic',
+                });
+            }
+        },
     }
 
     /**
