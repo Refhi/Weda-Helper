@@ -279,6 +279,8 @@ function executeAction(action, selector, state) {
             case 'enter':
                 element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
                 break;
+            case 'mouseover':
+                element.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
             case 'focus':
                 element.focus();
                 break;

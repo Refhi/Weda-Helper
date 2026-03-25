@@ -428,12 +428,21 @@ function returnQuickAccessConfig() {
             }
         },
         'pieces_jointes': { // TODO : tofix
-            selector: '.pjm',
+            selector: '#ContentPlaceHolder1_HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda',
             inlineSubTooltips: true,
             subItems: function (element) {
                 return generateMultipleSelectorSubItems({
                     parentElement: element,
-                    selector: '.soc1'
+                    selector: '.pjm > div',
+                    onTap: 'mouseover',
+                    onDoubleTap: 'clic',
+                    subItems: function (pjElement) {
+                        return generateMultipleSelectorSubItems({
+                            parentElement: pjElement,
+                            selector: '.soc1',
+                            onDoubleTap: 'clic'
+                        });
+                    }
                 });
             }
         },
