@@ -616,6 +616,53 @@ function returnQuickAccessConfig() {
                 });
             }
         },
+        'lignes_prescriptions_appliquees': {
+            selector: '#ContentPlaceHolder1_PrescriptionsGrid',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: 'tbody > tr',
+                    inlineSubTooltips: true,
+                    subItems: {
+                        'titre_medicament': {
+                            selector: '[id^="ContentPlaceHolder1_PrescriptionsGrid_LinkButtonPrescriptionCommonNameGroupName_"]',
+                            onTap: 'clic',
+                        },
+                        'ALD_trigger': {
+                            selector: '[id^="ContentPlaceHolder1_PrescriptionsGrid_LinkButtonPrescriptionBizone_"]',
+                            onTap: 'clic',
+                        },
+                        'TC_trigger': {
+                            selector: '[id^="ContentPlaceHolder1_PrescriptionsGrid_LinkButtonTC_"]',
+                            onTap: 'clic',
+                        },
+                        'impr_boites': {
+                            selector: '[id^="ContentPlaceHolder1_PrescriptionsGrid_PrescriptionPrintBoite_"]',
+                            onTap: 'clic',
+                        },
+                        '+boites': {
+                            selector: '[id^="ContentPlaceHolder1_PrescriptionsGrid_BoitePlusButtonGridPrescription_"]',
+                            onTap: 'clic',
+                            hotkey: '+',
+                        },
+                        '-boites': {
+                            selector: '[id^="ContentPlaceHolder1_PrescriptionsGrid_MoinsPlusButtonGridPrescription_"]',
+                            onTap: 'clic',
+                            hotkey: '-',
+                        },
+                        'menu': {
+                            selector: '[id^="ContentPlaceHolder1_PrescriptionsGrid_DivOptionMenu_"]',
+                            onTap: 'clic',
+                        },
+                        'supprimer_ligne': {
+                            selector: '[id^="ContentPlaceHolder1_PrescriptionsGrid_DivOptionMenu_"]',
+                            onTap: 'clic',
+                        }
+                    }
+                });
+            }
+        }
     };
 
 
@@ -702,7 +749,7 @@ function returnQuickAccessConfig() {
             selector: 'vz-actes > table > tr',
             inlineSubTooltips: true,
             keyPrefix: 'cotation_appliquee',
-            subItemsGenerator: function (vzActesElement) {
+            subItems: function (vzActesElement) {
                 return {
                     ...generateMultipleSelectorSubItems({
                         parentElement: vzActesElement,
@@ -755,7 +802,7 @@ function returnQuickAccessConfig() {
                     parentElement: element,
                     selector: 'tbody > tr',
                     inlineSubTooltips: true,
-                    subItemsGenerator: function (trElement) {
+                    subItems: function (trElement) {
                         // Niveau final : les champs dans chaque ligne
                         return generateMultipleSelectorSubItems({
                             parentElement: trElement,
@@ -968,7 +1015,7 @@ function returnQuickAccessConfig() {
                         selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossaire > table [id^="ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossairet"]',
                         onTap: 'clic',
                         inlineSubTooltips: true,
-                        subItemsGenerator: function (folderElement) {
+                        subItems: function (folderElement) {
                             // Le <div id="...Nodes"> contenant les sous-modèles est le sibling immédiat de la table
                             const nodesDiv = folderElement.closest('table').nextElementSibling;
                             // On vérifie que ce sibling est bien un élément type div

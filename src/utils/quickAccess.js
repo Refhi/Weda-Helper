@@ -2069,14 +2069,13 @@ function QASelectorFinder(element, itemId) {
  * @param {string|Function} [options.onDoubleTap=null] - Action à exécuter au double-tap sur chaque élément (si fourni, onTap et onDoubleTap sont utilisés tels quels)
  * @param {string} [options.selectorPrefix=''] - Préfixe pour les sélecteurs (pour iframes)
  * @param {string} [options.keyPrefix='item'] - Préfixe pour les clés des items générés (pour éviter les collisions)
- * @param {Function} [options.subItemsGenerator=null] - Fonction pour générer des sub-sub-items pour chaque élément trouvé
- * @param {Function} [options.subItems=null] - Alias de subItemsGenerator
+ * @param {Function|Object} [options.subItems=null] - Fonction(element)=>subItems ou objet statique de sous-items partagé par tous les éléments
  * @param {boolean} [options.inlineSubTooltips=false] - Si true, propage inlineSubTooltips aux items générés (affichage combiné des tooltips)
  * @returns {Object} Configuration des sous-items
  */
-function generateMultipleSelectorSubItems({ parentElement, selector, onTap, onDoubleTap = null, selectorPrefix = '', keyPrefix = 'item', subItemsGenerator = null, subItems: subItemsFn = null, inlineSubTooltips = false }) {
+function generateMultipleSelectorSubItems({ parentElement, selector, onTap, onDoubleTap = null, selectorPrefix = '', keyPrefix = 'item', subItems: subItemsFn = null, inlineSubTooltips = false }) {
     const generatedSubItems = {};
-    const resolvedSubItemsGenerator = subItemsFn ?? subItemsGenerator;
+    const resolvedSubItemsGenerator = subItemsFn;
 
     const elements = parentElement.querySelectorAll(selector);
 
@@ -2101,10 +2100,12 @@ function generateMultipleSelectorSubItems({ parentElement, selector, onTap, onDo
 
         // Créer le subItem
         const itemId = `${keyPrefix}_${index}`;
-        const subItems = resolvedSubItemsGenerator ? resolvedSubItemsGenerator(element) : undefined;
+        const subItems = resolvedSubItemsGenerator
+            ? (typeof resolvedSubItemsGenerator === 'function' ? resolvedSubItemsGenerator(element) : resolvedSubItemsGenerator)
+            : undefined;
         const hasValidSubItems = subItems && Object.keys(subItems).length > 0;
         if (inlineSubTooltips && resolvedSubItemsGenerator && !hasValidSubItems) {
-            console.warn(`[QuickAccess] inlineSubTooltips ignoré pour l'item "${itemId}" (#${element.id}) : subItemsGenerator a retourné ${subItems ? 'un objet vide' : 'null/undefined'}`);
+            console.warn(`[QuickAccess] inlineSubTooltips ignoré pour l'item "${itemId}" (#${element.id}) : subItems a retourné ${subItems ? 'un objet vide' : 'null/undefined'}`);
         } else {
             // console.log(`[QuickAccess] SubItems générés pour l'item "${itemId}" (#${element.id}):`, subItems);
         }
