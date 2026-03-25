@@ -760,7 +760,42 @@ function returnQuickAccessConfig() {
         }
     }
 
-    
+    /**
+     * ----------------------------------------------------------------------------------
+     *              Documents du Cabinet
+     * ----------------------------------------------------------------------------------
+     */
+    const documentsCabinetConfig = {
+        _urlPatterns: ['/FolderTools/BiblioForm.aspx'],
+        'documents_pdf': {
+            selector: '#ContentPlaceHolder1_PanelTreeViewBiblio',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '[id^="ContentPlaceHolder1_TreeViewBibliot"][id$="i"]',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'boutons_impression': {
+            selector: '#ContentPlaceHolder1_PanelTreeViewBiblio',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '.print-icon-addPrintIcon-wh',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'close_button' : {
+            selector: '#ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
+            onTap: 'clic'
+        }
+    }
+
+
 
 
     /**
@@ -1064,10 +1099,6 @@ function returnQuickAccessConfig() {
      * posos types de la calculette
      */
 
-    /**
-     * TODO /FolderTools/BiblioForm.aspx
-     * peupler les documents
-     */
 
     /**
      * TODO antécédents
@@ -1106,7 +1137,8 @@ function returnQuickAccessConfig() {
         textZoneIframeConfigCourrier,
         fseConfig,
         generateFseCotationsAppliqueesConfig, // fonction génératrice
-        importConfig
+        importConfig,
+        documentsCabinetConfig
     ];
 
     const quickAccessConfig = {};
