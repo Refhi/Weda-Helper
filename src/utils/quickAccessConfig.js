@@ -656,7 +656,7 @@ function returnQuickAccessConfig() {
                             },
                             'menu': {
                                 selector: `[id^="ContentPlaceHolder1_PrescriptionsGrid_DivOptionMenu_${numbersAtEndOfId}"]`,
-                                onTap: 'clic',
+                                onTap: 'clic_centré',
                             },
                             'supprimer_ligne': {
                                 selector: `[id^="ContentPlaceHolder1_PrescriptionsGrid_DeleteButtonGridPrescription_${numbersAtEndOfId}"]`,

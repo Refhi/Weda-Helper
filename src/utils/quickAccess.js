@@ -287,6 +287,19 @@ function executeAction(action, selector, state) {
             case 'focus':
                 element.focus();
                 break;
+            case 'clic_centré': {
+                // Dispatche un clic avec les coordonnées du centre de l'élément.
+                // Utile pour les menus contextuels qui se positionnent via event.clientX/Y.
+                const rect = element.getBoundingClientRect();
+                element.dispatchEvent(new MouseEvent('click', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    clientX: rect.left + rect.width / 2,
+                    clientY: rect.top + rect.height / 2,
+                }));
+                break;
+            }
             default:
                 console.error(`[QuickAccess] Action de type string non reconnue : "${action}"`);
         }
