@@ -44,6 +44,13 @@ function returnQuickAccessConfig() {
     *                Configuration spécifique à la page d’accueil
     * ----------------------------------------------------------------------------------
     */
+
+    /** TODO page d’accueil
+     * les items de l’aati et cpie ne sont plus fonctionnels
+     * viser également les documents importés pour permettre leur renommage/suppression rapide depuis le qa
+     * viser le "définir les antécédents du patient"
+     * permettre la sélection d’un patient sur la carte vitale
+     */
     // ================= Bandeau supérieur de la page d’accueil =================
     const urlPatternsBandeau = ['/FolderMedical/PatientViewForm.aspx', '/FolderTools/BiblioForm.aspx'];
     const bandeauSuperieurConfig = {
@@ -304,24 +311,24 @@ function returnQuickAccessConfig() {
          * cf. @generateInternalSubItems pour la logique de génération des subItems de ces éléments internes
          * 
          */
-        'panel_patient': {
-            selector: '#ContentPlaceHolder1_PanelPatient',
+        'etat_civil': { // Le panneau en haut à gauche de la page d'accueil
+            selector: '#ContentPlaceHolder1_EtatCivilUCForm1_FramePatient',
             inlineSubTooltips: true,
             subItems: function (element) {
                 return generateInternalSubItems(element);
             }
         },
-        '+1click_vsm': {
+        '+1click_vsm': { // Certe dans le panneau état civil, mais on veut un accès direct
             selector: '#oneClickVSMButton',
             onTap: 'clic'
         },
-        'documents_joints_meta_top_bar': {
+        'documents_joints_meta_top_bar': { // Barre tout en haut marquée "Consultation" ou équivalent. A supprimer car peu utile ?
             selector: '#ContentPlaceHolder1_PanelVisuDocument tr',
             subItems: function (element) {
                 return generateInternalSubItems(element);
             }
         },
-        'documents_joints_meta_etiquettes': {
+        'documents_joints_meta_etiquettes': { // Le panneau gérant les étiquettes juste en-dessous
             selector: '#ContentPlaceHolder1_PanelStatEtiquette',
             subItems: function (element) {
                 const subItems = {};
@@ -362,7 +369,7 @@ function returnQuickAccessConfig() {
                 return subItemObject;
             }
         },
-        'documents_joints_meta_bouton_suite_dossier': {
+        'documents_joints_meta_bouton_suite_dossier': { // Le lien permettant de charger tout le dossier patient
             selector: '#ContentPlaceHolder1_HistoriqueUCForm1_LinkButtonSuiteWeda',
             onTap: 'clic',
         },
@@ -373,8 +380,9 @@ function returnQuickAccessConfig() {
                 return generateConsultationHistorySubItems(element, 'documents_joints_corps');
             }
         },
-        'copilot_vidal': {
+        'copilot_vidal': { // Le pannneau 
             selector: '.copilot-vidal-project',
+            inlineSubTooltips: true,
             subItems: function (element) {
                 return generateInternalSubItems(element);
             }
@@ -987,12 +995,7 @@ function returnQuickAccessConfig() {
      * posos types de la calculette
      */
 
-    /** TODO page d’accueil
-     * les items de l’aati et cpie ne sont plus fonctionnels
-     * viser également les documents importés pour permettre leur renommage/suppression rapide depuis le qa
-     * viser le "définir les antécédents du patient"
-     * permettre la sélection d’un patient sur la carte vitale
-     */
+
 
     /**
      * TODO prescriptions autres
