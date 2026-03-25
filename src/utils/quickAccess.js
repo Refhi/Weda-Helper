@@ -281,6 +281,7 @@ function executeAction(action, selector, state) {
                 break;
             case 'mouseover':
                 element.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+                break;
             case 'focus':
                 element.focus();
                 break;
@@ -2063,14 +2064,17 @@ function QASelectorFinder(element, itemId) {
  * @param {HTMLElement} options.parentElement - Élément parent contenant les éléments à cibler
  * @param {string} options.selector - Sélecteur CSS pour trouver tous les éléments
  * @param {string|Function} options.onTap - Action à exécuter sur chaque élément
+ * @param {string|Function} [options.onDoubleTap=null] - Action à exécuter au double-tap sur chaque élément (si fourni, onTap et onDoubleTap sont utilisés tels quels)
  * @param {string} [options.selectorPrefix=''] - Préfixe pour les sélecteurs (pour iframes)
  * @param {string} [options.keyPrefix='item'] - Préfixe pour les clés des items générés (pour éviter les collisions)
  * @param {Function} [options.subItemsGenerator=null] - Fonction pour générer des sub-sub-items pour chaque élément trouvé
+ * @param {Function} [options.subItems=null] - Alias de subItemsGenerator
  * @param {boolean} [options.inlineSubTooltips=false] - Si true, propage inlineSubTooltips aux items générés (affichage combiné des tooltips)
  * @returns {Object} Configuration des sous-items
  */
-function generateMultipleSelectorSubItems({ parentElement, selector, onTap, selectorPrefix = '', keyPrefix = 'item', subItemsGenerator = null, inlineSubTooltips = false }) {
+function generateMultipleSelectorSubItems({ parentElement, selector, onTap, onDoubleTap = null, selectorPrefix = '', keyPrefix = 'item', subItemsGenerator = null, subItems: subItemsFn = null, inlineSubTooltips = false }) {
     const generatedSubItems = {};
+    const resolvedSubItemsGenerator = subItemsFn ?? subItemsGenerator;
 
     const elements = parentElement.querySelectorAll(selector);
 
@@ -2095,17 +2099,29 @@ function generateMultipleSelectorSubItems({ parentElement, selector, onTap, sele
 
         // Créer le subItem
         const itemId = `${keyPrefix}_${index}`;
-        const subItems = subItemsGenerator ? subItemsGenerator(element) : undefined;
+        const subItems = resolvedSubItemsGenerator ? resolvedSubItemsGenerator(element) : undefined;
         const hasValidSubItems = subItems && Object.keys(subItems).length > 0;
-        if (inlineSubTooltips && subItemsGenerator && !hasValidSubItems) {
+        if (inlineSubTooltips && resolvedSubItemsGenerator && !hasValidSubItems) {
             console.warn(`[QuickAccess] inlineSubTooltips ignoré pour l'item "${itemId}" (#${element.id}) : subItemsGenerator a retourné ${subItems ? 'un objet vide' : 'null/undefined'}`);
         } else {
             // console.log(`[QuickAccess] SubItems générés pour l'item "${itemId}" (#${element.id}):`, subItems);
         }
+
+        // Si onDoubleTap est explicitement fourni, on utilise onTap et onDoubleTap tels quels.
+        // Sinon (comportement historique) : si l'item a des subItems, onTap est promu en onDoubleTap.
+        let resolvedOnTap, resolvedOnDoubleTap;
+        if (onDoubleTap !== null) {
+            resolvedOnTap = onTap ?? null;
+            resolvedOnDoubleTap = onDoubleTap;
+        } else {
+            resolvedOnTap = hasValidSubItems ? null : onTap;
+            resolvedOnDoubleTap = hasValidSubItems ? onTap : null;
+        }
+
         generatedSubItems[itemId] = {
             selector: `${selectorPrefix}#${element.id}`,
-            onTap: hasValidSubItems ? null : onTap,
-            onDoubleTap: hasValidSubItems ? onTap : null,
+            onTap: resolvedOnTap,
+            onDoubleTap: resolvedOnDoubleTap,
             subItems: hasValidSubItems ? subItems : undefined,
             ...(inlineSubTooltips && hasValidSubItems ? { inlineSubTooltips: true } : {})
         };

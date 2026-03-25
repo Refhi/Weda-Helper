@@ -427,7 +427,7 @@ function returnQuickAccessConfig() {
                 return generateConsultationHistorySubItems(element, 'documents_joints_corps');
             }
         },
-        'pieces_jointes': { // TODO : tofix
+        'pieces_jointes': {
             selector: '#ContentPlaceHolder1_HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda',
             inlineSubTooltips: true,
             subItems: function (element) {
@@ -440,7 +440,7 @@ function returnQuickAccessConfig() {
                         return generateMultipleSelectorSubItems({
                             parentElement: pjElement,
                             selector: '.soc1',
-                            onDoubleTap: 'clic'
+                            onTap: 'clic'
                         });
                     }
                 });
