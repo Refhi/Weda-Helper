@@ -795,7 +795,73 @@ function returnQuickAccessConfig() {
         }
     }
 
-
+    /**
+     * ----------------------------------------------------------------------------------
+     *             Pages des antécédents
+     * ----------------------------------------------------------------------------------
+     */
+    const antecedentsConfig = {
+        _urlPatterns: ['/FolderMedical/AntecedentForm.aspx'],
+        'divers_liens': {
+            selector: '.flex-box', // très bas dans la page
+            inlineSubTooltips: true,
+            subItems: {
+                'one_click_vsm': {
+                    selector: '#oneClickVSMButton',
+                    onTap: 'clic'
+                },
+                'conv_atcd_cim10': {
+                    selector: '#ContentPlaceHolder1_LinkButtonConvertirVidalToCIM10',
+                    onTap: 'clic'
+                },
+                'liste_cim10': {
+                    selector: '#ContentPlaceHolder1_ImageButtonPathologieCIM10',
+                    onTap: 'clic'
+                },
+                'liste_allergies': {
+                    selector: '#ContentPlaceHolder1_ImageButtonAllergieMolecule',
+                    onTap: 'clic'
+                },
+                'liste_medicaments': {
+                    selector: '#ContentPlaceHolder1_ImageButtonMedicament',
+                    onTap: 'clic'
+                },
+                'search_box': {
+                    selector: '#ContentPlaceHolder1_TextBoxFind',
+                    onTap: 'focus'
+                }
+            }
+        },
+        'liste_atcd_presents': {
+            selector: '.sca',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '.sca > table',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'boutons_atcd_libre_and_co': {
+            selector: '.sca',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    selector: '.sta > img',
+                    parentElement: element,
+                    onTap: 'clic',
+                });
+            }
+        },
+        'panneau_edition_atcd': {
+            selector: '#ContentPlaceHolder1_PanelModifyAntecedent',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateInternalSubItems(element);
+            }
+        }
+    }
 
 
     /**
@@ -1138,7 +1204,8 @@ function returnQuickAccessConfig() {
         fseConfig,
         generateFseCotationsAppliqueesConfig, // fonction génératrice
         importConfig,
-        documentsCabinetConfig
+        documentsCabinetConfig,
+        antecedentsConfig
     ];
 
     const quickAccessConfig = {};
