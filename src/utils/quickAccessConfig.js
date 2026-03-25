@@ -1063,7 +1063,8 @@ function returnQuickAccessConfig() {
                 return generateMultipleSelectorSubItems({
                     parentElement: element,
                     selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_DivQuestionnaire tr td',
-                    onTap: 'clic'
+                    onTap: 'clic',
+                    reQuickAction: true,
                 });
             }
         }

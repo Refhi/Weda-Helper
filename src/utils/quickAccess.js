@@ -226,6 +226,14 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
     if (isTerminal) { // On sort du Quick Access après l'action
         recordMetrics({ clicks: 1, drags: 1 }); // Définie dans metrics.js
         deactivateQuickAccess(state);
+        // reQuickAction : relance QuickAccess après l'action.
+        // false/null/undefined → rien. true ou 0 → relance immédiate. number → relance après ce délai (ms).
+        const reQuickAction = matchedItem.reQuickAction;
+        console.log(`[QuickAccess] reQuickAction:`, reQuickAction);
+        if (reQuickAction !== null && reQuickAction !== false && reQuickAction !== undefined) {
+            const reDelay = (reQuickAction === true || reQuickAction === 0) ? 0 : reQuickAction;
+            setTimeout(() => activateQuickAccess(), 10 + reDelay);
+        }
     } else { // Sinon, on descend dans les subItems
         const targetQALevel = [...state.currentLevel, matchedItemId];
         moveToTargetConfig(targetQALevel, state, config);
@@ -2084,9 +2092,10 @@ function QASelectorFinder(element, itemId) {
  * @param {string} [options.keyPrefix='item'] - Préfixe pour les clés des items générés (pour éviter les collisions)
  * @param {Function|Object} [options.subItems=null] - Fonction(element)=>subItems ou objet statique de sous-items partagé par tous les éléments
  * @param {boolean} [options.inlineSubTooltips=false] - Si true, propage inlineSubTooltips aux items générés (affichage combiné des tooltips)
+ * @param {autres} [options.extraItemProps] - Tout autre propriété est propagée telle quelle à chaque item généré (ex: reQuickAction)
  * @returns {Object} Configuration des sous-items
  */
-function generateMultipleSelectorSubItems({ parentElement, selector, onTap, onDoubleTap = null, selectorPrefix = '', keyPrefix = 'item', subItems: subItemsFn = null, inlineSubTooltips = false }) {
+function generateMultipleSelectorSubItems({ parentElement, selector, onTap, onDoubleTap = null, selectorPrefix = '', keyPrefix = 'item', subItems: subItemsFn = null, inlineSubTooltips = false, ...extraItemProps }) {
     const generatedSubItems = {};
     const resolvedSubItemsGenerator = subItemsFn;
 
@@ -2139,7 +2148,8 @@ function generateMultipleSelectorSubItems({ parentElement, selector, onTap, onDo
             onTap: resolvedOnTap,
             onDoubleTap: resolvedOnDoubleTap,
             subItems: hasValidSubItems ? subItems : undefined,
-            ...(inlineSubTooltips && hasValidSubItems ? { inlineSubTooltips: true } : {})
+            ...(inlineSubTooltips && hasValidSubItems ? { inlineSubTooltips: true } : {}),
+            ...extraItemProps
         };
     });
 
