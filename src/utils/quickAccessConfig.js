@@ -657,6 +657,10 @@ function returnQuickAccessConfig() {
                             'menu': {
                                 selector: `[id^="ContentPlaceHolder1_PrescriptionsGrid_DivOptionMenu_${numbersAtEndOfId}"]`,
                                 onTap: 'clic_centré',
+                                subItems: function () {
+                                    const menuElement = document.querySelector('#MenuPopupPrescription');
+                                    return generateInternalSubItems(menuElement);
+                                }
                             },
                             'supprimer_ligne': {
                                 selector: `[id^="ContentPlaceHolder1_PrescriptionsGrid_DeleteButtonGridPrescription_${numbersAtEndOfId}"]`,
