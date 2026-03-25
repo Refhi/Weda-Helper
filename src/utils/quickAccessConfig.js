@@ -52,11 +52,11 @@ function returnQuickAccessConfig() {
     // ================= Bandeau supérieur de la page d’accueil =================
     const urlPatternsBandeau = ['/FolderMedical/PatientViewForm.aspx', '/FolderTools/BiblioForm.aspx'];
     const bandeauSuperieurConfig = {
-        _urlPatterns: urlPatternsBandeau,
+        // _urlPatterns: urlPatternsBandeau,
         'large_top_menu': {
             selector: 'table.bandeau',
             subItems: {
-                'recherche_patient_input': {
+                'recherche_patient_input': {    
                     selector: '#TextBoxFindPatient',
                     onTap: function (element) {
                         element.focus();
@@ -119,53 +119,7 @@ function returnQuickAccessConfig() {
         }
     };
 
-    // ================= Eléments principaux du Bandeau supérieur =================
-    const menuHorizontalConfig = {
-        _urlPatterns: urlPatternsBandeau,
-        'medical': {
-            selector: '#nav-menu > li > a.nav-icon__link--doctor',
-            hotkey: 'm',
-            onTap: function (element, state) { horizontalMenuPseudoMouseover(element, state); },
-            onDoubleTap: 'clic',
-            subItems: function (element) {
-                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-                return submenu ? generateHorizMenuSubItems(submenu, 'medical') : {};
-            }
-        },
 
-        'applicatifs': {
-            selector: '#nav-menu > li > a.nav-icon__link--tools',
-            hotkey: 'p',
-            onTap: function (element, state) { horizontalMenuPseudoMouseover(element, state); },
-            onDoubleTap: 'clic',
-            subItems: function (element) {
-                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-                return submenu ? generateHorizMenuSubItems(submenu, 'applicatifs') : {};
-            }
-        },
-
-        'gestion': {
-            selector: '#nav-menu > li > a.nav-icon__link--safe-open',
-            hotkey: 'g',
-            onTap: function (element, state) { horizontalMenuPseudoMouseover(element, state); },
-            onDoubleTap: 'clic',
-            subItems: function (element) {
-                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-                return submenu ? generateHorizMenuSubItems(submenu, 'gestion') : {};
-            }
-        },
-
-        'parametres': {
-            selector: '#nav-menu > li > a.nav-icon__link--mixing-desk',
-            hotkey: 'e',
-            onTap: function (element, state) { horizontalMenuPseudoMouseover(element, state); },
-            onDoubleTap: 'clic',
-            subItems: function (element) {
-                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-                return submenu ? generateHorizMenuSubItems(submenu, 'parametres') : {};
-            }
-        }
-    };
 
     // ================= Menu vertical gauche (sidebar) de la page d’accueil =================
     const sidebarConfig = {
@@ -806,12 +760,61 @@ function returnQuickAccessConfig() {
         }
     }
 
+    
+
 
     /**
      * ----------------------------------------------------------------------------------
      * transversalité : éléments présents à la fois en consultation et en hospitalisation, ou éléments génériques présents sur plusieurs pages
      * ----------------------------------------------------------------------------------
      */
+
+    // ================= Eléments principaux du Bandeau supérieur =================
+    const menuHorizontalConfig = {
+        'medical': {
+            selector: '#nav-menu > li > a.nav-icon__link--doctor',
+            hotkey: 'm',
+            onTap: function (element, state) { horizontalMenuPseudoMouseover(element, state); },
+            onDoubleTap: 'clic',
+            subItems: function (element) {
+                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
+                return submenu ? generateHorizMenuSubItems(submenu, 'medical') : {};
+            }
+        },
+
+        'applicatifs': {
+            selector: '#nav-menu > li > a.nav-icon__link--tools',
+            hotkey: 'p',
+            onTap: function (element, state) { horizontalMenuPseudoMouseover(element, state); },
+            onDoubleTap: 'clic',
+            subItems: function (element) {
+                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
+                return submenu ? generateHorizMenuSubItems(submenu, 'applicatifs') : {};
+            }
+        },
+
+        'gestion': {
+            selector: '#nav-menu > li > a.nav-icon__link--safe-open',
+            hotkey: 'g',
+            onTap: function (element, state) { horizontalMenuPseudoMouseover(element, state); },
+            onDoubleTap: 'clic',
+            subItems: function (element) {
+                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
+                return submenu ? generateHorizMenuSubItems(submenu, 'gestion') : {};
+            }
+        },
+
+        'parametres': {
+            selector: '#nav-menu > li > a.nav-icon__link--mixing-desk',
+            hotkey: 'e',
+            onTap: function (element, state) { horizontalMenuPseudoMouseover(element, state); },
+            onDoubleTap: 'clic',
+            subItems: function (element) {
+                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
+                return submenu ? generateHorizMenuSubItems(submenu, 'parametres') : {};
+            }
+        }
+    };
 
     // =============== modèles de documents ==================
     const documentTemplatesConfig = {
@@ -1071,10 +1074,7 @@ function returnQuickAccessConfig() {
      * permettre la navigation dans les champs de saisie notamment saisie libre
      */
 
-    /**
-     * TODO éléments génériques
-     * la barre de titre du haut n’est pas accessible partout, peut-être l’activer systématiquement dès qu’elle est présente ? 
-     */
+
 
     /**
      * TODO zone d’imports de bio
