@@ -191,6 +191,7 @@ addTweak('/FolderTools/BiblioForm.aspx', '*addPrintIcon', function () {
             printIcon.style.marginLeft = '5px';
             printIcon.style.position = 'relative';
             printIcon.style.top = '-2px'; // Décaler de 2px vers le haut
+            printIcon.className = 'print-icon-addPrintIcon-wh';
 
             // Ajouter un gestionnaire d'événements de clic sur l'icône d'imprimante
             printIcon.addEventListener('click', function () {

@@ -22,6 +22,12 @@
  */
 
 
+/**
+ * TODO
+ * - inhiber la cotation par défaut si une cotation par défaut a déjà été faite dans les 3 minutes précédentes
+ * - inhiber la lecture automatique de la carte vitale si une lecture a déjà été faite dans les 3 minutes précédentes ?
+ */
+
 let fseUrl = '/vitalzen/fse.aspx';
 
 
@@ -29,6 +35,10 @@ let fseUrl = '/vitalzen/fse.aspx';
  * Gestion de la lecture automatique de la carte vitale
  */
 addTweak(fseUrl, 'TweakFSECreation', function tweakFSECarteVitale() {
+    if (window.location.href.includes('Buffer=')) {
+        console.log('[TweakFSECreation] Buffer mode detected, skipping carte vitale handling to avoid conflicts with other features like omnidoc facturation');
+        return;
+    }
     // Vérifie la présence de l'élément avec title="Prénom du patient"
     function checkPatientName() {
         var specialCharsMap = {

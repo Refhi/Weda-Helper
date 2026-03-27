@@ -4,7 +4,12 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
-# [2.16.1.0] - fix
+# [2.16.1.2] - fix
+## Finalisation du Quick Access :
+- presque toutes les lettres de ciblage sont désormais en place, et les quelques manquantes seront ajoutées dans les prochaines versions.
+- j’ai dû travailler par zones de priorité. Si vous constatez des zones où les lettres de ciblage sont mal placées ou manquantes, n’hésitez pas à me le signaler pour que je puisse les ajouter dans les prochaines versions.
+- manque encore les lettres dans la page des FSE et dans la calculette de prescription, qui seront ajoutées dans les prochaines versions.
+
 ## Fix :
 - [#573](https://github.com/Refhi/Weda-Helper/issues/573) - L’historique des facturations est inhibé lors d’une facturation omnidoc (évite un échec des fses omnidoc)
 - Refactorisation du code gérant les FSE

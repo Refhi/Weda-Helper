@@ -33,8 +33,16 @@ function matchesUrlPatterns(url, patterns) {
 // ============================================================================
 
 /** 
- * Fonction d'entrée de activation du Quick Access
-*/
+ * Active le mode Quick Access.
+ * Crée des listeners sur le document principal et tous les documents des iframes
+ * pour capturer les événements clavier et affiche les tooltips de navigation.
+ * 
+ * @description Cette fonction initialise le système Quick Access en :
+ * - Créant la configuration de navigation hiérarchique
+ * - Ajoutant un message d'information à l'écran
+ * - Installant des listeners keyboard sur tous les documents accessibles
+ * - Affichant les tooltips du niveau racine
+ */
 function activateQuickAccess() {
     // La config est enveloppée dans un item racine virtuel '__root__' pour uniformiser
     // le comportement du niveau racine avec celui des sous-niveaux.
@@ -58,17 +66,18 @@ function activateQuickAccess() {
     * - ['__root__', 'menu_vertical_gauche', 'menu_w_sidebar'] = second niveau
     */
     const state = { // Objet pour la rémanence de l'état du Quick Access
-        currentLevel: ['__root__']  // Démarre au niveau racine virtuel
+        currentLevel: ['__root__'],  // Démarre au niveau racine virtuel
+        listeners: []  // Stocke les références aux listeners pour pouvoir les retirer
     };
 
-    // Commencer par activer l'overlay
-    let overlay = createOverlay();
+    // Afficher un message d'information
+    createInfoMessage();
 
-    // Y mettre le focus pour faciliter les écoutes clavier et éviter les interractions malheureuses avec les champs inf. (comme les inputs)
-    overlay.focus()
+    // Récupérer tous les documents (principal + iframes)
+    const documents = getAllDocuments();
 
-    // On ajoute sur l'overlay les évents Listeners chargés d'écouter les entrées clavier
-    addListenersToOverlay(overlay, state, quickAccessConfig)
+    // On ajoute les listeners sur tous les documents
+    addListenersToDocuments(documents, state, quickAccessConfig);
 
     // On peuple le niveau racine
     populateSubItems(quickAccessConfig, state.currentLevel);
@@ -83,48 +92,104 @@ function activateQuickAccess() {
 // GESTION DES ÉVÉNEMENTS CLAVIER
 // ============================================================================
 
-function addListenersToOverlay(overlay, state, config) {
-    overlay.addEventListener('keydown', (e) => {
-        e.preventDefault();
-        if (e.key === 'Backspace') { // Permet de remonter d'un niveau dans l'arborescence du Quick Access
-            if (state.currentLevel.length <= 1) {
-                // Déjà à la racine virtuelle (ou moins) : fermer le Quick Access
-                deactivateQuickAccess();
-            } else {
-                // Remontée : récupérer l'élément qu'on quitte et revert son sous-menu
-                console.log(`[QuickAccess] Item à quitter lors de la remontée`, state.currentLevel);
-                if (state.currentLevel && state.currentLevel.length > 0) {
-                    // Certains éléments sont déplacés lors de la navigation
-                    // on les remet en place à la remontée.
-                    revertMovedElement(state.currentLevel);
-                }
-
-                // Remontée d'un niveau
-                const previousLevel = state.currentLevel.slice(0, -1); // On enlève le dernier élément du chemin
-                moveToTargetConfig(previousLevel, state, config) // Change le state.currentLevel et vérifie la validité du changement
-                // showToolTips contiens également un reset
-                showTooltips(state, config);
+/**
+ * Récupère tous les documents accessibles (document principal + tous les documents dans les iframes)
+ * @returns {Document[]} Tableau de documents
+ */
+function getAllDocuments() {
+    const docs = [document];
+    
+    // Parcourir toutes les iframes du document principal
+    const iframes = document.querySelectorAll('iframe');
+    iframes.forEach(iframe => {
+        try {
+            // Vérifier l'accès au contentDocument (same-origin)
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+            if (iframeDoc) {
+                docs.push(iframeDoc);
+                // Récursivement, chercher les iframes dans les iframes
+                const nestedIframes = iframeDoc.querySelectorAll('iframe');
+                nestedIframes.forEach(nestedIframe => {
+                    try {
+                        const nestedDoc = nestedIframe.contentDocument || nestedIframe.contentWindow?.document;
+                        if (nestedDoc) {
+                            docs.push(nestedDoc);
+                        }
+                    } catch (e) {
+                        // Iframe cross-origin, on ignore
+                    }
+                });
             }
-        } else {
-            // Pour tout le reste des touches, c'est géré dans :
-            handleQuickAccessKey(e, state, config);
+        } catch (e) {
+            // Iframe cross-origin, on ignore
         }
     });
+    
+    return docs;
+}
 
-    // L'action deactivateQuickAccess ferme le Quick Access
-    // la touche Echap permet de l'appeler à tout moment
-    overlay.addEventListener('keyup', (e) => {
-        e.preventDefault();
-        if (e.key === 'Escape') {
-            deactivateQuickAccess()
-        }
-    })
+/**
+ * Ajoute les listeners de Quick Access à tous les documents fournis
+ * @param {Document[]} documents - Tableaux de documents sur lesquels ajouter les listeners
+ * @param {Object} state - État du Quick Access
+ * @param {Object} config - Configuration du Quick Access
+ */
+function addListenersToDocuments(documents, state, config) {
+    documents.forEach(doc => {
+        const keydownHandler = (e) => {
+            e.preventDefault();
+            if (e.key === 'Backspace') { // Permet de remonter d'un niveau dans l'arborescence du Quick Access
+                if (state.currentLevel.length <= 1) {
+                    // Déjà à la racine virtuelle (ou moins) : fermer le Quick Access
+                    deactivateQuickAccess(state);
+                } else {
+                    // Remontée : récupérer l'élément qu'on quitte et revert son sous-menu
+                    console.log(`[QuickAccess] Item à quitter lors de la remontée`, state.currentLevel);
+                    if (state.currentLevel && state.currentLevel.length > 0) {
+                        // Certains éléments sont déplacés lors de la navigation
+                        // on les remet en place à la remontée.
+                        revertMovedElement(state.currentLevel);
+                    }
+
+                    // Remontée d'un niveau
+                    const previousLevel = state.currentLevel.slice(0, -1); // On enlève le dernier élément du chemin
+                    moveToTargetConfig(previousLevel, state, config) // Change le state.currentLevel et vérifie la validité du changement
+                    // showToolTips contiens également un reset
+                    showTooltips(state, config);
+                }
+            } else {
+                // Pour tout le reste des touches, c'est géré dans :
+                handleQuickAccessKey(e, state, config);
+            }
+        };
+
+        const keyupHandler = (e) => {
+            e.preventDefault();
+            if (e.key === 'Escape') {
+                deactivateQuickAccess(state);
+            }
+        };
+
+        // Ajouter les listeners
+        doc.addEventListener('keydown', keydownHandler);
+        doc.addEventListener('keyup', keyupHandler);
+
+        // Stocker les références pour pouvoir les retirer plus tard
+        state.listeners.push({
+            doc: doc,
+            keydown: keydownHandler,
+            keyup: keyupHandler
+        });
+    });
 }
 
 function handleQuickAccessKey(e, state, config) {
     // Vérifier que la touche pressée est associée à un élément **du niveau actuel**
     const currentConfig = flattenedCurrentLevelConfig(state, config);
-    console.log(`[QuickAccess] Touche pressée : "${e.key}". Configuration actuelle des hotkeys :`, Object.fromEntries(Object.entries(currentConfig).map(([id, item]) => [id, item.hotkey])));
+    // Ne logger que les touches réelles, pas les modificateurs
+    if (!['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) {
+        console.log(`[QuickAccess] Touche: "${e.key}", hotkeys disponibles:`, Object.fromEntries(Object.entries(currentConfig).map(([id, item]) => [id, item.hotkey])));
+    }
     const matchedEntry = Object.entries(currentConfig).find(([, item]) => item.hotkey === e.key);
 
     if (matchedEntry) {
@@ -154,11 +219,21 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
     const action = isDoubleTap ? matchedItem.onDoubleTap : matchedItem.onTap;
     const targetElementSelector = matchedItem.selector;
 
+    console.log(`[QuickAccess] Action à exécuter :`, { action, targetElementSelector, isTerminal });
+
 
 
     if (isTerminal) { // On sort du Quick Access après l'action
         recordMetrics({ clicks: 1, drags: 1 }); // Définie dans metrics.js
-        deactivateQuickAccess();
+        deactivateQuickAccess(state);
+        // reQuickAction : relance QuickAccess après l'action.
+        // false/null/undefined → rien. true ou 0 → relance immédiate. number → relance après ce délai (ms).
+        const reQuickAction = matchedItem.reQuickAction;
+        console.log(`[QuickAccess] reQuickAction:`, reQuickAction);
+        if (reQuickAction !== null && reQuickAction !== false && reQuickAction !== undefined) {
+            const reDelay = (reQuickAction === true || reQuickAction === 0) ? 0 : reQuickAction;
+            setTimeout(() => activateQuickAccess(), 10 + reDelay);
+        }
     } else { // Sinon, on descend dans les subItems
         const targetQALevel = [...state.currentLevel, matchedItemId];
         moveToTargetConfig(targetQALevel, state, config);
@@ -169,7 +244,7 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
         state.pendingShowTooltips = setTimeout(() => {
             state.pendingShowTooltips = null;
             // Vérifier que le Quick Access est encore actif avant d'afficher les tooltips
-            if (document.getElementById('wh-quickaccess-overlay')) {
+            if (document.getElementById('wh-quickaccess-info-message')) {
                 showTooltips(state, config);
             }
         }, 100); // Petit délai pour laisser le temps au DOM de se mettre à jour si besoin
@@ -177,7 +252,9 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
 
     // Ne rien exécuter si l'action est null/undefined
     if (action) {
-        executeAction(action, targetElementSelector, state);
+        setTimeout(() => {
+            executeAction(action, targetElementSelector, state);
+        }, 10); // Léger délais pour être sur que l'ensemble des tooltips ont bien été supprimés avant d'exécuter l'action
     }
 }
 
@@ -185,7 +262,7 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
  * Fonction utilitaire pour exécuter une action qui peut être une string (clic, mouseover, enter) ou une fonction personnalisée
  */
 function executeAction(action, selector, state) {
-    const element = querySelectorWithIframe(selector);
+    let element = querySelectorWithIframe(selector);
     if (!element) {
         console.error(`[QuickAccess] Impossible d'exécuter l'action : élément non trouvé pour le sélecteur "${selector}"`);
         return;
@@ -206,15 +283,31 @@ function executeAction(action, selector, state) {
                     }));
                 }
                 break;
-            case 'mouseover':
-                element.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+            case 'mousedown':
+                element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
                 break;
             case 'enter':
                 element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
                 break;
+            case 'mouseover':
+                element.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+                break;
             case 'focus':
                 element.focus();
                 break;
+            case 'clic_centré': {
+                // Dispatche un clic avec les coordonnées du centre de l'élément.
+                // Utile pour les menus contextuels qui se positionnent via event.clientX/Y.
+                const rect = element.getBoundingClientRect();
+                element.dispatchEvent(new MouseEvent('click', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    clientX: rect.left + rect.width / 2,
+                    clientY: rect.top + rect.height / 2,
+                }));
+                break;
+            }
             default:
                 console.error(`[QuickAccess] Action de type string non reconnue : "${action}"`);
         }
@@ -296,16 +389,17 @@ function getItemAndSubItems(config, QALevel, context = 'navigation') {
     let currentSubItems = config;
     let currentItemContainer = null;
     let currentItemId = null;
+    const foundPath = [];
 
     for (let i = 0; i < QALevel.length; i++) {
         const itemId = QALevel[i];
 
         if (!currentSubItems[itemId]) {
-            console.warn(`[QuickAccess] Élément "${itemId}" introuvable lors de ${context}`, QALevel);
+            console.warn(`[QuickAccess] Element "${itemId}" introuvable lors de ${context}, chemin parcouru: ${foundPath.join('/')}`, QALevel);
             return { item: null, subItems: null, itemId: null };
-        } else {
-             console.log(`[QuickAccess] Élément "${itemId}" trouvé lors de ${context}`, QALevel);
         }
+        
+        foundPath.push(itemId);
 
         // ✅ Sauvegarder le conteneur et l'item complet AVANT de descendre
         currentItemContainer = currentSubItems;
@@ -315,7 +409,7 @@ function getItemAndSubItems(config, QALevel, context = 'navigation') {
         // Si ce n'est pas le dernier niveau, descendre dans subItems
         if (i < QALevel.length - 1) {
             if (!fullItem.subItems) {
-                console.warn(`[QuickAccess] Pas de subItems pour "${itemId}" lors de ${context}`, QALevel);
+                console.warn(`[QuickAccess] Pas de subItems pour "${itemId}" lors de ${context}, chemin parcouru: ${foundPath.join('/')}`, QALevel);
                 return { item: null, subItems: null, itemId: null };
             }
             currentSubItems = fullItem.subItems;
@@ -341,7 +435,7 @@ function getItemAndSubItems(config, QALevel, context = 'navigation') {
  */
 function moveToTargetConfig(targetQALevel, state, config) {
     const actualQALevel = state.currentLevel;
-    console.log(`[QuickAccess] Tentative de changement de niveau vers ${targetQALevel} depuis ${actualQALevel}`);
+    // Log supprimé car redondant avec populateSubItems qui suit
 
     // Vérifier que la demande de changement de niveau est d'un niveau exactement
     const levelDiff = Math.abs(targetQALevel.length - actualQALevel.length);
@@ -391,7 +485,7 @@ function moveToTargetConfig(targetQALevel, state, config) {
  * @param {string[]} targetQALevel - Chemin vers le niveau à peupler
  */
 function populateSubItems(config, targetQALevel) {
-    console.log(`[QuickAccess] Tentative de peuplement des subItems pour le niveau`, targetQALevel);
+    const logData = { level: targetQALevel, status: null, subItemsCount: 0 };
 
     // Naviguer jusqu'à l'élément cible et obtenir son conteneur
     const { subItems: subItemsContent, item: itemContainer, itemId } = getItemAndSubItems(config, targetQALevel, 'populateSubItems');
@@ -406,8 +500,6 @@ function populateSubItems(config, targetQALevel) {
 
     // Vérifier si subItems est une fonction à évaluer
     if (typeof targetItem.subItems === 'function') {
-        console.log(`[QuickAccess] Peuplement des subItems pour le niveau`, targetQALevel);
-
         // Trouver l'élément DOM si nécessaire
         let element = targetItem.element;
         if (!element && targetItem.selector) {
@@ -422,17 +514,17 @@ function populateSubItems(config, targetQALevel) {
 
             // ✅ Modifier directement la référence dans quickAccessConfig via le conteneur
             itemContainer[itemId].subItems = generatedSubItems;
-
-            console.log(`[QuickAccess] SubItems peuplés avec succès pour`, targetQALevel);
+            logData.status = 'generated';
+            logData.subItemsCount = Object.keys(generatedSubItems || {}).length;
         } else {
             console.warn(`[QuickAccess] Impossible de trouver l'élément pour peupler les subItems`, targetQALevel);
+            return;
         }
     } else if (typeof targetItem.subItems === 'object') {
         // Les subItems ont déjà été générés (cache) ou sont statiques
-        console.log(`[QuickAccess] Réutilisation du cache subItems pour`, targetQALevel);
+        logData.status = 'cached';
+        logData.subItemsCount = Object.keys(targetItem.subItems || {}).length;
     }
-
-    console.log(`[QuickAccess] Configuration après peuplement pour le niveau`, targetQALevel, config);
 
     // Assigner les hotkeys manquants des subItems dès le peuplement.
     // Cela couvre les items inlineSubTooltips (qui ne passent jamais par
@@ -444,6 +536,8 @@ function populateSubItems(config, targetQALevel) {
             : new Set();
         ensureHotkeysForItems(targetItem.subItems, parentReserved);
     }
+
+    console.log(`[QuickAccess] SubItems peuplés pour niveau ${targetQALevel.join('/')}:`, logData);
 
     // Après peuplement initial (frais ou en cache), peupler récursivement les subItems
     // des items marqués inlineSubTooltips — ceux-ci s'affichent sans navigation, donc
@@ -505,13 +599,17 @@ function ensureHotkeysForItems(config, reservedHotkeys = new Set()) {
         return;
     }
 
+    const removedHotkeys = [];
+    const duplicateHotkeys = [];
+    const generatedHotkeys = [];
+
     // ⚠️ PASSE 0 : Nettoyer les hotkeys hardcodés pour les éléments absents du DOM
     for (const [itemId, item] of Object.entries(config)) {
         if (item.hotkey && item.selector) {
             const element = querySelectorWithIframe(item.selector);
             if (!element) {
                 // L'élément n'existe pas dans le DOM, supprimer le hotkey hardcodé
-                console.log(`[QuickAccess] Hotkey "${item.hotkey}" supprimée pour "${itemId}" (élément absent du DOM)`);
+                removedHotkeys.push({ itemId, hotkey: item.hotkey });
                 delete item.hotkey;
             }
         }
@@ -526,7 +624,7 @@ function ensureHotkeysForItems(config, reservedHotkeys = new Set()) {
             const hotkey = item.hotkey.toLowerCase();
             if (usedHotkeys.has(hotkey)) {
                 // Doublon détecté : vider le hotkey pour qu'il soit régénéré proprement
-                console.log(`[QuickAccess] Doublon de hotkey "${hotkey}" pour "${itemId}" → réassignation`);
+                duplicateHotkeys.push({ itemId, hotkey });
                 delete item.hotkey;
             } else {
                 usedHotkeys.add(hotkey);
@@ -552,10 +650,20 @@ function ensureHotkeysForItems(config, reservedHotkeys = new Set()) {
                 const generatedHotkey = generateHotkeyFromText(sourceText, usedHotkeys);
                 item.hotkey = generatedHotkey;
                 usedHotkeys.add(generatedHotkey);
+                generatedHotkeys.push({ itemId, hotkey: generatedHotkey });
             }
         }
     }
-    console.log(`[QuickAccess] Hotkeys après génération automatique :`, Object.fromEntries(Object.entries(config).map(([id, item]) => [id, item.hotkey])));
+    
+    // Ne logger que si des changements ont été effectués
+    if (removedHotkeys.length > 0 || duplicateHotkeys.length > 0 || generatedHotkeys.length > 0) {
+        console.log(`[QuickAccess] Hotkeys: ${removedHotkeys.length} supprimées, ${duplicateHotkeys.length} doublons réassignés, ${generatedHotkeys.length} générées`, {
+            removed: removedHotkeys,
+            duplicates: duplicateHotkeys,
+            generated: generatedHotkeys,
+            final: Object.fromEntries(Object.entries(config).map(([id, item]) => [id, item.hotkey]))
+        });
+    }
 }
 
 /**
@@ -728,7 +836,7 @@ function querySelectorWithIframe(selector, doc = document) {
 }
 
 // ============================================================================
-// INTERFACE UTILISATEUR - OVERLAY ET TOOLTIPS
+// INTERFACE UTILISATEUR - TOOLTIPS ET MESSAGE D'INFORMATION
 // ============================================================================
 
 /**
@@ -788,27 +896,14 @@ function getAbsoluteBoundingRect(element) {
 }
 
 /**
- * Crée et affiche l'overlay semi-transparent
- * @returns {HTMLElement} L'élément overlay créé
+ * Crée et affiche un message d'information pour le Quick Access.
+ * Ce message indique à l'utilisateur que le mode Quick Access est actif
+ * et comment le quitter (touche Échap).
  */
-function createOverlay() {
-    const overlay = document.createElement('div');
-    overlay.id = 'wh-quickaccess-overlay';
-    overlay.tabIndex = -1; // pour pouvoir y mettre le focus et écouter les événements clavier
-    overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.1);
-        z-index: 99998;
-        pointer-events: auto;
-        cursor: default;
-    `;
-
+function createInfoMessage() {
     // Message d'information
     const message = document.createElement('div');
+    message.id = 'wh-quickaccess-info-message';
     message.style.cssText = `
         position: fixed;
         bottom: 20px;
@@ -825,10 +920,7 @@ function createOverlay() {
         font-family: Arial, sans-serif;
     `;
     message.textContent = 'Quick Access (Échap pour quitter)';
-
-    overlay.appendChild(message);
-    document.body.appendChild(overlay);
-    return overlay;
+    document.body.appendChild(message);
 }
 
 /**
@@ -837,42 +929,73 @@ function createOverlay() {
  * @param {string} hotkey - Touche de raccourci
  * @param {boolean} hasDoubleTap - Indique si un double-tap est disponible
  * @param {boolean} isContainer - Indique si l'item sert uniquement de conteneur pour la navigation (pas d'action directe)
+ * @returns {Object|null} Informations sur le tooltip créé, ou null si l'élément n'est pas trouvé
  */
 function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = false) {
     const element = querySelectorWithIframe(selector);
-    // console.log(`[QuickAccess] Création du tooltip pour la touche "${hotkey}" sur l'élément:`, element, "Selector:", selector);
-    if (!element) return;
+    if (!element) {
+        return null;
+    }
 
+    // Vérifier si l'élément a overflow qui couperait le tooltip
+    let targetElement = element;
+    const computedStyle = getComputedStyle(element);
+    
+    if (computedStyle.overflow === 'hidden' || computedStyle.overflow === 'clip') {
+        // console.log(`[QuickAccess] Tooltip "${hotkey}" : overflow détecté (${computedStyle.overflow}), recherche d'un parent sans overflow`);
+        
+        // Remonter dans l'arbre DOM pour trouver un parent sans overflow problématique
+        let current = element.parentElement;
+        while (current && current !== document.body) {
+            const parentStyle = getComputedStyle(current);
+            if (parentStyle.overflow !== 'hidden' && parentStyle.overflow !== 'clip') {
+                targetElement = current;
+                break;
+            }
+            current = current.parentElement;
+        }
+    }
+    
+    // Sauvegarder la position originale de l'élément cible
+    const originalPosition = targetElement.style.position;
+    
+    // S'assurer que l'élément a une position relative pour que le tooltip puisse se positionner par rapport à lui
+    if (!originalPosition || originalPosition === 'static') {
+        saveElementStyles(targetElement, {
+            position: originalPosition || ''
+        });
+        targetElement.style.position = 'relative';
+    }
 
     const tooltip = document.createElement('span');
     tooltip.className = 'wh-quickaccess-tooltip';
 
-    // Calculer la position de l'élément (en tenant compte des iframes)
-    const rect = getAbsoluteBoundingRect(element);
-
-    // Style avec positionnement fixed pour garantir la visibilité
+    // Style avec positionnement absolu par rapport à l'élément parent
     tooltip.style.cssText = `
-        position: fixed;
+        position: absolute;
         color: #000000;
-        font-size: 1em;
-        background-color: rgba(240, 240, 240, 0.50);
-        padding: 4px 8px;
-        border-radius: 10px;
+        font-size: 0.75em;
+        background-color: rgba(255, 255, 0, 1);
+        padding: 2px 4px;
+        border: 1px solid #000000;
+        border-radius: 1px;
         pointer-events: none;
         white-space: nowrap;
         z-index: 99999;
-        top: ${rect.top + rect.height * 0.15}px;
-        left: ${rect.left}px;
+        top: 15%;
+        left: 0;
         height: auto;
         line-height: normal;
         display: inline-block;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     `;
 
-    // Si double-tap disponible, mettre le background en bleu
+    // Si double-tap disponible, utiliser une bordure bleue pour le distinguer
     if (hasDoubleTap) {
-        tooltip.style.backgroundColor = 'rgba(0, 123, 255, 0.125)'; // Bleu clair avec transparence
+        tooltip.style.backgroundColor = 'rgba(0, 123, 255, 1)';
+        tooltip.style.color = '#FFFFFF';
+        tooltip.style.borderWidth = '1px';
     }
+    
     // Si l'item est un conteneur pur (sert uniquement à la navigation vers subItems),
     // mettre en évidence l'élément DOM avec un outline pour le distinguer visuellement
     if (isContainer) {
@@ -885,7 +1008,7 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = fal
         });
 
         // Appliquer l'entourage
-        element.style.outline = '2px solid rgba(0, 123, 255, 0.8)';
+        element.style.outline = '2px solid rgba(0, 123, 255, 1)';
         element.style.outlineOffset = '2px';
         element.classList.add('wh-quickaccess-highlighted');
     }
@@ -893,11 +1016,33 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = fal
     // Contenu : uniquement la touche
     tooltip.textContent = hotkey.toUpperCase();
 
-    // Ajouter le tooltip au body plutôt qu'à l'élément
-    document.body.appendChild(tooltip);
-
-    // Stocker une référence à l'élément pour repositionner si nécessaire
-    tooltip.dataset.targetElement = element;
+    // Déterminer si l'élément peut avoir des enfants
+    // Les éléments comme <select>, <input>, <textarea>, <img>, <br>, <hr> ne peuvent pas avoir d'enfants directs valides
+    const cannotHaveChildren = ['SELECT', 'INPUT', 'TEXTAREA', 'IMG', 'BR', 'HR', 'VIDEO', 'AUDIO'].includes(element.tagName);
+    
+    let attachmentType;
+    if (cannotHaveChildren) {
+        // Pour ces éléments, insérer le tooltip comme sibling et ajuster le positionnement
+        const rect = element.getBoundingClientRect();
+        tooltip.style.position = 'absolute';
+        tooltip.style.top = `${element.offsetTop}px`;
+        tooltip.style.left = `${element.offsetLeft}px`;
+        
+        // Insérer après l'élément
+        element.parentElement.insertBefore(tooltip, element.nextSibling);
+        attachmentType = 'sibling';
+    } else {
+        // Rattacher le tooltip à l'élément cible (élément original ou parent sans overflow)
+        targetElement.appendChild(tooltip);
+        attachmentType = targetElement === element ? 'self' : 'parent';
+    }
+    
+    return {
+        hotkey,
+        tagName: element.tagName,
+        attachmentType,
+        element
+    };
 }
 
 /**
@@ -905,21 +1050,25 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = fal
  * Supporte N niveaux de inlineSubTooltips (tooltips à 2, 3, 4+ lettres).
  * @param {Object} subItems - Les subItems à afficher
  * @param {string} hotkeyPrefix - Préfixe accumulé des hotkeys parentes (ex: 'C', 'CT')
+ * @returns {Array} Tableau des tooltips créés
  */
 function showInlineSubTooltips(subItems, hotkeyPrefix) {
+    const results = [];
     for (const [, subItem] of Object.entries(subItems)) {
         if (!subItem.selector || !subItem.hotkey) continue;
         const combinedHotkey = hotkeyPrefix + subItem.hotkey;
 
         if (subItem.inlineSubTooltips && subItem.subItems && typeof subItem.subItems === 'object') {
             // Descente récursive : ce sous-item délègue aussi l'affichage à ses enfants
-            showInlineSubTooltips(subItem.subItems, combinedHotkey);
+            results.push(...showInlineSubTooltips(subItem.subItems, combinedHotkey));
         } else {
             const hasDoubleTap = subItem.onDoubleTap != null;
             const isContainer = subItem.subItems != null && subItem.onTap == null && !hasDoubleTap;
-            createTooltip(subItem.selector, combinedHotkey, hasDoubleTap, isContainer);
+            const result = createTooltip(subItem.selector, combinedHotkey, hasDoubleTap, isContainer);
+            if (result) results.push(result);
         }
     }
+    return results;
 }
 
 /**
@@ -937,6 +1086,8 @@ function showTooltips(state, config) {
     // console.log('[QuickAccess] Affichage des tooltips pour le niveau', state.currentLevel, flattenedConfig);
 
     const entries = Object.entries(flattenedConfig);
+    const createdTooltips = [];
+    const ignoredContainers = [];
 
     for (let i = 0; i < entries.length; i++) {
         const [itemId, item] = entries[i];
@@ -945,14 +1096,14 @@ function showTooltips(state, config) {
 
         // Si c'est l'item actuel et qu'il n'a ni onTap ni onDoubleTap (pur conteneur), ne pas afficher le tooltip
         if (isCurrentItem && item.onTap == null && item.onDoubleTap == null) { // Egalité intentionnelle (null ou undefined)
-            console.log(`[QuickAccess] Item actuel "${itemId}" ignoré (pur conteneur sans action)`);
+            ignoredContainers.push(itemId);
             continue;
         }
 
         // Si l'item a inlineSubTooltips : afficher directement ses sous-items avec la hotkey combinée (ex: "SI", "SL")
         // Les hotkeys des sous-items sont générées automatiquement dans populateSubItems si absentes.
         if (item.inlineSubTooltips && item.subItems && typeof item.subItems === 'object') {
-            showInlineSubTooltips(item.subItems, item.hotkey || '');
+            createdTooltips.push(...showInlineSubTooltips(item.subItems, item.hotkey || ''));
             continue; // L'item parent lui-même n'affiche pas de tooltip
         }
 
@@ -961,11 +1112,14 @@ function showTooltips(state, config) {
         // Un item sans onTap et avec subItems est un conteneur
         const isContainer = item.subItems != null && !hasOnTap && !hasDoubleTap;
 
-        // console.log(`[QuickAccess] Traitement de l'item "${itemId}" pour affichage du tooltip:`, item, "Selector:", item.selector, "Hotkey:", item.hotkey, "HasDoubleTap:", hasDoubleTap, "IsContainerOnly:", isContainerOnly);
-        createTooltip(item.selector, item.hotkey, hasDoubleTap, isContainer);
+        const result = createTooltip(item.selector, item.hotkey, hasDoubleTap, isContainer);
+        if (result) createdTooltips.push(result);
     }
 
-    console.log('[QuickAccess] Tooltips affichés pour le niveau', state.currentLevel, Object.entries(flattenedConfig).map(([id, item]) => ({ id, hotkey: item.hotkey, selector: item.selector })));
+    console.log(`[QuickAccess] Tooltips pour niveau ${state.currentLevel.join('/')}: ${createdTooltips.length} créés${ignoredContainers.length > 0 ? `, ${ignoredContainers.length} conteneurs ignorés` : ''}`, {
+        created: createdTooltips,
+        ignored: ignoredContainers
+    });
 }
 
 /**
@@ -1010,13 +1164,28 @@ function clearAllTooltips() {
 }
 
 /**
- * Désactive le mode Quick Access en supprimant l'overlay et les listeners associés
- * et en supprimant les infobulles affichées.
+ * Désactive le mode Quick Access.
+ * Retire tous les listeners installés sur les documents, supprime le message d'information
+ * et nettoie les infobulles affichées.
+ * 
+ * @param {Object} state - État du Quick Access contenant les références aux listeners
+ * @param {Array} state.listeners - Tableau des listeners à retirer
  */
-function deactivateQuickAccess() {
-    // supprimer l'overlay (les listeners y étant attachés, ils seront automatiquement supprimés)
-    const overlay = document.getElementById('wh-quickaccess-overlay');
-    overlay.remove();
+function deactivateQuickAccess(state) {
+    // Retirer tous les listeners
+    if (state && state.listeners) {
+        state.listeners.forEach(({ doc, keydown, keyup }) => {
+            doc.removeEventListener('keydown', keydown);
+            doc.removeEventListener('keyup', keyup);
+        });
+        state.listeners = [];
+    }
+
+    // Supprimer le message d'information
+    const message = document.getElementById('wh-quickaccess-info-message');
+    if (message) {
+        message.remove();
+    }
 
     // supprimer les infobulles affichées
     clearAllTooltips();
@@ -1918,14 +2087,17 @@ function QASelectorFinder(element, itemId) {
  * @param {HTMLElement} options.parentElement - Élément parent contenant les éléments à cibler
  * @param {string} options.selector - Sélecteur CSS pour trouver tous les éléments
  * @param {string|Function} options.onTap - Action à exécuter sur chaque élément
+ * @param {string|Function} [options.onDoubleTap=null] - Action à exécuter au double-tap sur chaque élément (si fourni, onTap et onDoubleTap sont utilisés tels quels)
  * @param {string} [options.selectorPrefix=''] - Préfixe pour les sélecteurs (pour iframes)
- * @param {Function} [options.subItemsGenerator=null] - Fonction pour générer des sub-sub-items pour chaque élément trouvé
+ * @param {string} [options.keyPrefix='item'] - Préfixe pour les clés des items générés (pour éviter les collisions)
+ * @param {Function|Object} [options.subItems=null] - Fonction(element)=>subItems ou objet statique de sous-items partagé par tous les éléments
  * @param {boolean} [options.inlineSubTooltips=false] - Si true, propage inlineSubTooltips aux items générés (affichage combiné des tooltips)
+ * @param {autres} [options.extraItemProps] - Tout autre propriété est propagée telle quelle à chaque item généré (ex: reQuickAction)
  * @returns {Object} Configuration des sous-items
  */
-function generateMultipleSelectorSubItems({ parentElement, selector, onTap, selectorPrefix = '', subItemsGenerator = null, inlineSubTooltips = false }) {
-    console.log(`[QuickAccess] Génération de subItems pour le sélecteur multiple: "${selector}" avec le préfixe "${selectorPrefix}", parentElement:`, parentElement);
+function generateMultipleSelectorSubItems({ parentElement, selector, onTap, onDoubleTap = null, selectorPrefix = '', keyPrefix = 'item', subItems: subItemsFn = null, inlineSubTooltips = false, ...extraItemProps }) {
     const generatedSubItems = {};
+    const resolvedSubItemsGenerator = subItemsFn;
 
     const elements = parentElement.querySelectorAll(selector);
 
@@ -1934,33 +2106,53 @@ function generateMultipleSelectorSubItems({ parentElement, selector, onTap, sele
         return {};
     }
 
-    console.log(`[QuickAccess] ${elements.length} éléments trouvés avec le sélecteur: "${selector}" sur le parentElement:`, parentElement, 'éléments:', elements);
-
     // Créer un subItem pour chaque élément trouvé
     elements.forEach((element, index) => {
         // Générer un ID unique pour l'élément s'il n'en a pas
         if (!element.id) {
-            element.id = `qa_multiple_${index}`;
+            let uniqueId = `qa_multiple_${index}`;
+            let counter = 0;
+            // Vérifier que l'ID n'existe pas déjà dans le DOM
+            while (document.getElementById(uniqueId)) {
+                uniqueId = `qa_multiple_${index}_${counter}`;
+                counter++;
+            }
+            element.id = uniqueId;
         }
 
         // Créer le subItem
-        const itemId = `item_${index}`;
-        const subItems = subItemsGenerator ? subItemsGenerator(element) : undefined;
+        const itemId = `${keyPrefix}_${index}`;
+        const subItems = resolvedSubItemsGenerator
+            ? (typeof resolvedSubItemsGenerator === 'function' ? resolvedSubItemsGenerator(element) : resolvedSubItemsGenerator)
+            : undefined;
         const hasValidSubItems = subItems && Object.keys(subItems).length > 0;
-        if (inlineSubTooltips && subItemsGenerator && !hasValidSubItems) {
-            console.warn(`[QuickAccess] inlineSubTooltips ignoré pour l'item "${itemId}" (#${element.id}) : subItemsGenerator a retourné ${subItems ? 'un objet vide' : 'null/undefined'}`);
+        if (inlineSubTooltips && resolvedSubItemsGenerator && !hasValidSubItems) {
+            console.warn(`[QuickAccess] inlineSubTooltips ignoré pour l'item "${itemId}" (#${element.id}) : subItems a retourné ${subItems ? 'un objet vide' : 'null/undefined'}`);
         } else {
-            console.log(`[QuickAccess] SubItems générés pour l'item "${itemId}" (#${element.id}):`, subItems);
+            // console.log(`[QuickAccess] SubItems générés pour l'item "${itemId}" (#${element.id}):`, subItems);
         }
+
+        // Si onDoubleTap est explicitement fourni, on utilise onTap et onDoubleTap tels quels.
+        // Sinon (comportement historique) : si l'item a des subItems, onTap est promu en onDoubleTap.
+        let resolvedOnTap, resolvedOnDoubleTap;
+        if (onDoubleTap !== null) {
+            resolvedOnTap = onTap ?? null;
+            resolvedOnDoubleTap = onDoubleTap;
+        } else {
+            resolvedOnTap = hasValidSubItems ? null : onTap;
+            resolvedOnDoubleTap = hasValidSubItems ? onTap : null;
+        }
+
         generatedSubItems[itemId] = {
             selector: `${selectorPrefix}#${element.id}`,
-            onTap: hasValidSubItems ? null : onTap,
-            onDoubleTap: hasValidSubItems ? onTap : null,
+            onTap: resolvedOnTap,
+            onDoubleTap: resolvedOnDoubleTap,
             subItems: hasValidSubItems ? subItems : undefined,
-            ...(inlineSubTooltips && hasValidSubItems ? { inlineSubTooltips: true } : {})
+            ...(inlineSubTooltips && hasValidSubItems ? { inlineSubTooltips: true } : {}),
+            ...extraItemProps
         };
     });
 
-    console.log(`[QuickAccess] ${Object.keys(generatedSubItems).length} subItems générés pour le sélecteur: "${selector}"`);
+    console.log(`[QuickAccess] Sélecteur "${selector}": ${Object.keys(generatedSubItems).length} subItems générés`);
     return generatedSubItems;
 }

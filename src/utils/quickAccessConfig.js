@@ -44,14 +44,18 @@ function returnQuickAccessConfig() {
     *                Configuration spécifique à la page d’accueil
     * ----------------------------------------------------------------------------------
     */
+
+    /** TODO page d’accueil
+     * permettre la sélection d’un patient sur la carte vitale
+     */
     // ================= Bandeau supérieur de la page d’accueil =================
     const urlPatternsBandeau = ['/FolderMedical/PatientViewForm.aspx', '/FolderTools/BiblioForm.aspx'];
     const bandeauSuperieurConfig = {
-        _urlPatterns: urlPatternsBandeau,
+        // _urlPatterns: urlPatternsBandeau,
         'large_top_menu': {
             selector: 'table.bandeau',
             subItems: {
-                'recherche_patient_input': {
+                'recherche_patient_input': {    
                     selector: '#TextBoxFindPatient',
                     onTap: function (element) {
                         element.focus();
@@ -114,53 +118,7 @@ function returnQuickAccessConfig() {
         }
     };
 
-    // ================= Eléments principaux du Bandeau supérieur =================
-    const menuHorizontalConfig = {
-        _urlPatterns: urlPatternsBandeau,
-        'medical': {
-            selector: '#nav-menu > li > a.nav-icon__link--doctor',
-            hotkey: 'm',
-            onTap: function (element, state) { horizontalMenuPseudoMouseover(element, state); },
-            onDoubleTap: 'clic',
-            subItems: function (element) {
-                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-                return submenu ? generateHorizMenuSubItems(submenu, 'medical') : {};
-            }
-        },
 
-        'applicatifs': {
-            selector: '#nav-menu > li > a.nav-icon__link--tools',
-            hotkey: 'p',
-            onTap: function (element, state) { horizontalMenuPseudoMouseover(element, state); },
-            onDoubleTap: 'clic',
-            subItems: function (element) {
-                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-                return submenu ? generateHorizMenuSubItems(submenu, 'applicatifs') : {};
-            }
-        },
-
-        'gestion': {
-            selector: '#nav-menu > li > a.nav-icon__link--safe-open',
-            hotkey: 'g',
-            onTap: function (element, state) { horizontalMenuPseudoMouseover(element, state); },
-            onDoubleTap: 'clic',
-            subItems: function (element) {
-                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-                return submenu ? generateHorizMenuSubItems(submenu, 'gestion') : {};
-            }
-        },
-
-        'parametres': {
-            selector: '#nav-menu > li > a.nav-icon__link--mixing-desk',
-            hotkey: 'e',
-            onTap: function (element, state) { horizontalMenuPseudoMouseover(element, state); },
-            onDoubleTap: 'clic',
-            subItems: function (element) {
-                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
-                return submenu ? generateHorizMenuSubItems(submenu, 'parametres') : {};
-            }
-        }
-    };
 
     // ================= Menu vertical gauche (sidebar) de la page d’accueil =================
     const sidebarConfig = {
@@ -169,7 +127,7 @@ function returnQuickAccessConfig() {
             selector: ".menu-sidebar",
             onTap: null,
             onDoubleTap: null,
-            inlineSubTooltips: true, 
+            inlineSubTooltips: true,
             subItems: {
                 // Menu W - Navigation événements
                 'menu_w_sidebar': {
@@ -304,24 +262,73 @@ function returnQuickAccessConfig() {
          * cf. @generateInternalSubItems pour la logique de génération des subItems de ces éléments internes
          * 
          */
-        'panel_patient': {
-            selector: '#ContentPlaceHolder1_PanelPatient',
+        'etat_civil': { // Le panneau en haut à gauche de la page d'accueil
+            selector: '#ContentPlaceHolder1_EtatCivilUCForm1_FramePatient',
             inlineSubTooltips: true,
             subItems: function (element) {
                 return generateInternalSubItems(element);
             }
         },
-        '+1click_vsm': {
-            selector: '#oneClickVSMButton',
-            onTap: 'clic'
+        'colonne_de_gauche_sous_etat_civil' :{
+            selector: '#ContentPlaceHolder1_PanelPatient',
+            inlineSubTooltips: true,
+            subItems:{
+                '+1click_vsm': { // Certes dans le panneau état civil, mais on veut un accès direct
+                    selector: '#oneClickVSMButton',
+                    onTap: 'clic'
+                },
+                'lien_arrets_travail': { // Le panneau clicable emmenant vers les arrêts de travail, sous le panneau état civil
+                    selector: '[title^="Dernier A.T."]',
+                    onTap: 'clic'
+                },
+                'panneau_contacts': {
+                    selector: '[title^="Cliquez ici pour renseigner les contacts du patient"]',
+                    onTap: 'clic'
+                },
+                'services_imti': {
+                    selector: '#ContentPlaceHolder1_imtiContainer',
+                    inlineSubTooltips: true,
+                    subItems: {
+                        'recup_mt': {
+                            selector: "[title^=\"Récupère l'identité du médecin traitant en interrogeant le téléservice IMTi\"]",
+                            onTap: 'clic'
+                        },
+                        'decla_mt': {
+                            selector: "[title^=\"Vous déclarer médecin traitant de ce patient grâce au téléservice DMTi\"]",
+                            onTap: 'clic'
+                        },
+                        'consult_ALD': {
+                            selector: "[title^=\"Permet de savoir quelles ALD sont reconnues par l’Assurance Maladie pour le patient dans le cadre d’un protocole de soins, en interrogeant le téléservice ALDi.\"]",
+                            onTap: 'clic'
+                        },
+                        'decla_AT': {
+                            selector: "[title^=\"Transmettre un avis d'arrêt de travail via le téléservice AATi\"]",
+                            onTap: 'clic'
+                        },
+                        'decla_AT_sans_CV': {
+                            selector: '#aati-lien-sans-cv', // le selecteur est différent car celui-ci est ajouté par WH
+                            onTap: 'clic'
+                        },
+                        'ordo_numerique': {
+                            selector: "[title^=\"Rechercher les ordonnances numériques liées à ce patient\"]",
+                            onTap: 'clic'
+                        }
+                    }
+                },
+                'panneau_atcd': {
+                    selector: '[title^="Cliquez ici pour modifier le volet médical du patient"]',
+                    onTap: 'clic'
+                }
+            }
         },
-        'documents_joints_meta_top_bar': {
+        
+        'documents_joints_meta_top_bar': { // Barre tout en haut marquée "Consultation" ou équivalent. A supprimer car peu utile ?
             selector: '#ContentPlaceHolder1_PanelVisuDocument tr',
             subItems: function (element) {
                 return generateInternalSubItems(element);
             }
         },
-        'documents_joints_meta_etiquettes': {
+        'documents_joints_meta_etiquettes': { // Le panneau gérant les étiquettes juste en-dessous
             selector: '#ContentPlaceHolder1_PanelStatEtiquette',
             subItems: function (element) {
                 const subItems = {};
@@ -362,7 +369,7 @@ function returnQuickAccessConfig() {
                 return subItemObject;
             }
         },
-        'documents_joints_meta_bouton_suite_dossier': {
+        'documents_joints_meta_bouton_suite_dossier': { // Le lien permettant de charger tout le dossier patient
             selector: '#ContentPlaceHolder1_HistoriqueUCForm1_LinkButtonSuiteWeda',
             onTap: 'clic',
         },
@@ -373,8 +380,28 @@ function returnQuickAccessConfig() {
                 return generateConsultationHistorySubItems(element, 'documents_joints_corps');
             }
         },
-        'copilot_vidal': {
+        'pieces_jointes': {
+            selector: '#ContentPlaceHolder1_HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '.pjm > div',
+                    onTap: 'mouseover',
+                    onDoubleTap: 'clic',
+                    subItems: function (pjElement) {
+                        return generateMultipleSelectorSubItems({
+                            parentElement: pjElement,
+                            selector: '.soc1',
+                            onTap: 'clic'
+                        });
+                    }
+                });
+            }
+        },
+        'copilot_vidal': { // Le pannneau 
             selector: '.copilot-vidal-project',
+            inlineSubTooltips: true,
             subItems: function (element) {
                 return generateInternalSubItems(element);
             }
@@ -505,6 +532,424 @@ function returnQuickAccessConfig() {
         'demande_iframe_text_area_ALD': {
             selector: '#CE_ContentPlaceHolder1_EditorPrescriptionBizone_ID_Frame >> body',
             onTap: 'focus',
+        },
+        'choix_ligne_renouvellement': {
+            selector: '#ContentPlaceHolder1_RenouvellementUCForm1_PanelFindDocument',
+            onTap: 'clic',
+            priorityLvl: true,
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '[id^="ContentPlaceHolder1_RenouvellementUCForm1_DocumentsGrid_LinkButtonDocumentEvenementTitre_"]',
+                    onTap: 'clic',
+                });
+            }
+        },
+    }
+
+    /**
+     * ----------------------------------------------------------------------------------
+     *            Pages de prescriptions médicamenteuses
+     * ----------------------------------------------------------------------------------
+     */
+    /**
+     * TODO : d'autres éléments à ajouter dans les prescriptions médicamenteuses :
+     * ajouter les items de chaque ligne de prescription (dosage, posologie, durée, etc.) dans les prescriptions de médicaments
+     * ajouter la calculette dans les prescriptions de médicaments
+     * posos types de la calculette
+     */
+
+    const prescriptionMedicamenteuseConfig = {
+        _urlPatterns: ['/FolderMedical/PrescriptionForm.aspx'],
+        'zone_texte_poids': {
+            selector: '#ContentPlaceHolder1_TextBoxPatientPoids',
+            onTap: 'focus'
+        },
+        'zone_texte_taille': {
+            selector: '#ContentPlaceHolder1_TextBoxPatientTaille',
+            onTap: 'focus'
+        },
+        'zone_resultats_recherche_medicaments': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_UpdatePanelVidal',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '[id^="ContentPlaceHolder1_BaseVidalUcForm1_VidalPacksGrid_LinkButtonVidalPacksGridName_"]',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'zone_resultats_recherche_medicaments_fav': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_UpdatePanelVidal',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '[id^="ContentPlaceHolder1_BaseVidalUcForm1_VidalPacksGrid_LinkButtonVidalPacksGridPosologieType_"]',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'zone_options_recherche_medicaments': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_UpdatePanelVidal table',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateInternalSubItems(element);
+            }
+        },
+        'bouton_pharmacien': {
+            selector: '#ContentPlaceHolder1_ImageButtonOpenPharmacie',
+            onTap: 'clic'
+        },
+        'choix_ligne_renouvellement': {
+            selector: '#ContentPlaceHolder1_RenouvellementUCForm1_DocumentsGrid',
+            onTap: 'clic',
+            priorityLvl: true,
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '[id^="ContentPlaceHolder1_RenouvellementUCForm1_DocumentsGrid_LinkButtonDocumentEvenementTitre_"]',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'lignes_prescriptions_appliquees': {
+            selector: '#ContentPlaceHolder1_PrescriptionsGrid',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '#ContentPlaceHolder1_PrescriptionsGrid > tbody > tr',
+                    inlineSubTooltips: false,
+                    subItems: function (trElement) {
+                        const closestPertinentElement = trElement.querySelector('[id^="ContentPlaceHolder1_PrescriptionsGrid_LinkButtonPrescriptionCommonNameGroupName_"]');
+                        const numbersAtEndOfId = closestPertinentElement ? closestPertinentElement.id.match(/\d+$/)?.[0] : null;
+                        return {
+                            'titre_medicament': {
+                                selector: `[id^="ContentPlaceHolder1_PrescriptionsGrid_LinkButtonPrescriptionCommonNameGroupName_${numbersAtEndOfId}"]`,
+                                onTap: 'clic',
+                            },
+                            'ALD_trigger': {
+                                selector: `[id^="ContentPlaceHolder1_PrescriptionsGrid_LinkButtonPrescriptionBizone_${numbersAtEndOfId}"]`,
+                                onTap: 'clic',
+                            },
+                            'TC_trigger': {
+                                selector: `[id^="ContentPlaceHolder1_PrescriptionsGrid_LinkButtonTC_${numbersAtEndOfId}"]`,
+                                onTap: 'clic',
+                            },
+                            'impr_boites': {
+                                selector: `[id^="ContentPlaceHolder1_PrescriptionsGrid_PrescriptionPrintBoite_${numbersAtEndOfId}"]`,
+                                onTap: 'clic',
+                            },
+                            '+boites': {
+                                selector: `[id^="ContentPlaceHolder1_PrescriptionsGrid_BoitePlusButtonGridPrescription_${numbersAtEndOfId}"]`,
+                                onTap: 'clic',
+                                hotkey: '+',
+                            },
+                            '-boites': {
+                                selector: `[id^="ContentPlaceHolder1_PrescriptionsGrid_MoinsPlusButtonGridPrescription_${numbersAtEndOfId}"]`,
+                                onTap: 'clic',
+                                hotkey: '-',
+                            },
+                            'menu': {
+                                selector: `[id^="ContentPlaceHolder1_PrescriptionsGrid_DivOptionMenu_${numbersAtEndOfId}"]`,
+                                onTap: 'clic_centré',
+                                subItems: function () {
+                                    const menuElement = document.querySelector('#MenuPopupPrescription');
+                                    return generateInternalSubItems(menuElement);
+                                }
+                            },
+                            'supprimer_ligne': {
+                                selector: `[id^="ContentPlaceHolder1_PrescriptionsGrid_DeleteButtonGridPrescription_${numbersAtEndOfId}"]`,
+                                onTap: 'clic',
+                            }
+                        };
+                    } 
+                });
+            }
+        }
+    };
+
+
+    /**
+     * ----------------------------------------------------------------------------------
+     *             Pages de courriers
+     * ----------------------------------------------------------------------------------
+     */
+    const textZoneIframeConfigCourrier = {
+        _urlPatterns: ['/FolderMedical/CourrierForm.aspx'],
+        'courrier_iframe_text_area': {
+            selector: '#CE_ContentPlaceHolder1_EditorCourrier_ID_Frame >> body',
+            onTap: 'focus',
+        }
+    }
+
+    /**
+     * ----------------------------------------------------------------------------------
+     *            Pages de FSE
+     * ----------------------------------------------------------------------------------
+     */
+    const fseConfig = {
+        _urlPatterns: ['/vitalzen/fse.aspx'],
+        'amo_fse': {
+            selector: '#mat-checkbox-1-input',
+            onTap: 'clic'
+        },
+        'amc_fse': {
+            selector: '#mat-checkbox-2-input',
+            hotkey: 'd',
+            onTap: 'clic'
+        },
+        'tableaux': { // un tableau
+            selector: '.fseInnerContainer',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '.fseInnerContainer select',
+                    onTap: 'focus',
+                });
+            }
+        },
+        'radio_inputs': {
+            selector: '.fseInnerContainer',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '.fseInnerContainer [id^="mat-radio-"][id$="-input"]',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'cotations': {
+            selector: 'vz-favoris-quick div',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: 'vz-favoris-quick > div > div.ng-star-inserted',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'lecture_cps_fse': {
+            selector: '[weda-test="vitalzen/cps/lire/button"]',
+            onTap: 'clic'
+        }
+    };
+
+    // génère les items de cotations appliquées
+    function generateFseCotationsAppliqueesConfig() {
+        const actesListElement = document.querySelector('.actesList');
+        
+        // Si l'élément n'existe pas, retourner une config vide (ou avec juste _urlPatterns)
+        if (!actesListElement) {
+            return { _urlPatterns: ['/vitalzen/fse.aspx'] };
+        }
+        
+        // Générer les items directement au premier niveau
+        const items = generateMultipleSelectorSubItems({
+            parentElement: actesListElement,
+            selector: 'vz-actes > table > tr',
+            inlineSubTooltips: true,
+            keyPrefix: 'cotation_appliquee',
+            subItems: function (vzActesElement) {
+                return {
+                    ...generateMultipleSelectorSubItems({
+                        parentElement: vzActesElement,
+                        selector: '.mat-checkbox input',
+                        onTap: 'clic',
+                        keyPrefix: 'checkbox'
+                    }),
+                    ...generateMultipleSelectorSubItems({
+                        parentElement: vzActesElement,
+                        selector: 'input',
+                        onTap: 'focus',
+                        keyPrefix: 'input'
+                    }),
+                    ...generateMultipleSelectorSubItems({
+                        parentElement: vzActesElement,
+                        selector: '[mattooltip="Supprimer la ligne"]',
+                        onTap: 'clic',
+                        keyPrefix: 'delete'
+                    })
+                };
+            }
+        });
+        
+        return {
+            _urlPatterns: ['/vitalzen/fse.aspx'],
+            ...items
+        };
+    }
+
+    /**
+     * ----------------------------------------------------------------------------------
+     *            Pages des imports
+     * ----------------------------------------------------------------------------------
+     */
+    const importConfig = {
+        _urlPatterns: ['/FolderMedical/UpLoaderForm.aspx'],
+        'panneau_valeurs_defaut': {
+            selector: '.frameback',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateInternalSubItems(element);
+            }
+        },
+        'zone_import': {
+            selector: '#ContentPlaceHolder1_UpdatePanelClassementGrid',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                // Niveau intermédiaire : les lignes du tableau
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: 'tbody > tr',
+                    inlineSubTooltips: true,
+                    subItems: function (trElement) {
+                        // Niveau final : les champs dans chaque ligne
+                        return generateMultipleSelectorSubItems({
+                            parentElement: trElement,
+                            selector: [
+                                '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate"]', // dates (document et rappel)
+                                '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_"]:not([id$="_dropWrapper"])', // titre (sans dropWrapper)
+                                '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementEvenementType_"]', // type événement
+                                '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_"]', // classification
+                                '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_DeleteButtonGridFileStreamClassement_"]', // bouton supprimer
+                                '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementUser_"]', // utilisateur
+                                '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_"]' // lien vers "patient à définir"
+                            ].join(', '),
+                            onTap: 'focus',
+                        });
+                    }
+                });
+            }
+        },
+        'zone_page_number': {
+            selector: '.grid-pager',
+            inlineSubTooltips: false,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '.grid-pager a',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'zone_recherche_patient': {
+            selector: '[id^="ContentPlaceHolder1_FindPatientUcForm"][id$="_TextBoxRecherche"]',
+            onTap: 'focus',
+        },
+        'zone_type_recherche_patient': {
+            selector: '[id^="ContentPlaceHolder1_FindPatientUcForm"][id$="_DropDownListRechechePatient"]',
+            onTap: 'focus',
+        }
+    }
+
+    /**
+     * ----------------------------------------------------------------------------------
+     *              Documents du Cabinet
+     * ----------------------------------------------------------------------------------
+     */
+    const documentsCabinetConfig = {
+        _urlPatterns: ['/FolderTools/BiblioForm.aspx'],
+        'documents_pdf': {
+            selector: '#ContentPlaceHolder1_PanelTreeViewBiblio',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '[id^="ContentPlaceHolder1_TreeViewBibliot"][id$="i"]',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'boutons_impression': {
+            selector: '#ContentPlaceHolder1_PanelTreeViewBiblio',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '.print-icon-addPrintIcon-wh',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'close_button' : {
+            selector: '#ContentPlaceHolder1_ViewPdfDocumentUCForm1_ButtonClose',
+            onTap: 'clic'
+        }
+    }
+
+    /**
+     * ----------------------------------------------------------------------------------
+     *             Pages des antécédents
+     * ----------------------------------------------------------------------------------
+     */
+    const antecedentsConfig = {
+        _urlPatterns: ['/FolderMedical/AntecedentForm.aspx'],
+        'divers_liens': {
+            selector: '.flex-box', // très bas dans la page
+            inlineSubTooltips: true,
+            subItems: {
+                'one_click_vsm': {
+                    selector: '#oneClickVSMButton',
+                    onTap: 'clic'
+                },
+                'conv_atcd_cim10': {
+                    selector: '#ContentPlaceHolder1_LinkButtonConvertirVidalToCIM10',
+                    onTap: 'clic'
+                },
+                'liste_cim10': {
+                    selector: '#ContentPlaceHolder1_ImageButtonPathologieCIM10',
+                    onTap: 'clic'
+                },
+                'liste_allergies': {
+                    selector: '#ContentPlaceHolder1_ImageButtonAllergieMolecule',
+                    onTap: 'clic'
+                },
+                'liste_medicaments': {
+                    selector: '#ContentPlaceHolder1_ImageButtonMedicament',
+                    onTap: 'clic'
+                },
+                'search_box': {
+                    selector: '#ContentPlaceHolder1_TextBoxFind',
+                    onTap: 'focus'
+                }
+            }
+        },
+        'liste_atcd_presents': {
+            selector: '.sca',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '.sca > table',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'boutons_atcd_libre_and_co': {
+            selector: '.sca',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    selector: '.sta > img',
+                    parentElement: element,
+                    onTap: 'clic',
+                });
+            }
+        },
+        'panneau_edition_atcd': {
+            selector: '#ContentPlaceHolder1_PanelModifyAntecedent',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateInternalSubItems(element);
+            }
         }
     }
 
@@ -515,6 +960,53 @@ function returnQuickAccessConfig() {
      * ----------------------------------------------------------------------------------
      */
 
+    // ================= Eléments principaux du Bandeau supérieur =================
+    const menuHorizontalConfig = {
+        'medical': {
+            selector: '#nav-menu > li > a.nav-icon__link--doctor',
+            hotkey: 'm',
+            onTap: function (element, state) { horizontalMenuPseudoMouseover(element, state); },
+            onDoubleTap: 'clic',
+            subItems: function (element) {
+                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
+                return submenu ? generateHorizMenuSubItems(submenu, 'medical') : {};
+            }
+        },
+
+        'applicatifs': {
+            selector: '#nav-menu > li > a.nav-icon__link--tools',
+            hotkey: 'p',
+            onTap: function (element, state) { horizontalMenuPseudoMouseover(element, state); },
+            onDoubleTap: 'clic',
+            subItems: function (element) {
+                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
+                return submenu ? generateHorizMenuSubItems(submenu, 'applicatifs') : {};
+            }
+        },
+
+        'gestion': {
+            selector: '#nav-menu > li > a.nav-icon__link--safe-open',
+            hotkey: 'g',
+            onTap: function (element, state) { horizontalMenuPseudoMouseover(element, state); },
+            onDoubleTap: 'clic',
+            subItems: function (element) {
+                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
+                return submenu ? generateHorizMenuSubItems(submenu, 'gestion') : {};
+            }
+        },
+
+        'parametres': {
+            selector: '#nav-menu > li > a.nav-icon__link--mixing-desk',
+            hotkey: 'e',
+            onTap: function (element, state) { horizontalMenuPseudoMouseover(element, state); },
+            onDoubleTap: 'clic',
+            subItems: function (element) {
+                const submenu = element.parentElement.querySelector('.nav-menu__submenu--level1');
+                return submenu ? generateHorizMenuSubItems(submenu, 'parametres') : {};
+            }
+        }
+    };
+
     // =============== modèles de documents ==================
     const documentTemplatesConfig = {
         'search_certificat_template': {
@@ -524,14 +1016,14 @@ function returnQuickAccessConfig() {
         'certificat_templates': {
             inlineSubTooltips: true,
             selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossaire',
-            subItems: 
+            subItems:
                 function (element) {
                     return generateMultipleSelectorSubItems({
                         parentElement: element,
                         selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossaire > table [id^="ContentPlaceHolder1_BaseGlossaireUCForm1_TreeViewGlossairet"]',
                         onTap: 'clic',
                         inlineSubTooltips: true,
-                        subItemsGenerator: function(folderElement) {
+                        subItems: function (folderElement) {
                             // Le <div id="...Nodes"> contenant les sous-modèles est le sibling immédiat de la table
                             const nodesDiv = folderElement.closest('table').nextElementSibling;
                             // On vérifie que ce sibling est bien un élément type div
@@ -571,7 +1063,20 @@ function returnQuickAccessConfig() {
                 return generateMultipleSelectorSubItems({
                     parentElement: element,
                     selector: '#ContentPlaceHolder1_BaseGlossaireUCForm1_DivQuestionnaire tr td',
-                    onTap: 'clic'
+                    onTap: function (element) {
+                        // .qt est la classe du <tr> titre de groupe, pas d'un enfant
+                        // on remonte les siblings précédents pour trouver le <tr class="qt"> le plus proche
+                        let qtRow = element.closest('tr');
+                        while (qtRow && !qtRow.classList.contains('qt')) {
+                            qtRow = qtRow.nextElementSibling;
+                        }
+                        if (qtRow) {
+                            console.log(`[QuickAccess] Scrolling to the closest .qt element:`, qtRow);
+                            qtRow.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+                        }
+                        element.click();
+                    },
+                    reQuickAction: true,
                 });
             }
         }
@@ -608,7 +1113,7 @@ function returnQuickAccessConfig() {
     }
 
     // =============== iframes communes à plusieurs pages ==================
-        const iframeConfig = {
+    const iframeConfig = {
         'consultation_history_iframe': {
             selector: '#ContentPlaceHolder1_PanelHistoriqueConsultationFrame iframe >> #HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda',
             subItems: function (element) {
@@ -702,7 +1207,7 @@ function returnQuickAccessConfig() {
     }
 
     // =============== icones communes commes W, renouvellement, print etc. ==================
-        const menuIconsLeft = {
+    const menuIconsLeft = {
         'menuW': {
             selector: '#ContentPlaceHolder1_EvenementUcForm1_MenuNavigate a.level1',
             onTap: function (element, state) { WMenuPseudoMouseover(element, state); },
@@ -754,27 +1259,19 @@ function returnQuickAccessConfig() {
         }
     }
 
-    // =============== page de prescription médicamenteuse ==================
-    const prescriptionMedicamenteuseConfig = {
-        _urlPatterns: ['/FolderMedical/PrescriptionForm.aspx'],
-        'zone_texte_poids': {
-            selector: '#ContentPlaceHolder1_TextBoxPatientPoids',
-            onTap: 'focus'
-        },
-        'zone_texte_taille': {
-            selector: '#ContentPlaceHolder1_TextBoxPatientTaille',
-            onTap: 'focus'
-        },
-        'zone_options_recherche_medicaments': {
-            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_UpdatePanelVidal',
-            inlineSubTooltips: true,
-            subItems: function (element) {
-                return generateInternalSubItems(element);
-            }
-        }
-    };
+
+    /**
+     * TODO zone d’imports de bio
+     */
+
 
     // ================= Configuration finale avec filtrage =================
+    /**
+     * allConfigs peut contenir :
+     * - des objets de configuration statiques
+     * - des fonctions qui retournent des objets de configuration
+     *
+     */
     const allConfigs = [
         bandeauSuperieurConfig,
         menuHorizontalConfig,
@@ -789,14 +1286,28 @@ function returnQuickAccessConfig() {
         atcdHistoriqueConfig,
         textZoneIframeConfigCertificat,
         textZoneIframeConfigDemande,
-        prescriptionMedicamenteuseConfig
+        prescriptionMedicamenteuseConfig,
+        textZoneIframeConfigCourrier,
+        fseConfig,
+        generateFseCotationsAppliqueesConfig, // fonction génératrice
+        importConfig,
+        documentsCabinetConfig,
+        antecedentsConfig
     ];
 
     const quickAccessConfig = {};
 
     // Filtrer les configurations selon l'URL actuelle
     const currentUrl = window.location.pathname;
-    for (const configGroup of allConfigs) {
+    for (const configGroupOrFunction of allConfigs) {
+        // Si c'est une fonction, l'appeler pour obtenir la configuration
+        const configGroup = typeof configGroupOrFunction === 'function' 
+            ? configGroupOrFunction() 
+            : configGroupOrFunction;
+
+        // Ignorer si la fonction retourne null/undefined
+        if (!configGroup) continue;
+
         const urlPatterns = configGroup._urlPatterns;
 
         // Si pas de restriction (_urlPatterns null/undefined) ou si l'URL correspond
