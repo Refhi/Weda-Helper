@@ -759,9 +759,12 @@ function handlePatientSearch(extractedData, hashId) {
         console.log(`[pdfParser] lookupPatient(${search.type}) =>`, lookupResult);
 
         if (lookupResult.status === 'refresh') {
+            //Ajout d'un timeout pour laisser le temps à la recherche de se faire après le clic.
             // Un changement de mode ou un clic sur "Rechercher" a été effectué
             // => la page va se rafraichir et la fonction handlePatientSearch sera rappelée après le rechargement
-            return { patientFound: false, needsPageRefresh: true, message: lookupResult.message };
+            setTimeout(function () { 
+                return { patientFound: false, needsPageRefresh: true, message: lookupResult.message };
+            } , 500);
         }
 
         if (lookupResult.status !== 'success') {
