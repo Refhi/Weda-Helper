@@ -248,7 +248,7 @@ async function processFoundPdfIframeImport(PDFIframeElements) {
     // ÉTAPE 2 : Recherche et sélection du patient
     // ATTENTION : peut déclencher un refresh de page
     // ===========================================
-    const searchResult = handlePatientSearch(extractedData, hashId);
+    const searchResult = await handlePatientSearch(extractedData, hashId);
 
     // Si un refresh est attendu (changement de mode de recherche ou clic bouton recherche),
     // on stoppe ici. La fonction sera rappelée après le rechargement de page.
@@ -326,7 +326,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
         for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             console.log(`[pdfParser] Echanges - Tentative de recherche patient ${attempt}/${MAX_ATTEMPTS}`);
 
-            const searchResult = handlePatientSearch(extractedData, hashId);
+            const searchResult = await handlePatientSearch(extractedData, hashId);
 
             if (searchResult.patientFound) {
                 console.log("[pdfParser] Echanges - Patient trouvé :", searchResult.message);
@@ -734,7 +734,7 @@ function checkSearchPossibility(searchOptionValue) {
  * @returns {boolean} needsPageRefresh - true si un refresh de page/DOM est nécessaire avant de continuer.
  * @returns {string} message - Description de l'état pour le debug.
  */
-function handlePatientSearch(extractedData, hashId) {
+async function handlePatientSearch(extractedData, hashId) {
     console.log("[pdfParser] handlePatientSearch - Début", extractedData);
 
     // Priorités de recherche : INS complet > NIR tronqué > Date de naissance
@@ -755,7 +755,7 @@ function handlePatientSearch(extractedData, hashId) {
         console.log(`[pdfParser] Tentative de recherche par ${search.type} avec :`, search.data);
 
         // ÉTAPE 1 : Lancer la recherche dans la base
-        const lookupResult = lookupPatient(search.type, search.data);
+        const lookupResult = await lookupPatient(search.type, search.data);
         console.log(`[pdfParser] lookupPatient(${search.type}) =>`, lookupResult);
 
         if (lookupResult.status === 'refresh') {
@@ -1109,7 +1109,7 @@ function selectedPatientName() {
  * @returns {string} message - Message décrivant le résultat de la recherche
  */
 
-function lookupPatient(searchType, data) {
+async function lookupPatient(searchType, data) {
     if (!isValidSearchType(searchType)) {
         console.error(`[pdfParser] Type de recherche ${searchType} non disponible.`);
         return { status: 'error', message: `Type de recherche ${searchType} non disponible.` };
@@ -1155,8 +1155,7 @@ function lookupPatient(searchType, data) {
         inputResearch.value = data;
         const searchButton = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_ButtonRecherchePatient']");
         searchButton.click();
-        setTimeout(function () {  //Ajout d'un timeout pour laisser le temps à la recherche de se faire après le clic.
-        } , 500);
+        await new Promise(resolve => setTimeout(resolve, 2000));
         return { status: 'refresh', message: `searchButton clicked avec ${searchType}` };
     }
 }
