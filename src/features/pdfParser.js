@@ -761,7 +761,7 @@ function handlePatientSearch(extractedData, hashId) {
         if (lookupResult.status === 'refresh') {
             // Un changement de mode ou un clic sur "Rechercher" a été effectué
             // => la page va se rafraichir et la fonction handlePatientSearch sera rappelée après le rechargement
-                return { patientFound: false, needsPageRefresh: true, message: lookupResult.message };
+            return { patientFound: false, needsPageRefresh: true, message: lookupResult.message };
         }
 
         if (lookupResult.status !== 'success') {
@@ -1155,8 +1155,6 @@ function lookupPatient(searchType, data) {
         inputResearch.value = data;
         const searchButton = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_ButtonRecherchePatient']");
         searchButton.click();
-        setTimeout(function () {  //Ajout d'un timeout pour laisser le temps à la recherche de se faire après le clic.
-        } , 500);
         return { status: 'refresh', message: `searchButton clicked avec ${searchType}` };
     }
 }
