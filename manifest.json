@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Weda Helper Beta",
+  "name": "Weda Helper",
   "version": "2.16.1.3",
   "options_page": "src/ui/options.html",
   "permissions": [
