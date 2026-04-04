@@ -674,6 +674,7 @@ function returnQuickAccessConfig() {
                     parentElement: element,
                     selector: 'input:not(.cadreposomoment *)',
                     onTap: 'clic',
+                    reQuickAction: 30,
                 });
             }
         },
@@ -687,6 +688,7 @@ function returnQuickAccessConfig() {
                     parentElement: element,
                     selector: 'input',
                     onTap: 'clic',
+                    reQuickAction: 30,
                 });
             }
         },
@@ -700,6 +702,7 @@ function returnQuickAccessConfig() {
                     parentElement: element,
                     selector: 'input:not([type="text"]):not(.motNext)',
                     onTap: 'clic',
+                    reQuickAction: 30,
                 });
             }
         },
@@ -713,18 +716,21 @@ function returnQuickAccessConfig() {
                     parentElement: element,
                     selector: '[id^="ContentPlaceHolder1_BaseVidalUcForm1_CheckBoxListPrescriptionGroupIndications_"]',
                     onTap: 'clic',
+                    reQuickAction: 30,
                 });
             }
         },
         'calculette_indications_libres': {
             selector: '#ContentPlaceHolder1_BaseVidalUcForm1_TextBoxAutrePrescriptionIndications',
             onTap: 'focus',
+            reQuickAction: 30,
             priorityLvl: true,
         },
         'monographie_calculette': {
             selector: 'a[style="text-decoration:underline; color:#000ff; cursor:help;"]',
             onTap: 'clic',
             priorityLvl: true,
+            reQuickAction: 30,
         },
         'calculette_conditions': {
             selector: '#DivShowSi',
@@ -736,6 +742,7 @@ function returnQuickAccessConfig() {
                     parentElement: element,
                     selector: 'input',
                     onTap: 'clic',
+                    reQuickAction: 30,
                 });
             }
         },
@@ -748,26 +755,32 @@ function returnQuickAccessConfig() {
                 'avant_repas': {
                     selector: '.imgposorepasavant',
                     onTap: 'clic',
+                    reQuickAction: 30,
                 },
                 'apres_repas': {
                     selector: '.imgposorepasapres',
                     onTap: 'clic',
+                    reQuickAction: 30,
                 },
                 'pendant_repas': {
                     selector: '.imgposorepas',
                     onTap: 'clic',
+                    reQuickAction: 30,
                 },
                 'champ_divers': {
                     selector: '#TextBoxComplementPosoStart',
                     onTap: 'focus',
+                    reQuickAction: 30,
                 },
                 'champ_divers_fin': {
                     selector: '#TextBoxComplementPoso',
                     onTap: 'focus',
+                    reQuickAction: 30,
                 },
                 'champ_prescripteur': {
                     selector: '#ContentPlaceHolder1_BaseVidalUcForm1_TextBoxPrescriptionPrescripteur',
                     onTap: 'focus',
+                    reQuickAction: 30,
                 },
             }
         }
