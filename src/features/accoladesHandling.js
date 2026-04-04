@@ -32,7 +32,7 @@ addTweak(urlsToWorkOn, '*removeBrackets', function () {
         delay: 100,
         callBackId: 'removeBrackets',
         callback: function () {
-            console.log('[removeBrackets] DOM modifié, re-vérification des iframes');
+            // console.log('[removeBrackets] DOM modifié, re-vérification des iframes');
             iframes = document.querySelectorAll(editorIframesSelector);
             iframes.forEach(removeBracketsFromIframe);
         }
@@ -79,7 +79,7 @@ function removeBracketsFromIframe(iframe) {
                 console.log(`[removeBracketsFromIframe] champs cachés mis à jour dans l'iframe ${iframe.id}`);
 
             } else {
-                console.log(`[removeBracketsFromIframe] aucun texte entre accolades trouvé dans l'iframe ${iframe.id}`);
+                // console.log(`[removeBracketsFromIframe] aucun texte entre accolades trouvé dans l'iframe ${iframe.id}`);
             }
         }
 
@@ -88,7 +88,7 @@ function removeBracketsFromIframe(iframe) {
             processIframeContent();
         } else {
             // Sinon, attendre que l'iframe soit chargée
-            console.log(`[removeBracketsFromIframe] ajout d'un écouteur d'événement pour l'iframe ${iframe.id}`);
+            // console.log(`[removeBracketsFromIframe] ajout d'un écouteur d'événement pour l'iframe ${iframe.id}`);
             iframe.addEventListener('load', processIframeContent);
         }
 
