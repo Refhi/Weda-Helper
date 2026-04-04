@@ -553,13 +553,6 @@ function returnQuickAccessConfig() {
      *            Pages de prescriptions médicamenteuses
      * ----------------------------------------------------------------------------------
      */
-    /**
-     * TODO : d'autres éléments à ajouter dans les prescriptions médicamenteuses :
-     * ajouter les items de chaque ligne de prescription (dosage, posologie, durée, etc.) dans les prescriptions de médicaments
-     * ajouter la calculette dans les prescriptions de médicaments
-     * posos types de la calculette
-     */
-
     const prescriptionMedicamenteuseConfig = {
         _urlPatterns: ['/FolderMedical/PrescriptionForm.aspx'],
         'zone_texte_poids': {
@@ -669,6 +662,113 @@ function returnQuickAccessConfig() {
                         };
                     } 
                 });
+            }
+        },
+        'calculette_de_l_enfer': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_PanelPosologie [onmouseover="CloseRenouvellementDuree();"]',
+            onTap: 'clic',
+            priorityLvl: true,
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: 'input:not(.cadreposomoment *)',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'calculette_durees_frequences': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_PanelPosologie > table:nth-child(8) > tbody > tr > td > table:nth-child(2)',
+            onTap: 'clic',
+            priorityLvl: true,
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: 'input',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'calculette_partie_basse_inputs': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_PanelPosologie > table:nth-child(8) > tbody > tr > td > table:nth-child(6)',
+            onTap: 'clic',
+            priorityLvl: true,
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: 'input:not([type="text"]):not(.motNext)',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'calculette_indications': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_PanelPrescritionIndications',
+            onTap: 'clic',
+            priorityLvl: true,
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '[id^="ContentPlaceHolder1_BaseVidalUcForm1_CheckBoxListPrescriptionGroupIndications_"]',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'calculette_indications_libres': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_TextBoxAutrePrescriptionIndications',
+            onTap: 'focus',
+            priorityLvl: true,
+        },
+        'monographie_calculette': {
+            selector: 'a[style="text-decoration:underline; color:#000ff; cursor:help;"]',
+            onTap: 'clic',
+            priorityLvl: true,
+        },
+        'calculette_conditions': {
+            selector: '#DivShowSi',
+            onTap: 'clic',
+            priorityLvl: true,
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: 'input',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'calculette_divers': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_PanelPosologie',
+            onTap: 'clic',
+            priorityLvl: true,
+            inlineSubTooltips: true,
+            subItems: {
+                'avant_repas': {
+                    selector: '.imgposorepasavant',
+                    onTap: 'clic',
+                },
+                'apres_repas': {
+                    selector: '.imgposorepasapres',
+                    onTap: 'clic',
+                },
+                'pendant_repas': {
+                    selector: '.imgposorepas',
+                    onTap: 'clic',
+                },
+                'champ_divers': {
+                    selector: '#TextBoxComplementPosoStart',
+                    onTap: 'focus',
+                },
+                'champ_divers_fin': {
+                    selector: '#TextBoxComplementPoso',
+                    onTap: 'focus',
+                },
+                'champ_prescripteur': {
+                    selector: '#ContentPlaceHolder1_BaseVidalUcForm1_TextBoxPrescriptionPrescripteur',
+                    onTap: 'focus',
+                },
             }
         }
     };
