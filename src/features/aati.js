@@ -16,28 +16,42 @@
  */
 
 // Arrêts de travail automatisés
-// Ajout d'un 2e bouton à côté de AT nommé "AT sans CV" pour shunter la lecture automatique de la carte vitale
+// Ajout d'un bouton "AT sans CV" à côté du bouton original "AT avec CV" pour shunter la lecture automatique de la carte vitale
 addTweak('/FolderMedical/PatientViewForm.aspx', 'autoAATI', function () {
     let selecteurBoutonAT = '[title="Transmettre un avis d\'arrêt de travail via le téléservice AATi"]';
     function processButton(elements) {
-        // remplace le texte "AT" par "AT avec CV | AT sans CV"
-        elements[0].textContent = 'AT avec CV | AT sans CV';
+        const boutonAvecCV = elements[0];
 
-        // ajoute sur la partie droite de l'élément un event listener pour le click qui met dans le local storage la valeur "timestampAATIsansCV" au moment du click
-        elements[0].addEventListener('click', function (e) {
-            // Récupère la largeur de l'élément
-            let boutonWidth = elements[0].offsetWidth;
+        // Éviter les doublons si déjà traité
+        if (document.getElementById('aati-btn-avec-cv')) return;
 
-            // Récupère la position du clic relative à l'élément
-            let clickPosition = e.clientX - elements[0].getBoundingClientRect().left;
+        // Renommer et identifier le bouton original
+        boutonAvecCV.id = 'aati-lien-avec-cv';
+        boutonAvecCV.textContent = 'AT avec CV';
 
-            // Si le clic est sur la moitié droite de l'élément
-            if (clickPosition > boutonWidth / 2) {
-                console.log('Clic sur AT sans CV détecté au timestamp', Date.now());
-                // Stocke le timestamp actuel dans le stockage local avec la clé "timestampAATIsansCV"
-                chrome.storage.local.set({ timestampAATIsansCV: Date.now() });
-            }
+        // Créer le lien "AT sans CV" avec le même style que le lien original
+        const boutonSansCV = document.createElement('a');
+        boutonSansCV.id = 'aati-lien-sans-cv';
+        boutonSansCV.textContent = 'AT sans CV';
+        boutonSansCV.className = boutonAvecCV.className;
+        boutonSansCV.href = '#';
+
+        boutonSansCV.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('[autoAATI] Clic sur AT sans CV détecté au timestamp', Date.now());
+            // Stocke le timestamp actuel dans le stockage local avec la clé "timestampAATIsansCV"
+            chrome.storage.local.set({ timestampAATIsansCV: Date.now() });
+            // Déclenche le comportement normal du bouton original
+            clicCSPLockedElement('#aati-lien-avec-cv');
         });
+
+        // Envelopper les deux liens dans un conteneur flex pour les afficher côte à côte
+        const wrapper = document.createElement('span');
+        wrapper.style.cssText = 'display: inline-flex; gap: 4px; align-items: center;';
+        boutonAvecCV.replaceWith(wrapper);
+        wrapper.appendChild(boutonAvecCV);
+        wrapper.appendChild(boutonSansCV);
     }
 
     waitForElement({ selector: selecteurBoutonAT, justOnce: false, callback: processButton });

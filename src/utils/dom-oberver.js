@@ -78,6 +78,7 @@ function afterMutations({ delay, callback, callBackId = "callback id undefined",
 
     const observer = new MutationObserver((mutationsList, observer) => {
         for (let mutation of mutationsList) {
+            // console.log(`[afterMutations] Mutation détectée (${callBackId}) :`, mutation);
             // Réinitialise le délai chaque fois qu'une mutation est détectée
             clearTimeout(timeoutId);
             timeoutId = setTimeout(action, delay);

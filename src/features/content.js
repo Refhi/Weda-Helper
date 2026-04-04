@@ -191,6 +191,7 @@ addTweak('/FolderTools/BiblioForm.aspx', '*addPrintIcon', function () {
             printIcon.style.marginLeft = '5px';
             printIcon.style.position = 'relative';
             printIcon.style.top = '-2px'; // Décaler de 2px vers le haut
+            printIcon.className = 'print-icon-addPrintIcon-wh';
 
             // Ajouter un gestionnaire d'événements de clic sur l'icône d'imprimante
             printIcon.addEventListener('click', function () {
@@ -253,6 +254,41 @@ addTweak('*', 'inhitAltKey', function () {
     window.addEventListener('keydown', function (event) {
         if (event.key === 'Alt') {
             event.preventDefault();
+        }
+    });
+});
+
+
+/**
+ * Navigation par les flèches dans les listes d'éléments à renouveller
+ */
+addTweak([
+    '/FolderMedical/DemandeForm.aspx',
+    '/FolderMedical/ConsultationForm.aspx',
+    '/FolderMedical/CertificatForm.aspx',
+    '/FolderMedical/PrescriptionForm.aspx',
+    '/FolderMedical/CourrierForm.aspx',
+    '/FolderMedical/FormulaireForm.aspx'], '*tabNav', function () {
+    const selectorForRenouvellementItems = '[id^="ContentPlaceHolder1_RenouvellementUCForm1_DocumentsGrid_LinkButtonDocumentEvenementTitre_"]';
+    waitForElement({
+        selector: selectorForRenouvellementItems,
+        callback: function () {
+            afterMutations({
+                delay: 400,
+                callBackId: 'quickAccess_renouvellement_tabNav',
+                callback: function () {
+                    elements = document.querySelectorAll(selectorForRenouvellementItems);
+                    let selectedEl = null;
+                    elements.forEach((el, index) => {
+                        el.setAttribute('tabindex', index + 1);
+                        // console.log(`[QuickAccess] Élément de renouvellement #${index + 1} rendu focusable pour navigation au clavier:`, el);
+                        if (el.closest('tr.grid-selecteditem')) {
+                            selectedEl = el;
+                        }
+                    });
+                    (selectedEl ?? elements[0])?.focus();
+                }
+            });
         }
     });
 });

@@ -4,6 +4,18 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.16.1.3] - fix et finalisation du Quick Access
+## Finalisation du Quick Access :
+- presque toutes les lettres de ciblage sont désormais en place, et les quelques manquantes seront ajoutées dans les prochaines versions.
+- j’ai dû travailler par zones de priorité. Si vous constatez des zones où les lettres de ciblage sont mal placées ou manquantes, n’hésitez pas à me le signaler pour que je puisse les ajouter dans les prochaines versions.
+- la touche Tabulation peut désormais être utilisée pour sélectionner les lignes à renouveller (par exemple quand on clique sur le bouton de renouvellement d'une prescription, cela simplifie le choix de la ligne)
+
+## Fix :
+- [#573](https://github.com/Refhi/Weda-Helper/issues/573) - L’historique des facturations est inhibé lors d’une facturation omnidoc (évite un échec des fses omnidoc)
+- Refactorisation du code gérant les FSE
+- [#565](https://github.com/Refhi/Weda-Helper/issues/565) - Fix de l'application incorrecte d'une double cotation au moment de la validation de la FSE dans certains cas.
+- [#580](https://github.com/Refhi/Weda-Helper/issues/580) - Inhibition de la touche "Entrée" dans certains champs de formulaires (qui, sinon, fait perdre le formulaire)
+
 # [2.16.0] - Quick Access (Beta) ! 🚀
 ## Qu'est-ce que le "Quick Access" ?
 - Appuyez sur Ctrl+K pour afficher des lettres de ciblage.
