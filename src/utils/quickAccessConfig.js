@@ -1381,8 +1381,16 @@ function returnQuickAccessConfig() {
 
 
     /**
-     * TODO zone d’imports de bio
+     * ----------------------------------------------------------------------------------
+     *              Importation des bios
+     * ----------------------------------------------------------------------------------
      */
+    const import_biosConfig = generateMultipleSelectorSubItems({
+        parentElement: document.body,
+        selector: '[id^="ContentPlaceHolder1_HprimsGrid_LinkButtonHprimNom_"]',
+        onTap: 'clic',
+    });
+
 
 
     // ================= Configuration finale avec filtrage =================
@@ -1413,7 +1421,8 @@ function returnQuickAccessConfig() {
         importConfig,
         documentsCabinetConfig,
         antecedentsConfig,
-        base_poso_type
+        base_poso_type,
+        import_biosConfig
     ];
 
     const quickAccessConfig = {};
