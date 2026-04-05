@@ -975,6 +975,34 @@ function returnQuickAccessConfig() {
         }
     }
 
+    // échanges sécurisés
+    const wedaEchangesConfig = {
+        _urlPatterns: ['/FolderMedical/WedaEchanges/'],
+        'zone_recherche_patient': {
+            selector: '#messageContainer',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: 'input:not([type="text"]):not(we-postit *)',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'zone_recherche_patient_inputs': {
+            selector: '#messageContainer',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: 'input[type="text"]',
+                    onTap: 'focus',
+                });
+            }
+        },
+    }
+
+
     /**
      * ----------------------------------------------------------------------------------
      *              Documents du Cabinet
@@ -1428,7 +1456,8 @@ function returnQuickAccessConfig() {
         antecedentsConfig,
         base_poso_type,
         import_biosConfig,
-        choixPatientSuiteLectureCVConfig
+        choixPatientSuiteLectureCVConfig,
+        wedaEchangesConfig
     ];
 
     const quickAccessConfig = {};
