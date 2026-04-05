@@ -743,7 +743,6 @@ function generateHotkeyFromText(text, usedHotkeys) {
  * @returns {boolean} True si l'élément est visible
  */
 function isElementVisible(element, requirePartiallyInViewport = true) {
-    // return true // TODO : probablement à supprimer ou à revoir..., peut-être à n'activer que sélectivement sur certains items très nombreux
     if (!element) return false;
 
     // 1. Vérification basique : offsetParent === null détecte display:none et visibility:hidden
