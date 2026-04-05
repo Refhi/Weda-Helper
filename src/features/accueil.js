@@ -57,6 +57,13 @@ addTweak(homePageUrls, 'autoSelectPatientCV', function () {
 
         console.log('les patients trouvés sont', elements);
         if (elements.length === 1) {
+            // on vérifie d’abord que le timeStamp n’est pas trop récent
+            let lastClickedPatient = sessionStorage.getItem('lastClickedPatient');
+            let delaySinceLastClick = lastClickedPatient ? Date.now() - lastClickedPatient : null;
+            if (lastClickedPatient && delaySinceLastClick < 15000) { // 15 secondes
+                console.log('Patient déjà cliqué récemment, je ne clique pas à nouveau', elements[0], 'delaySinceLastClick', delaySinceLastClick);
+                return;
+            }
             console.log('Patient seul trouvé, je clique dessus', elements[0]);
             // target the next element in the DOM on the same level, with .grid-item as class
             var nextElement = elements[0].nextElementSibling;
@@ -65,6 +72,8 @@ addTweak(homePageUrls, 'autoSelectPatientCV', function () {
             let linkedDossier = nextElement.querySelector('.mat-tooltip-trigger.sign');
             if (linkedDossier) {
                 console.log('nextElement', linkedDossier, 'found and clickable');
+                // on stocke un timestamp dans le stockage de session
+                sessionStorage.setItem('lastClickedPatient', Date.now());
                 linkedDossier.click();
                 recordMetrics({ clicks: 1, drags: 1 });
             } else {

@@ -4,6 +4,10 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.16.1.4]
+## Fix :
+- instauration d’une période réfractaire pour la validation automatique du patient après la lecture de la carte vitale. Utile si on a besoin de dissocier un patient.
+
 # [2.16.1.3] - fix et finalisation du Quick Access
 ## Finalisation du Quick Access :
 - presque toutes les lettres de ciblage sont désormais en place, et les quelques manquantes seront ajoutées dans les prochaines versions.
