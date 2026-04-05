@@ -45,9 +45,6 @@ function returnQuickAccessConfig() {
     * ----------------------------------------------------------------------------------
     */
 
-    /** TODO page d’accueil
-     * permettre la sélection d’un patient sur la carte vitale
-     */
     // ================= Bandeau supérieur de la page d’accueil =================
     const urlPatternsBandeau = ['/FolderMedical/PatientViewForm.aspx', '/FolderTools/BiblioForm.aspx'];
     const bandeauSuperieurConfig = {
@@ -407,6 +404,14 @@ function returnQuickAccessConfig() {
             }
         }
     };
+
+    // ================= choix du patient suite lecture CV =====================
+    const choixPatientSuiteLectureCVConfig = generateMultipleSelectorSubItems({
+        parentElement: document.body,
+        selector: '.patientLink .mat-tooltip-trigger.sign',
+        onTap: 'clic',
+        priorityLvl: true,
+    });
 
     /**
      * ----------------------------------------------------------------------------------
@@ -1422,7 +1427,8 @@ function returnQuickAccessConfig() {
         documentsCabinetConfig,
         antecedentsConfig,
         base_poso_type,
-        import_biosConfig
+        import_biosConfig,
+        choixPatientSuiteLectureCVConfig
     ];
 
     const quickAccessConfig = {};
