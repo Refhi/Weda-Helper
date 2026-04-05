@@ -7,6 +7,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 # [2.16.1.4]
 ## Fix :
 - instauration d’une période réfractaire pour la validation automatique du patient après la lecture de la carte vitale. Utile si on a besoin de dissocier un patient.
+- [#581](https://github.com/Refhi/Weda-Helper/issues/581) - ignore désormais le nom du médecin connecté lors de la recherche du nom de l’expéditeur d’un document importé
 
 # [2.16.1.3] - fix et finalisation du Quick Access
 ## Finalisation du Quick Access :
