@@ -786,6 +786,13 @@ function returnQuickAccessConfig() {
         }
     };
 
+    const base_poso_type = generateMultipleSelectorSubItems({
+        parentElement: document.body,
+        selector: '[id^="ContentPlaceHolder1_BaseVidalUcForm1_PrescriptionsGrid_LabelPrescriptionPosoName_"]',
+        onTap: 'clic',
+        priorityLvl: true,
+    }); 
+
 
     /**
      * ----------------------------------------------------------------------------------
@@ -1405,7 +1412,8 @@ function returnQuickAccessConfig() {
         generateFseCotationsAppliqueesConfig, // fonction génératrice
         importConfig,
         documentsCabinetConfig,
-        antecedentsConfig
+        antecedentsConfig,
+        base_poso_type
     ];
 
     const quickAccessConfig = {};
