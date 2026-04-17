@@ -761,7 +761,7 @@ function handlePatientSearch(extractedData, hashId) {
         if (lookupResult.status === 'refresh') {
             // Un changement de mode ou un clic sur "Rechercher" a été effectué
             // => la page va se rafraichir et la fonction handlePatientSearch sera rappelée après le rechargement
-                return { patientFound: false, needsPageRefresh: true, message: lookupResult.message };
+            return { patientFound: false, needsPageRefresh: true, message: lookupResult.message };
         }
 
         if (lookupResult.status !== 'success') {
@@ -2387,12 +2387,73 @@ function cleanTitle(title) {
         .trim();
 }
 
+/**
+ * Récupère le nom du médecin actuellement connecté
+ * @returns {string|null} - Le nom du médecin connecté, ou null si non trouvé
+ */
+function getConnectedDoctorName() {
+    // Essayer d'abord avec LabelUserLog
+    const labelUserLog = document.getElementById('LabelUserLog');
+    if (labelUserLog && labelUserLog.innerText) {
+        return labelUserLog.innerText.trim();
+    }
+    
+    // Sinon essayer avec LinkButtonUserLog
+    const linkButtonUserLog = document.getElementById('LinkButtonUserLog');
+    if (linkButtonUserLog && linkButtonUserLog.innerText) {
+        // Extraire juste la première ligne (le nom)
+        const lines = linkButtonUserLog.innerText.split('\n');
+        if (lines.length > 0) {
+            return lines[0].trim();
+        }
+    }
+    
+    return null;
+}
+
+/**
+ * Vérifie si un nom de médecin détecté correspond au médecin connecté
+ * @param {string} detectedName - Le nom détecté dans le PDF
+ * @param {string} connectedDoctorName - Le nom du médecin connecté
+ * @returns {boolean} - true si c'est le même médecin, false sinon
+ */
+function isConnectedDoctor(detectedName, connectedDoctorName) {
+    if (!connectedDoctorName) return false;
+    
+    // Normaliser les deux noms pour la comparaison
+    const normalizedDetected = normalizeString(detectedName);
+    const normalizedConnected = normalizeString(connectedDoctorName);
+    
+    // Vérifier si c'est une correspondance exacte
+    if (normalizedDetected === normalizedConnected) {
+        return true;
+    }
+    
+    // Extraire les mots du nom connecté (en ignorant les titres)
+    const connectedWords = normalizedConnected
+        .replace(/\b(dr\.?|docteur|professeur|pr\.?)\s+/gi, '')
+        .split(/\s+/)
+        .filter(word => word.length > 2); // Ignorer les initiales
+    
+    // Vérifier si tous les mots significatifs du médecin connecté sont présents dans le nom détecté
+    const allWordsPresent = connectedWords.every(word => 
+        normalizedDetected.includes(word)
+    );
+    
+    return allWordsPresent && connectedWords.length >= 2;
+}
+
 function extractDoctorName(fullText) {
     // Diviser le texte en lignes pour analyser ligne par ligne
     const normalizedFullText = normalizeString(fullText);
     const lines = normalizedFullText.split('\n');
     const originalLines = fullText.split('\n'); // Garder les lignes originales pour préserver la casse
 
+    // Récupérer le nom du médecin connecté pour l'ignorer
+    const connectedDoctorName = getConnectedDoctorName();
+    if (connectedDoctorName) {
+        console.log(`[pdfParser] Médecin connecté: ${connectedDoctorName} - sera ignoré lors de la détection`);
+    }
 
     // Patterns simplifiés pour les noms de médecins, sans distinction de casse
     const doctorPatterns = [
@@ -2464,10 +2525,18 @@ function extractDoctorName(fullText) {
                     }
                 }
 
-                // Si pas d'autre occurrence trouvée dans les x lignes précédentes ET suivantes, retourner ce nom
+                // Si pas d'autre occurrence trouvée dans les x lignes précédentes ET suivantes, vérifier ce nom
                 if (!hasOtherOccurrence) {
-                    console.log(`[pdfParser] Nom de médecin trouvé: ${originalMatch[1].trim()} dans la ligne ${i}`);
-                    return originalMatch[1].trim(); // Utiliser la version originale avec la casse préservée
+                    const doctorName = originalMatch[1].trim();
+                    
+                    // Vérifier si ce n'est pas le médecin connecté
+                    if (connectedDoctorName && isConnectedDoctor(doctorName, connectedDoctorName)) {
+                        console.log(`[pdfParser] Nom de médecin trouvé mais ignoré (médecin connecté): ${doctorName} dans la ligne ${i}`);
+                        continue; // Passer au pattern suivant ou à la ligne suivante
+                    }
+                    
+                    console.log(`[pdfParser] Nom de médecin trouvé: ${doctorName} dans la ligne ${i}`);
+                    return doctorName; // Utiliser la version originale avec la casse préservée
                 }
             }
         }
