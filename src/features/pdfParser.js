@@ -337,7 +337,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
             if (searchResult.needsPageRefresh) {
                 // Dans les échanges, on attend le changement DOM au lieu d'un refresh complet
                 console.log("[pdfParser] Echanges - Attente changement DOM :", searchResult.message);
-                await new Promise(resolve => setTimeout(resolve, 500));
+                await new Promise(resolve => setTimeout(resolve, 2000));
                 continue; // Nouvelle tentative
             }
 
