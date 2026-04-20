@@ -9,6 +9,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - instauration d’une période réfractaire pour la validation automatique du patient après la lecture de la carte vitale. Utile si on a besoin de dissocier un patient.
 - [#581](https://github.com/Refhi/Weda-Helper/issues/581) - ignore désormais le nom du médecin connecté lors de la recherche du nom de l’expéditeur d’un document importé
 - [#585](https://github.com/Refhi/Weda-Helper/issues/585) - les alertes via hashtag dans les antécédents fonctionnent également si votre mise en page est un peu particulière (ex. si la police de caractère est en 9 au lieu de 10)
+- [#587](https://github.com/Refhi/Weda-Helper/issues/587) - Fix d’un problème de recherche au niveau de la messagerie sécurisée, merci @Abeldvlpr !
 
 # [2.16.1.3] - fix et finalisation du Quick Access
 ## Finalisation du Quick Access :
