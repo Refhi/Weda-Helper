@@ -4,7 +4,10 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
-# [2.16.1.4]
+# [2.16.2.1] - fix
+## Ajouts :
+- [#591](https://github.com/Refhi/Weda-Helper/issues/591) - Il est désormais possible d’accéder rapidement au dossier-cible d’un document en cours d’import depuis la messagerie sécurisée
+
 ## Fix :
 - instauration d’une période réfractaire pour la validation automatique du patient après la lecture de la carte vitale. Utile si on a besoin de dissocier un patient.
 - [#581](https://github.com/Refhi/Weda-Helper/issues/581) - ignore désormais le nom du médecin connecté lors de la recherche du nom de l’expéditeur d’un document importé

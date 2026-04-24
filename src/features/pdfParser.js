@@ -433,7 +433,7 @@ async function showClickedPatient() {
 
                 console.log("[pdfParser] Patient cliqué :", patientData);
 
-                addPatientNameDisplay(patientData);
+                addPatientNameDisplay(patientData, NOM_PRENOM);
 
                 // On retire les listeners pour éviter les doublons
                 possibleClickablePatient.forEach((p) => {
@@ -445,7 +445,7 @@ async function showClickedPatient() {
 }
 
 
-function addPatientNameDisplay(patientName) {
+function addPatientNameDisplay(patientName, patientElement = null) {
     // Ajouter le nom du patient à côté du bouton de validation
     if (document.querySelector("#pdfParserPatientName")) {
         document.querySelector("#pdfParserPatientName").remove();
@@ -453,7 +453,62 @@ function addPatientNameDisplay(patientName) {
     const patientNameSpan = document.createElement('span');
     patientNameSpan.innerText = `Vers dossier : ${patientName}`;
     patientNameSpan.style.marginLeft = '10px';
+    patientNameSpan.style.cursor = 'pointer';
+    patientNameSpan.style.textDecoration = 'underline';
     patientNameSpan.id = 'pdfParserPatientName';
+    
+    // Si on a l'élément patient avec les UrlParams, on ajoute les raccourcis d'accès
+    if (patientElement && patientElement.UrlParams) {
+        const urlParams = patientElement.UrlParams;
+        
+        // Fonction pour ouvrir les notes du patient
+        const openPatientNotes = () => {
+            const baseUrlNote = `${baseUrl}/FolderMedical/PopUpRappel.aspx?`;
+            const url = baseUrlNote + urlParams;
+            recordMetrics({ clicks: 2, drags: 2 });
+            window.open(url, '_blank');
+        };
+        
+        // Fonction pour ouvrir les antécédents
+        const openPatientATCD = () => {
+            const baseUrlATCD = `${baseUrl}/FolderMedical/AntecedentForm.aspx?`;
+            const url = baseUrlATCD + urlParams;
+            recordMetrics({ clicks: 2, drags: 2 });
+            window.open(url, '_blank');
+        };
+        
+        // Fonction pour ouvrir le dossier patient
+        const openPatientFile = () => {
+            const baseUrlPatient = `${baseUrl}/FolderMedical/PatientViewForm.aspx?`;
+            const url = baseUrlPatient + urlParams;
+            recordMetrics({ clicks: 1, drags: 1 });
+            window.open(url, '_blank');
+        };
+        
+        // Ajout des event listeners
+        patientNameSpan.title = '[Weda-Helper] Clic pour ouvrir le dossier, clic droit pour les notes, ctrl+clic (ou clic du milieu) pour les antécédents';
+        
+        // Clic simple : ouvrir le dossier patient
+        patientNameSpan.addEventListener('click', function(event) {
+            event.preventDefault();
+            openPatientFile();
+        });
+        
+        // Clic droit : ouvrir les notes
+        patientNameSpan.addEventListener('contextmenu', function(event) {
+            event.preventDefault();
+            openPatientNotes();
+        });
+        
+        // Clic du milieu ou Ctrl+Clic : ouvrir les antécédents
+        patientNameSpan.addEventListener('mousedown', function(event) {
+            if (event.button === 1 || (event.ctrlKey && event.button === 0)) {
+                event.preventDefault();
+                openPatientATCD();
+            }
+        });
+    }
+    
     const validationButton = document.querySelector("#messageContainer .button.valid");
     validationButton.insertAdjacentElement('afterend', patientNameSpan)
 }
