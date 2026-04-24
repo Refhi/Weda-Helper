@@ -4,11 +4,18 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
-# [2.16.1.2] - fix
+# [2.16.1.4]
+## Fix :
+- instauration d’une période réfractaire pour la validation automatique du patient après la lecture de la carte vitale. Utile si on a besoin de dissocier un patient.
+- [#581](https://github.com/Refhi/Weda-Helper/issues/581) - ignore désormais le nom du médecin connecté lors de la recherche du nom de l’expéditeur d’un document importé
+- [#585](https://github.com/Refhi/Weda-Helper/issues/585) - les alertes via hashtag dans les antécédents fonctionnent également si votre mise en page est un peu particulière (ex. si la police de caractère est en 9 au lieu de 10)
+- [#587](https://github.com/Refhi/Weda-Helper/issues/587) - Fix d’un problème de recherche au niveau de la messagerie sécurisée, merci @Abeldvlpr !
+
+# [2.16.1.3] - fix et finalisation du Quick Access
 ## Finalisation du Quick Access :
 - presque toutes les lettres de ciblage sont désormais en place, et les quelques manquantes seront ajoutées dans les prochaines versions.
 - j’ai dû travailler par zones de priorité. Si vous constatez des zones où les lettres de ciblage sont mal placées ou manquantes, n’hésitez pas à me le signaler pour que je puisse les ajouter dans les prochaines versions.
-- manque encore les lettres dans la page des FSE et dans la calculette de prescription, qui seront ajoutées dans les prochaines versions.
+- la touche Tabulation peut désormais être utilisée pour sélectionner les lignes à renouveller (par exemple quand on clique sur le bouton de renouvellement d'une prescription, cela simplifie le choix de la ligne)
 
 ## Fix :
 - [#573](https://github.com/Refhi/Weda-Helper/issues/573) - L’historique des facturations est inhibé lors d’une facturation omnidoc (évite un échec des fses omnidoc)

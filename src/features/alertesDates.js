@@ -233,7 +233,7 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*alertesHashtagsATCD', function
         callback: async function (panels) {
             console.log('[alertesDateHashtag] Panel patient trouvé, recherche des hashtags...');
             const panel = panels[0];
-            const atcdElements = panel.querySelectorAll('td div[style*="font-Size:10pt"]');
+            const atcdElements = panel.querySelectorAll('[title="Cliquez ici pour modifier le volet médical du patient"] table[width="98%"] td:nth-child(2) > div');
             console.log('[alertesDateHashtag] Nombre d\'antécédents trouvés:', atcdElements.length);
 
             const preAlertATCD = parseInt(await getOptionPromise('preAlertATCD'));
@@ -242,14 +242,11 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*alertesHashtagsATCD', function
             aujourdhui.setHours(0, 0, 0, 0);
 
             atcdElements.forEach(atcdDiv => {
-                // Cibler spécifiquement les spans avec font-size:x-small qui contiennent les notes/détails
-                const detailSpans = atcdDiv.querySelectorAll('span[style*="font-size:x-small"]');
-                if (detailSpans.length === 0) return;
-                const span = detailSpans[0];
-                if (span.dataset.hashtagProcessed) return;
+                if (atcdDiv.dataset.hashtagProcessed) return;
 
                 // Utiliser innerHTML et remplacer les <br> par des sauts de ligne pour préserver la structure
-                const texte = span.innerHTML.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '');
+                // Traite tout le contenu du div, peu importe s'il est dans des spans x-small ou directement dans le div
+                const texte = atcdDiv.innerHTML.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '');
 
                 // Extraire les alertes des deux types
                 const alertesDatesDirectes = extraireDatesDirectes(texte, aujourdhui, seuilPreAlertJours);
@@ -266,9 +263,9 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*alertesHashtagsATCD', function
 
                 console.log('[alertesDateHashtag] Alertes à colorer:', alertesAColorer.length);
 
-                // Appliquer la coloration
-                span.innerHTML = appliquerColoration(span.innerHTML, alertesAColorer);
-                span.dataset.hashtagProcessed = 'true';
+                // Appliquer la coloration sur tout le contenu du div
+                atcdDiv.innerHTML = appliquerColoration(atcdDiv.innerHTML, alertesAColorer);
+                atcdDiv.dataset.hashtagProcessed = 'true';
             });
         }
     });

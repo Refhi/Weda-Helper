@@ -21,13 +21,6 @@
  * @requires metrics.js (recordMetrics)
  */
 
-
-/**
- * TODO
- * - inhiber la cotation par défaut si une cotation par défaut a déjà été faite dans les 3 minutes précédentes
- * - inhiber la lecture automatique de la carte vitale si une lecture a déjà été faite dans les 3 minutes précédentes ?
- */
-
 let fseUrl = '/vitalzen/fse.aspx';
 
 

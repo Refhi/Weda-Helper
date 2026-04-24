@@ -45,9 +45,6 @@ function returnQuickAccessConfig() {
     * ----------------------------------------------------------------------------------
     */
 
-    /** TODO page d’accueil
-     * permettre la sélection d’un patient sur la carte vitale
-     */
     // ================= Bandeau supérieur de la page d’accueil =================
     const urlPatternsBandeau = ['/FolderMedical/PatientViewForm.aspx', '/FolderTools/BiblioForm.aspx'];
     const bandeauSuperieurConfig = {
@@ -408,6 +405,14 @@ function returnQuickAccessConfig() {
         }
     };
 
+    // ================= choix du patient suite lecture CV =====================
+    const choixPatientSuiteLectureCVConfig = generateMultipleSelectorSubItems({
+        parentElement: document.body,
+        selector: '.patientLink .mat-tooltip-trigger.sign',
+        onTap: 'clic',
+        priorityLvl: true,
+    });
+
     /**
      * ----------------------------------------------------------------------------------
      *               Pages de consultation
@@ -553,13 +558,6 @@ function returnQuickAccessConfig() {
      *            Pages de prescriptions médicamenteuses
      * ----------------------------------------------------------------------------------
      */
-    /**
-     * TODO : d'autres éléments à ajouter dans les prescriptions médicamenteuses :
-     * ajouter les items de chaque ligne de prescription (dosage, posologie, durée, etc.) dans les prescriptions de médicaments
-     * ajouter la calculette dans les prescriptions de médicaments
-     * posos types de la calculette
-     */
-
     const prescriptionMedicamenteuseConfig = {
         _urlPatterns: ['/FolderMedical/PrescriptionForm.aspx'],
         'zone_texte_poids': {
@@ -670,8 +668,135 @@ function returnQuickAccessConfig() {
                     } 
                 });
             }
+        },
+        'calculette_de_l_enfer': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_PanelPosologie [onmouseover="CloseRenouvellementDuree();"]',
+            onTap: 'clic',
+            priorityLvl: true,
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: 'input:not(.cadreposomoment *)',
+                    onTap: 'clic',
+                    reQuickAction: 30,
+                });
+            }
+        },
+        'calculette_durees_frequences': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_PanelPosologie > table:nth-child(8) > tbody > tr > td > table:nth-child(2)',
+            onTap: 'clic',
+            priorityLvl: true,
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: 'input',
+                    onTap: 'clic',
+                    reQuickAction: 30,
+                });
+            }
+        },
+        'calculette_partie_basse_inputs': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_PanelPosologie > table:nth-child(8) > tbody > tr > td > table:nth-child(6)',
+            onTap: 'clic',
+            priorityLvl: true,
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: 'input:not([type="text"]):not(.motNext)',
+                    onTap: 'clic',
+                    reQuickAction: 30,
+                });
+            }
+        },
+        'calculette_indications': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_PanelPrescritionIndications',
+            onTap: 'clic',
+            priorityLvl: true,
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: '[id^="ContentPlaceHolder1_BaseVidalUcForm1_CheckBoxListPrescriptionGroupIndications_"]',
+                    onTap: 'clic',
+                    reQuickAction: 30,
+                });
+            }
+        },
+        'calculette_indications_libres': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_TextBoxAutrePrescriptionIndications',
+            onTap: 'focus',
+            reQuickAction: 30,
+            priorityLvl: true,
+        },
+        'monographie_calculette': {
+            selector: 'a[style="text-decoration:underline; color:#000ff; cursor:help;"]',
+            onTap: 'clic',
+            priorityLvl: true,
+            reQuickAction: 30,
+        },
+        'calculette_conditions': {
+            selector: '#DivShowSi',
+            onTap: 'clic',
+            priorityLvl: true,
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: 'input',
+                    onTap: 'clic',
+                    reQuickAction: 30,
+                });
+            }
+        },
+        'calculette_divers': {
+            selector: '#ContentPlaceHolder1_BaseVidalUcForm1_PanelPosologie',
+            onTap: 'clic',
+            priorityLvl: true,
+            inlineSubTooltips: true,
+            subItems: {
+                'avant_repas': {
+                    selector: '.imgposorepasavant',
+                    onTap: 'clic',
+                    reQuickAction: 30,
+                },
+                'apres_repas': {
+                    selector: '.imgposorepasapres',
+                    onTap: 'clic',
+                    reQuickAction: 30,
+                },
+                'pendant_repas': {
+                    selector: '.imgposorepas',
+                    onTap: 'clic',
+                    reQuickAction: 30,
+                },
+                'champ_divers': {
+                    selector: '#TextBoxComplementPosoStart',
+                    onTap: 'focus',
+                    reQuickAction: 30,
+                },
+                'champ_divers_fin': {
+                    selector: '#TextBoxComplementPoso',
+                    onTap: 'focus',
+                    reQuickAction: 30,
+                },
+                'champ_prescripteur': {
+                    selector: '#ContentPlaceHolder1_BaseVidalUcForm1_TextBoxPrescriptionPrescripteur',
+                    onTap: 'focus',
+                    reQuickAction: 30,
+                },
+            }
         }
     };
+
+    const base_poso_type = generateMultipleSelectorSubItems({
+        parentElement: document.body,
+        selector: '[id^="ContentPlaceHolder1_BaseVidalUcForm1_PrescriptionsGrid_LabelPrescriptionPosoName_"]',
+        onTap: 'clic',
+        priorityLvl: true,
+    }); 
 
 
     /**
@@ -849,6 +974,34 @@ function returnQuickAccessConfig() {
             onTap: 'focus',
         }
     }
+
+    // échanges sécurisés
+    const wedaEchangesConfig = {
+        _urlPatterns: ['/FolderMedical/WedaEchanges/'],
+        'zone_recherche_patient': {
+            selector: '#messageContainer',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: 'input:not([type="text"]):not(we-postit *)',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'zone_recherche_patient_inputs': {
+            selector: '#messageContainer',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: 'input[type="text"]',
+                    onTap: 'focus',
+                });
+            }
+        },
+    }
+
 
     /**
      * ----------------------------------------------------------------------------------
@@ -1261,8 +1414,16 @@ function returnQuickAccessConfig() {
 
 
     /**
-     * TODO zone d’imports de bio
+     * ----------------------------------------------------------------------------------
+     *              Importation des bios
+     * ----------------------------------------------------------------------------------
      */
+    const import_biosConfig = generateMultipleSelectorSubItems({
+        parentElement: document.body,
+        selector: '[id^="ContentPlaceHolder1_HprimsGrid_LinkButtonHprimNom_"]',
+        onTap: 'clic',
+    });
+
 
 
     // ================= Configuration finale avec filtrage =================
@@ -1292,7 +1453,11 @@ function returnQuickAccessConfig() {
         generateFseCotationsAppliqueesConfig, // fonction génératrice
         importConfig,
         documentsCabinetConfig,
-        antecedentsConfig
+        antecedentsConfig,
+        base_poso_type,
+        import_biosConfig,
+        choixPatientSuiteLectureCVConfig,
+        wedaEchangesConfig
     ];
 
     const quickAccessConfig = {};

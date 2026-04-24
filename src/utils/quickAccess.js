@@ -633,7 +633,13 @@ function ensureHotkeysForItems(config, reservedHotkeys = new Set()) {
     }
 
     // Deuxième passe : générer les hotkeys manquants
-    for (const [itemId, item] of Object.entries(config)) {
+    // Les items prioritaires passent en premier pour garantir qu'ils obtiennent les meilleures lettres
+    const allEntries = Object.entries(config);
+    const sortedEntries = [
+        ...allEntries.filter(([, item]) => item.priorityLvl === true),
+        ...allEntries.filter(([, item]) => item.priorityLvl !== true)
+    ];
+    for (const [itemId, item] of sortedEntries) {
         if (!item.hotkey) {
             if (item.selector) {
                 const element = querySelectorWithIframe(item.selector);
@@ -737,7 +743,6 @@ function generateHotkeyFromText(text, usedHotkeys) {
  * @returns {boolean} True si l'élément est visible
  */
 function isElementVisible(element, requirePartiallyInViewport = true) {
-    // return true // TODO : probablement à supprimer ou à revoir..., peut-être à n'activer que sélectivement sur certains items très nombreux
     if (!element) return false;
 
     // 1. Vérification basique : offsetParent === null détecte display:none et visibility:hidden
