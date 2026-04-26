@@ -45,9 +45,6 @@ function returnQuickAccessConfig() {
     * ----------------------------------------------------------------------------------
     */
 
-    /** TODO page d’accueil
-     * permettre la sélection d’un patient sur la carte vitale
-     */
     // ================= Bandeau supérieur de la page d’accueil =================
     const urlPatternsBandeau = ['/FolderMedical/PatientViewForm.aspx', '/FolderTools/BiblioForm.aspx'];
     const bandeauSuperieurConfig = {
@@ -407,6 +404,14 @@ function returnQuickAccessConfig() {
             }
         }
     };
+
+    // ================= choix du patient suite lecture CV =====================
+    const choixPatientSuiteLectureCVConfig = generateMultipleSelectorSubItems({
+        parentElement: document.body,
+        selector: '.patientLink .mat-tooltip-trigger.sign',
+        onTap: 'clic',
+        priorityLvl: true,
+    });
 
     /**
      * ----------------------------------------------------------------------------------
@@ -786,6 +791,13 @@ function returnQuickAccessConfig() {
         }
     };
 
+    const base_poso_type = generateMultipleSelectorSubItems({
+        parentElement: document.body,
+        selector: '[id^="ContentPlaceHolder1_BaseVidalUcForm1_PrescriptionsGrid_LabelPrescriptionPosoName_"]',
+        onTap: 'clic',
+        priorityLvl: true,
+    }); 
+
 
     /**
      * ----------------------------------------------------------------------------------
@@ -962,6 +974,34 @@ function returnQuickAccessConfig() {
             onTap: 'focus',
         }
     }
+
+    // échanges sécurisés
+    const wedaEchangesConfig = {
+        _urlPatterns: ['/FolderMedical/WedaEchanges/'],
+        'zone_recherche_patient': {
+            selector: '#messageContainer',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: 'input:not([type="text"]):not(we-postit *)',
+                    onTap: 'clic',
+                });
+            }
+        },
+        'zone_recherche_patient_inputs': {
+            selector: '#messageContainer',
+            inlineSubTooltips: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    selector: 'input[type="text"]',
+                    onTap: 'focus',
+                });
+            }
+        },
+    }
+
 
     /**
      * ----------------------------------------------------------------------------------
@@ -1374,8 +1414,16 @@ function returnQuickAccessConfig() {
 
 
     /**
-     * TODO zone d’imports de bio
+     * ----------------------------------------------------------------------------------
+     *              Importation des bios
+     * ----------------------------------------------------------------------------------
      */
+    const import_biosConfig = generateMultipleSelectorSubItems({
+        parentElement: document.body,
+        selector: '[id^="ContentPlaceHolder1_HprimsGrid_LinkButtonHprimNom_"]',
+        onTap: 'clic',
+    });
+
 
 
     // ================= Configuration finale avec filtrage =================
@@ -1405,7 +1453,11 @@ function returnQuickAccessConfig() {
         generateFseCotationsAppliqueesConfig, // fonction génératrice
         importConfig,
         documentsCabinetConfig,
-        antecedentsConfig
+        antecedentsConfig,
+        base_poso_type,
+        import_biosConfig,
+        choixPatientSuiteLectureCVConfig,
+        wedaEchangesConfig
     ];
 
     const quickAccessConfig = {};

@@ -337,7 +337,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
             if (searchResult.needsPageRefresh) {
                 // Dans les échanges, on attend le changement DOM au lieu d'un refresh complet
                 console.log("[pdfParser] Echanges - Attente changement DOM :", searchResult.message);
-                await new Promise(resolve => setTimeout(resolve, 500));
+                await new Promise(resolve => setTimeout(resolve, 2000));
                 continue; // Nouvelle tentative
             }
 
@@ -433,7 +433,7 @@ async function showClickedPatient() {
 
                 console.log("[pdfParser] Patient cliqué :", patientData);
 
-                addPatientNameDisplay(patientData);
+                addPatientNameDisplay(patientData, NOM_PRENOM);
 
                 // On retire les listeners pour éviter les doublons
                 possibleClickablePatient.forEach((p) => {
@@ -445,7 +445,7 @@ async function showClickedPatient() {
 }
 
 
-function addPatientNameDisplay(patientName) {
+function addPatientNameDisplay(patientName, patientElement = null) {
     // Ajouter le nom du patient à côté du bouton de validation
     if (document.querySelector("#pdfParserPatientName")) {
         document.querySelector("#pdfParserPatientName").remove();
@@ -453,7 +453,62 @@ function addPatientNameDisplay(patientName) {
     const patientNameSpan = document.createElement('span');
     patientNameSpan.innerText = `Vers dossier : ${patientName}`;
     patientNameSpan.style.marginLeft = '10px';
+    patientNameSpan.style.cursor = 'pointer';
+    patientNameSpan.style.textDecoration = 'underline';
     patientNameSpan.id = 'pdfParserPatientName';
+    
+    // Si on a l'élément patient avec les UrlParams, on ajoute les raccourcis d'accès
+    if (patientElement && patientElement.UrlParams) {
+        const urlParams = patientElement.UrlParams;
+        
+        // Fonction pour ouvrir les notes du patient
+        const openPatientNotes = () => {
+            const baseUrlNote = `${baseUrl}/FolderMedical/PopUpRappel.aspx?`;
+            const url = baseUrlNote + urlParams;
+            recordMetrics({ clicks: 2, drags: 2 });
+            window.open(url, '_blank');
+        };
+        
+        // Fonction pour ouvrir les antécédents
+        const openPatientATCD = () => {
+            const baseUrlATCD = `${baseUrl}/FolderMedical/AntecedentForm.aspx?`;
+            const url = baseUrlATCD + urlParams;
+            recordMetrics({ clicks: 2, drags: 2 });
+            window.open(url, '_blank');
+        };
+        
+        // Fonction pour ouvrir le dossier patient
+        const openPatientFile = () => {
+            const baseUrlPatient = `${baseUrl}/FolderMedical/PatientViewForm.aspx?`;
+            const url = baseUrlPatient + urlParams;
+            recordMetrics({ clicks: 1, drags: 1 });
+            window.open(url, '_blank');
+        };
+        
+        // Ajout des event listeners
+        patientNameSpan.title = '[Weda-Helper] Clic pour ouvrir le dossier, clic droit pour les notes, ctrl+clic (ou clic du milieu) pour les antécédents';
+        
+        // Clic simple : ouvrir le dossier patient
+        patientNameSpan.addEventListener('click', function(event) {
+            event.preventDefault();
+            openPatientFile();
+        });
+        
+        // Clic droit : ouvrir les notes
+        patientNameSpan.addEventListener('contextmenu', function(event) {
+            event.preventDefault();
+            openPatientNotes();
+        });
+        
+        // Clic du milieu ou Ctrl+Clic : ouvrir les antécédents
+        patientNameSpan.addEventListener('mousedown', function(event) {
+            if (event.button === 1 || (event.ctrlKey && event.button === 0)) {
+                event.preventDefault();
+                openPatientATCD();
+            }
+        });
+    }
+    
     const validationButton = document.querySelector("#messageContainer .button.valid");
     validationButton.insertAdjacentElement('afterend', patientNameSpan)
 }
@@ -2387,12 +2442,73 @@ function cleanTitle(title) {
         .trim();
 }
 
+/**
+ * Récupère le nom du médecin actuellement connecté
+ * @returns {string|null} - Le nom du médecin connecté, ou null si non trouvé
+ */
+function getConnectedDoctorName() {
+    // Essayer d'abord avec LabelUserLog
+    const labelUserLog = document.getElementById('LabelUserLog');
+    if (labelUserLog && labelUserLog.innerText) {
+        return labelUserLog.innerText.trim();
+    }
+    
+    // Sinon essayer avec LinkButtonUserLog
+    const linkButtonUserLog = document.getElementById('LinkButtonUserLog');
+    if (linkButtonUserLog && linkButtonUserLog.innerText) {
+        // Extraire juste la première ligne (le nom)
+        const lines = linkButtonUserLog.innerText.split('\n');
+        if (lines.length > 0) {
+            return lines[0].trim();
+        }
+    }
+    
+    return null;
+}
+
+/**
+ * Vérifie si un nom de médecin détecté correspond au médecin connecté
+ * @param {string} detectedName - Le nom détecté dans le PDF
+ * @param {string} connectedDoctorName - Le nom du médecin connecté
+ * @returns {boolean} - true si c'est le même médecin, false sinon
+ */
+function isConnectedDoctor(detectedName, connectedDoctorName) {
+    if (!connectedDoctorName) return false;
+    
+    // Normaliser les deux noms pour la comparaison
+    const normalizedDetected = normalizeString(detectedName);
+    const normalizedConnected = normalizeString(connectedDoctorName);
+    
+    // Vérifier si c'est une correspondance exacte
+    if (normalizedDetected === normalizedConnected) {
+        return true;
+    }
+    
+    // Extraire les mots du nom connecté (en ignorant les titres)
+    const connectedWords = normalizedConnected
+        .replace(/\b(dr\.?|docteur|professeur|pr\.?)\s+/gi, '')
+        .split(/\s+/)
+        .filter(word => word.length > 2); // Ignorer les initiales
+    
+    // Vérifier si tous les mots significatifs du médecin connecté sont présents dans le nom détecté
+    const allWordsPresent = connectedWords.every(word => 
+        normalizedDetected.includes(word)
+    );
+    
+    return allWordsPresent && connectedWords.length >= 2;
+}
+
 function extractDoctorName(fullText) {
     // Diviser le texte en lignes pour analyser ligne par ligne
     const normalizedFullText = normalizeString(fullText);
     const lines = normalizedFullText.split('\n');
     const originalLines = fullText.split('\n'); // Garder les lignes originales pour préserver la casse
 
+    // Récupérer le nom du médecin connecté pour l'ignorer
+    const connectedDoctorName = getConnectedDoctorName();
+    if (connectedDoctorName) {
+        console.log(`[pdfParser] Médecin connecté: ${connectedDoctorName} - sera ignoré lors de la détection`);
+    }
 
     // Patterns simplifiés pour les noms de médecins, sans distinction de casse
     const doctorPatterns = [
@@ -2464,10 +2580,18 @@ function extractDoctorName(fullText) {
                     }
                 }
 
-                // Si pas d'autre occurrence trouvée dans les x lignes précédentes ET suivantes, retourner ce nom
+                // Si pas d'autre occurrence trouvée dans les x lignes précédentes ET suivantes, vérifier ce nom
                 if (!hasOtherOccurrence) {
-                    console.log(`[pdfParser] Nom de médecin trouvé: ${originalMatch[1].trim()} dans la ligne ${i}`);
-                    return originalMatch[1].trim(); // Utiliser la version originale avec la casse préservée
+                    const doctorName = originalMatch[1].trim();
+                    
+                    // Vérifier si ce n'est pas le médecin connecté
+                    if (connectedDoctorName && isConnectedDoctor(doctorName, connectedDoctorName)) {
+                        console.log(`[pdfParser] Nom de médecin trouvé mais ignoré (médecin connecté): ${doctorName} dans la ligne ${i}`);
+                        continue; // Passer au pattern suivant ou à la ligne suivante
+                    }
+                    
+                    console.log(`[pdfParser] Nom de médecin trouvé: ${doctorName} dans la ligne ${i}`);
+                    return doctorName; // Utiliser la version originale avec la casse préservée
                 }
             }
         }
