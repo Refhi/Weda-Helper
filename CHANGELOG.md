@@ -8,6 +8,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 ## Fix :
 - [#596](https://github.com/Refhi/Weda-Helper/issues/596) - Les listes de patients trouvés après une recherche sont de nouveau correctement visés. Règle par exemple l'ouverture automatique d'un patient seul après une recherche.
 - [#593](https://github.com/Refhi/Weda-Helper/issues/593) - Clarification du message d'erreur de la page des options en cas de valeur invalide + ajout d'une proposition de réinitialiser l'option problématique.
+- [#594](https://github.com/Refhi/Weda-Helper/issues/594) - la sélection automatique "Je suis le médecin traitant" fonctionne de nouveau correctement. (La sélection n'était que visuelle et non répercutée dans la FSE)
 
 
 # [2.16.2.1] - fix
