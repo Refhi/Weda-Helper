@@ -4,6 +4,11 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [2.16.3.1] - fix
+## Fix :
+- [#596](https://github.com/Refhi/Weda-Helper/issues/596) - Les listes de patients trouvés après une recherche sont de nouveau correctement visés. Règle par exemple l'ouverture automatique d'un patient seul après une recherche.
+
+
 # [2.16.2.1] - fix
 ## Ajouts :
 - [#591](https://github.com/Refhi/Weda-Helper/issues/591) - Il est désormais possible d’accéder rapidement au dossier-cible d’un document en cours d’import depuis la messagerie sécurisée
