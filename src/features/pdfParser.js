@@ -1085,7 +1085,7 @@ function checkAlreadyExtractedData(hashId) {
 // Renvoie la liste des patients trouvés après recherche
 function getPatientsList() {
     // #ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_0
-    const patientListSelector = "[id^='ContentPlaceHolder1_FindPatientUcForm'][id*='_PatientsGrid_LinkButtonPatientGetNomPrenom_']";
+    const patientListSelector = "[id^='ContentPlaceHolder1_FindPatientUcForm'][id*='_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_']";
     const patientElements = document.querySelectorAll(patientListSelector);
     return patientElements;
 }
