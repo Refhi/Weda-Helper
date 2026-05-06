@@ -119,7 +119,7 @@ let urls = [
 
 addTweak(urls, '*addATCDShortcut', function () {
     let patientsSelector =
-        '[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"], ' +
+        '[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_"], ' +
         '[id^="ContentPlaceHolder1_FindPatientUcForm2_PatientsGrid_LinkButtonPatientGetNomPrenom_"]' // mode vertical dans les imports
 
     async function addPatientUrlParams(element, patientFileNumber) {
