@@ -649,12 +649,12 @@ async function extractBasePdfData(iframesElements) {
     // 3. Ajouter le corps du message à la fin du texte du PDF si disponible et si le PDF contient moins de 3 lignes
     const messageBody = returnMessageBodyES();
     if (messageBody) {
-        const pdfLineCount = fullText.split('\n').length;
-        if (pdfLineCount < 3) {
-            console.log(`[pdfParser] Le PDF ne contient que ${pdfLineCount} ligne(s), ajout du corps du message`);
+        const pdfCharCount = fullText.length;
+        if (pdfCharCount < 100) {
+            console.log(`[pdfParser] Le PDF ne contient que ${pdfCharCount} caractère(s), ajout du corps du message`);
             fullText += "\n\n=== Corps du message ===\n" + messageBody;
         } else {
-            console.log(`[pdfParser] Le PDF contient ${pdfLineCount} lignes, pas d'ajout du corps du message`);
+            console.log(`[pdfParser] Le PDF contient ${pdfCharCount} caractères, pas d'ajout du corps du message`);
         }
     }
 
