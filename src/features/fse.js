@@ -489,6 +489,9 @@ addTweak(fseUrl, 'TweakFSEDetectMT', function () {
                 console.log('MT déclaré = utilisateur en cours => je coche MT déclaré');
                 let select = document.querySelector('vz-orientation select');
                 select.value = '03'; // Je suis le médecin traitant
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+                select.dispatchEvent(new Event('input', { bubbles: true }));
+                recordMetrics({ clicks: 1, drags: 1 });
             }
         }
     });

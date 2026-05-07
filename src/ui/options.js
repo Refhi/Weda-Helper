@@ -349,6 +349,7 @@ function getCategoriesFromJsonInput(input) {
         console.warn(`Ligne ${lineIndex + 1}: Format de ligne non reconnu (${parts.length} parties trouvées avant ':')`);
         alert(`Erreur ligne ${lineIndex + 1}: Format non reconnu. Attendu:\n- "nom : mot1, mot2" (ancien format)\n- "titre, true/false, true/false, icône : mot1, mot2" (nouveau format)`);
         hasError = true;
+        return null; // Format non reconnu, ligne invalide
       }
     }
   });
@@ -470,32 +471,7 @@ function createLabel(option) {
 
     defaultBtn.addEventListener('click', function (e) {
       e.preventDefault();
-      const inputElement = document.getElementById(option.name);
-
-      // Demander confirmation à l'utilisateur
-      const confirmMessage = `Êtes-vous sûr de vouloir restaurer la valeur par défaut ?`;
-      if (!confirm(confirmMessage)) {
-        return;
-      }
-
-      if (inputElement) {
-        if (option.type === 'json') {
-          // Pour les options JSON, utiliser displayCategories pour formater
-          inputElement.value = displayCategories(option.default);
-        } else if (option.type === 'true_json') {
-          // Pour les options true_json, formater joliment le JSON
-          inputElement.value = formatJsonPretty(option.default);
-          // Réinitialiser le style en cas d'erreur précédente
-          inputElement.style.borderColor = '';
-          inputElement.style.backgroundColor = '';
-        } else {
-          // Pour les autres types, utiliser directement la valeur par défaut
-          inputElement.value = option.default;
-        }
-
-        // Déclencher l'événement change si nécessaire
-        inputElement.dispatchEvent(new Event('change', { bubbles: true }));
-      }
+      resetOptionToDefault(option.name, option.default, true);
     });
 
     label.appendChild(defaultBtn);
@@ -797,6 +773,55 @@ chrome.storage.local.get('defaultShortcuts', function (result) {
   }
 });
 
+// Fonction mutualisée pour réinitialiser une option à sa valeur par défaut
+function resetOptionToDefault(optionName, defaultValue, askConfirmation = true) {
+  const inputElement = document.getElementById(optionName);
+  
+  if (!inputElement) {
+    console.error('❌ Élément introuvable:', optionName);
+    return false;
+  }
+  
+  // Demander confirmation si nécessaire
+  if (askConfirmation) {
+    const confirmMessage = `Êtes-vous sûr de vouloir restaurer la valeur par défaut ?`;
+    if (!confirm(confirmMessage)) {
+      return false;
+    }
+  }
+  
+  // Déterminer le type de l'option via les classes CSS
+  if (inputElement.classList.contains('json-input')) {
+    // Pour les options JSON, utiliser displayCategories pour formater
+    inputElement.value = displayCategories(defaultValue);
+  } else if (inputElement.classList.contains('true-json-input')) {
+    // Pour les options true_json, formater joliment le JSON
+    inputElement.value = formatJsonPretty(defaultValue);
+    // Réinitialiser le style en cas d'erreur précédente
+    inputElement.style.borderColor = '';
+    inputElement.style.backgroundColor = '';
+  } else {
+    // Pour les autres types, utiliser directement la valeur par défaut
+    inputElement.value = defaultValue;
+  }
+  
+  // Déclencher l'événement change
+  inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+  return true;
+}
+
+// Fonction appellée pour proposer à l'utilisateur de réinitialiser les catégories à la valeur par défaut ou de corriger manuellement en cas d'erreur de validation
+function handleValidationError(option, defaultSettings) {
+  console.error('❌ Erreur de validation pour l\'option', option.name);
+  // Proposer de réinitialiser à la valeur par défaut ou corriger
+  const userChoice = confirm(`❌ Erreur de validation pour "${option.description}". Voulez-vous réinitialiser à la valeur par défaut ? (Annuler pour corriger manuellement)`);
+  if (userChoice) {
+    resetOptionToDefault(option.name, defaultSettings[option.name], false);
+  } else {
+    alert('Veuillez corriger les erreurs dans le format des catégories. Assurez-vous de suivre les instructions de formatage indiquées dans le tooltip d\'aide.');
+  }
+}
+
 // Fonction mutualisée pour collecter les valeurs des options et raccourcis
 function collectCurrentValues(defaultSettings, defaultShortcuts) {
   return new Promise((resolve, reject) => {
@@ -817,6 +842,7 @@ function collectCurrentValues(defaultSettings, defaultShortcuts) {
           // Si la conversion retourne null, il y a eu une erreur
           if (jsonData === null) {
             console.error('❌ Erreur lors de la validation pour l\'option', option);
+            handleValidationError({ name: option, description: option }, defaultSettings);
             hasValidationError = true;
             return; // On arrête le traitement de cette option
           }
@@ -835,6 +861,7 @@ function collectCurrentValues(defaultSettings, defaultShortcuts) {
                   validation.errors.slice(0, 10).join('\n') +
                   (validation.errors.length > 10 ? `\n\n... et ${validation.errors.length - 10} autres erreurs` : '');
                 alert(errorMessage);
+                handleValidationError({ name: option, description: option }, defaultSettings);
                 hasValidationError = true;
                 return;
               }
@@ -845,6 +872,7 @@ function collectCurrentValues(defaultSettings, defaultShortcuts) {
           } catch (e) {
             console.error('❌ JSON invalide pour l\'option', option, ':', e.message);
             alert(`❌ JSON invalide pour "${option}":\n${e.message}`);
+            handleValidationError({ name: option, description: option }, defaultSettings);
             hasValidationError = true;
             return;
           }

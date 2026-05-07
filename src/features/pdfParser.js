@@ -371,7 +371,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     // ===========================================
     // ÉTAPE 4 : Focus sur l'élément de validation
     // ===========================================
-    const patientLinkButton = document.querySelector("#ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0");
+    const patientLinkButton = document.querySelector("#ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_0");
     if (patientLinkButton) {
         console.log("[pdfParser] Mise au focus sur le patient sélectionné");
         patientLinkButton.focus();
@@ -423,8 +423,8 @@ async function showClickedPatient() {
                 console.log("[pdfParser] Patient cliqué :", patient.innerText);
                 // La DDN a un id qui commence par "ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatienDateNaissance_"
                 const DDN = patient.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatienDateNaissance_']");
-                // Le NOM PRENOM a un id qui commence par "ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"
-                const NOM_PRENOM = patient.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_']");
+                // Le NOM PRENOM a un id qui commence par "ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_"
+                const NOM_PRENOM = patient.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_']");
 
                 // Correction de la ligne pour éviter les erreurs de concaténation avec null
                 const nomPrenom = NOM_PRENOM ? NOM_PRENOM.innerText : "";
@@ -433,7 +433,7 @@ async function showClickedPatient() {
 
                 console.log("[pdfParser] Patient cliqué :", patientData);
 
-                addPatientNameDisplay(patientData);
+                addPatientNameDisplay(patientData, NOM_PRENOM);
 
                 // On retire les listeners pour éviter les doublons
                 possibleClickablePatient.forEach((p) => {
@@ -445,7 +445,7 @@ async function showClickedPatient() {
 }
 
 
-function addPatientNameDisplay(patientName) {
+function addPatientNameDisplay(patientName, patientElement = null) {
     // Ajouter le nom du patient à côté du bouton de validation
     if (document.querySelector("#pdfParserPatientName")) {
         document.querySelector("#pdfParserPatientName").remove();
@@ -453,7 +453,62 @@ function addPatientNameDisplay(patientName) {
     const patientNameSpan = document.createElement('span');
     patientNameSpan.innerText = `Vers dossier : ${patientName}`;
     patientNameSpan.style.marginLeft = '10px';
+    patientNameSpan.style.cursor = 'pointer';
+    patientNameSpan.style.textDecoration = 'underline';
     patientNameSpan.id = 'pdfParserPatientName';
+    
+    // Si on a l'élément patient avec les UrlParams, on ajoute les raccourcis d'accès
+    if (patientElement && patientElement.UrlParams) {
+        const urlParams = patientElement.UrlParams;
+        
+        // Fonction pour ouvrir les notes du patient
+        const openPatientNotes = () => {
+            const baseUrlNote = `${baseUrl}/FolderMedical/PopUpRappel.aspx?`;
+            const url = baseUrlNote + urlParams;
+            recordMetrics({ clicks: 2, drags: 2 });
+            window.open(url, '_blank');
+        };
+        
+        // Fonction pour ouvrir les antécédents
+        const openPatientATCD = () => {
+            const baseUrlATCD = `${baseUrl}/FolderMedical/AntecedentForm.aspx?`;
+            const url = baseUrlATCD + urlParams;
+            recordMetrics({ clicks: 2, drags: 2 });
+            window.open(url, '_blank');
+        };
+        
+        // Fonction pour ouvrir le dossier patient
+        const openPatientFile = () => {
+            const baseUrlPatient = `${baseUrl}/FolderMedical/PatientViewForm.aspx?`;
+            const url = baseUrlPatient + urlParams;
+            recordMetrics({ clicks: 1, drags: 1 });
+            window.open(url, '_blank');
+        };
+        
+        // Ajout des event listeners
+        patientNameSpan.title = '[Weda-Helper] Clic pour ouvrir le dossier, clic droit pour les notes, ctrl+clic (ou clic du milieu) pour les antécédents';
+        
+        // Clic simple : ouvrir le dossier patient
+        patientNameSpan.addEventListener('click', function(event) {
+            event.preventDefault();
+            openPatientFile();
+        });
+        
+        // Clic droit : ouvrir les notes
+        patientNameSpan.addEventListener('contextmenu', function(event) {
+            event.preventDefault();
+            openPatientNotes();
+        });
+        
+        // Clic du milieu ou Ctrl+Clic : ouvrir les antécédents
+        patientNameSpan.addEventListener('mousedown', function(event) {
+            if (event.button === 1 || (event.ctrlKey && event.button === 0)) {
+                event.preventDefault();
+                openPatientATCD();
+            }
+        });
+    }
+    
     const validationButton = document.querySelector("#messageContainer .button.valid");
     validationButton.insertAdjacentElement('afterend', patientNameSpan)
 }
@@ -594,12 +649,12 @@ async function extractBasePdfData(iframesElements) {
     // 3. Ajouter le corps du message à la fin du texte du PDF si disponible et si le PDF contient moins de 3 lignes
     const messageBody = returnMessageBodyES();
     if (messageBody) {
-        const pdfLineCount = fullText.split('\n').length;
-        if (pdfLineCount < 3) {
-            console.log(`[pdfParser] Le PDF ne contient que ${pdfLineCount} ligne(s), ajout du corps du message`);
+        const pdfCharCount = fullText.length;
+        if (pdfCharCount < 100) {
+            console.log(`[pdfParser] Le PDF ne contient que ${pdfCharCount} caractère(s), ajout du corps du message`);
             fullText += "\n\n=== Corps du message ===\n" + messageBody;
         } else {
-            console.log(`[pdfParser] Le PDF contient ${pdfLineCount} lignes, pas d'ajout du corps du message`);
+            console.log(`[pdfParser] Le PDF contient ${pdfCharCount} caractères, pas d'ajout du corps du message`);
         }
     }
 
@@ -1029,8 +1084,8 @@ function checkAlreadyExtractedData(hashId) {
 
 // Renvoie la liste des patients trouvés après recherche
 function getPatientsList() {
-    // #ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0
-    const patientListSelector = "[id^='ContentPlaceHolder1_FindPatientUcForm'][id*='_PatientsGrid_LinkButtonPatientGetNomPrenom_']";
+    // #ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_0
+    const patientListSelector = "[id^='ContentPlaceHolder1_FindPatientUcForm'][id*='_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_']";
     const patientElements = document.querySelectorAll(patientListSelector);
     return patientElements;
 }

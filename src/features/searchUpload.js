@@ -22,10 +22,10 @@
  * Cela permet de personnaliser l'ordre de navigation au clavier (tabulation) pour ces éléments.
  *
  * @param {string} validTarget - L'identifiant cible utilisé pour sélectionner les éléments. 
- *                                Il doit correspondre à l'id du premier élément de la liste ex. "ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0".
+ *                                Il doit correspondre à l'id du premier élément de la liste ex. "ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_0".
  * 
  * @example
- * ListTabOrderer('ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0');
+ * ListTabOrderer('ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_0');
  * 
  */
 function ListTabOrderer(validTarget) {
@@ -124,12 +124,12 @@ function waitForLoadSpin(shouldAppear) {
 }
 
 
-// place a listner on all patients names (ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0 etc.)
+// place a listner on all patients names (ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_0 etc.)
 function PatientSelectEntryListener() {
     console.log('[debug] PatientSelectEntryListener started');
-    // place a listener on all elements starting with ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_
+    // place a listener on all elements starting with ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_
     var elements = document.querySelectorAll(
-        '[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_"], ' + // mode horizontal
+        '[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_"], ' + // mode horizontal
         '[id^="ContentPlaceHolder1_FindPatientUcForm2_PatientsGrid_LinkButtonPatientGetNomPrenom_"]'); // mode vertical
     for (var i = 0; i < elements.length; i++) {
         console.log('added event listener to patient name', elements[i]);
@@ -295,7 +295,7 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'TweakImports', async function () {
     } else {
         console.log('Mode horizontal');
         idsSearchBox = 'ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche';
-        validTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0';
+        validTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_0';
     }
 
     // Create a MutationObserver instance to watch for changes in the DOM
@@ -324,8 +324,8 @@ addTweak('/FolderMedical/FindPatientForm.aspx', 'TweakTabSearchPatient', functio
         var timeDifference = currentTime - result.searchTime;
         var timeDifferenceInSeconds = timeDifference / 1000;
         const idsSearchBox = 'ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche';
-        const validTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_0';
-        const secondTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatientGetNomPrenom_1';
+        const validTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_0';
+        const secondTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_1';
         if (timeDifferenceInSeconds >= 5 || isNaN(timeDifferenceInSeconds)) {
             console.log('délais depuis le dernier alt+r :', timeDifferenceInSeconds, 'secondes donc on lance le tweak');
             console.log('TweakTabSearchPatient started');
