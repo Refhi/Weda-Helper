@@ -4,6 +4,12 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [3.0.0.0] - Weda Helper
+## Changement de version :
+- changement de numéro de version majeur, mais sans signification autre que la simplification : 2.16.3.2 ça devenait illisible...
+
+## 
+
 # [2.16.3.2] - fix
 ## Fix :
 - [#596](https://github.com/Refhi/Weda-Helper/issues/596) - Les listes de patients trouvés après une recherche sont de nouveau correctement visée. Règle par exemple l'ouverture automatique d'un patient seul après une recherche ou sur les imports semi-automatiques (merci @Abeldvlpr pour la contribution !)
