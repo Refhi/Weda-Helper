@@ -345,6 +345,10 @@ addTweak(fseUrl, 'TweakFSECreation', function tweakFSENavigationNO() {
  * Gestion des cotations par défaut en fonction des conditions (ALD, âge, téléconsultation, etc.)
  */
 addTweak(fseUrl, 'defaultCotation', function tweakFSECotationDefaut() {
+    if (window.location.href.includes('Buffer=')) {
+        console.log('[defaultCotation] Buffer mode detected, skipping defaultCotation handling to avoid conflicts with other features like omnidoc facturation');
+        return;
+    }
     let aDefaultCotationHasBeenApplied = false; // Flag pour éviter d'appliquer plusieurs cotations par défaut
     function setDefaultValue() { // !! déclenche un rafraichissement partiel
         // va parcourir dans l'ordre le tableau de conditions et appliquer la première qui est remplie
