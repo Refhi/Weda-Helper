@@ -137,6 +137,11 @@ function getAllDocuments() {
 function addListenersToDocuments(documents, state, config) {
     documents.forEach(doc => {
         const keydownHandler = (e) => {
+            // Ne pas empêcher la propagation des touches modificatrices seules (pour compatibilité avec tooltip.js)
+            if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) {
+                return; // Laisser passer les touches modificatrices
+            }
+            
             e.preventDefault();
             if (e.key === 'Backspace') { // Permet de remonter d'un niveau dans l'arborescence du Quick Access
                 if (state.currentLevel.length <= 1) {
@@ -164,8 +169,8 @@ function addListenersToDocuments(documents, state, config) {
         };
 
         const keyupHandler = (e) => {
-            e.preventDefault();
             if (e.key === 'Escape') {
+                e.preventDefault();
                 deactivateQuickAccess(state);
             }
         };
