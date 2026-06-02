@@ -250,7 +250,7 @@ Installez et laisser tourner ce logiciel sur votre ordinateur pour avoir des fon
 
 Les retours constructifs, rapport de bug et pull requests sont les bienvenus sur
 [https://github.com/Refhi/Weda-Helper](https://github.com/Refhi/Weda-Helper)
-Les encouragements sont les bienvenus sur [le site de la communauté](https://github.com/Refhi/Weda-Helper/discussions/Weda-Helper-et-Weda-Helper-Companion/td-p/2791)
+Les encouragements sont les bienvenus sur [le site de la communauté](https://communaute.weda.fr/discussions-n4y99j90/post/weda-helper-pQfPGckmrhwKBJC/Weda-Helper-et-Weda-Helper-Companion/td-p/2791)
 
 *Annonce en date du 30/04/2025* : à compter d'aujourd'hui l'extension est considérée comme "fonctionnellement complète". Je ne prévois donc plus d'ajout de nouvelles fonctionnalités jusqu'à Weda 2, mais je continuerai à corriger les bugs et à faire des mises à jour de sécurité si nécessaire. Je vous remercie pour votre soutien et vos contributions !
 

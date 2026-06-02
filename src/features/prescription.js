@@ -454,7 +454,7 @@ addTweak([demandeUrl, prescriptionUrl], '*NumPres', function () {
 // Selectionne automatiquement le type de prescription numérique
 addTweak(demandeUrl, 'autoSelectTypeOrdoNum', function () {
     const typesSoins = [
-        { regex: /\bIDE\b|infirmier|pansement|injection/i, type: 0 },
+        { regex: /\bIDE\b|infirmier|pansement|injection|BSI/i, type: 0 },
         { regex: /\bkiné\b|\bkine\b|kinésithérapie|kinesitherapie|MKDE|KDE|kinesitherapeute|kinesithérapeute|kinésithérapeute/i, type: 1 },
         { regex: /orthophonie|orthophonique|orthophoniste/i, type: 2 },
         { regex: /orthoptie|orthoptique|orthoptiste/i, type: 3 },

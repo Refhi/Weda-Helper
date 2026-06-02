@@ -8,7 +8,8 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 ## Changement de version :
 - changement de numéro de version majeur, mais sans signification autre que la simplification : 2.16.3.2 ça devenait illisible...
 
-## 
+## Mise à jour :
+- liens vers le site de la communauté temporaire vers celui hebergé par Weda
 
 # [2.16.3.2] - fix
 ## Fix :
@@ -242,7 +243,7 @@ J'espère pouvoir revenir vers vous très vite pour vous préciser la mise en ap
 
 #### Nouveau forum de discussion
 
-Suite à la fermeture du site de la communauté Weda, l'espace de discussion de Weda-Helper est désormais sur github : [Weda-Helper Discussions](https://github.com/Refhi/Weda-Helper/discussions), au moins en attendant que Weda puisse mettre en place le prochain espace de la communauté.
+Suite à la fermeture du site de la communauté Weda, l'espace de discussion de Weda-Helper est désormais sur github : [Weda-Helper Discussions](https://communaute.weda.fr/discussions-n4y99j90/post/weda-helper-pQfPGckmrhwKBJC), au moins en attendant que Weda puisse mettre en place le prochain espace de la communauté.
 
 
 
