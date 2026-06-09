@@ -136,8 +136,15 @@ function getAllDocuments() {
  */
 function addListenersToDocuments(documents, state, config) {
     documents.forEach(doc => {
-        const keydownHandler = (e) => {           
+        const keydownHandler = (e) => {
+            if (e.key === 'Alt' || e.key === 'Control') {
+                // Touche d'échappement : fermer le Quick Access
+                deactivateQuickAccess(state);
+                return;
+            }
+            // Touche autorisée : empêcher le comportement par défaut ET la propagation aux autres listeners
             e.preventDefault();
+            e.stopImmediatePropagation(); // également nécessaire pour intercepter avant les listeners en capture sur le même document
             if (e.key === 'Backspace') { // Permet de remonter d'un niveau dans l'arborescence du Quick Access
                 if (state.currentLevel.length <= 1) {
                     // Déjà à la racine virtuelle (ou moins) : fermer le Quick Access
@@ -170,9 +177,9 @@ function addListenersToDocuments(documents, state, config) {
             }
         };
 
-        // Ajouter les listeners
-        doc.addEventListener('keydown', keydownHandler);
-        doc.addEventListener('keyup', keyupHandler);
+        // Ajouter les listeners avec capture: true pour intercepter avant les autres listeners
+        doc.addEventListener('keydown', keydownHandler, { capture: true });
+        doc.addEventListener('keyup', keyupHandler, { capture: true });
 
         // Stocker les références pour pouvoir les retirer plus tard
         state.listeners.push({
@@ -1180,8 +1187,8 @@ function deactivateQuickAccess(state) {
     // Retirer tous les listeners
     if (state && state.listeners) {
         state.listeners.forEach(({ doc, keydown, keyup }) => {
-            doc.removeEventListener('keydown', keydown);
-            doc.removeEventListener('keyup', keyup);
+            doc.removeEventListener('keydown', keydown, { capture: true });
+            doc.removeEventListener('keyup', keyup, { capture: true });
         });
         state.listeners = [];
     }
