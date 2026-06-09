@@ -1011,7 +1011,7 @@ function clicPatient(extractedData) {
 
     let patientToClickName = patientToClick.innerText;
     let patientSelectionneText = selectedPatientName();
-    if (patientSelectionneText !== 'Patient à définir...' && patientSelectionneText !== null) {
+    if (patientSelectionneText !== 'Le patient est à définir' && patientSelectionneText !== null) {
         console.log("[pdfParser] Un patient est déjà sélectionné :", patientSelectionneText, "je vérifie si c'est le bon.", patientToClickName);
         // Vérifier que le patient sélectionné est bien celui qu'on cherche
         const normalizedSelected = normalizeString(patientSelectionneText);

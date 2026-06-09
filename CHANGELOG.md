@@ -14,6 +14,9 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 ## Evolution :
 - [#586](https://github.com/Refhi/Weda-Helper/issues/586) - le décochage automatique de certains documents dans la messagerie sécurisée est désormais personnalisable (ex. décocher les messages commençant par "NoName_" ou les fichiers commençant par "IHE_XDM.zip" qui sont souvent inutiles).
 
+## Fix :
+- si un patient est déjà sélectionné lors de l'import d'un document, on ne le sélectionne pas à nouveau
+
 # [2.16.3.2] - fix
 ## Fix :
 - [#596](https://github.com/Refhi/Weda-Helper/issues/596) - Les listes de patients trouvés après une recherche sont de nouveau correctement visée. Règle par exemple l'ouverture automatique d'un patient seul après une recherche ou sur les imports semi-automatiques (merci @Abeldvlpr pour la contribution !)
