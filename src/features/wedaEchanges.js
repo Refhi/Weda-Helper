@@ -28,7 +28,10 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeAutoRefresh', function (
 });
 
 
-addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeUncheckIHEMessage', function () {
+addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeUncheckIHEMessage', async function () {
+    const titlesString = await getOptionPromise('secureExchangeUncheckSomeTitles');
+    const titlesToUncheck = (titlesString || '').split(',').map(s => s.trim()).filter(s => s.length > 0);
+
     waitForElement({
         selector: 'we-doc-import',
         callback: function (elements) {
@@ -41,12 +44,18 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeUncheckIHEMessage', func
                     recordMetrics({ clicks: 1, drags: 1 });
                 } else {
                     let docTitle = element.querySelector('input.docTitle');
-                    if (docTitle.value.toUpperCase() == 'IHE_XDM.ZIP') {
+                    if (docTitle && titlesToUncheck.some(title => docTitle.value.toUpperCase().startsWith(title.toUpperCase()))) {
                         let checkbox = element.querySelector('input[type=checkbox]')
                         checkbox.checked = false;
                         checkbox.dispatchEvent(new Event('change'));
                         recordMetrics({ clicks: 1, drags: 1 });
                     }
+                    // if (docTitle.value.toUpperCase() == 'IHE_XDM.ZIP') {
+                    //     let checkbox = element.querySelector('input[type=checkbox]')
+                    //     checkbox.checked = false;
+                    //     checkbox.dispatchEvent(new Event('change'));
+                    //     recordMetrics({ clicks: 1, drags: 1 });
+                    // }
                 }
             }
 
