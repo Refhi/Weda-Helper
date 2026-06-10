@@ -37,6 +37,11 @@ addTweak(homePageUrls, 'autoSelectPatientCV', function () {
                 if (cvElement.textContent.includes('Vitale insérée')) {
                     console.log('cvElement', cvElement, 'found');
                     recordMetrics({ clicks: 1, drags: 1 });
+                    // On vérifie que la fenêtre/onglet est actif avant de cliquer
+                    if (!document.hasFocus()) {
+                        console.log('Fenêtre inactive, je ne clique pas sur la carte vitale');
+                        return;
+                    }
                     clickCarteVitale();
                 }
             });
