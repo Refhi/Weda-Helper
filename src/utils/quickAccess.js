@@ -135,9 +135,14 @@ function getAllDocuments() {
  * @param {Object} config - Configuration du Quick Access
  */
 function addListenersToDocuments(documents, state, config) {
+    /**
+     * On souhaite que les touches de modification, habituellement utilisées par les raccourcis
+     * clavier ne soient pas inhibées par le QA.
+     */
+    const quittingKeys = ['Escape', 'Alt', 'Control', 'Shift', 'Meta'];
     documents.forEach(doc => {
         const keydownHandler = (e) => {
-            if (e.key === 'Alt' || e.key === 'Control') {
+            if (quittingKeys.includes(e.key)) {
                 // Touche d'échappement : fermer le Quick Access
                 deactivateQuickAccess(state);
                 return;
@@ -171,10 +176,7 @@ function addListenersToDocuments(documents, state, config) {
         };
 
         const keyupHandler = (e) => {
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                deactivateQuickAccess(state);
-            }
+            // Servait à gérer certaines situation, obsolète.
         };
 
         // Ajouter les listeners avec capture: true pour intercepter avant les autres listeners
