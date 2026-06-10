@@ -17,6 +17,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 ## Fix :
 - si un patient est déjà sélectionné lors de l'import d'un document, on ne le sélectionne pas à nouveau
 - meilleure priorisation de l'écoute du clavier, notamment pour le QuickAccess (évite les conflits avec les autres raccourcis clavier de Weda)
+- [#600](https://github.com/Refhi/Weda-Helper/issues/600) - le mémo raccourcis clavier s'affiche de nouveau correctement au bout d'une seconde d'appuis sur Alt, et ce, pour toutes les plate-formes.
 
 # [2.16.3.2] - fix
 ## Fix :
