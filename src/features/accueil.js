@@ -464,42 +464,48 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*keepScrollPosition', function 
 // Ensuite une fois dans la gestion des antécédents, cliquer sur l'atcd correspondant
 addTweak('/FolderMedical/PatientViewForm.aspx', 'simplifyATCD', function () {
     const atcdPanelSelector = 'div[title="Cliquez ici pour modifier le volet médical du patient"]';
-    const atcdPanelElement = document.querySelector(atcdPanelSelector);
-    // Ensuite on liste l'ensemble des atcd possibles (uniquement les div directs, sauf ceux avec .sm)
-    const atcdElements = Array.from(atcdPanelElement.children).filter(child =>
-        child.tagName === 'DIV' && !child.classList.contains('sm') && !child.classList.contains('st')
-    );
-    // On y ajoute des clic droit listeners pour chaque atcd
-    atcdElements.forEach(atcdElement => {
-        // Variable pour stocker le timeout pour l'affichage du tooltip
-        let tooltipTimeout;
+    waitForElement({
+        selector: atcdPanelSelector,
+        triggerOnInit: true,
+        callback: function () {
+            const atcdPanelElement = document.querySelector(atcdPanelSelector);
+            // Ensuite on liste l'ensemble des atcd possibles (uniquement les div directs, sauf ceux avec .sm)
+            const atcdElements = Array.from(atcdPanelElement.children).filter(child =>
+                child.tagName === 'DIV' && !child.classList.contains('sm') && !child.classList.contains('st')
+            );
+            // On y ajoute des clic droit listeners pour chaque atcd
+            atcdElements.forEach(atcdElement => {
+                // Variable pour stocker le timeout pour l'affichage du tooltip
+                let tooltipTimeout;
 
-        // Ajout d'un mouseover pour afficher une info-bulle après 200ms
-        atcdElement.addEventListener('mouseover', function () {
-            tooltipTimeout = setTimeout(function () {
-                showTooltip(atcdElement, "WH:bouton droit pour éditer");
-            }, 200);
-        });
+                // Ajout d'un mouseover pour afficher une info-bulle après 200ms
+                atcdElement.addEventListener('mouseover', function () {
+                    tooltipTimeout = setTimeout(function () {
+                        showTooltip(atcdElement, "WH:bouton droit pour éditer");
+                    }, 200);
+                });
 
-        // Ajout d'un mouseout pour annuler le timeout et retirer l'info-bulle
-        atcdElement.addEventListener('mouseout', function () {
-            // Annuler le timeout si l'utilisateur quitte l'élément avant 200ms
-            clearTimeout(tooltipTimeout);
-            // On retire l'info-bulle
-            removeTooltip(atcdElement);
-        });
+                // Ajout d'un mouseout pour annuler le timeout et retirer l'info-bulle
+                atcdElement.addEventListener('mouseout', function () {
+                    // Annuler le timeout si l'utilisateur quitte l'élément avant 200ms
+                    clearTimeout(tooltipTimeout);
+                    // On retire l'info-bulle
+                    removeTooltip(atcdElement);
+                });
 
-        atcdElement.addEventListener('contextmenu', function (e) {
-            e.preventDefault(); // Empêcher le menu contextuel par défaut
-            // On récupère l'innerText du span title
-            const atcdTitle = atcdElement.querySelector('span[title]').innerText;
-            // On le stocke dans le sessionStorage
-            sessionStorage.setItem('atcdTitle', atcdTitle);
-            console.log('[simplifyATCD] atcdTitle sauvegardé', atcdTitle);
+                atcdElement.addEventListener('contextmenu', function (e) {
+                    e.preventDefault(); // Empêcher le menu contextuel par défaut
+                    // On récupère l'innerText du span title
+                    const atcdTitle = atcdElement.querySelector('span[title]').innerText;
+                    // On le stocke dans le sessionStorage
+                    sessionStorage.setItem('atcdTitle', atcdTitle);
+                    console.log('[simplifyATCD] atcdTitle sauvegardé', atcdTitle);
 
-            // Cliquer sur l'élément pour naviguer vers la page des ATCD
-            atcdElement.click();
-        });
+                    // Cliquer sur l'élément pour naviguer vers la page des ATCD
+                    atcdElement.click();
+                });
+            });
+        }
     });
 });
 
