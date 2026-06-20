@@ -156,10 +156,13 @@ addTweak('*', 'EnableHelp', function () {
                     tooltipsVisible = false;
                 }
             });
-            afterMutation(function () {
-                if (tooltipsVisible) {
-                    mouseoutW();
-                    tooltipsVisible = false;
+            afterMutations({
+                delay: 300,
+                callback: function () {
+                    if (tooltipsVisible) {
+                        mouseoutW();
+                        tooltipsVisible = false;
+                    }
                 }
             });
         }
