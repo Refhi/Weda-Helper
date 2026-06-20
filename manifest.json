@@ -72,7 +72,8 @@
         "src/features/pdfParser.js",
         "src/features/headlessSetup.js",
         "src/features/instantVaccine.js",
-        "src/features/accoladesHandling.js"
+        "src/features/accoladesHandling.js",
+        "src/features/VSM.js"
       ]
     }
   ],

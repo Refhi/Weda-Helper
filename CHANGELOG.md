@@ -11,6 +11,9 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 ## Mise à jour :
 - liens vers le site de la communauté temporaire vers celui hebergé par Weda
 
+## Ajouts :
+- [#610](https://github.com/Refhi/Weda-Helper/issues/610) - La date du dernier VSM est désormais affichée dans les antécédents (en la récupérant depuis la page d’accueil du patient à la première opportunité).
+
 ## Evolution :
 - [#586](https://github.com/Refhi/Weda-Helper/issues/586) - le décochage automatique de certains documents dans la messagerie sécurisée est désormais personnalisable (ex. décocher les messages commençant par "NoName_" ou les fichiers commençant par "IHE_XDM.zip" qui sont souvent inutiles).
 
