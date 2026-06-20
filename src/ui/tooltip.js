@@ -148,6 +148,20 @@ addTweak('*', 'EnableHelp', function () {
                 tooltipsVisible = true;
                 tooltipshower();
             }, 1000);
+            // Si la page est rafraîchie ou perd le focus, annuler le délai et masquer les tooltips
+            window.addEventListener('blur', function () {
+                clearTimeout(showTooltipsTimeout);
+                if (tooltipsVisible) {
+                    mouseoutW();
+                    tooltipsVisible = false;
+                }
+            });
+            afterMutation(function () {
+                if (tooltipsVisible) {
+                    mouseoutW();
+                    tooltipsVisible = false;
+                }
+            });
         }
     });
 
