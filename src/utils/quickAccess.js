@@ -261,9 +261,7 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
 
     // Ne rien exécuter si l'action est null/undefined
     if (action) {
-        setTimeout(() => {
-            executeAction(action, targetElementSelector, state);
-        }, 10); // Léger délais pour être sur que l'ensemble des tooltips ont bien été supprimés avant d'exécuter l'action
+        executeAction(action, targetElementSelector, state);
     }
 }
 
@@ -1032,11 +1030,17 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = fal
 
     // Déterminer si l'élément peut avoir des enfants
     // Les éléments comme <select>, <input>, <textarea>, <img>, <br>, <hr> ne peuvent pas avoir d'enfants directs valides
-    const cannotHaveChildren = ['SELECT', 'INPUT', 'TEXTAREA', 'IMG', 'BR', 'HR', 'VIDEO', 'AUDIO'].includes(element.tagName);
+    let cannotHaveChildren = ['SELECT', 'INPUT', 'TEXTAREA', 'IMG', 'BR', 'HR', 'VIDEO', 'AUDIO'].includes(element.tagName);
+    // on y ajoute les éléments body avec contenteditable="true"
+    if (element.tagName === 'BODY' && element.getAttribute('contenteditable') === 'true') {
+        cannotHaveChildren = true;
+    }
+
     
     let attachmentType;
     if (cannotHaveChildren) {
         // Pour ces éléments, insérer le tooltip comme sibling et ajuster le positionnement
+        console.log(`[QuickAccess] Tooltip "${hotkey}" : élément <${element.tagName}> ne peut pas avoir d'enfants, insertion comme sibling`);
         const rect = element.getBoundingClientRect();
         tooltip.style.position = 'absolute';
         tooltip.style.top = `${element.offsetTop}px`;
