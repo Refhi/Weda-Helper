@@ -21,6 +21,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#600](https://github.com/Refhi/Weda-Helper/issues/600) - le mémo raccourcis clavier s'affiche de nouveau correctement au bout d'une seconde d'appuis sur Alt, et ce, pour toutes les plate-formes.
 - [#609](https://github.com/Refhi/Weda-Helper/issues/609) - La carte vitale n'est lue automatiquement que sur l'onglet actuellement utilisé.
 - fiabilisation de la possibilité d’un clic droit sur l’atcd pour l’éditer directement
+- [#614](https://github.com/Refhi/Weda-Helper/issues/614) - Il est de nouveau possible d’aller rapidement dans les atcds et les notes du dossier patient depuis la page des importations de masse
 
 
 # [2.16.3.2] - fix
