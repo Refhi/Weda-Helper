@@ -22,29 +22,51 @@ let homePageUrls = [
 
 // Note : La gestion des alertes de dates d'antécédents (preAlertATCD) a été déplacée dans alertesDates.js
 
-addTweak(homePageUrls, 'autoSelectPatientCV', function () {
+addTweak(homePageUrls, 'autoSelectPatientCV', async function () {
     // lit automatiquement la carte vitale elle est insérée
     // selecteur de ttt131 : body > weda-notification-container > ng-component > mat-card > div > p
     // selecteur ce jour : body > weda-notification-container > ng-component:nth-child(2) > mat-card > div > p
     let cvSelectors = 'weda-notification-container ng-component mat-card div p';
 
+    // Fonction helper pour vérifier si l'onglet courant est l'onglet actif
+    async function isCurrentTabActive() {
+        try {
+            const hasPermission = await checkPermission('tabs');
+            if (!hasPermission) {
+                console.log('Permission tabs non accordée, lecture CV autorisée par défaut');
+                return true; // Par défaut, on autorise si pas de permission
+            }
+
+            const [currentTab, activeTab] = await Promise.all([
+                handleTabsFeature({ action: 'getCurrentTab', info: 'Vérification onglet CV' }),
+                handleTabsFeature({ action: 'getActiveTab', info: 'Vérification onglet CV' })
+            ]);
+
+            return currentTab && activeTab && currentTab.id === activeTab.id;
+        } catch (error) {
+            console.error('Erreur vérification onglet actif:', error);
+            return true; // En cas d'erreur, on autorise par défaut
+        }
+    }
+
     waitForElement({
         selector: cvSelectors,
-        callback: function (elements) {
+        callback: async function (elements) {
             console.log('cvSelectors', elements, 'found');
-            elements.forEach(cvElement => {
+            for (const cvElement of elements) {
                 console.log('cvElement text', cvElement.textContent);
                 if (cvElement.textContent.includes('Vitale insérée')) {
                     console.log('cvElement', cvElement, 'found');
                     recordMetrics({ clicks: 1, drags: 1 });
-                    // On vérifie que la fenêtre/onglet est actif avant de cliquer
-                    if (!document.hasFocus()) {
-                        console.log('Fenêtre inactive, je ne clique pas sur la carte vitale');
+                    // On vérifie que l'onglet est actif (même si le navigateur est réduit)
+                    const tabIsActive = await isCurrentTabActive();
+                    if (!tabIsActive) {
+                        console.log('Onglet inactif, je ne clique pas sur la carte vitale');
                         return;
                     }
                     clickCarteVitale();
                 }
-            });
+            }
         }
     });
 
