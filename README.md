@@ -19,7 +19,7 @@ Cf. ci-dessous pour les retours et les contributions.
   - [Consultations](#consultations)
   - [Prescriptions](#prescriptions)
     - [Écoute des entrées claviers lors de l'usage de la calculette de prescription](#écoute-des-entrées-claviers-lors-de-lusage-de-la-calculette-de-prescription)
-    - [Ordonnances-types](#ordonnances-types)
+    - [Ordonnances](#ordonnances)
     - [Demandes](#demandes)
     - [Recherche de médicaments](#recherche-de-médicaments)
     - [Options d'ordonnance numérique](#options-dordonnance-numérique)
@@ -102,6 +102,7 @@ Cf. ci-dessous pour les retours et les contributions.
 - Permet, après la saisie du nom d'un patient, d'être directement positionné sur son nom, puis de pouvoir naviguer de patient en patient avec la touche Tab (ou maj+Tab pour aller vers le haut)
 - Facilitation de la navigation via 'Tab' et 'Shift+Tab' pour naviguer entre les champs de texte et de suivi.
 - Retrait des suggestions des titres de consultation : dans les fenêtres contenant un Titre, désactive le panneau de suggestion (fenêtres d'ordonnance, consultation, certificat, prescription, formulaire, résultats d'examen).
+- Ajout d’un raccourci vers la vue des traitements depuis la consultation
 
 
 ## Prescriptions
