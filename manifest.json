@@ -73,7 +73,8 @@
         "src/features/headlessSetup.js",
         "src/features/instantVaccine.js",
         "src/features/accoladesHandling.js",
-        "src/features/VSM.js"
+        "src/features/VSM.js",
+        "src/features/vueTraitements.js"
       ]
     }
   ],
