@@ -33,7 +33,7 @@ addTweak('/FolderMedical/PopUpPanneauSynthetiqueForm.aspx', '*TweakVueTraitement
                 #PanneauClassTheraGraphiqueUCForm1_DivFond {
                     width: 100% !important;
                     height: auto !important;
-                    transform: scale(0.35) !important;
+                    transform: scale(0.9) !important;
                     transform-origin: top left !important;
                     page-break-after: auto !important;
                 }
