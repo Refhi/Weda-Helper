@@ -11,6 +11,23 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 ## Mise à jour :
 - liens vers le site de la communauté temporaire vers celui hebergé par Weda
 
+## Ajouts :
+- [#610](https://github.com/Refhi/Weda-Helper/issues/610) - La date du dernier VSM est désormais affichée dans les antécédents (en la récupérant depuis la page d’accueil du patient à la première opportunité).
+- [#607](https://github.com/Refhi/Weda-Helper/issues/607) - Ajout d’une icone pour accéder à la vue des traitements depuis la consultation.
+
+## Evolution :
+- [#586](https://github.com/Refhi/Weda-Helper/issues/586) - le décochage automatique de certains documents dans la messagerie sécurisée est désormais personnalisable (ex. décocher les messages commençant par "NoName_" ou les fichiers commençant par "IHE_XDM.zip" qui sont souvent inutiles).
+
+## Fix :
+- si un patient est déjà sélectionné lors de l'import d'un document, on ne le sélectionne pas à nouveau
+- [#616](https://github.com/Refhi/Weda-Helper/issues/616) - meilleure priorisation de l'écoute du clavier, notamment pour le QuickAccess (évite les conflits avec les autres raccourcis clavier de Weda)
+- [#611](https://github.com/Refhi/Weda-Helper/issues/611) - le message d'erreur est désormais bien plus explicite en cas d'option erronée dans les options de Weda-Helper
+- [#600](https://github.com/Refhi/Weda-Helper/issues/600) - le mémo raccourcis clavier s'affiche de nouveau correctement au bout d'une seconde d'appuis sur Alt, et ce, pour toutes les plate-formes.
+- [#609](https://github.com/Refhi/Weda-Helper/issues/609) - La carte vitale n'est lue automatiquement que sur l'onglet actuellement utilisé.
+- fiabilisation de la possibilité d’un clic droit sur l’atcd pour l’éditer directement
+- [#614](https://github.com/Refhi/Weda-Helper/issues/614) - Il est de nouveau possible d’aller rapidement dans les atcds et les notes du dossier patient depuis la page des importations de masse
+
+
 # [2.16.3.2] - fix
 ## Fix :
 - [#596](https://github.com/Refhi/Weda-Helper/issues/596) - Les listes de patients trouvés après une recherche sont de nouveau correctement visée. Règle par exemple l'ouverture automatique d'un patient seul après une recherche ou sur les imports semi-automatiques (merci @Abeldvlpr pour la contribution !)

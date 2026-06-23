@@ -758,8 +758,14 @@ var advancedDefaultSettings = [
             }, {
                 "name": "secureExchangeUncheckIHEMessage",
                 "type": TYPE_BOOL,
-                "description": "Décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée.",
-                "default": false
+                "description": "Décocher automatiquement le message et le fichier lors de l'importation d'un message depuis la messagerie sécurisée si le titre correspond à certaines valeurs.",
+                "default": false,
+                "subOptions": [{
+                    "name": "secureExchangeUncheckSomeTitles",
+                    "type": TYPE_TEXT,
+                    "description": "Valeurs des titres à décocher automatiquement. Séparer les différentes valeurs par des virgules.",
+                    "default": "IHE_XDM.zip, NoName_"
+                }],
             }, {
                 "name": "swapTitrePJetCorpsMessage",
                 "type": TYPE_BOOL,

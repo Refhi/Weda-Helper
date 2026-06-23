@@ -6,6 +6,7 @@
  * - Auto-focus sur le titre
  * - Affichage courbes pédiatriques (taille, poids, IMC, PC)
  * - Raccourcis clavier dans les iframes
+ * - Ajout d’un raccourci vers la vue des traitements depuis la consultation
  * 
  * @requires tweaks.js (addTweak)
  * @requires keyCommands.js (addHotkeyToDocument, addTabsToIframe)
@@ -829,5 +830,55 @@ pagesToLeftPannel_.forEach((page) => {
                 }
             }
         });
+    });
+});
+
+
+// Ajout d’un bouton menant à la vue des traitements
+addTweak('/FolderMedical/ConsultationForm.aspx', '*AddTreatmentButton', function () {
+    waitForElement({
+        selector:'#ContentPlaceHolder1_ButtonSuivi',
+        callback: function (elements) {
+            console.log('[AddTreatmentButton] AT détecté, ajout du bouton de vue des traitements');
+            /**
+             * l’élément de base de la page est le suivant
+             * <div id="ContentPlaceHolder1_PanelPanneauxSynthetique">
+             * <div class="iconspacerdocument">
+             * <input name="ctl00$ContentPlaceHolder1$ButtonPanneauxSynthetique" type="button" id="ContentPlaceHolder1_ButtonPanneauxSynthetique" style="cursor: pointer" title="La vue des traitements" class="imgHistoriqueAtc" onclick="javascript:OpenPanneauSynthetique('PatDk=65407357|4152|630|2','15-A0-4F-82-80-4A-EB-03-E3-E4-0D-9C-F6-2F-BD-77-52-7B-3F-2D-93-A2-D0-E8-E3-A5-AF-C7-47-EF-12-B4');">
+             * </div>
+             * </div>
+             */
+
+            /**
+             * On ajoute un bouton sous celui de l’AT, qui devra avoir la classe iconspacerdocument
+             * quand cliqué, ça doit ouvrir une nouvelle fenêtre avec l’url de la vue des traitements
+             * l'url est construite à partir de l'url de la page actuelle, en remplaçant ConsultationForm.aspx par PopUpPanneauSynthetiqueForm.aspx
+             * et en ajoutant les paramètres PatDk et crypt qui sont dans l'url actuelle
+             */
+            let currentUrl = window.location.href;
+            let newUrl = currentUrl.replace('ConsultationForm.aspx', 'PopUpPanneauSynthetiqueForm.aspx');
+            console.log('[AddTreatmentButton] Nouvelle URL pour la vue des traitements :', newUrl);
+
+            // Création du bouton
+            let buttonContainer = document.createElement('div');
+            buttonContainer.className = 'iconspacerdocument';
+            let button = document.createElement('input');
+            button.type = 'button';
+            button.id = 'ButtonPanneauxSynthetique';
+            button.style.cursor = 'pointer';
+            button.title = 'La vue des traitements (ajouté par Weda-Helper)';
+            button.className = 'imgHistoriqueAtc';
+            button.onclick = function () {
+                window.open(newUrl, '_blank');
+            };
+            buttonContainer.appendChild(button);
+
+            // Ajout du bouton après le bouton existant
+            let existingButtonContainer = document.querySelector('.iconspacerdocument');
+            if (existingButtonContainer) {
+                existingButtonContainer.parentNode.insertBefore(buttonContainer, existingButtonContainer.nextSibling);
+                console.log('[AddTreatmentButton] Bouton ajouté avec succès', buttonContainer);
+            }
+        }
     });
 });
