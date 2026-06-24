@@ -14,6 +14,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 ## Ajouts :
 - [#610](https://github.com/Refhi/Weda-Helper/issues/610) - La date du dernier VSM est désormais affichée dans les antécédents (en la récupérant depuis la page d’accueil du patient à la première opportunité).
 - [#607](https://github.com/Refhi/Weda-Helper/issues/607) - Ajout d’une icone pour accéder à la vue des traitements depuis la consultation.
+- [#606](https://github.com/Refhi/Weda-Helper/issues/606) - Ajout d’un bouton d’impression dans la vue des traitements (permet d’imprimer la vue des traitements en cours, ou de l’exporter en PDF).
 
 ## Evolution :
 - [#586](https://github.com/Refhi/Weda-Helper/issues/586) - le décochage automatique de certains documents dans la messagerie sécurisée est désormais personnalisable (ex. décocher les messages commençant par "NoName_" ou les fichiers commençant par "IHE_XDM.zip" qui sont souvent inutiles).
