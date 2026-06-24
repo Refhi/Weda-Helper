@@ -74,7 +74,8 @@
         "src/features/instantVaccine.js",
         "src/features/accoladesHandling.js",
         "src/features/VSM.js",
-        "src/features/vueTraitements.js"
+        "src/features/vueTraitements.js",
+        "src/features/score2handler.js"
       ]
     }
   ],
