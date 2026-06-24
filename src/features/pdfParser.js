@@ -975,6 +975,14 @@ async function setExtractedDataInForm(extractedData) {
     // Parcourt chaque champ et met à jour la valeur si elle existe
     Object.keys(fields).forEach(key => {
         if (fields[key] && inputs[key]) {
+            if (key === 'documentDate') { // Cas particulier pour la date : on n'écrase que si la valeur existante est celle du jour
+                const existingValue = inputs[key].value;
+                const todayFormatted = formatDate(new Date());
+                if (existingValue && existingValue !== todayFormatted) {
+                    console.log(`[pdfParser] Date existante (${existingValue}) différente du jour (${todayFormatted}), conservation de la date existante.`);
+                    return;
+                }
+            }
             if (key === 'documentType') { // Cas particulier pour le champ documentType
                 // Trouver l'option correspondante pour documentType
                 const options = inputs[key].options;

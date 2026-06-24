@@ -17,6 +17,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 
 ## Evolution :
 - [#586](https://github.com/Refhi/Weda-Helper/issues/586) - le décochage automatique de certains documents dans la messagerie sécurisée est désormais personnalisable (ex. décocher les messages commençant par "NoName_" ou les fichiers commençant par "IHE_XDM.zip" qui sont souvent inutiles).
+- [#608](https://github.com/Refhi/Weda-Helper/issues/608) - Lors d’un import automatique de documents, la date du document est désormais conservée si elle est différente de la date du jour (permet de préparer la cohabitation avec les imports automatisés réalisés par Weda directement).
 
 ## Fix :
 - si un patient est déjà sélectionné lors de l'import d'un document, on ne le sélectionne pas à nouveau
