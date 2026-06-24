@@ -9,6 +9,7 @@
  * - Pavé numérique pour posologie
  * - Auto-consentement ordonnance numérique
  * - Configuration posologie auto-complétée
+ * - Aide au calcul de dosages
  * 
  * @requires tweaks.js (addTweak)
  * @requires storage.js (getOption)
@@ -1059,4 +1060,49 @@ function filterPharmacies(searchText, pharmacyGrid) {
             row.style.display = 'none';
         }
     });
+}
+
+// Aide au calcul de la posologie
+addTweak(prescriptionUrl, '*posologieHelper', function () {
+    waitForElement({
+        selector: '#ContentPlaceHolder1_BaseVidalUcForm1_PanelPosologie',
+        callback: function (elements) {
+            const posologiePanel = elements[0];
+            console.log('[posologieHelper] posologiePanel trouvé', posologiePanel, 'je vais ajouter le helper');
+            addPosologieHelper(posologiePanel);
+        }
+    });
+});
+
+function addPosologieHelper(posologiePanel) {
+    // Vérifier si le helper existe déjà
+    if (document.getElementById('wh-posologie-helper')) {
+        console.log('[addPosologieHelper] Le helper existe déjà, je ne le recrée pas');
+        return;
+    }
+
+    // Créer le conteneur du helper en copiant le style du parent
+    const helperContainer = document.createElement('div');
+    helperContainer.id = 'wh-posologie-helper';
+    helperContainer.className = posologiePanel.className;
+    helperContainer.style.cssText = window.getComputedStyle(posologiePanel).cssText;
+    helperContainer.style.marginTop = '0';
+
+    // Ajouter le contenu du helper
+    const helperTitle = document.createElement('h4');
+    helperTitle.textContent = 'Aide au calcul de la posologie';
+    helperTitle.style.marginBottom = '10px';
+
+    const helperContent = document.createElement('p');
+    helperContent.textContent = 'Utilisez ce calculateur pour déterminer la posologie correcte en fonction de la durée et de la fréquence.';
+
+    // Ajouter les éléments au conteneur
+    helperContainer.appendChild(helperTitle);
+    helperContainer.appendChild(helperContent);
+
+    // Insérer le helper après le panel de posologie
+    setTimeout(() => {
+        posologiePanel.parentElement.insertBefore(helperContainer, posologiePanel.nextSibling);
+        console.log('[addPosologieHelper] Helper ajouté après le panel de posologie', helperContainer);
+    }, 50); // Délai pour s'assurer que le panel est bien rendu
 }
