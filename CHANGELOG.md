@@ -27,6 +27,9 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - fiabilisation de la possibilité d’un clic droit sur l’atcd pour l’éditer directement
 - [#614](https://github.com/Refhi/Weda-Helper/issues/614) - Il est de nouveau possible d’aller rapidement dans les atcds et les notes du dossier patient depuis la page des importations de masse
 
+## Dev :
+- [#611](https://github.com/Refhi/Weda-Helper/issues/611) - Retrait de la vérification de la présence de virgules avant le : danse les options de catégorisation automatique (inutile et source de bugs)
+
 
 # [2.16.3.2] - fix
 ## Fix :
