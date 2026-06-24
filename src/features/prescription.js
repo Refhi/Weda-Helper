@@ -9,6 +9,7 @@
  * - Pavé numérique pour posologie
  * - Auto-consentement ordonnance numérique
  * - Configuration posologie auto-complétée
+ * - Aide au calcul de dosages
  * 
  * @requires tweaks.js (addTweak)
  * @requires storage.js (getOption)
@@ -1059,4 +1060,101 @@ function filterPharmacies(searchText, pharmacyGrid) {
             row.style.display = 'none';
         }
     });
+}
+
+// Aide au calcul de la posologie
+addTweak(prescriptionUrl, 'posologieHelper', function () {
+    waitForElement({
+        selector: '#ContentPlaceHolder1_BaseVidalUcForm1_PanelPosologie',
+        callback: function (elements) {
+            const posologiePanel = elements[0];
+            console.log('[posologieHelper] posologiePanel trouvé', posologiePanel, 'je vais ajouter le helper');
+            addPosologieHelper(posologiePanel);
+        }
+    });
+});
+
+function addPosologieHelper(posologiePanel) {
+    // Vérifier si le helper existe déjà
+    if (document.getElementById('wh-posologie-helper')) {
+        console.log('[addPosologieHelper] Le helper existe déjà, je ne le recrée pas');
+        return;
+    }
+
+    // Créer le conteneur du helper en copiant le style du parent
+    const helperContainer = document.createElement('div');
+    helperContainer.id = 'wh-posologie-helper';
+    helperContainer.className = posologiePanel.className;
+    helperContainer.style.cssText = window.getComputedStyle(posologiePanel).cssText;
+    helperContainer.style.marginTop = '-100px';
+
+    // Ajouter le contenu du helper
+    const helperTitle = document.createElement('h4');
+    helperTitle.textContent = 'Aide posologique mg/kg (Weda-Helper)';
+    helperTitle.style.marginBottom = '8px';
+
+    // Récupération du poids depuis l'input patient
+    const patientPoidsInput = document.getElementById('ContentPlaceHolder1_TextBoxPatientPoids');
+
+    // Ligne de saisie mg/kg
+    const doseRow = document.createElement('div');
+    doseRow.style.marginBottom = '6px';
+    const doseLabel = document.createElement('label');
+    doseLabel.textContent = 'Dose (mg/kg/j) : ';
+    const doseInput = document.createElement('input');
+    doseInput.type = 'text';
+    doseInput.id = 'wh-posologie-dose-input';
+    doseInput.placeholder = 'ex: 100 ou 80-100';
+    doseInput.style.width = '120px';
+    doseInput.style.marginLeft = '4px';
+    doseRow.appendChild(doseLabel);
+    doseRow.appendChild(doseInput);
+
+    // Résultats
+    const resultDiv = document.createElement('div');
+    resultDiv.style.marginTop = '8px';
+    resultDiv.style.fontWeight = 'bold';
+
+    function compute() {
+        const weight = parseFloat(patientPoidsInput && patientPoidsInput.value);
+        const doseStr = doseInput.value.trim();
+        if (!weight || !doseStr) { resultDiv.innerHTML = ''; return; }
+
+        let doseMin, doseMax;
+        if (doseStr.includes('-')) {
+            const parts = doseStr.split('-');
+            doseMin = parseFloat(parts[0]);
+            doseMax = parseFloat(parts[1]);
+        } else {
+            doseMin = doseMax = parseFloat(doseStr);
+        }
+
+        if (isNaN(doseMin) || isNaN(doseMax) || isNaN(weight)) { resultDiv.textContent = 'Valeurs invalides'; return; }
+
+        const totalMin = doseMin * weight;
+        const totalMax = doseMax * weight;
+        const range = doseMin === doseMax ? `${totalMin.toFixed(0)} mg/j` : `${totalMin.toFixed(0)}–${totalMax.toFixed(0)} mg/j`;
+
+        const lines = [2, 3, 4].map(n => {
+            const perMin = (totalMin / n).toFixed(0);
+            const perMax = (totalMax / n).toFixed(0);
+            const per = doseMin === doseMax ? `${perMin} mg` : `${perMin}–${perMax} mg`;
+            return `${n} prises/j : <b>${per}</b> par prise`;
+        });
+
+        resultDiv.innerHTML = `Total : ${range} (${weight} kg)<br>${lines.join('<br>')}`;
+    }
+
+    doseInput.addEventListener('input', compute);
+
+    // Ajouter les éléments au conteneur
+    helperContainer.appendChild(helperTitle);
+    helperContainer.appendChild(doseRow);
+    helperContainer.appendChild(resultDiv);
+
+    // Insérer le helper après le panel de posologie
+    setTimeout(() => {
+        posologiePanel.parentElement.insertBefore(helperContainer, posologiePanel.nextSibling);
+        console.log('[addPosologieHelper] Helper ajouté après le panel de posologie', helperContainer);
+    }, 50); // Délai pour s'assurer que le panel est bien rendu
 }

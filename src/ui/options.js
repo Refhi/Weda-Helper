@@ -298,21 +298,9 @@ function getCategoriesFromJsonInput(input, optionName = 'cette option') {
       const beforeColon = line.substring(0, lastColonIndex).trim();
       const afterColon = line.substring(lastColonIndex + 1).trim();
 
-      // Compter les virgules avant les ':'
-      const parts = beforeColon.split(',').map(p => p.trim());
-
-      if (parts.length === 1) {
-        // Format standard : "nom : mot1, mot2, mot3"
-        const name = parts[0];
-        const keywords = afterColon ? afterColon.split(',').map(keyword => keyword.trim()) : [];
-        if (name) {
-          categories.push([name, keywords]);
-        }
-      } else {
-        console.warn(`[${optionName}] Ligne ${lineIndex + 1}: Format de ligne non reconnu (${parts.length} parties trouvées avant ':')`);
-        alert(`❌ Erreur dans l'option "${optionName}"\n\nLigne ${lineIndex + 1}: Format non reconnu.\n\nFormat attendu: "nom : mot1, mot2"`);
-        hasError = true;
-        return; // Format non reconnu, ligne invalide
+      const keywords = afterColon ? afterColon.split(',').map(keyword => keyword.trim()) : [];
+      if (beforeColon) {
+        categories.push([beforeColon, keywords]);
       }
     }
   });

@@ -682,7 +682,7 @@ function returnQuickAccessConfig() {
                     reQuickAction: 30,
                 });
             }
-        },
+        },            
         'calculette_durees_frequences': {
             selector: '#ContentPlaceHolder1_BaseVidalUcForm1_PanelPosologie > table:nth-child(8) > tbody > tr > td > table:nth-child(2)',
             onTap: 'clic',
@@ -788,7 +788,29 @@ function returnQuickAccessConfig() {
                     reQuickAction: 30,
                 },
             }
-        }
+        },
+        'wh-posologie-dose-input': {
+            selector: '#wh-posologie-dose-input',
+            priorityLvl: true,
+            onTap: 'focus',
+            reQuickAction: 30,
+        },
+        'poso_1': { selector: '.imgposo1', onTap: 'clic', priorityLvl: true, reQuickAction: 30, hotkey: '1' },
+        'poso_2': { selector: '.imgposo2', onTap: 'clic', priorityLvl: true, reQuickAction: 30, hotkey: '2' },
+        'poso_3': { selector: '.imgposo3', onTap: 'clic', priorityLvl: true, reQuickAction: 30, hotkey: '3' },
+        'poso_4': { selector: '.imgposo4', onTap: 'clic', priorityLvl: true, reQuickAction: 30, hotkey: '4' },
+        'poso_5': { selector: '.imgposo5', onTap: 'clic', priorityLvl: true, reQuickAction: 30, hotkey: '5' },
+        'poso_6': { selector: '.imgposo6', onTap: 'clic', priorityLvl: true, reQuickAction: 30, hotkey: '6' },
+        'poso_7': { selector: '.imgposo7', onTap: 'clic', priorityLvl: true, reQuickAction: 30, hotkey: '7' },
+        'poso_8': { selector: '.imgposo8', onTap: 'clic', priorityLvl: true, reQuickAction: 30, hotkey: '8' },
+        'poso_9': { selector: '.imgposo9', onTap: 'clic', priorityLvl: true, reQuickAction: 30, hotkey: '9' },
+        'poso_0': { selector: '.imgposo0', onTap: 'clic', priorityLvl: true, reQuickAction: 30, hotkey: '0' },
+        'poso_diviser': { selector: '.imgposodiv', onTap: 'clic', priorityLvl: true, reQuickAction: 30, hotkey: '/' },
+        'poso_plus': { selector: '.imgposoplus', onTap: 'clic', priorityLvl: true, reQuickAction: 30, hotkey: '+' },
+        'poso_a': { selector: '.imgposoto', onTap: 'clic', priorityLvl: true, reQuickAction: 30, hotkey: 'a' },
+        'poso_virgule': { selector: '.imgposovirgule', onTap: 'clic', priorityLvl: true, reQuickAction: 30, hotkey: ',' },
+        // 'poso_annuler': { selector: '.imgposocancel', onTap: 'clic', priorityLvl: true, reQuickAction: 30, hotkey: 'backspace' },
+        // la partie annuler est gérée par le backspace de sortie du QA puis de la calculette
     };
 
     const base_poso_type = generateMultipleSelectorSubItems({
@@ -1230,6 +1252,19 @@ function returnQuickAccessConfig() {
                         element.click();
                     },
                     reQuickAction: true,
+                });
+            }
+        },
+        'prescriptions_types_medicaments': {
+            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm2_UpdatePanelTreeViewGlossaire',
+            inlineSubTooltips: true,
+            priorityLvl: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    // doit commencer par ContentPlaceHolder1_BaseGlossaireUCForm2_TreeViewGlossairet
+                    selector: '[id^="ContentPlaceHolder1_BaseGlossaireUCForm2_TreeViewGlossairet"]',
+                    onTap: 'clic',
                 });
             }
         }

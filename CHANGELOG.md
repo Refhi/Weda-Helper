@@ -14,9 +14,12 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 ## Ajouts :
 - [#610](https://github.com/Refhi/Weda-Helper/issues/610) - La date du dernier VSM est désormais affichée dans les antécédents (en la récupérant depuis la page d’accueil du patient à la première opportunité).
 - [#607](https://github.com/Refhi/Weda-Helper/issues/607) - Ajout d’une icone pour accéder à la vue des traitements depuis la consultation.
+- [#606](https://github.com/Refhi/Weda-Helper/issues/606) - Ajout d’un bouton d’impression dans la vue des traitements (permet d’imprimer la vue des traitements en cours, ou de l’exporter en PDF).
+- [#612](https://github.com/Refhi/Weda-Helper/issues/612) - Aide au calcul des posologies en mg/kg dans la page de prescription (permet de calculer rapidement la posologie d’un médicament en fonction du poids du patient).
 
 ## Evolution :
 - [#586](https://github.com/Refhi/Weda-Helper/issues/586) - le décochage automatique de certains documents dans la messagerie sécurisée est désormais personnalisable (ex. décocher les messages commençant par "NoName_" ou les fichiers commençant par "IHE_XDM.zip" qui sont souvent inutiles).
+- [#608](https://github.com/Refhi/Weda-Helper/issues/608) - Lors d’un import automatique de documents, la date du document est désormais conservée si elle est différente de la date du jour (permet de préparer la cohabitation avec les imports automatisés réalisés par Weda directement).
 
 ## Fix :
 - si un patient est déjà sélectionné lors de l'import d'un document, on ne le sélectionne pas à nouveau
@@ -26,6 +29,9 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#609](https://github.com/Refhi/Weda-Helper/issues/609) - La carte vitale n'est lue automatiquement que sur l'onglet actuellement utilisé.
 - fiabilisation de la possibilité d’un clic droit sur l’atcd pour l’éditer directement
 - [#614](https://github.com/Refhi/Weda-Helper/issues/614) - Il est de nouveau possible d’aller rapidement dans les atcds et les notes du dossier patient depuis la page des importations de masse
+
+## Dev :
+- [#611](https://github.com/Refhi/Weda-Helper/issues/611) - Retrait de la vérification de la présence de virgules avant le : danse les options de catégorisation automatique (inutile et source de bugs)
 
 
 # [2.16.3.2] - fix

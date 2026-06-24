@@ -5,7 +5,7 @@
  */
 
 addTweak('/FolderMedical/PopUpPanneauSynthetiqueForm.aspx', '*TweakVueTraitements', function () {
-    const buttonToAnnexButton = document.querySelector('#PanneauClassTheraGraphiqueUCForm1_LabelTitleSatisfaction');
+    const buttonToAnnexButtonId = '#PanneauClassTheraGraphiqueUCForm1_LabelTitleSatisfaction';
     
     function prepareAndPrint() {
         // Injection des règles CSS pour l'impression
@@ -63,7 +63,7 @@ addTweak('/FolderMedical/PopUpPanneauSynthetiqueForm.aspx', '*TweakVueTraitement
                     display: none !important;
                 }
                 
-                /* Page en paysage recommandée */
+                /* Page en paysage recommandée - indispensable */
                 @page {
                     size: A4 landscape;
                     margin: 10mm;
@@ -77,22 +77,25 @@ addTweak('/FolderMedical/PopUpPanneauSynthetiqueForm.aspx', '*TweakVueTraitement
         window.print();
     }
     
-    // Ajout d'un bouton avec l'emoji 🖨️ pour imprimer la vue des traitements
-    const printButton = document.createElement('button');
-    printButton.innerHTML = '🖨️';
-    printButton.title = 'Imprimer la vue des traitements';
-    printButton.style.marginLeft = '10px';
-    
-    printButton.addEventListener('click', function () {
-        prepareAndPrint();
-    });
+    waitForElement({
+        selector: buttonToAnnexButtonId,
+        triggerOnInit: true,
+        callback: function ([buttonToAnnexButton]) {
+            console.log('[TweakVueTraitements] Ajout du bouton d\'impression', buttonToAnnexButton);
+            // Ajout d'un bouton avec l'emoji 🖨️ pour imprimer la vue des traitements
+            const printButton = document.createElement('button');
+            printButton.innerHTML = '🖨️';
+            printButton.id = 'wedahelper-print-button';
+            printButton.title = 'Imprimer la vue des traitements';
+            printButton.style.marginLeft = '10px';
+            
+            printButton.addEventListener('click', function (e) {
+                e.stopPropagation();
+                prepareAndPrint();
+            });
 
-    buttonToAnnexButton.parentNode.insertBefore(printButton, buttonToAnnexButton.nextSibling);
-    
+            buttonToAnnexButton.parentNode.insertBefore(printButton, buttonToAnnexButton.nextSibling);
+            console.log('[TweakVueTraitements] Bouton d\'impression ajouté avec succès', printButton);
+        }
+    });    
 });
-
-/**
- * TODO :
- * - affiner la mise en page pour l’impression via l’édition du CSS
- * - récupérer le pdf généré ?
- */
