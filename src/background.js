@@ -942,6 +942,11 @@ var advancedDefaultSettings = [
             "type": TYPE_BOOL,
             "description": "Affiche un message d'alerte lorsqu'une prescription de médicaments présente une contre-indication absolue.",
             "default": true
+        }, {
+            "name": "posologieHelper",
+            "type": TYPE_BOOL,
+            "description": "Affiche une aide pour le calcul de la posologie en mg/kg.",
+            "default": true
         }]
     }, {
         "name": "Options d'ordonnance numérique",

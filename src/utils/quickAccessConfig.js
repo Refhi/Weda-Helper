@@ -788,6 +788,12 @@ function returnQuickAccessConfig() {
                     reQuickAction: 30,
                 },
             }
+        },
+        'wh-posologie-dose-input': {
+            selector: '#wh-posologie-dose-input',
+            priorityLvl: true,
+            onTap: 'focus',
+            reQuickAction: 30,
         }
     };
 

@@ -1063,7 +1063,7 @@ function filterPharmacies(searchText, pharmacyGrid) {
 }
 
 // Aide au calcul de la posologie
-addTweak(prescriptionUrl, '*posologieHelper', function () {
+addTweak(prescriptionUrl, 'posologieHelper', function () {
     waitForElement({
         selector: '#ContentPlaceHolder1_BaseVidalUcForm1_PanelPosologie',
         callback: function (elements) {
@@ -1086,19 +1086,71 @@ function addPosologieHelper(posologiePanel) {
     helperContainer.id = 'wh-posologie-helper';
     helperContainer.className = posologiePanel.className;
     helperContainer.style.cssText = window.getComputedStyle(posologiePanel).cssText;
-    helperContainer.style.marginTop = '0';
+    helperContainer.style.marginTop = '-100px';
 
     // Ajouter le contenu du helper
     const helperTitle = document.createElement('h4');
-    helperTitle.textContent = 'Aide au calcul de la posologie';
-    helperTitle.style.marginBottom = '10px';
+    helperTitle.textContent = 'Aide posologique mg/kg (Weda-Helper)';
+    helperTitle.style.marginBottom = '8px';
 
-    const helperContent = document.createElement('p');
-    helperContent.textContent = 'Utilisez ce calculateur pour déterminer la posologie correcte en fonction de la durée et de la fréquence.';
+    // Récupération du poids depuis l'input patient
+    const patientPoidsInput = document.getElementById('ContentPlaceHolder1_TextBoxPatientPoids');
+
+    // Ligne de saisie mg/kg
+    const doseRow = document.createElement('div');
+    doseRow.style.marginBottom = '6px';
+    const doseLabel = document.createElement('label');
+    doseLabel.textContent = 'Dose (mg/kg/j) : ';
+    const doseInput = document.createElement('input');
+    doseInput.type = 'text';
+    doseInput.id = 'wh-posologie-dose-input';
+    doseInput.placeholder = 'ex: 100 ou 80-100';
+    doseInput.style.width = '120px';
+    doseInput.style.marginLeft = '4px';
+    doseRow.appendChild(doseLabel);
+    doseRow.appendChild(doseInput);
+
+    // Résultats
+    const resultDiv = document.createElement('div');
+    resultDiv.style.marginTop = '8px';
+    resultDiv.style.fontWeight = 'bold';
+
+    function compute() {
+        const weight = parseFloat(patientPoidsInput && patientPoidsInput.value);
+        const doseStr = doseInput.value.trim();
+        if (!weight || !doseStr) { resultDiv.innerHTML = ''; return; }
+
+        let doseMin, doseMax;
+        if (doseStr.includes('-')) {
+            const parts = doseStr.split('-');
+            doseMin = parseFloat(parts[0]);
+            doseMax = parseFloat(parts[1]);
+        } else {
+            doseMin = doseMax = parseFloat(doseStr);
+        }
+
+        if (isNaN(doseMin) || isNaN(doseMax) || isNaN(weight)) { resultDiv.textContent = 'Valeurs invalides'; return; }
+
+        const totalMin = doseMin * weight;
+        const totalMax = doseMax * weight;
+        const range = doseMin === doseMax ? `${totalMin.toFixed(0)} mg/j` : `${totalMin.toFixed(0)}–${totalMax.toFixed(0)} mg/j`;
+
+        const lines = [2, 3, 4].map(n => {
+            const perMin = (totalMin / n).toFixed(0);
+            const perMax = (totalMax / n).toFixed(0);
+            const per = doseMin === doseMax ? `${perMin} mg` : `${perMin}–${perMax} mg`;
+            return `${n} prises/j : <b>${per}</b> par prise`;
+        });
+
+        resultDiv.innerHTML = `Total : ${range} (${weight} kg)<br>${lines.join('<br>')}`;
+    }
+
+    doseInput.addEventListener('input', compute);
 
     // Ajouter les éléments au conteneur
     helperContainer.appendChild(helperTitle);
-    helperContainer.appendChild(helperContent);
+    helperContainer.appendChild(doseRow);
+    helperContainer.appendChild(resultDiv);
 
     // Insérer le helper après le panel de posologie
     setTimeout(() => {
