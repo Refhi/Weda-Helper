@@ -80,7 +80,7 @@ const alertesAtcdGlobal = {
         ageMin: 18,
         ageMax: 99,
         sexes: "N",
-        dateFin: "31/03/2026",
+        dateFin: "31/12/2099",
         motsCles: ["diabète"]
       }
     },
@@ -125,7 +125,7 @@ const alertesAtcdGlobal = {
         texteAlerte: "ETP Maladies CV possible, cf. Antécédents."
       },
       conditions: {
-        dateFin: "31/12/2026",
+        dateFin: "31/12/2099",
         motsCles: [
           "HTA",
           "hypertension artérielle",
