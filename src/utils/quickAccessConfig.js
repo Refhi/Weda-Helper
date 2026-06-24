@@ -1254,6 +1254,19 @@ function returnQuickAccessConfig() {
                     reQuickAction: true,
                 });
             }
+        },
+        'prescriptions_types_medicaments': {
+            selector: '#ContentPlaceHolder1_BaseGlossaireUCForm2_UpdatePanelTreeViewGlossaire',
+            inlineSubTooltips: true,
+            priorityLvl: true,
+            subItems: function (element) {
+                return generateMultipleSelectorSubItems({
+                    parentElement: element,
+                    // doit commencer par ContentPlaceHolder1_BaseGlossaireUCForm2_TreeViewGlossairet
+                    selector: '[id^="ContentPlaceHolder1_BaseGlossaireUCForm2_TreeViewGlossairet"]',
+                    onTap: 'clic',
+                });
+            }
         }
     }
 
