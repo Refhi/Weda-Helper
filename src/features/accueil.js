@@ -8,7 +8,7 @@
  * - Edition simplifiée des antécédents
  * 
  * @requires tweaks.js (addTweak)
- * @requires storage.js (getOption)
+ * @requires storage.js (getOptionPromise)
  * @requires keyCommands.js (clickCarteVitale)
  * @requires notifications.js (sendWedaNotif)
  */
@@ -29,7 +29,7 @@ addTweak(homePageUrls, 'autoSelectPatientCV', async function () {
 
     // Fonction helper pour vérifier si l'onglet courant est l'onglet actif
     async function isCurrentTabActive() {
-        const autoSelectPatientCV_OnlyOnActiveTab = await getOption('autoSelectPatientCV_OnlyOnActiveTab');
+        const autoSelectPatientCV_OnlyOnActiveTab = await getOptionPromise('autoSelectPatientCV_OnlyOnActiveTab');
         if (!autoSelectPatientCV_OnlyOnActiveTab) {
             console.log('autoSelectPatientCV_OnlyOnActiveTab désactivé, lecture CV autorisée dans tout les onglets');
             return true; // Si l'option est désactivée, on autorise par défaut
