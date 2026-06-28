@@ -546,7 +546,13 @@ var advancedDefaultSettings = [
             "name": "autoSelectPatientCV",
             "type": TYPE_BOOL,
             "description": "Lit automatiquement la carte vitale et sélectionne le patient lié à la carte vitale s'il est seul.",
-            "default": true
+            "default": true,
+            "subOptions": [{
+                "name": "autoSelectPatientCV_OnlyOnActiveTab",
+                "type": TYPE_BOOL,
+                "description": "N’ouvre le dossier patient automatiquement que sur l'onglet actif.",
+                "default": true
+            }]
         }, {
             "name": "TweakTabSearchPatient",
             "type": TYPE_BOOL,
