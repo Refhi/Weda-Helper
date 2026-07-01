@@ -8,6 +8,7 @@
  * - Auto-consentement
  * - Recherche rapide des motifs d'arrêt avec Fuse.js
  * - Tri des sous-catégories
+ * - Motif automatique pour les sorties sans restriction d’horaire
  * 
  * @requires tweaks.js (addTweak)
  * @requires storage.js (getOption)
@@ -756,6 +757,51 @@ addTweak('/FolderMedical/Aati.aspx', '*aatiSortMotifsAlphabetically', function (
                     }
                 }, 200); // Délai pour laisser le temps au DOM de se mettre à jour
             });
+        },
+        justOnce: true
+    });
+});
+
+
+
+/**
+ * Sorties sans restriction d’horaire : motif automatique
+ */
+addTweak('/FolderMedical/Aati.aspx', '*autoSortieSansRestriction', async function () {
+    const selecteurSortieNonLimites = 'input[placeholder="Motif des sorties sans restriction d\'horaire (60 caractères maximum)"]';
+    const motif = await getOptionPromise('motifAutoSortieSansRestriction');
+    console.log('[motifAutoSortieSansRestriction] Valeur du motif par défaut récupérée depuis les options :', motif);
+    waitForElement({
+        selector: selecteurSortieNonLimites,
+        callback: function (elements) {
+            const inputSortie = elements[0];
+            if (inputSortie && inputSortie.value.trim() === '') {
+                inputSortie.value = motif;
+                inputSortie.dispatchEvent(new Event('input', { bubbles: true }));
+                console.log('[motifAutoSortieSansRestriction] Champ rempli automatiquement avec le motif par défaut.');
+            }
+
+            // Ajout d’un bouton disquette pour sauvegarder le motif par défaut dans les options
+            const boutonDisquette = document.createElement('button');
+            boutonDisquette.textContent = '💾';
+            boutonDisquette.title = 'Sauvegarder ce motif par défaut dans les options de Weda-Helper';
+            boutonDisquette.type = 'button';
+            boutonDisquette.style.cssText = 'margin-left: 5px; padding: 2px 6px; font-size: 14px; cursor: pointer;';
+            boutonDisquette.addEventListener('click', function () {
+                const nouveauMotif = inputSortie.value.trim();
+                if (nouveauMotif) {
+                    chrome.storage.local.set({ motifAutoSortieSansRestriction: nouveauMotif }, function () {
+                        sendWedaNotifAllTabs({
+                            message: `Motif par défaut pour les sorties sans restriction d’horaire mis à jour : "${nouveauMotif}"`,
+                            type: 'success',
+                            icon: 'check'
+                        });
+                        console.log('[motifAutoSortieSansRestriction] Motif par défaut mis à jour dans les options :', nouveauMotif);
+                    });
+                }
+            });
+            inputSortie.parentNode.insertBefore(boutonDisquette, inputSortie.nextSibling);
+            console.log('[motifAutoSortieSansRestriction] Bouton de sauvegarde ajouté à côté du champ.', boutonDisquette);
         },
         justOnce: true
     });

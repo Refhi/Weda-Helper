@@ -631,6 +631,16 @@ var advancedDefaultSettings = [
                 "type": TYPE_BOOL,
                 "description": "Ajoute un champ de recherche rapide pour les motifs d'arrêt de travail.",
                 "default": true
+            }, {
+                "name": "motifAutoSortieSansRestriction",
+                "type": TYPE_SMALLTEXT,
+                "description": "Permet de définir un motif d'arrêt de travail par défaut pour les sorties sans restriction.",
+                "default": ""
+            }, {
+                "name": "sortiesAutoriseesAutoSelect",
+                "type": TYPE_BOOL,
+                "description": "Sélectionne automatiquement les sorties autorisées simples.",
+                "default": true
             }]
         }, {
             "name": "removeBoldPatientFirstName",

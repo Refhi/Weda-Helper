@@ -4,7 +4,7 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
-# [3.0.0.0] - Weda Helper
+# [3.0.0.1] - Weda Helper
 ## Changement de version :
 - changement de numéro de version majeur, mais sans signification autre que la simplification : 2.16.3.2 ça devenait illisible...
 
@@ -32,6 +32,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 
 ## Dev :
 - [#611](https://github.com/Refhi/Weda-Helper/issues/611) - Retrait de la vérification de la présence de virgules avant le : danse les options de catégorisation automatique (inutile et source de bugs)
+- addTweak peut désormais être appelé avec un paramètre optionValue pour passer la valeur de l'option directement au callback.
 
 
 # [2.16.3.2] - fix

@@ -40,7 +40,7 @@ function addTweak(path, option, callback) {
                 const isActive = (optionValue === true || (typeof optionValue === 'string' && optionValue !== ''));
                 if ((isActive && !invert) || (!isActive && invert)) {
                     console.log(`[addTweak] ${option} activé`);
-                    callback();
+                    callback(optionValue);
                 }
             });
         }
