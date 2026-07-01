@@ -177,6 +177,8 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - La case "Mon patient accepte que je transmette le présent avis d'arrêt de travail pour son compte [...]" se coche automatiquement.
 - Ajout d’un champ de recherche de motif d’arrêt de travail (tolérant aux fautes de frappe et aux acronymes courants).
 - Classement des motifs d’arrêt de travail par ordre alphabétique.
+- Sorties autorisées cochées par défaut pour les arrêts de travail (désactivable dans les options)
+- Motif pour les sorties libres personnalisable dans les options de Weda-Helper
 
 
 ### Métrique
