@@ -933,6 +933,11 @@ var advancedDefaultSettings = [
             "type": TYPE_TEXT,
             "description": "⤷ Types de données automatique (vider pour désactiver. Pas d'espaces. Sensible à la Case.) Défaut = TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%",
             "default": "TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%,Z-IMC:ds"
+        }, {
+            "name": "autoSaveConsultations",
+            "type": TYPE_BOOL,
+            "description": "Enregistre automatiquement les consultations toutes les 3 minutes si aucune entrée n'est détectée pendant au moins 5 secondes.",
+            "default": true
         }]
     }, {
         "name": "Options de prescription",
