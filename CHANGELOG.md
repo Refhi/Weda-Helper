@@ -16,6 +16,8 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#607](https://github.com/Refhi/Weda-Helper/issues/607) - Ajout d’une icone pour accéder à la vue des traitements depuis la consultation.
 - [#606](https://github.com/Refhi/Weda-Helper/issues/606) - Ajout d’un bouton d’impression dans la vue des traitements (permet d’imprimer la vue des traitements en cours, ou de l’exporter en PDF).
 - [#612](https://github.com/Refhi/Weda-Helper/issues/612) - Aide au calcul des posologies en mg/kg dans la page de prescription (permet de calculer rapidement la posologie d’un médicament en fonction du poids du patient).
+- dans les arrêts de travail "Sorties autorisées" est coché oui par défaut
+- [#618](https://github.com/Refhi/Weda-Helper/issues/618) - Le motif par défaut pour les sorties sans restriction d’horaire est désormais personnalisable dans les options de Weda-Helper ou en cliquant sur le bouton 💾 à côté du champ de saisie du motif dans la page de prescription d’arrêt de travail.
 
 ## Evolution :
 - [#586](https://github.com/Refhi/Weda-Helper/issues/586) - le décochage automatique de certains documents dans la messagerie sécurisée est désormais personnalisable (ex. décocher les messages commençant par "NoName_" ou les fichiers commençant par "IHE_XDM.zip" qui sont souvent inutiles).

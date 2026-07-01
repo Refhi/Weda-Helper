@@ -806,3 +806,20 @@ addTweak('/FolderMedical/Aati.aspx', '*autoSortieSansRestriction', async functio
         justOnce: true
     });
 });
+
+/**
+ * Coche automatiquement les sorties autorisées simples
+ */
+addTweak('/FolderMedical/Aati.aspx', 'sortiesAutoriseesAutoSelect', function () {
+    // élément à viser <input type="radio" name="aatiLeaveAllowed" class="ng-valid ng-dirty ng-touched">
+    const selecteurSortiesAutorisees = 'input[type="radio"][name="aatiLeaveAllowed"]';
+    const elementsSortiesAutorisees = document.querySelectorAll(selecteurSortiesAutorisees);
+    const radioOui = elementsSortiesAutorisees[1]; // Le deuxième input correspond à "Oui"
+    if (!radioOui) {
+        console.error('[sortiesAutoriseesAutoSelect] Bouton radio "Oui" non trouvé');
+        return;
+    }
+    radioOui.checked = true;
+    radioOui.dispatchEvent(new Event('change', { bubbles: true }));
+    console.log('[sortiesAutoriseesAutoSelect] Bouton radio "Oui" coché automatiquement.');
+});
