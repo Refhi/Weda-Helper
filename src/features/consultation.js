@@ -892,11 +892,51 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*AddTreatmentButton', function
 addTweak('/FolderMedical/ConsultationForm.aspx', 'autoSaveConsultations', function () {
     let lastUserActionTime = Date.now();
     let lastSaveTime = Date.now();
+    let originalButtonValue = null;
 
     // Fonction pour mettre à jour le temps de la dernière action utilisateur
     function updateLastUserActionTime() {
         // console.log('[AutoSaveConsultation] Action utilisateur détectée, mise à jour du temps de la dernière action');
         lastUserActionTime = Date.now();
+    }
+
+    // Fonction pour formater le temps restant
+    function formatTimeRemaining(milliseconds) {
+        const totalSeconds = Math.ceil(milliseconds / 1000);
+        // Arrondir au multiple de 10 secondes supérieur pour des valeurs plus rondes
+        const roundedSeconds = Math.ceil(totalSeconds / 10) * 10;
+        const minutes = Math.floor(roundedSeconds / 60);
+        const remainingSeconds = roundedSeconds % 60;
+        
+        if (roundedSeconds <= 0) {
+            return 'bientôt';
+        } else if (minutes === 0) {
+            return `${roundedSeconds}s`;
+        } else if (remainingSeconds === 0) {
+            return `${minutes}m`;
+        } else {
+            return `${minutes}m${remainingSeconds}s`;
+        }
+    }
+
+    // Fonction pour mettre à jour le texte du bouton avec le temps restant
+    function updateSaveButtonText() {
+        const saveButton = document.querySelector('#ButtonSave');
+        if (saveButton) {
+            // Sauvegarder la valeur originale du bouton au premier passage
+            if (originalButtonValue === null) {
+                originalButtonValue = saveButton.value;
+            }
+            
+            const AUTO_SAVE_INTERVAL = 3 * 60 * 1000; // 3 minutes
+            const timeSinceLastSave = Date.now() - lastSaveTime;
+            const timeRemaining = AUTO_SAVE_INTERVAL - timeSinceLastSave;
+            const timeText = formatTimeRemaining(timeRemaining);
+            
+            saveButton.value = `${originalButtonValue} (auto: ${timeText})`;
+            saveButton.title = `Prochaine sauvegarde automatique dans ${timeText}. Sauvegarde auto toutes les 3 minutes après 5 secondes d'inactivité. Weda-Helper.`;
+            saveButton.style.width = 'auto';
+        }
     }
 
     // Écoute des actions utilisateur pour mettre à jour le temps de la dernière action
@@ -935,5 +975,11 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoSaveConsultations', functi
 
     // Vérifier toutes les secondes pour détecter rapidement l'inactivité après les 3 minutes
     setInterval(autoSaveConsultation, 1000);
+
+    // Mettre à jour le texte du bouton toutes les 10 secondes
+    setInterval(updateSaveButtonText, 10000);
+    
+    // Mise à jour initiale immédiate
+    updateSaveButtonText();
 
 });
