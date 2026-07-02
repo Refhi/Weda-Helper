@@ -8,6 +8,7 @@
  * - Raccourcis clavier dans les iframes
  * - Ajout d’un raccourci vers la vue des traitements depuis la consultation
  * - Enregistrement automatique des consultations toutes les 3 minutes si aucune entrée n’est détectée pendant au moins 5 secondes.
+ * - Génération facilitée du SCORE2
  * 
  * @requires tweaks.js (addTweak)
  * @requires keyCommands.js (addHotkeyToDocument, addTabsToIframe)
@@ -982,4 +983,171 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoSaveConsultations', functi
     // Mise à jour initiale immédiate
     updateSaveButtonText();
 
+});
+
+/**
+ * Génération du score2
+ */
+addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', async function () {
+    /**
+     * Le principe :
+     * - calculer le score2 en utilisant un maximum les valeurs déjà présentes
+     * - si une valeur est manquante, au moment du calcul, on la demande à l'utilisateur via un prompt
+     * 
+     * les valeurs nécessaires sont détaillées dans score2handler.js
+     * 
+     * Certaines sont accessibles via le patientLink.js
+     * 
+     * Les autres sont accessibles dans les items de suivis, dont l’id est sur le modèle #ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_0 (le chiffre s’incrémente pour chaque item de suivi)
+     * les unités sont dans #ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviUnit_0
+     * 
+     * 
+     * Si l’untité est manquante, elle est également demandée à l’utilisateur via un prompt
+     */
+
+    // Configuration détaillée des paramètres SCORE2
+    const SCORE2_PARAMS = {
+        riskRegion: {
+            type: 'enum',
+            values: ['Low', 'Moderate', 'High', 'Very high'],
+            source: 'items',
+            description: 'Région de risque cardiovasculaire'
+        },
+        age: {
+            type: 'number',
+            min: 40,
+            max: 89,
+            unit: 'années',
+            source: 'patientInfo',
+            description: 'Âge du patient'
+        },
+        gender: {
+            type: 'enum',
+            values: ['male', 'female'],
+            source: 'patientInfo',
+            conversion: { 'M': 'male', 'F': 'female' },
+            description: 'Sexe du patient'
+        },
+        smoker: {
+            type: 'enum',
+            values: [0, 1],
+            source: 'items',
+            keywords: ['tabac', 'fumeur'],
+            description: 'Statut tabagique'
+        },
+        systolicBp: {
+            type: 'number',
+            min: 80,
+            max: 200,
+            unit: 'mmHg',
+            source: 'items',
+            keywords: ['PAS', 'tension systolique', 'TAS'],
+            description: 'Pression artérielle systolique'
+        },
+        diabetes: {
+            type: 'enum',
+            values: [0, 1],
+            source: 'items',
+            keywords: ['diabète', 'DT2'],
+            description: 'Présence de diabète'
+        },
+        totalChol: {
+            type: 'number',
+            min: 2,
+            max: 10,
+            unit: 'mmol/L',
+            source: 'items',
+            keywords: ['cholestérol total', 'CT'],
+            conversion: { from: 'g/L', factor: 2.586 },
+            description: 'Cholestérol total'
+        },
+        totalHdl: {
+            type: 'number',
+            min: 0.5,
+            max: 3,
+            unit: 'mmol/L',
+            source: 'items',
+            keywords: ['HDL', 'HDL-C'],
+            conversion: { from: 'g/L', factor: 2.586 },
+            description: 'HDL cholestérol'
+        },
+        classify: {
+            type: 'boolean',
+            default: false,
+            source: 'option',
+            description: 'Retourner catégorie texte ou score numérique'
+        }
+    };
+
+
+
+    // Initialisation des variables
+    let riskRegion, age, gender, smoker, systolicBp, diabetes, totalChol, totalHdl, classify;
+
+    // Ici on va récupérer, par différents moyens les valeurs nécessaires
+    const patientInfo = await getPatientInfo(getCurrentPatientId());
+    console.log('[autoScore2] Informations du patient récupérées :', patientInfo);
+    // Age
+    age = getPatientAge(patientInfo);
+    console.log('[autoScore2] Age calculé :', age);
+
+    // Genre
+    gender = getPatientGender(patientInfo);
+    console.log('[autoScore2] Genre calculé :', gender);
+
+    console.log('[autoScore2] Récupération des items de suivi pour les autres paramètres');
+    // Arbitraire
+    classify = false;
+    console.log('[autoScore2] Classify défini à :', classify);
+
+    // Gestion de toutes les autres valeurs via les items de suivi
+    const suiviItems = getSuiviItems();
+
+
+    console.log('[autoScore2] Suivi items récupérés :', suiviItems);
+
+    // Ici on va prompter l'utilisateur pour les valeurs manquantes
+
+    // Ici on va calculer le score2
+
+    // Ici on va afficher le score2 dans le champ de texte correspondant
+
+
+
+
+    // Fonctions utilitaires
+    function getPatientAge(patientInfo) {
+        const ddn = patientInfo.dateOfBirth.date; // "15/06/1955"
+        const [day, month, year] = ddn.split('/').map(Number);
+        const DDN = new Date(year, month - 1, day); // mois en JS : 0-11
+        const today = new Date();
+        let age = today.getFullYear() - DDN.getFullYear();
+        const birthdayThisYear = new Date(today.getFullYear(), DDN.getMonth(), DDN.getDate());
+        if (today < birthdayThisYear) {
+            age--;
+        }
+        return age;
+    }
+
+    function getPatientGender(patientInfo) {
+        const gender = patientInfo.sex;
+        return gender === 'F' ? 'female' : 'male';
+    }
+
+    function getSuiviItems() {
+        // TODO : récupérer aussi les antériorités
+        const items = [];
+        let index = 0;
+        while (true) {
+            const itemElement = document.querySelector(`#ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_${index}`);
+            if (!itemElement) break;
+            const unitElement = document.querySelector(`#ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviUnit_${index}`);
+            items.push({
+                value: itemElement.value,
+                unit: unitElement ? unitElement.value : null
+            });
+            index++;
+        }
+        return items;
+    }
 });

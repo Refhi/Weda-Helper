@@ -105,6 +105,7 @@ Cf. ci-dessous pour les retours et les contributions.
 - Retrait des suggestions des titres de consultation : dans les fenêtres contenant un Titre, désactive le panneau de suggestion (fenêtres d'ordonnance, consultation, certificat, prescription, formulaire, résultats d'examen).
 - Ajout d’un raccourci vers la vue des traitements depuis la consultation
 - Enregistrement automatique des consultations toutes les 3 minutes si aucune entrée n’est détectée pendant au moins 5 secondes. (permet de limiter les pertes de données en cas de crash du navigateur ou de Weda)
+- Outil de calcul du SCOR2 directement depuis la consultation
 
 
 ## Prescriptions

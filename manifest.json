@@ -46,6 +46,7 @@
         "src/utils/keyCommands.js",
         "src/utils/quickAccess.js",
         "src/utils/quickAccessConfig.js",
+        "src/utils/score2handler.js",
         "src/ui/tooltip.js",
         "src/ui/update.js",
         "src/ui/popupFunctions.js",
@@ -74,8 +75,7 @@
         "src/features/instantVaccine.js",
         "src/features/accoladesHandling.js",
         "src/features/VSM.js",
-        "src/features/vueTraitements.js",
-        "src/features/score2handler.js"
+        "src/features/vueTraitements.js"
       ]
     }
   ],
