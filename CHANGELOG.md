@@ -19,6 +19,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - dans les arrêts de travail "Sorties autorisées" est coché oui par défaut
 - [#618](https://github.com/Refhi/Weda-Helper/issues/618) - Le motif par défaut pour les sorties sans restriction d’horaire est désormais personnalisable dans les options de Weda-Helper ou en cliquant sur le bouton 💾 à côté du champ de saisie du motif dans la page de prescription d’arrêt de travail.
 - [#620](https://github.com/Refhi/Weda-Helper/issues/620) - Les consultations sont désormais automatiquement enregistrées toutes les 3 minutes si aucune entrée n’est détectée pendant au moins 5 secondes. (permet de limiter les pertes de données en cas de crash du navigateur ou de Weda)
+- [#619](https://github.com/Refhi/Weda-Helper/issues/619) - Il est désormais possible de sauvegarder l’affichage préférentiel des documents dans la page de recherche des documents. (via l’icone 💾i)
 
 ## Evolution :
 - [#586](https://github.com/Refhi/Weda-Helper/issues/586) - le décochage automatique de certains documents dans la messagerie sécurisée est désormais personnalisable (ex. décocher les messages commençant par "NoName_" ou les fichiers commençant par "IHE_XDM.zip" qui sont souvent inutiles).
