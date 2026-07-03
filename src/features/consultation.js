@@ -1001,83 +1001,52 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', async function (
      */
 
     // Configuration détaillée des paramètres SCORE2
+    // values : soit une liste de valeurs possibles, soit une plage de nombres
+    // unit : l’unité attendue
+    // itemsKeywords : liste de mots-clés pour retrouver l’item de suivi correspondant
     const SCORE2_PARAMS = {
         riskRegion: {
-            type: 'enum',
             values: ['Low', 'Moderate', 'High', 'Very high'],
-            source: 'items',
-            description: 'Région de risque cardiovasculaire'
         },
         age: {
-            type: 'number',
-            min: 40,
-            max: 89,
-            unit: 'années',
-            source: 'patientInfo',
-            description: 'Âge du patient'
+            values: [40-89], // L'âge doit être compris entre 40 et 89 ans pour le calcul du SCORE2
         },
         gender: {
-            type: 'enum',
             values: ['male', 'female'],
-            source: 'patientInfo',
-            conversion: { 'M': 'male', 'F': 'female' },
-            description: 'Sexe du patient'
         },
         smoker: {
-            type: 'enum',
             values: [0, 1],
-            source: 'items',
-            keywords: ['tabac', 'fumeur'],
-            description: 'Statut tabagique'
+            itemsKeywords: ['tabac', 'fumeur'],
         },
         systolicBp: {
-            type: 'number',
-            min: 80,
-            max: 200,
+            values: [30, 350], // Très large pour couvrir toutes les possibilités
             unit: 'mmHg',
-            source: 'items',
-            keywords: ['PAS', 'tension systolique', 'TAS'],
-            description: 'Pression artérielle systolique'
+            itemsKeywords: ['PAS', 'tension systolique', 'TAS'],
         },
         diabetes: {
-            type: 'enum',
             values: [0, 1],
-            source: 'items',
-            keywords: ['diabète', 'DT2'],
-            description: 'Présence de diabète'
+            itemsKeywords: ['diabète', 'DT2'],
         },
         totalChol: {
-            type: 'number',
-            min: 2,
-            max: 10,
+            values: [0, 15], // Très large pour couvrir toutes les possibilités
             unit: 'mmol/L',
-            source: 'items',
-            keywords: ['cholestérol total', 'CT'],
-            conversion: { from: 'g/L', factor: 2.586 },
-            description: 'Cholestérol total'
+            itemsKeywords: ['cholestérol total', 'CT'],
+            conversion: { from: 'g/L', factor: 2.586 }, // ex. 1 g/L = 2.586 mmol/L pour le cholestérol total
         },
         totalHdl: {
-            type: 'number',
-            min: 0.5,
-            max: 3,
+            values: [0, 15], // Très large pour couvrir toutes les possibilités
             unit: 'mmol/L',
-            source: 'items',
-            keywords: ['HDL', 'HDL-C'],
-            conversion: { from: 'g/L', factor: 2.586 },
-            description: 'HDL cholestérol'
+            itemsKeywords: ['HDL', 'HDL-C'],
+            conversion: { from: 'g/L', factor: 2.586 }, // ex. 1 g/L = 2.586 mmol/L pour le cholestérol HDL
         },
-        classify: {
-            type: 'boolean',
-            default: false,
-            source: 'option',
-            description: 'Retourner catégorie texte ou score numérique'
-        }
+        // classify: { } // non utilisé ici, sera codé en dur
     };
 
 
 
     // Initialisation des variables
     let riskRegion, age, gender, smoker, systolicBp, diabetes, totalChol, totalHdl, classify;
+    classify = false;
 
     // Ici on va récupérer, par différents moyens les valeurs nécessaires
     const patientInfo = await getPatientInfo(getCurrentPatientId());
@@ -1100,6 +1069,8 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', async function (
 
 
     console.log('[autoScore2] Suivi items récupérés :', suiviItems);
+
+    // Rapprochement des items de suivi avec les paramètres SCORE2
 
     // Ici on va prompter l'utilisateur pour les valeurs manquantes
 
