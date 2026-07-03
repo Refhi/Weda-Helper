@@ -1402,42 +1402,68 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', function () {
                 
                 for (const [paramName, inputElement] of Object.entries(fields)) {
                     const paramConfig = params[paramName];
-                    const value = inputElement.value;
+                    let value;
                     
-                    if (!value || value.trim() === '') {
-                        alert(`❌ Le champ "${paramConfig.description || paramName}" est requis.`);
-                        inputElement.focus();
-                        isValid = false;
-                        break;
-                    }
-                    
-                    // Valider selon le type
-                    if (inputElement.tagName === 'SELECT') {
-                        values[paramName] = value;
-                    } else {
-                        // Pour les inputs numériques
-                        const numValue = parseFloat(value.replace(',', '.'));
-                        if (isNaN(numValue)) {
-                            alert(`❌ "${paramConfig.description || paramName}" doit être un nombre valide.`);
+                    // Gérer les boutons radio
+                    if (inputElement.type === 'radio') {
+                        const radioGroup = inputElement.name;
+                        const checkedRadio = document.querySelector(`input[name="${radioGroup}"]:checked`);
+                        
+                        if (!checkedRadio) {
+                            alert(`❌ Le champ "${paramConfig.description || paramName}" est requis.`);
                             inputElement.focus();
                             isValid = false;
                             break;
                         }
                         
-                        // Vérifier les limites pour les ranges
-                        const possibleValues = paramConfig.possibleValues;
-                        if (Array.isArray(possibleValues) && possibleValues.length === 2 &&
-                            typeof possibleValues[0] === 'number') {
-                            const [min, max] = possibleValues;
-                            if (numValue < min || numValue > max) {
-                                alert(`❌ "${paramConfig.description || paramName}" doit être entre ${min} et ${max}.`);
+                        value = checkedRadio.value;
+                        
+                        // Convertir en nombre si c'est un nombre
+                        if (!isNaN(value) && value !== '') {
+                            value = parseFloat(value);
+                        }
+                        
+                        values[paramName] = value;
+                    }
+                    // Gérer les selects et inputs
+                    else {
+                        value = inputElement.value;
+                        
+                        if (!value || value.trim() === '') {
+                            alert(`❌ Le champ "${paramConfig.description || paramName}" est requis.`);
+                            inputElement.focus();
+                            isValid = false;
+                            break;
+                        }
+                        
+                        // Valider selon le type
+                        if (inputElement.tagName === 'SELECT') {
+                            values[paramName] = value;
+                        } else {
+                            // Pour les inputs numériques
+                            const numValue = parseFloat(value.replace(',', '.'));
+                            if (isNaN(numValue)) {
+                                alert(`❌ "${paramConfig.description || paramName}" doit être un nombre valide.`);
                                 inputElement.focus();
                                 isValid = false;
                                 break;
                             }
+                            
+                            // Vérifier les limites pour les ranges
+                            const possibleValues = paramConfig.possibleValues;
+                            if (Array.isArray(possibleValues) && possibleValues.length === 2 &&
+                                typeof possibleValues[0] === 'number') {
+                                const [min, max] = possibleValues;
+                                if (numValue < min || numValue > max) {
+                                    alert(`❌ "${paramConfig.description || paramName}" doit être entre ${min} et ${max}.`);
+                                    inputElement.focus();
+                                    isValid = false;
+                                    break;
+                                }
+                            }
+                            
+                            values[paramName] = numValue;
                         }
-                        
-                        values[paramName] = numValue;
                     }
                 }
                 
@@ -1536,8 +1562,90 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', function () {
         // Champ de saisie
         let inputElement;
         
-        // Select pour les choix multiples (strings)
-        if (Array.isArray(paramConfig.possibleValues) && 
+        // Boutons radio pour les choix multiples avec simplifiedValues
+        if (paramConfig.simplifiedValues) {
+            const radioContainer = document.createElement('div');
+            radioContainer.style.cssText = `
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            `;
+            
+            const radioGroup = `radio_${paramName}_${Date.now()}`;
+            let isFirst = true;
+            
+            // Créer un bouton radio pour chaque option
+            for (const [value, description] of Object.entries(paramConfig.simplifiedValues)) {
+                const radioWrapper = document.createElement('label');
+                radioWrapper.style.cssText = `
+                    display: flex;
+                    align-items: flex-start;
+                    cursor: pointer;
+                    padding: 10px;
+                    border: 1px solid ${isFirst ? '#2196F3' : '#ddd'};
+                    border-radius: 4px;
+                    transition: background-color 0.2s;
+                    background-color: ${isFirst ? '#e3f2fd' : 'white'};
+                `;
+                radioWrapper.onmouseover = () => radioWrapper.style.backgroundColor = '#f5f5f5';
+                radioWrapper.onmouseout = () => {
+                    if (!radioWrapper.querySelector('input').checked) {
+                        radioWrapper.style.backgroundColor = 'white';
+                    }
+                };
+                
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.name = radioGroup;
+                radio.value = value;
+                radio.checked = isFirst; // Cocher le premier par défaut
+                radio.style.cssText = `
+                    margin-right: 10px;
+                    margin-top: 3px;
+                    flex-shrink: 0;
+                `;
+                
+                // Gestion du changement de sélection
+                radio.onchange = () => {
+                    // Retirer le fond de tous les wrappers
+                    radioContainer.querySelectorAll('label').forEach(label => {
+                        label.style.backgroundColor = 'white';
+                        label.style.borderColor = '#ddd';
+                    });
+                    // Mettre en évidence le sélectionné
+                    if (radio.checked) {
+                        radioWrapper.style.backgroundColor = '#e3f2fd';
+                        radioWrapper.style.borderColor = '#2196F3';
+                    }
+                };
+                
+                const textContent = document.createElement('div');
+                textContent.style.cssText = `
+                    flex: 1;
+                    font-size: 14px;
+                    line-height: 1.4;
+                `;
+                textContent.textContent = description;
+                
+                radioWrapper.appendChild(radio);
+                radioWrapper.appendChild(textContent);
+                radioContainer.appendChild(radioWrapper);
+                
+                // Stocker le premier radio comme inputElement pour la validation
+                if (isFirst) {
+                    inputElement = radio;
+                    isFirst = false;
+                }
+            }
+            
+            container.appendChild(label);
+            if (infoText) {
+                container.appendChild(info);
+            }
+            container.appendChild(radioContainer);
+        }
+        // Select pour les choix multiples sans simplifiedValues (strings)
+        else if (Array.isArray(paramConfig.possibleValues) && 
             typeof paramConfig.possibleValues[0] === 'string') {
             
             inputElement = document.createElement('select');
@@ -1562,8 +1670,14 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', function () {
                 option.textContent = val;
                 inputElement.appendChild(option);
             });
+            
+            container.appendChild(label);
+            if (infoText) {
+                container.appendChild(info);
+            }
+            container.appendChild(inputElement);
         } 
-        // Input pour les valeurs binaires ou numériques
+        // Input pour les valeurs numériques
         else {
             inputElement = document.createElement('input');
             inputElement.type = 'text';
@@ -1586,13 +1700,13 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', function () {
                     inputElement.placeholder += ` ${paramConfig.unit}`;
                 }
             }
+            
+            container.appendChild(label);
+            if (infoText) {
+                container.appendChild(info);
+            }
+            container.appendChild(inputElement);
         }
-        
-        container.appendChild(label);
-        if (infoText) {
-            container.appendChild(info);
-        }
-        container.appendChild(inputElement);
         
         return container;
     }
