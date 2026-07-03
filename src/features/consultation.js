@@ -1006,63 +1006,56 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', async function (
     // itemsKeywords : liste de mots-clés pour retrouver l’item de suivi correspondant
     const SCORE2_PARAMS = {
         riskRegion: {
-            values: ['Low', 'Moderate', 'High', 'Very high'],
+            possibleValues : ['Low', 'Moderate', 'High', 'Very high'],
         },
         age: {
-            values: [40-89], // L'âge doit être compris entre 40 et 89 ans pour le calcul du SCORE2
+            possibleValues: [40, 89], // L'âge doit être compris entre 40 et 89 ans pour le calcul du SCORE2
         },
         gender: {
-            values: ['male', 'female'],
+            possibleValues: ['male', 'female'],
         },
         smoker: {
-            values: [0, 1],
+            possibleValues: [0, 1],
             itemsKeywords: ['tabac', 'fumeur'],
         },
         systolicBp: {
-            values: [30, 350], // Très large pour couvrir toutes les possibilités
+            possibleValues: [30, 350], // Très large pour couvrir toutes les possibilités
             unit: 'mmHg',
             itemsKeywords: ['PAS', 'tension systolique', 'TAS'],
         },
         diabetes: {
-            values: [0, 1],
+            possibleValues: [0, 1],
             itemsKeywords: ['diabète', 'DT2'],
         },
         totalChol: {
-            values: [0, 15], // Très large pour couvrir toutes les possibilités
+            possibleValues: [0, 15], // Très large pour couvrir toutes les possibilités
             unit: 'mmol/L',
             itemsKeywords: ['cholestérol total', 'CT'],
             conversion: { from: 'g/L', factor: 2.586 }, // ex. 1 g/L = 2.586 mmol/L pour le cholestérol total
         },
         totalHdl: {
-            values: [0, 15], // Très large pour couvrir toutes les possibilités
+            possibleValues: [0, 15], // Très large pour couvrir toutes les possibilités
             unit: 'mmol/L',
             itemsKeywords: ['HDL', 'HDL-C'],
             conversion: { from: 'g/L', factor: 2.586 }, // ex. 1 g/L = 2.586 mmol/L pour le cholestérol HDL
         },
-        // classify: { } // non utilisé ici, sera codé en dur
+        classify: {
+            value: false
+        }
     };
-
-
-
-    // Initialisation des variables
-    let riskRegion, age, gender, smoker, systolicBp, diabetes, totalChol, totalHdl, classify;
-    classify = false;
 
     // Ici on va récupérer, par différents moyens les valeurs nécessaires
     const patientInfo = await getPatientInfo(getCurrentPatientId());
     console.log('[autoScore2] Informations du patient récupérées :', patientInfo);
     // Age
-    age = getPatientAge(patientInfo);
-    console.log('[autoScore2] Age calculé :', age);
+    SCORE2_PARAMS.age.value = getPatientAge(patientInfo);
+    console.log('[autoScore2] Age calculé :', SCORE2_PARAMS.age.value);
 
     // Genre
-    gender = getPatientGender(patientInfo);
-    console.log('[autoScore2] Genre calculé :', gender);
+    SCORE2_PARAMS.gender.value = getPatientGender(patientInfo);
+    console.log('[autoScore2] Genre calculé :', SCORE2_PARAMS.gender.value);
 
     console.log('[autoScore2] Récupération des items de suivi pour les autres paramètres');
-    // Arbitraire
-    classify = false;
-    console.log('[autoScore2] Classify défini à :', classify);
 
     // Gestion de toutes les autres valeurs via les items de suivi
     const suiviItems = getSuiviItems();
