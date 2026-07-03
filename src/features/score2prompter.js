@@ -165,7 +165,8 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', function () {
         );
         console.log('[autoScore2] Résultat du calcul SCORE2 :', score2Result, "%");
         
-        // TODO: Afficher le score2 dans le champ de texte correspondant
+        // Afficher le résultat dans un modal
+        showScore2ResultModal(score2Result, SCORE2_PARAMS);
     }
 
     // Fonctions utilitaires
@@ -750,5 +751,214 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', function () {
         }
         
         return container;
+    }
+    
+    /**
+     * Affiche le résultat du calcul SCORE2 dans un modal
+     */
+    function showScore2ResultModal(score2Result, params) {
+        // Créer l'overlay
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+        
+        // Créer le modal
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            max-height: 80vh;
+            width: 90%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        `;
+        
+        // Header
+        const header = document.createElement('div');
+        header.style.cssText = `
+            background: #4CAF50;
+            color: white;
+            padding: 16px 20px;
+            font-size: 18px;
+            font-weight: bold;
+        `;
+        header.textContent = '⚕️ Résultat SCORE2';
+        
+        // Body (scrollable)
+        const body = document.createElement('div');
+        body.style.cssText = `
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        `;
+        
+        // Affichage du résultat principal
+        const resultContainer = document.createElement('div');
+        resultContainer.style.cssText = `
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f0f8ff;
+            border-radius: 8px;
+            border: 2px solid #2196F3;
+        `;
+        
+        const resultLabel = document.createElement('div');
+        resultLabel.style.cssText = `
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 10px;
+        `;
+        resultLabel.textContent = 'Risque cardiovasculaire à 10 ans :';
+        
+        const resultValue = document.createElement('div');
+        resultValue.style.cssText = `
+            font-size: 48px;
+            font-weight: bold;
+            color: #2196F3;
+        `;
+        resultValue.textContent = `${score2Result.toFixed(1)} %`;
+        
+        resultContainer.appendChild(resultLabel);
+        resultContainer.appendChild(resultValue);
+        body.appendChild(resultContainer);
+        
+        // Affichage des paramètres utilisés
+        const paramsTitle = document.createElement('div');
+        paramsTitle.style.cssText = `
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #333;
+        `;
+        paramsTitle.textContent = '📋 Paramètres utilisés pour le calcul :';
+        body.appendChild(paramsTitle);
+        
+        const paramsContainer = document.createElement('div');
+        paramsContainer.style.cssText = `
+            display: grid;
+            gap: 10px;
+        `;
+        
+        // Liste des paramètres à afficher (sauf classify)
+        const paramsToDisplay = [
+            { key: 'riskRegion', label: 'Région de risque' },
+            { key: 'age', label: 'Âge' },
+            { key: 'gender', label: 'Sexe' },
+            { key: 'smoker', label: 'Tabagisme' },
+            { key: 'systolicBp', label: 'Pression artérielle systolique' },
+            { key: 'diabetes', label: 'Diabète' },
+            { key: 'totalChol', label: 'Cholestérol total' },
+            { key: 'totalHdl', label: 'Cholestérol HDL' }
+        ];
+        
+        paramsToDisplay.forEach(({ key, label }) => {
+            const paramConfig = params[key];
+            let displayValue = paramConfig.value;
+            
+            // Affichage personnalisé selon le type
+            if (paramConfig.simplifiedValues && paramConfig.simplifiedValues[displayValue]) {
+                displayValue = paramConfig.simplifiedValues[displayValue];
+            } else if (key === 'gender') {
+                displayValue = displayValue === 'male' ? 'Homme' : 'Femme';
+            } else if (typeof displayValue === 'number' && paramConfig.unit) {
+                displayValue = `${displayValue.toFixed(2)} ${paramConfig.unit}`;
+            } else if (typeof displayValue === 'number') {
+                displayValue = displayValue.toFixed(2);
+            }
+            
+            const paramRow = document.createElement('div');
+            paramRow.style.cssText = `
+                display: flex;
+                justify-content: space-between;
+                padding: 10px;
+                background: #f9f9f9;
+                border-radius: 4px;
+                font-size: 14px;
+            `;
+            
+            const paramLabel = document.createElement('span');
+            paramLabel.style.cssText = `
+                font-weight: 500;
+                color: #555;
+            `;
+            paramLabel.textContent = label + ' :';
+            
+            const paramValue = document.createElement('span');
+            paramValue.style.cssText = `
+                color: #333;
+            `;
+            paramValue.textContent = displayValue;
+            
+            paramRow.appendChild(paramLabel);
+            paramRow.appendChild(paramValue);
+            paramsContainer.appendChild(paramRow);
+        });
+        
+        body.appendChild(paramsContainer);
+        
+        // Footer avec bouton de fermeture
+        const footer = document.createElement('div');
+        footer.style.cssText = `
+            padding: 16px 20px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: center;
+            background: #f5f5f5;
+        `;
+        
+        const closeButton = document.createElement('button');
+        closeButton.textContent = 'Fermer';
+        closeButton.style.cssText = `
+            padding: 10px 30px;
+            border: none;
+            background: #2196F3;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        `;
+        closeButton.onmouseover = () => closeButton.style.background = '#1976D2';
+        closeButton.onmouseout = () => closeButton.style.background = '#2196F3';
+        
+        closeButton.onclick = () => {
+            document.body.removeChild(overlay);
+        };
+        
+        // Permettre la fermeture avec Échap
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                document.body.removeChild(overlay);
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+        
+        // Assembler le modal
+        footer.appendChild(closeButton);
+        modal.appendChild(header);
+        modal.appendChild(body);
+        modal.appendChild(footer);
+        overlay.appendChild(modal);
+        
+        // Ajouter au DOM
+        document.body.appendChild(overlay);
+        
+        // Focus sur le bouton de fermeture
+        setTimeout(() => closeButton.focus(), 100);
     }
 });
