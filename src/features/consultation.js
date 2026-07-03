@@ -981,104 +981,121 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoSaveConsultations', functi
 });
 
 /**
- * Génération du score2
+ * Génération du score2 - Déclenchée par clic sur bouton
  */
-addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', async function () {
-    /**
-     * Le principe :
-     * - calculer le score2 en utilisant un maximum les valeurs déjà présentes
-     * - si une valeur est manquante, au moment du calcul, on la demande à l'utilisateur via un prompt
-     * 
-     * les valeurs nécessaires sont détaillées dans score2handler.js
-     * 
-     * Certaines sont accessibles via le patientLink.js
-     * 
-     * Les autres sont accessibles dans les items de suivis, dont l’id est sur le modèle #ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_0 (le chiffre s’incrémente pour chaque item de suivi)
-     * les unités sont dans #ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviUnit_0
-     * 
-     * 
-     * Si l’untité est manquante, elle est également demandée à l’utilisateur via un prompt
-     */
+addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', function () {
+    waitForElement({
+        selector: '#ContentPlaceHolder1_ButtonSuiviPreference',
+        triggerOnInit: true,
+        callback: function (elements) {
+            const suiviPrefButton = elements[0];
+            console.log('[autoScore2] Bouton de préférences détecté, ajout du bouton SCORE2');        
 
-    // Configuration détaillée des paramètres SCORE2
-    // values : soit une liste de valeurs possibles, soit une plage de nombres
-    // unit : l’unité attendue
-    // itemsKeywords : liste de mots-clés pour retrouver l’item de suivi correspondant
-    const SCORE2_PARAMS = {
-        riskRegion: {
-            possibleValues : ['Low', 'Moderate', 'High', 'Very high'],
-        },
-        age: {
-            possibleValues: [40, 89], // L'âge doit être compris entre 40 et 89 ans pour le calcul du SCORE2
-        },
-        gender: {
-            possibleValues: ['male', 'female'],
-        },
-        smoker: {
-            possibleValues: [0, 1],
-            itemsKeywords: ['tabac', 'fumeur'],
-        },
-        systolicBp: {
-            possibleValues: [30, 350], // Très large pour couvrir toutes les possibilités
-            unit: 'mmHg',
-            itemsKeywords: ['PAS', 'tension systolique', 'TAS'],
-        },
-        diabetes: {
-            possibleValues: [0, 1],
-            itemsKeywords: ['diabète', 'DT2'],
-        },
-        totalChol: {
-            possibleValues: [0, 15], // Très large pour couvrir toutes les possibilités
-            unit: 'mmol/L',
-            itemsKeywords: ['cholestérol total', 'CT'],
-            conversion: { from: 'g/L', factor: 2.586 }, // ex. 1 g/L = 2.586 mmol/L pour le cholestérol total
-        },
-        totalHdl: {
-            possibleValues: [0, 15], // Très large pour couvrir toutes les possibilités
-            unit: 'mmol/L',
-            itemsKeywords: ['HDL', 'HDL-C'],
-            conversion: { from: 'g/L', factor: 2.586 }, // ex. 1 g/L = 2.586 mmol/L pour le cholestérol HDL
-        },
-        classify: {
-            value: false
+            
+            // Créer le nouveau bouton SCORE2
+            const score2Button = document.createElement('input');
+            score2Button.type = 'button';
+            score2Button.value = 'SCORE2';
+            score2Button.id = 'WedaHelper_ButtonScore2';
+            score2Button.className = 'buttonheader';
+            score2Button.title = 'Calculer le SCORE2 (Weda-Helper)';
+            score2Button.style.width = 'auto';
+            score2Button.style.cssFloat = 'right';
+
+            // Réduire la largeur du bouton existant selon la place restante
+            suiviPrefButton.style.width = 'auto';
+            suiviPrefButton.style.cssFloat = 'left';
+            
+            // Insérer le bouton après celui des préférences
+            suiviPrefButton.parentNode.insertBefore(score2Button, suiviPrefButton.nextSibling);
+            
+            // Ajouter un br pour éviter les problèmes de float
+            const clearDiv = document.createElement('div');
+            clearDiv.style.clear = 'both';
+            score2Button.parentNode.insertBefore(clearDiv, score2Button.nextSibling);
+            
+            // Attacher l'événement de clic
+            score2Button.addEventListener('click', async function() {
+                console.log('[autoScore2] Bouton SCORE2 cliqué, début du calcul');
+                await calculateScore2();
+            });
+            
+            console.log('[autoScore2] Bouton SCORE2 ajouté avec succès');
         }
-    };
+    });
 
-    // Ici on va récupérer, par différents moyens les valeurs nécessaires
-    const patientInfo = await getPatientInfo(getCurrentPatientId());
-    console.log('[autoScore2] Informations du patient récupérées :', patientInfo);
-    // Age
-    SCORE2_PARAMS.age.value = getPatientAge(patientInfo);
-    console.log('[autoScore2] Age calculé :', SCORE2_PARAMS.age.value);
+    /**
+     * Fonction principale de calcul du SCORE2
+     */
+    async function calculateScore2() {
+        // Configuration détaillée des paramètres SCORE2
+        const SCORE2_PARAMS = {
+            riskRegion: {
+                possibleValues : ['Low', 'Moderate', 'High', 'Very high'],
+            },
+            age: {
+                possibleValues: [40, 89],
+            },
+            gender: {
+                possibleValues: ['male', 'female'],
+            },
+            smoker: {
+                possibleValues: [0, 1],
+                itemsKeywords: ['tabac', 'fumeur'],
+            },
+            systolicBp: {
+                possibleValues: [30, 350],
+                unit: 'mmHg',
+                itemsKeywords: ['PAS', 'tension systolique', 'TAS'],
+            },
+            diabetes: {
+                possibleValues: [0, 1],
+                itemsKeywords: ['diabète', 'DT2'],
+            },
+            totalChol: {
+                possibleValues: [0, 15],
+                unit: 'mmol/L',
+                itemsKeywords: ['cholestérol total', 'CT'],
+                conversion: { from: 'g/L', factor: 2.586 },
+            },
+            totalHdl: {
+                possibleValues: [0, 15],
+                unit: 'mmol/L',
+                itemsKeywords: ['HDL', 'HDL-C'],
+                conversion: { from: 'g/L', factor: 2.586 },
+            },
+            classify: {
+                value: false
+            }
+        };
 
-    // Genre
-    SCORE2_PARAMS.gender.value = getPatientGender(patientInfo);
-    console.log('[autoScore2] Genre calculé :', SCORE2_PARAMS.gender.value);
+        // Récupération des valeurs nécessaires
+        const patientInfo = await getPatientInfo(getCurrentPatientId());
+        
+        // Age
+        SCORE2_PARAMS.age.value = getPatientAge(patientInfo);
 
-    console.log('[autoScore2] Récupération des items de suivi pour les autres paramètres');
+        // Genre
+        SCORE2_PARAMS.gender.value = getPatientGender(patientInfo);
 
-    // Gestion de toutes les autres valeurs via les items de suivi
-    const suiviItems = getSuiviItems();
-    console.log('[autoScore2] Suivi items récupérés :', suiviItems);
+        // Gestion de toutes les autres valeurs via les items de suivi
+        const suiviItems = getSuiviItems();
+        console.log('[autoScore2] Suivi items récupérés :', suiviItems);
 
-    // Rapprochement des items de suivi avec les paramètres SCORE2
-    matchSuiviItemsToParams(suiviItems, SCORE2_PARAMS);
-    console.log('[autoScore2] Paramètres après rapprochement :', SCORE2_PARAMS);
+        // Rapprochement des items de suivi avec les paramètres SCORE2
+        matchSuiviItemsToParams(suiviItems, SCORE2_PARAMS);
+        console.log('[autoScore2] Paramètres après rapprochement :', SCORE2_PARAMS);
 
-    // Ici on va prompter l'utilisateur pour les valeurs manquantes
-
-    // Ici on va calculer le score2
-
-    // Ici on va afficher le score2 dans le champ de texte correspondant
-
-
-
+        // TODO: Prompter l'utilisateur pour les valeurs manquantes
+        // TODO: Calculer le score2
+        // TODO: Afficher le score2 dans le champ de texte correspondant
+    }
 
     // Fonctions utilitaires
     function getPatientAge(patientInfo) {
-        const ddn = patientInfo.dateOfBirth.date; // "15/06/1955"
+        const ddn = patientInfo.dateOfBirth.date;
         const [day, month, year] = ddn.split('/').map(Number);
-        const DDN = new Date(year, month - 1, day); // mois en JS : 0-11
+        const DDN = new Date(year, month - 1, day);
         const today = new Date();
         let age = today.getFullYear() - DDN.getFullYear();
         const birthdayThisYear = new Date(today.getFullYear(), DDN.getMonth(), DDN.getDate());
@@ -1136,23 +1153,17 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', async function (
 
     /**
      * Rapproche les items de suivi avec les paramètres SCORE2 ayant des itemsKeywords
-     * @param {Array} suiviItems - Les items de suivi avec {label, value, unit}
-     * @param {Object} params - L'objet SCORE2_PARAMS
      */
     function matchSuiviItemsToParams(suiviItems, params) {
         console.log('[autoScore2] Début du rapprochement des items de suivi');
         
-        // Parcourir chaque paramètre SCORE2
         for (const [paramName, paramConfig] of Object.entries(params)) {
-            // Ignorer les paramètres sans itemsKeywords
             if (!paramConfig.itemsKeywords) continue;
             
             console.log(`[autoScore2] Recherche de correspondance pour "${paramName}" avec keywords:`, paramConfig.itemsKeywords);
             
-            // Chercher un item de suivi correspondant
             const matchedItem = suiviItems.find(item => {
                 const labelLower = item.label.toLowerCase();
-                // Vérifier si un des mots-clés est présent dans le label
                 return paramConfig.itemsKeywords.some(keyword => 
                     labelLower.includes(keyword.toLowerCase())
                 );
