@@ -151,7 +151,20 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', function () {
         console.log('[autoScore2] Toutes les valeurs sont disponibles, calcul en cours...');
 
 
-        // TODO: Calculer le score2
+        // Calculer le score2
+        const score2Result = SCORE2(
+            SCORE2_PARAMS.riskRegion.value,
+            SCORE2_PARAMS.age.value,
+            SCORE2_PARAMS.gender.value,
+            SCORE2_PARAMS.smoker.value,
+            SCORE2_PARAMS.systolicBp.value,
+            SCORE2_PARAMS.diabetes.value,
+            SCORE2_PARAMS.totalChol.value,
+            SCORE2_PARAMS.totalHdl.value,
+            SCORE2_PARAMS.classify.value
+        );
+        console.log('[autoScore2] Résultat du calcul SCORE2 :', score2Result, "%");
+        
         // TODO: Afficher le score2 dans le champ de texte correspondant
     }
 
