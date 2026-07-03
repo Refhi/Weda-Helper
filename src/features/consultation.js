@@ -1101,7 +1101,7 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', async function (
             if (!itemElement) break;
             
             const unitElement = document.querySelector(`#ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviUnit_${index}`);
-            const labelElement = document.querySelector(`#ContentPlaceHolder1_SuivisGrid_LabelGridSuiviLib_${index}`);
+            const labelElement = document.querySelector(`#ContentPlaceHolder1_SuivisGrid_LabelGridSuiviQuestion_${index}`);
             
             let value = itemElement.value;
             let unit = unitElement ? unitElement.value : null;
