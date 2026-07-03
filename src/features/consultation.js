@@ -904,19 +904,14 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoSaveConsultations', functi
     // Fonction pour formater le temps restant
     function formatTimeRemaining(milliseconds) {
         const totalSeconds = Math.ceil(milliseconds / 1000);
-        // Arrondir au multiple de 10 secondes supérieur pour des valeurs plus rondes
-        const roundedSeconds = Math.ceil(totalSeconds / 10) * 10;
-        const minutes = Math.floor(roundedSeconds / 60);
-        const remainingSeconds = roundedSeconds % 60;
+        const minutes = Math.floor(totalSeconds / 60);
         
-        if (roundedSeconds <= 0) {
+        if (totalSeconds <= 0) {
             return 'bientôt';
-        } else if (minutes === 0) {
-            return `${roundedSeconds}s`;
-        } else if (remainingSeconds === 0) {
+        } else if (minutes > 0) {
             return `${minutes}m`;
         } else {
-            return `${minutes}m${remainingSeconds}s`;
+            return `${totalSeconds}s`;
         }
     }
 
