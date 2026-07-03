@@ -1130,16 +1130,40 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', async function (
     }
 
     function getSuiviItems() {
-        // TODO : récupérer aussi les antériorités
         const items = [];
         let index = 0;
         while (true) {
             const itemElement = document.querySelector(`#ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_${index}`);
             if (!itemElement) break;
+            
             const unitElement = document.querySelector(`#ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviUnit_${index}`);
+            
+            let value = itemElement.value;
+            let unit = unitElement ? unitElement.value : null;
+            
+            // Si la valeur principale est vide, chercher dans l'historique
+            if (!value || !value.trim()) {
+                const historiqueElement = document.querySelector(`#ContentPlaceHolder1_SuivisGrid_LabelGridSuiviHistorique_${index}`);
+                if (historiqueElement) {
+                    // Chercher le premier <tr> dans le tableau de l'historique (= valeur la plus récente)
+                    const firstHistoryRow = historiqueElement.querySelector('table tbody tr');
+                    if (firstHistoryRow) {
+                        const tds = firstHistoryRow.querySelectorAll('td');
+                        // tds[0] = date, tds[1] = valeur, tds[2] = unité
+                        if (tds.length >= 2) {
+                            value = tds[1].textContent.trim();
+                            // Récupérer l'unité de l'historique si elle existe et si l'unité principale est vide
+                            if ((!unit || !unit.trim()) && tds.length >= 3) {
+                                unit = tds[2].textContent.trim() || null;
+                            }
+                        }
+                    }
+                }
+            }
+            
             items.push({
-                value: itemElement.value,
-                unit: unitElement ? unitElement.value : null
+                value: value,
+                unit: unit
             });
             index++;
         }
