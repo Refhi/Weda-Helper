@@ -1059,11 +1059,11 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', async function (
 
     // Gestion de toutes les autres valeurs via les items de suivi
     const suiviItems = getSuiviItems();
-
-
     console.log('[autoScore2] Suivi items récupérés :', suiviItems);
 
     // Rapprochement des items de suivi avec les paramètres SCORE2
+    matchSuiviItemsToParams(suiviItems, SCORE2_PARAMS);
+    console.log('[autoScore2] Paramètres après rapprochement :', SCORE2_PARAMS);
 
     // Ici on va prompter l'utilisateur pour les valeurs manquantes
 
@@ -1101,22 +1101,21 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', async function (
             if (!itemElement) break;
             
             const unitElement = document.querySelector(`#ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviUnit_${index}`);
+            const labelElement = document.querySelector(`#ContentPlaceHolder1_SuivisGrid_LabelGridSuiviLib_${index}`);
             
             let value = itemElement.value;
             let unit = unitElement ? unitElement.value : null;
+            let label = labelElement ? labelElement.textContent.trim() : '';
             
             // Si la valeur principale est vide, chercher dans l'historique
             if (!value || !value.trim()) {
                 const historiqueElement = document.querySelector(`#ContentPlaceHolder1_SuivisGrid_LabelGridSuiviHistorique_${index}`);
                 if (historiqueElement) {
-                    // Chercher le premier <tr> dans le tableau de l'historique (= valeur la plus récente)
                     const firstHistoryRow = historiqueElement.querySelector('table tbody tr');
                     if (firstHistoryRow) {
                         const tds = firstHistoryRow.querySelectorAll('td');
-                        // tds[0] = date, tds[1] = valeur, tds[2] = unité
                         if (tds.length >= 2) {
                             value = tds[1].textContent.trim();
-                            // Récupérer l'unité de l'historique si elle existe et si l'unité principale est vide
                             if ((!unit || !unit.trim()) && tds.length >= 3) {
                                 unit = tds[2].textContent.trim() || null;
                             }
@@ -1126,11 +1125,70 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', async function (
             }
             
             items.push({
+                label: label,
                 value: value,
                 unit: unit
             });
             index++;
         }
         return items;
+    }
+
+    /**
+     * Rapproche les items de suivi avec les paramètres SCORE2 ayant des itemsKeywords
+     * @param {Array} suiviItems - Les items de suivi avec {label, value, unit}
+     * @param {Object} params - L'objet SCORE2_PARAMS
+     */
+    function matchSuiviItemsToParams(suiviItems, params) {
+        console.log('[autoScore2] Début du rapprochement des items de suivi');
+        
+        // Parcourir chaque paramètre SCORE2
+        for (const [paramName, paramConfig] of Object.entries(params)) {
+            // Ignorer les paramètres sans itemsKeywords
+            if (!paramConfig.itemsKeywords) continue;
+            
+            console.log(`[autoScore2] Recherche de correspondance pour "${paramName}" avec keywords:`, paramConfig.itemsKeywords);
+            
+            // Chercher un item de suivi correspondant
+            const matchedItem = suiviItems.find(item => {
+                const labelLower = item.label.toLowerCase();
+                // Vérifier si un des mots-clés est présent dans le label
+                return paramConfig.itemsKeywords.some(keyword => 
+                    labelLower.includes(keyword.toLowerCase())
+                );
+            });
+            
+            if (matchedItem && matchedItem.value) {
+                let finalValue = parseFloat(matchedItem.value.replace(',', '.'));
+                let finalUnit = matchedItem.unit;
+                
+                // Gestion de la conversion d'unité si nécessaire
+                if (paramConfig.conversion && finalUnit) {
+                    const unitLower = finalUnit.toLowerCase().trim();
+                    const conversionFromLower = paramConfig.conversion.from.toLowerCase().trim();
+                    
+                    if (unitLower === conversionFromLower) {
+                        console.log(`[autoScore2] Conversion de ${finalValue} ${finalUnit} vers ${paramConfig.unit}`);
+                        finalValue = finalValue * paramConfig.conversion.factor;
+                        finalUnit = paramConfig.unit;
+                    }
+                }
+                
+                // Vérification de l'unité attendue
+                if (paramConfig.unit && finalUnit && finalUnit.toLowerCase() !== paramConfig.unit.toLowerCase()) {
+                    console.warn(`[autoScore2] Unité inattendue pour "${paramName}": trouvé "${finalUnit}", attendu "${paramConfig.unit}"`);
+                }
+                
+                // Assigner la valeur
+                paramConfig.value = finalValue;
+                paramConfig.foundUnit = finalUnit;
+                
+                console.log(`[autoScore2] ✓ "${paramName}" = ${finalValue} ${finalUnit || ''} (depuis "${matchedItem.label}")`);
+            } else {
+                console.log(`[autoScore2] ✗ Aucune correspondance trouvée pour "${paramName}"`);
+            }
+        }
+        
+        return params;
     }
 });
