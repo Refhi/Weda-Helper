@@ -2,14 +2,14 @@
  * @file accueil.js
  * @description Fonctionnalités pour la page d'accueil patient.
  * Gère les améliorations de la page d'accueil et de vue patient :
- * - Alertes de dates ATCD et VSM
+ * - Alertes de dates ATCD
  * - Lecture automatique carte vitale et sélection patient
  * - Copie NIR et numéro sécu
- * - One-click VSM
  * - Edition simplifiée des antécédents
+ * - Sauvegarde de l’affichage préférentiel des documents dans "recherche des documents"
  * 
  * @requires tweaks.js (addTweak)
- * @requires storage.js (getOption)
+ * @requires storage.js (getOptionPromise)
  * @requires keyCommands.js (clickCarteVitale)
  * @requires notifications.js (sendWedaNotif)
  */
@@ -22,24 +22,57 @@ let homePageUrls = [
 
 // Note : La gestion des alertes de dates d'antécédents (preAlertATCD) a été déplacée dans alertesDates.js
 
-addTweak(homePageUrls, 'autoSelectPatientCV', function () {
+addTweak(homePageUrls, 'autoSelectPatientCV', async function () {
     // lit automatiquement la carte vitale elle est insérée
     // selecteur de ttt131 : body > weda-notification-container > ng-component > mat-card > div > p
     // selecteur ce jour : body > weda-notification-container > ng-component:nth-child(2) > mat-card > div > p
     let cvSelectors = 'weda-notification-container ng-component mat-card div p';
 
+    // Fonction helper pour vérifier si l'onglet courant est l'onglet actif
+    async function isCurrentTabActive() {
+        const autoSelectPatientCV_OnlyOnActiveTab = await getOptionPromise('autoSelectPatientCV_OnlyOnActiveTab');
+        if (!autoSelectPatientCV_OnlyOnActiveTab) {
+            console.log('autoSelectPatientCV_OnlyOnActiveTab désactivé, lecture CV autorisée dans tout les onglets');
+            return true; // Si l'option est désactivée, on autorise par défaut
+        }
+
+        try {
+            const hasPermission = await checkPermission('tabs');
+            if (!hasPermission) {
+                console.log('Permission tabs non accordée, lecture CV autorisée par défaut');
+                return true; // Par défaut, on autorise si pas de permission
+            }
+
+            const [currentTab, activeTab] = await Promise.all([
+                handleTabsFeature({ action: 'getCurrentTab', info: 'Vérification onglet CV' }),
+                handleTabsFeature({ action: 'getActiveTab', info: 'Vérification onglet CV' })
+            ]);
+
+            return currentTab && activeTab && currentTab.id === activeTab.id;
+        } catch (error) {
+            console.error('Erreur vérification onglet actif:', error);
+            return true; // En cas d'erreur, on autorise par défaut
+        }
+    }
+
     waitForElement({
         selector: cvSelectors,
-        callback: function (elements) {
+        callback: async function (elements) {
             console.log('cvSelectors', elements, 'found');
-            elements.forEach(cvElement => {
+            for (const cvElement of elements) {
                 console.log('cvElement text', cvElement.textContent);
                 if (cvElement.textContent.includes('Vitale insérée')) {
                     console.log('cvElement', cvElement, 'found');
                     recordMetrics({ clicks: 1, drags: 1 });
+                    // On vérifie que l'onglet est actif (même si le navigateur est réduit)
+                    const tabIsActive = await isCurrentTabActive();
+                    if (!tabIsActive) {
+                        console.log('Onglet inactif, je ne clique pas sur la carte vitale');
+                        return;
+                    }
                     clickCarteVitale();
                 }
-            });
+            }
         }
     });
 
@@ -174,251 +207,6 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'removeBoldPatientFirstName', fu
     }
 });
 
-// Surveillance de la date du dernier VSM
-addTweak('/FolderMedical/PatientViewForm.aspx', '*preAlertVSM', async function () {
-    let preAlertDuration = await getOptionPromise('preAlertVSM');
-    // Si la valeur est négative, on ne fait rien
-    if (preAlertDuration < 0) {
-        return;
-    }
-    const patientNumber = getCurrentPatientId();
-
-    waitForElement({
-        selector: '#ContentPlaceHolder1_EtatCivilUCForm1_LabelLastVSMDate',
-        callback: function (elements) {
-            const VSMElement = elements[0];
-            console.log('[preAlertVSM] VSMElement', VSMElement);
-            const lastVSMDate = VSMElement.textContent;
-            
-            if (lastVSMDate) {
-                const today = new Date();
-                // lastVSMDate est au format (12/04/2024), on le convertit en objet Date
-                const [day, month, year] = lastVSMDate.match(/\d+/g);
-                const lastVSMDateObj = new Date(`${year}-${month}-${day}`);
-                // On vérifie que la date est valide
-                if (isNaN(lastVSMDateObj)) {
-                    return;
-                }
-                // On vérifie quelle est l'ancienneté du VSM
-                const VSMAge = today - lastVSMDateObj;
-                // Calculer combien de temps avant d'atteindre 1 an
-                const timeUntilExpiration = 31557600000 - VSMAge; // 31557600000 ms = 1 an
-                // Si le VSM expire dans moins de preAlertDuration mois, on le met en orange
-                if (timeUntilExpiration > 0 && timeUntilExpiration < preAlertDuration * 30.44 * 24 * 60 * 60 * 1000) {
-                    VSMElement.style.color = 'orange';
-                    VSMElement.style.fontWeight = 'bold';
-                }
-                // Si le VSM est plus vieux que 1 an, on le met en rouge
-                if (VSMAge > 31557600000) {
-                    VSMElement.style.color = 'red';
-                    VSMElement.style.fontWeight = 'bold';
-                }
-            } else {
-                // On vérifie si on a déjà alerté pour ce patient
-                const lastVSMAlertPatient = sessionStorage.getItem('lastVSMAlertPatient');
-                if (lastVSMAlertPatient === patientNumber) {
-                    console.log('[preAlertVSM] Alert already sent for patient', patientNumber);
-                    return;
-                }
-                console.log('[preAlertVSM] Alert not sent for patient', patientNumber);
-                // On vérifie si le patient a des prescriptions ALD
-                waitForElement({
-                    selector: 'div.aldt',
-                    justOnce: true,
-                    callback: function (aldElements) {
-                        if (aldElements.length > 0) {
-                            // On envoie une notification pour prévenir l'utilisateur
-                            sendWedaNotif({
-                                message: 'Le patient semble être en ALD, mais la date du dernier VSM est introuvable, pensez à remplir le VSM pour bénéficier du ROSP. Vous pouvez désactiver cette alerte dans les options de Weda-Helper.',
-                                type: 'undefined',
-                                duration: 7000,
-                                icon: 'info',
-                            });
-                        }
-                    }
-                });
-            }
-
-            // On stocke le numéro du patient dans le sessionStorage pour évincer les alertes répétées
-            // => une seule alerte à l'ouverture du dossier.
-            sessionStorage.setItem('lastVSMAlertPatient', patientNumber);
-        }
-    });
-});
-
-// -------------------------- +1click VSM -------------------------------------
-addTweak(['/FolderMedical/PatientViewForm.aspx', '/FolderMedical/CdaForm.aspx', '/FolderMedical/DMP/view', '/FolderMedical/AntecedentForm.aspx'], 'oneClickVSM', async function () {
-    let pourcentageUtilisateur = await getOptionPromise('oneClickVSMToleranceLevel'); // Au format 70 pour 70% pour 0.3 de ratio
-    // Conversion au format numérique
-    pourcentageUtilisateur = parseFloat(pourcentageUtilisateur);
-    // const MAX_ERROR_RATIO = 0.3;
-    const MAX_ERROR_RATIO = parseFloat((1 - pourcentageUtilisateur / 100).toFixed(2)); // On arrondit à 2 décimales
-    console.log('[oneClickVSM] MAX_ERROR_RATIO', MAX_ERROR_RATIO, 'pourcentageUtilisateur', pourcentageUtilisateur);
-    const CLICK_TIMEOUT = 15000;
-
-    // Depuis la page d'accueil on ajoute un bouton pour le VSM en un clic
-    waitForElement({
-        selector: '#ContentPlaceHolder1_EtatCivilUCForm1_HyperLinkOpenVSM',
-        callback: function () { setupPatientViewButton() }
-    });
-
-    // On ajoute également un bouton sur la page d’édition des antécédents
-    waitForElement({
-        selector: '#ContentPlaceHolder1_ButtonExitVsm',
-        callback: function (elements) {
-            const exitVSMButton = elements[0];
-            if (!document.querySelector('#oneClickVSMButton')) {
-                const oneClickVSMButton = document.createElement('button');
-                oneClickVSMButton.textContent = '+1clickVSM';
-                oneClickVSMButton.id = 'oneClickVSMButton';
-                oneClickVSMButton.title = 'Weda-Helper : Créer un VSM en un clic. Ne fonctionne que si au moins 70% des champs sont au format CIM-10';
-
-                // Copier le style du bouton de référence
-                const referenceButton = document.querySelector('#ContentPlaceHolder1_ButtonFind');
-                // Lui retirer les classes button et valid pour éviter les conflits de raccourcis clavier
-                if (referenceButton) {
-                    oneClickVSMButton.className = referenceButton.className;
-                    oneClickVSMButton.classList.remove('button');
-                    // Ajouter uniquement la marge gauche en plus
-                    oneClickVSMButton.style.marginLeft = '10px';
-                }
-
-                oneClickVSMButton.id = 'oneClickVSMButton';
-                oneClickVSMButton.addEventListener('click', async function () {
-                    setOneClickVSMTimestamp();
-                    await sleep(500);
-                    const refreshedVSMButton = document.querySelector('#ContentPlaceHolder1_ButtonExitVsm');
-                    console.log('refreshedVSMButton', refreshedVSMButton);
-                    recordMetrics({ clicks: 1, drags: 1 });
-                    refreshedVSMButton.click();
-                });
-                exitVSMButton.parentNode.parentNode.appendChild(oneClickVSMButton);
-            }
-        }
-    });
-
-    // Depuis la page de vérification du VSM (on attends l'apparition du titre avant de vérifier les erreurs)
-    waitForElement({
-        selector: 'h1.h1center',
-        callback: function () { handleVSMVerificationPage(MAX_ERROR_RATIO, CLICK_TIMEOUT) }
-    });
-
-    // Validation finale, à décommenter si nécessaire
-    waitForElement({
-        selector: 'div.tab_valid_cancel button.button.valid',
-        observerId: 'oneClickVSMFinalValidation',
-        // triggerOnInit: true, => contre-productif
-        callback: function (elements) {
-            console.log('[oneClickVSM] Validation finale détectée', elements); 
-            if (oneClickVSMwithinTimeRange(CLICK_TIMEOUT)) {
-                recordMetrics({ clicks: 1, drags: 1 });
-                setTimeout(() => {
-                    elements[0].click();
-                }, 500);
-            }
-        }
-    });
-});
-
-
-// Gestion depuis l'accueil du dossier patient
-function setupPatientViewButton() {
-    const VSMButton = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_HyperLinkOpenVSM');
-    if (!VSMButton) return;
-
-    // Vérifier que le cadre où on va ajouter le bouton a une taille suffisante
-    const cadre = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_PanelDmp');
-    const cadreWidth = cadre.offsetWidth;
-    const conteneur = document.querySelector('#ContentPlaceHolder1_EtatCivilUCForm1_FramePatient');
-    const conteneurWidth = conteneur.offsetWidth;
-    // Le bouton ajoute (nommé +1clickVSM) fait environs 70px de large
-    const enoughSpace = conteneurWidth - cadreWidth - 65 > 70; // 65 pour l'icone MonEspaceSanté
-    console.log('cadreWidth', cadreWidth, 'conteneurWidth', conteneurWidth, 'enoughSpace', enoughSpace);
-
-    // Création du bouton de raccourci
-    const oneClickVSMButton = document.createElement('a');
-    oneClickVSMButton.textContent = '+1clickVSM';
-    oneClickVSMButton.id = 'oneClickVSMButton';
-    oneClickVSMButton.title = 'Weda-Helper : Créer un VSM en un clic. Ne fonctionne que si au moins 70% des champs sont au format CIM-10';
-    oneClickVSMButton.style.cssText = 'cursor: pointer; color: blue; text-decoration: underline; margin-left: 10px;';
-
-    oneClickVSMButton.addEventListener('click', function () {
-        setOneClickVSMTimestamp();
-        VSMButton.click();
-    });
-
-    if (enoughSpace) {
-        // Si assez d'espace, ajouter à côté
-        VSMButton.parentNode.appendChild(oneClickVSMButton);
-    } else {
-        console.log('Pas assez de place pour ajouter le bouton +1clickVSM à côté, ajout en dessous');
-
-        // Créer un div conteneur pour positionner le bouton sous le VSMButton
-        const container = document.createElement('div');
-        container.style.marginTop = '5px';
-        container.appendChild(oneClickVSMButton);
-
-
-        VSMButton.parentNode.parentNode.parentNode.appendChild(container, VSMButton.nextSibling);
-    }
-}
-
-// Gestion depuis la page de vérification du VSM
-function handleVSMVerificationPage(MAX_ERROR_RATIO, CLICK_TIMEOUT) {
-    const DMPButton = document.querySelector('img[aria-describedby="cdk-describedby-message-5"]');
-    if (!DMPButton) return;
-
-    // Vérification du timestamp
-    if (!oneClickVSMwithinTimeRange(CLICK_TIMEOUT)) return;
-
-    // Analyse des erreurs
-    const checkBoxElementsNum = document.querySelectorAll('input[type="checkbox"]').length;
-    const errorPanel = document.querySelectorAll('div.invite p.alertPanel')[1];
-    const errorNum = errorNumber(errorPanel);
-
-    if (errorNum <= checkBoxElementsNum * MAX_ERROR_RATIO) {
-        const successRate = Math.round(((checkBoxElementsNum - errorNum) / checkBoxElementsNum) * 100);
-        console.log(`Nombre d'erreurs acceptable (${errorNum}/${checkBoxElementsNum}, taux de réussite: ${successRate}%), envoi automatique du VSM`);
-        sendWedaNotifAllTabs({
-            message: `Taux de validation du VSM: ${successRate}% supérieur au taux de ${(1 - MAX_ERROR_RATIO) * 100}% requis => envoi automatique du VSM`,
-            type: 'success',
-            duration: 5000,
-            icon: 'success',
-        });
-        recordMetrics({ clicks: 1, drags: 1 });
-        setOneClickVSMTimestamp(); // On rafrachit le timestamp
-        DMPButton.click();
-    } else {
-        const successRate = Math.round(((checkBoxElementsNum - errorNum) / checkBoxElementsNum) * 100);
-        console.log(`Trop d'erreurs pour le VSM en un clic (${errorNum}/${checkBoxElementsNum}, taux de réussite: ${successRate}%)`);
-        message = `Taux de validation du VSM: ${successRate}% inférieur au taux de ${(1 - MAX_ERROR_RATIO) * 100}% requis pour le ROSP. Envoi automatique annulé.`;
-        sendWedaNotifAllTabs({
-            message: message,
-            type: 'undefined',
-            duration: 5000,
-            icon: 'error',
-        });
-    }
-}
-
-function errorNumber(errorPanel) {
-    if (!errorPanel) return 0; // Si le panneau n'apparait pas c'est qu'il n'y a pas aucune ligne en erreur
-    const errorNumMatch = errorPanel.textContent.match(/\d+/);
-
-
-    return parseInt(errorNumMatch[0]);
-}
-
-function oneClickVSMwithinTimeRange(CLICK_TIMEOUT) {
-    const oneClickVSMTimestamp = sessionStorage.getItem('oneClickVSM');
-    if (!oneClickVSMTimestamp) return false;
-
-    return Date.now() - oneClickVSMTimestamp < CLICK_TIMEOUT;
-}
-
-function setOneClickVSMTimestamp() {
-    sessionStorage.setItem('oneClickVSM', Date.now());
-}
 
 // Sauvegarde de la position de défilement
 addTweak('/FolderMedical/PatientViewForm.aspx', '*keepScrollPosition', function () {
@@ -459,42 +247,48 @@ addTweak('/FolderMedical/PatientViewForm.aspx', '*keepScrollPosition', function 
 // Ensuite une fois dans la gestion des antécédents, cliquer sur l'atcd correspondant
 addTweak('/FolderMedical/PatientViewForm.aspx', 'simplifyATCD', function () {
     const atcdPanelSelector = 'div[title="Cliquez ici pour modifier le volet médical du patient"]';
-    const atcdPanelElement = document.querySelector(atcdPanelSelector);
-    // Ensuite on liste l'ensemble des atcd possibles (uniquement les div directs, sauf ceux avec .sm)
-    const atcdElements = Array.from(atcdPanelElement.children).filter(child =>
-        child.tagName === 'DIV' && !child.classList.contains('sm') && !child.classList.contains('st')
-    );
-    // On y ajoute des clic droit listeners pour chaque atcd
-    atcdElements.forEach(atcdElement => {
-        // Variable pour stocker le timeout pour l'affichage du tooltip
-        let tooltipTimeout;
+    waitForElement({
+        selector: atcdPanelSelector,
+        triggerOnInit: true,
+        callback: function () {
+            const atcdPanelElement = document.querySelector(atcdPanelSelector);
+            // Ensuite on liste l'ensemble des atcd possibles (uniquement les div directs, sauf ceux avec .sm)
+            const atcdElements = Array.from(atcdPanelElement.children).filter(child =>
+                child.tagName === 'DIV' && !child.classList.contains('sm') && !child.classList.contains('st')
+            );
+            // On y ajoute des clic droit listeners pour chaque atcd
+            atcdElements.forEach(atcdElement => {
+                // Variable pour stocker le timeout pour l'affichage du tooltip
+                let tooltipTimeout;
 
-        // Ajout d'un mouseover pour afficher une info-bulle après 200ms
-        atcdElement.addEventListener('mouseover', function () {
-            tooltipTimeout = setTimeout(function () {
-                showTooltip(atcdElement, "WH:bouton droit pour éditer");
-            }, 200);
-        });
+                // Ajout d'un mouseover pour afficher une info-bulle après 200ms
+                atcdElement.addEventListener('mouseover', function () {
+                    tooltipTimeout = setTimeout(function () {
+                        showTooltip(atcdElement, "WH:bouton droit pour éditer");
+                    }, 200);
+                });
 
-        // Ajout d'un mouseout pour annuler le timeout et retirer l'info-bulle
-        atcdElement.addEventListener('mouseout', function () {
-            // Annuler le timeout si l'utilisateur quitte l'élément avant 200ms
-            clearTimeout(tooltipTimeout);
-            // On retire l'info-bulle
-            removeTooltip(atcdElement);
-        });
+                // Ajout d'un mouseout pour annuler le timeout et retirer l'info-bulle
+                atcdElement.addEventListener('mouseout', function () {
+                    // Annuler le timeout si l'utilisateur quitte l'élément avant 200ms
+                    clearTimeout(tooltipTimeout);
+                    // On retire l'info-bulle
+                    removeTooltip(atcdElement);
+                });
 
-        atcdElement.addEventListener('contextmenu', function (e) {
-            e.preventDefault(); // Empêcher le menu contextuel par défaut
-            // On récupère l'innerText du span title
-            const atcdTitle = atcdElement.querySelector('span[title]').innerText;
-            // On le stocke dans le sessionStorage
-            sessionStorage.setItem('atcdTitle', atcdTitle);
-            console.log('[simplifyATCD] atcdTitle sauvegardé', atcdTitle);
+                atcdElement.addEventListener('contextmenu', function (e) {
+                    e.preventDefault(); // Empêcher le menu contextuel par défaut
+                    // On récupère l'innerText du span title
+                    const atcdTitle = atcdElement.querySelector('span[title]').innerText;
+                    // On le stocke dans le sessionStorage
+                    sessionStorage.setItem('atcdTitle', atcdTitle);
+                    console.log('[simplifyATCD] atcdTitle sauvegardé', atcdTitle);
 
-            // Cliquer sur l'élément pour naviguer vers la page des ATCD
-            atcdElement.click();
-        });
+                    // Cliquer sur l'élément pour naviguer vers la page des ATCD
+                    atcdElement.click();
+                });
+            });
+        }
     });
 });
 
@@ -785,4 +579,58 @@ addTweak('*', 'testNotifPanel', function () {
     });
 
     console.log('[TestNotif] Panneau de test des notifications chargé. Cliquez sur le bouton "🔔 Test" en bas à droite.');
+});
+
+
+/**
+ * Permet de mettre un favoris d’affichage dans "Recherche des documents"
+ */
+addTweak('/FolderMedical/PatientViewForm.aspx', '*saveDocumentSearchDisplay', function () {
+    waitForElement({
+        selector: "#ContentPlaceHolder1_HistoriqueUCForm1_DropDownListModeAffichageFileStream",
+        callback: function (elements) {
+            const displaySelect = elements[0];
+            // On ajoute un bouton à droite du select pour sauvegarder le favoris
+            const saveButton = document.createElement('input');
+            saveButton.type = 'button';
+            saveButton.value = '💾 Sauvegarder affichage';
+            saveButton.style.marginLeft = '10px';
+            saveButton.style.cursor = 'pointer';
+            saveButton.title = 'Sauvegarde de l’affichage préférentiel. Weda-Helper.';
+            displaySelect.parentNode.insertBefore(saveButton, displaySelect.nextSibling);
+
+            // On ajoute un listener sur le bouton pour sauvegarder la valeur du select
+            saveButton.addEventListener('click', function () {
+                const selectedValue = displaySelect.value;
+                const selectedText = displaySelect.options[displaySelect.selectedIndex].text;
+                chrome.storage.local.set({ preferredDocumentDisplay: selectedValue }, function () {
+                    console.log('[saveDocumentSearchDisplay] affichage préféré sauvegardé', selectedValue);
+                    // On affiche une notification
+                    sendWedaNotif({
+                        message: `Affichage préféré sauvegardé: ${selectedText}`,
+                        type: 'success',
+                        icon: 'check_circle',
+                        duration: 3000
+                    });
+                });
+            });
+        }
+    });
+
+    waitForElement({
+        selector: "#ContentPlaceHolder1_HistoriqueUCForm1_DropDownListModeAffichageFileStream",
+        justOnce: true,
+        callback: function (elements) {
+            // On lit la valeur sauvegardée et on l’applique au select
+            const displaySelect = elements[0];
+            getOptionPromise('preferredDocumentDisplay').then(preferredDisplay => {
+                if (preferredDisplay && displaySelect.value !== preferredDisplay) {
+                    displaySelect.value = preferredDisplay;
+                    console.log('[saveDocumentSearchDisplay] affichage préféré appliqué', preferredDisplay);
+                    // Déclencher le postback pour appliquer le changement
+                    displaySelect.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            });
+        }
+    });
 });

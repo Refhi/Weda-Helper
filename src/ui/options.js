@@ -259,15 +259,10 @@ function displayCategories(jsonStr) {
   try {
     const categories = JSON.parse(jsonStr);
     categories.forEach(category => {
-      // Détecter le format selon la longueur du tableau
+      // Format attendu : [nom, [mots-clés]]
       if (category.length === 2) {
-        // Ancien format : [nom, [mots-clés]]
         const [name, keywords] = category;
         display += `${name} : ${keywords.join(', ')}\n`;
-      } else if (category.length === 5) {
-        // Nouveau format alertes : [titre, coloration, alerte, icône, [mots-clés]]
-        const [titre, coloration, alerte, matIcon, keywords] = category;
-        display += `${titre}, ${coloration}, ${alerte}, ${matIcon} : ${keywords.join(', ')}\n`;
       } else {
         // Format non reconnu, afficher tel quel
         console.warn('Format de catégorie non reconnu:', category);
@@ -284,7 +279,7 @@ function displayCategories(jsonStr) {
 }
 
 // Récupérer les données affichées et les convertir en JSON
-function getCategoriesFromJsonInput(input) {
+function getCategoriesFromJsonInput(input, optionName = 'cette option') {
   const categories = [];
   const lines = input.value.split('\n');
   let hasError = false; // Flag pour détecter les erreurs
@@ -294,8 +289,8 @@ function getCategoriesFromJsonInput(input) {
       // Séparer par le dernier ':' pour gérer les titres avec ':'
       const lastColonIndex = line.lastIndexOf(':');
       if (lastColonIndex === -1) {
-        console.warn(`Ligne ${lineIndex + 1}: Pas de ':' trouvé, ligne ignorée`);
-        alert(`Erreur ligne ${lineIndex + 1}: Pas de ':' trouvé. Format attendu:\n- "nom : mot1, mot2" (ancien format)\n- "titre, true/false, true/false, icône : mot1, mot2" (nouveau format)`);
+        console.warn(`[${optionName}] Ligne ${lineIndex + 1}: Pas de ':' trouvé, ligne ignorée`);
+        alert(`❌ Erreur dans l'option "${optionName}"\n\nLigne ${lineIndex + 1}: Pas de ':' trouvé.\n\nFormat attendu: "nom : mot1, mot2"`);
         hasError = true;
         return; // Pas de ':', ligne invalide
       }
@@ -303,60 +298,16 @@ function getCategoriesFromJsonInput(input) {
       const beforeColon = line.substring(0, lastColonIndex).trim();
       const afterColon = line.substring(lastColonIndex + 1).trim();
 
-      // Compter les virgules avant les ':'
-      const parts = beforeColon.split(',').map(p => p.trim());
-
-      if (parts.length === 1) {
-        // Ancien format : "nom : mot1, mot2, mot3"
-        const name = parts[0];
-        const keywords = afterColon ? afterColon.split(',').map(keyword => keyword.trim()) : [];
-        if (name) {
-          categories.push([name, keywords]);
-        }
-      } else if (parts.length === 4) {
-        // Nouveau format : "titre, true, false, icône : mot1, mot2, mot3"
-        const [titre, coloration, alerte, matIcon] = parts;
-
-        // Validation des booléens
-        const colorationLower = coloration.toLowerCase();
-        const alerteLower = alerte.toLowerCase();
-
-        if (colorationLower !== 'true' && colorationLower !== 'false') {
-          alert(`Erreur ligne ${lineIndex + 1}: Le paramètre de coloration doit être "true" ou "false", valeur trouvée: "${coloration}"`);
-          console.error(`Ligne ${lineIndex + 1}: Valeur de coloration invalide: "${coloration}"`);
-          hasError = true;
-          return;
-        }
-
-        if (alerteLower !== 'true' && alerteLower !== 'false') {
-          alert(`Erreur ligne ${lineIndex + 1}: Le paramètre d'alerte doit être "true" ou "false", valeur trouvée: "${alerte}"`);
-          console.error(`Ligne ${lineIndex + 1}: Valeur d'alerte invalide: "${alerte}"`);
-          hasError = true;
-          return;
-        }
-
-        const keywords = afterColon ? afterColon.split(',').map(keyword => keyword.trim()) : [];
-        if (titre) {
-          categories.push([
-            titre,
-            colorationLower === 'true',
-            alerteLower === 'true',
-            matIcon,
-            keywords
-          ]);
-        }
-      } else {
-        console.warn(`Ligne ${lineIndex + 1}: Format de ligne non reconnu (${parts.length} parties trouvées avant ':')`);
-        alert(`Erreur ligne ${lineIndex + 1}: Format non reconnu. Attendu:\n- "nom : mot1, mot2" (ancien format)\n- "titre, true/false, true/false, icône : mot1, mot2" (nouveau format)`);
-        hasError = true;
-        return null; // Format non reconnu, ligne invalide
+      const keywords = afterColon ? afterColon.split(',').map(keyword => keyword.trim()) : [];
+      if (beforeColon) {
+        categories.push([beforeColon, keywords]);
       }
     }
   });
 
   // Si une erreur a été détectée, retourner null au lieu d'un tableau vide
   if (hasError) {
-    console.error('❌ Validation échouée, aucune donnée ne sera sauvegardée');
+    console.error(`❌ [${optionName}] Validation échouée, aucune donnée ne sera sauvegardée`);
     return null;
   }
 
@@ -838,7 +789,7 @@ function collectCurrentValues(defaultSettings, defaultShortcuts) {
         if (element && element.classList.contains('radio-group')) {
           valuesToSave[option] = getSelectedRadioValue(option);
         } else if (element && element.classList.contains('json-input')) {
-          const jsonData = getCategoriesFromJsonInput(element);
+          const jsonData = getCategoriesFromJsonInput(element, option);
           // Si la conversion retourne null, il y a eu une erreur
           if (jsonData === null) {
             console.error('❌ Erreur lors de la validation pour l\'option', option);

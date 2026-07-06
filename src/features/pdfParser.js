@@ -265,7 +265,7 @@ async function processFoundPdfIframeImport(PDFIframeElements) {
     // ===========================================
     // ÉTAPE 3 : Remplissage du formulaire d'import
     // ===========================================
-    await setExtractedDataInForm(extractedData);
+    await setExtractedDataInForm(extractedData, fullText);
     markDataAsImported(hashId, extractedData);
     recordMetrics({ clicks: 9, drags: 9, keyStrokes: 10 });
 
@@ -649,12 +649,12 @@ async function extractBasePdfData(iframesElements) {
     // 3. Ajouter le corps du message à la fin du texte du PDF si disponible et si le PDF contient moins de 3 lignes
     const messageBody = returnMessageBodyES();
     if (messageBody) {
-        const pdfLineCount = fullText.split('\n').length;
-        if (pdfLineCount < 3) {
-            console.log(`[pdfParser] Le PDF ne contient que ${pdfLineCount} ligne(s), ajout du corps du message`);
+        const pdfCharCount = fullText.length;
+        if (pdfCharCount < 100) {
+            console.log(`[pdfParser] Le PDF ne contient que ${pdfCharCount} caractère(s), ajout du corps du message`);
             fullText += "\n\n=== Corps du message ===\n" + messageBody;
         } else {
-            console.log(`[pdfParser] Le PDF contient ${pdfLineCount} lignes, pas d'ajout du corps du message`);
+            console.log(`[pdfParser] Le PDF contient ${pdfCharCount} caractères, pas d'ajout du corps du message`);
         }
     }
 
@@ -935,7 +935,7 @@ function markDataAsImported(hashId, extractedData) {
 }
 
 
-async function setExtractedDataInForm(extractedData) {
+async function setExtractedDataInForm(extractedData, fullText) {
     // Récupère la ligne d'action actuelle
     const ligneAction = actualImportActionLine();
 
@@ -975,6 +975,11 @@ async function setExtractedDataInForm(extractedData) {
     // Parcourt chaque champ et met à jour la valeur si elle existe
     Object.keys(fields).forEach(key => {
         if (fields[key] && inputs[key]) {
+            if (fullText.includes("[WedaAutoParse_documentDate]")) { // Si la date a été détectée par le parseur de Weda, on ne la change pas
+                console.log("[pdfParser] La date a déjà été détectée par le parseur de Weda, on ne la change pas");
+                return;
+            }
+
             if (key === 'documentType') { // Cas particulier pour le champ documentType
                 // Trouver l'option correspondante pour documentType
                 const options = inputs[key].options;
@@ -1011,7 +1016,7 @@ function clicPatient(extractedData) {
 
     let patientToClickName = patientToClick.innerText;
     let patientSelectionneText = selectedPatientName();
-    if (patientSelectionneText !== 'Patient à définir...' && patientSelectionneText !== null) {
+    if (patientSelectionneText !== 'Le patient est à définir' && patientSelectionneText !== null) {
         console.log("[pdfParser] Un patient est déjà sélectionné :", patientSelectionneText, "je vérifie si c'est le bon.", patientToClickName);
         // Vérifier que le patient sélectionné est bien celui qu'on cherche
         const normalizedSelected = normalizeString(patientSelectionneText);
@@ -1295,6 +1300,7 @@ async function findPdfUrl(iframesElements) {
 // Extraction du texte du PDF en 2 parties
 async function extractTextFromPDF(pdfUrl) {
     console.log('[pdfParser] Début de l\'extraction du texte du PDF depuis', pdfUrl);
+    
     let pdf;
     if (pdfUrl.includes('base64')) { // Pas certain que cette partie soit encore utile, mais je laisse dans le doute
         pdfUrl = pdfUrl.replace('data:application/pdf;base64,', '');
@@ -1329,12 +1335,68 @@ async function extractTextFromPDF(pdfUrl) {
             }
         });
 
+        // Détection des rectangles colorés (surlignages)
+        let detectedMarkers = [];
+        try {
+            const operatorList = await page.getOperatorList();
+            console.log(`[pdfParser] Page ${i} - Nombre d'opérations: ${operatorList.fnArray.length}`);
+            
+            let rectCount = 0;
+            
+            for (let j = 0; j < operatorList.fnArray.length; j++) {
+                const fn = operatorList.fnArray[j];
+                const args = operatorList.argsArray[j];
+                
+                // Détection des couleurs RGB suivies de rectangles dans les args suivants
+                if (fn === pdfjsLib.OPS.setFillRGBColor && args) {
+                    const color = { r: args[0], g: args[1], b: args[2] };
+                    
+                    // Log détaillé pour chaque couleur non-noire détectée
+                    if (!(color.r === 0 && color.g === 0 && color.b === 0)) {
+                        // Chercher les coordonnées du rectangle dans les 3 indices suivants
+                        let rectCoords = null;
+                        for (let offset = 1; offset <= 3; offset++) {
+                            const checkArgs = operatorList.argsArray[j + offset];
+                            if (Array.isArray(checkArgs) && Array.isArray(checkArgs[0]) && 
+                                checkArgs[1] && Array.isArray(checkArgs[1]) && checkArgs[1].length === 4) {
+                                rectCoords = checkArgs[1];
+                                break;
+                            }
+                        }
+                        
+                        if (rectCoords) {
+                            rectCount++;
+                            console.log(`[pdfParser] ✓ Rectangle coloré #${rectCount}: RGB(${color.r}, ${color.g}, ${color.b}) à (${rectCoords[0].toFixed(1)}, ${rectCoords[1].toFixed(1)}) - ${rectCoords[2].toFixed(1)}x${rectCoords[3].toFixed(1)}`);
+                            
+                            // Ajouter le marqueur selon la couleur
+                            if (color.r === 0 && color.g === 128 && color.b === 0) {
+                                detectedMarkers.push('[WedaAutoParse_doctorName]');
+                            } else if (color.r === 255 && color.g === 192 && color.b === 203) {
+                                detectedMarkers.push('[WedaAutoParse_documentDate]');
+                            } else if (color.r === 255 && color.g === 255 && color.b === 0) {
+                                detectedMarkers.push('[WedaAutoParse_nompatient]');
+                            }
+                        }
+                    }
+                }
+            }
+            
+            console.log(`[pdfParser] Page ${i} - Total: ${rectCount} rectangle(s) coloré(s)`);
+        } catch (error) {
+            console.warn(`[pdfParser] Erreur analyse page ${i}:`, error);
+        }
+
+        // Ajouter les marqueurs à la fin du texte
+        if (detectedMarkers.length > 0) {
+            fullText += '\n' + detectedMarkers.join('\n');
+        }
+
         pagePromises.push(fullText);
     }
 
     const allPageTexts = await Promise.all(pagePromises);
     const fullText = allPageTexts.join('\n');
-    console.log(`[pdfParser] ait extrait ${allPageTexts.length} pages`);
+    console.log(`[pdfParser] a extrait ${allPageTexts.length} pages`);
 
     return fullText;
 }

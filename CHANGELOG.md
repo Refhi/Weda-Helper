@@ -4,6 +4,42 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [3.0.0.1] - Weda Helper
+## Changement de version :
+- changement de numéro de version majeur, mais sans signification autre que la simplification : 2.16.3.2 ça devenait illisible...
+
+## Mise à jour :
+- liens vers le site de la communauté temporaire vers celui hebergé par Weda
+
+## Ajouts :
+- [#610](https://github.com/Refhi/Weda-Helper/issues/610) - La date du dernier VSM est désormais affichée dans les antécédents (en la récupérant depuis la page d’accueil du patient à la première opportunité).
+- [#607](https://github.com/Refhi/Weda-Helper/issues/607) - Ajout d’une icone pour accéder à la vue des traitements depuis la consultation.
+- [#606](https://github.com/Refhi/Weda-Helper/issues/606) - Ajout d’un bouton d’impression dans la vue des traitements (permet d’imprimer la vue des traitements en cours, ou de l’exporter en PDF).
+- [#612](https://github.com/Refhi/Weda-Helper/issues/612) - Aide au calcul des posologies en mg/kg dans la page de prescription (permet de calculer rapidement la posologie d’un médicament en fonction du poids du patient).
+- dans les arrêts de travail "Sorties autorisées" est coché oui par défaut
+- [#618](https://github.com/Refhi/Weda-Helper/issues/618) - Le motif par défaut pour les sorties sans restriction d’horaire est désormais personnalisable dans les options de Weda-Helper ou en cliquant sur le bouton 💾 à côté du champ de saisie du motif dans la page de prescription d’arrêt de travail.
+- [#620](https://github.com/Refhi/Weda-Helper/issues/620) - Les consultations sont désormais automatiquement enregistrées toutes les 3 minutes si aucune entrée n’est détectée pendant au moins 5 secondes. (permet de limiter les pertes de données en cas de crash du navigateur ou de Weda)
+- [#619](https://github.com/Refhi/Weda-Helper/issues/619) - Il est désormais possible de sauvegarder l’affichage préférentiel des documents dans la page de recherche des documents. (via l’icone 💾i)
+- [#615](https://github.com/Refhi/Weda-Helper/issues/615) - Ajout d’un outil de calcul du SCOR2 directement depuis la consultation
+
+## Evolution :
+- [#586](https://github.com/Refhi/Weda-Helper/issues/586) - le décochage automatique de certains documents dans la messagerie sécurisée est désormais personnalisable (ex. décocher les messages commençant par "NoName_" ou les fichiers commençant par "IHE_XDM.zip" qui sont souvent inutiles).
+- [#608](https://github.com/Refhi/Weda-Helper/issues/608) - Lors d’un import automatique de documents, la date du document est désormais conservée si elle est différente de la date du jour (permet de préparer la cohabitation avec les imports automatisés réalisés par Weda directement).
+
+## Fix :
+- si un patient est déjà sélectionné lors de l'import d'un document, on ne le sélectionne pas à nouveau
+- [#616](https://github.com/Refhi/Weda-Helper/issues/616) - meilleure priorisation de l'écoute du clavier, notamment pour le QuickAccess (évite les conflits avec les autres raccourcis clavier de Weda)
+- [#611](https://github.com/Refhi/Weda-Helper/issues/611) - le message d'erreur est désormais bien plus explicite en cas d'option erronée dans les options de Weda-Helper
+- [#600](https://github.com/Refhi/Weda-Helper/issues/600) - le mémo raccourcis clavier s'affiche de nouveau correctement au bout d'une seconde d'appuis sur Alt, et ce, pour toutes les plate-formes.
+- [#609](https://github.com/Refhi/Weda-Helper/issues/609) - La carte vitale n'est lue automatiquement que sur l'onglet actuellement utilisé.
+- fiabilisation de la possibilité d’un clic droit sur l’atcd pour l’éditer directement
+- [#614](https://github.com/Refhi/Weda-Helper/issues/614) - Il est de nouveau possible d’aller rapidement dans les atcds et les notes du dossier patient depuis la page des importations de masse
+
+## Dev :
+- [#611](https://github.com/Refhi/Weda-Helper/issues/611) - Retrait de la vérification de la présence de virgules avant le : danse les options de catégorisation automatique (inutile et source de bugs)
+- addTweak peut désormais être appelé avec un paramètre optionValue pour passer la valeur de l'option directement au callback.
+
+
 # [2.16.3.2] - fix
 ## Fix :
 - [#596](https://github.com/Refhi/Weda-Helper/issues/596) - Les listes de patients trouvés après une recherche sont de nouveau correctement visée. Règle par exemple l'ouverture automatique d'un patient seul après une recherche ou sur les imports semi-automatiques (merci @Abeldvlpr pour la contribution !)
@@ -236,7 +272,7 @@ J'espère pouvoir revenir vers vous très vite pour vous préciser la mise en ap
 
 #### Nouveau forum de discussion
 
-Suite à la fermeture du site de la communauté Weda, l'espace de discussion de Weda-Helper est désormais sur github : [Weda-Helper Discussions](https://github.com/Refhi/Weda-Helper/discussions), au moins en attendant que Weda puisse mettre en place le prochain espace de la communauté.
+Suite à la fermeture du site de la communauté Weda, l'espace de discussion de Weda-Helper est désormais sur github : [Weda-Helper Discussions](https://communaute.weda.fr/discussions-n4y99j90/post/weda-helper-pQfPGckmrhwKBJC), au moins en attendant que Weda puisse mettre en place le prochain espace de la communauté.
 
 
 

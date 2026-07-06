@@ -135,9 +135,21 @@ function getAllDocuments() {
  * @param {Object} config - Configuration du Quick Access
  */
 function addListenersToDocuments(documents, state, config) {
+    /**
+     * On souhaite que les touches de modification, habituellement utilisées par les raccourcis
+     * clavier ne soient pas inhibées par le QA.
+     */
+    const quittingKeys = ['Escape', 'Alt', 'Control', 'Shift', 'Meta'];
     documents.forEach(doc => {
         const keydownHandler = (e) => {
+            if (quittingKeys.includes(e.key)) {
+                // Touche d'échappement : fermer le Quick Access
+                deactivateQuickAccess(state);
+                return;
+            }
+            // Touche autorisée : empêcher le comportement par défaut ET la propagation aux autres listeners
             e.preventDefault();
+            e.stopImmediatePropagation(); // également nécessaire pour intercepter avant les listeners en capture sur le même document
             if (e.key === 'Backspace') { // Permet de remonter d'un niveau dans l'arborescence du Quick Access
                 if (state.currentLevel.length <= 1) {
                     // Déjà à la racine virtuelle (ou moins) : fermer le Quick Access
@@ -164,15 +176,12 @@ function addListenersToDocuments(documents, state, config) {
         };
 
         const keyupHandler = (e) => {
-            e.preventDefault();
-            if (e.key === 'Escape') {
-                deactivateQuickAccess(state);
-            }
+            // Servait à gérer certaines situation, obsolète.
         };
 
-        // Ajouter les listeners
-        doc.addEventListener('keydown', keydownHandler);
-        doc.addEventListener('keyup', keyupHandler);
+        // Ajouter les listeners avec capture: true pour intercepter avant les autres listeners
+        doc.addEventListener('keydown', keydownHandler, { capture: true });
+        doc.addEventListener('keyup', keyupHandler, { capture: true });
 
         // Stocker les références pour pouvoir les retirer plus tard
         state.listeners.push({
@@ -252,9 +261,7 @@ function executeQuickAccessAction(matchedItem, matchedItemId, state, config) {
 
     // Ne rien exécuter si l'action est null/undefined
     if (action) {
-        setTimeout(() => {
-            executeAction(action, targetElementSelector, state);
-        }, 10); // Léger délais pour être sur que l'ensemble des tooltips ont bien été supprimés avant d'exécuter l'action
+        executeAction(action, targetElementSelector, state);
     }
 }
 
@@ -1023,11 +1030,17 @@ function createTooltip(selector, hotkey, hasDoubleTap = false, isContainer = fal
 
     // Déterminer si l'élément peut avoir des enfants
     // Les éléments comme <select>, <input>, <textarea>, <img>, <br>, <hr> ne peuvent pas avoir d'enfants directs valides
-    const cannotHaveChildren = ['SELECT', 'INPUT', 'TEXTAREA', 'IMG', 'BR', 'HR', 'VIDEO', 'AUDIO'].includes(element.tagName);
+    let cannotHaveChildren = ['SELECT', 'INPUT', 'TEXTAREA', 'IMG', 'BR', 'HR', 'VIDEO', 'AUDIO'].includes(element.tagName);
+    // on y ajoute les éléments body avec contenteditable="true"
+    if (element.tagName === 'BODY' && element.getAttribute('contenteditable') === 'true') {
+        cannotHaveChildren = true;
+    }
+
     
     let attachmentType;
     if (cannotHaveChildren) {
         // Pour ces éléments, insérer le tooltip comme sibling et ajuster le positionnement
+        console.log(`[QuickAccess] Tooltip "${hotkey}" : élément <${element.tagName}> ne peut pas avoir d'enfants, insertion comme sibling`);
         const rect = element.getBoundingClientRect();
         tooltip.style.position = 'absolute';
         tooltip.style.top = `${element.offsetTop}px`;
@@ -1180,8 +1193,8 @@ function deactivateQuickAccess(state) {
     // Retirer tous les listeners
     if (state && state.listeners) {
         state.listeners.forEach(({ doc, keydown, keyup }) => {
-            doc.removeEventListener('keydown', keydown);
-            doc.removeEventListener('keyup', keyup);
+            doc.removeEventListener('keydown', keydown, { capture: true });
+            doc.removeEventListener('keyup', keyup, { capture: true });
         });
         state.listeners = [];
     }

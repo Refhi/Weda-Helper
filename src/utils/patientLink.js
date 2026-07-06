@@ -120,7 +120,7 @@ let urls = [
 addTweak(urls, '*addATCDShortcut', function () {
     let patientsSelector =
         '[id^="ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_"], ' +
-        '[id^="ContentPlaceHolder1_FindPatientUcForm2_PatientsGrid_LinkButtonPatientGetNomPrenom_"]' // mode vertical dans les imports
+        '[id^="ContentPlaceHolder1_FindPatientUcForm2_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_"]' // mode vertical dans les imports
 
     async function addPatientUrlParams(element, patientFileNumber) {
         let patientInfo = await getPatientInfo(patientFileNumber);
@@ -231,6 +231,31 @@ addTweak(urls, '*addATCDShortcut', function () {
     waitForElement({
         selector: selecteurHprimEtMessagesSecurises,
         callback: ProcessHprimEtMessagesSecurises
+    });
+
+
+    // Et enfin une partie pour ContentPlaceHolder1_FileStreamClassementsGrid_HyperLinkGotoPatient_
+    // qui est le patient sélectionné dans le cadre de l'import d'un document
+    // son href est sous la forme : ../FolderMedical/PatientViewForm.aspx?PatDk=65407357|0|0|0&crypt=...
+    let selecteurImportDocument = '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_HyperLinkGotoPatient_"]';
+    function ProcessImportDocument() {
+        let elements = document.querySelectorAll(selecteurImportDocument);
+        console.log('ProcessImportDocument', elements);
+        elements.forEach(element => {
+            let href = element.getAttribute('href');
+            if (href) {
+                let patientFileNumber = href.match(/PatDk=(\d+)/)[1];
+                addPatientUrlParams(element, patientFileNumber);
+                addATCDShortcut(element);
+                console.log('[ProcessImportDocument]', element, 'patientFileNumber', patientFileNumber, 'href', href);
+            }
+        });
+    }
+
+    waitForElement({
+        selector: selecteurImportDocument,
+        triggerOnInit: true,
+        callback: ProcessImportDocument
     });
 
 });
