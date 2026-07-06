@@ -9,7 +9,7 @@
  * @depend src/utils/getCurrentPatientId.js
  * 
  */
-addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', function () {
+addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
     waitForElement({
         selector: '#ContentPlaceHolder1_ButtonSuiviPreference',
         triggerOnInit: true,
@@ -24,7 +24,7 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*autoScore2', function () {
             score2Button.value = 'SCORE2';
             score2Button.id = 'WedaHelper_ButtonScore2';
             score2Button.className = 'buttonheader';
-            score2Button.title = 'Calculer le SCORE2 (Weda-Helper)';
+            score2Button.title = 'Calculer le SCORE2 (Weda-Helper). Aller dans les options de Weda-Helper pour désactiver ce bouton si nécessaire.';
             score2Button.style.width = 'auto';
             score2Button.style.cssFloat = 'right';
 

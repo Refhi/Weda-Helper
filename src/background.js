@@ -938,6 +938,11 @@ var advancedDefaultSettings = [
             "type": TYPE_BOOL,
             "description": "Enregistre automatiquement les consultations toutes les 3 minutes si aucune entrée n'est détectée pendant au moins 5 secondes.",
             "default": true
+        }, {
+            "name": "autoScore2",
+            "type": TYPE_BOOL,
+            "description": "Affiche un bouton pour calculer le SCORE2 depuis la page de consultation.",
+            "default": true
         }]
     }, {
         "name": "Options de prescription",
