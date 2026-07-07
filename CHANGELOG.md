@@ -4,7 +4,11 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
-# [3.0.0.1] - Weda Helper
+# [3.1.0.0]
+## Fix :
+- erreurs de lecture de la carte vitale dans les FSE : ajout d’un délai de 200ms pour limiter les messages d’erreur.
+
+# [3.0.0.3] - Weda Helper
 ## Changement de version :
 - changement de numéro de version majeur, mais sans signification autre que la simplification : 2.16.3.2 ça devenait illisible...
 
