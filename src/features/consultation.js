@@ -961,11 +961,22 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoSaveConsultations', functi
 
             const saveButton = document.querySelector('#ButtonSave');
             if (saveButton) {
-                saveButton.click();
-                lastSaveTime = Date.now(); // Mettre à jour le temps de la dernière sauvegarde
-                console.log('[AutoSaveConsultation] Bouton d\'enregistrement cliqué');
+                if (isFormOpen()) {
+                    console.log('[AutoSaveConsultation] Formulaire ouvert, enregistrement automatique inhibé');
+                    lastSaveTime = Date.now(); // Mettre à jour le temps de la dernière sauvegarde pour éviter des tentatives répétées
+                } else {
+                    saveButton.click();
+                    lastSaveTime = Date.now(); // Mettre à jour le temps de la dernière sauvegarde
+                    console.log('[AutoSaveConsultation] Bouton d\'enregistrement cliqué');
+                }
             }
         }
+    }
+
+    // Inhiber le comportement si une fenêtre de formulaire est détectée #ContentPlaceHolder1_PanelFormulaire
+    function isFormOpen() {
+        const formPanel = document.querySelector('#ContentPlaceHolder1_PanelFormulaire');
+        return formPanel;
     }
 
     // Vérifier toutes les secondes pour détecter rapidement l'inactivité après les 3 minutes
