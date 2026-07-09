@@ -7,6 +7,7 @@
  * - Affichage courbes pédiatriques (taille, poids, IMC, PC)
  * - Raccourcis clavier dans les iframes
  * - Ajout d’un raccourci vers la vue des traitements depuis la consultation
+ * - Enregistrement automatique des consultations toutes les 3 minutes si aucune entrée n’est détectée pendant au moins 5 secondes.
  * 
  * @requires tweaks.js (addTweak)
  * @requires keyCommands.js (addHotkeyToDocument, addTabsToIframe)
@@ -881,4 +882,110 @@ addTweak('/FolderMedical/ConsultationForm.aspx', '*AddTreatmentButton', function
             }
         }
     });
+});
+
+
+/**
+ * Enregistrement automatique des consultations toutes les 3 minutes
+ * Dès que le délai de 3 minutes est dépassé, attend l'absence d'interaction utilisateur de 5 secondes puis sauvegarde
+ */
+addTweak('/FolderMedical/ConsultationForm.aspx', 'autoSaveConsultations', function () {
+    let lastUserActionTime = Date.now();
+    let lastSaveTime = Date.now();
+    let originalButtonValue = null;
+
+    // Fonction pour mettre à jour le temps de la dernière action utilisateur
+    function updateLastUserActionTime() {
+        // console.log('[AutoSaveConsultation] Action utilisateur détectée, mise à jour du temps de la dernière action');
+        lastUserActionTime = Date.now();
+    }
+
+    // Fonction pour formater le temps restant
+    function formatTimeRemaining(milliseconds) {
+        const totalSeconds = Math.ceil(milliseconds / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        
+        if (totalSeconds <= 0) {
+            return 'bientôt';
+        } else if (minutes > 0) {
+            return `${minutes}m`;
+        } else {
+            return `${totalSeconds}s`;
+        }
+    }
+
+    // Fonction pour mettre à jour le texte du bouton avec le temps restant
+    function updateSaveButtonText() {
+        const saveButton = document.querySelector('#ButtonSave');
+        if (saveButton) {
+            // Sauvegarder la valeur originale du bouton au premier passage
+            if (originalButtonValue === null) {
+                originalButtonValue = saveButton.value;
+            }
+            
+            const AUTO_SAVE_INTERVAL = 3 * 60 * 1000; // 3 minutes
+            const timeSinceLastSave = Date.now() - lastSaveTime;
+            const timeRemaining = AUTO_SAVE_INTERVAL - timeSinceLastSave;
+            const timeText = formatTimeRemaining(timeRemaining);
+            
+            saveButton.value = `${originalButtonValue} (auto: ${timeText})`;
+            saveButton.title = `Prochaine sauvegarde automatique dans ${timeText}. Sauvegarde auto toutes les 3 minutes après 5 secondes d'inactivité. Weda-Helper.`;
+            saveButton.style.width = 'auto';
+        }
+    }
+
+    // Écoute des actions utilisateur pour mettre à jour le temps de la dernière action
+    const userActions = ['keydown', 'mousemove', 'mousedown', 'touchstart', 'scroll'];
+    const actionsTargets = [document, document.querySelector("iframe")?.contentDocument || document];
+    userActions.forEach(action => {
+        actionsTargets.forEach(target => {
+            if (target) {
+                target.addEventListener(action, updateLastUserActionTime);
+            }
+        });
+    });
+
+    // Fonction pour enregistrer automatiquement la consultation
+    function autoSaveConsultation() {
+        let currentTime = Date.now();
+        const timeSinceLastSave = currentTime - lastSaveTime;
+        const timeSinceLastAction = currentTime - lastUserActionTime;
+        
+        // Vérifier si 3 minutes se sont écoulées depuis la dernière sauvegarde
+        const AUTO_SAVE_INTERVAL = 3 * 60 * 1000; // 3 minutes
+        // const AUTO_SAVE_INTERVAL = 3 * 6 * 1000; // Pour les tests : 18 secondes au lieu de 3 minutes
+        const INACTIVITY_THRESHOLD = 5000; // 5 secondes d'inactivité
+        
+        if (timeSinceLastSave >= AUTO_SAVE_INTERVAL && timeSinceLastAction >= INACTIVITY_THRESHOLD) {
+            console.log('[AutoSaveConsultation] Enregistrement automatique de la consultation');
+
+            const saveButton = document.querySelector('#ButtonSave');
+            if (saveButton) {
+                if (isFormOpen()) {
+                    console.log('[AutoSaveConsultation] Formulaire ouvert, enregistrement automatique inhibé');
+                    lastSaveTime = Date.now(); // Mettre à jour le temps de la dernière sauvegarde pour éviter des tentatives répétées
+                } else {
+                    saveButton.click();
+                    lastSaveTime = Date.now(); // Mettre à jour le temps de la dernière sauvegarde
+                    console.log('[AutoSaveConsultation] Bouton d\'enregistrement cliqué');
+                }
+            }
+        }
+    }
+
+    // Inhiber le comportement si une fenêtre de formulaire est détectée #ContentPlaceHolder1_PanelFormulaire
+    function isFormOpen() {
+        const formPanel = document.querySelector('#ContentPlaceHolder1_PanelFormulaire');
+        return formPanel;
+    }
+
+    // Vérifier toutes les secondes pour détecter rapidement l'inactivité après les 3 minutes
+    setInterval(autoSaveConsultation, 1000);
+
+    // Mettre à jour le texte du bouton toutes les 10 secondes
+    setInterval(updateSaveButtonText, 10000);
+    
+    // Mise à jour initiale immédiate
+    updateSaveButtonText();
+
 });

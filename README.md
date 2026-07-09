@@ -88,6 +88,7 @@ Cf. ci-dessous pour les retours et les contributions.
 - Alerte en cas de retard ou d'absence du VSM et ajout d'un bouton pour le réaliser en un clic. (ne fonctionne que si 70%+ est en CIM-10)
 - Recherche d'un patient grâce au contenu du presse-papiers en un clic.
 - Bouton "AT sans CV" pour créer un arrêt de travail sans lecture de carte vitale.
+- Un bouton pour sauvegarder l’affichage préférentiel des documents dans la page de recherche des documents (via l’icone 💾).
 
 ## Consultations
 - Affichage automatique de l'historique dans une colonne à gauche : ouvre automatiquement un historique simplifié (pas de recettes notamment) dans une colonne à gauche de l'écran, uniquement dans les pages de Consultation, de Courrier, de Certificat, de Formulaire et Demandes.
@@ -103,6 +104,8 @@ Cf. ci-dessous pour les retours et les contributions.
 - Facilitation de la navigation via 'Tab' et 'Shift+Tab' pour naviguer entre les champs de texte et de suivi.
 - Retrait des suggestions des titres de consultation : dans les fenêtres contenant un Titre, désactive le panneau de suggestion (fenêtres d'ordonnance, consultation, certificat, prescription, formulaire, résultats d'examen).
 - Ajout d’un raccourci vers la vue des traitements depuis la consultation
+- Enregistrement automatique des consultations toutes les 3 minutes si aucune entrée n’est détectée pendant au moins 5 secondes. (permet de limiter les pertes de données en cas de crash du navigateur ou de Weda)
+- Outil de calcul du SCOR2 directement depuis la consultation
 
 
 ## Prescriptions
@@ -177,6 +180,8 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - La case "Mon patient accepte que je transmette le présent avis d'arrêt de travail pour son compte [...]" se coche automatiquement.
 - Ajout d’un champ de recherche de motif d’arrêt de travail (tolérant aux fautes de frappe et aux acronymes courants).
 - Classement des motifs d’arrêt de travail par ordre alphabétique.
+- Sorties autorisées cochées par défaut pour les arrêts de travail (désactivable dans les options)
+- Motif pour les sorties libres personnalisable dans les options de Weda-Helper
 
 
 ### Métrique

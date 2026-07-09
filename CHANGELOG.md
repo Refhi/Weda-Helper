@@ -4,7 +4,12 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
-# [3.0.0.0] - Weda Helper
+# [3.0.0.4] - Hotfix
+## Fix :
+- erreurs de lecture de la carte vitale dans les FSE : ajout d’un délai de 200ms pour limiter les messages d’erreur.
+- inhibition de la sauvegarde automatique de la consultation si un formulaire est ouvert (évite de perdre les données saisies dans le formulaire). Merci à DocDomi et à Aurélie T. pour le signalement !
+
+# [3.0.0.3] - Weda Helper
 ## Changement de version :
 - changement de numéro de version majeur, mais sans signification autre que la simplification : 2.16.3.2 ça devenait illisible...
 
@@ -16,6 +21,11 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#607](https://github.com/Refhi/Weda-Helper/issues/607) - Ajout d’une icone pour accéder à la vue des traitements depuis la consultation.
 - [#606](https://github.com/Refhi/Weda-Helper/issues/606) - Ajout d’un bouton d’impression dans la vue des traitements (permet d’imprimer la vue des traitements en cours, ou de l’exporter en PDF).
 - [#612](https://github.com/Refhi/Weda-Helper/issues/612) - Aide au calcul des posologies en mg/kg dans la page de prescription (permet de calculer rapidement la posologie d’un médicament en fonction du poids du patient).
+- dans les arrêts de travail "Sorties autorisées" est coché oui par défaut
+- [#618](https://github.com/Refhi/Weda-Helper/issues/618) - Le motif par défaut pour les sorties sans restriction d’horaire est désormais personnalisable dans les options de Weda-Helper ou en cliquant sur le bouton 💾 à côté du champ de saisie du motif dans la page de prescription d’arrêt de travail.
+- [#620](https://github.com/Refhi/Weda-Helper/issues/620) - Les consultations sont désormais automatiquement enregistrées toutes les 3 minutes si aucune entrée n’est détectée pendant au moins 5 secondes. (permet de limiter les pertes de données en cas de crash du navigateur ou de Weda)
+- [#619](https://github.com/Refhi/Weda-Helper/issues/619) - Il est désormais possible de sauvegarder l’affichage préférentiel des documents dans la page de recherche des documents. (via l’icone 💾i)
+- [#615](https://github.com/Refhi/Weda-Helper/issues/615) - Ajout d’un outil de calcul du SCORE2 directement depuis la consultation
 
 ## Evolution :
 - [#586](https://github.com/Refhi/Weda-Helper/issues/586) - le décochage automatique de certains documents dans la messagerie sécurisée est désormais personnalisable (ex. décocher les messages commençant par "NoName_" ou les fichiers commençant par "IHE_XDM.zip" qui sont souvent inutiles).
@@ -32,6 +42,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 
 ## Dev :
 - [#611](https://github.com/Refhi/Weda-Helper/issues/611) - Retrait de la vérification de la présence de virgules avant le : danse les options de catégorisation automatique (inutile et source de bugs)
+- addTweak peut désormais être appelé avec un paramètre optionValue pour passer la valeur de l'option directement au callback.
 
 
 # [2.16.3.2] - fix

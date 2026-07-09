@@ -585,7 +585,13 @@ var advancedDefaultSettings = [
             "name": "autoSelectPatientCV",
             "type": TYPE_BOOL,
             "description": "Lit automatiquement la carte vitale et sélectionne le patient lié à la carte vitale s'il est seul.",
-            "default": true
+            "default": true,
+            "subOptions": [{
+                "name": "autoSelectPatientCV_OnlyOnActiveTab",
+                "type": TYPE_BOOL,
+                "description": "N’ouvre le dossier patient automatiquement que sur l'onglet actif.",
+                "default": true
+            }]
         }, {
             "name": "TweakTabSearchPatient",
             "type": TYPE_BOOL,
@@ -663,6 +669,16 @@ var advancedDefaultSettings = [
                 "name": "speedSearchAATI",
                 "type": TYPE_BOOL,
                 "description": "Ajoute un champ de recherche rapide pour les motifs d'arrêt de travail.",
+                "default": true
+            }, {
+                "name": "motifAutoSortieSansRestriction",
+                "type": TYPE_SMALLTEXT,
+                "description": "Permet de définir un motif d'arrêt de travail par défaut pour les sorties sans restriction.",
+                "default": ""
+            }, {
+                "name": "sortiesAutoriseesAutoSelect",
+                "type": TYPE_BOOL,
+                "description": "Sélectionne automatiquement les sorties autorisées simples.",
                 "default": true
             }]
         }, {
@@ -956,6 +972,16 @@ var advancedDefaultSettings = [
             "type": TYPE_TEXT,
             "description": "⤷ Types de données automatique (vider pour désactiver. Pas d'espaces. Sensible à la Case.) Défaut = TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%",
             "default": "TAILLE:cm,Taille:cm,POIDS:kg,Poids:kg,Pc:cm,IMC:p/t²,PAd:mmHg,PAs:mmhg,TAS:mmHg,TAD:mmHg,FC:bpm,Sat:%,Z-IMC:ds"
+        }, {
+            "name": "autoSaveConsultations",
+            "type": TYPE_BOOL,
+            "description": "Enregistre automatiquement les consultations toutes les 3 minutes si aucune entrée n'est détectée pendant au moins 5 secondes.",
+            "default": true
+        }, {
+            "name": "autoScore2",
+            "type": TYPE_BOOL,
+            "description": "Affiche un bouton pour calculer le SCORE2 depuis la page de consultation.",
+            "default": true
         }]
     }, {
         "name": "Options de prescription",

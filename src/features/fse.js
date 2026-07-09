@@ -98,8 +98,10 @@ addTweak(fseUrl, 'TweakFSECreation', function tweakFSECarteVitale() {
         waitLegacyForElement('span', 'Le nom, le prénom et/ou la date de naissance sont différents entre les données du bénéficiaire et celles contenues dans le dossier patient Weda.', 5000, function (spanElement) {
             if (carteVitaleLue) return; // Si la carte vitale a déjà été lue, arrête la surveillance
             console.log('Détecté : nom/prenom != dossier patient Weda. Je clique sur le bouton de lecture de la carte vitale');
-            clickCarteVitale(); // cf. keyCommands.js
-            checkPatientName();
+            setTimeout(function () {
+                clickCarteVitale(); // cf. keyCommands.js
+                checkPatientName();
+            }, 200); // petit délai pour laisser le temps au système de se stabiliser
             carteVitaleLue = true; // Indique que la carte vitale a été lue
         });
         setTimeout(function () {

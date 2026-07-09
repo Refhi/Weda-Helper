@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper Beta",
-  "version": "3.0.0.0",
+  "version": "3.0.0.4",
   "options_page": "src/ui/options.html",
   "permissions": [
     "storage"
@@ -46,6 +46,7 @@
         "src/utils/keyCommands.js",
         "src/utils/quickAccess.js",
         "src/utils/quickAccessConfig.js",
+        "src/utils/score2handler.js",
         "src/ui/tooltip.js",
         "src/ui/update.js",
         "src/ui/popupFunctions.js",
@@ -76,7 +77,7 @@
         "src/features/accoladesHandling.js",
         "src/features/VSM.js",
         "src/features/vueTraitements.js",
-        "src/features/score2handler.js"
+        "src/features/score2prompter.js"
       ]
     }
   ],

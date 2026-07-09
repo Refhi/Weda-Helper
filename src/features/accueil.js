@@ -6,9 +6,10 @@
  * - Lecture automatique carte vitale et sélection patient
  * - Copie NIR et numéro sécu
  * - Edition simplifiée des antécédents
+ * - Sauvegarde de l’affichage préférentiel des documents dans "recherche des documents"
  * 
  * @requires tweaks.js (addTweak)
- * @requires storage.js (getOption)
+ * @requires storage.js (getOptionPromise)
  * @requires keyCommands.js (clickCarteVitale)
  * @requires notifications.js (sendWedaNotif)
  */
@@ -29,6 +30,12 @@ addTweak(homePageUrls, 'autoSelectPatientCV', async function () {
 
     // Fonction helper pour vérifier si l'onglet courant est l'onglet actif
     async function isCurrentTabActive() {
+        const autoSelectPatientCV_OnlyOnActiveTab = await getOptionPromise('autoSelectPatientCV_OnlyOnActiveTab');
+        if (!autoSelectPatientCV_OnlyOnActiveTab) {
+            console.log('autoSelectPatientCV_OnlyOnActiveTab désactivé, lecture CV autorisée dans tout les onglets');
+            return true; // Si l'option est désactivée, on autorise par défaut
+        }
+
         try {
             const hasPermission = await checkPermission('tabs');
             if (!hasPermission) {
@@ -572,4 +579,58 @@ addTweak('*', 'testNotifPanel', function () {
     });
 
     console.log('[TestNotif] Panneau de test des notifications chargé. Cliquez sur le bouton "🔔 Test" en bas à droite.');
+});
+
+
+/**
+ * Permet de mettre un favoris d’affichage dans "Recherche des documents"
+ */
+addTweak('/FolderMedical/PatientViewForm.aspx', '*saveDocumentSearchDisplay', function () {
+    waitForElement({
+        selector: "#ContentPlaceHolder1_HistoriqueUCForm1_DropDownListModeAffichageFileStream",
+        callback: function (elements) {
+            const displaySelect = elements[0];
+            // On ajoute un bouton à droite du select pour sauvegarder le favoris
+            const saveButton = document.createElement('input');
+            saveButton.type = 'button';
+            saveButton.value = '💾 Sauvegarder affichage';
+            saveButton.style.marginLeft = '10px';
+            saveButton.style.cursor = 'pointer';
+            saveButton.title = 'Sauvegarde de l’affichage préférentiel. Weda-Helper.';
+            displaySelect.parentNode.insertBefore(saveButton, displaySelect.nextSibling);
+
+            // On ajoute un listener sur le bouton pour sauvegarder la valeur du select
+            saveButton.addEventListener('click', function () {
+                const selectedValue = displaySelect.value;
+                const selectedText = displaySelect.options[displaySelect.selectedIndex].text;
+                chrome.storage.local.set({ preferredDocumentDisplay: selectedValue }, function () {
+                    console.log('[saveDocumentSearchDisplay] affichage préféré sauvegardé', selectedValue);
+                    // On affiche une notification
+                    sendWedaNotif({
+                        message: `Affichage préféré sauvegardé: ${selectedText}`,
+                        type: 'success',
+                        icon: 'check_circle',
+                        duration: 3000
+                    });
+                });
+            });
+        }
+    });
+
+    waitForElement({
+        selector: "#ContentPlaceHolder1_HistoriqueUCForm1_DropDownListModeAffichageFileStream",
+        justOnce: true,
+        callback: function (elements) {
+            // On lit la valeur sauvegardée et on l’applique au select
+            const displaySelect = elements[0];
+            getOptionPromise('preferredDocumentDisplay').then(preferredDisplay => {
+                if (preferredDisplay && displaySelect.value !== preferredDisplay) {
+                    displaySelect.value = preferredDisplay;
+                    console.log('[saveDocumentSearchDisplay] affichage préféré appliqué', preferredDisplay);
+                    // Déclencher le postback pour appliquer le changement
+                    displaySelect.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            });
+        }
+    });
 });
