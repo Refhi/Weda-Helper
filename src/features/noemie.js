@@ -45,7 +45,8 @@ addTweak('/FolderGestion/NoemieForm.aspx', '*noemieDate', function() {
                         "Organisme 91919000" : "MGEN",
                         "Organisme 01908000":"CPRPF RG",
                         "CNMSS Affilies":"DDFIP DU VAR",
-                        "Organisme CB1010000":"SWISSLIFE PREVOYANCE ET SANT"
+                        "Organisme CB1010000":"SWISSLIFE PREVOYANCE ET SANT",
+                        "Organisme NR0010000":"MNT SANTE PRESTATION RC BRED"
                     };
                     var isMGEN = false;
                     var isCetip = false;
