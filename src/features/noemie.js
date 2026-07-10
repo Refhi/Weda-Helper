@@ -11,6 +11,7 @@ addTweak('/FolderGestion/NoemieForm.aspx', '*noemieDate', function() {
                     var name = nomInput.value;
                     var nameArray = {
                         "TOULOUSE": "CPAM TOULOUSE",
+                        "BORDEAUX": "CPAM BORDEAUX",
                         "ALBI": "CPAM ALBI",
                         "MONT DE MARSAN":"CPAM MONT DE MARSAN",
                         "CPAM de Rouen-Elbeuf-Dieppe-Seine-Maritime":"CPAM R.E.D.76",
