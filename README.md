@@ -88,7 +88,6 @@ Cf. ci-dessous pour les retours et les contributions.
 - Alerte en cas de retard ou d'absence du VSM et ajout d'un bouton pour le réaliser en un clic. (ne fonctionne que si 70%+ est en CIM-10)
 - Recherche d'un patient grâce au contenu du presse-papiers en un clic.
 - Bouton "AT sans CV" pour créer un arrêt de travail sans lecture de carte vitale.
-- Un bouton pour sauvegarder l’affichage préférentiel des documents dans la page de recherche des documents (via l’icone 💾).
 
 ## Consultations
 - Affichage automatique de l'historique dans une colonne à gauche : ouvre automatiquement un historique simplifié (pas de recettes notamment) dans une colonne à gauche de l'écran, uniquement dans les pages de Consultation, de Courrier, de Certificat, de Formulaire et Demandes.
