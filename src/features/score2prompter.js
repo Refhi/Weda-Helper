@@ -66,18 +66,31 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
             riskRegion: {
                 possibleValues : ['Low', 'Moderate', 'High', 'Very high'],
                 simplifiedValues: {
-                    "Low": "Faible risque : Belgique, Danemark, France, Israël, Luxembourg, Norvège, Espagne, Suisse, Pays-Bas et Royaume-Uni",
-                    "Moderate": "Risque modéré : Autriche, Chypre, Finlande, Allemagne, Grèce, Islande, Irlande, Italie, Malte, Portugal, Saint-Marin, Slovénie et Suède",
-                    "High": "Risque élevé : Albanie, Bosnie-Herzégovine, Croatie, Estonie, Hongrie, Kazakhstan, Pologne, Slovaquie et Turquie",
-                    "Very high": "Risque très élevé : Algérie, Arménie, Azerbaïdjan, Biélorussie, Bulgarie, Égypte, Géorgie, Kirghizistan, Lettonie, Liban, Libye, Lituanie, Monténégro, Maroc, République de Moldova, Roumanie, Fédération de Russie, Serbie, Syrie, TFYR (Macédoine), Tunisie, Ukraine et Ouzbékistan"
+                    "Low": "Faible",
+                    "Moderate": "Modéré",
+                    "High": "Élevé",
+                    "Very high": "Très élevé"
                 },
-                description: 'Région de risque pour le calcul du SCORE2 (Low, Moderate, High, Very high)'
+                detailValues: {
+                    "Low": "Belgique, Danemark, France, Israël, Luxembourg, Norvège, Espagne, Suisse, Pays-Bas, Royaume-Uni",
+                    "Moderate": "Autriche, Chypre, Finlande, Allemagne, Grèce, Islande, Irlande, Italie, Malte, Portugal, Saint-Marin, Slovénie, Suède",
+                    "High": "Albanie, Bosnie-Herzégovine, Croatie, Estonie, Hongrie, Kazakhstan, Pologne, Slovaquie, Turquie",
+                    "Very high": "Algérie, Arménie, Azerbaïdjan, Biélorussie, Bulgarie, Égypte, Géorgie, Lettonie, Liban, Libye, Lituanie, Monténégro, Maroc, Moldova, Roumanie, Russie, Serbie, Syrie, Macédoine, Tunisie, Ukraine, Ouzbékistan"
+                },
+                description: 'Région de risque',
+                value: 'Low'
             },
             age: {
                 possibleValues: [40, 89],
+                description: 'Âge du patient'
             },
             gender: {
                 possibleValues: ['male', 'female'],
+                simplifiedValues: {
+                    'male': 'Homme',
+                    'female': 'Femme'
+                },
+                description: 'Sexe du patient'
             },
             smoker: {
                 possibleValues: [0, 1],
@@ -282,34 +295,22 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
     }
 
     /**
-     * Demande à l'utilisateur les valeurs manquantes via une boîte de dialogue custom
-     * Regroupe tous les champs manquants dans un seul formulaire
+     * Permet à l'utilisateur de vérifier/modifier toutes les valeurs avant le calcul
+     * Affiche systématiquement le formulaire, pré-rempli avec les valeurs déjà récupérées
      */
     async function promptMissingValues(params) {
-        console.log('[autoScore2] Vérification des valeurs manquantes');
+        console.log('[autoScore2] Affichage du formulaire de vérification des valeurs');
         
-        const missingParams = [];
+        const allParams = [];
         
-        // Identifier les paramètres sans valeur
+        // Lister tous les paramètres (sauf classify)
         for (const [paramName, paramConfig] of Object.entries(params)) {
-            // Skip classify (pas une vraie valeur à remplir)
             if (paramName === 'classify') continue;
-            
-            // Vérifier si la valeur est définie et valide
-            if (paramConfig.value === undefined || paramConfig.value === null || paramConfig.value === '') {
-                missingParams.push(paramName);
-            }
+            allParams.push(paramName);
         }
         
-        if (missingParams.length === 0) {
-            console.log('[autoScore2] ✓ Toutes les valeurs sont présentes');
-            return true;
-        }
-        
-        console.log('[autoScore2] Valeurs manquantes :', missingParams);
-        
-        // Créer et afficher le modal
-        const result = await showMissingValuesModal(missingParams, params);
+        // Créer et afficher le modal avec toutes les valeurs (pré-remplies si disponibles)
+        const result = await showMissingValuesModal(allParams, params);
         
         if (result === null) {
             console.log('[autoScore2] ✗ Calcul annulé par l\'utilisateur');
@@ -351,8 +352,8 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
                 background: white;
                 border-radius: 8px;
                 box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-                max-width: 600px;
-                max-height: 80vh;
+                max-width: 480px;
+                max-height: 70vh;
                 width: 90%;
                 overflow: hidden;
                 display: flex;
@@ -368,7 +369,8 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
                 font-size: 18px;
                 font-weight: bold;
             `;
-            header.textContent = `⚕️ Calcul SCORE2 - Valeurs manquantes (${missingParams.length})`;
+            const missingCount = missingParams.filter(p => params[p].value === undefined || params[p].value === null || params[p].value === '').length;
+            header.textContent = `⚕️ Calcul SCORE2 - Vérification des valeurs${missingCount > 0 ? ` (${missingCount} manquante${missingCount > 1 ? 's' : ''})` : ''}`;        
             
             // Body (scrollable)
             const body = document.createElement('div');
@@ -378,14 +380,22 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
                 flex: 1;
             `;
             
-            // Générer les champs pour chaque paramètre manquant
+            // Générer les champs : manquants en premier (légèrement en rouge), puis les autres
             const fields = {};
-            missingParams.forEach(paramName => {
+            const isMissing = p => params[p].value === undefined || params[p].value === null || params[p].value === '';
+            const sorted = [...missingParams].sort((a, b) => isMissing(b) - isMissing(a));
+
+            sorted.forEach(paramName => {
                 const paramConfig = params[paramName];
                 const fieldContainer = createFieldForParam(paramName, paramConfig);
+                if (isMissing(paramName)) {
+                    fieldContainer.style.background = '#fff5f5';
+                    fieldContainer.style.borderLeft = '3px solid #e57373';
+                    fieldContainer.style.paddingLeft = '10px';
+                    fieldContainer.style.borderRadius = '4px';
+                }
                 body.appendChild(fieldContainer);
-                
-                // Stocker la référence au champ input/select
+
                 const inputElement = fieldContainer.querySelector('input, select');
                 if (inputElement) {
                     fields[paramName] = inputElement;
@@ -565,23 +575,11 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
         `;
         label.textContent = paramConfig.description || paramName;
         
-        // Informations complémentaires
-        const info = document.createElement('div');
-        info.style.cssText = `
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 10px;
-            line-height: 1.4;
-        `;
-        
+        // Informations secondaires (cachées derrière un ?)
         let infoText = '';
-        
-        // Keywords recherchés
         if (paramConfig.itemsKeywords) {
             infoText += `🔍 Mots-clés cherchés : ${paramConfig.itemsKeywords.join(', ')}\n`;
         }
-        
-        // Unité attendue
         if (paramConfig.unit) {
             infoText += `📏 Unité : ${paramConfig.unit}`;
             if (paramConfig.conversion) {
@@ -589,101 +587,156 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
             }
             infoText += '\n';
         }
-        
-        // Range ou valeurs possibles
-        if (Array.isArray(paramConfig.possibleValues)) {
-            if (paramConfig.possibleValues.length === 2 && 
+        if (Array.isArray(paramConfig.possibleValues) && paramConfig.possibleValues.length === 2 &&
                 typeof paramConfig.possibleValues[0] === 'number') {
-                infoText += `📊 Valeur attendue : ${paramConfig.possibleValues[0]} - ${paramConfig.possibleValues[1]}`;
-            }
+            infoText += `📊 Valeur attendue : ${paramConfig.possibleValues[0]} - ${paramConfig.possibleValues[1]}`;
         }
-        
-        info.textContent = infoText;
-        info.style.whiteSpace = 'pre-line';
+
+        // Bouton ? + tooltip caché
+        const infoWrapper = document.createElement('span');
+        infoWrapper.style.cssText = 'position: relative; display: inline-block; margin-left: 6px; vertical-align: middle;';
+
+        const infoBtn = document.createElement('span');
+        infoBtn.textContent = '?';
+        infoBtn.style.cssText = `
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 16px; height: 16px; border-radius: 50%;
+            background: #2196F3; color: white; font-size: 11px; font-weight: bold;
+            cursor: pointer; user-select: none;
+        `;
+
+        const tooltip = document.createElement('div');
+        tooltip.style.cssText = `
+            display: none;
+            position: absolute;
+            left: 22px; top: -4px;
+            background: #333; color: #eee;
+            font-size: 12px; line-height: 1.5;
+            padding: 8px 10px; border-radius: 6px;
+            white-space: pre-line; z-index: 9999;
+            min-width: 220px; max-width: 320px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        `;
+        tooltip.textContent = infoText || 'Aucune information complémentaire';
+
+        infoBtn.addEventListener('mouseenter', () => tooltip.style.display = 'block');
+        infoBtn.addEventListener('mouseleave', () => tooltip.style.display = 'none');
+        infoBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            tooltip.style.display = tooltip.style.display === 'none' ? 'block' : 'none';
+        });
+
+        infoWrapper.appendChild(infoBtn);
+        infoWrapper.appendChild(tooltip);
+
+        // Ajouter le ? à la suite du label
+        label.appendChild(infoWrapper);
         
         // Champ de saisie
         let inputElement;
         
         // Boutons radio pour les choix multiples avec simplifiedValues
         if (paramConfig.simplifiedValues) {
-            const radioContainer = document.createElement('div');
-            radioContainer.style.cssText = `
-                display: flex;
-                flex-direction: column;
-                gap: 12px;
-            `;
-            
+            const entries = Object.entries(paramConfig.simplifiedValues);
+            const isBinary = entries.length === 2;
             const radioGroup = `radio_${paramName}_${Date.now()}`;
+            const existingValue = paramConfig.value !== undefined && paramConfig.value !== null && paramConfig.value !== '' ? String(paramConfig.value) : null;
+
+            const radioContainer = document.createElement('div');
+            radioContainer.style.cssText = isBinary
+                ? 'display: flex; flex-direction: row; gap: 8px;'
+                : 'display: flex; flex-direction: column; gap: 8px;';
+
             let isFirst = true;
-            
-            // Créer un bouton radio pour chaque option
-            for (const [value, description] of Object.entries(paramConfig.simplifiedValues)) {
+
+            for (const [value, description] of entries) {
+                const isSelected = existingValue !== null ? value === existingValue : isFirst;
+
                 const radioWrapper = document.createElement('label');
                 radioWrapper.style.cssText = `
-                    display: flex;
-                    align-items: flex-start;
-                    cursor: pointer;
-                    padding: 10px;
-                    border: 1px solid ${isFirst ? '#2196F3' : '#ddd'};
+                    display: flex; align-items: center; cursor: pointer;
+                    padding: ${isBinary ? '6px 12px' : '8px 10px'};
+                    border: 1px solid ${isSelected ? '#2196F3' : '#ddd'};
                     border-radius: 4px;
-                    transition: background-color 0.2s;
-                    background-color: ${isFirst ? '#e3f2fd' : 'white'};
+                    background-color: ${isSelected ? '#e3f2fd' : 'white'};
+                    ${isBinary ? 'flex: 1; justify-content: center;' : ''}
+                    font-size: 14px; line-height: 1.3;
                 `;
-                radioWrapper.onmouseover = () => radioWrapper.style.backgroundColor = '#f5f5f5';
-                radioWrapper.onmouseout = () => {
-                    if (!radioWrapper.querySelector('input').checked) {
-                        radioWrapper.style.backgroundColor = 'white';
-                    }
-                };
-                
+                radioWrapper.onmouseover = () => { if (!radioWrapper.querySelector('input').checked) radioWrapper.style.backgroundColor = '#f5f5f5'; };
+                radioWrapper.onmouseout = () => { if (!radioWrapper.querySelector('input').checked) radioWrapper.style.backgroundColor = 'white'; };
+
                 const radio = document.createElement('input');
                 radio.type = 'radio';
                 radio.name = radioGroup;
                 radio.value = value;
-                radio.checked = isFirst; // Cocher le premier par défaut
-                radio.style.cssText = `
-                    margin-right: 10px;
-                    margin-top: 3px;
-                    flex-shrink: 0;
-                `;
-                
-                // Gestion du changement de sélection
+                radio.checked = isSelected;
+                radio.style.cssText = 'margin-right: 6px; flex-shrink: 0;';
+
                 radio.onchange = () => {
-                    // Retirer le fond de tous les wrappers
-                    radioContainer.querySelectorAll('label').forEach(label => {
-                        label.style.backgroundColor = 'white';
-                        label.style.borderColor = '#ddd';
+                    radioContainer.querySelectorAll('label').forEach(lbl => {
+                        lbl.style.backgroundColor = 'white';
+                        lbl.style.borderColor = '#ddd';
                     });
-                    // Mettre en évidence le sélectionné
                     if (radio.checked) {
                         radioWrapper.style.backgroundColor = '#e3f2fd';
                         radioWrapper.style.borderColor = '#2196F3';
                     }
                 };
-                
-                const textContent = document.createElement('div');
-                textContent.style.cssText = `
-                    flex: 1;
-                    font-size: 14px;
-                    line-height: 1.4;
-                `;
-                textContent.textContent = description;
-                
-                radioWrapper.appendChild(radio);
-                radioWrapper.appendChild(textContent);
-                radioContainer.appendChild(radioWrapper);
-                
-                // Stocker le premier radio comme inputElement pour la validation
-                if (isFirst) {
-                    inputElement = radio;
-                    isFirst = false;
+
+                const textSpan = document.createElement('span');
+
+                if (!isBinary && paramConfig.detailValues && paramConfig.detailValues[value]) {
+                    // Afficher le label court + ? pour le détail
+                    textSpan.textContent = value;
+
+                    const detailWrapper = document.createElement('span');
+                    detailWrapper.style.cssText = 'position: relative; display: inline-block; margin-left: 6px; vertical-align: middle;';
+
+                    const detailBtn = document.createElement('span');
+                    detailBtn.textContent = '?';
+                    detailBtn.style.cssText = `
+                        display: inline-flex; align-items: center; justify-content: center;
+                        width: 14px; height: 14px; border-radius: 50%;
+                        background: #2196F3; color: white; font-size: 10px; font-weight: bold;
+                        cursor: pointer; user-select: none;
+                    `;
+
+                    const detailTooltip = document.createElement('div');
+                    detailTooltip.style.cssText = `
+                        display: none; position: absolute;
+                        left: 20px; top: -4px;
+                        background: #333; color: #eee;
+                        font-size: 11px; line-height: 1.4;
+                        padding: 6px 8px; border-radius: 6px;
+                        white-space: pre-line; z-index: 9999;
+                        min-width: 200px; max-width: 300px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                    `;
+                    detailTooltip.textContent = paramConfig.detailValues[value];
+
+                    detailBtn.addEventListener('mouseenter', () => detailTooltip.style.display = 'block');
+                    detailBtn.addEventListener('mouseleave', () => detailTooltip.style.display = 'none');
+                    detailBtn.addEventListener('click', (e) => {
+                        e.preventDefault(); e.stopPropagation();
+                        detailTooltip.style.display = detailTooltip.style.display === 'none' ? 'block' : 'none';
+                    });
+
+                    detailWrapper.appendChild(detailBtn);
+                    detailWrapper.appendChild(detailTooltip);
+                    textSpan.appendChild(detailWrapper);
+                } else {
+                    textSpan.textContent = description;
                 }
+
+                radioWrapper.appendChild(radio);
+                radioWrapper.appendChild(textSpan);
+                radioContainer.appendChild(radioWrapper);
+
+                if (isFirst) inputElement = radio;
+                isFirst = false;
             }
-            
+
             container.appendChild(label);
-            if (infoText) {
-                container.appendChild(info);
-            }
             container.appendChild(radioContainer);
         }
         // Select pour les choix multiples sans simplifiedValues (strings)
@@ -713,10 +766,12 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
                 inputElement.appendChild(option);
             });
             
-            container.appendChild(label);
-            if (infoText) {
-                container.appendChild(info);
+            // Pré-sélectionner la valeur existante
+            if (paramConfig.value !== undefined && paramConfig.value !== null && paramConfig.value !== '') {
+                inputElement.value = String(paramConfig.value);
             }
+            
+            container.appendChild(label);
             container.appendChild(inputElement);
         } 
         // Input pour les valeurs numériques
@@ -732,6 +787,11 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
                 box-sizing: border-box;
             `;
             
+            // Pré-remplir avec la valeur existante si disponible
+            if (paramConfig.value !== undefined && paramConfig.value !== null && paramConfig.value !== '') {
+                inputElement.value = String(paramConfig.value);
+            }
+            
             // Placeholder selon le type
             if (paramConfig.possibleValues[0] === 0 && paramConfig.possibleValues[1] === 1) {
                 inputElement.placeholder = 'Entrez 0 (non) ou 1 (oui)';
@@ -744,9 +804,6 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
             }
             
             container.appendChild(label);
-            if (infoText) {
-                container.appendChild(info);
-            }
             container.appendChild(inputElement);
         }
         
