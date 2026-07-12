@@ -209,6 +209,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - système d'alerte si un antécédent contient un mot-clé précisé dans les options (utile pour mettre en lumière les patients éligibles à un suivi spécifique comme l'inscription à un ETP).
 - bouton "+1clickVSM" pour créer un VSM en un clic depuis la page des antécédents.
 - La date du dernier VSM est affichée dans les antécédents.
+- Ajout de raccourcis dans x jours pour les dates d'alertes dans les antécédents (3 mois, 6 mois, 1 an, 2 ans, 5 ans)
 
 ### Navigation :
 - Un clic du milieu sur le W du Menu W ouvre un nouvel onglet vers l'accueil du dossier patient, et non le module en cours.

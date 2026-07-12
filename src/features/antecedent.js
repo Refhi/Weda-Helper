@@ -183,43 +183,46 @@ addTweak('/FolderMedical/AntecedentForm.aspx', '*shortcutAntecedentAlert', funct
         callback: function () {
             let dateInput = document.querySelector(dateAlerteSelector);
             console.log('[shortcutAntecedentAlert] Antecedent alert date input found', dateInput);
-            dateInput.addEventListener('focus', function () {
-                console.log('[shortcutAntecedentAlert] Antecedent alert date input focused');
-                // On ajoute les raccourcis pour viser une alerte d’antécédent dans x temps
-                const shortcutsContainer = document.createElement('div');
-                shortcutsContainer.id = 'antecedent-alert-shortcuts';
-                shortcutsContainer.style = 'display: flex; gap: 10px; margin-top: 5px;';
-                const shortcuts = [
-                    { label: '6m', value: 180 },
-                    { label: '1a', value: 365 },
-                    { label: '3a', value: 1095 },
-                    { label: '5a', value: 1825 }
-                ];
-                // On vérifie si les boutons existent déjà pour éviter de les dupliquer
-                if (document.querySelector('.antecedent-alert-shortcut')) {
-                    return;
-                }
-                shortcuts.forEach(shortcut => {
-                    const button = document.createElement('button');
-                    button.type = 'button';
-                    // On met une classe pour le style
-                    button.className = 'antecedent-alert-shortcut';
-                    button.innerText = shortcut.label;
-                    button.addEventListener('click', function () {
-                        // On calcule la date d’alerte en fonction de la valeur du raccourci
-                        const date = new Date();
-                        date.setDate(date.getDate() + shortcut.value);
-                        const day = String(date.getDate()).padStart(2, '0');
-                        const month = String(date.getMonth() + 1).padStart(2, '0');
-                        const year = date.getFullYear();
-                        const formattedDate = `${day}/${month}/${year}`;
-                        // On remplit l’input de date d’alerte avec la date calculée
-                        dateInput.value = formattedDate;
-                    });
-                    shortcutsContainer.appendChild(button);
+
+            // Création unique du conteneur rattaché au body — ne déforme pas la mise en page
+            const shortcutsContainer = document.createElement('div');
+            shortcutsContainer.id = 'antecedent-alert-shortcuts';
+            shortcutsContainer.style = 'position: absolute; display: none; flex-direction: row; gap: 10px; z-index: 9999; background: white; padding: 2px; border: 1px solid #ccc; border-radius: 4px;';
+
+            [
+                { label: '6m', value: 180 },
+                { label: '1a', value: 365 },
+                { label: '3a', value: 1095 },
+                { label: '5a', value: 1825 }
+            ].forEach(shortcut => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.title = `[Weda-Helper] Définir la date d'alerte à ${shortcut.label} à partir d'aujourd'hui.`;
+                button.className = 'antecedent-alert-shortcut';
+                button.innerText = shortcut.label;
+                button.addEventListener('mousedown', function (e) {
+                    e.preventDefault(); // empêche le blur avant le click
+                    const date = new Date();
+                    date.setDate(date.getDate() + shortcut.value);
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    dateInput.value = `${day}/${month}/${date.getFullYear()}`;
                 });
-                dateInput.parentNode.insertBefore(shortcutsContainer, dateInput);
-                console.log('[shortcutAntecedentAlert] Antecedent alert shortcuts added');
+                shortcutsContainer.appendChild(button);
+            });
+            document.body.appendChild(shortcutsContainer);
+
+            dateInput.addEventListener('focus', function () {
+                shortcutsContainer.style.display = 'flex';
+                requestAnimationFrame(function () {
+                    const rect = dateInput.getBoundingClientRect();
+                    shortcutsContainer.style.top = (rect.top + window.scrollY - shortcutsContainer.offsetHeight - 4) + 'px';
+                    shortcutsContainer.style.left = (rect.left + window.scrollX) + 'px';
+                });
+            });
+
+            dateInput.addEventListener('blur', function () {
+                shortcutsContainer.style.display = 'none';
             });
         }
     });
