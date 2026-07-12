@@ -19,15 +19,6 @@ function tooltipshower() {
         return;
     }
 
-    // simuler un survol de W
-    var element = document.querySelector('[class="has-popup static"]');
-    if (element) {
-        element.dispatchEvent(new MouseEvent('mouseover', {
-            view: window,
-            bubbles: true,
-            cancelable: true
-        }));
-    }
     chrome.storage.local.get(["defaultShortcuts", "shortcuts"], function (result) {
         const { shortcuts, defaultShortcuts } = result;
         let submenuDict = {};
@@ -120,15 +111,6 @@ function mouseoutW() {
     tooltips.forEach(function (tooltip) {
         tooltip.remove();
     });
-    // relacher W
-    var element = document.querySelector('[class="has-popup static"]');
-    if (element) {
-        element.dispatchEvent(new MouseEvent('mouseout', {
-            view: window,
-            bubbles: true,
-            cancelable: true
-        }));
-    }
 
 }
 
@@ -141,10 +123,10 @@ addTweak('*', 'EnableHelp', function () {
     document.addEventListener('keydown', function (event) {
         // Démarrer le délai d'attente lors de l'appui sur Alt (ignorer les répétitions automatiques)
         if ((event.key === "Alt" || event.altKey) && !event.repeat && !isAltKeyDown) {
-            console.log('Alt key pressed - waiting 1 second');
+            console.log('[EnableHelp] Alt key pressed - waiting 1 second');
             isAltKeyDown = true;
             showTooltipsTimeout = setTimeout(function () {
-                console.log('Alt key held for 1 second - showing tooltips');
+                console.log('[EnableHelp] Alt key held for 1 second - showing tooltips');
                 tooltipsVisible = true;
                 tooltipshower();
             }, 1000);
@@ -152,6 +134,7 @@ addTweak('*', 'EnableHelp', function () {
             window.addEventListener('blur', function () {
                 clearTimeout(showTooltipsTimeout);
                 if (tooltipsVisible) {
+                    console.log('[EnableHelp] Window lost focus - hiding tooltips');
                     mouseoutW();
                     tooltipsVisible = false;
                 }
@@ -159,7 +142,13 @@ addTweak('*', 'EnableHelp', function () {
             afterMutations({
                 delay: 300,
                 callback: function () {
+                    let mutationCount = 0;
                     if (tooltipsVisible) {
+                        mutationCount++;
+                        if (mutationCount < 2) {
+                            return;
+                        }
+                        console.log('[EnableHelp] DOM mutated - hiding tooltips');
                         mouseoutW();
                         tooltipsVisible = false;
                     }
@@ -172,7 +161,7 @@ addTweak('*', 'EnableHelp', function () {
         // Annuler le délai et masquer les tooltips lors du relâchement de Alt
         if (event.key === "Alt" || (!event.altKey && isAltKeyDown)) {
             event.preventDefault();
-            console.log('Alt key released');
+            console.log('[EnableHelp] Alt key released');
             isAltKeyDown = false;
             clearTimeout(showTooltipsTimeout);
             if (tooltipsVisible) {

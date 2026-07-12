@@ -8,6 +8,9 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 ## Retrait de fonctionnalités :
 - [#619](https://github.com/Refhi/Weda-Helper/issues/619) - Il existe *déjà* une option dans Weda pour sauvegarder l’affichage préférentiel des documents dans la page de recherche des documents...
 
+## Fix :
+- [#625](https://github.com/Refhi/Weda-Helper/issues/625) - Réparation de l’aide qui s’affiche quand on maintient Alt appuyé... encore... ce coup-ci c’est censé fonctionner...
+
 # [3.0.0.4] - Hotfix
 ## Fix :
 - erreurs de lecture de la carte vitale dans les FSE : ajout d’un délai de 200ms pour limiter les messages d’erreur.
