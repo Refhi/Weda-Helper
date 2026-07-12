@@ -103,6 +103,7 @@ Cf. ci-dessous pour les retours et les contributions.
 - Facilitation de la navigation via 'Tab' et 'Shift+Tab' pour naviguer entre les champs de texte et de suivi.
 - Retrait des suggestions des titres de consultation : dans les fenêtres contenant un Titre, désactive le panneau de suggestion (fenêtres d'ordonnance, consultation, certificat, prescription, formulaire, résultats d'examen).
 - Ajout d’un raccourci vers la vue des traitements depuis la consultation
+- Ajout d'un bouton d'impression dans la vue des traitements (permet d'imprimer la vue des traitements en cours, ou de l'exporter en PDF).
 - Enregistrement automatique des consultations toutes les 3 minutes si aucune entrée n’est détectée pendant au moins 5 secondes. (permet de limiter les pertes de données en cas de crash du navigateur ou de Weda)
 - Outil de calcul du SCOR2 directement depuis la consultation
 
@@ -123,6 +124,9 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Demandes
 - Cliquer sur "Basculer en mode prescription bi-zone" déplace aussi le texte présent dans le champ ALD
+
+### Posologies
+- Aide au calcul des posologies en mg/kg directement depuis la page de prescription (permet de calculer rapidement la posologie d'un médicament en fonction du poids du patient).
 
 ### Recherche de médicaments
 - Lors de la recherche d'un médicament le texte est normalement effacé à chaque changement de type de recherche. L'extension maintient le dernier texte recherché.
@@ -204,6 +208,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - implémentation d'une pré-alerte : si la date de l'alerte est dans moins de 6 mois (paramétrable), l'alerte est affichée en orange
 - système d'alerte si un antécédent contient un mot-clé précisé dans les options (utile pour mettre en lumière les patients éligibles à un suivi spécifique comme l'inscription à un ETP).
 - bouton "+1clickVSM" pour créer un VSM en un clic depuis la page des antécédents.
+- La date du dernier VSM est affichée dans les antécédents.
 
 ### Navigation :
 - Un clic du milieu sur le W du Menu W ouvre un nouvel onglet vers l'accueil du dossier patient, et non le module en cours.
@@ -230,6 +235,7 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 - Complétion automatique des dates partielles
 - En cliquant sur l'icône de l'extension, le bouton "Tout mettre en consultation" permet de sélectionner d'un coup "Consultation" pour l'ensemble des documents en attente d'importation.
 - recherche automatique du patient, synthèse d'un titre, détection automatique de la date
+- Lors d'un import automatique, la date du document est conservée si elle est déjà déterminée par Weda.
 - Classification automatique des documents (titre, destination, type de document, médecin destinataire, etc.) dans les imports de masse et dans la messagerie sécurisée (Merci Abel !)
 
 - On peut désormais utiliser Ctrl+U pour uploader directement dans Weda le document le plus récent présent dans un dossier pré-sélectionné dans le Companion. Un nouveau bouton permet d'archiver si souhaité le document après l'upload.
