@@ -7,6 +7,8 @@
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
+/** Map pour stocker la correspondance initiales → nom complet du praticien */
+const initialsToAuthorMap = new Map();
 
 /** Sélecteurs CSS centralisés — à mettre à jour si Weda change son DOM */
 const usualMainContainer = "#HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda";
@@ -59,6 +61,9 @@ const SELECTORS = {
  * @returns {Array<Object>} Tableau d'objets représentant chaque journée
  */
 function recoverData() { // TODO : pour l'instant orienté CONSULTATION
+    // Réinitialisation de la Map de correspondance initiales → nom
+    initialsToAuthorMap.clear();
+    
     // Récupération du conteneur principal
     const mainContainer = document.querySelector(SELECTORS.categories.consultations.mainContainer);
     if (!mainContainer) {
@@ -109,19 +114,39 @@ function recoverData() { // TODO : pour l'instant orienté CONSULTATION
 function parseDayContainer(container) {
     // Extraction des métadonnées de la journée (header table)
     const dateElement = container.querySelector(SELECTORS.categories.consultations.date);
-    const authorInitials = container.querySelector('.sp'); // Initiales dans le header
+    const initialsElement = container.querySelector('.sp'); // Initiales dans le header
+    const initials = initialsElement?.textContent.trim() || null;
     
     // Documents : tous les divs name="dhX" sauf dh10 (pièces jointes)
     const documentDivs = container.querySelectorAll('[name^="dh"]:not([name="dh10"])');
-    const documents = Array.from(documentDivs).map(div => parseDocument(div));
+    const documents = Array.from(documentDivs).map(div => parseDocument(div)).filter(doc => doc !== null);
     
     // Pièces jointes : div name="dh10"
     const attachmentsDiv = container.querySelector('[name="dh10"] .pjm');
     const attachments = attachmentsDiv ? parseAttachments(attachmentsDiv) : [];
     
+    // Détermination du nom complet du praticien
+    let authorName = null;
+    
+    // 1. Chercher le premier document avec un author complet
+    const docWithAuthor = documents.find(doc => doc.author);
+    if (docWithAuthor) {
+        authorName = docWithAuthor.author;
+        // Mettre à jour la correspondance initiales → nom
+        if (initials) {
+            initialsToAuthorMap.set(initials, authorName);
+        }
+    } else if (initials && initialsToAuthorMap.has(initials)) {
+        // 2. Utiliser la correspondance existante
+        authorName = initialsToAuthorMap.get(initials);
+    }
+    
+    // Supprimer le champ author de tous les documents (on le garde uniquement au niveau du conteneur)
+    documents.forEach(doc => delete doc.author);
+    
     return {
         date: dateElement?.textContent.trim() || null,
-        authorInitials: authorInitials?.textContent.trim() || null,
+        author: authorName,
         documents,
         attachments
     };
@@ -136,10 +161,15 @@ function parseDocument(div) {
     const sstDiv = div.querySelector('.sst');
     if (!sstDiv) return null;
     
-    // Type et ID depuis la classe d'icône et le titre
+    // Type depuis la classe d'icône
     const iconElement = sstDiv.querySelector('[class^="img16"]');
     const typeClass = iconElement?.className || '';
     const type = typeClass.replace('img16', '').toLowerCase();
+    
+    // Parsing spécifique pour les recettes
+    if (type === 'recette') {
+        return parseRecette(div);
+    }
         
     // Métadonnées
     const titleElement = sstDiv.querySelector('.document-title');
@@ -149,10 +179,47 @@ function parseDocument(div) {
     
     // Contenu textuel (.stx, .sst2 pour sections)
     const contentDivs = div.querySelectorAll('.stx');
-    const content = Array.from(contentDivs).map(el => el.textContent.trim());
+    const content = Array.from(contentDivs).map(el => el.textContent.trim()).filter(text => text.length > 0);
     
     return {
         type,
+        title,
+        author,
+        content: content.length > 0 ? content : null,
+    };
+}
+
+/**
+ * Parse spécifiquement une recette
+ * @param {HTMLElement} div - Élément div[name="dhX"] d'une recette
+ * @returns {Object} Données de la recette
+ */
+function parseRecette(div) {
+    const sstDiv = div.querySelector('.sst');
+    
+    // Pour les recettes, chercher le titre et l'auteur
+    const titleElement = sstDiv?.querySelector('.document-title');
+    const title = titleElement?.textContent.trim() || null;
+    const authorElement = sstDiv?.querySelector('.document-signature .sign');
+    const author = authorElement?.textContent.trim() || null;
+    
+    // Chercher le contenu dans différentes structures possibles
+    const contentDivs = div.querySelectorAll('.stx, .sst2');
+    const content = Array.from(contentDivs).map(el => el.textContent.trim()).filter(text => text.length > 0);
+    
+    // Chercher également dans les tables si présentes
+    const tables = div.querySelectorAll('table');
+    if (tables.length > 0) {
+        tables.forEach(table => {
+            const text = table.textContent.trim();
+            if (text.length > 0) {
+                content.push(text);
+            }
+        });
+    }
+    
+    return {
+        type: 'recette',
         title,
         author,
         content: content.length > 0 ? content : null,
