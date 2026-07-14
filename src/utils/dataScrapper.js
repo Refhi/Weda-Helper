@@ -12,7 +12,11 @@
  * scrapData('facturation history', { startDate: '2023-01-01', endDate: '2023-12-31' });
  * scrapData('prescriptions');
  */
-function scrapData({loadFullFile = false, dataToRetrieve, dateRange = null} = {}) {
+function scrapData({
+    dataToRetrieve,
+    fullPage = false,
+    dateRange = null
+} = {}) {
 }
 
 
@@ -25,6 +29,34 @@ function scrapData({loadFullFile = false, dataToRetrieve, dateRange = null} = {}
 // 1 - charger la page web popup historique en utilisant la génération d’url depuis l’api patient
 // peut-être dans une iframe invisible ?
  
-// 2 - y appliquer les modifications nécessaires en terme de filtres :
-// loadFullFile = false : de base le dossier n’affiche que le dossier récent
-// wedaFiltersToApply = ['consultations', 'certificats', 'demandes', 'prescriptions', 'formulaires', 'documents joints', 'recettes']
+// 2 - y cliquer éventuellemenent sur un des boutons secondaires permettant d’accéder à une autre catégorie
+/**
+ * les catégories secondaires possibles : (des id d’éléments à cliquer)
+ * - #ButtonConsultation (ouvert par défaut)
+ * - #ButtonResultatExamen
+ * - #ButtonCourrier
+ * - #ButtonVaccins
+ * - #ButtonChart
+ * - #ButtonDocumentJointAction
+ * - #ButtonPregnant
+ * - #ButtonAT
+ */
+
+
+
+// 3 - Dans la plupart des cas, on va chercher à identifier les containeurs de données. Un par jour en général.
+
+// 4 - une fois les containeurs identifiés, on va récupérer les données voulues selon :
+/**
+ * spécifiquement pour les consultations, voici les sous-catégories possibles
+ * qui seront à filtrer au sein du code (là on va devoir séparer les éléments par leur class)
+ * - .img16Consultation
+ * - .img16Certificat
+ * - .img16Demande
+ * - .img16Prescription
+ * - .img16Formulaire
+ * - [.bufi, .pjii, .nsi]//un poil différent car ici chaque élément // TODO : vérifier autres types d’éléments ?
+ * - .img16Recette
+ */
+
+// 5 - enfin, on renvoie le tout sous forme d’un objet JSON structuré, avec les dates et les catégories de données.
