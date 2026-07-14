@@ -9,10 +9,12 @@
 
 
 /** Sélecteurs CSS centralisés — à mettre à jour si Weda change son DOM */
-
+const usualMainContainer = "#HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda";
+const usualSubContainer  = ".sc";
 // Sélecteurs partagés par les catégories à containeurs journaliers
 const _DAILY = {
-    container: "#HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda .sc",
+    mainContainer: usualMainContainer,
+    subContainer:  usualSubContainer,
     date:      "[title='Cliquez sur la date pour ouvrir.']",
     author:    ".sign",
 };
@@ -27,13 +29,13 @@ const SELECTORS = {
      */
     categories: {
         consultations:     { button: null,                         ..._DAILY },   // ouvert par défaut
-        resultats_examens: { button: '#ButtonResultatExamen',      ..._DAILY },
+        resultatsExamens:  { button: '#ButtonResultatExamen',      ..._DAILY },
         courriers:         { button: '#ButtonCourrier',            ..._DAILY },
-        arrets_travail:    { button: '#ButtonAT',                  ..._DAILY },
-        vaccins:           { button: '#ButtonVaccins',             container: null, date: null, author: null },
-        charts:            { button: '#ButtonChart',               container: null, date: null, author: null },
-        documents:         { button: '#ButtonDocumentJointAction', container: null, date: null, author: null },
-        grossesse:         { button: '#ButtonPregnant',            container: null, date: null, author: null },
+        arretsTravail:     { button: '#ButtonAT',                  ..._DAILY },
+        vaccins:           { button: '#ButtonVaccins',             ..._DAILY },
+        charts:            { button: '#ButtonChart',               mainContainer: '#UpdatePanelVisuDocument'}, // Attention iframe...
+        documents:         { button: '#ButtonDocumentJointAction', mainContainer: '#UpdatePanelVisuDocument'},
+        grossesse:         { button: '#ButtonPregnant',            mainContainer: usualMainContainer, subContainer: usualSubContainer },
     },
 
     // Sous-types des "consultations" (filtrés par classe d’icone)
@@ -44,7 +46,7 @@ const SELECTORS = {
         prescription:      '.img16Prescription',
         formulaire:        '.img16Formulaire',
         recette:           '.img16Recette',
-        piecesJointes:     ['.bufi', '.pjii', '.nsi'], // TODO : vérifier autres types d’éléments ?
+        piecesJointes:     '.pjm div table',
     },
 };
 
