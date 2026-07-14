@@ -40,15 +40,37 @@ const SELECTORS = {
         grossesse:         { button: '#ButtonPregnant',            mainContainer: usualMainContainer, subContainer: usualSubContainer },
     },
 
-    // Sous-types des "consultations" (filtrés par classe d’icone)
-    consultationTypes: {
-        consultation:      '.img16Consultation',
-        certificat:        '.img16Certificat',
-        demande:           '.img16Demande',
-        prescription:      '.img16Prescription',
-        formulaire:        '.img16Formulaire',
-        recette:           '.img16Recette',
-        piecesJointes:     '.pjm div table',
+    // Sélecteurs internes aux conteneurs journaliers
+    dayContainer: {
+        initials:          '.sp',
+        documents:         '[name^="dh"]:not([name="dh10"])',
+        attachmentsDiv:    '[name="dh10"] .pjm',
+    },
+
+    // Sélecteurs pour les documents individuels
+    document: {
+        pjm:               '.pjm',
+        recetteTable:      'table.stxrec',
+        content:           '.sst',
+        icon:              '[class^="img16"]',
+        title:             '.document-title',
+        signature:         '.document-signature .sign',
+        text:              '.stx',
+    },
+
+    // Sélecteurs pour les pièces jointes
+    attachments: {
+        item:              '.bufi',
+        titleContainer:    '.buft',
+        visualizeLink:     'span[title^="Visualiser"]',
+        viewLink:          '[onclick*="OpenViewBinaryFormLC"]',
+    },
+
+    // Sélecteurs pour les recettes
+    recette: {
+        row:               'tr:not(.labelil)',
+        iconFse:           'img16Fse',
+        iconNoemie:        'img16Noemie',
     },
 };
 
@@ -75,35 +97,6 @@ function recoverData() { // TODO : pour l'instant orienté CONSULTATION
     const dayContainers = mainContainer.querySelectorAll(SELECTORS.categories.consultations.subContainer);
     
     return Array.from(dayContainers).map(container => parseDayContainer(container));
-    // Exemple de structure retournée :
-    /*
-    [
-        {
-            date: "12/03/2024",
-            category: "Consultation",
-            authorInitials: "AB",
-            documents: [
-                {
-                    type: "consultation",
-                    id: "12345",
-                    title: "Consultation générale",
-                }
-            ]
-        },
-        {
-            date: "11/03/2024",
-            category: "Prescription",
-            authorInitials: "CD",
-            documents: [
-                {
-                    type: "prescription",
-                    id: "67890",
-                    title: "Prescription de médicaments",
-                }
-            ]
-        }
-    ]
-    */
 }
 
 /**
@@ -114,15 +107,15 @@ function recoverData() { // TODO : pour l'instant orienté CONSULTATION
 function parseDayContainer(container) {
     // Extraction des métadonnées de la journée (header table)
     const dateElement = container.querySelector(SELECTORS.categories.consultations.date);
-    const initialsElement = container.querySelector('.sp'); // Initiales dans le header
+    const initialsElement = container.querySelector(SELECTORS.dayContainer.initials);
     const initials = initialsElement?.textContent.trim() || null;
     
     // Documents : tous les divs name="dhX" sauf dh10 (pièces jointes)
-    const documentDivs = container.querySelectorAll('[name^="dh"]:not([name="dh10"])');
+    const documentDivs = container.querySelectorAll(SELECTORS.dayContainer.documents);
     const documents = Array.from(documentDivs).map(div => parseDocument(div)).filter(doc => doc !== null);
     
     // Pièces jointes : div name="dh10"
-    const attachmentsDiv = container.querySelector('[name="dh10"] .pjm');
+    const attachmentsDiv = container.querySelector(SELECTORS.dayContainer.attachmentsDiv);
     const attachments = attachmentsDiv ? parseAttachments(attachmentsDiv) : [];
     
     // Détermination du nom complet du praticien
@@ -158,27 +151,28 @@ function parseDayContainer(container) {
  * @returns {Object|null} Données du document ou null si vide
  */
 function parseDocument(div) {
-    const sstDiv = div.querySelector('.sst');
+    // Détecter les recettes par leur structure spécifique (.pjm avec table.stxrec)
+    const pjmDiv = div.querySelector(SELECTORS.document.pjm);
+    if (pjmDiv && pjmDiv.querySelector(SELECTORS.document.recetteTable)) {
+        return parseRecette(div);
+    }
+    
+    const sstDiv = div.querySelector(SELECTORS.document.content);
     if (!sstDiv) return null;
     
     // Type depuis la classe d'icône
-    const iconElement = sstDiv.querySelector('[class^="img16"]');
+    const iconElement = sstDiv.querySelector(SELECTORS.document.icon);
     const typeClass = iconElement?.className || '';
     const type = typeClass.replace('img16', '').toLowerCase();
-    
-    // Parsing spécifique pour les recettes
-    if (type === 'recette') {
-        return parseRecette(div);
-    }
         
     // Métadonnées
-    const titleElement = sstDiv.querySelector('.document-title');
+    const titleElement = sstDiv.querySelector(SELECTORS.document.title);
     const title = titleElement?.textContent.trim() || null;
-    const authorElement = sstDiv.querySelector('.document-signature .sign');
+    const authorElement = sstDiv.querySelector(SELECTORS.document.signature);
     const author = authorElement?.textContent.trim() || null;
     
-    // Contenu textuel (.stx, .sst2 pour sections)
-    const contentDivs = div.querySelectorAll('.stx');
+    // Contenu textuel
+    const contentDivs = div.querySelectorAll(SELECTORS.document.text);
     const content = Array.from(contentDivs).map(el => el.textContent.trim()).filter(text => text.length > 0);
     
     return {
@@ -192,37 +186,86 @@ function parseDocument(div) {
 /**
  * Parse spécifiquement une recette
  * @param {HTMLElement} div - Élément div[name="dhX"] d'une recette
- * @returns {Object} Données de la recette
+ * @returns {Object} Données de la recette structurées
  */
 function parseRecette(div) {
-    const sstDiv = div.querySelector('.sst');
+    const pjmDiv = div.querySelector(SELECTORS.document.pjm);
+    if (!pjmDiv) return null;
     
-    // Pour les recettes, chercher le titre et l'auteur
-    const titleElement = sstDiv?.querySelector('.document-title');
-    const title = titleElement?.textContent.trim() || null;
-    const authorElement = sstDiv?.querySelector('.document-signature .sign');
-    const author = authorElement?.textContent.trim() || null;
+    // Les tables avec class="stxrec" contiennent les données structurées
+    const tables = pjmDiv.querySelectorAll(SELECTORS.document.recetteTable);
     
-    // Chercher le contenu dans différentes structures possibles
-    const contentDivs = div.querySelectorAll('.stx, .sst2');
-    const content = Array.from(contentDivs).map(el => el.textContent.trim()).filter(text => text.length > 0);
+    let recetteData = null;
+    let fdsData = [];
+    let noemieData = [];
     
-    // Chercher également dans les tables si présentes
-    const tables = div.querySelectorAll('table');
-    if (tables.length > 0) {
-        tables.forEach(table => {
-            const text = table.textContent.trim();
-            if (text.length > 0) {
-                content.push(text);
+    // Première table : résumé de la recette (Date, Désignation, Actes, Montant)
+    if (tables[0]) {
+        const rows = tables[0].querySelectorAll(SELECTORS.recette.row);
+        if (rows.length > 0) {
+            const cells = rows[0].querySelectorAll('td');
+            if (cells.length >= 4) {
+                recetteData = {
+                    date: cells[0].textContent.trim(),
+                    designation: cells[1].textContent.trim(),
+                    actes: cells[2].textContent.trim(),
+                    montant: cells[3].textContent.trim()
+                };
+            }
+        }
+    }
+    
+    // Deuxième table : détails FSE et NOEMIE
+    if (tables[1]) {
+        const rows = tables[1].querySelectorAll(SELECTORS.recette.row);
+        
+        rows.forEach(row => {
+            const iconSpan = row.querySelector(SELECTORS.document.icon);
+            const cells = row.querySelectorAll('td');
+            
+            if (!iconSpan || cells.length < 2) return;
+            
+            const iconClass = iconSpan.className;
+            
+            // Ligne FSE (F.S.E.)
+            if (iconClass.includes(SELECTORS.recette.iconFse)) {
+                if (cells.length >= 10) {
+                    fdsData.push({
+                        date: cells[1].textContent.trim(),
+                        numero: cells[2].textContent.trim(),
+                        beneficiaire: cells[3].textContent.trim(),
+                        actes: cells[4].textContent.trim(),
+                        total: cells[5].textContent.trim(),
+                        amo: cells[6].textContent.trim(),
+                        amc: cells[7].textContent.trim(),
+                        tm: cells[8].textContent.trim(),
+                        rc: cells[9].textContent.trim()
+                    });
+                }
+            }
+            // Ligne NOEMIE
+            else if (iconClass.includes(SELECTORS.recette.iconNoemie)) {
+                if (cells.length >= 8) {
+                    noemieData.push({
+                        date: cells[1].textContent.trim(),
+                        amo: cells[6].textContent.trim(),
+                        amc: cells[7].textContent.trim()
+                    });
+                }
             }
         });
     }
     
+    // Récupération de l'auteur si présent (pour la Map)
+    const authorElement = pjmDiv.querySelector(SELECTORS.document.signature);
+    const author = authorElement?.textContent.trim() || null;
+    
     return {
         type: 'recette',
-        title,
-        author,
-        content: content.length > 0 ? content : null,
+        author, // Sera supprimé par parseDayContainer, mais utilisé pour la Map
+        recette: recetteData,
+        fds: fdsData.length > 0 ? fdsData : null,
+        noemie: noemieData.length > 0 ? noemieData : null
     };
 }
 
@@ -232,15 +275,15 @@ function parseRecette(div) {
  * @returns {Array<Object>} Liste des pièces jointes
  */
 function parseAttachments(pjmDiv) {
-    const attachmentDivs = pjmDiv.querySelectorAll('.bufi');
+    const attachmentDivs = pjmDiv.querySelectorAll(SELECTORS.attachments.item);
     
     return Array.from(attachmentDivs).map(div => {
-        const titleElement = div.querySelector('.buft span[title^="Visualiser"]');
+        const titleElement = div.querySelector(`${SELECTORS.attachments.titleContainer} ${SELECTORS.attachments.visualizeLink}`);
         const fileType = titleElement?.className.replace('img', '').toLowerCase() || 'unknown';
         const fileName = titleElement?.nextSibling?.textContent.trim() || null;
         
         // ID de fichier depuis le onclick
-        const viewLink = div.querySelector('[onclick*="OpenViewBinaryFormLC"]');
+        const viewLink = div.querySelector(SELECTORS.attachments.viewLink);
         const onclickAttr = viewLink?.getAttribute('onclick') || '';
         const fileIdMatch = onclickAttr.match(/Fil=(\d+)/);
         const fileId = fileIdMatch ? fileIdMatch[1] : null;
