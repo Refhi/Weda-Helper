@@ -94,6 +94,12 @@ async function recoverData({
     const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
     const data = {};
 
+    // On affiche l'historique complet si demandé
+    if (fullPage) {
+        await loadFullPage(iframeDocument);
+    }
+
+    // On récupère les données pour chaque catégorie demandée
     for (const category of categories) {
         const categorySelectors = SELECTORS.categories[category];
         if (!categorySelectors) {
@@ -122,6 +128,11 @@ async function recoverData({
     return data;
 }
 
+async function loadFullPage(iframeDocument) {
+    clicCSPLockedElement('#HistoriqueUCForm1_LinkButtonSuiteWeda', "#dataScrapperIframe");
+    await loadingIsComplete(iframeDocument.defaultView.frameElement);
+}
+
 /**
  * Attend que l'animation de chargement soit terminée dans l'iframe
  * @param {HTMLIFrameElement} iframe - L'iframe contenant la page d'historique
@@ -135,6 +146,33 @@ async function loadingIsComplete(iframe) {
         console.warn('[dataScrapper] Élément UpdateProgress2 introuvable');
         return;
     }
+
+    const isVisible = () => {
+        const style = window.getComputedStyle(progressElement);
+        return style.display !== 'none' && progressElement.getAttribute('aria-hidden') !== 'true';
+    };
+
+    // Attendre un court instant que l'indicateur de chargement s'affiche avant de surveiller sa disparition
+    // (il peut mettre quelques ms à devenir visible après le clic)
+    await new Promise((resolve) => {
+        if (isVisible()) {
+            resolve();
+            return;
+        }
+
+        const pollInterval = setInterval(() => {
+            if (isVisible()) {
+                clearInterval(pollInterval);
+                resolve();
+            }
+        }, 50);
+
+        // On n'attend pas indéfiniment : si l'indicateur n'apparaît jamais après 400ms, on continue
+        setTimeout(() => {
+            clearInterval(pollInterval);
+            resolve();
+        }, 400);
+    });
 
     return new Promise((resolve) => {
         // Si déjà caché, on résout immédiatement
@@ -177,10 +215,22 @@ async function loadingIsComplete(iframe) {
 async function makeIframeForPatientHistory(url, debug = false) {
     return new Promise((resolve, reject) => {
         const iframe = document.createElement('iframe');
-        iframe.style.display = debug ? 'block' : 'none';
+        if (debug) {
+            iframe.style.position = 'fixed';
+            iframe.style.top = '2vh';
+            iframe.style.left = '2vw';
+            iframe.style.width = '96vw';
+            iframe.style.height = '96vh';
+            iframe.style.zIndex = 999999;
+            iframe.style.border = '3px solid red';
+            iframe.style.display = 'block';
+        } else {
+            iframe.style.display = 'none';
+        }
         iframe.src = url;
         iframe.onload = () => resolve(iframe);
         iframe.onerror = (err) => reject(err);
+        iframe.id = 'dataScrapperIframe';
         document.body.appendChild(iframe);
     });
 }
@@ -444,7 +494,11 @@ function parseAttachments(pjmDiv) {
  */
 addTweak('*', '*dataScrapper', function () {
     addTestButton("Récupérer données", async () => {
-        const data = await recoverData();
+        const data = await recoverData({
+            fullPage: true,
+            categories: ["consultations"],// , "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse"],
+            debug: true
+        });
         console.log("[dataScrapper] Données récupérées :", data);
     });
 });
