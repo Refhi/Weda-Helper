@@ -9,24 +9,31 @@
 
 
 /** Sélecteurs CSS centralisés — à mettre à jour si Weda change son DOM */
-const SELECTORS = {
-    // Boutons de navigation entre catégories
-    buttons: {
-        consultations:     '#ButtonConsultation',       // ouvert par défaut // Containeurs Journaliers
-        resultats_examens: '#ButtonResultatExamen',     // Containeurs Journaliers
-        courriers:         '#ButtonCourrier',           // Containeurs Journaliers
-        vaccins:           '#ButtonVaccins',            // Containeurs spécifiques
-        charts:            '#ButtonChart',              // Grand tableau de données et données très hétérogènes
-        documents:         '#ButtonDocumentJointAction',// Système spécifique
-        grossesse:         '#ButtonPregnant',           // Système spécifique
-        arrets_travail:    '#ButtonAT',                 // Containeurs Journaliers
-    },
 
-    // Conteneurs journaliers
-    dayContainer: {
-        main:              "#HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda .sc",
-        date:              "[title='Cliquez sur la date pour ouvrir.']", // est forcément dans le main
-        author:            ".sign" // est dans le main, mais présent dans chaque sous-section. A priori non gênant (?)
+// Sélecteurs partagés par les catégories à containeurs journaliers
+const _DAILY = {
+    container: "#HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda .sc",
+    date:      "[title='Cliquez sur la date pour ouvrir.']",
+    author:    ".sign",
+};
+
+const SELECTORS = {
+    /**
+     * Une entrée par catégorie :
+     *   button    — sélecteur du bouton de navigation (null = ouvert par défaut)
+     *   container — sélecteur du grand ensemble de données
+     *   date      — sélecteur de la date dans le container (null si absent)
+     *   author    — sélecteur de l'auteur dans le container (null si absent)
+     */
+    categories: {
+        consultations:     { button: null,                         ..._DAILY },   // ouvert par défaut
+        resultats_examens: { button: '#ButtonResultatExamen',      ..._DAILY },
+        courriers:         { button: '#ButtonCourrier',            ..._DAILY },
+        arrets_travail:    { button: '#ButtonAT',                  ..._DAILY },
+        vaccins:           { button: '#ButtonVaccins',             container: null, date: null, author: null },
+        charts:            { button: '#ButtonChart',               container: null, date: null, author: null },
+        documents:         { button: '#ButtonDocumentJointAction', container: null, date: null, author: null },
+        grossesse:         { button: '#ButtonPregnant',            container: null, date: null, author: null },
     },
 
     // Sous-types des "consultations" (filtrés par classe d’icone)
