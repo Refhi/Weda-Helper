@@ -5,6 +5,47 @@
 */
 
 
+// ─── Constantes ──────────────────────────────────────────────────────────────
+
+
+/** Sélecteurs CSS centralisés — à mettre à jour si Weda change son DOM */
+const SELECTORS = {
+    // Boutons de navigation entre catégories
+    buttons: {
+        consultations:     '#ButtonConsultation',       // ouvert par défaut // Containeurs Journaliers
+        resultats_examens: '#ButtonResultatExamen',     // Containeurs Journaliers
+        courriers:         '#ButtonCourrier',           // Containeurs Journaliers
+        vaccins:           '#ButtonVaccins',            // Containeurs spécifiques
+        charts:            '#ButtonChart',              // Grand tableau de données et données très hétérogènes
+        documents:         '#ButtonDocumentJointAction',// Système spécifique
+        grossesse:         '#ButtonPregnant',           // Système spécifique
+        arrets_travail:    '#ButtonAT',                 // Containeurs Journaliers
+    },
+
+    // Conteneurs journaliers
+    dayContainer: {
+        main:              "#HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda .sc",
+        date:              "[title='Cliquez sur la date pour ouvrir.']", // est forcément dans le main
+        author:            ".sign" // est dans le main, mais présent dans chaque sous-section. A priori non gênant (?)
+    },
+
+    // Sous-types des "consultations" (filtrés par classe d’icone)
+    consultationTypes: {
+        consultation:      '.img16Consultation',
+        certificat:        '.img16Certificat',
+        demande:           '.img16Demande',
+        prescription:      '.img16Prescription',
+        formulaire:        '.img16Formulaire',
+        recette:           '.img16Recette',
+        piecesJointes:     ['.bufi', '.pjii', '.nsi'], // TODO : vérifier autres types d’éléments ?
+    },
+};
+
+
+
+
+// ───────────────────────────────────────────────────────────────────────────────
+
 /** 
  * @param {*} dataToRetrieve 
  * @example
@@ -30,33 +71,10 @@ function scrapData({
 // peut-être dans une iframe invisible ?
  
 // 2 - y cliquer éventuellemenent sur un des boutons secondaires permettant d’accéder à une autre catégorie
-/**
- * les catégories secondaires possibles : (des id d’éléments à cliquer)
- * - #ButtonConsultation (ouvert par défaut)
- * - #ButtonResultatExamen
- * - #ButtonCourrier
- * - #ButtonVaccins
- * - #ButtonChart
- * - #ButtonDocumentJointAction
- * - #ButtonPregnant
- * - #ButtonAT
- */
-
 
 
 // 3 - Dans la plupart des cas, on va chercher à identifier les containeurs de données. Un par jour en général.
 
 // 4 - une fois les containeurs identifiés, on va récupérer les données voulues selon :
-/**
- * spécifiquement pour les consultations, voici les sous-catégories possibles
- * qui seront à filtrer au sein du code (là on va devoir séparer les éléments par leur class)
- * - .img16Consultation
- * - .img16Certificat
- * - .img16Demande
- * - .img16Prescription
- * - .img16Formulaire
- * - [.bufi, .pjii, .nsi]//un poil différent car ici chaque élément // TODO : vérifier autres types d’éléments ?
- * - .img16Recette
- */
 
 // 5 - enfin, on renvoie le tout sous forme d’un objet JSON structuré, avec les dates et les catégories de données.
