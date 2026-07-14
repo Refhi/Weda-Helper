@@ -87,9 +87,6 @@ async function recoverData({
     const urlToLoad = await constructPatientHistoryUrl();
     const iframe = await makeIframeForPatientHistory(urlToLoad, debug);
 
-    // Attendre que le chargement initial soit terminé
-    await loadingIsComplete(iframe);
-
     // On récupère les données de l'iframe
     const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
     const data = {};
@@ -111,7 +108,7 @@ async function recoverData({
             const button = iframeDocument.querySelector(categorySelectors.button);
             if (button) {
                 button.click();
-                await loadingIsComplete(iframe);
+                await loadingIsComplete(iframe, `Chargement catégorie ${category}`);
             } else {
                 console.warn(`[dataScrapper] Bouton introuvable pour la catégorie : ${category}`);
             }
@@ -130,7 +127,7 @@ async function recoverData({
 
 async function loadFullPage(iframeDocument) {
     clicCSPLockedElement('#HistoriqueUCForm1_LinkButtonSuiteWeda', "#dataScrapperIframe");
-    await loadingIsComplete(iframeDocument.defaultView.frameElement);
+    await loadingIsComplete(iframeDocument.defaultView.frameElement, "Chargement full page");
 }
 
 /**
@@ -138,74 +135,45 @@ async function loadFullPage(iframeDocument) {
  * @param {HTMLIFrameElement} iframe - L'iframe contenant la page d'historique
  * @returns {Promise<void>}
  */
-async function loadingIsComplete(iframe) {
+async function loadingIsComplete(iframe, raisonAttente = "N/A") {
     const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
-    const progressElement = iframeDocument.querySelector('#UpdateProgress2');
-    
-    if (!progressElement) {
-        console.warn('[dataScrapper] Élément UpdateProgress2 introuvable');
+    const progressSelector = '#UpdateProgress2'
+    function progessElementIsVisible() {
+        const progressElement = iframeDocument.querySelector(progressSelector);
+        return progressElement && progressElement.getAttribute('aria-hidden') !== 'true';
+    }
+
+    console.log('[dataScrapper] Début de l\'attente du chargement', raisonAttente);
+    console.log('[dataScrapper] Progress element visible ?', progessElementIsVisible());
+
+    let maxRetryCount = 10; // 10 * 50ms = 500ms max pour que l'élément de chargement apparaisse
+    let retryCount = 0;
+    while (!progessElementIsVisible() && retryCount < maxRetryCount) {
+        await sleep(50); // On attend que l'élément de chargement apparaisse
+        console.log('[dataScrapper] Attente de l\'affichage du chargement', raisonAttente);
+        retryCount++;
+    }
+    if (retryCount === maxRetryCount) {
+        console.warn('[dataScrapper] Timeout lors de l\'attente de l\'affichage du chargement', raisonAttente);
+        return;
+    }
+    console.log('[dataScrapper] Chargement détecté, attente de la fin', raisonAttente);
+
+    maxRetryCount = 200; // 200 * 50ms = 10s max
+    retryCount = 0;
+    while (progessElementIsVisible() && retryCount < maxRetryCount) {
+        await sleep(50); // On attend que l'élément de chargement disparaisse
+        console.log('[dataScrapper] Attente de la fin du chargement', raisonAttente);
+        retryCount++;
+    }
+    if (retryCount === maxRetryCount) {
+        console.warn('[dataScrapper] Timeout lors de l\'attente de la fin du chargement', raisonAttente);
         return;
     }
 
-    const isVisible = () => {
-        const style = window.getComputedStyle(progressElement);
-        return style.display !== 'none' && progressElement.getAttribute('aria-hidden') !== 'true';
-    };
+    console.log('[dataScrapper] Chargement terminé', raisonAttente);
 
-    // Attendre un court instant que l'indicateur de chargement s'affiche avant de surveiller sa disparition
-    // (il peut mettre quelques ms à devenir visible après le clic)
-    await new Promise((resolve) => {
-        if (isVisible()) {
-            resolve();
-            return;
-        }
-
-        const pollInterval = setInterval(() => {
-            if (isVisible()) {
-                clearInterval(pollInterval);
-                resolve();
-            }
-        }, 50);
-
-        // On n'attend pas indéfiniment : si l'indicateur n'apparaît jamais après 400ms, on continue
-        setTimeout(() => {
-            clearInterval(pollInterval);
-            resolve();
-        }, 400);
-    });
-
-    return new Promise((resolve) => {
-        // Si déjà caché, on résout immédiatement
-        const isHidden = () => {
-            const style = window.getComputedStyle(progressElement);
-            return style.display === 'none' || progressElement.getAttribute('aria-hidden') === 'true';
-        };
-
-        if (isHidden()) {
-            resolve();
-            return;
-        }
-
-        // Sinon, on observe les changements
-        const observer = new MutationObserver(() => {
-            if (isHidden()) {
-                observer.disconnect();
-                resolve();
-            }
-        });
-
-        observer.observe(progressElement, {
-            attributes: true,
-            attributeFilter: ['style', 'aria-hidden']
-        });
-
-        // Timeout de sécurité après 30 secondes
-        setTimeout(() => {
-            observer.disconnect();
-            console.warn('[dataScrapper] Timeout lors de l\'attente du chargement');
-            resolve();
-        }, 30000);
-    });
+    return new Promise(resolve => setTimeout(resolve, 100)); // On attend un peu pour être sûr que le DOM est stable
 }
 
 /**
