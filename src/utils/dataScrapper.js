@@ -54,7 +54,7 @@ const SELECTORS = {
         content:           '.sst',
         icon:              '[class^="img16"]',
         title:             '.document-title',
-        signature:         '.document-signature .sign',
+        signature:         '.sign',
         text:              '.stx',
     },
 
@@ -82,7 +82,7 @@ const SELECTORS = {
  * Récupère toutes les données de l'historique patient
  * @returns {Array<Object>} Tableau d'objets représentant chaque journée
  */
-function recoverData() { // TODO : pour l'instant orienté CONSULTATION
+function recoverMainViewData() {
     // Réinitialisation de la Map de correspondance initiales → nom
     initialsToAuthorMap.clear();
     
@@ -312,7 +312,7 @@ function parseAttachments(pjmDiv) {
  */
 addTweak('/FolderMedical/PopUpHistoriqueForm.aspx', '*dataScrapper', function () {
     addTestButton("Récupérer données", () => {
-        const data = recoverData();
+        const data = recoverMainViewData();
         console.log("[dataScrapper] Données récupérées :", data);
     });
 });
