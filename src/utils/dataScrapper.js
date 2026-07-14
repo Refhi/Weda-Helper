@@ -78,6 +78,132 @@ const SELECTORS = {
 
 
 // ───────────────────────────────────────────────────────────────────────────────
+async function recoverData({
+    fullPage = false, // De base on ne va vérifier que les 10 derniers subContainers chargés par défaut. N'est probablement pas possible pour charts et vaccins
+    categories = ["consultations"], // Ce qui est chargé par défaut est la catégorie "consultations".
+} = {}) {
+    // On crée une iframe pour charger la page d'historique patient et récupérer les données
+    const urlToLoad = await constructPatientHistoryUrl();
+    const iframe = await makeIframeForPatientHistory(urlToLoad);
+
+    // Attendre que le chargement initial soit terminé
+    await loadingIsComplete(iframe);
+
+    // On récupère les données de l'iframe
+    const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+    const data = {};
+
+    for (const category of categories) {
+        const categorySelectors = SELECTORS.categories[category];
+        if (!categorySelectors) {
+            console.warn(`[dataScrapper] Catégorie inconnue : ${category}`);
+            continue;
+        }
+        // On appuie sur le bouton pour charger la catégorie si nécessaire
+        if (categorySelectors.button) {
+            const button = iframeDocument.querySelector(categorySelectors.button);
+            if (button) {
+                button.click();
+                await loadingIsComplete(iframe);
+            } else {
+                console.warn(`[dataScrapper] Bouton introuvable pour la catégorie : ${category}`);
+            }
+        }
+        
+        data[category] = recoverMainViewData(mainContainer, subContainer); //TODO : à affiner
+    }
+
+    // Nettoyage : supprimer l'iframe
+    iframe.remove();
+    
+    return data;
+}
+
+/**
+ * Attend que l'animation de chargement soit terminée dans l'iframe
+ * @param {HTMLIFrameElement} iframe - L'iframe contenant la page d'historique
+ * @returns {Promise<void>}
+ */
+async function loadingIsComplete(iframe) {
+    const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+    const progressElement = iframeDocument.querySelector('#UpdateProgress2');
+    
+    if (!progressElement) {
+        console.warn('[dataScrapper] Élément UpdateProgress2 introuvable');
+        return;
+    }
+
+    return new Promise((resolve) => {
+        // Si déjà caché, on résout immédiatement
+        const isHidden = () => {
+            const style = window.getComputedStyle(progressElement);
+            return style.display === 'none' || progressElement.getAttribute('aria-hidden') === 'true';
+        };
+
+        if (isHidden()) {
+            resolve();
+            return;
+        }
+
+        // Sinon, on observe les changements
+        const observer = new MutationObserver(() => {
+            if (isHidden()) {
+                observer.disconnect();
+                resolve();
+            }
+        });
+
+        observer.observe(progressElement, {
+            attributes: true,
+            attributeFilter: ['style', 'aria-hidden']
+        });
+
+        // Timeout de sécurité après 30 secondes
+        setTimeout(() => {
+            observer.disconnect();
+            console.warn('[dataScrapper] Timeout lors de l\'attente du chargement');
+            resolve();
+        }, 30000);
+    });
+}
+
+/**
+ * Creation d'une iframe cachée pour charger la page d'historique patient et récupérer les données
+ * 
+ */
+async function makeIframeForPatientHistory(url) {
+    return new Promise((resolve, reject) => {
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = url;
+        iframe.onload = () => resolve(iframe);
+        iframe.onerror = (err) => reject(err);
+        document.body.appendChild(iframe);
+    });
+}
+
+
+/**
+ * Constructeur d'url pour la page d'historique patient
+ */
+async function constructPatientHistoryUrl() {
+    // On récupère l'url grace à l'api patient :
+    const patientId = getCurrentPatientId();
+    const patientInfo = await getPatientInfo(patientId);
+    
+    // Extraire les paramètres URL depuis patientFileUrl
+    const patientFileUrl = patientInfo.patientFileUrl;
+    const patientFileUrlParts = patientFileUrl.split('?');
+    const patientFileUrlParams = patientFileUrlParts[1];
+    
+    // Construire l'URL de la page d'historique
+    const urlToLoad = `${baseUrl}/FolderMedical/PopUpHistoriqueForm.aspx?${patientFileUrlParams}`;
+
+    console.log(`[dataScrapper] URL de la page d'historique : ${urlToLoad}`);
+
+    return urlToLoad;
+}
+
 /**
  * Récupère toutes les données de l'historique patient
  * @returns {Array<Object>} Tableau d'objets représentant chaque journée
@@ -310,9 +436,9 @@ function parseAttachments(pjmDiv) {
 /** 
  * phase de test, on insère un bouton pour lancer la récupération des données et les afficher dans la console
  */
-addTweak('/FolderMedical/PopUpHistoriqueForm.aspx', '*dataScrapper', function () {
-    addTestButton("Récupérer données", () => {
-        const data = recoverMainViewData();
+addTweak('*', '*dataScrapper', function () {
+    addTestButton("Récupérer données", async () => {
+        const data = await recoverData();
         console.log("[dataScrapper] Données récupérées :", data);
     });
 });
