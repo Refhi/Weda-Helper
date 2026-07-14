@@ -109,7 +109,6 @@ function recoverData() { // TODO : pour l'instant orienté CONSULTATION
 function parseDayContainer(container) {
     // Extraction des métadonnées de la journée (header table)
     const dateElement = container.querySelector(SELECTORS.categories.consultations.date);
-    const categoryCell = container.querySelector('.sm'); // Catégorie principale si présente
     const authorInitials = container.querySelector('.sp'); // Initiales dans le header
     
     // Documents : tous les divs name="dhX" sauf dh10 (pièces jointes)
@@ -122,7 +121,6 @@ function parseDayContainer(container) {
     
     return {
         date: dateElement?.textContent.trim() || null,
-        category: categoryCell?.textContent.trim() || null,
         authorInitials: authorInitials?.textContent.trim() || null,
         documents,
         attachments
@@ -142,11 +140,7 @@ function parseDocument(div) {
     const iconElement = sstDiv.querySelector('[class^="img16"]');
     const typeClass = iconElement?.className || '';
     const type = typeClass.replace('img16', '').toLowerCase();
-    
-    // ID du document depuis les boutons d'action
-    const modifyButton = sstDiv.querySelector('[id^="U"]');
-    const documentId = modifyButton?.id.replace('U', '') || null;
-    
+        
     // Métadonnées
     const titleElement = sstDiv.querySelector('.document-title');
     const title = titleElement?.textContent.trim() || null;
@@ -159,11 +153,9 @@ function parseDocument(div) {
     
     return {
         type,
-        id: documentId,
         title,
         author,
         content: content.length > 0 ? content : null,
-        rawElement: div // Pour parsing plus fin si besoin
     };
 }
 
@@ -194,6 +186,17 @@ function parseAttachments(pjmDiv) {
     });
 }
 
+
+
+
+
+
+
+
+
+
+
+// ───────────────────────────────────────────────────────────────────────────────
 /** 
  * phase de test, on insère un bouton pour lancer la récupération des données et les afficher dans la console
  */
