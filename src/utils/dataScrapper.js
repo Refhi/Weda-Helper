@@ -81,10 +81,11 @@ const SELECTORS = {
 async function recoverData({
     fullPage = false, // De base on ne va vérifier que les 10 derniers subContainers chargés par défaut. N'est probablement pas possible pour charts et vaccins
     categories = ["consultations"], // Ce qui est chargé par défaut est la catégorie "consultations".
+    debug = false, // Affiche l'iframe en plein écran et ne la supprime pas à la fin pour faciliter le debug
 } = {}) {
     // On crée une iframe pour charger la page d'historique patient et récupérer les données
     const urlToLoad = await constructPatientHistoryUrl();
-    const iframe = await makeIframeForPatientHistory(urlToLoad);
+    const iframe = await makeIframeForPatientHistory(urlToLoad, debug);
 
     // Attendre que le chargement initial soit terminé
     await loadingIsComplete(iframe);
@@ -113,9 +114,11 @@ async function recoverData({
         data[category] = recoverMainViewData(iframeDocument, categorySelectors);
     }
 
-    // Nettoyage : supprimer l'iframe
-    iframe.remove();
-    
+    // Nettoyage : supprimer l'iframe si on n'est pas en mode debug
+    if (!debug) {
+        iframe.remove();
+    }
+
     return data;
 }
 
@@ -171,10 +174,10 @@ async function loadingIsComplete(iframe) {
  * Creation d'une iframe cachée pour charger la page d'historique patient et récupérer les données
  * 
  */
-async function makeIframeForPatientHistory(url) {
+async function makeIframeForPatientHistory(url, debug = false) {
     return new Promise((resolve, reject) => {
         const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
+        iframe.style.display = debug ? 'block' : 'none';
         iframe.src = url;
         iframe.onload = () => resolve(iframe);
         iframe.onerror = (err) => reject(err);
