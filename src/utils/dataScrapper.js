@@ -110,7 +110,7 @@ async function recoverData({
             }
         }
         
-        data[category] = recoverMainViewData(mainContainer, subContainer); //TODO : à affiner
+        data[category] = recoverMainViewData(iframeDocument, categorySelectors);
     }
 
     // Nettoyage : supprimer l'iframe
@@ -205,34 +205,37 @@ async function constructPatientHistoryUrl() {
 }
 
 /**
- * Récupère toutes les données de l'historique patient
+ * Récupère toutes les données de l'historique patient pour une catégorie donnée
+ * @param {Document} doc - Le document (ou iframeDocument) dans lequel chercher
+ * @param {Object} categorySelectors - Les sélecteurs de la catégorie (SELECTORS.categories[category])
  * @returns {Array<Object>} Tableau d'objets représentant chaque journée
  */
-function recoverMainViewData() {
+function recoverMainViewData(doc, categorySelectors) {
     // Réinitialisation de la Map de correspondance initiales → nom
     initialsToAuthorMap.clear();
     
     // Récupération du conteneur principal
-    const mainContainer = document.querySelector(SELECTORS.categories.consultations.mainContainer);
+    const mainContainer = doc.querySelector(categorySelectors.mainContainer);
     if (!mainContainer) {
         console.error("Main container not found");
         return [];
     }
 
     // Chaque .sc = une journée avec potentiellement plusieurs documents
-    const dayContainers = mainContainer.querySelectorAll(SELECTORS.categories.consultations.subContainer);
+    const dayContainers = mainContainer.querySelectorAll(categorySelectors.subContainer);
     
-    return Array.from(dayContainers).map(container => parseDayContainer(container));
+    return Array.from(dayContainers).map(container => parseDayContainer(container, categorySelectors));
 }
 
 /**
  * Parse un conteneur journalier pour extraire date, auteur et documents
  * @param {HTMLElement} container - Élément .sc
+ * @param {Object} categorySelectors - Les sélecteurs de la catégorie (pour le sélecteur de date notamment)
  * @returns {Object} Données structurées de la journée
  */
-function parseDayContainer(container) {
+function parseDayContainer(container, categorySelectors) {
     // Extraction des métadonnées de la journée (header table)
-    const dateElement = container.querySelector(SELECTORS.categories.consultations.date);
+    const dateElement = container.querySelector(categorySelectors.date);
     const initialsElement = container.querySelector(SELECTORS.dayContainer.initials);
     const initials = initialsElement?.textContent.trim() || null;
     
