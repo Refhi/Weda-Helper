@@ -47,6 +47,7 @@
         "src/utils/quickAccess.js",
         "src/utils/quickAccessConfig.js",
         "src/utils/score2handler.js",
+        "src/utils/dataScrapper.js",
         "src/ui/tooltip.js",
         "src/ui/update.js",
         "src/ui/popupFunctions.js",
