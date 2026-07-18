@@ -21,6 +21,22 @@ const _DAILY = {
     author:    ".sign",
 };
 
+/**
+ * Sélecteurs pour les journées « importées » d'un ancien logiciel.
+ * Ces journées ne sont pas placées dans le panneau habituel (usualMainContainer),
+ * mais directement dans le tableau englobant .historique-view-form, avec une
+ * profondeur d'un cran de moins (pas de div#UpdatePanelLiteralAfficheWeda intermédiaire) :
+ *   normal  : td > div#UpdatePanelLiteralAfficheWeda > div > .sc
+ *   legacy  : td > div > .sc
+ * La date n'a ni onclick ni title (non cliquable) mais garde un style inline distinctif.
+ */
+const _DAILY_LEGACY = {
+    mainContainer: ".historique-view-form",
+    subContainer:  ":scope > tbody > tr > td > div > " + usualSubContainer,
+    date:      'table.st td[style="font-size:14px;"]',
+    author:    _DAILY.author, // présent uniquement sur certains documents (le format récent-copié-collé)
+};
+
 const SELECTORS = {
     /**
      * Une entrée par catégorie :
@@ -30,11 +46,11 @@ const SELECTORS = {
      *   author    — sélecteur de l'auteur dans le container (null si absent)
      */
     categories: {
-        consultations:     { button: null,                         ..._DAILY, loadedText: "Consultation"},   // ouvert par défaut
-        resultatsExamens:  { button: '#ButtonResultatExamen',      ..._DAILY, loadedText: "Résultat" },
-        courriers:         { button: '#ButtonCourrier',            ..._DAILY, loadedText: "Courrier" },
-        arretsTravail:     { button: '#ButtonAT',                  ..._DAILY, loadedText: "A.T." },
-        vaccins:           { button: '#ButtonVaccins',             ..._DAILY, loadedText: "Vaccins et rappels"},
+        consultations:     { button: null,                         ..._DAILY, loadedText: "Consultation", legacy: _DAILY_LEGACY},   // ouvert par défaut
+        resultatsExamens:  { button: '#ButtonResultatExamen',      ..._DAILY, loadedText: "Résultat", legacy: _DAILY_LEGACY },
+        courriers:         { button: '#ButtonCourrier',            ..._DAILY, loadedText: "Courrier", legacy: _DAILY_LEGACY },
+        arretsTravail:     { button: '#ButtonAT',                  ..._DAILY, loadedText: "A.T.", legacy: _DAILY_LEGACY },
+        vaccins:           { button: '#ButtonVaccins',             ..._DAILY, loadedText: "Vaccins et rappels", legacy: _DAILY_LEGACY},
         charts:            { button: '#ButtonChart',               loadedText: "Graphique et tableaux", mainContainer: '#UpdatePanelVisuDocument'}, // Attention iframe...
         documents:         { button: '#ButtonDocumentJointAction', loadedText: "Recherche des documents", mainContainer: '#UpdatePanelVisuDocument'},
         grossesse:         { button: '#ButtonPregnant',            loadedText: "Grossesse", mainContainer: usualMainContainer, subContainer: usualSubContainer },
@@ -81,6 +97,7 @@ const SELECTORS = {
 async function recoverData({
     fullPage = false, // De base on ne va vérifier que les 10 derniers subContainers chargés par défaut. N'est probablement pas possible pour charts et vaccins
     categories = ["consultations"], // Ce qui est chargé par défaut est la catégorie "consultations".
+    includeLegacy = false, // Récupère en plus les journées importées d'un ancien logiciel, quand la catégorie le permet
     debug = false, // Affiche l'iframe en plein écran et ne la supprime pas à la fin pour faciliter le debug
 } = {}) {
     // Préparation de l'objet de données à retourner
@@ -114,7 +131,7 @@ async function recoverData({
             }
         }
         
-        data[category] = recoverMainViewData(iframeDocument, categorySelectors);
+        data[category] = recoverMainViewData(iframeDocument, categorySelectors, includeLegacy);
     }
 
     // Nettoyage : supprimer l'iframe si on n'est pas en mode debug
@@ -260,7 +277,7 @@ async function constructPatientHistoryUrl() {
  * @param {Object} categorySelectors - Les sélecteurs de la catégorie (SELECTORS.categories[category])
  * @returns {Array<Object>} Tableau d'objets représentant chaque journée
  */
-function recoverMainViewData(doc, categorySelectors) {
+function recoverMainViewData(doc, categorySelectors, includeLegacy = false) {
     // Réinitialisation de la Map de correspondance initiales → nom
     initialsToAuthorMap.clear();
     
@@ -273,8 +290,23 @@ function recoverMainViewData(doc, categorySelectors) {
 
     // Chaque .sc = une journée avec potentiellement plusieurs documents
     const dayContainers = mainContainer.querySelectorAll(categorySelectors.subContainer);
-    
-    return Array.from(dayContainers).map(container => parseDayContainer(container, categorySelectors));
+    const results = Array.from(dayContainers).map(container => parseDayContainer(container, categorySelectors));
+
+    // Certaines catégories peuvent contenir en plus des journées importées d'un ancien
+    // logiciel, situées hors du panneau habituel. On ne les récupère que si demandé.
+    if (includeLegacy && categorySelectors.legacy) {
+        const legacyContainer = doc.querySelector(categorySelectors.legacy.mainContainer);
+        if (legacyContainer) {
+            const legacyDayContainers = legacyContainer.querySelectorAll(categorySelectors.legacy.subContainer);
+            const legacyResults = Array.from(legacyDayContainers).map(container =>
+                parseDayContainer(container, categorySelectors.legacy)
+            );
+            console.log(`[dataScrapper] ${legacyResults.length} journée(s) importée(s) d'un ancien logiciel détectée(s)`);
+            results.push(...legacyResults.map(result => ({ ...result, imported: true })));
+        }
+    }
+
+    return results;
 }
 
 /**
