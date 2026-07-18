@@ -76,10 +76,11 @@ const SELECTORS = {
 
     // Sélecteurs pour les pièces jointes
     attachments: {
-        item:              '.bufi',
+        item:              '.bufi, .pja',
         titleContainer:    '.buft',
         visualizeLink:     'span[title^="Visualiser"]',
         viewLink:          '[onclick*="OpenViewBinaryFormLC"]',
+        description:       '.cfc',
     },
 
     // Sélecteurs pour les recettes
@@ -489,20 +490,39 @@ function parseAttachments(pjmDiv) {
     const attachmentDivs = pjmDiv.querySelectorAll(SELECTORS.attachments.item);
     
     return Array.from(attachmentDivs).map(div => {
+        // Cas ".bufi" : pièce jointe déjà "digérée" par Weda (affichage résumé avec icône dédiée)
         const titleElement = div.querySelector(`${SELECTORS.attachments.titleContainer} ${SELECTORS.attachments.visualizeLink}`);
-        const fileType = titleElement?.className.replace('img', '').toLowerCase() || 'unknown';
-        const fileName = titleElement?.nextSibling?.textContent.trim() || null;
+        let fileType, fileName, category = null, viewLink;
+        if (titleElement) {
+            fileType = titleElement.className.replace('img', '').toLowerCase();
+            fileName = titleElement.nextSibling?.textContent.trim() || null;
+            viewLink = div.querySelector(SELECTORS.attachments.viewLink);
+        } else {
+            // Cas ".pja" : pièce jointe brute (icône trombone + libellé + catégorie optionnelle en italique)
+            viewLink = div.querySelector(SELECTORS.attachments.viewLink);
+            // 1ère ligne = icône, 2e ligne = libellé/nom, 3e ligne (optionnelle) = catégorie
+            const textRows = Array.from(viewLink?.querySelectorAll('tr') || [])
+                .map(tr => tr.querySelector('td')?.textContent.trim())
+                .filter(Boolean);
+            fileName = textRows[0] || null;
+            category = textRows[1] || null;
+            fileType = fileName?.includes('.') ? fileName.split('.').pop().toLowerCase() : 'unknown';
+        }
         
-        // ID de fichier depuis le onclick
-        const viewLink = div.querySelector(SELECTORS.attachments.viewLink);
-        const onclickAttr = viewLink?.getAttribute('onclick') || '';
-        const fileIdMatch = onclickAttr.match(/Fil=(\d+)/);
-        const fileId = fileIdMatch ? fileIdMatch[1] : null;
+        // ID de fichier depuis le onclick => pour l’instant non utilisé
+        // const onclickAttr = viewLink?.getAttribute('onclick') || '';
+        // const fileIdMatch = onclickAttr.match(/Fil=(\d+)/);
+        // const fileId = fileIdMatch ? fileIdMatch[1] : null;
+        
+        // Description libre éventuellement ajoutée sur la pièce jointe (uniquement présente sur les ".pja")
+        const description = div.querySelector(SELECTORS.attachments.description)?.textContent.trim() || null;
         
         return {
             type: fileType,
             name: fileName,
-            id: fileId
+            // id: fileId,
+            ...(category ? { category } : {}),
+            ...(description ? { description } : {})
         };
     });
 }
@@ -524,8 +544,8 @@ function parseAttachments(pjmDiv) {
 addTweak('*', '*dataScrapper', function () {
     addTestButton("Récupérer données", async () => {
         const data = await recoverData({
-            fullPage: true,
-            categories: ["consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse"],
+            fullPage: false,
+            categories: ["consultations"],//["consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse"],
             debug: true,
             includeLegacy: true
         });
