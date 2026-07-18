@@ -526,7 +526,8 @@ addTweak('*', '*dataScrapper', function () {
         const data = await recoverData({
             fullPage: true,
             categories: ["consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse"],
-            debug: true
+            debug: true,
+            includeLegacy: true
         });
         console.log("[dataScrapper] Données récupérées :", data);
         showRecoveredData(data);
