@@ -30,14 +30,14 @@ const SELECTORS = {
      *   author    — sélecteur de l'auteur dans le container (null si absent)
      */
     categories: {
-        consultations:     { button: null,                         ..._DAILY },   // ouvert par défaut
-        resultatsExamens:  { button: '#ButtonResultatExamen',      ..._DAILY },
-        courriers:         { button: '#ButtonCourrier',            ..._DAILY },
-        arretsTravail:     { button: '#ButtonAT',                  ..._DAILY },
-        vaccins:           { button: '#ButtonVaccins',             ..._DAILY },
-        charts:            { button: '#ButtonChart',               mainContainer: '#UpdatePanelVisuDocument'}, // Attention iframe...
-        documents:         { button: '#ButtonDocumentJointAction', mainContainer: '#UpdatePanelVisuDocument'},
-        grossesse:         { button: '#ButtonPregnant',            mainContainer: usualMainContainer, subContainer: usualSubContainer },
+        consultations:     { button: null,                         ..._DAILY, loadedText: "Consultation"},   // ouvert par défaut
+        resultatsExamens:  { button: '#ButtonResultatExamen',      ..._DAILY, loadedText: "Résultat" },
+        courriers:         { button: '#ButtonCourrier',            ..._DAILY, loadedText: "Courrier" },
+        arretsTravail:     { button: '#ButtonAT',                  ..._DAILY, loadedText: "A.T." },
+        vaccins:           { button: '#ButtonVaccins',             ..._DAILY, loadedText: "Vaccins et rappels"},
+        charts:            { button: '#ButtonChart',               loadedText: "Graphique et tableaux", mainContainer: '#UpdatePanelVisuDocument'}, // Attention iframe...
+        documents:         { button: '#ButtonDocumentJointAction', loadedText: "Recherche des documents", mainContainer: '#UpdatePanelVisuDocument'},
+        grossesse:         { button: '#ButtonPregnant',            loadedText: "Grossesse", mainContainer: usualMainContainer, subContainer: usualSubContainer },
     },
 
     // Sélecteurs internes aux conteneurs journaliers
@@ -89,7 +89,7 @@ async function recoverData({
     // Création d’une iframe dont on attend le chargement complet puis dont on récupère le document pour y chercher les données
     const urlToLoad = await constructPatientHistoryUrl();
     const iframe = await makeIframeForPatientHistory(urlToLoad, debug);
-    const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+    let iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
 
     // On affiche l'historique complet si demandé
     if (fullPage) {await loadFullPage(iframeDocument)}
@@ -101,12 +101,14 @@ async function recoverData({
             console.warn(`[dataScrapper] Catégorie inconnue : ${category}`);
             continue;
         }
+        iframeDocument = iframe.contentDocument || iframe.contentWindow.document; // Indispensable car le document semble changer dans certains cas après un clic
         // On appuie sur le bouton pour charger la catégorie si nécessaire
         if (categorySelectors.button) {
             const button = iframeDocument.querySelector(categorySelectors.button);
             if (button) {
+                console.log(`[dataScrapper] Bouton cliqué pour la catégorie : ${category}`, button);
                 button.click();
-                await loadingIsComplete(iframe, `Chargement catégorie ${category}`);
+                await categoryLoadingComplete(iframe, category);
             } else {
                 console.warn(`[dataScrapper] Bouton introuvable pour la catégorie : ${category}`);
             }
@@ -170,6 +172,37 @@ async function loadingIsComplete(iframe, raisonAttente = "N/A") {
     console.log('[dataScrapper] Chargement terminé', raisonAttente);
 
     return new Promise(resolve => setTimeout(resolve, 100)); // On attend un peu pour être sûr que le DOM est stable
+}
+
+async function categoryLoadingComplete(iframe, category) {
+    const categorySelectors = SELECTORS.categories[category];
+    console.log(`[dataScrapper] Attente du chargement de la catégorie ${category}`, `de loadedText : ${categorySelectors.loadedText}`);
+    if (!categorySelectors) {
+        console.warn(`[dataScrapper] Catégorie inconnue : ${category}`);
+        return;
+    }
+    if (!categorySelectors.button) {
+        console.log(`[dataScrapper] Catégorie ${category} ouverte par défaut, pas besoin d'attendre le chargement`);
+        return;
+    }
+
+    let maxRetryCount = 200; // 200 * 50ms = 10s max
+    let retryCount = 0;
+    while (retryCount < maxRetryCount) {
+        const titleElement = iframe.contentDocument.querySelector("#LabelCommandAffiche");
+        if (titleElement && titleElement.textContent.includes(categorySelectors.loadedText)) {
+            console.log(`[dataScrapper] Chargement de la catégorie ${category} terminé`);
+            break;
+        }
+        await sleep(50);
+        retryCount++;
+    }
+    if (retryCount === maxRetryCount) {
+        console.warn(`[dataScrapper] Timeout lors de l'attente du chargement de la catégorie ${category}`);
+    }
+
+
+    return
 }
 
 /**
@@ -460,7 +493,7 @@ addTweak('*', '*dataScrapper', function () {
     addTestButton("Récupérer données", async () => {
         const data = await recoverData({
             fullPage: true,
-            categories: ["arretsTravail"],// , "consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse"],
+            categories: ["consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse"],
             debug: true
         });
         console.log("[dataScrapper] Données récupérées :", data);
