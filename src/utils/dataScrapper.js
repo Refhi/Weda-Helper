@@ -114,7 +114,10 @@ async function recoverData({
     let iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
 
     // On affiche l'historique complet si demandé
-    if (fullPage) {await loadFullPage(iframeDocument)}
+    if (fullPage) {
+        await loadFullPage(iframeDocument)
+        console.log('[dataScrapper] Page complète chargée');
+    }
 
     // On récupère les données pour chaque catégorie demandée
     for (const category of categories) {
@@ -131,6 +134,7 @@ async function recoverData({
                 console.log(`[dataScrapper] Bouton cliqué pour la catégorie : ${category}`, button);
                 button.click();
                 await categoryLoadingComplete(iframe, category);
+                console.log(`[dataScrapper] Données chargées pour la catégorie : ${category}`);
             } else {
                 console.warn(`[dataScrapper] Bouton introuvable pour la catégorie : ${category}`);
             }
@@ -1083,7 +1087,7 @@ function parseAttachments(pjmDiv) {
 addTweak('*', '*dataScrapper', function () {
     addTestButton("Récupérer données", async () => {
         const data = await recoverData({
-            fullPage: false,
+            fullPage: true,
             categories: ["etatCivil", "antecedents", "contacts", "consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse"],
             debug: true,
             includeLegacy: true
