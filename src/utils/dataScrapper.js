@@ -83,18 +83,16 @@ async function recoverData({
     categories = ["consultations"], // Ce qui est chargé par défaut est la catégorie "consultations".
     debug = false, // Affiche l'iframe en plein écran et ne la supprime pas à la fin pour faciliter le debug
 } = {}) {
-    // On crée une iframe pour charger la page d'historique patient et récupérer les données
-    const urlToLoad = await constructPatientHistoryUrl();
-    const iframe = await makeIframeForPatientHistory(urlToLoad, debug);
-
-    // On récupère les données de l'iframe
-    const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+    // Préparation de l'objet de données à retourner
     const data = {};
 
+    // Création d’une iframe dont on attend le chargement complet puis dont on récupère le document pour y chercher les données
+    const urlToLoad = await constructPatientHistoryUrl();
+    const iframe = await makeIframeForPatientHistory(urlToLoad, debug);
+    const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+
     // On affiche l'historique complet si demandé
-    if (fullPage) {
-        await loadFullPage(iframeDocument);
-    }
+    if (fullPage) {await loadFullPage(iframeDocument)}
 
     // On récupère les données pour chaque catégorie demandée
     for (const category of categories) {
@@ -118,9 +116,7 @@ async function recoverData({
     }
 
     // Nettoyage : supprimer l'iframe si on n'est pas en mode debug
-    if (!debug) {
-        iframe.remove();
-    }
+    if (!debug) {iframe.remove()}
 
     return data;
 }
@@ -189,7 +185,7 @@ async function makeIframeForPatientHistory(url, debug = false) {
             iframe.style.left = '2vw';
             iframe.style.width = '96vw';
             iframe.style.height = '96vh';
-            iframe.style.zIndex = 999999;
+            iframe.style.zIndex = 999;
             iframe.style.border = '3px solid red';
             iframe.style.display = 'block';
         } else {
@@ -464,10 +460,11 @@ addTweak('*', '*dataScrapper', function () {
     addTestButton("Récupérer données", async () => {
         const data = await recoverData({
             fullPage: true,
-            categories: ["consultations"],// , "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse"],
+            categories: ["arretsTravail"],// , "consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse"],
             debug: true
         });
         console.log("[dataScrapper] Données récupérées :", data);
+        showRecoveredData(data);
     });
 });
 
@@ -480,4 +477,24 @@ function addTestButton(label, onClick) {
     button.style.zIndex = 1000;
     button.addEventListener("click", onClick);
     document.body.appendChild(button);
+}
+
+function showRecoveredData(data) {
+    const pre = document.createElement("pre");
+    pre.textContent = JSON.stringify(data, null, 2);
+    pre.style.position = "fixed";
+    pre.style.top = "10px";
+    pre.style.left = "10px";
+    pre.style.width = "80vw";
+    pre.style.height = "80vh";
+    pre.style.overflow = "auto";
+    pre.style.backgroundColor = "white";
+    pre.style.border = "1px solid black";
+    pre.style.zIndex = 1000; // Assurez-vous que le pré est au-dessus des autres éléments
+    document.body.appendChild(pre);
+
+    // si on clique sur le pré, on le supprime
+    pre.addEventListener("click", () => {
+        pre.remove();
+    });
 }
