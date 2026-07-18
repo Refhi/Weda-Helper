@@ -46,14 +46,18 @@ const SELECTORS = {
      *   author    — sélecteur de l'auteur dans le container (null si absent)
      */
     categories: {
-        consultations:     { button: null,                         ..._DAILY, loadedText: "Consultation", legacy: _DAILY_LEGACY},   // ouvert par défaut
-        resultatsExamens:  { button: '#ButtonResultatExamen',      ..._DAILY, loadedText: "Résultat", legacy: _DAILY_LEGACY },
-        courriers:         { button: '#ButtonCourrier',            ..._DAILY, loadedText: "Courrier", legacy: _DAILY_LEGACY },
-        arretsTravail:     { button: '#ButtonAT',                  ..._DAILY, loadedText: "A.T.", legacy: _DAILY_LEGACY },
-        vaccins:           { button: '#ButtonVaccins',             ..._DAILY, loadedText: "Vaccins et rappels", legacy: _DAILY_LEGACY},
-        charts:            { button: '#ButtonChart',               loadedText: "Graphique et tableaux", mainContainer: '#UpdatePanelVisuDocument'}, // Attention iframe...
-        documents:         { button: '#ButtonDocumentJointAction', loadedText: "Recherche des documents", mainContainer: '#UpdatePanelVisuDocument'},
-        grossesse:         { button: '#ButtonPregnant',            loadedText: "Grossesse", mainContainer: usualMainContainer, subContainer: usualSubContainer },
+        consultations:     { button: null,                         ..._DAILY, loadedCheck: "Consultation", legacy: _DAILY_LEGACY},   // ouvert par défaut
+        resultatsExamens:  { button: '#ButtonResultatExamen',      ..._DAILY, loadedCheck: "Résultat", legacy: _DAILY_LEGACY },
+        courriers:         { button: '#ButtonCourrier',            ..._DAILY, loadedCheck: "Courrier", legacy: _DAILY_LEGACY },
+        arretsTravail:     { button: '#ButtonAT',                  ..._DAILY, loadedCheck: "A.T.", legacy: _DAILY_LEGACY },
+        vaccins:           { button: '#ButtonVaccins',             ..._DAILY, loadedCheck: "Vaccins et rappels", legacy: _DAILY_LEGACY},
+        charts:            { button: '#ButtonChart',               mainContainer: '#UpdatePanelVisuDocument', parser: parseCharts, loadedCheck: chartsLoadedCheck }, // Attention iframe...
+        documents:         { button: '#ButtonDocumentJointAction', loadedCheck: "Recherche des documents", mainContainer: '#UpdatePanelVisuDocument'},
+        grossesse:         { button: '#ButtonPregnant',            loadedCheck: "Grossesse", mainContainer: usualMainContainer, subContainer: usualSubContainer },
+        // Catégories non-journalières
+        etatCivil:         { button: null, mainContainer: "#EtatCivilUCForm1_FramePatient", parser: parseEtatCivil },
+        antecedents:       { button: null, mainContainer: "#PanelPatient > div:nth-child(5)", parser: parseAntecedents },
+        contacts:          { button: null, mainContainer: "#PanelPatient > div:nth-child(4)", parser: parseContacts },
     },
 
     // Sélecteurs internes aux conteneurs journaliers
@@ -132,7 +136,7 @@ async function recoverData({
             }
         }
         
-        data[category] = recoverMainViewData(iframeDocument, categorySelectors, includeLegacy);
+        data[category] = recoverMainViewData(iframeDocument, categorySelectors, includeLegacy, category);
     }
 
     // Nettoyage : supprimer l'iframe si on n'est pas en mode debug
@@ -194,7 +198,7 @@ async function loadingIsComplete(iframe, raisonAttente = "N/A") {
 
 async function categoryLoadingComplete(iframe, category) {
     const categorySelectors = SELECTORS.categories[category];
-    console.log(`[dataScrapper] Attente du chargement de la catégorie ${category}`, `de loadedText : ${categorySelectors.loadedText}`);
+    console.log(`[dataScrapper] Attente du chargement de la catégorie ${category}`, `de loadedCheck : ${categorySelectors.loadedCheck}`);
     if (!categorySelectors) {
         console.warn(`[dataScrapper] Catégorie inconnue : ${category}`);
         return;
@@ -204,11 +208,19 @@ async function categoryLoadingComplete(iframe, category) {
         return;
     }
 
+    // Selon son type, loadedCheck est soit un texte à chercher dans #LabelCommandAffiche,
+    // soit une fonction personnalisée recevant l'iframe et retournant un booléen
+    const isLoaded = typeof categorySelectors.loadedCheck === 'function'
+        ? () => categorySelectors.loadedCheck(iframe)
+        : () => {
+            const titleElement = iframe.contentDocument.querySelector("#LabelCommandAffiche");
+            return !!(titleElement && titleElement.textContent.includes(categorySelectors.loadedCheck));
+          };
+
     let maxRetryCount = 200; // 200 * 50ms = 10s max
     let retryCount = 0;
     while (retryCount < maxRetryCount) {
-        const titleElement = iframe.contentDocument.querySelector("#LabelCommandAffiche");
-        if (titleElement && titleElement.textContent.includes(categorySelectors.loadedText)) {
+        if (isLoaded()) {
             console.log(`[dataScrapper] Chargement de la catégorie ${category} terminé`);
             break;
         }
@@ -219,8 +231,20 @@ async function categoryLoadingComplete(iframe, category) {
         console.warn(`[dataScrapper] Timeout lors de l'attente du chargement de la catégorie ${category}`);
     }
 
-
     return
+}
+
+/**
+ * Vérifie si les données de la catégorie "charts" (Graphiques et tableaux) sont chargées,
+ * en cherchant la présence de .suivicollection dans le sous-iframe imbriqué.
+ * @param {HTMLIFrameElement} iframe - L'iframe contenant la page d'historique
+ * @returns {boolean} true si les données de suivi sont détectées
+ */
+function chartsLoadedCheck(iframe) {
+    const mainContainer = iframe.contentDocument.querySelector(SELECTORS.categories.charts.mainContainer);
+    const nestedIframe = mainContainer?.querySelector('iframe');
+    const nestedDoc = nestedIframe?.contentDocument || nestedIframe?.contentWindow?.document;
+    return !!nestedDoc?.querySelector('.suivicollection');
 }
 
 /**
@@ -273,12 +297,180 @@ async function constructPatientHistoryUrl() {
 }
 
 /**
+ * Extrait le texte d'un bloc en évitant que le contenu de balises adjacentes (spans, td, etc.)
+ * ne soit accolé sans séparateur (ex: "DESMAUX" + "NATHALIE" => "DESMAUXNATHALIE").
+ * On travaille sur un clone pour ne pas modifier le DOM d'origine, car l'iframe étant cachée
+ * (display:none), innerText ne fonctionne pas (nécessite un layout calculé).
+ * Utilisé comme filet de sécurité pour les sous-parties trop complexes à structurer finement.
+ * @param {HTMLElement} element - L'élément dont on veut extraire le texte
+ * @returns {string} Texte extrait, avec des retours à la ligne entre les blocs et un espace entre les éléments en ligne
+ */
+function extractRawBlockText(element) {
+    const clone = element.cloneNode(true);
+
+    // Les <br> deviennent des retours à la ligne explicites
+    clone.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+
+    // Balises de type "bloc" : on sépare par un retour à la ligne, sinon par un simple espace
+    const blockTags = new Set(['DIV', 'TR', 'TABLE', 'TBODY', 'P', 'LI', 'UL', 'OL']);
+    clone.querySelectorAll('*').forEach(el => {
+        const separator = blockTags.has(el.tagName) ? '\n' : ' ';
+        el.insertAdjacentText('afterend', separator);
+    });
+
+    return clone.textContent
+        .split('\n')
+        .map(line => line.replace(/[ \t\u00A0]+/g, ' ').trim())
+        .filter(line => line.length > 0)
+        .join('\n');
+}
+
+/**
+ * Parse le bloc "État civil" du patient
+ * @param {HTMLElement} container - Le mainContainer de la catégorie etatCivil
+ * @returns {Object} Données structurées de l'état civil
+ */
+function parseEtatCivil(container) {
+    const get = suffix => {
+        const el = container.querySelector(`[id$="${suffix}"]`);
+        const text = el?.textContent.trim();
+        return text || null;
+    };
+
+    const medecinTraitantEl = container.querySelector('[id$="LabelMedecinTraitant"]');
+    const medecinTraitant = medecinTraitantEl ? {
+        nom: medecinTraitantEl.textContent.trim() || null,
+        dateDebutContrat: (medecinTraitantEl.getAttribute('title') || '').match(/Date de début de contrat\s*:\s*([\d/]+)/)?.[1] || null,
+    } : null;
+
+    // Adresses et moyens de communication : structure trop variable pour être finement typée,
+    // on récupère chaque ligne (tr) sous forme de texte brut nettoyé.
+    const coordonnees = Array.from(container.querySelectorAll('.table-address-comunication tr'))
+        .map(row => extractRawBlockText(row))
+        .filter(text => text.length > 0);
+
+    return {
+        identite: {
+            civilite: get('LabelPatientCivilite'),
+            nom: get('LabelPatientNom'),
+            prenom: get('LabelPatientPrenom'),
+            nomNaissance: get('LabelNomPrenomUtilise'),
+            prenomNaissance: get('LabelPatientJeuneFille'),
+            dateNaissance: get('LabelPatientDateNaissance'),
+            age: get('LabelPatientAge'),
+            lieuNaissance: get('LabelPatientLieuNaissance'),
+        },
+        securiteSociale: {
+            numero: get('LabelPatientSecuriteSocial'),
+            regimeCode: get('LabelCarteVitalRegime'),
+            regimeOrganisme: get('LabelCarteVitalOrganisme'),
+        },
+        medecinTraitant,
+        coordonnees,
+        infosDiverses: get('LabelInfoDiverses'),
+        annotationsPerso: get('LabelUserPatientAnnotation'),
+    };
+}
+
+/**
+ * Parse le bloc "Contacts" du patient (praticiens du cabinet et correspondants externes)
+ * @param {HTMLElement} container - Le mainContainer de la catégorie contacts
+ * @returns {Array<Object>} Liste des contacts
+ */
+function parseContacts(container) {
+    const block = container.querySelector('.sc') || container;
+    const entryDivs = Array.from(block.children).filter(el => el.tagName === 'DIV' && !el.classList.contains('st'));
+
+    return entryDivs.map(div => {
+        const title = div.getAttribute('title') || null;
+        let type = 'correspondant_avec_lien';
+        if (title?.startsWith('P.S. du cabinet')) {
+            type = 'praticien_cabinet';
+        } else if (title?.startsWith('Correspondant sans lien WEDA')) {
+            type = 'correspondant_sans_lien';
+        }
+        return {
+            type,
+            info: title,
+            texte: extractRawBlockText(div),
+        };
+    });
+}
+
+/**
+ * Parse le bloc "Antécédents" du patient, organisé en sections (Médicaux, Chirurgicaux, Gynécologiques, etc.)
+ * Chaque section commence par un div.st > .sm contenant le titre de la section.
+ * @param {HTMLElement} container - Le mainContainer de la catégorie antecedents
+ * @returns {Array<Object>} Liste des sections avec leurs items en texte brut nettoyé
+ */
+function parseAntecedents(container) {
+    const block = container.querySelector('.sc') || container;
+    const children = Array.from(block.children);
+
+    const sections = [];
+    let currentSection = null;
+
+    for (const child of children) {
+        if (child.classList.contains('st')) {
+            if (currentSection && currentSection.items.length > 0) {
+                sections.push(currentSection);
+            }
+            const titleEl = child.querySelector('.sm');
+            currentSection = { titre: (titleEl || child).textContent.trim(), items: [] };
+        } else {
+            if (!currentSection) {
+                currentSection = { titre: "Général", items: [] };
+            }
+            const text = extractRawBlockText(child);
+            if (text) {
+                currentSection.items.push(text);
+            }
+        }
+    }
+    if (currentSection && currentSection.items.length > 0) {
+        sections.push(currentSection);
+    }
+
+    return sections;
+}
+
+/**
+ * Parse le bloc "Graphiques et tableaux" (suivi de courbes/valeurs, ex: poids, tension, etc.)
+ * Les données réellement affichées dépendent des choix de l'utilisateur dans l'interface Weda
+ * (mode tableau + unités + sélection des données dans le menu déroulant). Si aucune donnée
+ * n'est trouvée, on avertit l'utilisateur pour qu'il configure l'affichage en conséquence.
+ * @param {HTMLElement} container - Le mainContainer de la catégorie charts
+ * @returns {Array<Object>|Object} Données de suivi, ou tableau vide si non configuré
+ */
+function parseCharts(container) {
+    let suiviEl = container.querySelector('.suivicollection');
+
+    // Les graphiques/tableaux peuvent être affichés dans un iframe imbriqué
+    if (!suiviEl) {
+        const nestedIframe = container.querySelector('iframe');
+        const nestedDoc = nestedIframe?.contentDocument || nestedIframe?.contentWindow?.document;
+        suiviEl = nestedDoc?.querySelector('.suivicollection') || null;
+    }
+
+    if (!suiviEl) {
+        sendWedaNotif({
+            message: "Aucune donnée de suivi trouvée. Dans « Graphiques et tableaux », sélectionnez le mode tableau, affichez les unités et choisissez les données souhaitées dans le menu déroulant. Le choix des éléments affichés peut être affiné depuis « Consultation » > « Définition des groupes ».",
+            type: "fail",
+            duration: 10000,
+        });
+        return [];
+    }
+
+    return { rawLines: extractRawBlockText(suiviEl).split('\n') };
+}
+
+/**
  * Récupère toutes les données de l'historique patient pour une catégorie donnée
  * @param {Document} doc - Le document (ou iframeDocument) dans lequel chercher
  * @param {Object} categorySelectors - Les sélecteurs de la catégorie (SELECTORS.categories[category])
  * @returns {Array<Object>} Tableau d'objets représentant chaque journée
  */
-function recoverMainViewData(doc, categorySelectors, includeLegacy = false) {
+function recoverMainViewData(doc, categorySelectors, includeLegacy = false, category = "unknown") {
     // Réinitialisation de la Map de correspondance initiales → nom
     initialsToAuthorMap.clear();
     
@@ -287,6 +479,15 @@ function recoverMainViewData(doc, categorySelectors, includeLegacy = false) {
     if (!mainContainer) {
         console.error("Main container not found");
         return [];
+    }
+
+    // Catégories non-journalières : chacune a son propre parser dédié
+    if (!categorySelectors.subContainer) {
+        if (categorySelectors.parser) {
+            return categorySelectors.parser(mainContainer);
+        }
+        console.warn("[dataScrapper] Aucun parser défini pour cette catégorie non-journalière, dump brut en secours", category);
+        return { rawLines: extractRawBlockText(mainContainer).split('\n') };
     }
 
     // Chaque .sc = une journée avec potentiellement plusieurs documents
@@ -545,7 +746,7 @@ addTweak('*', '*dataScrapper', function () {
     addTestButton("Récupérer données", async () => {
         const data = await recoverData({
             fullPage: false,
-            categories: ["consultations"],//["consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse"],
+            categories: ["etatCivil", "antecedents", "contacts", "consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse"],
             debug: true,
             includeLegacy: true
         });
