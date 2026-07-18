@@ -53,7 +53,7 @@ const SELECTORS = {
         vaccins:           { button: '#ButtonVaccins',             ..._DAILY, loadedCheck: "Vaccins et rappels", legacy: _DAILY_LEGACY},
         charts:            { button: '#ButtonChart',               mainContainer: '#UpdatePanelVisuDocument', parser: parseCharts, loadedCheck: chartsLoadedCheck }, // Attention iframe...
         documents:         { button: '#ButtonDocumentJointAction', loadedCheck: "Recherche des documents", mainContainer: '#UpdatePanelVisuDocument', parser: parseDocuments },
-        grossesse:         { button: '#ButtonPregnant',            loadedCheck: "Grossesse", mainContainer: usualMainContainer, subContainer: usualSubContainer },
+        grossesse:         { button: '#ButtonPregnant',            loadedCheck: "Grossesse", mainContainer: usualMainContainer, parser: parseGrossesse },
         // Catégories non-journalières
         etatCivil:         { button: null, mainContainer: "#EtatCivilUCForm1_FramePatient", parser: parseEtatCivil },
         antecedents:       { button: null, mainContainer: "#PanelPatient > div:nth-child(5)", parser: parseAntecedents },
@@ -527,6 +527,90 @@ function parseDocumentsCardView(pjmDiv) {
     });
 }
 
+
+/**
+ * Parse le bloc "Grossesse" du patient (un .sc par suivi de grossesse).
+ * Note : les calendriers de semaines (tableaux de dates par S.A.) et leur légende ne sont
+ * pas extraits, ces données étant recalculables à partir des dates déjà récupérées.
+ * @param {HTMLElement} container - Le mainContainer de la catégorie grossesse
+ * @returns {Array<Object>} Liste des suivis de grossesse structurés
+ */
+function parseGrossesse(container) {
+    const suiviContainers = container.querySelectorAll(usualSubContainer);
+    return Array.from(suiviContainers).map(parseSuiviGrossesse);
+}
+
+/**
+ * Parse un suivi de grossesse individuel
+ * @param {HTMLElement} suivi - Élément .sc d'un suivi de grossesse
+ * @returns {Object} Données structurées du suivi
+ */
+function parseSuiviGrossesse(suivi) {
+    // Ligne d'en-tête : icône, statut (+ terme "S.A." si en cours), initiales de l'auteur
+    const headerCells = Array.from(suivi.querySelectorAll('table.st tr td'));
+    const statutText = headerCells[1]?.textContent.trim() || null;
+    const terme = headerCells.length === 4 ? headerCells[2].textContent.trim() : null;
+    const auteurInitiales = headerCells[headerCells.length - 1]?.textContent.trim() || null;
+
+    const enCours = statutText === "Grossesse en cours";
+    const dateFinTheorique = !enCours ? statutText?.match(/Fin théorique le\s*:\s*([\d/]+)/)?.[1] || null : null;
+
+    // Informations clé/valeur (dernières règles, dates présumées, etc.) et commentaires libres
+    // associés (ex: "La patiente a moins de deux enfants à charge...")
+    const informations = {};
+    const commentairesEffectifs = [];
+    suivi.querySelectorAll('.stx > .information').forEach(div => {
+        const spans = div.querySelectorAll(':scope > span');
+        if (spans.length === 2) {
+            const label = spans[0].textContent.trim().replace(/\s*:\s*$/, '');
+            informations[label] = spans[1].textContent.trim();
+        } else {
+            const text = div.textContent.trim();
+            if (text) commentairesEffectifs.push(text);
+        }
+    });
+
+    // Tableau des congés (identifié par son icône dédiée), positionné en superposition
+    const congesTable = Array.from(suivi.querySelectorAll('.stx table')).find(t => t.querySelector('.img16Conges'));
+    let conges = null;
+    if (congesTable) {
+        const rows = Array.from(congesTable.querySelectorAll('tr')).slice(1); // 1ère ligne = titre/icône
+        const debutCongePrenatal = rows.find(r => r.textContent.includes('Début de congé prénatal'))
+            ?.querySelectorAll('td')[1]?.textContent.trim() || null;
+        const finCongePostnatal = rows.find(r => r.textContent.includes('Fin de congé postnatal'))
+            ?.querySelectorAll('td')[1]?.textContent.trim() || null;
+        const commentaires = rows
+            .filter(r => !r.textContent.includes('Début de congé prénatal') && !r.textContent.includes('Fin de congé postnatal'))
+            .map(r => extractRawBlockText(r))
+            .filter(Boolean);
+        conges = { debutCongePrenatal, finCongePostnatal, commentaires: commentaires.length > 0 ? commentaires : null };
+    }
+
+    // Commentaire libre saisi par le praticien
+    const commentaire = suivi.querySelector('.stx > .comment')?.textContent.trim() || null;
+
+    // Ligne de bas de bloc : "Saisie le DATE par NOM"
+    const saisieDiv = Array.from(suivi.querySelectorAll('.stx > div')).find(d => d.textContent.trim().startsWith('Saisie le'));
+    const saisieMatch = saisieDiv?.textContent.trim().match(/Saisie le\s*([\d/]+)\s*par\s*(.+)/);
+
+    return {
+        statut: enCours ? "en_cours" : "termine",
+        dateFinTheorique,
+        terme,
+        auteurInitiales,
+        dernieresRegles: informations["Dernières règles"] || null,
+        datePresumeeDebut: informations["Date présumée de début de grossesse"] || null,
+        datePresumeeFin: informations["Date présumée de fin de grossesse"] || null,
+        dateAccouchementReference: informations["Date d'accouchement de référence Sécurité Sociale"] || null,
+        commentairesEffectifs: commentairesEffectifs.length > 0 ? commentairesEffectifs : null,
+        conges,
+        commentaire,
+        saisieLe: saisieMatch?.[1] || null,
+        author: saisieMatch?.[2]?.trim() || null,
+    };
+}
+
+
 /**
  * Parse le bloc "Graphiques et tableaux" (suivi de courbes/valeurs, ex: poids, tension, etc.)
  * Les données réellement affichées dépendent des choix de l'utilisateur dans l'interface Weda
@@ -869,7 +953,7 @@ addTweak('*', '*dataScrapper', function () {
     addTestButton("Récupérer données", async () => {
         const data = await recoverData({
             fullPage: false,
-            categories: ["etatCivil", "antecedents", "contacts", "consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse"],
+            categories: ["grossesse"], //["etatCivil", "antecedents", "contacts", "consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse"],
             debug: true,
             includeLegacy: true
         });
