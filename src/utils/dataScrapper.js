@@ -50,7 +50,7 @@ const SELECTORS = {
         resultatsExamens:  { button: '#ButtonResultatExamen',      ..._DAILY, loadedCheck: "Résultat", legacy: _DAILY_LEGACY },
         courriers:         { button: '#ButtonCourrier',            ..._DAILY, loadedCheck: "Courrier", legacy: _DAILY_LEGACY },
         arretsTravail:     { button: '#ButtonAT',                  ..._DAILY, loadedCheck: "A.T.", legacy: _DAILY_LEGACY },
-        vaccins:           { button: '#ButtonVaccins',             ..._DAILY, loadedCheck: "Vaccins et rappels", legacy: _DAILY_LEGACY},
+        vaccins:           { button: '#ButtonVaccins',             mainContainer: usualMainContainer, parser: parseVaccins, loadedCheck: "Vaccins et rappels", legacy: _DAILY_LEGACY },
         charts:            { button: '#ButtonChart',               mainContainer: '#UpdatePanelVisuDocument', parser: parseCharts, loadedCheck: chartsLoadedCheck }, // Attention iframe...
         documents:         { button: '#ButtonDocumentJointAction', loadedCheck: "Recherche des documents", mainContainer: '#UpdatePanelVisuDocument', parser: parseDocuments },
         grossesse:         { button: '#ButtonPregnant',            loadedCheck: "Grossesse", mainContainer: usualMainContainer, parser: parseGrossesse },
@@ -618,6 +618,135 @@ function parseSuiviGrossesse(suivi) {
 
 
 /**
+ * Parse le bloc "Vaccins et rappels" du patient.
+ * Les séries normales (vaccins/rappels courants) sont organisées en div.sc, avec un div.st
+ * (titre de série + bouton "supprimer toute la série") suivi d'un ou plusieurs div[name^="dh"]
+ * contenant chacun une entrée (vaccin ou rappel). On aplatit ces séries en une simple liste
+ * d'entrées, chacune portant sa propre date au premier niveau et le nom de la série en tag
+ * ("serie"), plutôt que de regrouper les entrées par série.
+ * Les entrées importées d'un ancien logiciel (div.sc[name="divwc"]) ne sont pas dans ce
+ * mainContainer : elles se trouvent dans le conteneur "legacy" partagé avec les autres
+ * catégories journalières (categorySelectors.legacy), disponible uniquement si includeLegacy.
+ * Elles sont ajoutées à la même liste plate, avec un flag imported:true.
+ * @param {HTMLElement} container - Le mainContainer de la catégorie vaccins
+ * @param {Document} doc - Le document dans lequel chercher le conteneur legacy
+ * @param {boolean} includeLegacy - Si true, récupère aussi les entrées importées d'un ancien logiciel
+ * @param {Object} categorySelectors - Les sélecteurs de la catégorie (SELECTORS.categories.vaccins)
+ * @returns {Array<Object>} Liste plate des entrées de vaccins/rappels
+ */
+function parseVaccins(container, doc, includeLegacy = false, categorySelectors = null) {
+    const scDivs = container.querySelectorAll(usualSubContainer);
+    const entries = Array.from(scDivs).flatMap(parseVaccinSerie);
+
+    if (includeLegacy && categorySelectors?.legacy) {
+        const legacyContainer = doc.querySelector(categorySelectors.legacy.mainContainer);
+        if (legacyContainer) {
+            const legacyDivs = legacyContainer.querySelectorAll(categorySelectors.legacy.subContainer);
+            const legacyEntries = Array.from(legacyDivs).map(parseVaccinLegacyEntry);
+            console.log(`[dataScrapper] ${legacyEntries.length} entrée(s) de vaccin importée(s) d'un ancien logiciel détectée(s)`);
+            entries.push(...legacyEntries);
+        }
+    }
+
+    return entries;
+}
+
+/**
+ * Parse une série de vaccins/rappels (ex: "DTP", "DÉPISTAGES") et retourne ses entrées
+ * aplaties, chacune taguée avec le nom de la série.
+ * @param {HTMLElement} scDiv - Élément .sc représentant la série
+ * @returns {Array<Object>} Entrées de la série, chacune avec un champ "serie"
+ */
+function parseVaccinSerie(scDiv) {
+    const serie = textOf(scDiv, ':scope > .st table td');
+    const entryWrappers = scDiv.querySelectorAll(':scope > div[name^="dh"]');
+    return Array.from(entryWrappers)
+        .map(wrapper => parseVaccinEntry(wrapper.querySelector(':scope > div')))
+        .filter(Boolean)
+        .map(entry => ({ serie, ...entry }));
+}
+
+/**
+ * Parse une entrée individuelle (vaccin injecté ou rappel programmé) au sein d'une série
+ * @param {HTMLElement} entryDiv - Le div contenant l'entrée (celui portant onmouseover="Vac(...)")
+ * @returns {Object|null} Données structurées de l'entrée, ou null si absent
+ */
+function parseVaccinEntry(entryDiv) {
+    if (!entryDiv) return null;
+
+    const iconSpan = entryDiv.querySelector('.stt [class^="img16"]');
+    const isRappel = iconSpan?.getAttribute('title') === 'Rappel';
+    const type = isRappel ? 'rappel' : 'vaccin';
+
+    // Cellule de titre : ex "repevax  24/11/2025" ou "CCR pour le 01/09/2023  Effectué"
+    const titleCell = entryDiv.querySelector('.stt td');
+    const effectueDansTitre = !!titleCell?.querySelector('.rouge');
+    const titleText = (titleCell?.textContent || '').replace(/\s+/g, ' ').replace('Effectué', '').trim();
+    const date = titleText.match(/(\d{2}\/\d{2}\/\d{4})/)?.[1] || null;
+    const label = titleText
+        .replace(/\d{2}\/\d{2}\/\d{4}/, '')
+        .replace(/pour le\s*$/i, '')
+        .replace(/\s+/g, ' ')
+        .trim() || null;
+
+    let injection = null, effectue = effectueDansTitre, lot = null, expiration = null, author = null, resultat = null;
+    entryDiv.querySelectorAll(':scope > .stx').forEach(div => {
+        const lsSpan = div.querySelector('.ls');
+        if (lsSpan) {
+            author = lsSpan.textContent.trim().replace(/^Auteur de l'alerte\s*:\s*/, '').trim();
+            return;
+        }
+
+        const text = div.textContent.trim();
+        if (text.startsWith('N° lot')) lot = text.replace(/^N° lot\s*:\s*/, '').trim();
+        else if (text.startsWith("Date d'expiration")) expiration = text.replace(/^Date d'expiration\s*:\s*/, '').trim();
+        else if (text.startsWith("Auteur de l'alerte")) author = text.replace(/^Auteur de l'alerte\s*:\s*/, '').trim();
+        else if (/injection/i.test(text)) {
+            effectue = effectue || !!div.querySelector('.rouge');
+            injection = text.replace('Effectué', '').trim();
+        }
+        else if (text) resultat = text;
+    });
+
+    return { date, type, label, effectue, injection, lot, expiration, author, resultat };
+}
+
+/**
+ * Parse une entrée importée d'un ancien logiciel (div.sc[name="divwc"])
+ * @param {HTMLElement} div - Élément .sc portant l'attribut name="divwc"
+ * @returns {Object} Entrée aplatie, au même format que parseVaccinEntry
+ */
+function parseVaccinLegacyEntry(div) {
+    const cells = div.querySelectorAll(':scope > table.st td');
+    const date = textOf(cells[1]);
+    const author = textOf(cells[3]);
+
+    const stxDivs = Array.from(div.querySelectorAll(':scope > .stx'));
+    const produit = stxDivs.find(d => !d.textContent.includes('Injection n°') && !d.textContent.includes('prochaine injection'))
+        ?.textContent.trim() || null;
+    const injection = stxDivs.find(d => d.textContent.includes('Injection n°'))?.textContent.trim() || null;
+    const prochaineInjection = stxDivs.find(d => d.textContent.includes('prochaine injection'))
+        ?.querySelector('b')?.textContent.trim() || null;
+
+    return {
+        date,
+        type: 'vaccin',
+        serie: produit,
+        label: produit,
+        effectue: true,
+        injection,
+        lot: null,
+        expiration: null,
+        author,
+        resultat: null,
+        prochaineInjection,
+        imported: true,
+    };
+
+    return { serie: produit, entries: [entry] };
+}
+
+/**
  * Parse le bloc "Graphiques et tableaux" (suivi de courbes/valeurs, ex: poids, tension, etc.)
  * Les données réellement affichées dépendent des choix de l'utilisateur dans l'interface Weda
  * (mode tableau + unités + sélection des données dans le menu déroulant). Si aucune donnée
@@ -697,7 +826,7 @@ function recoverMainViewData(doc, categorySelectors, includeLegacy = false, cate
     // Catégories non-journalières : chacune a son propre parser dédié
     if (!categorySelectors.subContainer) {
         if (categorySelectors.parser) {
-            return categorySelectors.parser(mainContainer);
+            return categorySelectors.parser(mainContainer, doc, includeLegacy, categorySelectors);
         }
         console.warn("[dataScrapper] Aucun parser défini pour cette catégorie non-journalière, dump brut en secours", category);
         return { rawLines: extractRawBlockText(mainContainer).split('\n') };
