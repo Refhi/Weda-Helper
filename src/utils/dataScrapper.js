@@ -52,7 +52,7 @@ const SELECTORS = {
         arretsTravail:     { button: '#ButtonAT',                  ..._DAILY, loadedCheck: "A.T.", legacy: _DAILY_LEGACY },
         vaccins:           { button: '#ButtonVaccins',             ..._DAILY, loadedCheck: "Vaccins et rappels", legacy: _DAILY_LEGACY},
         charts:            { button: '#ButtonChart',               mainContainer: '#UpdatePanelVisuDocument', parser: parseCharts, loadedCheck: chartsLoadedCheck }, // Attention iframe...
-        documents:         { button: '#ButtonDocumentJointAction', loadedCheck: "Recherche des documents", mainContainer: '#UpdatePanelVisuDocument'},
+        documents:         { button: '#ButtonDocumentJointAction', loadedCheck: "Recherche des documents", mainContainer: '#UpdatePanelVisuDocument', parser: parseDocuments },
         grossesse:         { button: '#ButtonPregnant',            loadedCheck: "Grossesse", mainContainer: usualMainContainer, subContainer: usualSubContainer },
         // Catégories non-journalières
         etatCivil:         { button: null, mainContainer: "#EtatCivilUCForm1_FramePatient", parser: parseEtatCivil },
@@ -432,6 +432,99 @@ function parseAntecedents(container) {
     }
 
     return sections;
+}
+
+/**
+ * Extrait l'identifiant d'événement (Eve) et de fichier (Fil) depuis un attribut onclick
+ * de type OpenViewBinaryForm('Eve=xxx&Fil=yyy&...', '...')
+ * @param {string} onclickAttr - Le contenu de l'attribut onclick
+ * @returns {{eventId: string|null, fileId: string|null}}
+ */
+function extractDocMetaFromOnclick(onclickAttr) {
+    const eventId = onclickAttr?.match(/Eve=(\d+)/)?.[1] || null;
+    const fileId = onclickAttr?.match(/Fil=(\d+)/)?.[1] || null;
+    return { eventId, fileId };
+}
+
+/**
+ * Extrait le nom de fichier (depuis l'action "Supprimer") et le statut DMP
+ * (présent = span, envoyable = lien <a>) depuis le tableau d'actions d'un document.
+ * @param {HTMLElement} actionsTable - Le petit tableau contenant Renommer/Supprimer/We/DMP
+ * @returns {{fileName: string|null, dmp: 'present'|'sendable'|null}}
+ */
+function extractDocActions(actionsTable) {
+    if (!actionsTable) return { fileName: null, dmp: null };
+    const supprimerDiv = actionsTable.querySelector('[onclick^="Dec("]');
+    const fileName = supprimerDiv?.getAttribute('onclick')?.match(/Dec\([^,]*,\s*'([^']+)'/)?.[1] || null;
+    const dmpSpan = actionsTable.querySelector('span[id^="DMPPJ"]');
+    const dmpLink = actionsTable.querySelector('a[id^="DMPPJ"]');
+    const dmp = dmpSpan ? 'present' : (dmpLink ? 'sendable' : null);
+    return { fileName, dmp };
+}
+
+/**
+ * Parse le bloc "Documents" (pièces jointes de la catégorie "documents"), qui peut être
+ * affiché par Weda sous deux formes différentes selon le mode d'affichage choisi par
+ * l'utilisateur :
+ *   - vue carte   : div.pjm > div.pja (une carte par document)
+ *   - vue tableau : table.fs-table > tr.grid-item_tr (une ligne par document)
+ * @param {HTMLElement} container - Le mainContainer de la catégorie documents
+ * @returns {Array<Object>} Liste des documents, au format unifié
+ */
+function parseDocuments(container) {
+    const tableView = container.querySelector('table.fs-table');
+    if (tableView) {
+        return parseDocumentsTableView(tableView);
+    }
+    const cardView = container.querySelector('.pjm');
+    if (cardView) {
+        return parseDocumentsCardView(cardView);
+    }
+    console.warn("[dataScrapper] Vue documents non reconnue, dump brut en secours");
+    return { rawLines: extractRawBlockText(container).split('\n') };
+}
+
+/**
+ * Parse la vue tableau (table.fs-table) de la catégorie documents
+ * @param {HTMLElement} table - L'élément table.fs-table
+ * @returns {Array<Object>} Liste des documents
+ */
+function parseDocumentsTableView(table) {
+    const rows = table.querySelectorAll(':scope > tbody > tr.grid-item_tr');
+    return Array.from(rows).map(row => {
+        const cells = row.querySelectorAll(':scope > td');
+        const date = cells[0]?.textContent.trim() || null;
+        const category = cells[1]?.textContent.trim() || null;
+        const type = cells[2]?.getAttribute('title')?.trim() || cells[2]?.textContent.trim() || null;
+        const description = cells[3]?.getAttribute('title')?.trim() || cells[3]?.textContent.trim() || null;
+        const isExternal = !!cells[4]?.querySelector('span[title="Document externe"]');
+        const { eventId, fileId } = extractDocMetaFromOnclick(cells[0]?.getAttribute('onclick'));
+        const actionsTable = cells[5]?.querySelector('table');
+        const { fileName, dmp } = extractDocActions(actionsTable);
+        return { date, category, type, description: description || null, isExternal, eventId, fileId, fileName, dmp };
+    }).filter(doc => doc.date || doc.fileId);
+}
+
+/**
+ * Parse la vue carte (div.pjm > div.pja) de la catégorie documents
+ * @param {HTMLElement} pjmDiv - L'élément div.pjm
+ * @returns {Array<Object>} Liste des documents
+ */
+function parseDocumentsCardView(pjmDiv) {
+    const items = pjmDiv.querySelectorAll(':scope > .pja');
+    return Array.from(items).map(item => {
+        const infoTable = item.querySelector('table.pjii');
+        const rows = infoTable?.querySelectorAll(':scope > tbody > tr') || [];
+        const date = rows[0]?.textContent.trim() || null;
+        const category = rows[2]?.textContent.trim() || null;
+        const type = rows[3]?.querySelector('span')?.textContent.trim() || null;
+        const isExternal = !!item.querySelector('span[title="Document externe"]');
+        const { eventId, fileId } = extractDocMetaFromOnclick(infoTable?.getAttribute('onclick'));
+        const actionsTable = item.querySelectorAll('table')[1] || null;
+        const { fileName, dmp } = extractDocActions(actionsTable);
+        const description = item.querySelector(':scope > .cfc')?.textContent.trim() || null;
+        return { date, category, type, description, isExternal, eventId, fileId, fileName, dmp };
+    });
 }
 
 /**
