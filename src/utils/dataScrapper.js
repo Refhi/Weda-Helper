@@ -461,7 +461,37 @@ function parseCharts(container) {
         return [];
     }
 
-    return { rawLines: extractRawBlockText(suiviEl).split('\n') };
+    const table = suiviEl.querySelector('table');
+    const rows = Array.from(table?.querySelectorAll(':scope > tbody > tr') || []);
+    if (rows.length === 0) {
+        console.warn("[dataScrapper] Table de suivi vide ou non reconnue, dump brut en secours");
+        return { rawLines: extractRawBlockText(suiviEl).split('\n') };
+    }
+
+    // 1ère ligne : dates des colonnes. La 1ère cellule contient les contrôles d'ajout
+    // de colonne (champ + bouton "+"), on l'ignore.
+    const headerCells = Array.from(rows[0].querySelectorAll(':scope > td')).slice(1);
+    const dates = headerCells.map(td => td.textContent.trim());
+
+    // Lignes suivantes : 1ère cellule = libellé du paramètre, cellules suivantes = valeurs
+    // (un <input> par date, avec la valeur dans value et l'unité dans title). L'unité est
+    // stockée par cellule et non par ligne, car elle peut changer d'une date à l'autre
+    // pour un même paramètre (ex: mmol/L puis mg/L).
+    const parametres = rows.slice(1).map(row => {
+        const cells = Array.from(row.querySelectorAll(':scope > td'));
+        const nom = cells[0]?.textContent.trim() || null;
+        const valeurs = cells.slice(1).map(td => {
+            const input = td.querySelector('input');
+            if (!input) return null;
+            const valeur = input.value?.trim() || null;
+            const unite = input.title?.trim() || null;
+            if (!valeur) return null;
+            return { valeur, unite };
+        });
+        return { nom, valeurs };
+    }).filter(param => param.nom);
+
+    return { dates, parametres };
 }
 
 /**
