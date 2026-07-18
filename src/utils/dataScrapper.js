@@ -166,34 +166,40 @@ async function loadingIsComplete(iframe, raisonAttente = "N/A") {
     console.log('[dataScrapper] Début de l\'attente du chargement', raisonAttente);
     console.log('[dataScrapper] Progress element visible ?', progessElementIsVisible());
 
-    let maxRetryCount = 10; // 10 * 50ms = 500ms max pour que l'élément de chargement apparaisse
-    let retryCount = 0;
-    while (!progessElementIsVisible() && retryCount < maxRetryCount) {
-        await sleep(50); // On attend que l'élément de chargement apparaisse
-        console.log('[dataScrapper] Attente de l\'affichage du chargement', raisonAttente);
-        retryCount++;
-    }
-    if (retryCount === maxRetryCount) {
-        console.warn('[dataScrapper] Timeout lors de l\'attente de l\'affichage du chargement', raisonAttente);
-        return;
-    }
+    const apparu = await waitUntil(progessElementIsVisible, {
+        maxRetry: 10, // 10 * 50ms = 500ms max pour que l'élément de chargement apparaisse
+        label: `affichage du chargement (${raisonAttente})`,
+    });
+    if (!apparu) return;
     console.log('[dataScrapper] Chargement détecté, attente de la fin', raisonAttente);
 
-    maxRetryCount = 200; // 200 * 50ms = 10s max
-    retryCount = 0;
-    while (progessElementIsVisible() && retryCount < maxRetryCount) {
-        await sleep(50); // On attend que l'élément de chargement disparaisse
-        console.log('[dataScrapper] Attente de la fin du chargement', raisonAttente);
-        retryCount++;
-    }
-    if (retryCount === maxRetryCount) {
-        console.warn('[dataScrapper] Timeout lors de l\'attente de la fin du chargement', raisonAttente);
-        return;
-    }
+    const termine = await waitUntil(() => !progessElementIsVisible(), {
+        maxRetry: 200, // 200 * 50ms = 10s max
+        label: `fin du chargement (${raisonAttente})`,
+    });
+    if (!termine) return;
 
     console.log('[dataScrapper] Chargement terminé', raisonAttente);
 
     return new Promise(resolve => setTimeout(resolve, 100)); // On attend un peu pour être sûr que le DOM est stable
+}
+
+/**
+ * Attend qu'une condition devienne vraie, en la testant à intervalles réguliers.
+ * @param {Function} conditionFn - Fonction sans argument retournant un booléen (ou une valeur "truthy")
+ * @param {Object} [options]
+ * @param {number} [options.interval=50] - Intervalle entre deux vérifications, en ms
+ * @param {number} [options.maxRetry=200] - Nombre maximal de vérifications avant timeout
+ * @param {string} [options.label=""] - Libellé utilisé dans le message de timeout
+ * @returns {Promise<boolean>} true si la condition a été remplie, false en cas de timeout
+ */
+async function waitUntil(conditionFn, { interval = 50, maxRetry = 200, label = "" } = {}) {
+    for (let i = 0; i < maxRetry; i++) {
+        if (conditionFn()) return true;
+        await sleep(interval);
+    }
+    console.warn(`[dataScrapper] Timeout lors de l'attente : ${label}`);
+    return false;
 }
 
 async function categoryLoadingComplete(iframe, category) {
@@ -217,21 +223,13 @@ async function categoryLoadingComplete(iframe, category) {
             return !!(titleElement && titleElement.textContent.includes(categorySelectors.loadedCheck));
           };
 
-    let maxRetryCount = 200; // 200 * 50ms = 10s max
-    let retryCount = 0;
-    while (retryCount < maxRetryCount) {
-        if (isLoaded()) {
-            console.log(`[dataScrapper] Chargement de la catégorie ${category} terminé`);
-            break;
-        }
-        await sleep(50);
-        retryCount++;
+    const chargee = await waitUntil(isLoaded, {
+        maxRetry: 200, // 200 * 50ms = 10s max
+        label: `chargement de la catégorie ${category}`,
+    });
+    if (chargee) {
+        console.log(`[dataScrapper] Chargement de la catégorie ${category} terminé`);
     }
-    if (retryCount === maxRetryCount) {
-        console.warn(`[dataScrapper] Timeout lors de l'attente du chargement de la catégorie ${category}`);
-    }
-
-    return
 }
 
 /**
@@ -297,6 +295,18 @@ async function constructPatientHistoryUrl() {
 }
 
 /**
+ * Récupère le texte nettoyé (trim) d'un élément, ou de l'élément trouvé par un sélecteur
+ * à l'intérieur de root. Retourne null si l'élément est absent ou son texte vide.
+ * @param {HTMLElement} root - Élément racine dans lequel chercher (ou l'élément lui-même si selector est omis)
+ * @param {string} [selector] - Sélecteur CSS de l'élément cible, relatif à root
+ * @returns {string|null} Texte trouvé, ou null
+ */
+function textOf(root, selector) {
+    const el = selector ? root?.querySelector(selector) : root;
+    return el?.textContent.trim() || null;
+}
+
+/**
  * Extrait le texte d'un bloc en évitant que le contenu de balises adjacentes (spans, td, etc.)
  * ne soit accolé sans séparateur (ex: "DESMAUX" + "NATHALIE" => "DESMAUXNATHALIE").
  * On travaille sur un clone pour ne pas modifier le DOM d'origine, car l'iframe étant cachée
@@ -331,15 +341,11 @@ function extractRawBlockText(element) {
  * @returns {Object} Données structurées de l'état civil
  */
 function parseEtatCivil(container) {
-    const get = suffix => {
-        const el = container.querySelector(`[id$="${suffix}"]`);
-        const text = el?.textContent.trim();
-        return text || null;
-    };
+    const get = suffix => textOf(container, `[id$="${suffix}"]`);
 
     const medecinTraitantEl = container.querySelector('[id$="LabelMedecinTraitant"]');
     const medecinTraitant = medecinTraitantEl ? {
-        nom: medecinTraitantEl.textContent.trim() || null,
+        nom: textOf(medecinTraitantEl),
         dateDebutContrat: (medecinTraitantEl.getAttribute('title') || '').match(/Date de début de contrat\s*:\s*([\d/]+)/)?.[1] || null,
     } : null;
 
@@ -493,10 +499,10 @@ function parseDocumentsTableView(table) {
     const rows = table.querySelectorAll(':scope > tbody > tr.grid-item_tr');
     return Array.from(rows).map(row => {
         const cells = row.querySelectorAll(':scope > td');
-        const date = cells[0]?.textContent.trim() || null;
-        const category = cells[1]?.textContent.trim() || null;
-        const type = cells[2]?.getAttribute('title')?.trim() || cells[2]?.textContent.trim() || null;
-        const description = cells[3]?.getAttribute('title')?.trim() || cells[3]?.textContent.trim() || null;
+        const date = textOf(cells[0]);
+        const category = textOf(cells[1]);
+        const type = cells[2]?.getAttribute('title')?.trim() || textOf(cells[2]);
+        const description = cells[3]?.getAttribute('title')?.trim() || textOf(cells[3]);
         const isExternal = !!cells[4]?.querySelector('span[title="Document externe"]');
         const { eventId, fileId } = extractDocMetaFromOnclick(cells[0]?.getAttribute('onclick'));
         const actionsTable = cells[5]?.querySelector('table');
@@ -515,14 +521,14 @@ function parseDocumentsCardView(pjmDiv) {
     return Array.from(items).map(item => {
         const infoTable = item.querySelector('table.pjii');
         const rows = infoTable?.querySelectorAll(':scope > tbody > tr') || [];
-        const date = rows[0]?.textContent.trim() || null;
-        const category = rows[2]?.textContent.trim() || null;
-        const type = rows[3]?.querySelector('span')?.textContent.trim() || null;
+        const date = textOf(rows[0]);
+        const category = textOf(rows[2]);
+        const type = textOf(rows[3], 'span');
         const isExternal = !!item.querySelector('span[title="Document externe"]');
         const { eventId, fileId } = extractDocMetaFromOnclick(infoTable?.getAttribute('onclick'));
         const actionsTable = item.querySelectorAll('table')[1] || null;
         const { fileName, dmp } = extractDocActions(actionsTable);
-        const description = item.querySelector(':scope > .cfc')?.textContent.trim() || null;
+        const description = textOf(item, ':scope > .cfc');
         return { date, category, type, description, isExternal, eventId, fileId, fileName, dmp };
     });
 }
@@ -548,9 +554,9 @@ function parseGrossesse(container) {
 function parseSuiviGrossesse(suivi) {
     // Ligne d'en-tête : icône, statut (+ terme "S.A." si en cours), initiales de l'auteur
     const headerCells = Array.from(suivi.querySelectorAll('table.st tr td'));
-    const statutText = headerCells[1]?.textContent.trim() || null;
-    const terme = headerCells.length === 4 ? headerCells[2].textContent.trim() : null;
-    const auteurInitiales = headerCells[headerCells.length - 1]?.textContent.trim() || null;
+    const statutText = textOf(headerCells[1]);
+    const terme = headerCells.length === 4 ? textOf(headerCells[2]) : null;
+    const auteurInitiales = textOf(headerCells[headerCells.length - 1]);
 
     const enCours = statutText === "Grossesse en cours";
     const dateFinTheorique = !enCours ? statutText?.match(/Fin théorique le\s*:\s*([\d/]+)/)?.[1] || null : null;
@@ -587,7 +593,7 @@ function parseSuiviGrossesse(suivi) {
     }
 
     // Commentaire libre saisi par le praticien
-    const commentaire = suivi.querySelector('.stx > .comment')?.textContent.trim() || null;
+    const commentaire = textOf(suivi, '.stx > .comment');
 
     // Ligne de bas de bloc : "Saisie le DATE par NOM"
     const saisieDiv = Array.from(suivi.querySelectorAll('.stx > div')).find(d => d.textContent.trim().startsWith('Saisie le'));
@@ -727,8 +733,7 @@ function recoverMainViewData(doc, categorySelectors, includeLegacy = false, cate
 function parseDayContainer(container, categorySelectors) {
     // Extraction des métadonnées de la journée (header table)
     const dateElement = container.querySelector(categorySelectors.date);
-    const initialsElement = container.querySelector(SELECTORS.dayContainer.initials);
-    const initials = initialsElement?.textContent.trim() || null;
+    const initials = textOf(container, SELECTORS.dayContainer.initials);
     
     // Documents : tous les divs name="dhX" sauf dh10 (pièces jointes)
     const documentDivs = container.querySelectorAll(SELECTORS.dayContainer.documents);
@@ -786,10 +791,8 @@ function parseDocument(div) {
     const type = typeClass.replace('img16', '').toLowerCase();
         
     // Métadonnées
-    const titleElement = sstDiv.querySelector(SELECTORS.document.title);
-    const title = titleElement?.textContent.trim() || null;
-    const authorElement = sstDiv.querySelector(SELECTORS.document.signature);
-    const author = authorElement?.textContent.trim() || null;
+    const title = textOf(sstDiv, SELECTORS.document.title);
+    const author = textOf(sstDiv, SELECTORS.document.signature);
     
     // Contenu textuel
     const contentDivs = div.querySelectorAll(SELECTORS.document.text);
@@ -877,8 +880,7 @@ function parseRecette(div) {
     }
     
     // Récupération de l'auteur si présent (pour la Map)
-    const authorElement = pjmDiv.querySelector(SELECTORS.document.signature);
-    const author = authorElement?.textContent.trim() || null;
+    const author = textOf(pjmDiv, SELECTORS.document.signature);
     
     return {
         type: 'recette',
@@ -923,7 +925,7 @@ function parseAttachments(pjmDiv) {
         // const fileId = fileIdMatch ? fileIdMatch[1] : null;
         
         // Description libre éventuellement ajoutée sur la pièce jointe (uniquement présente sur les ".pja")
-        const description = div.querySelector(SELECTORS.attachments.description)?.textContent.trim() || null;
+        const description = textOf(div, SELECTORS.attachments.description);
         
         return {
             type: fileType,
@@ -953,7 +955,7 @@ addTweak('*', '*dataScrapper', function () {
     addTestButton("Récupérer données", async () => {
         const data = await recoverData({
             fullPage: false,
-            categories: ["grossesse"], //["etatCivil", "antecedents", "contacts", "consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse"],
+            categories: ["etatCivil", "antecedents", "contacts", "consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse"],
             debug: true,
             includeLegacy: true
         });
