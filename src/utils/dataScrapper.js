@@ -1084,7 +1084,7 @@ function parseAttachments(pjmDiv) {
 /** 
  * phase de test, on insère un bouton pour lancer la récupération des données et les afficher dans la console
  */
-addTweak('*', '*dataScrapper', function () {
+addTweak('*', 'dataScrapperDebugger', function () {
     addTestButton("Récupérer données", async () => {
         const data = await recoverData({
             fullPage: true,
