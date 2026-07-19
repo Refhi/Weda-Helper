@@ -46,7 +46,7 @@ const SELECTORS = {
      *   author    — sélecteur de l'auteur dans le container (null si absent)
      */
     categories: {
-        consultations:     { button: null,                         ..._DAILY, loadedCheck: "Consultation", legacy: _DAILY_LEGACY},   // ouvert par défaut
+        consultations:     { button: '#ButtonConsultation',        ..._DAILY, loadedCheck: "Consultation", legacy: _DAILY_LEGACY},
         resultatsExamens:  { button: '#ButtonResultatExamen',      ..._DAILY, loadedCheck: "Résultat", legacy: _DAILY_LEGACY },
         courriers:         { button: '#ButtonCourrier',            ..._DAILY, loadedCheck: "Courrier", legacy: _DAILY_LEGACY },
         arretsTravail:     { button: '#ButtonAT',                  ..._DAILY, loadedCheck: "A.T.", legacy: _DAILY_LEGACY },
@@ -127,8 +127,9 @@ async function recoverData({
             continue;
         }
         iframeDocument = iframe.contentDocument || iframe.contentWindow.document; // Indispensable car le document semble changer dans certains cas après un clic
-        // On appuie sur le bouton pour charger la catégorie si nécessaire
-        if (categorySelectors.button) {
+        // On appuie sur le bouton pour charger la catégorie si nécessaire (sauf si déjà affichée par défaut)
+        const isAlreadyLoaded = isCategoryLoaded(iframe, category);
+        if (categorySelectors.button && !isAlreadyLoaded) {
             const button = iframeDocument.querySelector(categorySelectors.button);
             if (button) {
                 console.log(`[dataScrapper] Bouton cliqué pour la catégorie : ${category}`, button);
@@ -145,6 +146,8 @@ async function recoverData({
 
     // Nettoyage : supprimer l'iframe si on n'est pas en mode debug
     if (!debug) {iframe.remove()}
+
+    console.log('[dataScrapper] Données récupérées pour les catégories :', Object.keys(data), data);
 
     return data;
 }
@@ -206,28 +209,39 @@ async function waitUntil(conditionFn, { interval = 50, maxRetry = 200, label = "
     return false;
 }
 
+/**
+ * Vérifie, de façon instantanée (sans attente), si la catégorie donnée est déjà
+ * chargée/affichée dans l'iframe. Selon la catégorie, loadedCheck est soit un texte à
+ * chercher dans #LabelCommandAffiche, soit une fonction personnalisée recevant l'iframe
+ * et retournant un booléen.
+ * @param {HTMLIFrameElement} iframe - L'iframe contenant la page d'historique
+ * @param {string} category - Nom de la catégorie (clé de SELECTORS.categories)
+ * @returns {boolean} true si la catégorie est déjà chargée
+ */
+function isCategoryLoaded(iframe, category) {
+    const categorySelectors = SELECTORS.categories[category];
+    if (!categorySelectors) {
+        console.warn(`[dataScrapper] Catégorie inconnue : ${category}`);
+        return false;
+    }
+
+    if (typeof categorySelectors.loadedCheck === 'function') {
+        return categorySelectors.loadedCheck(iframe);
+    }
+
+    const titleElement = iframe.contentDocument.querySelector("#LabelCommandAffiche");
+    return !!(titleElement && titleElement.textContent.includes(categorySelectors.loadedCheck));
+}
+
 async function categoryLoadingComplete(iframe, category) {
     const categorySelectors = SELECTORS.categories[category];
-    console.log(`[dataScrapper] Attente du chargement de la catégorie ${category}`, `de loadedCheck : ${categorySelectors.loadedCheck}`);
+    console.log(`[dataScrapper] Attente du chargement de la catégorie ${category}`, `de loadedCheck : ${categorySelectors?.loadedCheck}`);
     if (!categorySelectors) {
         console.warn(`[dataScrapper] Catégorie inconnue : ${category}`);
         return;
     }
-    if (!categorySelectors.button) {
-        console.log(`[dataScrapper] Catégorie ${category} ouverte par défaut, pas besoin d'attendre le chargement`);
-        return;
-    }
 
-    // Selon son type, loadedCheck est soit un texte à chercher dans #LabelCommandAffiche,
-    // soit une fonction personnalisée recevant l'iframe et retournant un booléen
-    const isLoaded = typeof categorySelectors.loadedCheck === 'function'
-        ? () => categorySelectors.loadedCheck(iframe)
-        : () => {
-            const titleElement = iframe.contentDocument.querySelector("#LabelCommandAffiche");
-            return !!(titleElement && titleElement.textContent.includes(categorySelectors.loadedCheck));
-          };
-
-    const chargee = await waitUntil(isLoaded, {
+    const chargee = await waitUntil(() => isCategoryLoaded(iframe, category), {
         maxRetry: 200, // 200 * 50ms = 10s max
         label: `chargement de la catégorie ${category}`,
     });
@@ -308,6 +322,48 @@ async function constructPatientHistoryUrl() {
 function textOf(root, selector) {
     const el = selector ? root?.querySelector(selector) : root;
     return el?.textContent.trim() || null;
+}
+
+/**
+ * Nettoie un nom d'auteur brut et le décompose en prénom / nom.
+ * Les noms bruts extraits de Weda ont typiquement la forme :
+ *   "Dr. Laurianne DIGARD : Généraliste"
+ *   "Mme Elodie BAUDOIN : Infirmier salarié"
+ *   "Dr. Herve MATHIEU DE VIENNE : Généraliste"
+ * On retire donc :
+ *   - le titre de civilité éventuel en tête ("Dr.", "Pr.", "Mme", "M", "Melle")
+ *   - la fonction/spécialité éventuelle en fin (après " : ")
+ * Le nom de famille est déduit des mots consécutifs en fin de chaîne écrits en
+ * majuscules (ex: "MATHIEU DE VIENNE"), le reste formant le prénom.
+ * @param {string|null} rawName - Nom brut potentiellement préfixé d'un titre et suffixé d'une fonction
+ * @returns {{author: string|null, author_prenom: string|null, author_nom: string|null}}
+ */
+function cleanAuthorName(rawName) {
+    if (!rawName) return { author: null, author_prenom: null, author_nom: null };
+
+    // On retire la fonction/spécialité éventuelle après " : "
+    let name = rawName.split(':')[0].trim();
+    // On retire le titre de civilité éventuel en tête
+    name = name.replace(/^(Dr|Pr|Mme|M|Melle)\.?\s+/i, '').trim();
+
+    if (!name) return { author: null, author_prenom: null, author_nom: null };
+
+    // Le nom de famille est composé des mots consécutifs en majuscules en fin de chaîne
+    const words = name.split(/\s+/);
+    let nomWordsCount = 0;
+    for (let i = words.length - 1; i >= 0; i--) {
+        const word = words[i];
+        if (word === word.toUpperCase() && /[A-ZÀ-Ý]/.test(word)) {
+            nomWordsCount++;
+        } else {
+            break;
+        }
+    }
+
+    const author_nom = nomWordsCount > 0 ? words.slice(words.length - nomWordsCount).join(' ') : null;
+    const author_prenom = nomWordsCount < words.length ? words.slice(0, words.length - nomWordsCount).join(' ') : null;
+
+    return { author: name, author_prenom, author_nom };
 }
 
 /**
@@ -616,7 +672,7 @@ function parseSuiviGrossesse(suivi) {
         conges,
         commentaire,
         saisieLe: saisieMatch?.[1] || null,
-        author: saisieMatch?.[2]?.trim() || null,
+        ...cleanAuthorName(saisieMatch?.[2]?.trim()),
     };
 }
 
@@ -712,7 +768,7 @@ function parseVaccinEntry(entryDiv) {
         else if (text) resultat = text;
     });
 
-    return { date, type, label, effectue, injection, lot, expiration, author, resultat };
+    return { date, type, label, effectue, injection, lot, expiration, ...cleanAuthorName(author), resultat };
 }
 
 /**
@@ -723,7 +779,6 @@ function parseVaccinEntry(entryDiv) {
 function parseVaccinLegacyEntry(div) {
     const cells = div.querySelectorAll(':scope > table.st td');
     const date = textOf(cells[1]);
-    const author = textOf(cells[3]);
 
     const stxDivs = Array.from(div.querySelectorAll(':scope > .stx'));
     const produit = stxDivs.find(d => !d.textContent.includes('Injection n°') && !d.textContent.includes('prochaine injection'))
@@ -741,13 +796,11 @@ function parseVaccinLegacyEntry(div) {
         injection,
         lot: null,
         expiration: null,
-        author,
+        ...cleanAuthorName(textOf(cells[3])),
         resultat: null,
         prochaineInjection,
         imported: true,
     };
-
-    return { serie: produit, entries: [entry] };
 }
 
 /**
@@ -867,7 +920,7 @@ function parseDayContainer(container, categorySelectors) {
     // Extraction des métadonnées de la journée (header table)
     const dateElement = container.querySelector(categorySelectors.date);
     const initials = textOf(container, SELECTORS.dayContainer.initials);
-    
+
     // Documents : tous les divs name="dhX" sauf dh10 (pièces jointes)
     const documentDivs = container.querySelectorAll(SELECTORS.dayContainer.documents);
     const documents = Array.from(documentDivs).map(div => parseDocument(div)).filter(doc => doc !== null);
@@ -877,27 +930,27 @@ function parseDayContainer(container, categorySelectors) {
     const attachments = attachmentsDiv ? parseAttachments(attachmentsDiv) : [];
     
     // Détermination du nom complet du praticien
-    let authorName = null;
-    
+    let authorInfo = { author: null, author_prenom: null, author_nom: null };
+
     // 1. Chercher le premier document avec un author complet
     const docWithAuthor = documents.find(doc => doc.author);
     if (docWithAuthor) {
-        authorName = docWithAuthor.author;
+        authorInfo = { author: docWithAuthor.author, author_prenom: docWithAuthor.author_prenom, author_nom: docWithAuthor.author_nom };
         // Mettre à jour la correspondance initiales → nom
         if (initials) {
-            initialsToAuthorMap.set(initials, authorName);
+            initialsToAuthorMap.set(initials, authorInfo);
         }
     } else if (initials && initialsToAuthorMap.has(initials)) {
         // 2. Utiliser la correspondance existante
-        authorName = initialsToAuthorMap.get(initials);
+        authorInfo = initialsToAuthorMap.get(initials);
     }
     
-    // Supprimer le champ author de tous les documents (on le garde uniquement au niveau du conteneur)
-    documents.forEach(doc => delete doc.author);
+    // Supprimer les champs d'auteur de tous les documents (on les garde uniquement au niveau du conteneur)
+    documents.forEach(doc => { delete doc.author; delete doc.author_prenom; delete doc.author_nom; });
     
     return {
         date: dateElement?.textContent.trim() || null,
-        author: authorName,
+        ...authorInfo,
         documents,
         attachments
     };
@@ -925,7 +978,6 @@ function parseDocument(div) {
         
     // Métadonnées
     const title = textOf(sstDiv, SELECTORS.document.title);
-    const author = textOf(sstDiv, SELECTORS.document.signature);
     
     // Contenu textuel
     const contentDivs = div.querySelectorAll(SELECTORS.document.text);
@@ -934,7 +986,7 @@ function parseDocument(div) {
     return {
         type,
         title,
-        author,
+        ...cleanAuthorName(textOf(sstDiv, SELECTORS.document.signature)),
         content: content.length > 0 ? content : null,
     };
 }
@@ -1012,12 +1064,9 @@ function parseRecette(div) {
         });
     }
     
-    // Récupération de l'auteur si présent (pour la Map)
-    const author = textOf(pjmDiv, SELECTORS.document.signature);
-    
     return {
         type: 'recette',
-        author, // Sera supprimé par parseDayContainer, mais utilisé pour la Map
+        ...cleanAuthorName(textOf(pjmDiv, SELECTORS.document.signature)), // Sera supprimé par parseDayContainer, mais utilisé pour la Map
         recette: recetteData,
         fds: fdsData.length > 0 ? fdsData : null,
         noemie: noemieData.length > 0 ? noemieData : null
@@ -1088,7 +1137,7 @@ addTweak('*', 'dataScrapperDebugger', function () {
     addTestButton("Récupérer données", async () => {
         const data = await recoverData({
             fullPage: true,
-            categories: ["etatCivil", "antecedents", "contacts", "consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse"],
+            categories: ["consultations"],//["etatCivil", "antecedents", "contacts", "consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse"],
             debug: true,
             includeLegacy: true
         });
