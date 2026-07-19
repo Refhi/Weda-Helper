@@ -16,7 +16,15 @@ Cf. ci-dessous pour les retours et les contributions.
 - [Weda Helper](#weda-helper)
   - [Raccourcis claviers](#raccourcis-claviers)
   - [Accueil dossier patient](#accueil-dossier-patient)
+    - [Médecin traitant](#médecin-traitant)
+    - [Carte Vitale et VSM](#carte-vitale-et-vsm)
+    - [Recherche patient](#recherche-patient)
   - [Consultations](#consultations)
+    - [Historique et antécédents](#historique-et-antécédents)
+    - [Courbes de pédiatrie](#courbes-de-pédiatrie)
+    - [Navigation au clavier](#navigation-au-clavier)
+    - [Paramétrage d'alertes sur une ligne](#paramétrage-dalertes-sur-une-ligne)
+    - [Autres automatismes de consultation](#autres-automatismes-de-consultation)
   - [Prescriptions](#prescriptions)
     - [Écoute des entrées claviers lors de l'usage de la calculette de prescription](#écoute-des-entrées-claviers-lors-de-lusage-de-la-calculette-de-prescription)
     - [Ordonnances](#ordonnances)
@@ -26,6 +34,9 @@ Cf. ci-dessous pour les retours et les contributions.
     - [Options d'ordonnance numérique](#options-dordonnance-numérique)
     - [Mise en forme :](#mise-en-forme-)
   - [Feuilles de soin](#feuilles-de-soin)
+    - [Feuille de soin au clavier](#feuille-de-soin-au-clavier)
+    - [Cotations par défaut](#cotations-par-défaut)
+    - [Automatismes de la FSE](#automatismes-de-la-fse)
   - [Divers](#divers)
     - [Recettes](#recettes)
     - [Messagerie](#messagerie)
@@ -35,10 +46,13 @@ Cf. ci-dessous pour les retours et les contributions.
     - [Documents du cabinet](#documents-du-cabinet)
     - [Agenda](#agenda)
     - [Antécédents :](#antécédents-)
+      - [Paramétrage d'alertes sur les antécédents](#paramétrage-dalertes-sur-les-antécédents)
     - [Navigation :](#navigation-)
     - [Setup "headless"](#setup-headless)
     - [Vaccination "instantanée" :](#vaccination-instantanée-)
   - [Facilitation des imports](#facilitation-des-imports)
+    - [Automatisation au clavier](#automatisation-au-clavier)
+    - [Classification automatique des documents](#classification-automatique-des-documents)
   - [Weda-Helper-Companion](#weda-helper-companion)
   - [Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):](#problèmes-et-limitations-connues-qui-seront-peut-être-résolues-dans-de-futures-mises-à-jour)
   - [Contributions](#contributions)
@@ -79,35 +93,51 @@ Cf. ci-dessous pour les retours et les contributions.
 - Ctrl+K ouvre le mode "Quick Access" qui permet d’accéder à un grand nombre d’éléments de la page. Appuyez sur Echap pour en sortir, ou retour arrière pour revenir en arrière.
 
 ## Accueil dossier patient
-- Ajout d'icones pour copier automatiquement le NIR dans le presse-papier
-- Lecture automatique de la carte vitale et accès direct au dossier médical du patient (s’il est seul sur la carte vitale).
-*Cette fonction nécessite le connecteur Weda V3 installé sur votre PC. Demandez son installation à votre technicien.*
+
+### Médecin traitant
 - Automatisation de la récupération du MT et de sa mise à jour avec l'annuaire des professionnels de santé.
 - Automatisation de la déclaration de médecin traitant en un clic.
 - Automatisation du contrôle du MT + ouvre un nouvel onglet pour ne pas avoir à patienter. Un message vous indique si cela a fonctionné ou non. Vous pourrez retourner dans le premier onglet si vous souhaitez enregistrer le MT.
 - Automatisation partielle de la déclaration de MT : sélectionne automatiquement le patient en cours, pré-coche les cases de consentement. Vous n'avez plus qu'à cliquer sur "Transmettre" pour valider.
+
+### Carte Vitale et VSM
+- Ajout d'icones pour copier automatiquement le NIR dans le presse-papier
+- Lecture automatique de la carte vitale et accès direct au dossier médical du patient (s’il est seul sur la carte vitale).
+*Cette fonction nécessite le connecteur Weda V3 installé sur votre PC. Demandez son installation à votre technicien.*
 - Alerte en cas de retard ou d'absence du VSM et ajout d'un bouton pour le réaliser en un clic. (ne fonctionne que si 70%+ est en CIM-10)
+
+### Recherche patient
 - Recherche d'un patient grâce au contenu du presse-papiers en un clic.
 - Bouton "AT sans CV" pour créer un arrêt de travail sans lecture de carte vitale.
 
 ## Consultations
+
+### Historique et antécédents
 - Affichage automatique de l'historique dans une colonne à gauche : ouvre automatiquement un historique simplifié (pas de recettes notamment) dans une colonne à gauche de l'écran, uniquement dans les pages de Consultation, de Courrier, de Certificat, de Formulaire et Demandes.
 - Ouverture automatique des antécédents (désactivé par défaut)
 - Filtre automatiquement l'historique pour n'afficher que date et titre (désactivé par défaut)
+
+### Courbes de pédiatrie
 - Affichage simplifié des courbes de pédiatrie : dans les pages de consultation, il suffit de survoler "📈" devant "Poids", "Taille", "Pc" ou "IMC" pour afficher les courbes correspondantes (ne s'affiche que pour les âges et genres pertinents). Un clic permet de maintenir la courbe affichée. Un autre clic sur 📈 ou sur la courbe permet de la fermer. Ctrl+P permet de l'imprimer.
 - Le Z-score de l'IMC est automatiquement calculé si un IMC est présent. Nécessite un champ "Z-IMC" dans les questions de suivi.
 => pour les courbes pédiatriques et le Z-score vous devez cliquer sur "Enregistrer" (Ctrl+S) pour que les valeurs du jour soient prises en compte.
 (source : https://banco.podia.com/calculette-imc-z-score, Conceptrice - Caroline CARRIERE-JULIA qui a donné son accord de principe, et propriétaire APOP - représentée par Dr Véronique Nègre. Toutes les deux ont donné leur accord, je les en remercie chaleureusement)
+
+### Navigation au clavier
 - Modification du comportement de la tabulation après recherche patient. 
-- Les questions de suivi sont automatiquement affublées d'un type.
 - Permet, après la saisie du nom d'un patient, d'être directement positionné sur son nom, puis de pouvoir naviguer de patient en patient avec la touche Tab (ou maj+Tab pour aller vers le haut)
 - Facilitation de la navigation via 'Tab' et 'Shift+Tab' pour naviguer entre les champs de texte et de suivi.
 - Retrait des suggestions des titres de consultation : dans les fenêtres contenant un Titre, désactive le panneau de suggestion (fenêtres d'ordonnance, consultation, certificat, prescription, formulaire, résultats d'examen).
+
+### Paramétrage d'alertes sur une ligne
+- Une alerte peut être affichée pour chaque ligne d’item de suivi, en tapant un # et en suivant les instructions qui s’affichent alors. 
+
+### Autres automatismes de consultation
+- Les questions de suivi sont automatiquement affublées d'un type.
 - Ajout d’un raccourci vers la vue des traitements depuis la consultation
 - Ajout d'un bouton d'impression dans la vue des traitements (permet d'imprimer la vue des traitements en cours, ou de l'exporter en PDF).
 - Enregistrement automatique des consultations toutes les 3 minutes si aucune entrée n’est détectée pendant au moins 5 secondes. (permet de limiter les pertes de données en cas de crash du navigateur ou de Weda)
 - Outil de calcul du SCOR2 directement depuis la consultation
-- Une alerte peut être affichée pour chaque ligne d’item, en tapant un # et en suivant les instructions qui s’affichent alors. 
 
 
 ## Prescriptions
@@ -149,27 +179,33 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - dans les prescriptions médicamenteuses, changement de l'ensemble de la durée de traitement en 1 seul clic (prend quelques secondes par ligne de prescription).
 
 ## Feuilles de soin
+
+### Feuille de soin au clavier
 *Toute la FSE : [alt+6], [n], [n], [alt+v]*
 - les touches "n" et "o" permettent de sélectionner "non"/"oui" pour accidents de droit commun, puis ALD
 - les touches "t" et "c" permettent de sélectionner les tiers payants correspondants (AMO et AMC)
+- Ctrl+P imprime la FDS dans le cas des FSE dégradées
+
+### Cotations par défaut
 - Si elles sont utilisées, utilise une cotation dans vos favoris :
   - la cotation "DéfautPédia" pour les 0-6 ans
   - la cotation "DéfautALD" pour les ALD et les Accidents de travail
   - la cotation "DéfautTC" pour les téléconsultations
   - la cotation "DéfautMOP" pour les patients de 80+ ans dont vous n'êtes pas le MT
   - la cotation "Défaut" pour les autres
+- affichage de l'historique des cotations sur 5 ans (filtré ou non par cotations courantes), utile pour surveiller les cotations à ne faire qu'une fois tout les ans par exemple.
+- assistance à la cotation : Ajout d'une infobulle pour avertir de possibles cotations applicables à certaines situation (ex. SHE, MCG, PAV, MHP et RDV), qu'on oublie habituellement tout le temps...
+
+### Automatismes de la FSE
 - Lecture automatique de la carte vitale si elle est non lue
 - Affichage de boutons directs pour la réalisation de FDS dégradées et téléconsultation
 - Option pour cocher automatiquement "accident causé par un tier" ou "gestion unique"
 - Sélection automatique de "je suis le médecin traitant" quand c'est le cas et qu'un autre cas de figure est sélectionné
-- Ctrl+P imprime la FDS dans le cas des FSE dégradées
 - Mémorisation des derniers choix ("ne peux signer" et "Retirer le fond")
 - Coche automatiquement "Présentation d'un feuillet AT" si l'assurance "Accident du travail" est sélectionnée
 - option pour automatiquement cocher "Inclure la FSP en SCOR" si la FSE est dégradée (activée par défaut)
 - sélectionne automatiquement "Rien" dans les Pièces justificatives AMO si "Champ de donnée Actes - Pièce Justificative AMO invalide : Erreur de saisie Nature" est détecté
 - maintient le choix du mode de prise en charge AMC
-- affichage de l'historique des cotations sur 5 ans (filtré ou non par cotations courantes), utile pour surveiller les cotations à ne faire qu'une fois tout les ans par exemple.
-- assistance à la cotation : Ajout d'une infobulle pour avertir de possibles cotations applicables à certaines situation (ex. SHE, MCG, PAV, MHP et RDV), qu'on oublie habituellement tout le temps...
 - validation automatique des FSE dégradées en SCOR
 
 
@@ -207,10 +243,12 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Antécédents :
 - ajout d'options pour limiter le nombre d'atcd affichés en CIM 10 et de les trier par ordre alphabétique
-- implémentation d'une pré-alerte : si la date de l'alerte est dans moins de 6 mois (paramétrable), l'alerte est affichée en orange
-- système d'alerte si un antécédent contient un mot-clé précisé dans les options (utile pour mettre en lumière les patients éligibles à un suivi spécifique comme l'inscription à un ETP).
 - bouton "+1clickVSM" pour créer un VSM en un clic depuis la page des antécédents.
 - La date du dernier VSM est affichée dans les antécédents.
+
+#### Paramétrage d'alertes sur les antécédents
+- implémentation d'une pré-alerte : si la date de l'alerte est dans moins de 6 mois (paramétrable), l'alerte est affichée en orange
+- système d'alerte si un antécédent contient un mot-clé précisé dans les options (utile pour mettre en lumière les patients éligibles à un suivi spécifique comme l'inscription à un ETP).
 - Ajout de raccourcis dans x jours pour les dates d'alertes dans les antécédents (3 mois, 6 mois, 1 an, 2 ans, 5 ans)
 - Une alerte peut être affichée pour chaque ligne d'antécédent en tapant un # et en suivant les instructions qui s’affichent alors.
 
@@ -234,15 +272,18 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 *Tout les imports au clavier en 4 appuis sur tabulations et un appuis sur Entrée*
 
 Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedical/UpLoaderForm.aspx), les modifications suivantes sont effectuées :
+
+### Automatisation au clavier
 - Modification de l'ordre de parcours des tabulations pour permettre des intégrations uniquement au clavier (appuyer sur Tab pour passer d'un champ à l'autre)
 - Agrandissement de la fenêtre de prévisualisation pour faciliter la lecture du PDF à importer
 - Complétion automatique des dates partielles
 - En cliquant sur l'icône de l'extension, le bouton "Tout mettre en consultation" permet de sélectionner d'un coup "Consultation" pour l'ensemble des documents en attente d'importation.
+- On peut désormais utiliser Ctrl+U pour uploader directement dans Weda le document le plus récent présent dans un dossier pré-sélectionné dans le Companion. Un nouveau bouton permet d'archiver si souhaité le document après l'upload.
+
+### Classification automatique des documents
 - recherche automatique du patient, synthèse d'un titre, détection automatique de la date
 - Lors d'un import automatique, la date du document est conservée si elle est déjà déterminée par Weda.
 - Classification automatique des documents (titre, destination, type de document, médecin destinataire, etc.) dans les imports de masse et dans la messagerie sécurisée (Merci Abel !)
-
-- On peut désormais utiliser Ctrl+U pour uploader directement dans Weda le document le plus récent présent dans un dossier pré-sélectionné dans le Companion. Un nouveau bouton permet d'archiver si souhaité le document après l'upload.
 - Option pour décocher automatiquement le message et le fichier IHE_XDM.zip lors de l'importation d'un message depuis la messagerie sécurisée
 - Possibilité d'inverser automatiquement le titre du corps du message et le titre du message lors de la réception d'un courrier (beta, merci de me faire part de vos retours)
 
