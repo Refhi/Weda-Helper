@@ -21,6 +21,7 @@ Cf. ci-dessous pour les retours et les contributions.
     - [Écoute des entrées claviers lors de l'usage de la calculette de prescription](#écoute-des-entrées-claviers-lors-de-lusage-de-la-calculette-de-prescription)
     - [Ordonnances](#ordonnances)
     - [Demandes](#demandes)
+    - [Posologies](#posologies)
     - [Recherche de médicaments](#recherche-de-médicaments)
     - [Options d'ordonnance numérique](#options-dordonnance-numérique)
     - [Mise en forme :](#mise-en-forme-)
@@ -106,6 +107,7 @@ Cf. ci-dessous pour les retours et les contributions.
 - Ajout d'un bouton d'impression dans la vue des traitements (permet d'imprimer la vue des traitements en cours, ou de l'exporter en PDF).
 - Enregistrement automatique des consultations toutes les 3 minutes si aucune entrée n’est détectée pendant au moins 5 secondes. (permet de limiter les pertes de données en cas de crash du navigateur ou de Weda)
 - Outil de calcul du SCOR2 directement depuis la consultation
+- Une alerte peut être affichée pour chaque ligne d’item, en tapant un # et en suivant les instructions qui s’affichent alors. 
 
 
 ## Prescriptions
@@ -210,6 +212,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 - bouton "+1clickVSM" pour créer un VSM en un clic depuis la page des antécédents.
 - La date du dernier VSM est affichée dans les antécédents.
 - Ajout de raccourcis dans x jours pour les dates d'alertes dans les antécédents (3 mois, 6 mois, 1 an, 2 ans, 5 ans)
+- Une alerte peut être affichée pour chaque ligne d'antécédent en tapant un # et en suivant les instructions qui s’affichent alors.
 
 ### Navigation :
 - Un clic du milieu sur le W du Menu W ouvre un nouvel onglet vers l'accueil du dossier patient, et non le module en cours.
