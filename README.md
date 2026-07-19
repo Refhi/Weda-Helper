@@ -45,6 +45,7 @@ Cf. ci-dessous pour les retours et les contributions.
     - [Courriers](#courriers)
     - [Documents du cabinet](#documents-du-cabinet)
     - [Agenda](#agenda)
+    - [Post-it](#post-it)
     - [Antécédents :](#antécédents-)
       - [Paramétrage d'alertes sur les antécédents](#paramétrage-dalertes-sur-les-antécédents)
     - [Navigation :](#navigation-)
@@ -240,6 +241,9 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
 
 ### Accès facilité aux ATCD et aux notes depuis les recherches patients
 - accès facilité aux ATCD et aux notes patients depuis n'importe quelle liste de patients issus d'une recherche : Bouton de droite pour les notes, bouton du milieu (ou ctrl+clic) pour les ATCD
+
+### Post-it
+- ajout d’un bouton pour importer le contenu d’un post-it directement dans une consultation.
 
 ### Antécédents :
 - ajout d'options pour limiter le nombre d'atcd affichés en CIM 10 et de les trier par ordre alphabétique

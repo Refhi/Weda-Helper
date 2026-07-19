@@ -9,6 +9,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#627](https://github.com/Refhi/Weda-Helper/issues/627) - Ajout de raccourcis dans x jours pour les dates d'alertes dans les antécédents (3 mois, 6 mois, 1 an, 2 ans, 5 ans)
 - [#630](https://github.com/Refhi/Weda-Helper/issues/630) - Ajout d’un système d’extraction de données centralisée, permettant de faciliter certaines options, dont l’historique des facturations dans la page des FSE.
 - L’affichage de l’historique des facturations est systématiquement proposé. Il peut être rendu automatique dans les options de Weda-Helper.
+- [#629](https://github.com/Refhi/Weda-Helper/issues/629) - Ajout d’un bouton pour importer le contenu d’un post-it directement dans une consultation.
 
 ## Retrait de fonctionnalités :
 - [#619](https://github.com/Refhi/Weda-Helper/issues/619) - Il existe *déjà* une option dans Weda pour sauvegarder l’affichage préférentiel des documents dans la page de recherche des documents...
