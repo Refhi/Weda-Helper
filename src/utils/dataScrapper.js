@@ -1134,23 +1134,43 @@ function parseAttachments(pjmDiv) {
  * phase de test, on insère un bouton pour lancer la récupération des données et les afficher dans la console
  */
 addTweak('*', 'dataScrapperDebugger', function () {
-    addTestButton("Récupérer données", async () => {
-        const data = await recoverData({
-            fullPage: true,
-            categories: ["consultations"],//["etatCivil", "antecedents", "contacts", "consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse"],
-            debug: true,
-            includeLegacy: true
-        });
-        console.log("[dataScrapper] Données récupérées :", data);
-        showRecoveredData(data);
+    const debugCategories = [
+        "etatCivil",
+        "antecedents",
+        "contacts",
+        "consultations",
+        "resultatsExamens",
+        "courriers",
+        "arretsTravail",
+        "vaccins",
+        "charts",
+        "documents",
+        "grossesse"
+    ];
+
+    addTestButton("Récupérer tout", () => runDebugRecoverData(debugCategories, "tout"), 0);
+
+    debugCategories.forEach((category, index) => {
+        addTestButton(`Récupérer ${category}`, () => runDebugRecoverData([category], category), index + 1);
     });
 });
 
-function addTestButton(label, onClick) {
+async function runDebugRecoverData(categories, label) {
+    const data = await recoverData({
+        fullPage: true,
+        categories,
+        debug: true,
+        includeLegacy: true
+    });
+    console.log(`[dataScrapper] Données récupérées (${label}) :`, data);
+    showRecoveredData(data);
+}
+
+function addTestButton(label, onClick, index = 0) {
     const button = document.createElement("button");
     button.textContent = label;
     button.style.position = "fixed";
-    button.style.bottom = "10px";
+    button.style.bottom = `${10 + (index * 36)}px`;
     button.style.right = "10px";
     button.style.zIndex = 1000;
     button.addEventListener("click", onClick);
