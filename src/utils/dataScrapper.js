@@ -134,13 +134,16 @@ async function recoverData({
             if (button) {
                 console.log(`[dataScrapper] Bouton cliqué pour la catégorie : ${category}`, button);
                 button.click();
+                await loadingIsComplete(iframe, `chargement UI après clic catégorie ${category}`);
                 await categoryLoadingComplete(iframe, category);
                 console.log(`[dataScrapper] Données chargées pour la catégorie : ${category}`);
             } else {
                 console.warn(`[dataScrapper] Bouton introuvable pour la catégorie : ${category}`);
             }
         }
-        
+
+        // Le document peut être remplacé après un postback ASP.NET : on le relit juste avant le parse.
+        iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
         data[category] = recoverMainViewData(iframeDocument, categorySelectors, includeLegacy, category);
     }
 
