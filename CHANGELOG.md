@@ -10,6 +10,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#630](https://github.com/Refhi/Weda-Helper/issues/630) - Ajout d’un système d’extraction de données centralisée, permettant de faciliter certaines options, dont l’historique des facturations dans la page des FSE.
 - L’affichage de l’historique des facturations est systématiquement proposé. Il peut être rendu automatique dans les options de Weda-Helper.
 - [#629](https://github.com/Refhi/Weda-Helper/issues/629) - Ajout d’un bouton pour importer le contenu d’un post-it directement dans une consultation.
+- [#615](https://github.com/Refhi/Weda-Helper/issues/615) - le calcul du SCORE2 utilise bien plus de données récupérées automatiquement.
 
 ## Retrait de fonctionnalités :
 - [#619](https://github.com/Refhi/Weda-Helper/issues/619) - Il existe *déjà* une option dans Weda pour sauvegarder l’affichage préférentiel des documents dans la page de recherche des documents...
