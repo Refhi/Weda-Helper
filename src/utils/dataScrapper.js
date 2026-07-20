@@ -961,6 +961,59 @@ function parseDayContainer(container, categorySelectors) {
 }
 
 /**
+ * Extrait une valeur de type "Label : valeur" depuis un tableau de lignes.
+ * @param {Array<string>} lines
+ * @param {string} label
+ * @returns {string|null}
+ */
+function extractLabeledValue(lines, label) {
+    const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`^${escapedLabel}\\s*:\\s*(.+)$`, 'i');
+    const line = lines.find(l => regex.test(l));
+    return line ? line.replace(regex, '$1').trim() : null;
+}
+
+/**
+ * Parse le contenu textuel d'un "Arrêt de travail" en champs structurés.
+ * @param {Array<string>} lines - Lignes textuelles du bloc .stx
+ * @returns {Object|null}
+ */
+function parseArretTravailFields(lines) {
+    if (!Array.isArray(lines) || lines.length === 0) return null;
+
+    const debut = extractLabeledValue(lines, 'Début');
+    const typeArret = extractLabeledValue(lines, 'Type');
+    const arretMode = extractLabeledValue(lines, 'Arrêt de travail');
+    const dureeRaw = extractLabeledValue(lines, 'Durée');
+    const fin = extractLabeledValue(lines, 'Fin');
+
+    const motifLine = lines.find(line => /^Motif\s*:/i.test(line));
+    const motifCode = motifLine?.match(/code\s*([^\)\]]+)/i)?.[1]?.trim() || null;
+    const motif = extractLabeledValue(lines, 'Motif');
+
+    const transmissionLine = lines.find(line => /Arrêt transmis via AATi/i.test(line)) || null;
+    const identifiantAATi = transmissionLine?.match(/identifiant\s*:\s*([A-Z0-9-]+)/i)?.[1] || null;
+
+    const enRapportATMP = lines.find(line => /En rapport avec un accident de travail, maladie professionnelle/i.test(line)) || null;
+    const dureeJours = dureeRaw?.match(/(\d+)/)?.[1] ? parseInt(dureeRaw.match(/(\d+)/)[1], 10) : null;
+
+    return {
+        debut,
+        type: typeArret,
+        mode: arretMode,
+        enRapportAccidentTravailMP: !!enRapportATMP,
+        enRapportAccidentTravailMPDetail: enRapportATMP,
+        duree: dureeRaw,
+        dureeJours,
+        fin,
+        motifCode,
+        motif,
+        identifiantAATi,
+        transmission: transmissionLine,
+    };
+}
+
+/**
  * Parse un document individuel (consultation, prescription, etc.)
  * @param {HTMLElement} div - Élément div[name="dhX"]
  * @returns {Object|null} Données du document ou null si vide
@@ -985,14 +1038,26 @@ function parseDocument(div) {
     
     // Contenu textuel
     const contentDivs = div.querySelectorAll(SELECTORS.document.text);
-    const content = Array.from(contentDivs).map(el => el.textContent.trim()).filter(text => text.length > 0);
-    
-    return {
+    const content = Array.from(contentDivs)
+        .map(el => extractRawBlockText(el))
+        .filter(text => text.length > 0);
+
+    const parsedDocument = {
         type,
         title,
         ...cleanAuthorName(textOf(sstDiv, SELECTORS.document.signature)),
         content: content.length > 0 ? content : null,
     };
+
+    if (type === 'arrettravail') {
+        const arretLines = content
+            .flatMap(block => block.split('\n'))
+            .map(line => line.trim())
+            .filter(Boolean);
+        parsedDocument.arretTravail = parseArretTravailFields(arretLines);
+    }
+
+    return parsedDocument;
 }
 
 /**
