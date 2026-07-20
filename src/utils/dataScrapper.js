@@ -991,6 +991,107 @@ function extractLabeledValue(lines, label) {
 }
 
 /**
+ * Normalise un libellé d'analyse pour permettre une recherche robuste
+ * (insensible aux accents, à la casse et aux espaces multiples).
+ * @param {string|null} label
+ * @returns {string}
+ */
+function normalizeBioLabelKey(label) {
+    return (label || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toUpperCase();
+}
+
+/**
+ * Convertit une valeur texte en nombre si possible (ex: "12.8", "247,19").
+ * @param {string|null} raw
+ * @returns {number|null}
+ */
+function toBioNumber(raw) {
+    if (!raw) return null;
+    const normalized = raw.replace(',', '.').replace(/\s+/g, '');
+    const value = Number(normalized);
+    return Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Extrait les analyses biologiques depuis le tableau HPRIM (table.hprimgrid).
+ * Retourne une structure indexée uniquement par libellé.
+ * La structuration n'est faite que si un tableau avec en-têtes attendus est détecté
+ * (au minimum: Libellé, Valeur, Unité).
+ * @param {HTMLElement} documentDiv - Le bloc document (div[name="dhX"])
+ * @returns {Object<string, Array<Object>>|null}
+ */
+function parseBiologyResults(documentDiv) {
+    const tables = documentDiv.querySelectorAll('table.hprimgrid');
+    const byLibelle = {};
+    let hasValidHeader = false;
+
+    tables.forEach(table => {
+        const rows = Array.from(table.querySelectorAll(':scope > tbody > tr, :scope > tr'));
+        if (rows.length === 0) return;
+
+        const headerCells = Array.from(rows[0].querySelectorAll(':scope > td'))
+            .map(td => normalizeBioLabelKey(textOf(td)));
+        const hasExpectedColumns =
+            headerCells.length >= 3 &&
+            headerCells[0] === 'LIBELLE' &&
+            headerCells[1] === 'VALEUR' &&
+            headerCells[2] === 'UNITE';
+
+        if (!hasExpectedColumns) return;
+
+        hasValidHeader = true;
+        const dataRows = rows.slice(1); // 1ère ligne = en-têtes (Libellé, Valeur, Unité, Min, Max)
+
+        dataRows.forEach(row => {
+            const cells = row.querySelectorAll(':scope > td');
+            if (cells.length < 2) return;
+
+            const libelle = textOf(cells[0]);
+            const valeur = textOf(cells[1]);
+            if (!libelle || !valeur) return;
+
+            const unite = textOf(cells[2]);
+            const minimum = textOf(cells[3]);
+            const maximum = textOf(cells[4]);
+            const horsNormes = Array.from(cells).some(cell => /color\s*:\s*#CE0000/i.test(cell.getAttribute('style') || ''));
+
+            const analyse = {
+                valeur,
+                valeurNombre: toBioNumber(valeur),
+                unite,
+                minimum,
+                maximum,
+                minimumNombre: toBioNumber(minimum),
+                maximumNombre: toBioNumber(maximum),
+                horsNormes,
+            };
+
+            if (!byLibelle[libelle]) {
+                byLibelle[libelle] = [];
+            }
+
+            const isDuplicate = byLibelle[libelle].some(existing =>
+                existing.valeur === analyse.valeur &&
+                existing.unite === analyse.unite &&
+                existing.minimum === analyse.minimum &&
+                existing.maximum === analyse.maximum
+            );
+            if (!isDuplicate) {
+                byLibelle[libelle].push(analyse);
+            }
+        });
+    });
+
+    if (!hasValidHeader || Object.keys(byLibelle).length === 0) return null;
+    return byLibelle;
+}
+
+/**
  * Parse le contenu textuel d'un "Arrêt de travail" en champs structurés.
  * @param {Array<string>} lines - Lignes textuelles du bloc .stx
  * @returns {Object|null}
@@ -1072,6 +1173,16 @@ function parseDocument(div) {
             .map(line => line.trim())
             .filter(Boolean);
         parsedDocument.arretTravail = parseArretTravailFields(arretLines);
+    }
+
+    if (type === 'resultatexamen') {
+        const structuredBioResults = parseBiologyResults(div);
+        if (structuredBioResults) {
+            parsedDocument.resultatsBio = structuredBioResults;
+        } else {
+            parsedDocument.rawContent = parsedDocument.content;
+        }
+        delete parsedDocument.content;
     }
 
     return parsedDocument;
