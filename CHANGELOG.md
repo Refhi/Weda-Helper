@@ -17,6 +17,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 ## Fix :
 - [#625](https://github.com/Refhi/Weda-Helper/issues/625) - Réparation de l’aide qui s’affiche quand on maintient Alt appuyé... encore... ce coup-ci c’est censé fonctionner...
 - [#628](https://github.com/Refhi/Weda-Helper/issues/628) - Fix du raccourcis vers les éléments patients depuis les échanges sécurisés (en bas de page après un appuis sur "Importer le message")
+- [#620](https://github.com/Refhi/Weda-Helper/issues/620) - L'enregistrement automatique est correctement inhibé quelques secondes lors des saisies utilisateur.
 
 # [3.0.0.4] - Hotfix
 ## Fix :
