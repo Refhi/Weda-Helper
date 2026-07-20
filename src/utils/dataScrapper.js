@@ -117,6 +117,7 @@ async function recoverData({
     if (fullPage) {
         await loadFullPage(iframeDocument)
         console.log('[dataScrapper] Page complète chargée');
+        await sleep(100); // On attend un peu pour que le DOM soit stable
     }
 
     // On récupère les données pour chaque catégorie demandée
