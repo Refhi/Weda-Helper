@@ -99,6 +99,23 @@ const SELECTORS = {
 
 
 // ───────────────────────────────────────────────────────────────────────────────
+/**
+ * Récupère les données d'historique patient depuis Weda, par catégories.
+ *
+ * Retourne un objet structuré facile à parser
+ * 
+ * @example
+ * const data = await recoverData({
+ *     fullPage: true,                              // Charge l'intégralité de la page d'historique (au lieu des 10 par défaut de Weda)
+ *     categories: ["consultations", "etatCivil"],  // Liste des catégories à récupérer (par défaut : ["consultations"])
+ *     includeLegacy: false,                        // Récupère en plus les journées importées d'un ancien logiciel, quand la catégorie le permet (par défaut : false)
+ *     debug: false,                                // Laisse l'iframe de récupération affichée en fin d'appel
+ * });
+ * console.log(data);
+ *
+ * @argument categories ["consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse", "etatCivil", "antecedents", "contacts"]
+ * 
+ */
 async function recoverData({
     fullPage = false, // De base on ne va vérifier que les 10 derniers subContainers chargés par défaut. N'est probablement pas possible pour charts et vaccins
     categories = ["consultations"], // Ce qui est chargé par défaut est la catégorie "consultations".
