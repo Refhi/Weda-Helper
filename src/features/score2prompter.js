@@ -578,7 +578,7 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
         // Informations secondaires (cachées derrière un ?)
         let infoText = '';
         if (paramConfig.itemsKeywords) {
-            infoText += `🔍 Mots-clés cherchés : ${paramConfig.itemsKeywords.join(', ')}\n`;
+            infoText += `🔍 Mots-clés recherchés dans les items de suivi (colonne de droite de la consultation) : ${paramConfig.itemsKeywords.join(', ')}\nPour un remplissage automatique, créez un item dont le libellé contient un de ces mots-clés.`;
         }
         if (paramConfig.unit) {
             infoText += `📏 Unité : ${paramConfig.unit}`;
@@ -608,22 +608,61 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
         const tooltip = document.createElement('div');
         tooltip.style.cssText = `
             display: none;
-            position: absolute;
-            left: 22px; top: -4px;
+            position: fixed;
             background: #333; color: #eee;
             font-size: 12px; line-height: 1.5;
             padding: 8px 10px; border-radius: 6px;
-            white-space: pre-line; z-index: 9999;
+            white-space: pre-line; z-index: 20000;
             min-width: 220px; max-width: 320px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         `;
         tooltip.textContent = infoText || 'Aucune information complémentaire';
 
-        infoBtn.addEventListener('mouseenter', () => tooltip.style.display = 'block');
-        infoBtn.addEventListener('mouseleave', () => tooltip.style.display = 'none');
+        const positionFloatingTooltip = (anchorEl, tooltipEl) => {
+            const spacing = 8;
+            const anchorRect = anchorEl.getBoundingClientRect();
+            const tooltipRect = tooltipEl.getBoundingClientRect();
+
+            let left = anchorRect.right + spacing;
+            let top = anchorRect.top - 4;
+
+            if (left + tooltipRect.width > window.innerWidth - spacing) {
+                left = Math.max(spacing, anchorRect.left - tooltipRect.width - spacing);
+            }
+
+            if (top + tooltipRect.height > window.innerHeight - spacing) {
+                top = Math.max(spacing, window.innerHeight - tooltipRect.height - spacing);
+            }
+
+            if (top < spacing) {
+                top = spacing;
+            }
+
+            tooltipEl.style.left = `${left}px`;
+            tooltipEl.style.top = `${top}px`;
+        };
+
+        const showTooltip = () => {
+            if (tooltip.parentNode !== document.body) {
+                document.body.appendChild(tooltip);
+            }
+            tooltip.style.display = 'block';
+            positionFloatingTooltip(infoBtn, tooltip);
+        };
+
+        const hideTooltip = () => {
+            tooltip.style.display = 'none';
+        };
+
+        infoBtn.addEventListener('mouseenter', showTooltip);
+        infoBtn.addEventListener('mouseleave', hideTooltip);
         infoBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            tooltip.style.display = tooltip.style.display === 'none' ? 'block' : 'none';
+            if (tooltip.style.display === 'none') {
+                showTooltip();
+            } else {
+                hideTooltip();
+            }
         });
 
         infoWrapper.appendChild(infoBtn);
@@ -703,22 +742,37 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
 
                     const detailTooltip = document.createElement('div');
                     detailTooltip.style.cssText = `
-                        display: none; position: absolute;
-                        left: 20px; top: -4px;
+                        display: none; position: fixed;
                         background: #333; color: #eee;
                         font-size: 11px; line-height: 1.4;
                         padding: 6px 8px; border-radius: 6px;
-                        white-space: pre-line; z-index: 9999;
+                        white-space: pre-line; z-index: 20000;
                         min-width: 200px; max-width: 300px;
                         box-shadow: 0 2px 8px rgba(0,0,0,0.3);
                     `;
                     detailTooltip.textContent = paramConfig.detailValues[value];
 
-                    detailBtn.addEventListener('mouseenter', () => detailTooltip.style.display = 'block');
-                    detailBtn.addEventListener('mouseleave', () => detailTooltip.style.display = 'none');
+                    const showDetailTooltip = () => {
+                        if (detailTooltip.parentNode !== document.body) {
+                            document.body.appendChild(detailTooltip);
+                        }
+                        detailTooltip.style.display = 'block';
+                        positionFloatingTooltip(detailBtn, detailTooltip);
+                    };
+
+                    const hideDetailTooltip = () => {
+                        detailTooltip.style.display = 'none';
+                    };
+
+                    detailBtn.addEventListener('mouseenter', showDetailTooltip);
+                    detailBtn.addEventListener('mouseleave', hideDetailTooltip);
                     detailBtn.addEventListener('click', (e) => {
                         e.preventDefault(); e.stopPropagation();
-                        detailTooltip.style.display = detailTooltip.style.display === 'none' ? 'block' : 'none';
+                        if (detailTooltip.style.display === 'none') {
+                            showDetailTooltip();
+                        } else {
+                            hideDetailTooltip();
+                        }
                     });
 
                     detailWrapper.appendChild(detailBtn);
