@@ -152,6 +152,14 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
         matchSuiviItemsToParams(suiviItems, SCORE2_PARAMS);
         console.log('[autoScore2] Paramètres après rapprochement :', SCORE2_PARAMS);
 
+        // Complément des valeurs encore manquantes via l'historique du patient (dataScrapper)
+        try {
+            await fillMissingValuesFromHistory(SCORE2_PARAMS);
+        } catch (error) {
+            console.warn('[autoScore2] Échec de la récupération de l\'historique patient, poursuite sans ces données', error);
+        }
+        console.log('[autoScore2] Paramètres après complément par l\'historique :', SCORE2_PARAMS);
+
         // Demander les valeurs manquantes à l'utilisateur
         const allValuesProvided = await promptMissingValues(SCORE2_PARAMS);
         if (!allValuesProvided) {
@@ -292,6 +300,168 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
         }
         
         return params;
+    }
+
+    /**
+     * Indique si un paramètre SCORE2 n'a pas encore de valeur renseignée.
+     */
+    function isParamMissing(paramConfig) {
+        return paramConfig.value === undefined || paramConfig.value === null || paramConfig.value === '';
+    }
+
+    /**
+     * Convertit une date au format "JJ/MM/AAAA" en objet Date (minuit), ou null si invalide/absente.
+     */
+    function parseFrenchDate(dateStr) {
+        const match = dateStr?.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        if (!match) return null;
+        const [, day, month, year] = match;
+        return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+
+    /**
+     * Un antécédent est considéré comme toujours actif si sa date de fin est absente,
+     * ou si elle n'est pas encore dépassée.
+     */
+    function isAntecedentStillActive(dateFin) {
+        const fin = parseFrenchDate(dateFin);
+        return !fin || fin >= new Date();
+    }
+
+    /**
+     * Normalise un texte pour une recherche de mot-clé robuste : accents supprimés,
+     * ponctuation neutralisée en espaces, casse uniforme.
+     */
+    function normalizeForKeywordMatch(text) {
+        return normalizeBioLabelKey(text).replace(/[^A-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * Vérifie qu'un mot-clé (potentiellement composé de plusieurs mots) est bien présent
+     * dans un texte, en bordure de mots (insensible aux accents/casse/ponctuation).
+     */
+    function textMatchesKeyword(text, keyword) {
+        const normalizedText = ` ${normalizeForKeywordMatch(text)} `;
+        const normalizedKeyword = ` ${normalizeForKeywordMatch(keyword)} `;
+        return normalizedText.includes(normalizedKeyword);
+    }
+
+    /**
+     * Cherche, parmi les données "antecedents" du dataScrapper, un antécédent encore actif
+     * dont le titre correspond à l'un des mots-clés donnés. Les sections dont le titre
+     * contient "familial"/"familiaux" sont ignorées (antécédents familiaux, non personnels).
+     * @param {Array<Object>} antecedentsData - Données de la catégorie "antecedents" (recoverData)
+     * @param {Array<string>} keywords - Mots-clés à rechercher dans le titre de l'antécédent
+     * @returns {Object|null} L'antécédent trouvé, ou null
+     */
+    function findActiveAntecedent(antecedentsData, keywords) {
+        for (const section of antecedentsData || []) {
+            if (textMatchesKeyword(section.titre || '', 'familial') || textMatchesKeyword(section.titre || '', 'familiaux')) {
+                continue;
+            }
+            for (const item of section.items || []) {
+                if (!item.titre) continue;
+                const matches = keywords.some(keyword => textMatchesKeyword(item.titre, keyword));
+                if (matches && isAntecedentStillActive(item.dates?.fin)) {
+                    return item;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Cherche, parmi les données "resultatsExamens" du dataScrapper, la première valeur
+     * numérique d'une analyse dont le libellé correspond à l'un des mots-clés donnés
+     * (le résultat le plus récent en premier). Un filtre optionnel sur l'unité peut être fourni.
+     * @param {Array<Object>} resultatsExamensData - Données de la catégorie "resultatsExamens"
+     * @param {Array<string>} keywords - Mots-clés à rechercher dans le libellé de l'analyse
+     * @param {Function} [unitFilter] - Fonction (unite) => boolean, pour restreindre l'unité acceptée
+     * @returns {number|null} La valeur numérique trouvée, ou null
+     */
+    function findBioValue(resultatsExamensData, keywords, unitFilter = null) {
+        for (const day of resultatsExamensData || []) {
+            for (const doc of day.documents || []) {
+                if (!doc.resultatsBio) continue;
+                for (const [label, entries] of Object.entries(doc.resultatsBio)) {
+                    if (!keywords.some(keyword => textMatchesKeyword(label, keyword))) continue;
+                    for (const entry of entries) {
+                        if (entry.valeurNombre === null || entry.valeurNombre === undefined) continue;
+                        if (unitFilter && !unitFilter(entry.unite)) continue;
+                        return entry.valeurNombre;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Complète les paramètres SCORE2 encore manquants (diabète, tabac, cholestérol total,
+     * cholestérol HDL, pression artérielle systolique) en consultant l'historique du patient
+     * (antécédents et résultats d'examens) via le dataScrapper. Ne remplace jamais une valeur
+     * déjà renseignée par matchSuiviItemsToParams : ne comble que ce qui manque encore.
+     * @param {Object} params - SCORE2_PARAMS
+     */
+    async function fillMissingValuesFromHistory(params) {
+        const needsAntecedents = isParamMissing(params.diabetes) || isParamMissing(params.smoker);
+        const needsResultatsExamens = isParamMissing(params.totalChol) || isParamMissing(params.totalHdl) || isParamMissing(params.systolicBp);
+
+        if (!needsAntecedents && !needsResultatsExamens) {
+            console.log('[autoScore2] Aucune valeur manquante à compléter via l\'historique du patient');
+            return;
+        }
+
+        console.log('[autoScore2] Récupération de l\'historique du patient (antécédents / résultats d\'examens) pour compléter les valeurs manquantes');
+        const historyData = await recoverData({
+            fullPage: false,
+            categories: ["antecedents", "resultatsExamens"],
+        });
+
+        if (needsAntecedents) {
+            if (isParamMissing(params.diabetes)) {
+                const diabeteAtcd = findActiveAntecedent(historyData.antecedents, ['diabete']);
+                if (diabeteAtcd) {
+                    params.diabetes.value = 1;
+                    console.log(`[autoScore2] ✓ "diabetes" = 1 (antécédent actif trouvé : "${diabeteAtcd.titre}")`);
+                }
+            }
+            if (isParamMissing(params.smoker)) {
+                const tabacAtcd = findActiveAntecedent(historyData.antecedents, ['tabac', 'tabagisme']);
+                if (tabacAtcd) {
+                    params.smoker.value = 1;
+                    console.log(`[autoScore2] ✓ "smoker" = 1 (antécédent actif trouvé : "${tabacAtcd.titre}")`);
+                }
+            }
+        }
+
+        if (needsResultatsExamens) {
+            const isMmolL = unite => (unite || '').trim().toLowerCase() === 'mmol/l';
+
+            if (isParamMissing(params.totalChol)) {
+                const value = findBioValue(historyData.resultatsExamens, ['Cholesterol Total', 'Cholestérol Total', 'Cho. Total'], isMmolL);
+                if (value !== null) {
+                    params.totalChol.value = value;
+                    params.totalChol.foundUnit = 'mmol/L';
+                    console.log(`[autoScore2] ✓ "totalChol" = ${value} mmol/L (résultats d'examens)`);
+                }
+            }
+            if (isParamMissing(params.totalHdl)) {
+                const value = findBioValue(historyData.resultatsExamens, ['HDL'], isMmolL);
+                if (value !== null) {
+                    params.totalHdl.value = value;
+                    params.totalHdl.foundUnit = 'mmol/L';
+                    console.log(`[autoScore2] ✓ "totalHdl" = ${value} mmol/L (résultats d'examens)`);
+                }
+            }
+            if (isParamMissing(params.systolicBp)) {
+                const value = findBioValue(historyData.resultatsExamens, ['TAS']);
+                if (value !== null) {
+                    params.systolicBp.value = value;
+                    console.log(`[autoScore2] ✓ "systolicBp" = ${value} (résultats d'examens)`);
+                }
+            }
+        }
     }
 
     /**

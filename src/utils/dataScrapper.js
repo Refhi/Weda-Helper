@@ -487,10 +487,100 @@ function parseContacts(container) {
 }
 
 /**
+ * Extrait la première date suivant un libellé (ex: "Alerte : 11/07/2031").
+ * @param {string} text
+ * @param {string} label
+ * @returns {string|null}
+ */
+function extractAntecedentDate(text, label) {
+    const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`${escapedLabel}\\s*:\\s*(\\d{2}\\/\\d{2}\\/\\d{4})`, 'i');
+    return text.match(regex)?.[1] || null;
+}
+
+/**
+ * Extrait la première date "ponctuelle" (date isolée non rattachée à Début/Fin/Alerte).
+ * @param {string} text
+ * @param {{debut: string|null, fin: string|null, alerte: string|null}} datesConnues
+ * @returns {string|null}
+ */
+function extractAntecedentDatePonctuelle(text, datesConnues) {
+    const allDates = Array.from(text.matchAll(/\b(\d{2}\/\d{2}\/\d{4})\b/g)).map(match => match[1]);
+    const excluded = new Set([datesConnues.debut, datesConnues.fin, datesConnues.alerte].filter(Boolean));
+    const ponctuelle = allDates.find(date => !excluded.has(date));
+    return ponctuelle || null;
+}
+
+/**
+ * Nettoie le titre d'antécédent depuis la première ligne textuelle.
+ * @param {string} firstLine
+ * @returns {string|null}
+ */
+function cleanAntecedentTitle(firstLine) {
+    if (!firstLine) return null;
+
+    let title = firstLine
+        .replace(/\(\s*(Début|Fin|Alerte)\s*(le)?\s*:\s*\d{2}\/\d{2}\/\d{4}\s*\)/gi, '')
+        .replace(/\[[^\]]+\]/g, '')
+        .replace(/\b(Début|Fin|Alerte)\s*:\s*\d{2}\/\d{2}\/\d{4}\.?/gi, '')
+        .replace(/\b(Lat[eé]ralit[eé])\s*:\s*[^.]+/gi, '')
+        .trim();
+
+    // Cas fréquents: "rubrique : nom de l'atcd"
+    if (title.includes(':')) {
+        const parts = title.split(':').map(part => part.trim()).filter(Boolean);
+        if (parts.length > 1) {
+            const candidate = parts[parts.length - 1];
+            if (/[A-Za-zÀ-ÿ]/.test(candidate) && !/^\d{2}\/\d{2}\/\d{4}/.test(candidate)) {
+                title = candidate;
+            }
+        }
+    }
+
+    title = title.replace(/[\s.]+$/g, '').trim();
+    return title || null;
+}
+
+/**
+ * Parse une entrée d'antécédent en structure exploitable (sans conserver de doublon brut).
+ * @param {string} text
+ * @returns {Object}
+ */
+function parseAntecedentItem(text) {
+    const lines = (text || '')
+        .split('\n')
+        .map(line => line.trim())
+        .filter(Boolean);
+    const firstLine = lines[0] || null;
+    const fullText = lines.join(' ');
+
+    const cim10Code = firstLine?.match(/\[([^\]]+)\]/)?.[1] || null;
+    const debut = extractAntecedentDate(fullText, 'Début');
+    const fin = extractAntecedentDate(fullText, 'Fin');
+    const alerte = extractAntecedentDate(fullText, 'Alerte');
+    const ponctuelle = extractAntecedentDatePonctuelle(fullText, { debut, fin, alerte });
+
+    const descriptionLines = lines.slice(1).filter(line => !/\b(Début|Fin|Alerte)\s*:/.test(line));
+    const description = descriptionLines.length > 0 ? descriptionLines.join('\n') : null;
+
+    return {
+        titre: cleanAntecedentTitle(firstLine),
+        cim10Code,
+        dates: {
+            debut,
+            fin,
+            ponctuelle,
+            alerte,
+        },
+        description,
+    };
+}
+
+/**
  * Parse le bloc "Antécédents" du patient, organisé en sections (Médicaux, Chirurgicaux, Gynécologiques, etc.)
  * Chaque section commence par un div.st > .sm contenant le titre de la section.
  * @param {HTMLElement} container - Le mainContainer de la catégorie antecedents
- * @returns {Array<Object>} Liste des sections avec leurs items en texte brut nettoyé
+ * @returns {Array<Object>} Liste des sections avec items structurés (sans doublons de données)
  */
 function parseAntecedents(container) {
     const block = container.querySelector('.sc') || container;
@@ -505,14 +595,20 @@ function parseAntecedents(container) {
                 sections.push(currentSection);
             }
             const titleEl = child.querySelector('.sm');
-            currentSection = { titre: (titleEl || child).textContent.trim(), items: [] };
+            currentSection = {
+                titre: (titleEl || child).textContent.trim(),
+                items: [],
+            };
         } else {
             if (!currentSection) {
-                currentSection = { titre: "Général", items: [] };
+                currentSection = {
+                    titre: "Général",
+                    items: [],
+                };
             }
             const text = extractRawBlockText(child);
             if (text) {
-                currentSection.items.push(text);
+                currentSection.items.push(parseAntecedentItem(text));
             }
         }
     }
