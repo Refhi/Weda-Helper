@@ -24,7 +24,7 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
             score2Button.value = 'SCORE2';
             score2Button.id = 'WedaHelper_ButtonScore2';
             score2Button.className = 'buttonheader';
-            score2Button.title = 'Calculer le SCORE2 (Weda-Helper). Aller dans les options de Weda-Helper pour désactiver ce bouton si nécessaire.';
+            score2Button.title = 'Calculer le SCORE2 (Weda-Helper). Récupère automatiquement les valeurs disponibles (items de suivi, antécédents, résultats d\'examens) et vous demande de compléter le reste. Aller dans les options de Weda-Helper pour désactiver ce bouton si nécessaire.';
             score2Button.style.width = 'auto';
             score2Button.style.cssFloat = 'right';
 
@@ -43,7 +43,16 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
             // Attacher l'événement de clic
             score2Button.addEventListener('click', async function() {
                 console.log('[autoScore2] Bouton SCORE2 cliqué, début du calcul');
-                await calculateScore2();
+                const titreInitial = score2Button.title;
+                score2Button.value = '⏳ SCORE2...';
+                score2Button.disabled = true;
+                try {
+                    await calculateScore2();
+                } finally {
+                    score2Button.value = 'SCORE2';
+                    score2Button.title = titreInitial;
+                    score2Button.disabled = false;
+                }
             });
             
             console.log('[autoScore2] Bouton SCORE2 ajouté avec succès');
