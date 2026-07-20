@@ -1044,6 +1044,56 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
     }
     
     /**
+     * Met en forme la valeur d'un paramètre SCORE2 pour affichage/copie (libellé simplifié,
+     * conversion Homme/Femme, arrondi + unité pour les valeurs numériques).
+     * @param {string} key - Clé du paramètre (ex: 'gender', 'totalChol')
+     * @param {Object} paramConfig - Configuration du paramètre (SCORE2_PARAMS[key])
+     * @returns {string} Valeur formatée pour affichage
+     */
+    function formatScore2ParamDisplayValue(key, paramConfig) {
+        let displayValue = paramConfig.value;
+
+        if (paramConfig.simplifiedValues && paramConfig.simplifiedValues[displayValue]) {
+            displayValue = paramConfig.simplifiedValues[displayValue];
+        } else if (key === 'gender') {
+            displayValue = displayValue === 'male' ? 'Homme' : 'Femme';
+        } else if (typeof displayValue === 'number' && paramConfig.unit) {
+            displayValue = `${displayValue.toFixed(2)} ${paramConfig.unit}`;
+        } else if (typeof displayValue === 'number') {
+            displayValue = displayValue.toFixed(2);
+        }
+
+        return displayValue;
+    }
+
+    /**
+     * Construit le texte à copier dans le presse-papier : date/heure de réalisation,
+     * résultat du SCORE2 et paramètres utilisés pour le calcul.
+     * @param {number} score2Result - Résultat du calcul SCORE2 (%)
+     * @param {Object} params - SCORE2_PARAMS
+     * @param {Array<{key: string, label: string}>} paramsToDisplay - Paramètres à inclure
+     * @returns {string} Texte prêt à être copié
+     */
+    function buildScore2ClipboardText(score2Result, params, paramsToDisplay) {
+        const maintenant = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        const dateStr = `${pad(maintenant.getDate())}/${pad(maintenant.getMonth() + 1)}/${maintenant.getFullYear()}`;
+        const heureStr = `${pad(maintenant.getHours())}:${pad(maintenant.getMinutes())}`;
+
+        const lignes = [
+            `SCORE2 - réalisé le ${dateStr} à ${heureStr}`,
+            `Risque cardiovasculaire à 10 ans : ${score2Result.toFixed(1)} %`,
+            '',
+        ];
+
+        paramsToDisplay.forEach(({ key, label }) => {
+            lignes.push(`${label} : ${formatScore2ParamDisplayValue(key, params[key])}`);
+        });
+
+        return lignes.join('\n');
+    }
+
+    /**
      * Affiche le résultat du calcul SCORE2 dans un modal
      */
     function showScore2ResultModal(score2Result, params) {
@@ -1157,18 +1207,7 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
         
         paramsToDisplay.forEach(({ key, label }) => {
             const paramConfig = params[key];
-            let displayValue = paramConfig.value;
-            
-            // Affichage personnalisé selon le type
-            if (paramConfig.simplifiedValues && paramConfig.simplifiedValues[displayValue]) {
-                displayValue = paramConfig.simplifiedValues[displayValue];
-            } else if (key === 'gender') {
-                displayValue = displayValue === 'male' ? 'Homme' : 'Femme';
-            } else if (typeof displayValue === 'number' && paramConfig.unit) {
-                displayValue = `${displayValue.toFixed(2)} ${paramConfig.unit}`;
-            } else if (typeof displayValue === 'number') {
-                displayValue = displayValue.toFixed(2);
-            }
+            const displayValue = formatScore2ParamDisplayValue(key, paramConfig);
             
             const paramRow = document.createElement('div');
             paramRow.style.cssText = `
@@ -1207,9 +1246,37 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
             border-top: 1px solid #e0e0e0;
             display: flex;
             justify-content: center;
+            gap: 12px;
             background: #f5f5f5;
         `;
         
+        const copyButton = document.createElement('button');
+        copyButton.textContent = '📋 Copier le résultat';
+        copyButton.style.cssText = `
+            padding: 10px 30px;
+            border: none;
+            background: #4CAF50;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        `;
+        copyButton.onmouseover = () => copyButton.style.background = '#43a047';
+        copyButton.onmouseout = () => copyButton.style.background = '#4CAF50';
+
+        copyButton.onclick = () => {
+            const texteACopier = buildScore2ClipboardText(score2Result, params, paramsToDisplay);
+            navigator.clipboard.writeText(texteACopier).then(() => {
+                const texteOriginal = copyButton.textContent;
+                copyButton.textContent = '✓ Copié !';
+                setTimeout(() => { copyButton.textContent = texteOriginal; }, 1500);
+            }).catch(error => {
+                console.error('[autoScore2] Échec de la copie dans le presse-papier', error);
+                alert("Impossible de copier le résultat dans le presse-papier.");
+            });
+        };
+
         const closeButton = document.createElement('button');
         closeButton.textContent = 'Fermer';
         closeButton.style.cssText = `
@@ -1239,6 +1306,7 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
         document.addEventListener('keydown', handleEscape);
         
         // Assembler le modal
+        footer.appendChild(copyButton);
         footer.appendChild(closeButton);
         modal.appendChild(header);
         modal.appendChild(body);
