@@ -130,13 +130,6 @@ async function recoverData({
     const iframe = await makeIframeForPatientHistory(urlToLoad, debug);
     let iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
 
-    // On affiche l'historique complet si demandé
-    if (fullPage) {
-        await loadFullPage(iframeDocument)
-        console.log('[dataScrapper] Page complète chargée');
-        await sleep(100); // On attend un peu pour que le DOM soit stable
-    }
-
     // On récupère les données pour chaque catégorie demandée
     for (const category of categories) {
         const categorySelectors = SELECTORS.categories[category];
@@ -158,6 +151,15 @@ async function recoverData({
             } else {
                 console.warn(`[dataScrapper] Bouton introuvable pour la catégorie : ${category}`);
             }
+        }
+
+        // Le mode fullPage doit être appliqué une fois la catégorie courante affichée,
+        // car Weda revient souvent à une vue partielle après changement de catégorie.
+        if (fullPage) {
+            iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+            await loadFullPage(iframeDocument);
+            console.log(`[dataScrapper] Page complète chargée pour la catégorie : ${category}`);
+            await sleep(100); // On attend un peu pour que le DOM soit stable
         }
 
         // Le document peut être remplacé après un postback ASP.NET : on le relit juste avant le parse.
