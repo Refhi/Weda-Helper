@@ -896,7 +896,7 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoSaveConsultations', functi
 
     // Fonction pour mettre à jour le temps de la dernière action utilisateur
     function updateLastUserActionTime() {
-        // console.log('[AutoSaveConsultation] Action utilisateur détectée, mise à jour du temps de la dernière action');
+        console.log('[AutoSaveConsultation] Action utilisateur détectée, mise à jour du temps de la dernière action');
         lastUserActionTime = Date.now();
     }
 
@@ -936,12 +936,15 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoSaveConsultations', functi
 
     // Écoute des actions utilisateur pour mettre à jour le temps de la dernière action
     const userActions = ['keydown', 'mousemove', 'mousedown', 'touchstart', 'scroll'];
-    const actionsTargets = [document, document.querySelector("iframe")?.contentDocument || document];
+    const iframeDocuments = Array.from(document.querySelectorAll('iframe'))
+        .map(iframe => iframe.contentDocument)
+        .filter(Boolean);
+    const actionsTargets = [document, ...iframeDocuments];
+
     userActions.forEach(action => {
         actionsTargets.forEach(target => {
-            if (target) {
-                target.addEventListener(action, updateLastUserActionTime);
-            }
+            console.log(`[AutoSaveConsultation] Écoute de l'action utilisateur : ${action} sur ${target === document ? 'document' : 'iframe'}`);
+            target.addEventListener(action, updateLastUserActionTime);
         });
     });
 

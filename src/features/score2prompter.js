@@ -24,7 +24,7 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
             score2Button.value = 'SCORE2';
             score2Button.id = 'WedaHelper_ButtonScore2';
             score2Button.className = 'buttonheader';
-            score2Button.title = 'Calculer le SCORE2 (Weda-Helper). Aller dans les options de Weda-Helper pour désactiver ce bouton si nécessaire.';
+            score2Button.title = 'Calculer le SCORE2 (Weda-Helper). Récupère automatiquement les valeurs disponibles (items de suivi, antécédents, résultats d\'examens) et vous demande de compléter le reste. Aller dans les options de Weda-Helper pour désactiver ce bouton si nécessaire.';
             score2Button.style.width = 'auto';
             score2Button.style.cssFloat = 'right';
 
@@ -43,7 +43,16 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
             // Attacher l'événement de clic
             score2Button.addEventListener('click', async function() {
                 console.log('[autoScore2] Bouton SCORE2 cliqué, début du calcul');
-                await calculateScore2();
+                const titreInitial = score2Button.title;
+                score2Button.value = '⏳ SCORE2...';
+                score2Button.disabled = true;
+                try {
+                    await calculateScore2();
+                } finally {
+                    score2Button.value = 'SCORE2';
+                    score2Button.title = titreInitial;
+                    score2Button.disabled = false;
+                }
             });
             
             console.log('[autoScore2] Bouton SCORE2 ajouté avec succès');
@@ -151,6 +160,14 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
         // Rapprochement des items de suivi avec les paramètres SCORE2
         matchSuiviItemsToParams(suiviItems, SCORE2_PARAMS);
         console.log('[autoScore2] Paramètres après rapprochement :', SCORE2_PARAMS);
+
+        // Complément des valeurs encore manquantes via l'historique du patient (dataScrapper)
+        try {
+            await fillMissingValuesFromHistory(SCORE2_PARAMS);
+        } catch (error) {
+            console.warn('[autoScore2] Échec de la récupération de l\'historique patient, poursuite sans ces données', error);
+        }
+        console.log('[autoScore2] Paramètres après complément par l\'historique :', SCORE2_PARAMS);
 
         // Demander les valeurs manquantes à l'utilisateur
         const allValuesProvided = await promptMissingValues(SCORE2_PARAMS);
@@ -292,6 +309,168 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
         }
         
         return params;
+    }
+
+    /**
+     * Indique si un paramètre SCORE2 n'a pas encore de valeur renseignée.
+     */
+    function isParamMissing(paramConfig) {
+        return paramConfig.value === undefined || paramConfig.value === null || paramConfig.value === '';
+    }
+
+    /**
+     * Convertit une date au format "JJ/MM/AAAA" en objet Date (minuit), ou null si invalide/absente.
+     */
+    function parseFrenchDate(dateStr) {
+        const match = dateStr?.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        if (!match) return null;
+        const [, day, month, year] = match;
+        return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+
+    /**
+     * Un antécédent est considéré comme toujours actif si sa date de fin est absente,
+     * ou si elle n'est pas encore dépassée.
+     */
+    function isAntecedentStillActive(dateFin) {
+        const fin = parseFrenchDate(dateFin);
+        return !fin || fin >= new Date();
+    }
+
+    /**
+     * Normalise un texte pour une recherche de mot-clé robuste : accents supprimés,
+     * ponctuation neutralisée en espaces, casse uniforme.
+     */
+    function normalizeForKeywordMatch(text) {
+        return normalizeBioLabelKey(text).replace(/[^A-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * Vérifie qu'un mot-clé (potentiellement composé de plusieurs mots) est bien présent
+     * dans un texte, en bordure de mots (insensible aux accents/casse/ponctuation).
+     */
+    function textMatchesKeyword(text, keyword) {
+        const normalizedText = ` ${normalizeForKeywordMatch(text)} `;
+        const normalizedKeyword = ` ${normalizeForKeywordMatch(keyword)} `;
+        return normalizedText.includes(normalizedKeyword);
+    }
+
+    /**
+     * Cherche, parmi les données "antecedents" du dataScrapper, un antécédent encore actif
+     * dont le titre correspond à l'un des mots-clés donnés. Les sections dont le titre
+     * contient "familial"/"familiaux" sont ignorées (antécédents familiaux, non personnels).
+     * @param {Array<Object>} antecedentsData - Données de la catégorie "antecedents" (recoverData)
+     * @param {Array<string>} keywords - Mots-clés à rechercher dans le titre de l'antécédent
+     * @returns {Object|null} L'antécédent trouvé, ou null
+     */
+    function findActiveAntecedent(antecedentsData, keywords) {
+        for (const section of antecedentsData || []) {
+            if (textMatchesKeyword(section.titre || '', 'familial') || textMatchesKeyword(section.titre || '', 'familiaux')) {
+                continue;
+            }
+            for (const item of section.items || []) {
+                if (!item.titre) continue;
+                const matches = keywords.some(keyword => textMatchesKeyword(item.titre, keyword));
+                if (matches && isAntecedentStillActive(item.dates?.fin)) {
+                    return item;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Cherche, parmi les données "resultatsExamens" du dataScrapper, la première valeur
+     * numérique d'une analyse dont le libellé correspond à l'un des mots-clés donnés
+     * (le résultat le plus récent en premier). Un filtre optionnel sur l'unité peut être fourni.
+     * @param {Array<Object>} resultatsExamensData - Données de la catégorie "resultatsExamens"
+     * @param {Array<string>} keywords - Mots-clés à rechercher dans le libellé de l'analyse
+     * @param {Function} [unitFilter] - Fonction (unite) => boolean, pour restreindre l'unité acceptée
+     * @returns {number|null} La valeur numérique trouvée, ou null
+     */
+    function findBioValue(resultatsExamensData, keywords, unitFilter = null) {
+        for (const day of resultatsExamensData || []) {
+            for (const doc of day.documents || []) {
+                if (!doc.resultatsBio) continue;
+                for (const [label, entries] of Object.entries(doc.resultatsBio)) {
+                    if (!keywords.some(keyword => textMatchesKeyword(label, keyword))) continue;
+                    for (const entry of entries) {
+                        if (entry.valeurNombre === null || entry.valeurNombre === undefined) continue;
+                        if (unitFilter && !unitFilter(entry.unite)) continue;
+                        return entry.valeurNombre;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Complète les paramètres SCORE2 encore manquants (diabète, tabac, cholestérol total,
+     * cholestérol HDL, pression artérielle systolique) en consultant l'historique du patient
+     * (antécédents et résultats d'examens) via le dataScrapper. Ne remplace jamais une valeur
+     * déjà renseignée par matchSuiviItemsToParams : ne comble que ce qui manque encore.
+     * @param {Object} params - SCORE2_PARAMS
+     */
+    async function fillMissingValuesFromHistory(params) {
+        const needsAntecedents = isParamMissing(params.diabetes) || isParamMissing(params.smoker);
+        const needsResultatsExamens = isParamMissing(params.totalChol) || isParamMissing(params.totalHdl) || isParamMissing(params.systolicBp);
+
+        if (!needsAntecedents && !needsResultatsExamens) {
+            console.log('[autoScore2] Aucune valeur manquante à compléter via l\'historique du patient');
+            return;
+        }
+
+        console.log('[autoScore2] Récupération de l\'historique du patient (antécédents / résultats d\'examens) pour compléter les valeurs manquantes');
+        const historyData = await recoverData({
+            fullPage: false,
+            categories: ["antecedents", "resultatsExamens"],
+        });
+
+        if (needsAntecedents) {
+            if (isParamMissing(params.diabetes)) {
+                const diabeteAtcd = findActiveAntecedent(historyData.antecedents, ['diabete']);
+                if (diabeteAtcd) {
+                    params.diabetes.value = 1;
+                    console.log(`[autoScore2] ✓ "diabetes" = 1 (antécédent actif trouvé : "${diabeteAtcd.titre}")`);
+                }
+            }
+            if (isParamMissing(params.smoker)) {
+                const tabacAtcd = findActiveAntecedent(historyData.antecedents, ['tabac', 'tabagisme']);
+                if (tabacAtcd) {
+                    params.smoker.value = 1;
+                    console.log(`[autoScore2] ✓ "smoker" = 1 (antécédent actif trouvé : "${tabacAtcd.titre}")`);
+                }
+            }
+        }
+
+        if (needsResultatsExamens) {
+            const isMmolL = unite => (unite || '').trim().toLowerCase() === 'mmol/l';
+
+            if (isParamMissing(params.totalChol)) {
+                const value = findBioValue(historyData.resultatsExamens, ['Cholesterol Total', 'Cholestérol Total', 'Cho. Total'], isMmolL);
+                if (value !== null) {
+                    params.totalChol.value = value;
+                    params.totalChol.foundUnit = 'mmol/L';
+                    console.log(`[autoScore2] ✓ "totalChol" = ${value} mmol/L (résultats d'examens)`);
+                }
+            }
+            if (isParamMissing(params.totalHdl)) {
+                const value = findBioValue(historyData.resultatsExamens, ['HDL'], isMmolL);
+                if (value !== null) {
+                    params.totalHdl.value = value;
+                    params.totalHdl.foundUnit = 'mmol/L';
+                    console.log(`[autoScore2] ✓ "totalHdl" = ${value} mmol/L (résultats d'examens)`);
+                }
+            }
+            if (isParamMissing(params.systolicBp)) {
+                const value = findBioValue(historyData.resultatsExamens, ['TAS']);
+                if (value !== null) {
+                    params.systolicBp.value = value;
+                    console.log(`[autoScore2] ✓ "systolicBp" = ${value} (résultats d'examens)`);
+                }
+            }
+        }
     }
 
     /**
@@ -578,7 +757,7 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
         // Informations secondaires (cachées derrière un ?)
         let infoText = '';
         if (paramConfig.itemsKeywords) {
-            infoText += `🔍 Mots-clés cherchés : ${paramConfig.itemsKeywords.join(', ')}\n`;
+            infoText += `🔍 Mots-clés recherchés dans les items de suivi (colonne de droite de la consultation) : ${paramConfig.itemsKeywords.join(', ')}\nPour un remplissage automatique, créez un item dont le libellé contient un de ces mots-clés.`;
         }
         if (paramConfig.unit) {
             infoText += `📏 Unité : ${paramConfig.unit}`;
@@ -608,22 +787,61 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
         const tooltip = document.createElement('div');
         tooltip.style.cssText = `
             display: none;
-            position: absolute;
-            left: 22px; top: -4px;
+            position: fixed;
             background: #333; color: #eee;
             font-size: 12px; line-height: 1.5;
             padding: 8px 10px; border-radius: 6px;
-            white-space: pre-line; z-index: 9999;
+            white-space: pre-line; z-index: 20000;
             min-width: 220px; max-width: 320px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         `;
         tooltip.textContent = infoText || 'Aucune information complémentaire';
 
-        infoBtn.addEventListener('mouseenter', () => tooltip.style.display = 'block');
-        infoBtn.addEventListener('mouseleave', () => tooltip.style.display = 'none');
+        const positionFloatingTooltip = (anchorEl, tooltipEl) => {
+            const spacing = 8;
+            const anchorRect = anchorEl.getBoundingClientRect();
+            const tooltipRect = tooltipEl.getBoundingClientRect();
+
+            let left = anchorRect.right + spacing;
+            let top = anchorRect.top - 4;
+
+            if (left + tooltipRect.width > window.innerWidth - spacing) {
+                left = Math.max(spacing, anchorRect.left - tooltipRect.width - spacing);
+            }
+
+            if (top + tooltipRect.height > window.innerHeight - spacing) {
+                top = Math.max(spacing, window.innerHeight - tooltipRect.height - spacing);
+            }
+
+            if (top < spacing) {
+                top = spacing;
+            }
+
+            tooltipEl.style.left = `${left}px`;
+            tooltipEl.style.top = `${top}px`;
+        };
+
+        const showTooltip = () => {
+            if (tooltip.parentNode !== document.body) {
+                document.body.appendChild(tooltip);
+            }
+            tooltip.style.display = 'block';
+            positionFloatingTooltip(infoBtn, tooltip);
+        };
+
+        const hideTooltip = () => {
+            tooltip.style.display = 'none';
+        };
+
+        infoBtn.addEventListener('mouseenter', showTooltip);
+        infoBtn.addEventListener('mouseleave', hideTooltip);
         infoBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            tooltip.style.display = tooltip.style.display === 'none' ? 'block' : 'none';
+            if (tooltip.style.display === 'none') {
+                showTooltip();
+            } else {
+                hideTooltip();
+            }
         });
 
         infoWrapper.appendChild(infoBtn);
@@ -703,22 +921,37 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
 
                     const detailTooltip = document.createElement('div');
                     detailTooltip.style.cssText = `
-                        display: none; position: absolute;
-                        left: 20px; top: -4px;
+                        display: none; position: fixed;
                         background: #333; color: #eee;
                         font-size: 11px; line-height: 1.4;
                         padding: 6px 8px; border-radius: 6px;
-                        white-space: pre-line; z-index: 9999;
+                        white-space: pre-line; z-index: 20000;
                         min-width: 200px; max-width: 300px;
                         box-shadow: 0 2px 8px rgba(0,0,0,0.3);
                     `;
                     detailTooltip.textContent = paramConfig.detailValues[value];
 
-                    detailBtn.addEventListener('mouseenter', () => detailTooltip.style.display = 'block');
-                    detailBtn.addEventListener('mouseleave', () => detailTooltip.style.display = 'none');
+                    const showDetailTooltip = () => {
+                        if (detailTooltip.parentNode !== document.body) {
+                            document.body.appendChild(detailTooltip);
+                        }
+                        detailTooltip.style.display = 'block';
+                        positionFloatingTooltip(detailBtn, detailTooltip);
+                    };
+
+                    const hideDetailTooltip = () => {
+                        detailTooltip.style.display = 'none';
+                    };
+
+                    detailBtn.addEventListener('mouseenter', showDetailTooltip);
+                    detailBtn.addEventListener('mouseleave', hideDetailTooltip);
                     detailBtn.addEventListener('click', (e) => {
                         e.preventDefault(); e.stopPropagation();
-                        detailTooltip.style.display = detailTooltip.style.display === 'none' ? 'block' : 'none';
+                        if (detailTooltip.style.display === 'none') {
+                            showDetailTooltip();
+                        } else {
+                            hideDetailTooltip();
+                        }
                     });
 
                     detailWrapper.appendChild(detailBtn);
@@ -810,6 +1043,56 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
         return container;
     }
     
+    /**
+     * Met en forme la valeur d'un paramètre SCORE2 pour affichage/copie (libellé simplifié,
+     * conversion Homme/Femme, arrondi + unité pour les valeurs numériques).
+     * @param {string} key - Clé du paramètre (ex: 'gender', 'totalChol')
+     * @param {Object} paramConfig - Configuration du paramètre (SCORE2_PARAMS[key])
+     * @returns {string} Valeur formatée pour affichage
+     */
+    function formatScore2ParamDisplayValue(key, paramConfig) {
+        let displayValue = paramConfig.value;
+
+        if (paramConfig.simplifiedValues && paramConfig.simplifiedValues[displayValue]) {
+            displayValue = paramConfig.simplifiedValues[displayValue];
+        } else if (key === 'gender') {
+            displayValue = displayValue === 'male' ? 'Homme' : 'Femme';
+        } else if (typeof displayValue === 'number' && paramConfig.unit) {
+            displayValue = `${displayValue.toFixed(2)} ${paramConfig.unit}`;
+        } else if (typeof displayValue === 'number') {
+            displayValue = displayValue.toFixed(2);
+        }
+
+        return displayValue;
+    }
+
+    /**
+     * Construit le texte à copier dans le presse-papier : date/heure de réalisation,
+     * résultat du SCORE2 et paramètres utilisés pour le calcul.
+     * @param {number} score2Result - Résultat du calcul SCORE2 (%)
+     * @param {Object} params - SCORE2_PARAMS
+     * @param {Array<{key: string, label: string}>} paramsToDisplay - Paramètres à inclure
+     * @returns {string} Texte prêt à être copié
+     */
+    function buildScore2ClipboardText(score2Result, params, paramsToDisplay) {
+        const maintenant = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        const dateStr = `${pad(maintenant.getDate())}/${pad(maintenant.getMonth() + 1)}/${maintenant.getFullYear()}`;
+        const heureStr = `${pad(maintenant.getHours())}:${pad(maintenant.getMinutes())}`;
+
+        const lignes = [
+            `SCORE2 - réalisé le ${dateStr} à ${heureStr}`,
+            `Risque cardiovasculaire à 10 ans : ${score2Result.toFixed(1)} %`,
+            '',
+        ];
+
+        paramsToDisplay.forEach(({ key, label }) => {
+            lignes.push(`${label} : ${formatScore2ParamDisplayValue(key, params[key])}`);
+        });
+
+        return lignes.join('\n');
+    }
+
     /**
      * Affiche le résultat du calcul SCORE2 dans un modal
      */
@@ -924,18 +1207,7 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
         
         paramsToDisplay.forEach(({ key, label }) => {
             const paramConfig = params[key];
-            let displayValue = paramConfig.value;
-            
-            // Affichage personnalisé selon le type
-            if (paramConfig.simplifiedValues && paramConfig.simplifiedValues[displayValue]) {
-                displayValue = paramConfig.simplifiedValues[displayValue];
-            } else if (key === 'gender') {
-                displayValue = displayValue === 'male' ? 'Homme' : 'Femme';
-            } else if (typeof displayValue === 'number' && paramConfig.unit) {
-                displayValue = `${displayValue.toFixed(2)} ${paramConfig.unit}`;
-            } else if (typeof displayValue === 'number') {
-                displayValue = displayValue.toFixed(2);
-            }
+            const displayValue = formatScore2ParamDisplayValue(key, paramConfig);
             
             const paramRow = document.createElement('div');
             paramRow.style.cssText = `
@@ -974,9 +1246,37 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
             border-top: 1px solid #e0e0e0;
             display: flex;
             justify-content: center;
+            gap: 12px;
             background: #f5f5f5;
         `;
         
+        const copyButton = document.createElement('button');
+        copyButton.textContent = '📋 Copier le résultat';
+        copyButton.style.cssText = `
+            padding: 10px 30px;
+            border: none;
+            background: #4CAF50;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        `;
+        copyButton.onmouseover = () => copyButton.style.background = '#43a047';
+        copyButton.onmouseout = () => copyButton.style.background = '#4CAF50';
+
+        copyButton.onclick = () => {
+            const texteACopier = buildScore2ClipboardText(score2Result, params, paramsToDisplay);
+            navigator.clipboard.writeText(texteACopier).then(() => {
+                const texteOriginal = copyButton.textContent;
+                copyButton.textContent = '✓ Copié !';
+                setTimeout(() => { copyButton.textContent = texteOriginal; }, 1500);
+            }).catch(error => {
+                console.error('[autoScore2] Échec de la copie dans le presse-papier', error);
+                alert("Impossible de copier le résultat dans le presse-papier.");
+            });
+        };
+
         const closeButton = document.createElement('button');
         closeButton.textContent = 'Fermer';
         closeButton.style.cssText = `
@@ -1006,6 +1306,7 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
         document.addEventListener('keydown', handleEscape);
         
         // Assembler le modal
+        footer.appendChild(copyButton);
         footer.appendChild(closeButton);
         modal.appendChild(header);
         modal.appendChild(body);

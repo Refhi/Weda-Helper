@@ -150,6 +150,23 @@ const SELECTORS = {
 
 
 // ───────────────────────────────────────────────────────────────────────────────
+/**
+ * Récupère les données d'historique patient depuis Weda, par catégories.
+ *
+ * Retourne un objet structuré facile à parser
+ * 
+ * @example
+ * const data = await recoverData({
+ *     fullPage: true,                              // Charge l'intégralité de la page d'historique (au lieu des 10 par défaut de Weda)
+ *     categories: ["consultations", "etatCivil"],  // Liste des catégories à récupérer (par défaut : ["consultations"])
+ *     includeLegacy: false,                        // Récupère en plus les journées importées d'un ancien logiciel, quand la catégorie le permet (par défaut : false)
+ *     debug: false,                                // Laisse l'iframe de récupération affichée en fin d'appel
+ * });
+ * console.log(data);
+ *
+ * @argument categories ["consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse", "etatCivil", "antecedents", "contacts"]
+ * 
+ */
 async function recoverData({
     fullPage = false, // De base on ne va vérifier que les 10 derniers subContainers chargés par défaut. N'est probablement pas possible pour charts et vaccins
     categories = ["consultations"], // Ce qui est chargé par défaut est la catégorie "consultations".
@@ -166,13 +183,6 @@ async function recoverData({
     const urlToLoad = await constructPatientHistoryUrl();
     const iframe = await makeIframeForPatientHistory(urlToLoad, debug);
     let iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
-
-    // On affiche l'historique complet si demandé
-    if (fullPage) {
-        await loadFullPage(iframeDocument)
-        console.log('[dataScrapper] Page complète chargée');
-        await sleep(100); // On attend un peu pour que le DOM soit stable
-    }
 
     // On récupère les données pour chaque catégorie demandée
     for (const category of categories) {
@@ -195,6 +205,15 @@ async function recoverData({
             } else {
                 console.warn(`[dataScrapper] Bouton introuvable pour la catégorie : ${category}`);
             }
+        }
+
+        // Le mode fullPage doit être appliqué une fois la catégorie courante affichée,
+        // car Weda revient souvent à une vue partielle après changement de catégorie.
+        if (fullPage) {
+            iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+            await loadFullPage(iframeDocument);
+            console.log(`[dataScrapper] Page complète chargée pour la catégorie : ${category}`);
+            await sleep(100); // On attend un peu pour que le DOM soit stable
         }
 
         // Le document peut être remplacé après un postback ASP.NET : on le relit juste avant le parse.
@@ -522,10 +541,100 @@ function parseContacts(container) {
 }
 
 /**
+ * Extrait la première date suivant un libellé (ex: "Alerte : 11/07/2031").
+ * @param {string} text
+ * @param {string} label
+ * @returns {string|null}
+ */
+function extractAntecedentDate(text, label) {
+    const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`${escapedLabel}\\s*:\\s*(\\d{2}\\/\\d{2}\\/\\d{4})`, 'i');
+    return text.match(regex)?.[1] || null;
+}
+
+/**
+ * Extrait la première date "ponctuelle" (date isolée non rattachée à Début/Fin/Alerte).
+ * @param {string} text
+ * @param {{debut: string|null, fin: string|null, alerte: string|null}} datesConnues
+ * @returns {string|null}
+ */
+function extractAntecedentDatePonctuelle(text, datesConnues) {
+    const allDates = Array.from(text.matchAll(/\b(\d{2}\/\d{2}\/\d{4})\b/g)).map(match => match[1]);
+    const excluded = new Set([datesConnues.debut, datesConnues.fin, datesConnues.alerte].filter(Boolean));
+    const ponctuelle = allDates.find(date => !excluded.has(date));
+    return ponctuelle || null;
+}
+
+/**
+ * Nettoie le titre d'antécédent depuis la première ligne textuelle.
+ * @param {string} firstLine
+ * @returns {string|null}
+ */
+function cleanAntecedentTitle(firstLine) {
+    if (!firstLine) return null;
+
+    let title = firstLine
+        .replace(/\(\s*(Début|Fin|Alerte)\s*(le)?\s*:\s*\d{2}\/\d{2}\/\d{4}\s*\)/gi, '')
+        .replace(/\[[^\]]+\]/g, '')
+        .replace(/\b(Début|Fin|Alerte)\s*:\s*\d{2}\/\d{2}\/\d{4}\.?/gi, '')
+        .replace(/\b(Lat[eé]ralit[eé])\s*:\s*[^.]+/gi, '')
+        .trim();
+
+    // Cas fréquents: "rubrique : nom de l'atcd"
+    if (title.includes(':')) {
+        const parts = title.split(':').map(part => part.trim()).filter(Boolean);
+        if (parts.length > 1) {
+            const candidate = parts[parts.length - 1];
+            if (/[A-Za-zÀ-ÿ]/.test(candidate) && !/^\d{2}\/\d{2}\/\d{4}/.test(candidate)) {
+                title = candidate;
+            }
+        }
+    }
+
+    title = title.replace(/[\s.]+$/g, '').trim();
+    return title || null;
+}
+
+/**
+ * Parse une entrée d'antécédent en structure exploitable (sans conserver de doublon brut).
+ * @param {string} text
+ * @returns {Object}
+ */
+function parseAntecedentItem(text) {
+    const lines = (text || '')
+        .split('\n')
+        .map(line => line.trim())
+        .filter(Boolean);
+    const firstLine = lines[0] || null;
+    const fullText = lines.join(' ');
+
+    const cim10Code = firstLine?.match(/\[([^\]]+)\]/)?.[1] || null;
+    const debut = extractAntecedentDate(fullText, 'Début');
+    const fin = extractAntecedentDate(fullText, 'Fin');
+    const alerte = extractAntecedentDate(fullText, 'Alerte');
+    const ponctuelle = extractAntecedentDatePonctuelle(fullText, { debut, fin, alerte });
+
+    const descriptionLines = lines.slice(1).filter(line => !/\b(Début|Fin|Alerte)\s*:/.test(line));
+    const description = descriptionLines.length > 0 ? descriptionLines.join('\n') : null;
+
+    return {
+        titre: cleanAntecedentTitle(firstLine),
+        cim10Code,
+        dates: {
+            debut,
+            fin,
+            ponctuelle,
+            alerte,
+        },
+        description,
+    };
+}
+
+/**
  * Parse le bloc "Antécédents" du patient, organisé en sections (Médicaux, Chirurgicaux, Gynécologiques, etc.)
  * Chaque section commence par un div.st > .sm contenant le titre de la section.
  * @param {HTMLElement} container - Le mainContainer de la catégorie antecedents
- * @returns {Array<Object>} Liste des sections avec leurs items en texte brut nettoyé
+ * @returns {Array<Object>} Liste des sections avec items structurés (sans doublons de données)
  */
 function parseAntecedents(container) {
     const block = container.querySelector('.sc') || container;
@@ -540,14 +649,20 @@ function parseAntecedents(container) {
                 sections.push(currentSection);
             }
             const titleEl = child.querySelector('.sm');
-            currentSection = { titre: (titleEl || child).textContent.trim(), items: [] };
+            currentSection = {
+                titre: (titleEl || child).textContent.trim(),
+                items: [],
+            };
         } else {
             if (!currentSection) {
-                currentSection = { titre: "Général", items: [] };
+                currentSection = {
+                    titre: "Général",
+                    items: [],
+                };
             }
             const text = extractRawBlockText(child);
             if (text) {
-                currentSection.items.push(text);
+                currentSection.items.push(parseAntecedentItem(text));
             }
         }
     }
@@ -1024,6 +1139,160 @@ function parseDayContainer(container, categorySelectors) {
 }
 
 /**
+ * Extrait une valeur de type "Label : valeur" depuis un tableau de lignes.
+ * @param {Array<string>} lines
+ * @param {string} label
+ * @returns {string|null}
+ */
+function extractLabeledValue(lines, label) {
+    const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`^${escapedLabel}\\s*:\\s*(.+)$`, 'i');
+    const line = lines.find(l => regex.test(l));
+    return line ? line.replace(regex, '$1').trim() : null;
+}
+
+/**
+ * Normalise un libellé d'analyse pour permettre une recherche robuste
+ * (insensible aux accents, à la casse et aux espaces multiples).
+ * @param {string|null} label
+ * @returns {string}
+ */
+function normalizeBioLabelKey(label) {
+    return (label || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toUpperCase();
+}
+
+/**
+ * Convertit une valeur texte en nombre si possible (ex: "12.8", "247,19").
+ * @param {string|null} raw
+ * @returns {number|null}
+ */
+function toBioNumber(raw) {
+    if (!raw) return null;
+    const normalized = raw.replace(',', '.').replace(/\s+/g, '');
+    const value = Number(normalized);
+    return Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Extrait les analyses biologiques depuis le tableau HPRIM (table.hprimgrid).
+ * Retourne une structure indexée uniquement par libellé.
+ * La structuration n'est faite que si un tableau avec en-têtes attendus est détecté
+ * (au minimum: Libellé, Valeur, Unité).
+ * @param {HTMLElement} documentDiv - Le bloc document (div[name="dhX"])
+ * @returns {Object<string, Array<Object>>|null}
+ */
+function parseBiologyResults(documentDiv) {
+    const tables = documentDiv.querySelectorAll('table.hprimgrid');
+    const byLibelle = {};
+    let hasValidHeader = false;
+
+    tables.forEach(table => {
+        const rows = Array.from(table.querySelectorAll(':scope > tbody > tr, :scope > tr'));
+        if (rows.length === 0) return;
+
+        const headerCells = Array.from(rows[0].querySelectorAll(':scope > td'))
+            .map(td => normalizeBioLabelKey(textOf(td)));
+        const hasExpectedColumns =
+            headerCells.length >= 3 &&
+            headerCells[0] === 'LIBELLE' &&
+            headerCells[1] === 'VALEUR' &&
+            headerCells[2] === 'UNITE';
+
+        if (!hasExpectedColumns) return;
+
+        hasValidHeader = true;
+        const dataRows = rows.slice(1); // 1ère ligne = en-têtes (Libellé, Valeur, Unité, Min, Max)
+
+        dataRows.forEach(row => {
+            const cells = row.querySelectorAll(':scope > td');
+            if (cells.length < 2) return;
+
+            const libelle = textOf(cells[0]);
+            const valeur = textOf(cells[1]);
+            if (!libelle || !valeur) return;
+
+            const unite = textOf(cells[2]);
+            const minimum = textOf(cells[3]);
+            const maximum = textOf(cells[4]);
+            const horsNormes = Array.from(cells).some(cell => /color\s*:\s*#CE0000/i.test(cell.getAttribute('style') || ''));
+
+            const analyse = {
+                valeur,
+                valeurNombre: toBioNumber(valeur),
+                unite,
+                minimum,
+                maximum,
+                minimumNombre: toBioNumber(minimum),
+                maximumNombre: toBioNumber(maximum),
+                horsNormes,
+            };
+
+            if (!byLibelle[libelle]) {
+                byLibelle[libelle] = [];
+            }
+
+            const isDuplicate = byLibelle[libelle].some(existing =>
+                existing.valeur === analyse.valeur &&
+                existing.unite === analyse.unite &&
+                existing.minimum === analyse.minimum &&
+                existing.maximum === analyse.maximum
+            );
+            if (!isDuplicate) {
+                byLibelle[libelle].push(analyse);
+            }
+        });
+    });
+
+    if (!hasValidHeader || Object.keys(byLibelle).length === 0) return null;
+    return byLibelle;
+}
+
+/**
+ * Parse le contenu textuel d'un "Arrêt de travail" en champs structurés.
+ * @param {Array<string>} lines - Lignes textuelles du bloc .stx
+ * @returns {Object|null}
+ */
+function parseArretTravailFields(lines) {
+    if (!Array.isArray(lines) || lines.length === 0) return null;
+
+    const debut = extractLabeledValue(lines, 'Début');
+    const typeArret = extractLabeledValue(lines, 'Type');
+    const arretMode = extractLabeledValue(lines, 'Arrêt de travail');
+    const dureeRaw = extractLabeledValue(lines, 'Durée');
+    const fin = extractLabeledValue(lines, 'Fin');
+
+    const motifLine = lines.find(line => /^Motif\s*:/i.test(line));
+    const motifCode = motifLine?.match(/code\s*([^\)\]]+)/i)?.[1]?.trim() || null;
+    const motif = extractLabeledValue(lines, 'Motif');
+
+    const transmissionLine = lines.find(line => /Arrêt transmis via AATi/i.test(line)) || null;
+    const identifiantAATi = transmissionLine?.match(/identifiant\s*:\s*([A-Z0-9-]+)/i)?.[1] || null;
+
+    const enRapportATMP = lines.find(line => /En rapport avec un accident de travail, maladie professionnelle/i.test(line)) || null;
+    const dureeJours = dureeRaw?.match(/(\d+)/)?.[1] ? parseInt(dureeRaw.match(/(\d+)/)[1], 10) : null;
+
+    return {
+        debut,
+        type: typeArret,
+        mode: arretMode,
+        enRapportAccidentTravailMP: !!enRapportATMP,
+        enRapportAccidentTravailMPDetail: enRapportATMP,
+        duree: dureeRaw,
+        dureeJours,
+        fin,
+        motifCode,
+        motif,
+        identifiantAATi,
+        transmission: transmissionLine,
+    };
+}
+
+/**
  * Parse un document individuel (consultation, prescription, etc.)
  * @param {HTMLElement} div - Élément div[name="dhX"]
  * @returns {Object|null} Données du document ou null si vide
@@ -1048,14 +1317,36 @@ function parseDocument(div) {
     
     // Contenu textuel
     const contentDivs = div.querySelectorAll(SELECTORS.document.text);
-    const content = Array.from(contentDivs).map(el => el.textContent.trim()).filter(text => text.length > 0);
-    
-    return {
+    const content = Array.from(contentDivs)
+        .map(el => extractRawBlockText(el))
+        .filter(text => text.length > 0);
+
+    const parsedDocument = {
         type,
         title,
         ...cleanAuthorName(textOf(sstDiv, SELECTORS.document.signature)),
         content: content.length > 0 ? content : null,
     };
+
+    if (type === 'arrettravail') {
+        const arretLines = content
+            .flatMap(block => block.split('\n'))
+            .map(line => line.trim())
+            .filter(Boolean);
+        parsedDocument.arretTravail = parseArretTravailFields(arretLines);
+    }
+
+    if (type === 'resultatexamen') {
+        const structuredBioResults = parseBiologyResults(div);
+        if (structuredBioResults) {
+            parsedDocument.resultatsBio = structuredBioResults;
+        } else {
+            parsedDocument.rawContent = parsedDocument.content;
+        }
+        delete parsedDocument.content;
+    }
+
+    return parsedDocument;
 }
 
 /**
