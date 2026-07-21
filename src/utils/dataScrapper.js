@@ -235,7 +235,7 @@ async function recoverData({
         data[category] = recoverMainViewData(iframeDocument, categorySelectors, includeLegacy, category);
 
         // Filtrage a posteriori sur la plage de dates demandée (retire les entrées non pertinentes)
-        data[category] = filterCategoryDataByDateRange(data[category], resolvedDateRange);
+        data[category] = filterCategoryDataByDateRange(data[category], resolvedDateRange, category);
     }
 
     // Nettoyage : supprimer l'iframe si on n'est pas en mode debug
@@ -307,18 +307,79 @@ function isDateStringInRange(dateStr, range) {
 }
 
 /**
- * Filtre les données d'une catégorie selon la plage de dates résolue. Ne s'applique qu'aux
- * catégories dont le résultat est un tableau d'entrées portant chacune un champ "date" au
- * premier niveau (journées, vaccins, documents). Les catégories sans date exploitable au
- * premier niveau (etatCivil, antecedents, contacts, charts, grossesse) sont laissées telles quelles.
+ * Filtre les données d'une catégorie selon la plage de dates résolue.
+ * - Cas général (journées, vaccins, documents) : le résultat est un tableau d'entrées portant
+ *   chacune un champ "date" au premier niveau, on filtre directement dessus.
+ * - "charts" : le résultat est un objet {dates, parametres} où les dates sont des colonnes
+ *   partagées par tous les paramètres ; il faut filtrer les colonnes (dates + valeurs
+ *   correspondantes) plutôt que de traiter un tableau d'entrées.
+ * - "grossesse" : chaque suivi n'a pas de champ "date" exploitable au premier niveau, mais une
+ *   grossesse est pertinente pour toute la période [datePresumeeDebut, datePresumeeDebut + 1 an]
+ *   (suivi post-partum inclus) : on la garde dès que cette période chevauche la plage demandée.
+ * - Catégories sans date exploitable et sans notion de période (etatCivil, antecedents,
+ *   contacts) : laissées telles quelles, ce ne sont pas des événements datés unitaires.
  * @param {*} categoryData - Résultat retourné par recoverMainViewData pour une catégorie
  * @param {{start: Date|null, end: Date|null}} range
+ * @param {string} category - Nom de la catégorie (clé de SELECTORS.categories)
  * @returns {*} Données filtrées (ou inchangées si non applicable)
  */
-function filterCategoryDataByDateRange(categoryData, range) {
+function filterCategoryDataByDateRange(categoryData, range, category) {
     if (!range || (!range.start && !range.end)) return categoryData;
+
+    if (category === 'charts') return filterChartsByDateRange(categoryData, range);
+    if (category === 'grossesse') return filterGrossesseByDateRange(categoryData, range);
+
     if (!Array.isArray(categoryData)) return categoryData;
     return categoryData.filter(entry => isDateStringInRange(entry?.date, range));
+}
+
+/**
+ * Filtre les données de la catégorie "charts" en ne conservant que les colonnes (dates et
+ * valeurs associées de chaque paramètre) comprises dans la plage demandée.
+ * @param {{dates: Array<string>, parametres: Array<{nom: string, valeurs: Array}>}|*} categoryData
+ * @param {{start: Date|null, end: Date|null}} range
+ * @returns {*} Données filtrées, ou categoryData inchangé si la structure n'est pas celle attendue
+ */
+function filterChartsByDateRange(categoryData, range) {
+    if (!categoryData || !Array.isArray(categoryData.dates)) return categoryData;
+
+    const keepIndexes = categoryData.dates
+        .map((date, index) => ({ date, index }))
+        .filter(({ date }) => isDateStringInRange(date, range))
+        .map(({ index }) => index);
+
+    return {
+        dates: keepIndexes.map(index => categoryData.dates[index]),
+        parametres: (categoryData.parametres || []).map(parametre => ({
+            nom: parametre.nom,
+            valeurs: keepIndexes.map(index => parametre.valeurs[index]),
+        })),
+    };
+}
+
+/**
+ * Filtre les données de la catégorie "grossesse" : un suivi de grossesse est conservé dès que
+ * la plage demandée chevauche la période [datePresumeeDebut, datePresumeeDebut + 1 an], la
+ * grossesse restant pertinente jusqu'à un an après son début (suivi post-partum compris).
+ * Un suivi sans datePresumeeDebut exploitable est conservé par précaution.
+ * @param {Array<Object>|*} categoryData
+ * @param {{start: Date|null, end: Date|null}} range
+ * @returns {*} Données filtrées, ou categoryData inchangé si ce n'est pas un tableau
+ */
+function filterGrossesseByDateRange(categoryData, range) {
+    if (!Array.isArray(categoryData)) return categoryData;
+
+    return categoryData.filter(entry => {
+        const debut = parseFrenchDate(entry?.datePresumeeDebut);
+        if (!debut) return true;
+
+        const finPeriodePertinente = new Date(debut);
+        finPeriodePertinente.setFullYear(finPeriodePertinente.getFullYear() + 1);
+
+        const grossesseApresPlage = range.end && debut > range.end;
+        const grossesseAvantPlage = range.start && finPeriodePertinente < range.start;
+        return !grossesseApresPlage && !grossesseAvantPlage;
+    });
 }
 
 /**
