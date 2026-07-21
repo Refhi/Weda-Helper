@@ -1095,8 +1095,12 @@ function parseDayContainer(container, categorySelectors) {
     const initials = textOf(container, SELECTORS.dayContainer.initials);
 
     // Documents : tous les divs name="dhX" sauf dh10 (pièces jointes)
+    // Un même div peut contenir plusieurs recettes (ex: double facturation le même jour),
+    // parseDocument retourne alors un tableau qu'il faut aplatir.
     const documentDivs = container.querySelectorAll(SELECTORS.dayContainer.documents);
-    const documents = Array.from(documentDivs).map(div => parseDocument(div)).filter(doc => doc !== null);
+    const documents = Array.from(documentDivs)
+        .flatMap(div => parseDocument(div))
+        .filter(doc => doc !== null);
     
     // Pièces jointes : div name="dh10"
     const attachmentsDiv = container.querySelector(SELECTORS.dayContainer.attachmentsDiv);
@@ -1295,17 +1299,20 @@ function parseArretTravailFields(lines) {
 /**
  * Parse un document individuel (consultation, prescription, etc.)
  * @param {HTMLElement} div - Élément div[name="dhX"]
- * @returns {Object|null} Données du document ou null si vide
+ * @returns {Array<Object|null>} Tableau de documents (généralement un seul élément, mais un
+ *   même div peut contenir plusieurs recettes, ex: double facturation le même jour)
  */
 function parseDocument(div) {
-    // Détecter les recettes par leur structure spécifique (.pjm avec table.stxrec)
-    const pjmDiv = div.querySelector(SELECTORS.document.pjm);
-    if (pjmDiv && pjmDiv.querySelector(SELECTORS.document.recetteTable)) {
-        return parseRecette(div);
+    // Détecter les recettes par leur structure spécifique (.pjm avec table.stxrec).
+    // Un même div[name="dhX"] peut contenir plusieurs .pjm (plusieurs recettes).
+    const pjmDivs = Array.from(div.querySelectorAll(SELECTORS.document.pjm))
+        .filter(pjmDiv => pjmDiv.querySelector(SELECTORS.document.recetteTable));
+    if (pjmDivs.length > 0) {
+        return pjmDivs.map(pjmDiv => parseRecette(pjmDiv));
     }
     
     const sstDiv = div.querySelector(SELECTORS.document.content);
-    if (!sstDiv) return null;
+    if (!sstDiv) return [null];
     
     // Type depuis la classe d'icône
     const iconElement = sstDiv.querySelector(SELECTORS.document.icon);
@@ -1346,16 +1353,15 @@ function parseDocument(div) {
         delete parsedDocument.content;
     }
 
-    return parsedDocument;
+    return [parsedDocument];
 }
 
 /**
  * Parse spécifiquement une recette
- * @param {HTMLElement} div - Élément div[name="dhX"] d'une recette
+ * @param {HTMLElement} pjmDiv - Élément .pjm d'une recette individuelle
  * @returns {Object} Données de la recette structurées
  */
-function parseRecette(div) {
-    const pjmDiv = div.querySelector(SELECTORS.document.pjm);
+function parseRecette(pjmDiv) {
     if (!pjmDiv) return null;
     
     // Les tables avec class="stxrec" contiennent les données structurées
