@@ -7,8 +7,59 @@
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
-/** Map pour stocker la correspondance initiales → nom complet du praticien */
+/** Map pour stocker la correspondance initiales → nom complet du praticien (valable pour la catégorie en cours de traitement) */
 const initialsToAuthorMap = new Map();
+
+/**
+ * Clé de stockage chrome.storage.local pour la correspondance initiales → nom complet.
+ * Cette correspondance est persistée d'une session à l'autre, car les initiales seules ne
+ * suffisent pas à retrouver l'auteur d'un document "nu" (ex: une recette) qui ne fournirait
+ * pas lui-même le nom complet, si aucun autre document de la même journée ne le fournit.
+ */
+const INITIALS_AUTHOR_MAP_STORAGE_KEY = 'dataScrapperInitialsToAuthorMap';
+
+/** Cache mémoire de la correspondance persistée, chargé depuis chrome.storage.local */
+let persistentInitialsToAuthorMap = {};
+
+/**
+ * Charge la correspondance initiales → auteur précédemment persistée dans chrome.storage.local.
+ * @returns {Promise<void>}
+ */
+async function loadPersistentInitialsToAuthorMap() {
+    return new Promise(resolve => {
+        chrome.storage.local.get([INITIALS_AUTHOR_MAP_STORAGE_KEY], result => {
+            persistentInitialsToAuthorMap = result[INITIALS_AUTHOR_MAP_STORAGE_KEY] || {};
+            resolve();
+        });
+    });
+}
+
+/**
+ * Enregistre une correspondance initiales → auteur dans le cache mémoire et dans
+ * chrome.storage.local, afin qu'elle puisse être réutilisée même en l'absence de référence
+ * dans la journée/catégorie en cours (ex: recette isolée sans autre document signé).
+ *
+ * Si les mêmes initiales sont un jour associées à un auteur différent (cas de deux
+ * praticiens partageant les mêmes initiales), la correspondance est marquée `ambiguous:true`
+ * plutôt que d'être silencieusement écrasée : elle reste utilisable comme dernière estimation
+ * connue, mais les consommateurs sont avertis (log + flag) que l'attribution n'est pas fiable.
+ * @param {string} initials - Initiales du praticien
+ * @param {{author: string, author_prenom: string|null, author_nom: string|null}} authorInfo
+ */
+function rememberInitialsToAuthor(initials, authorInfo) {
+    if (!initials || !authorInfo?.author) return;
+
+    const existing = persistentInitialsToAuthorMap[initials];
+    const isConflict = existing && existing.author !== authorInfo.author;
+    if (existing?.author === authorInfo.author && !!existing.ambiguous === false) return; // déjà à jour, rien à persister
+
+    if (isConflict) {
+        console.warn(`[dataScrapper] Initiales "${initials}" associées à plusieurs auteurs différents : "${existing.author}" puis "${authorInfo.author}". Correspondance marquée ambiguë.`);
+    }
+
+    persistentInitialsToAuthorMap[initials] = { ...authorInfo, ambiguous: isConflict };
+    chrome.storage.local.set({ [INITIALS_AUTHOR_MAP_STORAGE_KEY]: persistentInitialsToAuthorMap });
+}
 
 /** Sélecteurs CSS centralisés — à mettre à jour si Weda change son DOM */
 const usualMainContainer = "#HistoriqueUCForm1_UpdatePanelLiteralAfficheWeda";
@@ -107,6 +158,9 @@ async function recoverData({
 } = {}) {
     // Préparation de l'objet de données à retourner
     const data = {};
+
+    // Chargement de la correspondance initiales → auteur persistée d'une session à l'autre
+    await loadPersistentInitialsToAuthorMap();
 
     // Création d’une iframe dont on attend le chargement complet puis dont on récupère le document pour y chercher les données
     const urlToLoad = await constructPatientHistoryUrl();
@@ -940,13 +994,22 @@ function parseDayContainer(container, categorySelectors) {
     const docWithAuthor = documents.find(doc => doc.author);
     if (docWithAuthor) {
         authorInfo = { author: docWithAuthor.author, author_prenom: docWithAuthor.author_prenom, author_nom: docWithAuthor.author_nom };
-        // Mettre à jour la correspondance initiales → nom
+        // Mettre à jour la correspondance initiales → nom (en mémoire pour la catégorie en
+        // cours, et de façon persistante pour les futures sessions/catégories)
         if (initials) {
             initialsToAuthorMap.set(initials, authorInfo);
+            rememberInitialsToAuthor(initials, authorInfo);
         }
     } else if (initials && initialsToAuthorMap.has(initials)) {
-        // 2. Utiliser la correspondance existante
+        // 2. Utiliser la correspondance existante (déjà rencontrée dans cette catégorie)
         authorInfo = initialsToAuthorMap.get(initials);
+    } else if (initials && persistentInitialsToAuthorMap[initials]) {
+        // 3. Utiliser la correspondance persistée d'une session précédente
+        const persisted = persistentInitialsToAuthorMap[initials];
+        if (persisted.ambiguous) {
+            console.warn(`[dataScrapper] Attribution incertaine pour les initiales "${initials}" : plusieurs auteurs différents ont déjà été vus pour ces initiales. Dernière estimation utilisée : "${persisted.author}".`);
+        }
+        authorInfo = { author: persisted.author, author_prenom: persisted.author_prenom, author_nom: persisted.author_nom };
     }
     
     // Supprimer les champs d'auteur de tous les documents (on les garde uniquement au niveau du conteneur)
