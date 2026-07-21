@@ -160,21 +160,27 @@ const SELECTORS = {
  *     fullPage: true,                              // Charge l'intégralité de la page d'historique (au lieu des 10 par défaut de Weda)
  *     categories: ["consultations", "etatCivil"],  // Liste des catégories à récupérer (par défaut : ["consultations"])
  *     includeLegacy: false,                        // Récupère en plus les journées importées d'un ancien logiciel, quand la catégorie le permet (par défaut : false)
+ *     dateRange: ["01/01/2021", "31/12/2026"],     // Filtre les résultats sur une plage de dates (voir resolveDateRange)
  *     debug: false,                                // Laisse l'iframe de récupération affichée en fin d'appel
  * });
  * console.log(data);
  *
  * @argument categories ["consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse", "etatCivil", "antecedents", "contacts"]
+ * @argument dateRange Tableau de 0, 1 ou 2 dates (objet Date ou texte "jj/mm/aaaa"), voir resolveDateRange
  * 
  */
 async function recoverData({
     fullPage = false, // De base on ne va vérifier que les 10 derniers subContainers chargés par défaut. N'est probablement pas possible pour charts et vaccins
     categories = ["consultations"], // Ce qui est chargé par défaut est la catégorie "consultations".
     includeLegacy = false, // Récupère en plus les journées importées d'un ancien logiciel, quand la catégorie le permet
+    dateRange = [], // Filtre les résultats sur une plage de dates : [debut, fin], chaque borne étant facultative
     debug = false, // Affiche l'iframe en plein écran et ne la supprime pas à la fin pour faciliter le debug
 } = {}) {
     // Préparation de l'objet de données à retourner
     const data = {};
+
+    // Résolution de la plage de dates demandée (bornes converties en objets Date, ou null si absentes)
+    const resolvedDateRange = resolveDateRange(dateRange);
 
     // Chargement de la correspondance initiales → auteur persistée d'une session à l'autre
     await loadPersistentInitialsToAuthorMap();
@@ -207,6 +213,14 @@ async function recoverData({
             }
         }
 
+        // Cas particulier de la catégorie "documents" : Weda applique son propre filtre de dates
+        // (champs TextBoxDate1/TextBoxDate2) indépendamment de notre filtrage a posteriori. Si la
+        // plage affichée ne couvre pas la plage demandée, il faut l'élargir avant de parser.
+        if (category === 'documents') {
+            iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+            await ensureDocumentsDateRangeCovers(iframe, resolvedDateRange);
+        }
+
         // Le mode fullPage doit être appliqué une fois la catégorie courante affichée,
         // car Weda revient souvent à une vue partielle après changement de catégorie.
         if (fullPage) {
@@ -219,6 +233,9 @@ async function recoverData({
         // Le document peut être remplacé après un postback ASP.NET : on le relit juste avant le parse.
         iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
         data[category] = recoverMainViewData(iframeDocument, categorySelectors, includeLegacy, category);
+
+        // Filtrage a posteriori sur la plage de dates demandée (retire les entrées non pertinentes)
+        data[category] = filterCategoryDataByDateRange(data[category], resolvedDateRange);
     }
 
     // Nettoyage : supprimer l'iframe si on n'est pas en mode debug
@@ -227,6 +244,131 @@ async function recoverData({
     console.log('[dataScrapper] Données récupérées pour les catégories :', Object.keys(data), data);
 
     return data;
+}
+
+/**
+ * Convertit une date en objet Date à partir d'un texte au format "jj/mm/aaaa", ou la renvoie
+ * telle quelle si c'est déjà un objet Date. Retourne null si vide/invalide.
+ * @param {string|Date|null|undefined} value
+ * @returns {Date|null}
+ */
+function parseFrenchDate(value) {
+    if (!value) return null;
+    if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
+    const match = String(value).trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!match) return null;
+    const [, day, month, year] = match;
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    return isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * Formate un objet Date au format "jj/mm/aaaa" utilisé par Weda.
+ * @param {Date} date
+ * @returns {string}
+ */
+function formatFrenchDate(date) {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
+/**
+ * Résout un argument dateRange (voir recoverData) en un objet {start, end} de type Date|null.
+ * Accepte 0, 1 ou 2 éléments (objets Date ou texte "jj/mm/aaaa", chaîne vide ou absent = pas de
+ * borne). La borne de fin est ramenée à 23:59:59.999 pour être inclusive sur toute la journée.
+ * @param {Array<string|Date>} dateRange
+ * @returns {{start: Date|null, end: Date|null}}
+ */
+function resolveDateRange(dateRange) {
+    const [startRaw, endRaw] = Array.isArray(dateRange) ? dateRange : [];
+    const start = parseFrenchDate(startRaw);
+    const end = parseFrenchDate(endRaw);
+    if (end) end.setHours(23, 59, 59, 999);
+    return { start, end };
+}
+
+/**
+ * Vérifie si une date texte ("jj/mm/aaaa") est comprise dans la plage résolue. Une date non
+ * parsable est conservée (on ne filtre pas silencieusement des données dont on ne comprend pas
+ * le format).
+ * @param {string|null|undefined} dateStr
+ * @param {{start: Date|null, end: Date|null}} range
+ * @returns {boolean}
+ */
+function isDateStringInRange(dateStr, range) {
+    if (!range || (!range.start && !range.end)) return true;
+    const date = parseFrenchDate(dateStr);
+    if (!date) return true;
+    if (range.start && date < range.start) return false;
+    if (range.end && date > range.end) return false;
+    return true;
+}
+
+/**
+ * Filtre les données d'une catégorie selon la plage de dates résolue. Ne s'applique qu'aux
+ * catégories dont le résultat est un tableau d'entrées portant chacune un champ "date" au
+ * premier niveau (journées, vaccins, documents). Les catégories sans date exploitable au
+ * premier niveau (etatCivil, antecedents, contacts, charts, grossesse) sont laissées telles quelles.
+ * @param {*} categoryData - Résultat retourné par recoverMainViewData pour une catégorie
+ * @param {{start: Date|null, end: Date|null}} range
+ * @returns {*} Données filtrées (ou inchangées si non applicable)
+ */
+function filterCategoryDataByDateRange(categoryData, range) {
+    if (!range || (!range.start && !range.end)) return categoryData;
+    if (!Array.isArray(categoryData)) return categoryData;
+    return categoryData.filter(entry => isDateStringInRange(entry?.date, range));
+}
+
+/**
+ * S'assure que les champs de filtre de dates propres à Weda pour la catégorie "documents"
+ * (#HistoriqueUCForm1_TextBoxDate1 / #HistoriqueUCForm1_TextBoxDate2) couvrent bien la plage de
+ * dates demandée. Si ce n'est pas le cas, élargit les champs puis relance la recherche via
+ * #HistoriqueUCForm1_ButtonFindPieceJointe.
+ * @param {HTMLIFrameElement} iframe
+ * @param {{start: Date|null, end: Date|null}} range
+ * @returns {Promise<void>}
+ */
+async function ensureDocumentsDateRangeCovers(iframe, range) {
+    console.log('[dataScrapper] Vérification du filtre de dates Weda pour la catégorie documents', range);
+    // Sans plage demandée, on considère tout de même qu'il faut couvrir l'intégralité de
+    // l'historique (01/01/1900 à aujourd'hui), Weda limitant sinon les documents affichés.
+    const effectiveRange = {
+        start: range?.start || parseFrenchDate('01/01/1900'),
+        end: range?.end || new Date(),
+    };
+
+    const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+    const dateField1 = iframeDocument.querySelector('#HistoriqueUCForm1_TextBoxDate1');
+    const dateField2 = iframeDocument.querySelector('#HistoriqueUCForm1_TextBoxDate2');
+    if (!dateField1 || !dateField2) {
+        console.warn('[dataScrapper] Champs de filtre de dates introuvables pour la catégorie documents');
+        return;
+    }
+
+    const currentStart = parseFrenchDate(dateField1.value);
+    const currentEnd = parseFrenchDate(dateField2.value);
+    const covers =
+        currentStart && currentStart <= effectiveRange.start &&
+        currentEnd && currentEnd >= effectiveRange.end;
+    if (covers) return;
+
+    console.log('[dataScrapper] Élargissement du filtre de dates Weda pour la catégorie documents', { currentStart: dateField1.value, currentEnd: dateField2.value, effectiveRange });
+
+    dateField1.value = formatFrenchDate(effectiveRange.start);
+    dateField1.dispatchEvent(new Event('change', { bubbles: true }));
+
+    dateField2.value = formatFrenchDate(effectiveRange.end);
+    dateField2.dispatchEvent(new Event('change', { bubbles: true }));
+
+    const findButton = iframeDocument.querySelector('#HistoriqueUCForm1_ButtonFindPieceJointe');
+    if (!findButton) {
+        console.warn('[dataScrapper] Bouton de recherche des documents introuvable (#HistoriqueUCForm1_ButtonFindPieceJointe)');
+        return;
+    }
+    findButton.click();
+    await loadingIsComplete(iframe, 'élargissement du filtre de dates des documents');
 }
 
 async function loadFullPage(iframeDocument) {
@@ -1544,6 +1686,8 @@ function showDataScrapperTestPanel() {
         <label style="display:block;"><input type="checkbox" id="dsp-fullPage"> fullPage</label>
         <label style="display:block;"><input type="checkbox" id="dsp-includeLegacy"> includeLegacy</label>
         <label style="display:block;"><input type="checkbox" id="dsp-debug" checked> debug</label>
+        <label style="display:block;">dateRange début : <input type="text" id="dsp-dateStart" placeholder="jj/mm/aaaa" style="width:90px;"></label>
+        <label style="display:block;">dateRange fin : <input type="text" id="dsp-dateEnd" placeholder="jj/mm/aaaa" style="width:90px;"></label>
         <hr>
     `;
 
@@ -1581,16 +1725,21 @@ function showDataScrapperTestPanel() {
         const fullPage = panel.querySelector('#dsp-fullPage').checked;
         const includeLegacy = panel.querySelector('#dsp-includeLegacy').checked;
         const debug = panel.querySelector('#dsp-debug').checked;
-        runDebugRecoverData(categories, categories.join(', '), { fullPage, includeLegacy, debug });
+        const dateRange = [
+            panel.querySelector('#dsp-dateStart').value.trim(),
+            panel.querySelector('#dsp-dateEnd').value.trim(),
+        ];
+        runDebugRecoverData(categories, categories.join(', '), { fullPage, includeLegacy, debug, dateRange });
     });
 }
 
-async function runDebugRecoverData(categories, label, { fullPage = true, includeLegacy = true, debug = true } = {}) {
+async function runDebugRecoverData(categories, label, { fullPage = true, includeLegacy = true, debug = true, dateRange = [] } = {}) {
     const data = await recoverData({
         fullPage,
         categories,
         debug,
-        includeLegacy
+        includeLegacy,
+        dateRange
     });
     console.log(`[dataScrapper] Données récupérées (${label}) :`, data);
     showRecoveredData(data);
