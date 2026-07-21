@@ -1489,36 +1489,102 @@ function parseAttachments(pjmDiv) {
 
 // ───────────────────────────────────────────────────────────────────────────────
 /** 
- * phase de test, on insère un bouton pour lancer la récupération des données et les afficher dans la console
+ * phase de test, on insère un bouton unique qui ouvre une interface de test permettant
+ * de choisir la/les catégorie(s) à récupérer ainsi que les options (fullPage, includeLegacy, debug)
  */
 addTweak('*', 'dataScrapperDebugger', function () {
-    const debugCategories = [
-        "etatCivil",
-        "antecedents",
-        "contacts",
-        "consultations",
-        "resultatsExamens",
-        "courriers",
-        "arretsTravail",
-        "vaccins",
-        "charts",
-        "documents",
-        "grossesse"
-    ];
-
-    addTestButton("Récupérer tout", () => runDebugRecoverData(debugCategories, "tout"), 0);
-
-    debugCategories.forEach((category, index) => {
-        addTestButton(`Récupérer ${category}`, () => runDebugRecoverData([category], category), index + 1);
-    });
+    addTestButton("Test dataScrapper", () => showDataScrapperTestPanel());
 });
 
-async function runDebugRecoverData(categories, label) {
+const DATA_SCRAPPER_DEBUG_CATEGORIES = [
+    "etatCivil",
+    "antecedents",
+    "contacts",
+    "consultations",
+    "resultatsExamens",
+    "courriers",
+    "arretsTravail",
+    "vaccins",
+    "charts",
+    "documents",
+    "grossesse"
+];
+
+/**
+ * Affiche un panneau de test permettant de choisir les catégories à récupérer ainsi que
+ * les options de recoverData (fullPage, includeLegacy, debug), puis de lancer la récupération.
+ */
+function showDataScrapperTestPanel() {
+    const existingPanel = document.getElementById('dataScrapperTestPanel');
+    if (existingPanel) {
+        existingPanel.remove();
+        return;
+    }
+
+    const panel = document.createElement("div");
+    panel.id = 'dataScrapperTestPanel';
+    panel.style.position = "fixed";
+    panel.style.bottom = "10px";
+    panel.style.right = "10px";
+    panel.style.zIndex = 1000;
+    panel.style.backgroundColor = "white";
+    panel.style.border = "1px solid black";
+    panel.style.padding = "10px";
+    panel.style.maxHeight = "90vh";
+    panel.style.overflow = "auto";
+    panel.style.font = "12px sans-serif";
+
+    const optionsHtml = `
+        <label style="display:block;"><input type="checkbox" id="dsp-fullPage"> fullPage</label>
+        <label style="display:block;"><input type="checkbox" id="dsp-includeLegacy"> includeLegacy</label>
+        <label style="display:block;"><input type="checkbox" id="dsp-debug" checked> debug</label>
+        <hr>
+    `;
+
+    const categoriesHtml = DATA_SCRAPPER_DEBUG_CATEGORIES
+        .map(category => `<label style="display:block;"><input type="checkbox" class="dsp-category" value="${category}" ${category === 'consultations' ? 'checked' : ''}> ${category}</label>`)
+        .join('');
+
+    panel.innerHTML = `
+        ${optionsHtml}
+        <label style="display:block;"><input type="checkbox" id="dsp-selectAll"> Toutes les catégories</label>
+        ${categoriesHtml}
+        <hr>
+        <button id="dsp-run">Récupérer</button>
+        <button id="dsp-close">Fermer</button>
+    `;
+
+    document.body.appendChild(panel);
+
+    panel.querySelector('#dsp-selectAll').addEventListener('change', (e) => {
+        panel.querySelectorAll('.dsp-category').forEach(cb => { cb.checked = e.target.checked; });
+    });
+
+    panel.querySelector('#dsp-close').addEventListener('click', () => {
+        panel.remove();
+        document.getElementById('dataScrapperIframe')?.remove();
+        document.getElementById('dataScrapperResultPre')?.remove();
+    });
+
+    panel.querySelector('#dsp-run').addEventListener('click', () => {
+        const categories = Array.from(panel.querySelectorAll('.dsp-category:checked')).map(cb => cb.value);
+        if (categories.length === 0) {
+            sendWedaNotif({ message: "Sélectionnez au moins une catégorie", type: "fail" });
+            return;
+        }
+        const fullPage = panel.querySelector('#dsp-fullPage').checked;
+        const includeLegacy = panel.querySelector('#dsp-includeLegacy').checked;
+        const debug = panel.querySelector('#dsp-debug').checked;
+        runDebugRecoverData(categories, categories.join(', '), { fullPage, includeLegacy, debug });
+    });
+}
+
+async function runDebugRecoverData(categories, label, { fullPage = true, includeLegacy = true, debug = true } = {}) {
     const data = await recoverData({
-        fullPage: true,
+        fullPage,
         categories,
-        debug: true,
-        includeLegacy: true
+        debug,
+        includeLegacy
     });
     console.log(`[dataScrapper] Données récupérées (${label}) :`, data);
     showRecoveredData(data);
@@ -1537,6 +1603,7 @@ function addTestButton(label, onClick, index = 0) {
 
 function showRecoveredData(data) {
     const pre = document.createElement("pre");
+    pre.id = 'dataScrapperResultPre';
     pre.textContent = JSON.stringify(data, null, 2);
     pre.style.position = "fixed";
     pre.style.top = "10px";
