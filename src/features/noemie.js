@@ -96,7 +96,12 @@ function ajouterJour(dateStr, numDay) {
 
   // On ajoute un jour à la date
   date.setDate(date.getDate() + numDay);
-
+  if(date.getDay() == 0) { //Si dimanche ajout de 1 jour
+    date.setDate(date.getDate() + 1);
+  }
+  else if (date.getDay() == 6){ //Si smaedi ajout de 2 jours
+    date.setDate(date.getDate() + 2);
+  }
   // On formate la nouvelle date au format jj/mm/yyyy
   const jourAjoute = String(date.getDate()).padStart(2, '0');
   const moisAjoute = String(date.getMonth() + 1).padStart(2, '0');
