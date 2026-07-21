@@ -95,7 +95,7 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
                     let ddnElement = gdParrentElement.querySelector("td:nth-child(3)");
                     nameText += ddnElement ? ` ${ddnElement.innerText}` : "";
                     console.log("[pdfParser] Nom du document importé :", nameText);
-                    addPatientNameDisplay(nameText);
+                    addPatientNameDisplay(nameText, nameElement);
                     processFoundPdfIframeEchanges(true);
                 });
             });

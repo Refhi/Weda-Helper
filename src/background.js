@@ -1356,6 +1356,12 @@ var advancedDefaultSettings = [
             "description": "Active le mode debug du PDF Parser.",
             "default": false,
             "longDescription": "Affiche un champ de test dans la page des imports pour tester rapidement l’algorithme d’anayse des PDF. Utile pour les développeurs.",
+        }, {
+            "name": "dataScrapperDebugger",
+            "type": TYPE_BOOL,
+            "description": "Active le mode debug du Data Scrapper.",
+            "default": false,
+            "longDescription": "Affiche un bouton pour tester rapidement le scrapper de données. Utile pour les développeurs.",
         }],
     }];
 
