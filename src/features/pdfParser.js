@@ -2505,30 +2505,6 @@ function cleanTitle(title) {
 }
 
 /**
- * Récupère le nom du médecin actuellement connecté
- * @returns {string|null} - Le nom du médecin connecté, ou null si non trouvé
- */
-function getConnectedDoctorName() {
-    // Essayer d'abord avec LabelUserLog
-    const labelUserLog = document.getElementById('LabelUserLog');
-    if (labelUserLog && labelUserLog.innerText) {
-        return labelUserLog.innerText.trim();
-    }
-    
-    // Sinon essayer avec LinkButtonUserLog
-    const linkButtonUserLog = document.getElementById('LinkButtonUserLog');
-    if (linkButtonUserLog && linkButtonUserLog.innerText) {
-        // Extraire juste la première ligne (le nom)
-        const lines = linkButtonUserLog.innerText.split('\n');
-        if (lines.length > 0) {
-            return lines[0].trim();
-        }
-    }
-    
-    return null;
-}
-
-/**
  * Vérifie si un nom de médecin détecté correspond au médecin connecté
  * @param {string} detectedName - Le nom détecté dans le PDF
  * @param {string} connectedDoctorName - Le nom du médecin connecté

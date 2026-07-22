@@ -297,44 +297,72 @@ addTweak([
 /** 
  * envoi rapide du contenu du post-it dans une consultation
  */
-addTweak('/FolderMedical/PopUpRappel.aspx', '*sendPostItContent', function () {
-    const textAreaSelector = '#TextBoxCabinetPatientRappel';
-    const fermerButtonSelector = '#ButtonFermerRappel';
+addTweak('/FolderTools/PostItReaderInForm.aspx', '*sendPostItContent', async function () {
+    console.log('[sendPostItContent] Ajout du bouton d\'envoi vers consultation');
     const actionButtonId = 'WedaHelperSendPostItToConsultation';
 
-    async function sendPostItContentToConsultation(button) {
-        const postItContent = document.querySelector(textAreaSelector)?.value?.trim();
-        const fermerButton = document.querySelector(fermerButtonSelector);
 
+    async function sendPostItToConsultation() {
+        // le lien est au format https://secure.weda.fr/FolderMedical/PatientViewForm.aspx?PatDk=65407357|4152|630|2&crypt=15-A0-4F-82-80-4A-EB-03-E3-E4-0D-9C-F6-2F-BD-77-52-7B-3F-2D-93-A2-D0-E8-E3-A5-AF-C7-47-EF-12-B4
+        const linkToPatient = document.querySelector('#ContentPlaceHolder1_HyperLinkPatient');
+        const questionContentIframe = document.querySelector('#CE_ContentPlaceHolder1_TextBoxPostItMessage_ID_Frame');
+        const answerContent = document.querySelector('#ContentPlaceHolder1_TextBoxPostItReadComment');
+        const postItContent = questionContentIframe?.contentDocument?.querySelector('body')?.innerText?.trim();
         if (!postItContent) {
-            console.warn('[sendPostItContent] Contenu vide, envoi annulé.');
+            console.warn('[sendPostItContent] Contenu du post-it vide, insertion annulée.');
+            return;
+        }
+        if (!linkToPatient) {
+            console.warn('[sendPostItContent] Lien vers le patient introuvable, insertion annulée.');
             return;
         }
 
-        if (!fermerButton) {
-            console.warn('[sendPostItContent] Bouton de fermeture introuvable.');
-            return;
-        }
+        // Expéditeur du post-it, affiché dans son en-tête (ex: "Dr. Herve MATHIEU DE VIENNE")
+        const expediteurTitre = document.querySelector('#ContentPlaceHolder1_LabelUserLabelTitle')?.textContent?.trim() || '';
+        const expediteurPrenom = document.querySelector('#ContentPlaceHolder1_LabelUserForenames')?.textContent?.trim() || '';
+        const expediteurNom = document.querySelector('#ContentPlaceHolder1_LabelUserSurname')?.textContent?.trim() || '';
+        const expediteur = [expediteurTitre, expediteurPrenom, expediteurNom].filter(Boolean).join(' ') || null;
 
+        // Récipiendaire : le médecin actuellement connecté, qui consulte ce post-it
+        const recipiendaire = getConnectedDoctorName();
+
+        // Date du post-it, affichée dans son en-tête (ex: "Post-it du 22/07/2026 14:32")
+        const postItDate = document.querySelector('#ContentPlaceHolder1_LabelPostItDate')?.textContent?.trim();
+        
+        // Titre du post-it
+        const postItTitle = document.querySelector('#ContentPlaceHolder1_LabelPostItTitle')?.textContent?.trim();
+
+
+        // Génération du titre à mettre dans la consultation, basé sur le titre du post-it et la date
+        const timestampedTitle = buildTimestampedTitle(postItTitle || 'Post-it');
+        
+        // Construction du contenu à insérer dans la consultation
+        const enTete = [
+            `Post-it${postItDate ? ` du ${postItDate}` : ''}`,
+            expediteur ? `De : ${expediteur}` : null,
+            recipiendaire ? `À : ${recipiendaire}` : null,
+        ].filter(Boolean).join('\n');
+
+        const content = `${enTete}\n\n${postItContent}\n\n${answerContent ? `Réponse : ${answerContent.value.trim()}` : ''}`;
+
+
+        const button = document.getElementById(actionButtonId);
         button.disabled = true;
-        button.textContent = 'Envoi...';
+        button.textContent = 'Envoi en cours...';
 
-        const result = await insertData('toConsultation', { content: postItContent });
+        const result = await insertData('toConsultation', { content, titleForConsultation: timestampedTitle }, { homeUrl: linkToPatient.href });
 
-        if (result.success) {
-            button.textContent = 'Enregistré ✔️';
-            button.title = "Contenu du post-it enregistré dans une nouvelle consultation pour le patient courant. Vous pouvez fermer cette fenêtre. La nouvelle consultation n’apparaitra qu’après actualisation.";
-            console.log('[sendPostItContent] Contenu envoyé dans une consultation via iframe.', result.details);
+        if (result) {
+            button.textContent = 'Envoi terminé !';
+            console.log('[sendPostItContent] Contenu du post-it envoyé dans une nouvelle consultation :', result);
         } else {
-            button.textContent = 'Échec';
-            button.title = "Erreur lors de l'envoi vers consultation. Voir console pour détails.";
-            console.error('[sendPostItContent] Échec de l\'envoi vers consultation :', result.error);
-        }
-
-        button.disabled = false;
+            button.textContent = 'Échec de l\'envoi';
+            console.error('[sendPostItContent] Échec de l\'envoi du post-it vers la consultation');
+        }        
     }
 
     function addSendButton() {
+        const fermerButtonSelector = '#ContentPlaceHolder1_PanelBouton2';
         if (document.getElementById(actionButtonId)) {
             return;
         }
@@ -349,12 +377,18 @@ addTweak('/FolderMedical/PopUpRappel.aspx', '*sendPostItContent', function () {
         sendButton.type = 'button';
         sendButton.className = 'button';
         sendButton.textContent = 'Envoyer vers consultation';
-        sendButton.title = 'Weda-Helper : Envoie le contenu du post-it dans une nouvelle consultation pour le patient courant';
+        sendButton.title = 'Weda-Helper : Envoie le contenu du post-it dans une nouvelle consultation pour le patient concerné. Cette action n’enregistre pas le post-it ni ne l’envoi, vous devrez cliquer sur envoyer +/- archiver si nécessaire.';
         sendButton.style.marginLeft = '8px';
-        sendButton.addEventListener('click', () => sendPostItContentToConsultation(sendButton));
+        sendButton.style.marginTop = '8px';
+        sendButton.style.display = 'block';
+        sendButton.addEventListener('click', () => sendPostItToConsultation(sendButton));
 
         fermerButton.parentElement.insertBefore(sendButton, fermerButton.nextSibling);
     }
 
-    addSendButton();
+    waitForElement({
+        selector: '#ContentPlaceHolder1_ButtonValiderReponseArchiver',
+        triggerOnInit: true,
+        callback: addSendButton,
+    });
 });

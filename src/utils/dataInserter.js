@@ -36,7 +36,10 @@ const INSERT_TARGETS = {
  * @returns {Promise<{success: boolean, target: string, error: string|null, details: *}>}
  */
 async function insertData(target, data, options = {}) {
+    // options.debug = true; // Décommenter pour garder l'iframe visible et faciliter le debug
+
     const insertFn = INSERT_TARGETS[target];
+    console.log(`[dataInserter] Insertion vers "${target}" avec options:`, options, 'et données:', data);
     if (!insertFn) {
         console.warn(`[dataInserter] Cible d'insertion inconnue : ${target}`);
         return { success: false, target, error: `Cible inconnue : ${target}`, details: null };
@@ -118,7 +121,7 @@ function buildTimestampedTitle(prefix) {
  * @param {{debug?: boolean}} [options] - debug: si true, garde l'iframe visible et ne la supprime pas
  * @returns {Promise<{titre: string}>} Détails de l'insertion réalisée
  */
-async function insertToConsultation({ content }, { debug = false } = {}) {
+async function insertToConsultation({ content, titleForConsultation }, { debug = false, patientId = null, homeUrl = null } = {}) {
     if (!content) {
         throw new Error('Contenu vide, insertion annulée.');
     }
@@ -133,7 +136,7 @@ async function insertToConsultation({ content }, { debug = false } = {}) {
 
     let consultationIframe = null;
     try {
-        const homeUrl = await getCurrentPatientPageUrl('/FolderMedical/PatientViewForm.aspx');
+        homeUrl = homeUrl ?? await getCurrentPatientPageUrl('/FolderMedical/PatientViewForm.aspx', patientId);
         consultationIframe = await createHiddenIframe(homeUrl, debug, 'WedaHelperPostItConsultationIframe');
 
         const getConsultationDoc = () => consultationIframe.contentDocument || consultationIframe.contentWindow?.document;
@@ -145,9 +148,8 @@ async function insertToConsultation({ content }, { debug = false } = {}) {
             console.warn('[insertToConsultation] Impossible d\'ouvrir la consultation via menu.');
         }
 
-        const titreConsultation = buildTimestampedTitle('Post-it');
         const titleInput = await waitForElementInDocument(getConsultationDoc, '#TextBoxDocumentTitre');
-        titleInput.value = titreConsultation;
+        titleInput.value = titleForConsultation;
         titleInput.dispatchEvent(new Event('input', { bubbles: true }));
         titleInput.dispatchEvent(new Event('change', { bubbles: true }));
 
@@ -173,11 +175,10 @@ async function insertToConsultation({ content }, { debug = false } = {}) {
 
         recordMetrics({ clicks: 4, keyStrokes: 2, drags: 1 });
 
-        return { titre: titreConsultation };
+        return { titre: titleInput.value };
     } finally {
         if (consultationIframe && !debug) {
             consultationIframe.remove();
         }
     }
 }
-// TODO: une fonction par cible, ex: async function insertPostItToConsultation(data, options) {}
