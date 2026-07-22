@@ -560,14 +560,14 @@ function textOf(root, selector) {
 /**
  * Nettoie un nom d'auteur brut et le décompose en prénom / nom.
  * Les noms bruts extraits de Weda ont typiquement la forme :
- *   "Dr. Laurianne DIGARD : Généraliste"
- *   "Mme Elodie BAUDOIN : Infirmier salarié"
- *   "Dr. Herve MATHIEU DE VIENNE : Généraliste"
+ *   "Dr. Prenom NOM : Généraliste"
+ *   "Mme Prenom NOM : Infirmier salarié"
+ *   "Dr. Prenom NOM : Généraliste"
  * On retire donc :
  *   - le titre de civilité éventuel en tête ("Dr.", "Pr.", "Mme", "M", "Melle")
  *   - la fonction/spécialité éventuelle en fin (après " : ")
  * Le nom de famille est déduit des mots consécutifs en fin de chaîne écrits en
- * majuscules (ex: "MATHIEU DE VIENNE"), le reste formant le prénom.
+ * majuscules (ex: "NOM COMPOSE ENDEUX"), le reste formant le prénom.
  * @param {string|null} rawName - Nom brut potentiellement préfixé d'un titre et suffixé d'une fonction
  * @returns {{author: string|null, author_prenom: string|null, author_nom: string|null}}
  */
