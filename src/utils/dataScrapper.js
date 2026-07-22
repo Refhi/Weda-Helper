@@ -187,7 +187,7 @@ async function recoverData({
 
     // Création d’une iframe dont on attend le chargement complet puis dont on récupère le document pour y chercher les données
     const urlToLoad = await constructPatientHistoryUrl();
-    const iframe = await makeIframeForPatientHistory(urlToLoad, debug);
+    const iframe = await createHiddenIframe(urlToLoad, debug, 'dataScrapperIframe');
     let iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
 
     // On récupère les données pour chaque catégorie demandée
@@ -473,21 +473,8 @@ async function loadingIsComplete(iframe, raisonAttente = "N/A") {
 
 /**
  * Attend qu'une condition devienne vraie, en la testant à intervalles réguliers.
- * @param {Function} conditionFn - Fonction sans argument retournant un booléen (ou une valeur "truthy")
- * @param {Object} [options]
- * @param {number} [options.interval=50] - Intervalle entre deux vérifications, en ms
- * @param {number} [options.maxRetry=200] - Nombre maximal de vérifications avant timeout
- * @param {string} [options.label=""] - Libellé utilisé dans le message de timeout
- * @returns {Promise<boolean>} true si la condition a été remplie, false en cas de timeout
+ * (voir waitUntil dans iframeHelpers.js)
  */
-async function waitUntil(conditionFn, { interval = 50, maxRetry = 200, label = "" } = {}) {
-    for (let i = 0; i < maxRetry; i++) {
-        if (conditionFn()) return true;
-        await sleep(interval);
-    }
-    console.warn(`[dataScrapper] Timeout lors de l'attente : ${label}`);
-    return false;
-}
 
 /**
  * Vérifie, de façon instantanée (sans attente), si la catégorie donnée est déjà
@@ -545,50 +532,16 @@ function chartsLoadedCheck(iframe) {
 
 /**
  * Creation d'une iframe cachée pour charger la page d'historique patient et récupérer les données
- * 
+ * (voir createHiddenIframe dans iframeHelpers.js)
  */
-async function makeIframeForPatientHistory(url, debug = false) {
-    return new Promise((resolve, reject) => {
-        const iframe = document.createElement('iframe');
-        if (debug) {
-            iframe.style.position = 'fixed';
-            iframe.style.top = '2vh';
-            iframe.style.left = '2vw';
-            iframe.style.width = '96vw';
-            iframe.style.height = '96vh';
-            iframe.style.zIndex = 999;
-            iframe.style.border = '3px solid red';
-            iframe.style.display = 'block';
-        } else {
-            iframe.style.display = 'none';
-        }
-        iframe.src = url;
-        iframe.onload = () => resolve(iframe);
-        iframe.onerror = (err) => reject(err);
-        iframe.id = 'dataScrapperIframe';
-        document.body.appendChild(iframe);
-    });
-}
 
 
 /**
- * Constructeur d'url pour la page d'historique patient
+ * Constructeur d'url pour la page d'historique patient (voir getCurrentPatientPageUrl dans patientLink.js)
  */
 async function constructPatientHistoryUrl() {
-    // On récupère l'url grace à l'api patient :
-    const patientId = getCurrentPatientId();
-    const patientInfo = await getPatientInfo(patientId);
-    
-    // Extraire les paramètres URL depuis patientFileUrl
-    const patientFileUrl = patientInfo.patientFileUrl;
-    const patientFileUrlParts = patientFileUrl.split('?');
-    const patientFileUrlParams = patientFileUrlParts[1];
-    
-    // Construire l'URL de la page d'historique
-    const urlToLoad = `${baseUrl}/FolderMedical/PopUpHistoriqueForm.aspx?${patientFileUrlParams}`;
-
+    const urlToLoad = await getCurrentPatientPageUrl('/FolderMedical/PopUpHistoriqueForm.aspx');
     console.log(`[dataScrapper] URL de la page d'historique : ${urlToLoad}`);
-
     return urlToLoad;
 }
 
