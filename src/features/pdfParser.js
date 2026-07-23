@@ -1339,7 +1339,7 @@ async function extractTextFromPDF(pdfUrl) {
         let detectedMarkers = [];
         try {
             const operatorList = await page.getOperatorList();
-            console.log(`[pdfParser] Page ${i} - Nombre d'opérations: ${operatorList.fnArray.length}`);
+            // console.log(`[pdfParser] Page ${i} - Nombre d'opérations: ${operatorList.fnArray.length}`);
             
             let rectCount = 0;
             
@@ -1366,7 +1366,7 @@ async function extractTextFromPDF(pdfUrl) {
                         
                         if (rectCoords) {
                             rectCount++;
-                            console.log(`[pdfParser] ✓ Rectangle coloré #${rectCount}: RGB(${color.r}, ${color.g}, ${color.b}) à (${rectCoords[0].toFixed(1)}, ${rectCoords[1].toFixed(1)}) - ${rectCoords[2].toFixed(1)}x${rectCoords[3].toFixed(1)}`);
+                            // console.log(`[pdfParser] ✓ Rectangle coloré #${rectCount}: RGB(${color.r}, ${color.g}, ${color.b}) à (${rectCoords[0].toFixed(1)}, ${rectCoords[1].toFixed(1)}) - ${rectCoords[2].toFixed(1)}x${rectCoords[3].toFixed(1)}`);
                             
                             // Ajouter le marqueur selon la couleur
                             if (color.r === 0 && color.g === 128 && color.b === 0) {
