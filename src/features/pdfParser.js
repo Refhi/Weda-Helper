@@ -248,23 +248,18 @@ async function processFoundPdfIframeImport(PDFIframeElements) {
     // ÉTAPE 2 : Recherche et sélection du patient
     // ATTENTION : peut déclencher un refresh de page
     // ===========================================
-    if (fullText.includes("[WedaAutoParse_nompatient]")) {
-        // Le nom du patient a déjà été détecté par le parseur de Weda, on ne déclenche pas la recherche automatique
-        console.log("[pdfParser] Import - Nom du patient déjà détecté par le parseur de Weda, pas de recherche automatique.");
-    } else {
-        const searchResult = handlePatientSearch(extractedData, hashId);
+    const searchResult = handlePatientSearch(extractedData, hashId);
 
-        // Si un refresh est attendu (changement de mode de recherche ou clic bouton recherche),
-        // on stoppe ici. La fonction sera rappelée après le rechargement de page.
-        if (searchResult.needsPageRefresh) {
-            console.log("[pdfParser] Import - Refresh attendu :", searchResult.message);
-            return;
-        }
+    // Si un refresh est attendu (changement de mode de recherche ou clic bouton recherche),
+    // on stoppe ici. La fonction sera rappelée après le rechargement de page.
+    if (searchResult.needsPageRefresh) {
+        console.log("[pdfParser] Import - Refresh attendu :", searchResult.message);
+        return;
+    }
 
-        // Si échec de la recherche patient, on continue quand même pour remplir le formulaire
-        if (!searchResult.patientFound) {
-            console.warn("[pdfParser] Import - Patient non trouvé automatiquement :", searchResult.message);
-        }
+    // Si échec de la recherche patient, on continue quand même pour remplir le formulaire
+    if (!searchResult.patientFound) {
+        console.warn("[pdfParser] Import - Patient non trouvé automatiquement :", searchResult.message);
     }
 
     // ===========================================

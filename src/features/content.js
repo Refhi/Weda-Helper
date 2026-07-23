@@ -300,11 +300,13 @@ addTweak([
 addTweak('/FolderTools/PostItReaderInForm.aspx', '*sendPostItContent', async function () {
     console.log('[sendPostItContent] Ajout du bouton d\'envoi vers consultation');
     const actionButtonId = 'WedaHelperSendPostItToConsultation';
+    const linkToPatientSelector = '#ContentPlaceHolder1_HyperLinkPatient';
+    const linkToPatientTab = "#ContentPlaceHolder1_HyperLinkPatientTarget";
 
 
     async function sendPostItToConsultation() {
         // le lien est au format https://secure.weda.fr/FolderMedical/PatientViewForm.aspx?PatDk=65407357|4152|630|2&crypt=15-A0-4F-82-80-4A-EB-03-E3-E4-0D-9C-F6-2F-BD-77-52-7B-3F-2D-93-A2-D0-E8-E3-A5-AF-C7-47-EF-12-B4
-        const linkToPatient = document.querySelector('#ContentPlaceHolder1_HyperLinkPatient');
+        const linkToPatient = document.querySelector(linkToPatientSelector);
         const questionContentIframe = document.querySelector('#CE_ContentPlaceHolder1_TextBoxPostItMessage_ID_Frame');
         const answerContent = document.querySelector('#ContentPlaceHolder1_TextBoxPostItReadComment');
         const postItContent = questionContentIframe?.contentDocument?.querySelector('body')?.innerText?.trim();
@@ -362,7 +364,7 @@ addTweak('/FolderTools/PostItReaderInForm.aspx', '*sendPostItContent', async fun
     }
 
     function addSendButton() {
-        const fermerButtonSelector = '#ContentPlaceHolder1_HyperLinkPatientTarget';
+        const fermerButtonSelector = linkToPatientTab;
         if (document.getElementById(actionButtonId)) {
             return;
         }
@@ -387,7 +389,7 @@ addTweak('/FolderTools/PostItReaderInForm.aspx', '*sendPostItContent', async fun
     }
 
     waitForElement({
-        selector: '#ContentPlaceHolder1_ButtonValiderReponseArchiver',
+        selector: linkToPatientTab,
         triggerOnInit: true,
         callback: addSendButton,
     });
