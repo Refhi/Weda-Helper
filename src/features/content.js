@@ -362,7 +362,7 @@ addTweak('/FolderTools/PostItReaderInForm.aspx', '*sendPostItContent', async fun
     }
 
     function addSendButton() {
-        const fermerButtonSelector = '#ContentPlaceHolder1_PanelBouton2';
+        const fermerButtonSelector = '#ContentPlaceHolder1_HyperLinkPatientTarget';
         if (document.getElementById(actionButtonId)) {
             return;
         }
