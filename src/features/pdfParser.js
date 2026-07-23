@@ -929,6 +929,7 @@ function actualImportActionLine() {
 
 // marque les données comme déjà importées
 function markDataAsImported(hashId, extractedData) {
+    console.log("[pdfParser] Marquage des données comme déjà importées pour le PDF avec hashId :", hashId);
     extractedData.alreadyImported = true;
     let extractedDataStr = JSON.stringify(extractedData);
     sessionStorage.setItem(hashId, extractedDataStr);
@@ -975,7 +976,7 @@ async function setExtractedDataInForm(extractedData, fullText) {
     // Parcourt chaque champ et met à jour la valeur si elle existe
     Object.keys(fields).forEach(key => {
         if (fields[key] && inputs[key]) {
-            if (fullText.includes("[WedaAutoParse_documentDate]")) { // Si la date a été détectée par le parseur de Weda, on ne la change pas
+            if (key === 'documentDate' && fullText.includes("[WedaAutoParse_documentDate]")) { // Si la date a été détectée par le parseur de Weda, on ne la change pas
                 console.log("[pdfParser] La date a déjà été détectée par le parseur de Weda, on ne la change pas");
                 return;
             }
