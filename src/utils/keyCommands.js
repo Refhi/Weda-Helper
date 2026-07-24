@@ -552,6 +552,9 @@ function clickCarteVitale() {
 /** Clique sur un élément du menu selon sa description
  * @param {string} description - La description de l'élément à cliquer ex. " Consultation"
  * @param {boolean} shiftOn - Si true, on doit créer un nouveau document obligatoirement
+ * 
+ * @see openNewDocumentFromMenu qui as une logique similaire volontairement non mutualisée
+ * 
  */
 function submenuW(description, shiftOn = false) {
     console.log('[submenuW] activé', description, shiftOn);

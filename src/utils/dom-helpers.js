@@ -7,6 +7,7 @@
  * @exports startClicScript - Initialise le script de clic CSP
  * @exports clicCSPLockedElement - Clique sur un élément protégé par CSP
  * @exports clickElementByOnclick - Clique via l'attribut onclick
+ * @exports getConnectedDoctorName - Récupère le nom du médecin actuellement connecté
  * 
  * @requires metrics.js (recordMetrics)
  */
@@ -28,6 +29,31 @@ function clicCSPLockedElement(elementSelector, iframeSelector = null) {
     document.dispatchEvent(event);
 }
 
+
+
+/**
+ * Récupère le nom du médecin actuellement connecté
+ * @returns {string|null} - Le nom du médecin connecté, ou null si non trouvé
+ */
+function getConnectedDoctorName() {
+    // Essayer d'abord avec LabelUserLog
+    const labelUserLog = document.getElementById('LabelUserLog');
+    if (labelUserLog && labelUserLog.innerText) {
+        return labelUserLog.innerText.trim();
+    }
+
+    // Sinon essayer avec LinkButtonUserLog
+    const linkButtonUserLog = document.getElementById('LinkButtonUserLog');
+    if (linkButtonUserLog && linkButtonUserLog.innerText) {
+        // Extraire juste la première ligne (le nom)
+        const lines = linkButtonUserLog.innerText.split('\n');
+        if (lines.length > 0) {
+            return lines[0].trim();
+        }
+    }
+
+    return null;
+}
 
 
 // // Aide au clic // TODO à évaluer

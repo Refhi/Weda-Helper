@@ -4,7 +4,7 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
-# [3.1.0.0] - 
+# [3.1] - Post-it et extraction de données centralisée (WhAIp à venir dans la 3.2 !)
 ## Ajouts :
 - [#627](https://github.com/Refhi/Weda-Helper/issues/627) - Ajout de raccourcis dans x jours pour les dates d'alertes dans les antécédents (3 mois, 6 mois, 1 an, 2 ans, 5 ans)
 - [#630](https://github.com/Refhi/Weda-Helper/issues/630) - Ajout d’un système d’extraction de données centralisée, permettant de faciliter certaines options, dont l’historique des facturations dans la page des FSE.
@@ -19,6 +19,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#625](https://github.com/Refhi/Weda-Helper/issues/625) - Réparation de l’aide qui s’affiche quand on maintient Alt appuyé... encore... ce coup-ci c’est censé fonctionner...
 - [#628](https://github.com/Refhi/Weda-Helper/issues/628) - Fix du raccourcis vers les éléments patients depuis les échanges sécurisés (en bas de page après un appuis sur "Importer le message")
 - [#620](https://github.com/Refhi/Weda-Helper/issues/620) - L'enregistrement automatique est correctement inhibé quelques secondes lors des saisies utilisateur.
+- importation de documents : la recherche de patient et/ou la date du document ne sont plus recherchée si elle(s) a/ont déjà été validée(s) par le parseur de Weda (en cours de déploiement dans Weda).
 
 # [3.0.0.4] - Hotfix
 ## Fix :

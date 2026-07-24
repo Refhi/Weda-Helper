@@ -297,209 +297,74 @@ addTweak([
 /** 
  * envoi rapide du contenu du post-it dans une consultation
  */
-addTweak('/FolderMedical/PopUpRappel.aspx', '*sendPostItContent', function () {
-    const debug = false; // true pour afficher l'iframe de consultation, false pour la cacher
-    const textAreaSelector = '#TextBoxCabinetPatientRappel';
-    const fermerButtonSelector = '#ButtonFermerRappel';
+addTweak('/FolderTools/PostItReaderInForm.aspx', '*sendPostItContent', async function () {
+    console.log('[sendPostItContent] Ajout du bouton d\'envoi vers consultation');
     const actionButtonId = 'WedaHelperSendPostItToConsultation';
-    const iframeId = 'WedaHelperPostItConsultationIframe';
+    const linkToPatientSelector = '#ContentPlaceHolder1_HyperLinkPatient';
+    const linkToPatientTab = "#ContentPlaceHolder1_HyperLinkPatientTarget";
 
-    function createConsultationIframe(url, iframeDebug = false) {
-        return new Promise((resolve, reject) => {
-            const iframe = document.createElement('iframe');
-            if (iframeDebug) {
-                iframe.style.position = 'fixed';
-                iframe.style.top = '2vh';
-                iframe.style.left = '2vw';
-                iframe.style.width = '96vw';
-                iframe.style.height = '96vh';
-                iframe.style.zIndex = '999999';
-                iframe.style.border = '3px solid #d22';
-                iframe.style.background = '#fff';
-                iframe.style.display = 'block';
-            } else {
-                iframe.style.display = 'none';
-            }
-            iframe.src = url;
-            iframe.id = iframeId;
-            iframe.onload = () => resolve(iframe);
-            iframe.onerror = err => reject(err);
-            document.body.appendChild(iframe);
-        });
-    }
 
-    async function constructPatientUrls() {
-        const patientId = getCurrentPatientId();
-        if (!patientId) {
-            throw new Error('Patient non détecté dans l\'URL');
-        }
-
-        const patientInfo = await getPatientInfo(patientId);
-        const patientFileUrl = patientInfo?.patientFileUrl;
-        const patientFileUrlParams = patientFileUrl?.split('?')[1];
-        if (!patientFileUrlParams) {
-            throw new Error('Paramètres patient introuvables');
-        }
-
-        return {
-            homeUrl: `${baseUrl}/FolderMedical/PatientViewForm.aspx?${patientFileUrlParams}`,
-            consultationUrl: `${baseUrl}/FolderMedical/ConsultationForm.aspx?${patientFileUrlParams}`,
-        };
-    }
-
-    async function navigateIframeToUrl(iframe, url) {
-        await new Promise((resolve, reject) => {
-            iframe.onload = () => resolve();
-            iframe.onerror = err => reject(err);
-            iframe.src = url;
-        });
-    }
-
-    function openNewConsultationFromHome(iframeDocument) {
-        const baseMenuLvl1 = iframeDocument.getElementsByClassName('level1 static')[0];
-        if (!baseMenuLvl1) {
-            return false;
-        }
-
-        const level2Element = Array.from(baseMenuLvl1.querySelectorAll('a.level2'))
-            .find(a => a.textContent.trim().startsWith('Consultation'));
-        if (!level2Element) {
-            return false;
-        }
-
-        // Reprise de la logique keyCommands: filtrer les éléments non pertinents du niveau 3.
-        const blackList = [
-            'Courrier à établir',
-            'Demande laboratoire',
-            'Demande imagerie',
-            'Demande paramédicale',
-            'Renouvellement'
-        ];
-        let level3Elements = level2Element.parentElement?.querySelectorAll('a.level3') || [];
-        level3Elements = Array.from(level3Elements).filter(el => !blackList.includes(el.textContent.trim()));
-
-        // Ici on veut explicitement créer une NOUVELLE consultation.
-        level2Element.click();
-
-        // Dans certains contextes, le clic niveau 2 n'est pas pris: fallback sur le premier niveau 3 utile.
-        if (level3Elements.length > 0) {
-            const firstSpan = level3Elements[0].querySelector('span');
-            const isCurrent = !!firstSpan?.title?.includes('Vous êtes actuellement positionné sur ce document');
-            if (!isCurrent) {
-                level3Elements[0].click();
-            }
-        }
-
-        return true;
-    }
-
-    async function waitForElementInDocument(docGetter, selector, timeoutMs = 12000, intervalMs = 100) {
-        const startedAt = Date.now();
-        while (Date.now() - startedAt < timeoutMs) {
-            const doc = docGetter();
-            const element = doc?.querySelector(selector);
-            if (element) {
-                return element;
-            }
-            await new Promise(resolve => setTimeout(resolve, intervalMs));
-        }
-        throw new Error(`Timeout: élément non trouvé (${selector})`);
-    }
-
-    function buildConsultationTitle() {
-        const now = new Date();
-        const date = now.toLocaleDateString('fr-FR');
-        const time = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        return `Post-it ${date} ${time}`;
-    }
-
-    async function sendPostItContentToConsultation(button) {
-        const postItContent = document.querySelector(textAreaSelector)?.value?.trim();
-        const fermerButton = document.querySelector(fermerButtonSelector);
-
+    async function sendPostItToConsultation() {
+        // le lien est au format https://secure.weda.fr/FolderMedical/PatientViewForm.aspx?PatDk=65407357|4152|630|2&crypt=15-A0-4F-82-80-4A-EB-03-E3-E4-0D-9C-F6-2F-BD-77-52-7B-3F-2D-93-A2-D0-E8-E3-A5-AF-C7-47-EF-12-B4
+        const linkToPatient = document.querySelector(linkToPatientSelector);
+        const questionContentIframe = document.querySelector('#CE_ContentPlaceHolder1_TextBoxPostItMessage_ID_Frame');
+        const answerContent = document.querySelector('#ContentPlaceHolder1_TextBoxPostItReadComment');
+        const postItContent = questionContentIframe?.contentDocument?.querySelector('body')?.innerText?.trim();
         if (!postItContent) {
-            console.warn('[sendPostItContent] Contenu vide, envoi annulé.');
+            console.warn('[sendPostItContent] Contenu du post-it vide, insertion annulée.');
+            return;
+        }
+        if (!linkToPatient) {
+            console.warn('[sendPostItContent] Lien vers le patient introuvable, insertion annulée.');
             return;
         }
 
-        if (!fermerButton) {
-            console.warn('[sendPostItContent] Bouton de fermeture introuvable.');
-            return;
-        }
+        // Expéditeur du post-it, affiché dans son en-tête (ex: "Dr. Herve MATHIEU DE VIENNE")
+        const expediteurTitre = document.querySelector('#ContentPlaceHolder1_LabelUserLabelTitle')?.textContent?.trim() || '';
+        const expediteurPrenom = document.querySelector('#ContentPlaceHolder1_LabelUserForenames')?.textContent?.trim() || '';
+        const expediteurNom = document.querySelector('#ContentPlaceHolder1_LabelUserSurname')?.textContent?.trim() || '';
+        const expediteur = [expediteurTitre, expediteurPrenom, expediteurNom].filter(Boolean).join(' ') || null;
 
+        // Récipiendaire : le médecin actuellement connecté, qui consulte ce post-it
+        const recipiendaire = getConnectedDoctorName();
+
+        // Date du post-it, affichée dans son en-tête (ex: "Post-it du 22/07/2026 14:32")
+        const postItDate = document.querySelector('#ContentPlaceHolder1_LabelPostItDate')?.textContent?.trim();
+        
+        // Titre du post-it
+        const postItTitle = document.querySelector('#ContentPlaceHolder1_LabelPostItTitle')?.textContent?.trim();
+
+
+        // Génération du titre à mettre dans la consultation, basé sur le titre du post-it et la date
+        const timestampedTitle = buildTimestampedTitle(postItTitle || 'Post-it');
+        
+        // Construction du contenu à insérer dans la consultation
+        const enTete = [
+            `Post-it${postItDate ? ` du ${postItDate}` : ''}`,
+            expediteur ? `De : ${expediteur}` : null,
+            recipiendaire ? `À : ${recipiendaire}` : null,
+        ].filter(Boolean).join('\n');
+
+        const content = `${enTete}\n\n${postItContent}\n\n${answerContent ? `Réponse : ${answerContent.value.trim()}` : ''}`;
+
+
+        const button = document.getElementById(actionButtonId);
         button.disabled = true;
-        button.textContent = 'Envoi...';
+        button.textContent = 'Envoi en cours...';
 
-        let consultationIframe = null;
-        try {
-            const { homeUrl, consultationUrl } = await constructPatientUrls();
-            consultationIframe = await createConsultationIframe(homeUrl, debug);
+        const result = await insertData('toConsultation', { content, titleForConsultation: timestampedTitle }, { homeUrl: linkToPatient.href });
 
-            const getConsultationDoc = () => consultationIframe.contentDocument || consultationIframe.contentWindow?.document;
-
-            const menuReady = await waitForElementInDocument(getConsultationDoc, '.level1.static', 12000, 100);
-            if (!menuReady) {
-                throw new Error('Menu d\'accueil non disponible');
-            }
-
-            const openedFromMenu = openNewConsultationFromHome(getConsultationDoc());
-            if (!openedFromMenu) {
-                console.warn('[sendPostItContent] Impossible d\'ouvrir la consultation via menu.');
-            }
-
-            const titleInput = await waitForElementInDocument(getConsultationDoc, '#TextBoxDocumentTitre');
-            titleInput.value = buildConsultationTitle();
-            titleInput.dispatchEvent(new Event('input', { bubbles: true }));
-            titleInput.dispatchEvent(new Event('change', { bubbles: true }));
-
-            const editorIframe = await waitForElementInDocument(
-                getConsultationDoc,
-                "iframe[id^='CE_ContentPlaceHolder1_EditorConsultation'][id$='_ID_Frame'], #CE_ContentPlaceHolder1_EvenementInformationFiltreUCForm1_EditorZoneUserTextInEvement_ID_Frame"
-            );
-
-            let editorBody = await waitForElementInDocument(
-                () => editorIframe.contentDocument || editorIframe.contentWindow?.document,
-                'body'
-            );
-
-
-            await sleep(200); // Attendre un peu pour que l'iframe soit bien chargée
-            editorBody = consultationIframe.contentDocument.querySelector("iframe[id^='CE_ContentPlaceHolder1_EditorConsultation'][id$='_ID_Frame']").contentDocument.body;
-            console.log('[sendPostItContent] editorBody trouvé dans l\'iframe de consultation:', editorBody);
-            
-
-            editorBody.innerText = postItContent;
-            editorBody.dispatchEvent(new Event('input', { bubbles: true }));
-            editorBody.dispatchEvent(new Event('change', { bubbles: true }));
-
-
-
-            // Appui sur "Enregistrer" dans le document de la consultation (iframe).
-            const saveButton = await waitForElementInDocument(getConsultationDoc, '#ButtonSave');
-            saveButton.click();
-            await sleep(500); // Attendre un peu pour que l'enregistrement se fasse
-            console.log('[sendPostItContent] Demande d\'enregistrement envoyée dans la consultation.');
-            // On met un check vert
-            button.textContent = 'Enregistré ✔️';
-            button.title = "Contenu du post-it enregistré dans une nouvelle consultation pour le patient courant. Vous pouvez fermer cette fenêtre. La nouvelle consultation n’apparaitra qu’après actualisation.";
-
-            
-            recordMetrics({ clicks: 4, keyStrokes: 2, drags: 1 });
-
-            console.log('[sendPostItContent] Contenu envoyé dans une consultation via iframe.');
-        } catch (error) {
-            console.error('[sendPostItContent] Échec de l\'envoi vers consultation :', error);
-            button.textContent = 'Échec';
-            button.title = "Erreur lors de l'envoi vers consultation. Voir console pour détails.";
-        } finally {
-            if (consultationIframe && !debug) {
-                consultationIframe.remove();
-            }
-            button.disabled = false;
-        }
+        if (result) {
+            button.textContent = 'Envoi terminé !';
+            console.log('[sendPostItContent] Contenu du post-it envoyé dans une nouvelle consultation :', result);
+        } else {
+            button.textContent = 'Échec de l\'envoi';
+            console.error('[sendPostItContent] Échec de l\'envoi du post-it vers la consultation');
+        }        
     }
 
     function addSendButton() {
+        const fermerButtonSelector = linkToPatientTab;
         if (document.getElementById(actionButtonId)) {
             return;
         }
@@ -514,12 +379,18 @@ addTweak('/FolderMedical/PopUpRappel.aspx', '*sendPostItContent', function () {
         sendButton.type = 'button';
         sendButton.className = 'button';
         sendButton.textContent = 'Envoyer vers consultation';
-        sendButton.title = 'Weda-Helper : Envoie le contenu du post-it dans une nouvelle consultation pour le patient courant';
+        sendButton.title = 'Weda-Helper : Envoie le contenu du post-it dans une nouvelle consultation pour le patient concerné. Cette action n’enregistre pas le post-it ni ne l’envoi, vous devrez cliquer sur envoyer +/- archiver si nécessaire.';
         sendButton.style.marginLeft = '8px';
-        sendButton.addEventListener('click', () => sendPostItContentToConsultation(sendButton));
+        sendButton.style.marginTop = '8px';
+        sendButton.style.display = 'block';
+        sendButton.addEventListener('click', () => sendPostItToConsultation(sendButton));
 
         fermerButton.parentElement.insertBefore(sendButton, fermerButton.nextSibling);
     }
 
-    addSendButton();
+    waitForElement({
+        selector: linkToPatientTab,
+        triggerOnInit: true,
+        callback: addSendButton,
+    });
 });

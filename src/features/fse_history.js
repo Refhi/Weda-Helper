@@ -90,9 +90,13 @@ function extractBillingData(data, loggedInUser) {
             if (doc.type !== 'recette' || !doc.recette) return;
             const Date = doc.recette.date || '';
             const Actes = doc.recette.actes || '';
-            const Montant = doc.recette.montant || '';
+            // On affiche le montant total de l'acte (issu de la ligne F.S.E.), et non le
+            // montant de la recette qui ne correspond qu'à la part restant à charge du patient.
+            const Montant = doc.fds?.[0]?.total || doc.recette.montant || '';
+            const MontantFacture = doc.recette.montant || '';
+            const Mode = doc.recette.mode  || '';
             if (Date && Actes) {
-                billingData.push({ Date, Actes, Montant });
+                billingData.push({ Date, Actes, Montant, MontantFacture, Mode});
             }
         });
     });
@@ -151,7 +155,7 @@ async function showBillingData(billingData, billingDataFiltered) {
         billingDataContainer.querySelectorAll('div').forEach(div => div.remove());
         const dataContainer = document.createElement('div');
         data.forEach(item => {
-            dataContainer.innerHTML += `<p>${item.Date} - ${item.Actes} - ${item.Montant}</p>`;
+            dataContainer.innerHTML += `<p>${item.Date} - ${item.Actes} - ${item.Montant} - ${item.MontantFacture} ${item.Mode}</p>`;
         });
         billingDataContainer.appendChild(dataContainer);
     }

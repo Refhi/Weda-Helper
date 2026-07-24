@@ -138,7 +138,7 @@ Cf. ci-dessous pour les retours et les contributions.
 - Ajout d’un raccourci vers la vue des traitements depuis la consultation
 - Ajout d'un bouton d'impression dans la vue des traitements (permet d'imprimer la vue des traitements en cours, ou de l'exporter en PDF).
 - Enregistrement automatique des consultations toutes les 3 minutes si aucune entrée n’est détectée pendant au moins 5 secondes. (permet de limiter les pertes de données en cas de crash du navigateur ou de Weda)
-- Outil de calcul du SCOR2 directement depuis la consultation
+- Outil de calcul du SCORE2 directement depuis la consultation
 
 
 ## Prescriptions
@@ -194,7 +194,7 @@ Lors de l'usage de la calculette il devient possible d'utiliser les chiffres du 
   - la cotation "DéfautTC" pour les téléconsultations
   - la cotation "DéfautMOP" pour les patients de 80+ ans dont vous n'êtes pas le MT
   - la cotation "Défaut" pour les autres
-- affichage de l'historique des cotations sur 5 ans (filtré ou non par cotations courantes), utile pour surveiller les cotations à ne faire qu'une fois tout les ans par exemple.
+- affichage de l'historique des cotations sur 7 ans (filtré ou non par cotations courantes), utile pour surveiller les cotations à ne faire qu'une fois tout les ans par exemple.
 - assistance à la cotation : Ajout d'une infobulle pour avertir de possibles cotations applicables à certaines situation (ex. SHE, MCG, PAV, MHP et RDV), qu'on oublie habituellement tout le temps...
 
 ### Automatismes de la FSE

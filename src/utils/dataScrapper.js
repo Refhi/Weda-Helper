@@ -160,28 +160,34 @@ const SELECTORS = {
  *     fullPage: true,                              // Charge l'intégralité de la page d'historique (au lieu des 10 par défaut de Weda)
  *     categories: ["consultations", "etatCivil"],  // Liste des catégories à récupérer (par défaut : ["consultations"])
  *     includeLegacy: false,                        // Récupère en plus les journées importées d'un ancien logiciel, quand la catégorie le permet (par défaut : false)
+ *     dateRange: ["01/01/2021", "31/12/2026"],     // Filtre les résultats sur une plage de dates (voir resolveDateRange)
  *     debug: false,                                // Laisse l'iframe de récupération affichée en fin d'appel
  * });
  * console.log(data);
  *
  * @argument categories ["consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse", "etatCivil", "antecedents", "contacts"]
+ * @argument dateRange Tableau de 0, 1 ou 2 dates (objet Date ou texte "jj/mm/aaaa"), voir resolveDateRange
  * 
  */
 async function recoverData({
     fullPage = false, // De base on ne va vérifier que les 10 derniers subContainers chargés par défaut. N'est probablement pas possible pour charts et vaccins
     categories = ["consultations"], // Ce qui est chargé par défaut est la catégorie "consultations".
     includeLegacy = false, // Récupère en plus les journées importées d'un ancien logiciel, quand la catégorie le permet
+    dateRange = [], // Filtre les résultats sur une plage de dates : [debut, fin], chaque borne étant facultative
     debug = false, // Affiche l'iframe en plein écran et ne la supprime pas à la fin pour faciliter le debug
 } = {}) {
     // Préparation de l'objet de données à retourner
     const data = {};
+
+    // Résolution de la plage de dates demandée (bornes converties en objets Date, ou null si absentes)
+    const resolvedDateRange = resolveDateRange(dateRange);
 
     // Chargement de la correspondance initiales → auteur persistée d'une session à l'autre
     await loadPersistentInitialsToAuthorMap();
 
     // Création d’une iframe dont on attend le chargement complet puis dont on récupère le document pour y chercher les données
     const urlToLoad = await constructPatientHistoryUrl();
-    const iframe = await makeIframeForPatientHistory(urlToLoad, debug);
+    const iframe = await createHiddenIframe(urlToLoad, debug, 'dataScrapperIframe');
     let iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
 
     // On récupère les données pour chaque catégorie demandée
@@ -207,6 +213,14 @@ async function recoverData({
             }
         }
 
+        // Cas particulier de la catégorie "documents" : Weda applique son propre filtre de dates
+        // (champs TextBoxDate1/TextBoxDate2) indépendamment de notre filtrage a posteriori. Si la
+        // plage affichée ne couvre pas la plage demandée, il faut l'élargir avant de parser.
+        if (category === 'documents') {
+            iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+            await ensureDocumentsDateRangeCovers(iframe, resolvedDateRange);
+        }
+
         // Le mode fullPage doit être appliqué une fois la catégorie courante affichée,
         // car Weda revient souvent à une vue partielle après changement de catégorie.
         if (fullPage) {
@@ -219,6 +233,9 @@ async function recoverData({
         // Le document peut être remplacé après un postback ASP.NET : on le relit juste avant le parse.
         iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
         data[category] = recoverMainViewData(iframeDocument, categorySelectors, includeLegacy, category);
+
+        // Filtrage a posteriori sur la plage de dates demandée (retire les entrées non pertinentes)
+        data[category] = filterCategoryDataByDateRange(data[category], resolvedDateRange, category);
     }
 
     // Nettoyage : supprimer l'iframe si on n'est pas en mode debug
@@ -227,6 +244,192 @@ async function recoverData({
     console.log('[dataScrapper] Données récupérées pour les catégories :', Object.keys(data), data);
 
     return data;
+}
+
+/**
+ * Convertit une date en objet Date à partir d'un texte au format "jj/mm/aaaa", ou la renvoie
+ * telle quelle si c'est déjà un objet Date. Retourne null si vide/invalide.
+ * @param {string|Date|null|undefined} value
+ * @returns {Date|null}
+ */
+function parseFrenchDate(value) {
+    if (!value) return null;
+    if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
+    const match = String(value).trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!match) return null;
+    const [, day, month, year] = match;
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    return isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * Formate un objet Date au format "jj/mm/aaaa" utilisé par Weda.
+ * @param {Date} date
+ * @returns {string}
+ */
+function formatFrenchDate(date) {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
+/**
+ * Résout un argument dateRange (voir recoverData) en un objet {start, end} de type Date|null.
+ * Accepte 0, 1 ou 2 éléments (objets Date ou texte "jj/mm/aaaa", chaîne vide ou absent = pas de
+ * borne). La borne de fin est ramenée à 23:59:59.999 pour être inclusive sur toute la journée.
+ * @param {Array<string|Date>} dateRange
+ * @returns {{start: Date|null, end: Date|null}}
+ */
+function resolveDateRange(dateRange) {
+    const [startRaw, endRaw] = Array.isArray(dateRange) ? dateRange : [];
+    const start = parseFrenchDate(startRaw);
+    const end = parseFrenchDate(endRaw);
+    if (end) end.setHours(23, 59, 59, 999);
+    return { start, end };
+}
+
+/**
+ * Vérifie si une date texte ("jj/mm/aaaa") est comprise dans la plage résolue. Une date non
+ * parsable est conservée (on ne filtre pas silencieusement des données dont on ne comprend pas
+ * le format).
+ * @param {string|null|undefined} dateStr
+ * @param {{start: Date|null, end: Date|null}} range
+ * @returns {boolean}
+ */
+function isDateStringInRange(dateStr, range) {
+    if (!range || (!range.start && !range.end)) return true;
+    const date = parseFrenchDate(dateStr);
+    if (!date) return true;
+    if (range.start && date < range.start) return false;
+    if (range.end && date > range.end) return false;
+    return true;
+}
+
+/**
+ * Filtre les données d'une catégorie selon la plage de dates résolue.
+ * - Cas général (journées, vaccins, documents) : le résultat est un tableau d'entrées portant
+ *   chacune un champ "date" au premier niveau, on filtre directement dessus.
+ * - "charts" : le résultat est un objet {dates, parametres} où les dates sont des colonnes
+ *   partagées par tous les paramètres ; il faut filtrer les colonnes (dates + valeurs
+ *   correspondantes) plutôt que de traiter un tableau d'entrées.
+ * - "grossesse" : chaque suivi n'a pas de champ "date" exploitable au premier niveau, mais une
+ *   grossesse est pertinente pour toute la période [datePresumeeDebut, datePresumeeDebut + 1 an]
+ *   (suivi post-partum inclus) : on la garde dès que cette période chevauche la plage demandée.
+ * - Catégories sans date exploitable et sans notion de période (etatCivil, antecedents,
+ *   contacts) : laissées telles quelles, ce ne sont pas des événements datés unitaires.
+ * @param {*} categoryData - Résultat retourné par recoverMainViewData pour une catégorie
+ * @param {{start: Date|null, end: Date|null}} range
+ * @param {string} category - Nom de la catégorie (clé de SELECTORS.categories)
+ * @returns {*} Données filtrées (ou inchangées si non applicable)
+ */
+function filterCategoryDataByDateRange(categoryData, range, category) {
+    if (!range || (!range.start && !range.end)) return categoryData;
+
+    if (category === 'charts') return filterChartsByDateRange(categoryData, range);
+    if (category === 'grossesse') return filterGrossesseByDateRange(categoryData, range);
+
+    if (!Array.isArray(categoryData)) return categoryData;
+    return categoryData.filter(entry => isDateStringInRange(entry?.date, range));
+}
+
+/**
+ * Filtre les données de la catégorie "charts" en ne conservant que les colonnes (dates et
+ * valeurs associées de chaque paramètre) comprises dans la plage demandée.
+ * @param {{dates: Array<string>, parametres: Array<{nom: string, valeurs: Array}>}|*} categoryData
+ * @param {{start: Date|null, end: Date|null}} range
+ * @returns {*} Données filtrées, ou categoryData inchangé si la structure n'est pas celle attendue
+ */
+function filterChartsByDateRange(categoryData, range) {
+    if (!categoryData || !Array.isArray(categoryData.dates)) return categoryData;
+
+    const keepIndexes = categoryData.dates
+        .map((date, index) => ({ date, index }))
+        .filter(({ date }) => isDateStringInRange(date, range))
+        .map(({ index }) => index);
+
+    return {
+        dates: keepIndexes.map(index => categoryData.dates[index]),
+        parametres: (categoryData.parametres || []).map(parametre => ({
+            nom: parametre.nom,
+            valeurs: keepIndexes.map(index => parametre.valeurs[index]),
+        })),
+    };
+}
+
+/**
+ * Filtre les données de la catégorie "grossesse" : un suivi de grossesse est conservé dès que
+ * la plage demandée chevauche la période [datePresumeeDebut, datePresumeeDebut + 1 an], la
+ * grossesse restant pertinente jusqu'à un an après son début (suivi post-partum compris).
+ * Un suivi sans datePresumeeDebut exploitable est conservé par précaution.
+ * @param {Array<Object>|*} categoryData
+ * @param {{start: Date|null, end: Date|null}} range
+ * @returns {*} Données filtrées, ou categoryData inchangé si ce n'est pas un tableau
+ */
+function filterGrossesseByDateRange(categoryData, range) {
+    if (!Array.isArray(categoryData)) return categoryData;
+
+    return categoryData.filter(entry => {
+        const debut = parseFrenchDate(entry?.datePresumeeDebut);
+        if (!debut) return true;
+
+        const finPeriodePertinente = new Date(debut);
+        finPeriodePertinente.setFullYear(finPeriodePertinente.getFullYear() + 1);
+
+        const grossesseApresPlage = range.end && debut > range.end;
+        const grossesseAvantPlage = range.start && finPeriodePertinente < range.start;
+        return !grossesseApresPlage && !grossesseAvantPlage;
+    });
+}
+
+/**
+ * S'assure que les champs de filtre de dates propres à Weda pour la catégorie "documents"
+ * (#HistoriqueUCForm1_TextBoxDate1 / #HistoriqueUCForm1_TextBoxDate2) couvrent bien la plage de
+ * dates demandée. Si ce n'est pas le cas, élargit les champs puis relance la recherche via
+ * #HistoriqueUCForm1_ButtonFindPieceJointe.
+ * @param {HTMLIFrameElement} iframe
+ * @param {{start: Date|null, end: Date|null}} range
+ * @returns {Promise<void>}
+ */
+async function ensureDocumentsDateRangeCovers(iframe, range) {
+    console.log('[dataScrapper] Vérification du filtre de dates Weda pour la catégorie documents', range);
+    // Sans plage demandée, on considère tout de même qu'il faut couvrir l'intégralité de
+    // l'historique (01/01/1900 à aujourd'hui), Weda limitant sinon les documents affichés.
+    const effectiveRange = {
+        start: range?.start || parseFrenchDate('01/01/1900'),
+        end: range?.end || new Date(),
+    };
+
+    const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+    const dateField1 = iframeDocument.querySelector('#HistoriqueUCForm1_TextBoxDate1');
+    const dateField2 = iframeDocument.querySelector('#HistoriqueUCForm1_TextBoxDate2');
+    if (!dateField1 || !dateField2) {
+        console.warn('[dataScrapper] Champs de filtre de dates introuvables pour la catégorie documents');
+        return;
+    }
+
+    const currentStart = parseFrenchDate(dateField1.value);
+    const currentEnd = parseFrenchDate(dateField2.value);
+    const covers =
+        currentStart && currentStart <= effectiveRange.start &&
+        currentEnd && currentEnd >= effectiveRange.end;
+    if (covers) return;
+
+    console.log('[dataScrapper] Élargissement du filtre de dates Weda pour la catégorie documents', { currentStart: dateField1.value, currentEnd: dateField2.value, effectiveRange });
+
+    dateField1.value = formatFrenchDate(effectiveRange.start);
+    dateField1.dispatchEvent(new Event('change', { bubbles: true }));
+
+    dateField2.value = formatFrenchDate(effectiveRange.end);
+    dateField2.dispatchEvent(new Event('change', { bubbles: true }));
+
+    const findButton = iframeDocument.querySelector('#HistoriqueUCForm1_ButtonFindPieceJointe');
+    if (!findButton) {
+        console.warn('[dataScrapper] Bouton de recherche des documents introuvable (#HistoriqueUCForm1_ButtonFindPieceJointe)');
+        return;
+    }
+    findButton.click();
+    await loadingIsComplete(iframe, 'élargissement du filtre de dates des documents');
 }
 
 async function loadFullPage(iframeDocument) {
@@ -270,21 +473,8 @@ async function loadingIsComplete(iframe, raisonAttente = "N/A") {
 
 /**
  * Attend qu'une condition devienne vraie, en la testant à intervalles réguliers.
- * @param {Function} conditionFn - Fonction sans argument retournant un booléen (ou une valeur "truthy")
- * @param {Object} [options]
- * @param {number} [options.interval=50] - Intervalle entre deux vérifications, en ms
- * @param {number} [options.maxRetry=200] - Nombre maximal de vérifications avant timeout
- * @param {string} [options.label=""] - Libellé utilisé dans le message de timeout
- * @returns {Promise<boolean>} true si la condition a été remplie, false en cas de timeout
+ * (voir waitUntil dans iframeHelpers.js)
  */
-async function waitUntil(conditionFn, { interval = 50, maxRetry = 200, label = "" } = {}) {
-    for (let i = 0; i < maxRetry; i++) {
-        if (conditionFn()) return true;
-        await sleep(interval);
-    }
-    console.warn(`[dataScrapper] Timeout lors de l'attente : ${label}`);
-    return false;
-}
 
 /**
  * Vérifie, de façon instantanée (sans attente), si la catégorie donnée est déjà
@@ -342,50 +532,16 @@ function chartsLoadedCheck(iframe) {
 
 /**
  * Creation d'une iframe cachée pour charger la page d'historique patient et récupérer les données
- * 
+ * (voir createHiddenIframe dans iframeHelpers.js)
  */
-async function makeIframeForPatientHistory(url, debug = false) {
-    return new Promise((resolve, reject) => {
-        const iframe = document.createElement('iframe');
-        if (debug) {
-            iframe.style.position = 'fixed';
-            iframe.style.top = '2vh';
-            iframe.style.left = '2vw';
-            iframe.style.width = '96vw';
-            iframe.style.height = '96vh';
-            iframe.style.zIndex = 999;
-            iframe.style.border = '3px solid red';
-            iframe.style.display = 'block';
-        } else {
-            iframe.style.display = 'none';
-        }
-        iframe.src = url;
-        iframe.onload = () => resolve(iframe);
-        iframe.onerror = (err) => reject(err);
-        iframe.id = 'dataScrapperIframe';
-        document.body.appendChild(iframe);
-    });
-}
 
 
 /**
- * Constructeur d'url pour la page d'historique patient
+ * Constructeur d'url pour la page d'historique patient (voir getCurrentPatientPageUrl dans patientLink.js)
  */
 async function constructPatientHistoryUrl() {
-    // On récupère l'url grace à l'api patient :
-    const patientId = getCurrentPatientId();
-    const patientInfo = await getPatientInfo(patientId);
-    
-    // Extraire les paramètres URL depuis patientFileUrl
-    const patientFileUrl = patientInfo.patientFileUrl;
-    const patientFileUrlParts = patientFileUrl.split('?');
-    const patientFileUrlParams = patientFileUrlParts[1];
-    
-    // Construire l'URL de la page d'historique
-    const urlToLoad = `${baseUrl}/FolderMedical/PopUpHistoriqueForm.aspx?${patientFileUrlParams}`;
-
+    const urlToLoad = await getCurrentPatientPageUrl('/FolderMedical/PopUpHistoriqueForm.aspx');
     console.log(`[dataScrapper] URL de la page d'historique : ${urlToLoad}`);
-
     return urlToLoad;
 }
 
@@ -404,14 +560,14 @@ function textOf(root, selector) {
 /**
  * Nettoie un nom d'auteur brut et le décompose en prénom / nom.
  * Les noms bruts extraits de Weda ont typiquement la forme :
- *   "Dr. Laurianne DIGARD : Généraliste"
- *   "Mme Elodie BAUDOIN : Infirmier salarié"
- *   "Dr. Herve MATHIEU DE VIENNE : Généraliste"
+ *   "Dr. Prenom NOM : Généraliste"
+ *   "Mme Prenom NOM : Infirmier salarié"
+ *   "Dr. Prenom NOM : Généraliste"
  * On retire donc :
  *   - le titre de civilité éventuel en tête ("Dr.", "Pr.", "Mme", "M", "Melle")
  *   - la fonction/spécialité éventuelle en fin (après " : ")
  * Le nom de famille est déduit des mots consécutifs en fin de chaîne écrits en
- * majuscules (ex: "MATHIEU DE VIENNE"), le reste formant le prénom.
+ * majuscules (ex: "NOM COMPOSE ENDEUX"), le reste formant le prénom.
  * @param {string|null} rawName - Nom brut potentiellement préfixé d'un titre et suffixé d'une fonction
  * @returns {{author: string|null, author_prenom: string|null, author_nom: string|null}}
  */
@@ -1095,8 +1251,12 @@ function parseDayContainer(container, categorySelectors) {
     const initials = textOf(container, SELECTORS.dayContainer.initials);
 
     // Documents : tous les divs name="dhX" sauf dh10 (pièces jointes)
+    // Un même div peut contenir plusieurs recettes (ex: double facturation le même jour),
+    // parseDocument retourne alors un tableau qu'il faut aplatir.
     const documentDivs = container.querySelectorAll(SELECTORS.dayContainer.documents);
-    const documents = Array.from(documentDivs).map(div => parseDocument(div)).filter(doc => doc !== null);
+    const documents = Array.from(documentDivs)
+        .flatMap(div => parseDocument(div))
+        .filter(doc => doc !== null);
     
     // Pièces jointes : div name="dh10"
     const attachmentsDiv = container.querySelector(SELECTORS.dayContainer.attachmentsDiv);
@@ -1295,17 +1455,20 @@ function parseArretTravailFields(lines) {
 /**
  * Parse un document individuel (consultation, prescription, etc.)
  * @param {HTMLElement} div - Élément div[name="dhX"]
- * @returns {Object|null} Données du document ou null si vide
+ * @returns {Array<Object|null>} Tableau de documents (généralement un seul élément, mais un
+ *   même div peut contenir plusieurs recettes, ex: double facturation le même jour)
  */
 function parseDocument(div) {
-    // Détecter les recettes par leur structure spécifique (.pjm avec table.stxrec)
-    const pjmDiv = div.querySelector(SELECTORS.document.pjm);
-    if (pjmDiv && pjmDiv.querySelector(SELECTORS.document.recetteTable)) {
-        return parseRecette(div);
+    // Détecter les recettes par leur structure spécifique (.pjm avec table.stxrec).
+    // Un même div[name="dhX"] peut contenir plusieurs .pjm (plusieurs recettes).
+    const pjmDivs = Array.from(div.querySelectorAll(SELECTORS.document.pjm))
+        .filter(pjmDiv => pjmDiv.querySelector(SELECTORS.document.recetteTable));
+    if (pjmDivs.length > 0) {
+        return pjmDivs.map(pjmDiv => parseRecette(pjmDiv));
     }
     
     const sstDiv = div.querySelector(SELECTORS.document.content);
-    if (!sstDiv) return null;
+    if (!sstDiv) return [null];
     
     // Type depuis la classe d'icône
     const iconElement = sstDiv.querySelector(SELECTORS.document.icon);
@@ -1346,16 +1509,15 @@ function parseDocument(div) {
         delete parsedDocument.content;
     }
 
-    return parsedDocument;
+    return [parsedDocument];
 }
 
 /**
  * Parse spécifiquement une recette
- * @param {HTMLElement} div - Élément div[name="dhX"] d'une recette
+ * @param {HTMLElement} pjmDiv - Élément .pjm d'une recette individuelle
  * @returns {Object} Données de la recette structurées
  */
-function parseRecette(div) {
-    const pjmDiv = div.querySelector(SELECTORS.document.pjm);
+function parseRecette(pjmDiv) {
     if (!pjmDiv) return null;
     
     // Les tables avec class="stxrec" contiennent les données structurées
@@ -1365,7 +1527,7 @@ function parseRecette(div) {
     let fdsData = [];
     let noemieData = [];
     
-    // Première table : résumé de la recette (Date, Désignation, Actes, Montant)
+    // Première table : résumé de la recette (Date, Désignation, Actes, Montant, Mode)
     if (tables[0]) {
         const rows = tables[0].querySelectorAll(SELECTORS.recette.row);
         if (rows.length > 0) {
@@ -1375,7 +1537,8 @@ function parseRecette(div) {
                     date: cells[0].textContent.trim(),
                     designation: cells[1].textContent.trim(),
                     actes: cells[2].textContent.trim(),
-                    montant: cells[3].textContent.trim()
+                    montant: cells[3].textContent.trim(),
+                    mode: cells[4].textContent.trim()
                 };
             }
         }
@@ -1538,6 +1701,8 @@ function showDataScrapperTestPanel() {
         <label style="display:block;"><input type="checkbox" id="dsp-fullPage"> fullPage</label>
         <label style="display:block;"><input type="checkbox" id="dsp-includeLegacy"> includeLegacy</label>
         <label style="display:block;"><input type="checkbox" id="dsp-debug" checked> debug</label>
+        <label style="display:block;">dateRange début : <input type="text" id="dsp-dateStart" placeholder="jj/mm/aaaa" style="width:90px;"></label>
+        <label style="display:block;">dateRange fin : <input type="text" id="dsp-dateEnd" placeholder="jj/mm/aaaa" style="width:90px;"></label>
         <hr>
     `;
 
@@ -1575,16 +1740,21 @@ function showDataScrapperTestPanel() {
         const fullPage = panel.querySelector('#dsp-fullPage').checked;
         const includeLegacy = panel.querySelector('#dsp-includeLegacy').checked;
         const debug = panel.querySelector('#dsp-debug').checked;
-        runDebugRecoverData(categories, categories.join(', '), { fullPage, includeLegacy, debug });
+        const dateRange = [
+            panel.querySelector('#dsp-dateStart').value.trim(),
+            panel.querySelector('#dsp-dateEnd').value.trim(),
+        ];
+        runDebugRecoverData(categories, categories.join(', '), { fullPage, includeLegacy, debug, dateRange });
     });
 }
 
-async function runDebugRecoverData(categories, label, { fullPage = true, includeLegacy = true, debug = true } = {}) {
+async function runDebugRecoverData(categories, label, { fullPage = true, includeLegacy = true, debug = true, dateRange = [] } = {}) {
     const data = await recoverData({
         fullPage,
         categories,
         debug,
-        includeLegacy
+        includeLegacy,
+        dateRange
     });
     console.log(`[dataScrapper] Données récupérées (${label}) :`, data);
     showRecoveredData(data);
