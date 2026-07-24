@@ -1527,7 +1527,7 @@ function parseRecette(pjmDiv) {
     let fdsData = [];
     let noemieData = [];
     
-    // Première table : résumé de la recette (Date, Désignation, Actes, Montant)
+    // Première table : résumé de la recette (Date, Désignation, Actes, Montant, Mode)
     if (tables[0]) {
         const rows = tables[0].querySelectorAll(SELECTORS.recette.row);
         if (rows.length > 0) {
@@ -1537,7 +1537,8 @@ function parseRecette(pjmDiv) {
                     date: cells[0].textContent.trim(),
                     designation: cells[1].textContent.trim(),
                     actes: cells[2].textContent.trim(),
-                    montant: cells[3].textContent.trim()
+                    montant: cells[3].textContent.trim(),
+                    mode: cells[4].textContent.trim()
                 };
             }
         }
