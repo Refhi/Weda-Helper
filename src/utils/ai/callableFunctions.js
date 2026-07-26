@@ -90,7 +90,7 @@ const availableFunctions = {
                     properties: {
                         categories: {
                             type: "array",
-                            description: "Catégories de données à récupérer.",
+                            description: "Catégories de données à récupérer. Le nom est dans etatCivil",
                             items: {
                                 type: "string",
                                 enum: DATA_SCRAPPER_CATEGORIES
