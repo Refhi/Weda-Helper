@@ -2,8 +2,14 @@
  * Fonction de test appelable par le modèle (function/tool calling).
  * Renvoie simplement une confirmation d'appel avec les arguments reçus.
  */
-function testFunction(args) {
-    return `fonction appellée correctement + arguments : ${JSON.stringify(args)}`;
+function testFunction({ testMessage = "aucun message fourni" } = {}) {
+    console.log(`[testFunction] Appelée avec argument:`, testMessage);
+    return {
+        status: "success",
+        message: "Fonction de test exécutée avec succès",
+        receivedArgument: testMessage,
+        timestamp: new Date().toISOString()
+    };
 }
 
 /**
@@ -17,16 +23,18 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "testFunction",
-                description: "Fonction de test : renvoie une confirmation d'appel avec les arguments fournis.",
+                description: "Fonction de test pour vérifier que le system de function calling fonctionne correctement. Utilise uniquement pour les tests.",
                 parameters: {
                     type: "object",
                     properties: {
-                        message: {
+                        testMessage: {
                             type: "string",
-                            description: "Un message ou argument quelconque à transmettre à la fonction de test."
+                            description: "Un message texte simple à tester. Exemple: 'Bonjour depuis le modèle'"
                         }
                     },
-                    required: []
+                    required: [
+                        "testMessage"
+                    ]
                 }
             }
         },

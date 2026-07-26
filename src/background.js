@@ -1282,6 +1282,37 @@ var advancedDefaultSettings = [
             }],
         }]
     }, {
+        "name": "Assistant IA",
+        "description": "Tout ce qui concerne l'assistant IA local",
+        "type": TYPE_TITLE,
+        "options": [{
+            "name": "enableIAassistant",
+            "type": TYPE_BOOL,
+            "description": "Activer ou désactiver l'assistant IA local.",
+            "default": true,
+            "subOptions": [{
+                "name": "IAassistantPort",
+                "type": TYPE_SMALLTEXT,
+                "description": "Port du modèle d'IA local (par défaut 11434 pour Ollama).",
+                "default": "11434"
+            }, {
+                "name": "IAassistantModelName",
+                "type": TYPE_SMALLTEXT,
+                "description": "Nom du modèle d'IA local à utiliser.",
+                "default": "mistral-nemo:12b-instruct-2407-q5_K_M"
+            }, {
+                "name": "AIAssistantToolCalling",
+                "type": TYPE_BOOL,
+                "description": "Activer les appels aux outils de l'assistant IA local. (Hautement recommandé, privilégiez un modèle compatible).",
+                "default": true
+            }, {
+                "name": "IAassistantApiKey",
+                "type": TYPE_SMALLTEXT,
+                "description": "Clé API pour l'assistant IA local (si nécessaire).",
+                "default": null
+            }]
+        }]
+    }, {
         "name": "Avancé",
         "description": "Ces options servent des usages très spécifiques, possiblement seulement utile pour les développeurs.",
         "type": TYPE_TITLE,

@@ -197,7 +197,7 @@ function addAIChatClient() {
 
     // --- Logique du chat ---
     let chatHistory = [
-        { role: "system", content: "Tu es un assistant utile, concis et poli." }
+        { role: "system", content: "Tu es un assistant utile, concis et poli. Quand tu dois utiliser une fonction, sois précis avec les paramètres." }
     ];
 
     const chatWindow = widget.querySelector('#wedaHelper-chat-window');
@@ -278,8 +278,8 @@ function addAIChatClient() {
         try {
             const botResponse = await openAiClient({
                 messages: chatHistory,
-                maxTokens: 500,
-                temperature: 0.7,
+                maxTokens: 800,
+                temperature: 0.3,  // Plus basse température pour meilleure stabilité avec Mistral
                 useTools: true
             });
 

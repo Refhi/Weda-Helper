@@ -3,24 +3,24 @@
  * @description Contiens le nécessaire pour interagir avec l'API OpenAI.
  */
 
-/** 
- * Variables temporaires (dev) 
- * Attention dans /etc/systemd/system/ollama.service.d/override.conf
- *     il faut que Environment="OLLAMA_ORIGINS=https://secure.weda.fr" soit bien défini pour que le serveur Ollama accepte les requêtes depuis Weda.
- */
-const aiParams = {
-    apiUrl: 'http://localhost:11434/v1', // URL de l'API Ollama (OpenAI compatible)
-    apiKey: null, // Clé API si nécessaire (null pour local)
-    defaultModel: "qwen3.5:9b" // Modèle par défaut
-}
+// Récupération des paramètres de l'appel
+let aiParams = {};
+
+// Initialisation asynchrone des paramètres. On garde la promesse pour pouvoir
+// l'attendre depuis openAiClient et éviter toute race condition au premier appel.
+const aiParamsReady = (async () => {
+    aiParams.port = await getOptionPromise('IAassistantPort')
+    aiParams.apiUrl = `http://localhost:${aiParams.port}`
+    aiParams.apiKey = await getOptionPromise('IAassistantApiKey') // Normalement non utilisé, mais bon, autant être propre.
+    aiParams.defaultModel = await getOptionPromise('IAassistantModelName') // Modèle par défaut, ex: "qwen3.5:9b"
+    aiParams.toolCalling = await getOptionPromise('IAassistantToolCalling') // true/false pour activer le function calling
+    aiParams.MAX_TOOL_CALL_DEPTH =  5 // Nombre maximum d'allers-retours de function calling avant d'abandonner (évite les boucles infinies)
+    console.log("[openAiClient] Paramètres récupérés :", aiParams);
+})();
 
 async function openAiClient({
     // --- 1. Le Prompt ---
-    messages = [ // Nécessaire pour l'API. Faire toujours system => user  pour le premier message, puis ajouter des séquences de user => assistant pour le contexte.
-        { role: "system", content: "" },   // Instructions pour le modèle (ex: "Tu es un assistant médical")
-        { role: "user", content: "" },     // Prompt de l'utilisateur (ex: "Peux-tu m'aider à diagnostiquer ce patient ?")
-        { role: "assistant", content: "" } // Maintient si nécessaire le contexte de la conversation (ex: "Bien sûr, je peux vous aider avec ça.")
-    ],
+    messages = [],  // Liste des messages de la conversation (system, user, assistant, tool)
     
     // --- 2. Paramètres de base ---
     model = aiParams.defaultModel, // modèle à utiliser (ex: "gpt-4o", "mistral-nemo:12b-instruct-2407-q5_K_M", etc.)
@@ -42,17 +42,37 @@ async function openAiClient({
     tools = null,          // Liste de définitions de fonctions (format OpenAI). Si non fourni et useTools=true, utilise availableFunctions.
     toolChoice = null,     // "auto", "none", ou un objet ciblant une fonction précise
     useTools = false,      // Active le function calling avec le registre availableFunctions
+
+    // --- 6. Interne : suivi de la profondeur de récursion (ne pas fournir manuellement) ---
+    _toolCallDepth = 0,
 }) {
+    // S'assurer que les paramètres (apiUrl, defaultModel, etc.) sont chargés avant le premier appel
+    await aiParamsReady;
+    if (model === undefined) model = aiParams.defaultModel;
+
     // Si l'utilisateur passe quand même un simple texte par habitude, on le convertit en messages
     if (typeof messages === 'string') {
         messages = [{ role: "user", content: messages }];
     }
 
+    // Filtrer uniquement les messages réellement vides (sans contenu ET sans tool_calls),
+    // pour ne jamais supprimer un message assistant qui ne contient que des tool_calls (content: null).
+    const filteredMessages = messages.filter(msg =>
+        msg && (
+            (typeof msg.content === 'string' && msg.content.trim()) ||
+            (msg.tool_calls && msg.tool_calls.length > 0) ||
+            msg.role === 'tool'
+        )
+    );
+
+    console.log(`[openAiClient] Envoi de ${filteredMessages.length} messages au modèle ${model} (profondeur tool-call: ${_toolCallDepth})`,
+        filteredMessages.map(m => ({ role: m.role, contentLength: m.content?.length || 0 })));
+
     // Gestion des tools (function calling)
     const resolvedTools = tools || (useTools ? Object.values(availableFunctions).map(f => f.definition) : null);
 
     const requestBody = buildRequestBody({
-        messages,
+        messages: filteredMessages,
         model,
         maxTokens,
         temperature,
@@ -75,13 +95,25 @@ async function openAiClient({
             return data;
         }
 
+        if (!data?.choices?.[0]?.message) {
+            throw new Error("Réponse de l'API invalide : aucun message trouvé dans la réponse.");
+        }
+
         const responseMessage = data.choices[0].message;
 
         // Gestion du function/tool calling : si le modèle demande à appeler une ou plusieurs fonctions
         if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-            const updatedMessages = await handleToolCalls(responseMessage, messages);
+            console.log(`[openAiClient] Function calls reçus:`, responseMessage.tool_calls.map(tc => ({ name: tc.function?.name, args: tc.function?.arguments })));
+
+            if (_toolCallDepth >= aiParams.MAX_TOOL_CALL_DEPTH) {
+                console.warn(`[openAiClient] Profondeur maximale de function calling atteinte (${aiParams.MAX_TOOL_CALL_DEPTH}), arrêt de la boucle.`);
+                return responseMessage.content || "Désolé, je n'ai pas pu terminer cette action après plusieurs tentatives d'appel de fonctions.";
+            }
+
+            const updatedMessages = await handleToolCalls(responseMessage, filteredMessages);
 
             // On relance un appel avec les résultats des fonctions pour obtenir la réponse finale du modèle
+            console.log(`[openAiClient] Re-envoi du contexte avec résultats des fonctions...`);
             return await openAiClient({
                 messages: updatedMessages,
                 model,
@@ -96,7 +128,8 @@ async function openAiClient({
                 seed,
                 tools: resolvedTools,
                 toolChoice,
-                useTools
+                useTools,
+                _toolCallDepth: _toolCallDepth + 1
             });
         }
 
@@ -164,7 +197,7 @@ function buildRequestBody({
  * Renvoie soit le ReadableStream (si `requestBody.stream` est vrai), soit le JSON parsé de la réponse.
  */
 async function fetchChatCompletion(requestBody) {
-    console.log("[openAiClient] Tentative de connexion à :", `${aiParams.apiUrl}/chat/completions`);
+    console.log("[openAiClient] Tentative de connexion à :", `${aiParams.apiUrl}/v1/chat/completions`);
 
     const fetchOptions = {
         method: 'POST',
@@ -176,7 +209,7 @@ async function fetchChatCompletion(requestBody) {
         body: JSON.stringify(requestBody)
     };
 
-    const response = await fetch(`${aiParams.apiUrl}/chat/completions`, fetchOptions);
+    const response = await fetch(`${aiParams.apiUrl}/v1/chat/completions`, fetchOptions);
 
     if (!response.ok) {
         let errorMessage = `Erreur API ${response.status}`;
@@ -212,19 +245,24 @@ async function handleToolCalls(responseMessage, messages) {
         let fnArgs = {};
         try {
             fnArgs = toolCall.function?.arguments ? JSON.parse(toolCall.function.arguments) : {};
+            console.log(`[handleToolCalls] Parsing arguments pour ${fnName}:`, fnArgs);
         } catch (e) {
-            console.error("[openAiClient] Impossible de parser les arguments de la fonction :", toolCall.function?.arguments, e);
+            console.error("[handleToolCalls] Impossible de parser les arguments de la fonction :", toolCall.function?.arguments, e);
         }
 
         let fnResult;
         if (availableFunctions[fnName]) {
             try {
+                console.log(`[handleToolCalls] Exécution de ${fnName}...`);
                 fnResult = await availableFunctions[fnName].execute(fnArgs);
+                console.log(`[handleToolCalls] Résultat de ${fnName}:`, fnResult);
             } catch (e) {
                 fnResult = `Erreur lors de l'exécution de la fonction ${fnName} : ${e.message || e}`;
+                console.error(`[handleToolCalls] Erreur:`, fnResult);
             }
         } else {
             fnResult = `Erreur : fonction inconnue "${fnName}"`;
+            console.error(`[handleToolCalls]`, fnResult);
         }
 
         updatedMessages.push({
