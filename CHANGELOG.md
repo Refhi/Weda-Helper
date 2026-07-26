@@ -4,6 +4,24 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [3.1] - Post-it et extraction de données centralisée (WhAIp à venir dans la 3.2 !)
+## Ajouts :
+- [#627](https://github.com/Refhi/Weda-Helper/issues/627) - Ajout de raccourcis dans x jours pour les dates d'alertes dans les antécédents (3 mois, 6 mois, 1 an, 2 ans, 5 ans)
+- [#630](https://github.com/Refhi/Weda-Helper/issues/630) - Ajout d’un système d’extraction de données centralisée, permettant de faciliter certaines options, dont l’historique des facturations dans la page des FSE.
+- L’affichage de l’historique des facturations est systématiquement proposé. Il peut être rendu automatique dans les options de Weda-Helper.
+- [#636](https://github.com/Refhi/Weda-Helper/issues/636) L'affichage de l'historique des FSE affiche aussi le réglement effectué par le patient et le mode de réglement.
+- [#629](https://github.com/Refhi/Weda-Helper/issues/629) - Ajout d’un bouton pour importer le contenu d’un post-it directement dans une consultation.
+- [#615](https://github.com/Refhi/Weda-Helper/issues/615) - le calcul du SCORE2 utilise bien plus de données récupérées automatiquement.
+
+## Retrait de fonctionnalités :
+- [#619](https://github.com/Refhi/Weda-Helper/issues/619) - Il existe *déjà* une option dans Weda pour sauvegarder l’affichage préférentiel des documents dans la page de recherche des documents...
+
+## Fix :
+- [#625](https://github.com/Refhi/Weda-Helper/issues/625) - Réparation de l’aide qui s’affiche quand on maintient Alt appuyé... encore... ce coup-ci c’est censé fonctionner...
+- [#628](https://github.com/Refhi/Weda-Helper/issues/628) - Fix du raccourcis vers les éléments patients depuis les échanges sécurisés (en bas de page après un appuis sur "Importer le message")
+- [#620](https://github.com/Refhi/Weda-Helper/issues/620) - L'enregistrement automatique est correctement inhibé quelques secondes lors des saisies utilisateur.
+- importation de documents : la recherche de patient et/ou la date du document ne sont plus recherchée si elle(s) a/ont déjà été validée(s) par le parseur de Weda (en cours de déploiement dans Weda).
+
 # [3.0.0.4] - Hotfix
 ## Fix :
 - erreurs de lecture de la carte vitale dans les FSE : ajout d’un délai de 200ms pour limiter les messages d’erreur.
@@ -25,7 +43,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#618](https://github.com/Refhi/Weda-Helper/issues/618) - Le motif par défaut pour les sorties sans restriction d’horaire est désormais personnalisable dans les options de Weda-Helper ou en cliquant sur le bouton 💾 à côté du champ de saisie du motif dans la page de prescription d’arrêt de travail.
 - [#620](https://github.com/Refhi/Weda-Helper/issues/620) - Les consultations sont désormais automatiquement enregistrées toutes les 3 minutes si aucune entrée n’est détectée pendant au moins 5 secondes. (permet de limiter les pertes de données en cas de crash du navigateur ou de Weda)
 - [#619](https://github.com/Refhi/Weda-Helper/issues/619) - Il est désormais possible de sauvegarder l’affichage préférentiel des documents dans la page de recherche des documents. (via l’icone 💾i)
-- [#615](https://github.com/Refhi/Weda-Helper/issues/615) - Ajout d’un outil de calcul du SCOR2 directement depuis la consultation
+- [#615](https://github.com/Refhi/Weda-Helper/issues/615) - Ajout d’un outil de calcul du SCORE2 directement depuis la consultation
 
 ## Evolution :
 - [#586](https://github.com/Refhi/Weda-Helper/issues/586) - le décochage automatique de certains documents dans la messagerie sécurisée est désormais personnalisable (ex. décocher les messages commençant par "NoName_" ou les fichiers commençant par "IHE_XDM.zip" qui sont souvent inutiles).

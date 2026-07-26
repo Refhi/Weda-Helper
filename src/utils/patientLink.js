@@ -7,6 +7,8 @@
  * 
  * @exports getCurrentPatientId - Récupère l'ID du patient actuel
  * @exports getPatientInfo - Récupère les informations d'un patient
+ * @exports getPatientUrlParams - Récupère les paramètres URL du dossier d'un patient
+ * @exports getCurrentPatientPageUrl - Construit l'URL d'une page Weda pour le patient courant
  * @exports addPatientUrlParams - Ajoute les paramètres URL patient
  * @exports processElementsWithMiddleClick - Gestion du clic molette
  * 
@@ -106,6 +108,43 @@ function getCurrentPatientId() {
     return null;
 }
 
+/**
+ * Récupère les paramètres URL (PatDk, crypt...) du dossier d'un patient donné, à partir de
+ * son patientFileUrl retourné par l'API patient.
+ *
+ * @param {string} patientId - Identifiant du patient (numéro de dossier)
+ * @returns {Promise<string>} Chaîne de paramètres URL (ex: "PatDk=65407357|0|0|0&crypt=...")
+ */
+async function getPatientUrlParams(patientId) {
+    const patientInfo = await getPatientInfo(patientId);
+    const patientFileUrl = patientInfo?.patientFileUrl;
+    const patientFileUrlParams = patientFileUrl?.split('?')[1];
+    if (!patientFileUrlParams) {
+        throw new Error('Paramètres patient introuvables');
+    }
+    return patientFileUrlParams;
+}
+
+/**
+ * Construit l'URL d'une page Weda (ex: page d'accueil patient, consultation, historique...)
+ * pour le patient actuellement affiché, en réutilisant les paramètres de son dossier
+ * (PatDk, crypt...) récupérés via l'API patient.
+ *
+ * @param {string} pagePath - Chemin de la page cible (ex: "/FolderMedical/PatientViewForm.aspx")
+ * @returns {Promise<string>} URL complète de la page pour le patient courant
+ */
+async function getCurrentPatientPageUrl(pagePath, patientId = null) {
+    if (!patientId) {
+        patientId = getCurrentPatientId();
+    }
+    if (!patientId) {
+        throw new Error('Patient non détecté dans l\'URL et aucun patientId fourni');
+    }
+
+    const patientFileUrlParams = await getPatientUrlParams(patientId);
+    return `${baseUrl}${pagePath}?${patientFileUrlParams}`;
+}
+
 
 // // Ajout d'un accès simplifié dans un onglet dédié aux antécédents, depuis n'importe
 // quelle page affichant une liste de patient après recherche
@@ -123,15 +162,8 @@ addTweak(urls, '*addATCDShortcut', function () {
         '[id^="ContentPlaceHolder1_FindPatientUcForm2_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_"]' // mode vertical dans les imports
 
     async function addPatientUrlParams(element, patientFileNumber) {
-        let patientInfo = await getPatientInfo(patientFileNumber);
-        // console.log('patientInfo', patientInfo);
-        let patientFileUrl = patientInfo.patientFileUrl;
-        let patientFileUrlParts = patientFileUrl.split('?');
-        let patientFileUrlParams = patientFileUrlParts[1];
-        // console.log('patientFileUrlParams', patientFileUrlParams);
-        // Ajoute l'information dans une propriété UrlParams
-        element.UrlParams = patientFileUrlParams;
-        // console.log('ajout de ', patientFileUrlParams, 'à', element, 'ce qui donne ', element.UrlParams);
+        // Ajoute les paramètres URL du dossier patient dans une propriété UrlParams
+        element.UrlParams = await getPatientUrlParams(patientFileNumber);
     }
 
     function openPatientNotes(element) {

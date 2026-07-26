@@ -1,210 +1,104 @@
 /**
  * @file fse_history.js
  * @description Affichage de l'historique des facturations dans la page FSE.
- * Charge l'historique via une iframe, en extrait les données (date, cotation, montant)
- * et les affiche dans un panneau fixe de l'interface.
+ * Récupère l'historique via recoverData() (dataScrapper.js), filtre les recettes de
+ * l'utilisateur connecté et les affiche dans un panneau fixe de l'interface.
  * Expose getHiddenBillingData(), utilisée par fse_cotation_helper.js.
  *
  * @requires tweaks.js (addTweak)
  * @requires storage.js (getOptionPromise)
- * @requires consultation.js (createIframe)
- * @requires date-time-helpers.js (sleep)
- * @requires dom-helpers.js (clicCSPLockedElement)
+ * @requires dataScrapper.js (recoverData)
  */
 
-addTweak('/vitalzen/fse.aspx', 'showBillingHistory', async function () {
+addTweak('/vitalzen/fse.aspx', '*showBillingHistory', async function () {
+    // Si l’option est désactivée, affiche un bouton simple pour déclencher tout de même l’affichage de l’historique des fse
+    // sinon, fait l’affichage automatiquement
+    const showBillingHistoryOption = await getOptionPromise('showBillingHistory');
+
     if (window.location.href.includes('Buffer=')) {
         console.log('[showBillingHistory] Buffer mode detected, skipping billing history display to avoid conflicts with other features like omnidoc facturation');
         return;
     }
 
-    const iframeId = 'WHHistoryIframe';
-    const targetElement = document.querySelector('.fseContainer');
-    const iframe = createIframe(targetElement, iframeId); // ici targetElement est nécessaire comme référence pour l'insertion de l'iframe
-
-    await new Promise((resolve) => {
-        iframe.addEventListener('load', resolve);
-    });
-
-    await sleep(1000); // Attendre un peu pour que la page se charge
-
-    // Vérifier qu'on soit bien sur l'onglet "Consultation" sinon les cotations ne sont pas affichées
-    if (!iframe.contentDocument.querySelector('#LabelCommandAffiche').textContent.includes('Consultation')) {
-        console.log('[showBillingHistory] Onglet "Consultation" non sélectionné, les cotations ne sont pas affichées');
-        let ongletConsultation = iframe.contentDocument.querySelector('#ButtonConsultation');
-        ongletConsultation.click();
-        await sleep(100);
+    if (!showBillingHistoryOption) {
+        addShowBillingHistoryButton();
+        return;
     }
 
-    const userSelector = '#DropDownListUsers';
-    const currentUser = getCurrentUser(iframeId, userSelector);
-    // On stocke la valeur dans le session storage
-    sessionStorage.setItem('currentHistoryUserForCotationHistory', currentUser);
-    const loggedInUser = swapNomPrenom(document.getElementById('LabelUserLog').innerText);
+    await displayBillingHistory();
+});
 
+/**
+ * Ajoute un bouton permettant de déclencher manuellement l'affichage de l'historique des
+ * facturations, lorsque l'option showBillingHistory est désactivée.
+ */
+function addShowBillingHistoryButton() {
+    const button = document.createElement('button');
+    button.textContent = "Afficher l'historique";
+    button.title = "Affiché via Weda-Helper. Vous pouvez rendre cet affichage systématique en activant l'option ad-hoc dans les options de l'extension";
+    button.style.position = 'fixed';
+    button.style.top = '40px';
+    button.style.right = '20px';
+    button.style.zIndex = 1000;
+    button.addEventListener('click', async () => {
+        button.remove();
+        await displayBillingHistory();
+    });
+    document.body.appendChild(button);
+}
 
-    await selectProperUser(iframeId, loggedInUser, userSelector);
-    await sleep(250);
-    await showWholeHistory(iframeId);
+/**
+ * Récupère l'historique des facturations et l'affiche dans un panneau fixe de l'interface.
+ */
+async function displayBillingHistory() {
+    const loggedInUser = document.getElementById('LabelUserLog').innerText.trim();
 
-    let billingData = extractBillingData(iframe.contentDocument);
+    const data = await recoverData({
+        fullPage: true,
+        categories: ['consultations'],
+        includeLegacy: true,
+    });
+
+    let billingData = extractBillingData(data, loggedInUser);
     // console.log('billingData', billingData);
     billingData = trimOldBillingData(billingData, 5); // Afficher uniquement les 5 dernières années, car certaines cotations peuvent être appliquées une fois sur 5 ans
     let filteredBillingData = await filterBillingData(billingData); // Filtrer les cotations indésirables
     await showBillingData(billingData, filteredBillingData);
-
-    await sleep(250);
-    await selectProperUser(iframeId, currentUser, userSelector);
-    // On supprime la valeur du session storage
-    sessionStorage.removeItem('currentHistoryUserForCotationHistory');
-});
-
-// On restaure l'utilisateur sélectionné avant l'affichage de l'historique dans la page d'accueil si le mauvais utilisateur est sélectionné
-// et que le session storage contient une valeur
-addTweak('/FolderMedical/PatientViewForm.aspx', 'showBillingHistory', async function () {
-    console.log('[showBillingHistory] On restaure l\'utilisateur sélectionné avant l\'affichage de l\'historique');
-    const recordedUser = sessionStorage.getItem('currentHistoryUserForCotationHistory');
-    if (!recordedUser) {
-        return;
-    }
-    console.log('[showBillingHistory] Utilisateur enregistré:', recordedUser);
-    const menuUtilisateur = document.querySelector('#ContentPlaceHolder1_DropDownListUsers');
-    if (!menuUtilisateur) {
-        return;
-    }
-    const currentSelectedUser = menuUtilisateur.options[menuUtilisateur.selectedIndex].textContent;
-    if (currentSelectedUser !== recordedUser) {
-        console.log('[showBillingHistory] Mauvais utilisateur sélectionné, on restaure l\'utilisateur enregistré');
-        // Parcourir toutes les options pour trouver celle qui correspond exactement au utilisateur enregistré
-        for (let i = 0; i < menuUtilisateur.options.length; i++) {
-            if (menuUtilisateur.options[i].textContent.trim() === recordedUser.trim()) {
-                menuUtilisateur.selectedIndex = i;
-                menuUtilisateur.dispatchEvent(new Event('change', { bubbles: true }));
-                sessionStorage.removeItem('currentHistoryUserForCotationHistory');
-                break;
-            }
-        }
-    }
-});
-
-// Fonction utilitaire pour accéder à l'iframe et au sélecteur d'utilisateur
-function getUserSelect(iframeId, selector) {
-    const iframe = document.querySelector('#' + iframeId);
-    if (!iframe) {
-        console.error('[showBillingHistory] iframe not found');
-        return null;
-    }
-    return iframe.contentDocument.querySelector(selector);
 }
 
-// Fonction utilitaire pour obtenir l'utilisateur sélectionné
-function getSelectedUser(userSelect) {
-    return userSelect.options[userSelect.selectedIndex].textContent;
-}
+
+
 
 /**
- * Récupère l'utilisateur actuellement sélectionné dans un iframe.
+ * Extrait les données de facturation (recettes) depuis les données récupérées par recoverData(),
+ * en ne gardant que les journées dont l'auteur correspond à l'utilisateur actuellement connecté.
  * 
- * @param {string} iframeId - ID de l'iframe contenant le sélecteur d'utilisateur
- * @param {string} selector - Sélecteur CSS du menu déroulant utilisateur
- * @returns {string|null} - Nom de l'utilisateur sélectionné, ou null
+ * @param {Object} data - Objet retourné par recoverData({ categories: ['consultations'] })
+ * @param {string} loggedInUser - Nom de l'utilisateur connecté, au format "NOM Prénom" (voir swapNomPrenom)
+ * @returns {Array<Object>} - Tableau d'objets de facturation avec Date, Actes, Montant
  */
-function getCurrentUser(iframeId, selector) {
-    console.log('[showBillingHistory] getCurrentUser');
-    const userSelect = getUserSelect(iframeId, selector);
-    return userSelect ? getSelectedUser(userSelect) : null;
-}
-
-/**
- * Sélectionne l'utilisateur approprié dans l'historique des facturations.
- * Cherche et sélectionne l'utilisateur correspondant au nom donné.
- * 
- * @async
- * @param {string} iframeId - ID de l'iframe contenant l'historique
- * @param {string} nom - Nom de l'utilisateur à sélectionner
- * @param {string} selector - Sélecteur CSS du menu déroulant
- * @returns {Promise<boolean>} - True si sélection réussie, false sinon
- */
-async function selectProperUser(iframeId, nom, selector) {
-    nom = nom.trim();
-    console.log('[showBillingHistory] selectProperUser on cherche à sélectionner :', nom);
-    const userSelect = getUserSelect(iframeId, selector);
-
-    const currentSelectedUser = getSelectedUser(userSelect);
-
-    if (currentSelectedUser.startsWith(nom)) {
-        console.log('[showBillingHistory] user already selected');
-        return;
-    }
-
-    // On parcourt les options pour trouver le nom et le sélectionner
-    const options = userSelect.options;
-    for (let i = 0; i < options.length; i++) {
-        if (options[i].textContent.trim().startsWith(nom)) {
-            userSelect.selectedIndex = i;
-            userSelect.dispatchEvent(new Event('change', { bubbles: true }));
-            break;
-        }
-    }
-}
-
-
-
-async function showWholeHistory(iframeId) {
-    console.log('[showBillingHistory] showWholeHistory');
-    const iframeSel = '#' + iframeId;
-    clicCSPLockedElement("#HistoriqueUCForm1_LinkButtonSuiteWeda", iframeSel);
-
-    const iframe = document.querySelector(iframeSel);
-    if (iframe) {
-        await sleep(250);
-    }
-}
-
-
-function swapNomPrenom(loggedInUser) {
-    const parts = loggedInUser.split(' ');
-    const lastNameIndex = parts.findIndex(part => part === part.toUpperCase());
-    if (lastNameIndex === -1) {
-        return loggedInUser; // Si aucun nom en majuscule n'est trouvé, retourner l'original
-    }
-    const firstName = parts.slice(0, lastNameIndex).join(' ');
-    const lastName = parts.slice(lastNameIndex).join(' ');
-    return `${lastName} ${firstName}`;
-}
-
-/**
- * Extrait les données de facturation depuis l'historique FSE.
- * Parse le tableau d'historique et retourne un tableau structuré de facturations.
- * 
- * @param {Document} iframeDocument - Document de l'iframe contenant l'historique
- * @returns {Array<Object>} - Tableau d'objets de facturation avec date, cotation, etc.
- */
-function extractBillingData(iframeDocument) {
-    const elements = iframeDocument.querySelectorAll('[name=dh9]');
+function extractBillingData(data, loggedInUser) {
+    console.log('[fse_history] données de recettes récupérées :', data, loggedInUser);
+    const days = data?.consultations || [];
+    const nom = loggedInUser.trim();
     const billingData = [];
 
-    elements.forEach(element => {
-        const labelilElements = element.querySelectorAll('.labelil');
-        console.log('Nombre d\'éléments labelil trouvés:', labelilElements.length);
+    days.forEach(day => {
+        if (!day.author || !day.author.trim().startsWith(nom)) return; // On ne garde que les journées de l'utilisateur connecté
 
-        // Traiter chaque labelil à position impaire (index pair)
-        for (let i = 1; i < labelilElements.length; i += 2) {
-            const currentLabelil = labelilElements[i];
-            if (!currentLabelil) continue;
-
-            const values = currentLabelil.nextElementSibling?.querySelectorAll('td');
-            if (!values || values.length < 6) continue;
-
-            const Date = values[1].textContent?.trim() || '';
-            const Actes = values[4].textContent?.trim() || '';
-            const Montant = (values[5].textContent?.trim() || '') + ' €';
-            console.log('Date', Date, 'Actes', Actes, 'Montant', Montant);
-
-            if (Date && Actes) {  // Vérifier que les données essentielles sont présentes
-                billingData.push({ Date, Actes, Montant });
+        (day.documents || []).forEach(doc => {
+            if (doc.type !== 'recette' || !doc.recette) return;
+            const Date = doc.recette.date || '';
+            const Actes = doc.recette.actes || '';
+            // On affiche le montant total de l'acte (issu de la ligne F.S.E.), et non le
+            // montant de la recette qui ne correspond qu'à la part restant à charge du patient.
+            const Montant = doc.fds?.[0]?.total || doc.recette.montant || '';
+            const MontantFacture = doc.recette.montant || '';
+            const Mode = doc.recette.mode  || '';
+            if (Date && Actes) {
+                billingData.push({ Date, Actes, Montant, MontantFacture, Mode});
             }
-        }
+        });
     });
 
     return billingData;
@@ -261,7 +155,7 @@ async function showBillingData(billingData, billingDataFiltered) {
         billingDataContainer.querySelectorAll('div').forEach(div => div.remove());
         const dataContainer = document.createElement('div');
         data.forEach(item => {
-            dataContainer.innerHTML += `<p>${item.Date} - ${item.Actes} - ${item.Montant}</p>`;
+            dataContainer.innerHTML += `<p>${item.Date} - ${item.Actes} - ${item.Montant} - ${item.MontantFacture} ${item.Mode}</p>`;
         });
         billingDataContainer.appendChild(dataContainer);
     }
