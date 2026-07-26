@@ -13,8 +13,10 @@ const aiParamsReady = (async () => {
     aiParams.apiUrl = `http://localhost:${aiParams.port}`
     aiParams.apiKey = await getOptionPromise('IAassistantApiKey') // Normalement non utilisé, mais bon, autant être propre.
     aiParams.defaultModel = await getOptionPromise('IAassistantModelName') // Modèle par défaut, ex: "qwen3.5:9b"
+    aiParams.IAassistantModelNameSecondary = await getOptionPromise('IAassistantModelNameSecondary') // Modèle secondaire, ex: "mistral-nemo:12b-instruct-2407-q5_K_M"
     aiParams.toolCalling = await getOptionPromise('IAassistantToolCalling') // true/false pour activer le function calling
     aiParams.MAX_TOOL_CALL_DEPTH =  5 // Nombre maximum d'allers-retours de function calling avant d'abandonner (évite les boucles infinies)
+    aiParams.basicSystemPrompt = await getOptionPromise('IAassistantMainSystemPrompt') // Prompt de base pour le modèle
     console.log("[openAiClient] Paramètres récupérés :", aiParams);
 })();
 

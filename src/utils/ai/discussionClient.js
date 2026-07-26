@@ -1,9 +1,12 @@
 /**
  * Chat de test en bas à droite de la page.
  */
-function addAIChatClient() {
+async function addAIChatClient() {
     // Éviter les doublons si déjà injecté
     if (document.getElementById('wedaHelper-chat-widget')) return;
+
+    // S'assurer que les paramètres (dont le prompt système) sont chargés avant de construire le chat
+    await aiParamsReady;
 
     // --- Styles ---
     const style = document.createElement('style');
@@ -111,6 +114,18 @@ function addAIChatClient() {
             font-family: inherit;
         }
         #wedaHelper-info-popover ul { margin: 4px 0; padding-left: 18px; }
+        #wedaHelper-toggle-model {
+            display: block;
+            margin: 6px 0 10px;
+            background: #10a37f;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        #wedaHelper-toggle-model:hover { background: #0d8c6d; }
         #wedaHelper-chat-messages {
             flex-grow: 1;
             padding: 15px;
@@ -197,8 +212,14 @@ function addAIChatClient() {
 
     // --- Logique du chat ---
     let chatHistory = [
-        { role: "system", content: "Tu es un assistant utile, concis et poli. Quand tu dois utiliser une fonction, sois précis avec les paramètres." }
+        { role: "system", content: aiParams.basicSystemPrompt }
     ];
+
+    // Modèle actuellement utilisé pour les appels (bascule possible entre principal et secondaire)
+    let useSecondaryModel = false;
+    function getCurrentModel() {
+        return useSecondaryModel ? aiParams.IAassistantModelNameSecondary : aiParams.defaultModel;
+    }
 
     const chatWindow = widget.querySelector('#wedaHelper-chat-window');
     const chatToggle = widget.querySelector('#wedaHelper-chat-toggle');
@@ -216,9 +237,12 @@ function addAIChatClient() {
             return `<li><strong>${name}</strong>${description ? ' — ' + description : ''}</li>`;
         }).join('');
 
+        const hasSecondaryModel = !!aiParams.IAassistantModelNameSecondary;
+
         return `
             <h4>Modèle utilisé</h4>
-            <pre>${aiParams.defaultModel}</pre>
+            <pre>${getCurrentModel()}</pre>
+            ${hasSecondaryModel ? `<button id="wedaHelper-toggle-model" type="button">Basculer vers ${useSecondaryModel ? aiParams.defaultModel : aiParams.IAassistantModelNameSecondary}</button>` : ''}
             <h4>Prompt système</h4>
             <pre>${systemMessage ? systemMessage.content : '(aucun)'}</pre>
             <h4>Fonctions appelables</h4>
@@ -233,8 +257,20 @@ function addAIChatClient() {
         } else {
             infoPopover.innerHTML = buildInfoContent();
             infoPopover.classList.add('open');
+            bindInfoPopoverActions();
         }
     });
+
+    function bindInfoPopoverActions() {
+        const toggleModelButton = infoPopover.querySelector('#wedaHelper-toggle-model');
+        if (toggleModelButton) {
+            toggleModelButton.addEventListener('click', () => {
+                useSecondaryModel = !useSecondaryModel;
+                infoPopover.innerHTML = buildInfoContent();
+                bindInfoPopoverActions();
+            });
+        }
+    }
 
     let isOpen = false;
     function toggleChat() {
@@ -278,6 +314,7 @@ function addAIChatClient() {
         try {
             const botResponse = await openAiClient({
                 messages: chatHistory,
+                model: getCurrentModel(),
                 maxTokens: 800,
                 temperature: 0.3,  // Plus basse température pour meilleure stabilité avec Mistral
                 useTools: true

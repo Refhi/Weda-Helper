@@ -1298,8 +1298,13 @@ var advancedDefaultSettings = [
             }, {
                 "name": "IAassistantModelName",
                 "type": TYPE_SMALLTEXT,
-                "description": "Nom du modèle d'IA local à utiliser.",
+                "description": "Nom des modèles d'IA local à utiliser.",
                 "default": "mistral-nemo:12b-instruct-2407-q5_K_M"
+            }, {
+                "name": "IAassistantModelNameSecondary",
+                "type": TYPE_SMALLTEXT,
+                "description": "Nom du modèle d'IA local secondaire à utiliser. Le premier est toujours utilisé, sauf si vous le sélectionnez manuellement dans le Chat. Utile pour les tests.",
+                "default": "qwen3.5:9b"
             }, {
                 "name": "AIAssistantToolCalling",
                 "type": TYPE_BOOL,
@@ -1310,6 +1315,11 @@ var advancedDefaultSettings = [
                 "type": TYPE_SMALLTEXT,
                 "description": "Clé API pour l'assistant IA local (si nécessaire).",
                 "default": null
+            }, {
+                "name": "IAassistantMainSystemPrompt",
+                "type": TYPE_TEXT,
+                "description": "Prompt système principal pour l'assistant IA local. Appelé systématiquement à chaque requête.",
+                "default": "Tu es un assistant médical présent au sein du logiciel médical Weda, dans le cadre de Weda-Helper. Tu dois répondre de manière concise, claire et précise aux questions posées par l'utilisateur. Tu dois facilement dire je ne sais pas si tu n'as pas la réponse.",
             }]
         }]
     }, {
