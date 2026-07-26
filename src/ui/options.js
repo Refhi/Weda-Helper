@@ -1208,16 +1208,16 @@ updateCompanionLogLink();
  * Extrait les titres du contenu principal et crée des liens de navigation
  */
 function initializeSidebarNavigation() {
-  const advancedOptions = document.getElementById('advanced-options');
+  const container = document.querySelector('.container');
   const sidebarNav = document.getElementById('sidebarNav');
   
-  if (!advancedOptions || !sidebarNav) {
+  if (!container || !sidebarNav) {
     console.warn('⚠️ Éléments requis pour le menu latéral non trouvés');
     return;
   }
 
-  // Extraire tous les titres (h1-h6) du conteneur
-  const titles = advancedOptions.querySelectorAll('h1, h2, h3, h4, h5, h6');
+  // Extraire tous les titres (h1-h6) du conteneur principal
+  const titles = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
   
   if (titles.length === 0) {
     console.warn('⚠️ Aucun titre trouvé pour le menu latéral');
@@ -1255,12 +1255,12 @@ function initializeSidebarNavigation() {
   // Fonction pour mettre à jour le titre actif selon le scroll
   function updateActiveNavItem() {
     const navItems = sidebarNav.querySelectorAll('.sidebar-nav-title');
-    const titles = advancedOptions.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    const allTitles = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
     
     let currentActiveIndex = 0;
     
     // Trouver le titre le plus proche du haut de la fenêtre
-    titles.forEach((title, index) => {
+    allTitles.forEach((title, index) => {
       const rect = title.getBoundingClientRect();
       if (rect.top <= 100) {
         currentActiveIndex = index;

@@ -534,7 +534,7 @@ var advancedDefaultSettings = [
         //     }]
         // },
         // {
-        "name": "Options générales",
+        "name": "Générales",
         "description": "Des options générales valables partout",
         "type": TYPE_TITLE,
         "options": [{
@@ -789,7 +789,7 @@ var advancedDefaultSettings = [
                 "default": false
             }]
         }, {
-            "name": "Options d'importation",
+            "name": "Importation",
             "type": TYPE_TITLE,
             "options": [{
                 "name": "TweakImports",
@@ -905,7 +905,7 @@ var advancedDefaultSettings = [
             }]
         }]
     }, {
-        "name": "Options de consultation",
+        "name": "Consultation",
         "description": "Des options spécifiques aux consultations",
         "type": TYPE_TITLE,
         "options": [{
@@ -945,7 +945,7 @@ var advancedDefaultSettings = [
             "default": true
         }]
     }, {
-        "name": "Options de prescription",
+        "name": "Prescription",
         "description": "Des options spécifiques aux prescriptions",
         "type": TYPE_TITLE,
         "options": [{
@@ -975,7 +975,7 @@ var advancedDefaultSettings = [
             "default": true
         }]
     }, {
-        "name": "Options d'ordonnance numérique",
+        "name": "Ordonnance numérique",
         "description": "Des options spécifiques aux ordonnances numériques",
         "type": TYPE_TITLE,
         "options": [{
@@ -1009,24 +1009,24 @@ var advancedDefaultSettings = [
             "type": TYPE_BOOL,
             "description": "Clique automatiquement \"Continuer automatiquement sans ordonnance numérique\" si le message d'erreur s'affiche.",
             "default": false
-        }]
-    }, {
-        "name": "Options de cochage/décochage automatique",
-        "description": "Pour que le décochage fonctionne, au moins une des deux options doit être activée. Cf. https://secure.weda.fr/FolderSetting/PreferenceForm.aspx pour activer/désactiver l'ensemble",
-        "type": TYPE_TITLE,
-        "options": [{
-            "name": "NumPresPrescription",
-            "type": TYPE_BOOL,
-            "description": "Cocher/Décocher automatiquement la case « ordonnance numérique » pour les prescriptions de médicaments.",
-            "default": true
         }, {
-            "name": "NumPresDemande",
-            "type": TYPE_BOOL,
-            "description": "Cocher/Décocher automatiquement la case « ordonnance numérique » pour les ordonnances de demandes numériques (labo/imagerie/paramédical)",
-            "default": true
+            "name": "Cochage/décochage automatique",
+            "description": "Pour que le décochage fonctionne, au moins une des deux options doit être activée. Cf. https://secure.weda.fr/FolderSetting/PreferenceForm.aspx pour activer/désactiver l'ensemble",
+            "type": TYPE_TITLE,
+            "subOptions": [{
+                "name": "NumPresPrescription",
+                "type": TYPE_BOOL,
+                "description": "Cocher/Décocher automatiquement la case « ordonnance numérique » pour les prescriptions de médicaments.",
+                "default": true
+            }, {
+                "name": "NumPresDemande",
+                "type": TYPE_BOOL,
+                "description": "Cocher/Décocher automatiquement la case « ordonnance numérique » pour les ordonnances de demandes numériques (labo/imagerie/paramédical)",
+                "default": true
+            }]
         }]
     }, {
-        "name": "Options de recherche médicale",
+        "name": "Recherche médicale",
         "description": "Des options spécifiques à la recherche médicale",
         "type": TYPE_TITLE,
         "options": [{
@@ -1129,7 +1129,7 @@ var advancedDefaultSettings = [
             "default": false
         }]
     }, {
-        "name": "Options de FSE",
+        "name": "FSE",
         "description": "Des options spécifiques aux FSE",
         "type": TYPE_TITLE,
         "options": [{
@@ -1194,7 +1194,7 @@ var advancedDefaultSettings = [
             "default": "MCG, SHE, MHP, RDV, MOP, PAV, APC, APY, APU, MCS, GL1, GL2, GL3"
         }]
     }, {
-        "name": "Lien avec Weda-Helper-Companion",
+        "name": "Companion",
         "description": "Options de connexion et d'impression automatique via le Companion",
         "type": TYPE_TITLE,
         "options": [{
@@ -1203,7 +1203,7 @@ var advancedDefaultSettings = [
             "description": '<a href="URL_DU_LOG_DU_COMPANION" id="companionLogLing" target="_blank">Voir le log du Companion</a>'
         }],
         "sections": [{
-            "name": "Options de connexion",
+            "name": "Connexion",
             "type": TYPE_TITLE,
             "options": [{
                 "name": "portCompanion",
@@ -1217,7 +1217,7 @@ var advancedDefaultSettings = [
                 "default": "votre clé API par défaut"
             }],
         }, {
-            "name": "Options d'impression automatique",
+            "name": "Impression automatique",
             "type": TYPE_TITLE,
             "options": [{
                 "name": "RemoveLocalCompanionPrint",
@@ -1282,7 +1282,7 @@ var advancedDefaultSettings = [
             }],
         }]
     }, {
-        "name": "Options avancées",
+        "name": "Avancé",
         "description": "Ces options servent des usages très spécifiques, possiblement seulement utile pour les développeurs.",
         "type": TYPE_TITLE,
         "options": [{
