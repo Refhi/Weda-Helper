@@ -10,8 +10,7 @@
     "tabs"
   ],
   "host_permissions": [
-    "http://localhost/",
-    "http://localhost:11434/"
+    "http://localhost/"
   ],
   "action": {
     "default_popup": "src/ui/popup.html"
@@ -51,6 +50,7 @@
         "src/utils/iframeHelpers.js",
         "src/utils/dataScrapper.js",
         "src/utils/dataInserter.js",
+        "src/utils/ai/callableFunctions.js",
         "src/utils/ai/openAiClient.js",
         "src/ui/tooltip.js",
         "src/ui/update.js",
