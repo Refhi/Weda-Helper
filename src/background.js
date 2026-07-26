@@ -1299,12 +1299,12 @@ var advancedDefaultSettings = [
                 "name": "IAassistantModelName",
                 "type": TYPE_SMALLTEXT,
                 "description": "Nom des modèles d'IA local à utiliser.",
-                "default": "mistral-nemo:12b-instruct-2407-q5_K_M"
+                "default": "qwen3.5:9b"
             }, {
                 "name": "IAassistantModelNameSecondary",
                 "type": TYPE_SMALLTEXT,
                 "description": "Nom du modèle d'IA local secondaire à utiliser. Le premier est toujours utilisé, sauf si vous le sélectionnez manuellement dans le Chat. Utile pour les tests.",
-                "default": "qwen3.5:9b"
+                "default": "mistral-nemo:12b-instruct-2407-q5_K_M"
             }, {
                 "name": "AIAssistantToolCalling",
                 "type": TYPE_BOOL,
