@@ -83,6 +83,24 @@ async function addAIChatClient() {
             margin-right: 8px;
         }
         #wedaHelper-info-chat:hover { background: #1c66c9; }
+        #wedaHelper-reset-chat {
+            background: #e05252;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            min-width: 22px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 8px;
+        }
+        #wedaHelper-reset-chat:hover { background: #c23f3f; }
         #wedaHelper-header-actions { display: flex; align-items: center; }
         #wedaHelper-info-popover {
             display: none;
@@ -195,6 +213,7 @@ async function addAIChatClient() {
             <div id="wedaHelper-chat-header">
                 <span>Assistant Local</span>
                 <div id="wedaHelper-header-actions">
+                    <button id="wedaHelper-reset-chat" type="button" title="Réinitialiser la conversation">↺</button>
                     <button id="wedaHelper-info-chat" type="button" title="Informations">?</button>
                     <button id="wedaHelper-close-chat" type="button">&times;</button>
                 </div>
@@ -229,6 +248,7 @@ async function addAIChatClient() {
     const chatMessages = widget.querySelector('#wedaHelper-chat-messages');
     const infoButton = widget.querySelector('#wedaHelper-info-chat');
     const infoPopover = widget.querySelector('#wedaHelper-info-popover');
+    const resetButton = widget.querySelector('#wedaHelper-reset-chat');
 
     function buildInfoContent() {
         const systemMessage = chatHistory.find(m => m.role === 'system');
@@ -249,6 +269,14 @@ async function addAIChatClient() {
             <ul>${functionsList || '<li>(aucune)</li>'}</ul>
         `;
     }
+
+    resetButton.addEventListener('click', () => {
+        chatHistory = [
+            { role: "system", content: aiParams.basicSystemPrompt }
+        ];
+        chatMessages.innerHTML = '';
+        infoPopover.classList.remove('open');
+    });
 
     infoButton.addEventListener('click', () => {
         const isPopoverOpen = infoPopover.classList.contains('open');
