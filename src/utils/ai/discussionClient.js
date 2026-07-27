@@ -366,6 +366,7 @@ async function addAIChatClient() {
 
         let reasoningMsg = null; // créé au premier fragment de raisonnement reçu
         let contentStarted = false;
+        let lastFinishReason = null; // dernière raison d'arrêt renvoyée par le serveur ('length', 'stop', 'content_filter'...)
         const toolCallBubbles = new Map(); // id -> élément DOM du feedback d'appel de fonction
 
         try {
@@ -376,7 +377,10 @@ async function addAIChatClient() {
                 temperature: 0.3,  // Plus basse température pour meilleure stabilité avec Mistral
                 useTools: true,
                 stream: true,
-                onChunk: ({ contentDelta, reasoningDelta }) => {
+                onChunk: ({ contentDelta, reasoningDelta, finishReason }) => {
+                    if (finishReason) {
+                        lastFinishReason = finishReason;
+                    }
                     if (reasoningDelta) {
                         if (!reasoningMsg) {
                             reasoningMsg = appendMessage('bot', '');
@@ -431,10 +435,20 @@ async function addAIChatClient() {
 
             if (!botResponse || !botResponse.trim()) {
                 // Le modèle s'est arrêté (souvent après une phase de réflexion) sans produire de réponse finale
-                loadingMsg.textContent = "⚠️ Le modèle n'a renvoyé aucune réponse (il s'est probablement interrompu pendant sa réflexion). Réessayez ou reformulez votre question.";
+                let reason;
+                if (lastFinishReason === 'length') {
+                    reason = "la limite de tokens (maxTokens) a été atteinte avant la fin de sa réflexion — augmentez maxTokens ou raccourcissez le prompt système/l'historique.";
+                } else if (lastFinishReason === 'content_filter') {
+                    reason = "la réponse a été bloquée par un filtre de contenu côté serveur.";
+                } else if (lastFinishReason) {
+                    reason = `le serveur a renvoyé un arrêt inhabituel (finish_reason = "${lastFinishReason}"), consultez les logs du serveur hébergeant le LLM pour plus de détails.`;
+                } else {
+                    reason = "aucune raison d'arrêt n'a été transmise par le serveur (connexion interrompue ?), consultez les logs du serveur hébergeant le LLM pour plus de détails.";
+                }
+                loadingMsg.textContent = `⚠️ Le modèle n'a renvoyé aucune réponse : ${reason}`;
                 loadingMsg.classList.remove('loading');
                 loadingMsg.classList.add('tool-call', 'error');
-                console.warn("[addAIChatClient] Réponse vide reçue du modèle.", { reasoning: reasoningMsg?.textContent });
+                console.warn("[addAIChatClient] Réponse vide reçue du modèle.", { reasoning: reasoningMsg?.textContent, finishReason: lastFinishReason });
 
                 if (reasoningMsg) {
                     reasoningMsg.title = "La réflexion s'est arrêtée sans aboutir à une réponse.";
@@ -445,6 +459,15 @@ async function addAIChatClient() {
             } else {
                 loadingMsg.textContent = botResponse;
                 loadingMsg.classList.remove('loading');
+
+                if (lastFinishReason === 'stop') {
+                    loadingMsg.title = 'Réponse complète';
+                } else if (lastFinishReason === 'length') {
+                    loadingMsg.title = 'Réponse probablement tronquée (limite de tokens atteinte)';
+                    const truncatedNotice = appendMessage('bot', '✂️ Cette réponse a été tronquée : la limite de tokens (maxTokens) a été atteinte avant que le modèle ait terminé.');
+                    truncatedNotice.classList.remove('bot');
+                    truncatedNotice.classList.add('tool-call', 'error');
+                }
 
                 chatHistory.push({ role: 'assistant', content: botResponse });
             }

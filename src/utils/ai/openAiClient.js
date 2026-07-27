@@ -111,11 +111,17 @@ async function openAiClient({
             }
             // On consomme le flux SSE en direct, en notifiant onChunk à chaque fragment reçu
             responseMessage = await consumeStream(data, onChunk);
+            // On notifie l'appelant de la raison d'arrêt (utile pour diagnostiquer une réponse vide/tronquée)
+            onChunk({ finishReason: responseMessage._finishReason });
         } else {
             if (!data?.choices?.[0]?.message) {
                 throw new Error("Réponse de l'API invalide : aucun message trouvé dans la réponse.");
             }
             responseMessage = data.choices[0].message;
+            const finishReason = data.choices[0].finish_reason;
+            if (finishReason === 'length') {
+                console.warn('[openAiClient] Le modèle a été interrompu par la limite de tokens (max_tokens atteint) avant de terminer sa réponse.');
+            }
         }
 
         // Gestion du function/tool calling : si le modèle demande à appeler une ou plusieurs fonctions
@@ -183,6 +189,7 @@ async function consumeStream(stream, onChunk) {
     let buffer = '';
     let contentAcc = '';
     let reasoningAcc = '';
+    let finishReason = null; // raison d'arrêt renvoyée par le serveur : 'stop', 'length' (tokens épuisés), 'tool_calls', 'content_filter', etc.
     const toolCallsAcc = []; // indexé par la position (index) fournie par l'API
 
     const processLine = (line) => {
@@ -197,6 +204,10 @@ async function consumeStream(stream, onChunk) {
         } catch (e) {
             console.warn('[consumeStream] Impossible de parser un chunk SSE :', payload);
             return;
+        }
+
+        if (json?.choices?.[0]?.finish_reason) {
+            finishReason = json.choices[0].finish_reason;
         }
 
         const delta = json?.choices?.[0]?.delta;
@@ -244,11 +255,18 @@ async function consumeStream(stream, onChunk) {
     // Traiter un éventuel reste dans le buffer
     if (buffer) processLine(buffer);
 
+    if (finishReason === 'length') {
+        console.warn('[consumeStream] Le modèle a été interrompu par la limite de tokens (max_tokens atteint) avant de terminer sa réponse.');
+    } else if (finishReason && finishReason !== 'stop' && finishReason !== 'tool_calls') {
+        console.warn(`[consumeStream] Arrêt inhabituel du flux, finish_reason = "${finishReason}"`);
+    }
+
     return {
         role: 'assistant',
         content: contentAcc || null,
         ...(reasoningAcc && { reasoning_content: reasoningAcc }),
-        ...(toolCallsAcc.length > 0 && { tool_calls: toolCallsAcc.filter(Boolean) })
+        ...(toolCallsAcc.length > 0 && { tool_calls: toolCallsAcc.filter(Boolean) }),
+        _finishReason: finishReason
     };
 }
 
