@@ -183,6 +183,24 @@ async function addAIChatClient() {
             font-style: italic;
             border: 1px dashed #ccc;
         }
+        #wedaHelper-chat-messages .message.tool-call {
+            background: #eef6ff;
+            color: #2f6f9e;
+            font-size: 12px;
+            border: 1px solid #cfe4f7;
+            align-self: flex-start;
+            cursor: default;
+        }
+        #wedaHelper-chat-messages .message.tool-call.pending {
+            color: #a8790c;
+            background: #fff8e6;
+            border-color: #f0dca0;
+        }
+        #wedaHelper-chat-messages .message.tool-call.error {
+            color: #b3261e;
+            background: #fdecea;
+            border-color: #f5c2be;
+        }
         #wedaHelper-chat-form {
             display: flex;
             padding: 15px;
@@ -348,6 +366,7 @@ async function addAIChatClient() {
 
         let reasoningMsg = null; // créé au premier fragment de raisonnement reçu
         let contentStarted = false;
+        const toolCallBubbles = new Map(); // id -> élément DOM du feedback d'appel de fonction
 
         try {
             const botResponse = await openAiClient({
@@ -378,18 +397,62 @@ async function addAIChatClient() {
                         loadingMsg.textContent += contentDelta;
                         chatMessages.scrollTop = chatMessages.scrollHeight;
                     }
+                },
+                onToolCall: ({ id, name, args, status, result, error }) => {
+                    // Une nouvelle étape de raisonnement pourra suivre cet appel : on force une nouvelle bulle
+                    reasoningMsg = null;
+
+                    if (status === 'start') {
+                        const bubble = appendMessage('bot', `🔧 Appel de la fonction "${name}"...`);
+                        bubble.classList.remove('bot');
+                        bubble.classList.add('tool-call', 'pending');
+                        bubble.title = `Arguments :\n${JSON.stringify(args, null, 2)}`;
+                        chatMessages.insertBefore(bubble, loadingMsg);
+                        toolCallBubbles.set(id, bubble);
+                        return;
+                    }
+
+                    const bubble = toolCallBubbles.get(id);
+                    if (!bubble) return;
+
+                    bubble.classList.remove('pending');
+                    if (status === 'success') {
+                        bubble.textContent = `✅ Résultat reçu de "${name}"`;
+                        const resultText = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+                        bubble.title = `Résultat :\n${resultText}`;
+                    } else if (status === 'error') {
+                        bubble.classList.add('error');
+                        bubble.textContent = `❌ Échec de l'appel à "${name}"`;
+                        bubble.title = `Erreur :\n${error}`;
+                    }
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
                 }
             });
 
-            loadingMsg.textContent = botResponse;
-            loadingMsg.classList.remove('loading');
+            if (!botResponse || !botResponse.trim()) {
+                // Le modèle s'est arrêté (souvent après une phase de réflexion) sans produire de réponse finale
+                loadingMsg.textContent = "⚠️ Le modèle n'a renvoyé aucune réponse (il s'est probablement interrompu pendant sa réflexion). Réessayez ou reformulez votre question.";
+                loadingMsg.classList.remove('loading');
+                loadingMsg.classList.add('tool-call', 'error');
+                console.warn("[addAIChatClient] Réponse vide reçue du modèle.", { reasoning: reasoningMsg?.textContent });
 
-            chatHistory.push({ role: 'assistant', content: botResponse });
+                if (reasoningMsg) {
+                    reasoningMsg.title = "La réflexion s'est arrêtée sans aboutir à une réponse.";
+                    reasoningMsg.classList.add('error');
+                }
+
+                chatHistory.pop(); // on retire le message utilisateur pour permettre de reformuler/réessayer proprement
+            } else {
+                loadingMsg.textContent = botResponse;
+                loadingMsg.classList.remove('loading');
+
+                chatHistory.push({ role: 'assistant', content: botResponse });
+            }
 
         } catch (error) {
-            loadingMsg.textContent = "Erreur : " + error.message;
+            loadingMsg.textContent = "❌ Erreur : " + error.message;
             loadingMsg.classList.remove('loading');
-            loadingMsg.style.color = "red";
+            loadingMsg.classList.add('tool-call', 'error');
             console.error("[addAIChatClient] Erreur lors de l'appel OpenAI :", error);
 
             chatHistory.pop();

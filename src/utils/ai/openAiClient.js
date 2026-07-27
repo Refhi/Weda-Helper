@@ -48,7 +48,11 @@ async function openAiClient({
     // --- 6. Streaming temps réel ---
     onChunk = null,        // Callback appelé à chaque fragment reçu en streaming : ({ contentDelta, reasoningDelta }) => void
 
-    // --- 7. Interne : suivi de la profondeur de récursion (ne pas fournir manuellement) ---
+    // --- 7. Feedback sur les appels de fonctions ---
+    onToolCall = null,     // Callback appelé lors du cycle de vie d'un appel de fonction :
+                           // ({ id, name, args, status: 'start'|'success'|'error', result, error }) => void
+
+    // --- 8. Interne : suivi de la profondeur de récursion (ne pas fournir manuellement) ---
     _toolCallDepth = 0,
 }) {
     // S'assurer que les paramètres (apiUrl, defaultModel, etc.) sont chargés avant le premier appel
@@ -123,7 +127,7 @@ async function openAiClient({
                 return responseMessage.content || "Désolé, je n'ai pas pu terminer cette action après plusieurs tentatives d'appel de fonctions.";
             }
 
-            const updatedMessages = await handleToolCalls(responseMessage, filteredMessages);
+            const updatedMessages = await handleToolCalls(responseMessage, filteredMessages, onToolCall);
 
             // On relance un appel avec les résultats des fonctions pour obtenir la réponse finale du modèle
             console.log(`[openAiClient] Re-envoi du contexte avec résultats des fonctions...`);
@@ -143,6 +147,7 @@ async function openAiClient({
                 toolChoice,
                 useTools,
                 onChunk,
+                onToolCall,
                 _toolCallDepth: _toolCallDepth + 1
             });
         }
@@ -334,9 +339,10 @@ async function fetchChatCompletion(requestBody) {
  * mise à jour (historique + message assistant contenant les tool_calls + résultats des fonctions).
  * @param {object} responseMessage - Le message renvoyé par le modèle, contenant `tool_calls`.
  * @param {Array} messages - L'historique des messages envoyé lors de l'appel initial.
+ * @param {(event: object) => void} [onToolCall] - Callback de feedback appelé à chaque étape (start/success/error).
  * @returns {Promise<Array>} La liste de messages mise à jour, prête à être renvoyée au modèle.
  */
-async function handleToolCalls(responseMessage, messages) {
+async function handleToolCalls(responseMessage, messages, onToolCall) {
     const updatedMessages = [...messages, responseMessage];
 
     for (const toolCall of responseMessage.tool_calls) {
@@ -349,19 +355,24 @@ async function handleToolCalls(responseMessage, messages) {
             console.error("[handleToolCalls] Impossible de parser les arguments de la fonction :", toolCall.function?.arguments, e);
         }
 
+        onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'start' });
+
         let fnResult;
         if (availableFunctions[fnName]) {
             try {
                 console.log(`[handleToolCalls] Exécution de ${fnName}...`);
                 fnResult = await availableFunctions[fnName].execute(fnArgs);
                 console.log(`[handleToolCalls] Résultat de ${fnName}:`, fnResult);
+                onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'success', result: fnResult });
             } catch (e) {
                 fnResult = `Erreur lors de l'exécution de la fonction ${fnName} : ${e.message || e}`;
                 console.error(`[handleToolCalls] Erreur:`, fnResult);
+                onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'error', error: fnResult });
             }
         } else {
             fnResult = `Erreur : fonction inconnue "${fnName}"`;
             console.error(`[handleToolCalls]`, fnResult);
+            onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'error', error: fnResult });
         }
 
         updatedMessages.push({
