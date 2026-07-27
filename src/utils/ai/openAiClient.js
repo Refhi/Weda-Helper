@@ -45,7 +45,10 @@ async function openAiClient({
     toolChoice = null,     // "auto", "none", ou un objet ciblant une fonction précise
     useTools = false,      // Active le function calling avec le registre availableFunctions
 
-    // --- 6. Interne : suivi de la profondeur de récursion (ne pas fournir manuellement) ---
+    // --- 6. Streaming temps réel ---
+    onChunk = null,        // Callback appelé à chaque fragment reçu en streaming : ({ contentDelta, reasoningDelta }) => void
+
+    // --- 7. Interne : suivi de la profondeur de récursion (ne pas fournir manuellement) ---
     _toolCallDepth = 0,
 }) {
     // S'assurer que les paramètres (apiUrl, defaultModel, etc.) sont chargés avant le premier appel
@@ -73,6 +76,9 @@ async function openAiClient({
     // Gestion des tools (function calling)
     const resolvedTools = tools || (useTools ? Object.values(availableFunctions).map(f => f.definition) : null);
 
+    // Si un callback de streaming est fourni, on force le mode stream côté requête
+    const effectiveStream = stream || !!onChunk;
+
     const requestBody = buildRequestBody({
         messages: filteredMessages,
         model,
@@ -82,7 +88,7 @@ async function openAiClient({
         frequencyPenalty,
         presencePenalty,
         stop,
-        stream,
+        stream: effectiveStream,
         responseFormat,
         seed,
         resolvedTools,
@@ -92,16 +98,21 @@ async function openAiClient({
     try {
         const data = await fetchChatCompletion(requestBody);
 
-        // Gestion du streaming (si stream: true) : fetchChatCompletion renvoie directement le ReadableStream
-        if (stream) {
-            return data;
-        }
+        let responseMessage;
 
-        if (!data?.choices?.[0]?.message) {
-            throw new Error("Réponse de l'API invalide : aucun message trouvé dans la réponse.");
+        if (effectiveStream) {
+            // Si aucun callback n'est fourni, on renvoie le ReadableStream brut pour un traitement manuel par l'appelant
+            if (!onChunk) {
+                return data;
+            }
+            // On consomme le flux SSE en direct, en notifiant onChunk à chaque fragment reçu
+            responseMessage = await consumeStream(data, onChunk);
+        } else {
+            if (!data?.choices?.[0]?.message) {
+                throw new Error("Réponse de l'API invalide : aucun message trouvé dans la réponse.");
+            }
+            responseMessage = data.choices[0].message;
         }
-
-        const responseMessage = data.choices[0].message;
 
         // Gestion du function/tool calling : si le modèle demande à appeler une ou plusieurs fonctions
         if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
@@ -131,6 +142,7 @@ async function openAiClient({
                 tools: resolvedTools,
                 toolChoice,
                 useTools,
+                onChunk,
                 _toolCallDepth: _toolCallDepth + 1
             });
         }
@@ -149,6 +161,91 @@ async function openAiClient({
  * ---------------------------------------------------------------------------------------
  * Fonctions support
  */
+
+/**
+ * Lit un ReadableStream SSE (Server-Sent Events) renvoyé par l'API en mode streaming,
+ * accumule le contenu, le "raisonnement" (reasoning_content / reasoning, exposé par
+ * certains modèles type "thinking") et les tool_calls fragmentés, tout en notifiant
+ * `onChunk` en temps réel à chaque fragment de texte reçu.
+ *
+ * @param {ReadableStream} stream - Le corps de la réponse HTTP (response.body).
+ * @param {(chunk: {contentDelta?: string, reasoningDelta?: string}) => void} onChunk - Callback appelé à chaque fragment.
+ * @returns {Promise<object>} Le message assistant reconstitué : { role, content, reasoning_content, tool_calls }
+ */
+async function consumeStream(stream, onChunk) {
+    const reader = stream.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+    let contentAcc = '';
+    let reasoningAcc = '';
+    const toolCallsAcc = []; // indexé par la position (index) fournie par l'API
+
+    const processLine = (line) => {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data:')) return;
+        const payload = trimmed.slice(5).trim();
+        if (payload === '[DONE]') return;
+
+        let json;
+        try {
+            json = JSON.parse(payload);
+        } catch (e) {
+            console.warn('[consumeStream] Impossible de parser un chunk SSE :', payload);
+            return;
+        }
+
+        const delta = json?.choices?.[0]?.delta;
+        if (!delta) return;
+
+        // Contenu "normal" de la réponse
+        if (typeof delta.content === 'string' && delta.content.length > 0) {
+            contentAcc += delta.content;
+            onChunk({ contentDelta: delta.content });
+        }
+
+        // Raisonnement / "thinking" (nom de champ variable selon les serveurs : reasoning_content, reasoning)
+        const reasoningDelta = delta.reasoning_content ?? delta.reasoning;
+        if (typeof reasoningDelta === 'string' && reasoningDelta.length > 0) {
+            reasoningAcc += reasoningDelta;
+            onChunk({ reasoningDelta });
+        }
+
+        // Accumulation des tool_calls fragmentés (envoyés morceau par morceau)
+        if (Array.isArray(delta.tool_calls)) {
+            for (const tc of delta.tool_calls) {
+                const idx = tc.index ?? 0;
+                if (!toolCallsAcc[idx]) {
+                    toolCallsAcc[idx] = { id: tc.id, type: tc.type || 'function', function: { name: '', arguments: '' } };
+                }
+                if (tc.id) toolCallsAcc[idx].id = tc.id;
+                if (tc.function?.name) toolCallsAcc[idx].function.name += tc.function.name;
+                if (tc.function?.arguments) toolCallsAcc[idx].function.arguments += tc.function.arguments;
+            }
+        }
+    };
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // dernière ligne potentiellement incomplète, conservée pour le prochain chunk
+
+        for (const line of lines) {
+            processLine(line);
+        }
+    }
+    // Traiter un éventuel reste dans le buffer
+    if (buffer) processLine(buffer);
+
+    return {
+        role: 'assistant',
+        content: contentAcc || null,
+        ...(reasoningAcc && { reasoning_content: reasoningAcc }),
+        ...(toolCallsAcc.length > 0 && { tool_calls: toolCallsAcc.filter(Boolean) })
+    };
+}
 
 
 /**

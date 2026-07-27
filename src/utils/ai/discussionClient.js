@@ -176,6 +176,13 @@ async function addAIChatClient() {
             border: 1px solid #e5e5e5;
         }
         #wedaHelper-chat-messages .message.loading { color: #888; font-style: italic; }
+        #wedaHelper-chat-messages .message.reasoning {
+            background: #f0f0f0;
+            color: #666;
+            font-size: 12px;
+            font-style: italic;
+            border: 1px dashed #ccc;
+        }
         #wedaHelper-chat-form {
             display: flex;
             padding: 15px;
@@ -339,13 +346,39 @@ async function addAIChatClient() {
         const loadingMsg = appendMessage('bot', "L'IA réfléchit...");
         loadingMsg.classList.add('loading');
 
+        let reasoningMsg = null; // créé au premier fragment de raisonnement reçu
+        let contentStarted = false;
+
         try {
             const botResponse = await openAiClient({
                 messages: chatHistory,
                 model: getCurrentModel(),
                 maxTokens: 800,
                 temperature: 0.3,  // Plus basse température pour meilleure stabilité avec Mistral
-                useTools: true
+                useTools: true,
+                stream: true,
+                onChunk: ({ contentDelta, reasoningDelta }) => {
+                    if (reasoningDelta) {
+                        if (!reasoningMsg) {
+                            reasoningMsg = appendMessage('bot', '');
+                            reasoningMsg.classList.remove('bot');
+                            reasoningMsg.classList.add('reasoning');
+                            // Le message de "réflexion" doit apparaître avant la réponse en cours
+                            chatMessages.insertBefore(reasoningMsg, loadingMsg);
+                        }
+                        reasoningMsg.textContent += reasoningDelta;
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }
+                    if (contentDelta) {
+                        if (!contentStarted) {
+                            contentStarted = true;
+                            loadingMsg.textContent = '';
+                            loadingMsg.classList.remove('loading');
+                        }
+                        loadingMsg.textContent += contentDelta;
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }
+                }
             });
 
             loadingMsg.textContent = botResponse;
