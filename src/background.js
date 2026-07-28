@@ -1320,6 +1320,11 @@ var advancedDefaultSettings = [
                 "type": TYPE_TEXT,
                 "description": "Prompt système principal pour l'assistant IA local. Appelé systématiquement à chaque requête.",
                 "default": "Tu es un assistant médical présent au sein du logiciel médical Weda, dans le cadre de Weda-Helper. Tu dois répondre de manière concise, claire et précise aux questions posées par l'utilisateur. Tu dois facilement dire je ne sais pas si tu n'as pas la réponse. Dès qu'on te pose une question nécessitant du contexte, utilise très facilement les outils à ta disposition en y mettant les arguments qui te semblent pertinents, sans demander à l'utilisateur de le faire. Tu dois répondre en français, même si la question est posée en anglais. Tu dois répondre de manière concise, claire et précise aux questions posées par l'utilisateur. Tu dois facilement dire je ne sais pas si tu n'as pas la réponse. Dès qu'on te pose une question nécessitant du contexte, utilise très facilement les outils à ta disposition en y mettant les arguments qui te semblent pertinents, sans demander à l'utilisateur de le faire.",
+            }, {
+                "name": "IAassistantContextLimit",
+                "type": TYPE_SMALLTEXT,
+                "description": "Nombre de tokens de contexte autorisés par le modèle d'IA utilisé. Par exemple qwen3.5:9b = 4096. Cette limite va simplement afficher un avertissement si le contexte dépasse cette limite, mais ne bloquera pas l'envoi de la requête.",
+                "default": "4096"
             }]
         }]
     }, {

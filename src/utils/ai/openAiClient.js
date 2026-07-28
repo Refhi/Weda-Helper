@@ -17,6 +17,7 @@ const aiParamsReady = (async () => {
     aiParams.toolCalling = await getOptionPromise('IAassistantToolCalling') // true/false pour activer le function calling
     aiParams.MAX_TOOL_CALL_DEPTH =  5 // Nombre maximum d'allers-retours de function calling avant d'abandonner (évite les boucles infinies)
     aiParams.basicSystemPrompt = await getOptionPromise('IAassistantMainSystemPrompt') // Prompt de base pour le modèle
+    aiParams.contextTokenLimit = await getOptionPromise('IAassistantContextLimit')
     console.log("[openAiClient] Paramètres récupérés :", aiParams);
 })();
 
@@ -52,6 +53,10 @@ async function openAiClient({
     onToolCall = null,     // Callback appelé lors du cycle de vie d'un appel de fonction :
                            // ({ id, name, args, status: 'start'|'success'|'error', result, error }) => void
 
+    // --- 7bis. Avertissement de dépassement de contexte ---
+    onWarning = null,      // Callback appelé si le contexte estimé approche/dépasse IAassistantContextLimit :
+                           // ({ type: 'context_limit', estimatedTokens, limit, ratio }) => void
+
     // --- 8. Interne : suivi de la profondeur de récursion (ne pas fournir manuellement) ---
     _toolCallDepth = 0,
 }) {
@@ -77,6 +82,18 @@ async function openAiClient({
     console.log(`[openAiClient] Envoi de ${filteredMessages.length} messages au modèle ${model} (profondeur tool-call: ${_toolCallDepth})`,
         filteredMessages.map(m => ({ role: m.role, contentLength: m.content?.length || 0 })));
 
+    // Avertir si le contexte estimé approche/dépasse la limite configurée (IAassistantContextLimit).
+    // Utile notamment quand le function calling s'enchaîne et gonfle l'historique (résultats d'outils volumineux).
+    const contextLimit = Number(aiParams.contextTokenLimit) || 0;
+    if (contextLimit > 0) {
+        const estimatedTokens = estimateTokens(filteredMessages);
+        const ratio = estimatedTokens / contextLimit;
+        if (ratio >= 0.8) {
+            console.warn(`[openAiClient] Contexte estimé à ${estimatedTokens} tokens (~${Math.round(ratio * 100)}% de la limite de ${contextLimit}).`);
+            onWarning?.({ type: 'context_limit', estimatedTokens, limit: contextLimit, ratio, toolCallDepth: _toolCallDepth });
+        }
+    }
+
     // Gestion des tools (function calling)
     const resolvedTools = tools || (useTools ? Object.values(availableFunctions).map(f => f.definition) : null);
 
@@ -98,6 +115,8 @@ async function openAiClient({
         resolvedTools,
         toolChoice
     });
+
+    console.log("[openAiClient] Requête construite :", requestBody);
 
     try {
         const data = await fetchChatCompletion(requestBody);
@@ -154,6 +173,7 @@ async function openAiClient({
                 useTools,
                 onChunk,
                 onToolCall,
+                onWarning,
                 _toolCallDepth: _toolCallDepth + 1
             });
         }
@@ -172,6 +192,27 @@ async function openAiClient({
  * ---------------------------------------------------------------------------------------
  * Fonctions support
  */
+
+/**
+ * Estimation grossière (mais suffisante pour un avertissement) du nombre de tokens
+ * représentés par une liste de messages : ~4 caractères par token, tous champs textuels
+ * confondus (contenu, raisonnement, arguments/résultats des tool_calls).
+ * @param {Array} messages
+ * @returns {number} Nombre de tokens estimé.
+ */
+function estimateTokens(messages) {
+    let charCount = 0;
+    for (const msg of messages) {
+        if (typeof msg?.content === 'string') charCount += msg.content.length;
+        if (Array.isArray(msg?.tool_calls)) {
+            for (const tc of msg.tool_calls) {
+                charCount += tc.function?.name?.length || 0;
+                charCount += tc.function?.arguments?.length || 0;
+            }
+        }
+    }
+    return Math.ceil(charCount / 4);
+}
 
 /**
  * Lit un ReadableStream SSE (Server-Sent Events) renvoyé par l'API en mode streaming,

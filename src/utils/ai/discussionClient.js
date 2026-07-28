@@ -367,6 +367,7 @@ async function addAIChatClient() {
         let reasoningMsg = null; // créé au premier fragment de raisonnement reçu
         let contentStarted = false;
         let lastFinishReason = null; // dernière raison d'arrêt renvoyée par le serveur ('length', 'stop', 'content_filter'...)
+        let contextWarningShown = false; // évite de spammer une bulle à chaque relance de function calling
         const toolCallBubbles = new Map(); // id -> élément DOM du feedback d'appel de fonction
 
         try {
@@ -377,6 +378,15 @@ async function addAIChatClient() {
                 temperature: 0.3,  // Plus basse température pour meilleure stabilité avec Mistral
                 useTools: true,
                 stream: true,
+                onWarning: ({ type, estimatedTokens, limit, ratio }) => {
+                    if (type !== 'context_limit' || contextWarningShown) return;
+                    contextWarningShown = true;
+                    const warningBubble = appendMessage('bot', `⚠️ Le contexte estimé de la conversation (~${estimatedTokens} tokens) approche ou dépasse la limite configurée (${limit} tokens, ${Math.round(ratio * 100)}%). Les échanges avec les outils peuvent être tronqués par le serveur : pensez à réinitialiser la conversation si les réponses deviennent incohérentes.`);
+                    warningBubble.classList.remove('bot');
+                    warningBubble.classList.add('tool-call', 'error');
+                    chatMessages.insertBefore(warningBubble, loadingMsg);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                },
                 onChunk: ({ contentDelta, reasoningDelta, finishReason }) => {
                     if (finishReason) {
                         lastFinishReason = finishReason;
@@ -467,6 +477,7 @@ async function addAIChatClient() {
                     const truncatedNotice = appendMessage('bot', '✂️ Cette réponse a été tronquée : la limite de tokens (maxTokens) a été atteinte avant que le modèle ait terminé.');
                     truncatedNotice.classList.remove('bot');
                     truncatedNotice.classList.add('tool-call', 'error');
+                    console.warn("[addAIChatClient] Réponse tronquée : limite de tokens atteinte.", { reasoning: reasoningMsg?.textContent, finishReason: lastFinishReason });
                 }
 
                 chatHistory.push({ role: 'assistant', content: botResponse });
