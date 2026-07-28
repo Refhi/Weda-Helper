@@ -374,7 +374,7 @@ async function addAIChatClient() {
             const botResponse = await openAiClient({
                 messages: chatHistory,
                 model: getCurrentModel(),
-                maxTokens: 800,
+                maxTokens: 8000,
                 temperature: 0.3,  // Plus basse température pour meilleure stabilité avec Mistral
                 useTools: true,
                 stream: true,
