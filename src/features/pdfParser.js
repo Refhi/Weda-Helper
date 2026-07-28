@@ -929,6 +929,7 @@ function actualImportActionLine() {
 
 // marque les données comme déjà importées
 function markDataAsImported(hashId, extractedData) {
+    console.log("[pdfParser] Marquage des données comme déjà importées pour le PDF avec hashId :", hashId);
     extractedData.alreadyImported = true;
     let extractedDataStr = JSON.stringify(extractedData);
     sessionStorage.setItem(hashId, extractedDataStr);
@@ -975,7 +976,7 @@ async function setExtractedDataInForm(extractedData, fullText) {
     // Parcourt chaque champ et met à jour la valeur si elle existe
     Object.keys(fields).forEach(key => {
         if (fields[key] && inputs[key]) {
-            if (fullText.includes("[WedaAutoParse_documentDate]")) { // Si la date a été détectée par le parseur de Weda, on ne la change pas
+            if (key === 'documentDate' && fullText.includes("[WedaAutoParse_documentDate]")) { // Si la date a été détectée par le parseur de Weda, on ne la change pas
                 console.log("[pdfParser] La date a déjà été détectée par le parseur de Weda, on ne la change pas");
                 return;
             }
@@ -1339,7 +1340,7 @@ async function extractTextFromPDF(pdfUrl) {
         let detectedMarkers = [];
         try {
             const operatorList = await page.getOperatorList();
-            console.log(`[pdfParser] Page ${i} - Nombre d'opérations: ${operatorList.fnArray.length}`);
+            // console.log(`[pdfParser] Page ${i} - Nombre d'opérations: ${operatorList.fnArray.length}`);
             
             let rectCount = 0;
             
@@ -1366,7 +1367,7 @@ async function extractTextFromPDF(pdfUrl) {
                         
                         if (rectCoords) {
                             rectCount++;
-                            console.log(`[pdfParser] ✓ Rectangle coloré #${rectCount}: RGB(${color.r}, ${color.g}, ${color.b}) à (${rectCoords[0].toFixed(1)}, ${rectCoords[1].toFixed(1)}) - ${rectCoords[2].toFixed(1)}x${rectCoords[3].toFixed(1)}`);
+                            // console.log(`[pdfParser] ✓ Rectangle coloré #${rectCount}: RGB(${color.r}, ${color.g}, ${color.b}) à (${rectCoords[0].toFixed(1)}, ${rectCoords[1].toFixed(1)}) - ${rectCoords[2].toFixed(1)}x${rectCoords[3].toFixed(1)}`);
                             
                             // Ajouter le marqueur selon la couleur
                             if (color.r === 0 && color.g === 128 && color.b === 0) {
@@ -1453,8 +1454,8 @@ async function extractLines(textItems) {
 async function extractRelevantData(fullText) {
     const regexPatterns = {
         dateRegexes: [
-            /(?!06\/01\/1978)[0-9]{2}[\/\-.][0-9]{2}[\/\-.][0-9]{4}/g, // Match dates dd/mm/yyyy ou dd-mm-yyyy sauf 06/01/1978
-            /(?!6 janvier 1978)([0-9]{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+([0-9]{4})/gi // Match dates comme "28 novembre 2024"
+            /(?!(06\/01\/1978)|(17\/12\/2003))[0-9]{2}[\/\-.][0-9]{2}[\/\-.][0-9]{4}/g, // Match dates dd/mm/yyyy ou dd-mm-yyyy sauf 06/01/1978 (date loi informatique et liberté) et 17/12/2003 (circulaire décontamination)
+            /(?!(6 janvier 1978)|(17 décembre 2003))([0-9]{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+([0-9]{4})/gi // Match dates comme "28 novembre 2024"
         ],
         dateOfBirthRegexes: [
             /(?:né\(e\) le|date de naissance:|date de naissance :|née le|né le)[\s\S]([0-9]{2}[\/\-.][0-9]{4})/gi // Match la date de naissance

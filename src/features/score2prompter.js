@@ -433,6 +433,9 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
                 if (diabeteAtcd) {
                     params.diabetes.value = 1;
                     console.log(`[autoScore2] ✓ "diabetes" = 1 (antécédent actif trouvé : "${diabeteAtcd.titre}")`);
+                } else {
+                    params.diabetes.value = 0;
+                    console.log('[autoScore2] ✓ "diabetes" = 0 (aucun antécédent actif trouvé, considéré comme non-diabétique)');
                 }
             }
             if (isParamMissing(params.smoker)) {
@@ -440,6 +443,9 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
                 if (tabacAtcd) {
                     params.smoker.value = 1;
                     console.log(`[autoScore2] ✓ "smoker" = 1 (antécédent actif trouvé : "${tabacAtcd.titre}")`);
+                } else {
+                    params.smoker.value = 0;
+                    console.log('[autoScore2] ✓ "smoker" = 0 (aucun antécédent actif trouvé, considéré comme non-fumeur)');
                 }
             }
         }
@@ -1080,9 +1086,11 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
         const dateStr = `${pad(maintenant.getDate())}/${pad(maintenant.getMonth() + 1)}/${maintenant.getFullYear()}`;
         const heureStr = `${pad(maintenant.getHours())}:${pad(maintenant.getMinutes())}`;
 
+        const riskCategory = getScore2RiskCategory(params.age.value, score2Result);
+
         const lignes = [
             `SCORE2 - réalisé le ${dateStr} à ${heureStr}`,
-            `Risque cardiovasculaire à 10 ans : ${score2Result.toFixed(1)} %`,
+            `Risque cardiovasculaire à 10 ans : ${score2Result.toFixed(1)} % (${riskCategory.message})`,
             '',
         ];
 
@@ -1091,6 +1099,36 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
         });
 
         return lignes.join('\n');
+    }
+
+    /**
+     * Détermine la catégorie de risque SCORE2 (couleur + message) selon l'âge et le résultat,
+     * conformément aux seuils des recommandations ESC 2021.
+     * @see https://academic.oup.com/eurheartj/article/42/34/3227/6358713
+     * @param {number} age - Âge du patient
+     * @param {number} score2Result - Résultat du calcul SCORE2 (%)
+     * @returns {{ color: string, background: string, message: string }}
+     */
+    function getScore2RiskCategory(age, score2Result) {
+        let lowThreshold, highThreshold;
+        if (age < 50) {
+            lowThreshold = 2.5;
+            highThreshold = 7.5;
+        } else if (age < 70) {
+            lowThreshold = 5;
+            highThreshold = 10;
+        } else {
+            lowThreshold = 7.5;
+            highThreshold = 15;
+        }
+
+        if (score2Result >= highThreshold) {
+            return { color: '#c62828', background: '#ffebee', message: 'Risque très élevé' };
+        } else if (score2Result >= lowThreshold) {
+            return { color: '#e65100', background: '#fff3e0', message: 'Risque élevé' };
+        } else {
+            return { color: '#2e7d32', background: '#e8f5e9', message: 'Risque faible à modéré' };
+        }
     }
 
     /**
@@ -1171,9 +1209,44 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
             color: #2196F3;
         `;
         resultValue.textContent = `${score2Result.toFixed(1)} %`;
+
+        // Catégorisation du risque (couleur + message) selon l'âge et le résultat
+        const riskCategory = getScore2RiskCategory(params.age.value, score2Result);
+
+        const riskBadge = document.createElement('div');
+        riskBadge.style.cssText = `
+            margin-top: 12px;
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 15px;
+            font-weight: bold;
+            color: ${riskCategory.color};
+            background: ${riskCategory.background};
+            border: 1px solid ${riskCategory.color};
+        `;
+        riskBadge.textContent = riskCategory.message;
+
+        const biblioLink = document.createElement('div');
+        biblioLink.style.cssText = `
+            margin-top: 10px;
+            font-size: 12px;
+        `;
+        const biblioAnchor = document.createElement('a');
+        biblioAnchor.href = 'https://academic.oup.com/eurheartj/article/42/34/3227/6358713';
+        biblioAnchor.target = '_blank';
+        biblioAnchor.rel = 'noopener noreferrer';
+        biblioAnchor.textContent = '📖 Biblio (recommandations ESC 2021)';
+        biblioAnchor.style.cssText = `
+            color: #1976D2;
+            text-decoration: none;
+        `;
+        biblioLink.appendChild(biblioAnchor);
         
         resultContainer.appendChild(resultLabel);
         resultContainer.appendChild(resultValue);
+        resultContainer.appendChild(riskBadge);
+        resultContainer.appendChild(biblioLink);
         body.appendChild(resultContainer);
         
         // Affichage des paramètres utilisés
