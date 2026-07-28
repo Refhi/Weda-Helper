@@ -10,6 +10,94 @@
  * @requires dataScrapper.js (recoverData)
  */
 
+// Cache partagé
+let recoverDataPromise = null;
+
+function getRecoverData() { // Encapsulation de recoverData dans une Promise pour mise en commun dans les fonctions qui le nécessitent
+    if (!recoverDataPromise) {
+        recoverDataPromise = recoverData({
+            fullPage: true,
+            categories: ['consultations'],
+            includeLegacy: true,
+        });
+    }
+
+    return recoverDataPromise;
+}
+
+addTweak('/vitalzen/fse.aspx', 'showECGCotationAlert', async function () {
+
+    if (window.location.href.includes('Buffer=')) {
+        console.log('[showECGCotationAlert] Buffer mode detected, skipping ECG Cotation display to avoid conflicts with other features like omnidoc facturation');
+        return;
+    }
+
+    await displayECGCotation();
+});
+
+/**
+ * Récupère la consultation du jour et détecte la présence d'un ECG pour proposer la cotation
+ */
+async function displayECGCotation() {
+
+    const data = await getRecoverData();
+    const latestConsultation = data.consultations[0]; // Assume que les consultations sont toujours retournées par ordre chronologique 
+    if (!latestConsultation) {
+        return;
+    }
+
+    const today = new Date();
+    if (latestConsultation.date != today.toLocaleDateString("fr-FR")) {
+        return;
+    }
+
+    const ECGDetected = detectECG(latestConsultation);
+
+    if (ECGDetected) {
+        console.log("[showECGCotationAlert] ECG détecté dans la dernière consultation");
+        showECGAlert();
+    }
+}
+
+
+function detectECG(consultation) {
+
+    const ECGRegex = /(ECG)|(electrocardiogramme)|(électrocardiogramme)/g;
+    var ECGDetected = false;
+    const attachments = consultation.attachments || [];
+    attachments.forEach(attachment => {
+        const description = attachment.description || '';
+        const name = attachment.name || '';
+        if (description.match(ECGRegex) || name.match(ECGRegex)) {
+            ECGDetected = true;
+        }
+    });
+
+    const documents = consultation.documents || [];
+    documents.forEach(doc => {
+        if (doc.type !== 'consultation') return;
+        doc.content.forEach(content => {
+            if (content.match(ECGRegex)) {
+                ECGDetected = true;
+            }
+        });
+
+    });
+
+    return ECGDetected;
+}
+
+function showECGAlert() {
+
+    const alertDiv = document.createElement("div");
+    alertDiv.style = "padding: .75rem 1.25rem; color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: .25rem; margin-bottom: 1rem; margin-top: 1rem;  margin-right: 1rem;"
+    alertDiv.textContent = 'ECG détecté dans la consultation du jour, pensez à le coter !';
+
+    const actesSection = document.querySelector("vz-actes");
+    actesSection.appendChild(alertDiv);
+
+}
+
 addTweak('/vitalzen/fse.aspx', '*showBillingHistory', async function () {
     // Si l’option est désactivée, affiche un bouton simple pour déclencher tout de même l’affichage de l’historique des fse
     // sinon, fait l’affichage automatiquement
@@ -53,11 +141,7 @@ function addShowBillingHistoryButton() {
 async function displayBillingHistory() {
     const loggedInUser = document.getElementById('LabelUserLog').innerText.trim();
 
-    const data = await recoverData({
-        fullPage: true,
-        categories: ['consultations'],
-        includeLegacy: true,
-    });
+    const data = await getRecoverData();
 
     let billingData = extractBillingData(data, loggedInUser);
     // console.log('billingData', billingData);
