@@ -10,41 +10,6 @@
  * @requires dataScrapper.js (recoverData)
  */
 
-
-class FSEDataScrapper {
-    constructor() {
-        if (FSEDataScrapper.instance) {
-            return FSEDataScrapper.instance;
-        }
-        
-        FSEDataScrapper.instance = this;
-    }
-
-    async getData() {
-
-        if (!this.data) {
-            this.data = await recoverData({
-                fullPage: true,
-                categories: ['consultations'],
-                includeLegacy: true,
-            });
-            return this.data;
-        }
-        else {
-            return this.data;
-        }
-
-        
-    }
-    
-    static getInstance() {
-        if (!FSEDataScrapper.instance) {
-            FSEDataScrapper.instance = new FSEDataScrapper();
-        }
-        return FSEDataScrapper.instance;
-    }
-}
-
 addTweak('/vitalzen/fse.aspx', '*showBillingHistory', async function () {
     // Si l’option est désactivée, affiche un bouton simple pour déclencher tout de même l’affichage de l’historique des fse
     // sinon, fait l’affichage automatiquement
@@ -88,8 +53,11 @@ function addShowBillingHistoryButton() {
 async function displayBillingHistory() {
     const loggedInUser = document.getElementById('LabelUserLog').innerText.trim();
 
-    const scrapper = new FSEDataScrapper();
-    const data = await scrapper.getData();
+    const data = await recoverData({
+        fullPage: true,
+        categories: ['consultations'],
+        includeLegacy: true,
+    });
 
     let billingData = extractBillingData(data, loggedInUser);
     // console.log('billingData', billingData);
