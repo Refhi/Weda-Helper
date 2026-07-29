@@ -147,13 +147,188 @@ const SELECTORS = {
 };
 
 
+// ─── Cache (sessionStorage, par patient) ───────────────────────────────────────
+
+/** Durée de fraîcheur du cache : au-delà, les données sont considérées périmées (sauf noRefresh) */
+const DATA_SCRAPPER_CACHE_TTL_MS = 60 * 1000; // 1 minute
+
+/** Nombre d'éléments chargés par défaut par Weda pour une catégorie journalière (avant clic "Suite") */
+const DATA_SCRAPPER_FIRST_PAGE_SIZE = 10;
+
+/** Préfixe des clés sessionStorage utilisées pour le cache, une clé par patient */
+const DATA_SCRAPPER_CACHE_STORAGE_PREFIX = 'dataScrapperCache_';
+
+/**
+ * Indique si une catégorie est une catégorie "journalière" paginée par Weda (10 éléments les
+ * plus récents affichés par défaut, puis chargement complet via clic sur "Suite"). Seules ces
+ * catégories bénéficient du découpage de cache firstPage/extra : les éléments au-delà du 10e
+ * (les plus anciens) ne changent plus une fois chargés et ne périment donc jamais en cache.
+ * @param {string} category
+ * @returns {boolean}
+ */
+function isPaginatedDailyCategory(category) {
+    return !!SELECTORS.categories[category]?.subContainer;
+}
+
+/**
+ * Vérifie si un horodatage de récupération est encore considéré comme frais (moins d'une minute).
+ * @param {number|undefined} fetchedAt
+ * @returns {boolean}
+ */
+function isDataScrapperCacheFresh(fetchedAt) {
+    return typeof fetchedAt === 'number' && (Date.now() - fetchedAt) < DATA_SCRAPPER_CACHE_TTL_MS;
+}
+
+/**
+ * Lit le cache sessionStorage pour un patient donné (un objet par catégorie).
+ * @param {string} patientId
+ * @returns {Object<string, Object>}
+ */
+function readDataScrapperCache(patientId) {
+    try {
+        const raw = sessionStorage.getItem(`${DATA_SCRAPPER_CACHE_STORAGE_PREFIX}${patientId}`);
+        return raw ? JSON.parse(raw) : {};
+    } catch (error) {
+        console.warn('[dataScrapper] Cache sessionStorage illisible, réinitialisation', error);
+        return {};
+    }
+}
+
+/**
+ * Écrit le cache sessionStorage pour un patient donné.
+ * @param {string} patientId
+ * @param {Object<string, Object>} cache
+ */
+function writeDataScrapperCache(patientId, cache) {
+    try {
+        sessionStorage.setItem(`${DATA_SCRAPPER_CACHE_STORAGE_PREFIX}${patientId}`, JSON.stringify(cache));
+    } catch (error) {
+        console.warn("[dataScrapper] Impossible d'écrire le cache sessionStorage", error);
+    }
+}
+
+/**
+ * Reconstitue les données complètes d'une entrée de cache (fusion firstPage + extra pour les
+ * catégories journalières, valeur brute sinon).
+ * @param {Object} cacheEntry
+ * @param {boolean} isDaily
+ * @returns {*}
+ */
+function mergeCategoryCacheEntry(cacheEntry, isDaily) {
+    if (!isDaily) return cacheEntry.data;
+    const firstPageData = cacheEntry.firstPage?.data || [];
+    const extraData = cacheEntry.extra?.data || [];
+    return firstPageData.concat(extraData);
+}
+
+/**
+ * Détermine, pour une catégorie donnée, si le cache peut être utilisé tel quel ou si une
+ * récupération est nécessaire, et avec quel niveau de fullPage effectif.
+ *
+ * Règles (voir recoverData) :
+ * - fullRefresh : le cache est ignoré, récupération systématique.
+ * - noRefresh : le cache est utilisé s'il existe, même périmé ; récupération uniquement en son absence.
+ * - autoRefresh (par défaut) : périmé au-delà d'1 minute, SAUF la partie "extra" (éléments
+ *   au-delà du 10e) des catégories journalières, qui ne périme jamais une fois récupérée. Si
+ *   cette partie est déjà en cache, le fullPage demandé est inhibé (pas de nouveau clic
+ *   "Suite") : seule la première page est rafraîchie puis recollée à l'"extra" en cache.
+ *
+ * @param {string} category
+ * @param {Object|undefined} cacheEntry - Entrée de cache existante pour cette catégorie (ou undefined)
+ * @param {{fullPage: boolean, refreshMode: string}} options
+ * @returns {{needsFetch: boolean, effectiveFullPage: boolean, cachedMergedData: *, isDaily: boolean, reuseExtra?: Object}}
+ */
+function resolveCategoryCachePlan(category, cacheEntry, { fullPage, refreshMode }) {
+    const isDaily = isPaginatedDailyCategory(category);
+
+    if (refreshMode === 'fullRefresh') {
+        return { needsFetch: true, effectiveFullPage: fullPage, cachedMergedData: null, isDaily };
+    }
+
+    if (refreshMode === 'noRefresh') {
+        if (cacheEntry) {
+            return { needsFetch: false, effectiveFullPage: fullPage, cachedMergedData: mergeCategoryCacheEntry(cacheEntry, isDaily), isDaily };
+        }
+        return { needsFetch: true, effectiveFullPage: fullPage, cachedMergedData: null, isDaily };
+    }
+
+    // autoRefresh
+    if (!isDaily) {
+        if (cacheEntry && isDataScrapperCacheFresh(cacheEntry.fetchedAt)) {
+            return { needsFetch: false, effectiveFullPage: fullPage, cachedMergedData: cacheEntry.data, isDaily };
+        }
+        return { needsFetch: true, effectiveFullPage: fullPage, cachedMergedData: null, isDaily };
+    }
+
+    const hasExtra = !!cacheEntry?.extra;
+    const firstPageFresh = cacheEntry?.firstPage && isDataScrapperCacheFresh(cacheEntry.firstPage.fetchedAt);
+
+    if (!fullPage) {
+        if (firstPageFresh) {
+            return { needsFetch: false, effectiveFullPage: false, cachedMergedData: cacheEntry.firstPage.data, isDaily };
+        }
+        return { needsFetch: true, effectiveFullPage: false, cachedMergedData: null, isDaily };
+    }
+
+    if (firstPageFresh && hasExtra) {
+        return { needsFetch: false, effectiveFullPage: true, cachedMergedData: cacheEntry.firstPage.data.concat(cacheEntry.extra.data), isDaily };
+    }
+    if (hasExtra) {
+        // La partie ancienne (11e élément et suivants) est déjà en cache et ne périme jamais :
+        // on inhibe le fullPage (pas de clic "Suite"), seule la première page sera rafraîchie.
+        return { needsFetch: true, effectiveFullPage: false, cachedMergedData: null, isDaily, reuseExtra: cacheEntry.extra };
+    }
+    // Aucune donnée "extra" en cache : un chargement complet réel (clic "Suite") est nécessaire.
+    return { needsFetch: true, effectiveFullPage: true, cachedMergedData: null, isDaily };
+}
+
+/**
+ * Met à jour l'objet de cache (en mémoire) pour une catégorie après une récupération fraîche,
+ * et retourne les données à utiliser (fraîches, éventuellement recollées à la partie "extra"
+ * conservée du cache).
+ * @param {Object<string, Object>} cache - Objet de cache complet (modifié en place)
+ * @param {string} category
+ * @param {*} freshData - Données brutes fraîchement récupérées (non filtrées par date)
+ * @param {{effectiveFullPage: boolean, isDaily: boolean, reuseExtra?: Object}} plan
+ * @returns {*} Données à utiliser pour cette catégorie
+ */
+function mergeAndCacheCategoryData(cache, category, freshData, plan) {
+    const now = Date.now();
+
+    if (!plan.isDaily) {
+        cache[category] = { fetchedAt: now, data: freshData };
+        return freshData;
+    }
+
+    if (!plan.effectiveFullPage) {
+        // Seule la première page a été rafraîchie ; la partie "extra" déjà en cache est conservée telle quelle.
+        const firstPageData = Array.isArray(freshData) ? freshData.slice(0, DATA_SCRAPPER_FIRST_PAGE_SIZE) : freshData;
+        const existingExtra = cache[category]?.extra || null;
+        cache[category] = {
+            firstPage: { data: firstPageData, fetchedAt: now },
+            extra: existingExtra,
+        };
+        // On ne recolle la partie "extra" que si elle a servi à combler l'inhibition du fullPage demandé.
+        return plan.reuseExtra ? firstPageData.concat(plan.reuseExtra.data) : firstPageData;
+    }
+
+    // fullPage effectif : découpage complet et mise à jour de l'intégralité du cache de la catégorie.
+    const firstPageData = Array.isArray(freshData) ? freshData.slice(0, DATA_SCRAPPER_FIRST_PAGE_SIZE) : freshData;
+    const extraData = Array.isArray(freshData) ? freshData.slice(DATA_SCRAPPER_FIRST_PAGE_SIZE) : [];
+    cache[category] = {
+        firstPage: { data: firstPageData, fetchedAt: now },
+        extra: { data: extraData, fetchedAt: now },
+    };
+    return freshData;
+}
 
 
 // ───────────────────────────────────────────────────────────────────────────────
 /**
  * Récupère les données d'historique patient depuis Weda, par catégories.
  *
- * Retourne un objet structuré facile à parser
+ * Retourne un objet structuré facile à parser. Les données sont mises en cache dans
+ * sessionStorage (par patient), voir refreshMode pour contrôler leur réutilisation.
  * 
  * @example
  * const data = await recoverData({
@@ -161,44 +336,79 @@ const SELECTORS = {
  *     categories: ["consultations", "etatCivil"],  // Liste des catégories à récupérer (par défaut : ["consultations"])
  *     dateRange: ["01/01/2021", "31/12/2026"],     // Filtre les résultats sur une plage de dates (voir resolveDateRange)
  *     debug: false,                                // Laisse l'iframe de récupération affichée en fin d'appel
+ *     refreshMode: "autoRefresh",                  // "autoRefresh" (par défaut) | "fullRefresh" | "noRefresh"
  * });
  * console.log(data);
  *
  * @argument categories ["consultations", "resultatsExamens", "courriers", "arretsTravail", "vaccins", "charts", "documents", "grossesse", "etatCivil", "antecedents", "contacts"]
  * @argument dateRange Tableau de 0, 1 ou 2 dates (objet Date ou texte "jj/mm/aaaa"), voir resolveDateRange
- * 
+ * @argument refreshMode Contrôle l'utilisation du cache sessionStorage (par patient) :
+ *   - "autoRefresh" (défaut) : réutilise le cache s'il a moins d'1 minute. Exception : pour les
+ *     catégories journalières (consultations, resultatsExamens, courriers, arretsTravail), les
+ *     éléments au-delà du 10e (les plus anciens) sont considérés valables indéfiniment une fois
+ *     chargés ; si fullPage est demandé et que ces éléments anciens sont déjà en cache, le clic
+ *     "Suite" est inhibé et seule la première page (10 plus récents) est rafraîchie.
+ *   - "fullRefresh" : ignore le cache, récupère systématiquement des données fraîches.
+ *   - "noRefresh" : utilise le cache tel quel s'il existe, même périmé (récupère uniquement en son absence).
  */
 async function recoverData({
     fullPage = false, // De base on ne va vérifier que les 10 derniers subContainers chargés par défaut. N'est probablement pas possible pour charts et vaccins
     categories = ["consultations"], // Ce qui est chargé par défaut est la catégorie "consultations".
     dateRange = [], // Filtre les résultats sur une plage de dates : [debut, fin], chaque borne étant facultative
     debug = false, // Affiche l'iframe en plein écran et ne la supprime pas à la fin pour faciliter le debug
+    refreshMode = "autoRefresh", // "autoRefresh" | "fullRefresh" | "noRefresh" — voir doc ci-dessus
 } = {}) {
-    // Les journées importées d'un ancien logiciel ne sont récupérées qu'en mode fullPage : ce
-    // n'est plus un paramètre exposé séparément, pour éviter toute combinaison incohérente.
-    const includeLegacy = fullPage;
     // Préparation de l'objet de données à retourner
     const data = {};
 
     // Résolution de la plage de dates demandée (bornes converties en objets Date, ou null si absentes)
     const resolvedDateRange = resolveDateRange(dateRange);
 
-    // Chargement de la correspondance initiales → auteur persistée d'une session à l'autre
-    await loadPersistentInitialsToAuthorMap();
+    // Chargement du cache sessionStorage propre à ce patient (une clé par patient)
+    const patientId = getCurrentPatientId();
+    if (!patientId) {
+        console.warn('[dataScrapper] Impossible de déterminer le patient courant, le cache sera ignoré');
+    }
+    const cache = patientId ? readDataScrapperCache(patientId) : {};
+    let cacheChanged = false;
 
-    // Création d’une iframe dont on attend le chargement complet puis dont on récupère le document pour y chercher les données
-    const urlToLoad = await constructPatientHistoryUrl();
-    const iframe = await createHiddenIframe(urlToLoad, debug, 'dataScrapperIframe');
-    let iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
-
-    // On récupère les données pour chaque catégorie demandée
+    // Détermination, pour chaque catégorie demandée, du plan de récupération (cache réutilisable
+    // ou récupération nécessaire, et avec quel fullPage effectif)
+    const plans = {};
     for (const category of categories) {
-        const categorySelectors = SELECTORS.categories[category];
-        if (!categorySelectors) {
+        if (!SELECTORS.categories[category]) {
             console.warn(`[dataScrapper] Catégorie inconnue : ${category}`);
             continue;
         }
-        iframeDocument = iframe.contentDocument || iframe.contentWindow.document; // Indispensable car le document semble changer dans certains cas après un clic
+        plans[category] = resolveCategoryCachePlan(category, cache[category], { fullPage, refreshMode });
+    }
+
+    const categoriesNeedingFetch = Object.keys(plans).filter(category => plans[category].needsFetch);
+
+    // Chargement de la correspondance initiales → auteur persistée d'une session à l'autre, et
+    // création de l'iframe de récupération, uniquement si au moins une catégorie doit être récupérée
+    let iframe = null;
+    if (categoriesNeedingFetch.length > 0) {
+        await loadPersistentInitialsToAuthorMap();
+        const urlToLoad = await constructPatientHistoryUrl();
+        iframe = await createHiddenIframe(urlToLoad, debug, 'dataScrapperIframe');
+    }
+
+    // On traite chaque catégorie demandée, en servant le cache quand c'est possible
+    for (const category of Object.keys(plans)) {
+        const plan = plans[category];
+        const categorySelectors = SELECTORS.categories[category];
+
+        if (!plan.needsFetch) {
+            console.log(`[dataScrapper] Catégorie "${category}" servie depuis le cache (${refreshMode})`);
+            data[category] = filterCategoryDataByDateRange(plan.cachedMergedData, resolvedDateRange, category);
+            continue;
+        }
+
+        const effectiveFullPage = plan.effectiveFullPage;
+        const includeLegacy = effectiveFullPage;
+
+        let iframeDocument = iframe.contentDocument || iframe.contentWindow.document; // Indispensable car le document semble changer dans certains cas après un clic
         // On appuie sur le bouton pour charger la catégorie si nécessaire (sauf si déjà affichée par défaut)
         const isAlreadyLoaded = isCategoryLoaded(iframe, category);
         if (categorySelectors.button && !isAlreadyLoaded) {
@@ -222,9 +432,11 @@ async function recoverData({
             await ensureDocumentsDateRangeCovers(iframe, resolvedDateRange);
         }
 
-        // Le mode fullPage doit être appliqué une fois la catégorie courante affichée,
-        // car Weda revient souvent à une vue partielle après changement de catégorie.
-        if (fullPage) {
+        // Le mode fullPage effectif doit être appliqué une fois la catégorie courante affichée,
+        // car Weda revient souvent à une vue partielle après changement de catégorie. Il peut
+        // être inhibé par rapport au fullPage demandé si la partie "extra" est déjà en cache
+        // (voir resolveCategoryCachePlan).
+        if (effectiveFullPage) {
             iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
             await loadFullPage(iframeDocument);
             console.log(`[dataScrapper] Page complète chargée pour la catégorie : ${category}`);
@@ -233,14 +445,23 @@ async function recoverData({
 
         // Le document peut être remplacé après un postback ASP.NET : on le relit juste avant le parse.
         iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
-        data[category] = recoverMainViewData(iframeDocument, categorySelectors, includeLegacy, category);
+        const freshData = recoverMainViewData(iframeDocument, categorySelectors, includeLegacy, category);
+
+        // Mise à jour du cache en mémoire (fusion avec la partie "extra" conservée le cas échéant)
+        const mergedData = mergeAndCacheCategoryData(cache, category, freshData, plan);
+        cacheChanged = true;
 
         // Filtrage a posteriori sur la plage de dates demandée (retire les entrées non pertinentes)
-        data[category] = filterCategoryDataByDateRange(data[category], resolvedDateRange, category);
+        data[category] = filterCategoryDataByDateRange(mergedData, resolvedDateRange, category);
     }
 
     // Nettoyage : supprimer l'iframe si on n'est pas en mode debug
-    if (!debug) {iframe.remove()}
+    if (iframe && !debug) { iframe.remove(); }
+
+    // Persistance du cache sessionStorage si des données ont été rafraîchies
+    if (patientId && cacheChanged) {
+        writeDataScrapperCache(patientId, cache);
+    }
 
     console.log('[dataScrapper] Données récupérées pour les catégories :', Object.keys(data), data);
 
@@ -1703,6 +1924,13 @@ function showDataScrapperTestPanel() {
         <label style="display:block;"><input type="checkbox" id="dsp-debug" checked> debug</label>
         <label style="display:block;">dateRange début : <input type="text" id="dsp-dateStart" placeholder="jj/mm/aaaa" style="width:90px;"></label>
         <label style="display:block;">dateRange fin : <input type="text" id="dsp-dateEnd" placeholder="jj/mm/aaaa" style="width:90px;"></label>
+        <label style="display:block;">refreshMode :
+            <select id="dsp-refreshMode">
+                <option value="autoRefresh" selected>autoRefresh</option>
+                <option value="fullRefresh">fullRefresh</option>
+                <option value="noRefresh">noRefresh</option>
+            </select>
+        </label>
         <hr>
     `;
 
@@ -1739,20 +1967,22 @@ function showDataScrapperTestPanel() {
         }
         const fullPage = panel.querySelector('#dsp-fullPage').checked;
         const debug = panel.querySelector('#dsp-debug').checked;
+        const refreshMode = panel.querySelector('#dsp-refreshMode').value;
         const dateRange = [
             panel.querySelector('#dsp-dateStart').value.trim(),
             panel.querySelector('#dsp-dateEnd').value.trim(),
         ];
-        runDebugRecoverData(categories, categories.join(', '), { fullPage, debug, dateRange });
+        runDebugRecoverData(categories, categories.join(', '), { fullPage, debug, dateRange, refreshMode });
     });
 }
 
-async function runDebugRecoverData(categories, label, { fullPage = true, debug = true, dateRange = [] } = {}) {
+async function runDebugRecoverData(categories, label, { fullPage = true, debug = true, dateRange = [], refreshMode = "autoRefresh" } = {}) {
     const data = await recoverData({
         fullPage,
         categories,
         debug,
-        dateRange
+        dateRange,
+        refreshMode,
     });
     console.log(`[dataScrapper] Données récupérées (${label}) :`, data);
     showRecoveredData(data);
