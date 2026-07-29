@@ -210,6 +210,18 @@ async function addAIChatClient() {
             font-size: 12px;
         }
         #wedaHelper-toggle-model:hover { background: #0d8c6d; }
+        #wedaHelper-disable-connector {
+            display: block;
+            margin: 0 0 10px;
+            background: #e05252;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        #wedaHelper-disable-connector:hover { background: #c23f3f; }
         #wedaHelper-chat-messages {
             flex-grow: 1;
             padding: 15px;
@@ -367,6 +379,7 @@ async function addAIChatClient() {
         const hasSecondaryModel = !!aiParams.IAassistantModelNameSecondary;
 
         return `
+            <button id="wedaHelper-disable-connector" type="button">Désactiver l'Assistant Local</button>
             <h4>Modèle utilisé</h4>
             <pre>${getCurrentModel()}</pre>
             ${hasSecondaryModel ? `<button id="wedaHelper-toggle-model" type="button">Basculer vers ${useSecondaryModel ? aiParams.defaultModel : aiParams.IAassistantModelNameSecondary}</button>` : ''}
@@ -419,6 +432,19 @@ async function addAIChatClient() {
                 bindInfoPopoverActions();
             });
         }
+
+        const disableConnectorButton = infoPopover.querySelector('#wedaHelper-disable-connector');
+        if (disableConnectorButton) {
+            disableConnectorButton.addEventListener('click', () => {
+                const confirmed = window.confirm("Voulez-vous vraiment désactiver le connecteur IA ? Vous pourrez le réactiver depuis les options avancées de Weda-Helper.");
+                if (!confirmed) return;
+
+                chrome.storage.local.set({ enableIAassistant: false }, () => {
+                    infoPopover.classList.remove('open');
+                    widget.remove();
+                });
+            });
+        }
     }
 
     let isOpen = false;
@@ -458,7 +484,7 @@ async function addAIChatClient() {
         const warningBubble = appendMessage('bot', '');
         warningBubble.classList.remove('bot');
         warningBubble.classList.add('tool-call', 'error');
-        warningBubble.innerHTML = `⚠️ Aucune IA locale détectée sur le port ${aiParams.port}. Consultez le <a href="https://github.com/Refhi/Weda-Helper/wiki/Installation-d'une-IA-sur-votre-poste,-pour-que-Weda%E2%80%90Helper-s'en-saisisse" target="_blank" rel="noopener noreferrer">wiki d'installation d'une IA locale</a> pour configurer l'assistant.`;
+        warningBubble.innerHTML = `⚠️ Aucune IA locale détectée sur le port ${aiParams.port}. Consultez le <a href="https://github.com/Refhi/Weda-Helper/wiki/Installation-d'une-IA-sur-votre-poste,-pour-que-Weda%E2%80%90Helper-s'en-saisisse" target="_blank" rel="noopener noreferrer">wiki d'installation d'une IA locale</a> pour configurer l'assistant. Cliquez sur le ? bleu pour le désactiver.`;
     }
     checkAiApiAvailability();
 
