@@ -44,7 +44,7 @@ async function testAiApiConnection() {
 
 async function openAiClient({
     // --- 1. Le Prompt ---
-    messages = [],  // Liste des messages de la conversation (system, user, assistant, tool)
+    messages = [],         // Liste des messages de la conversation (system, user, assistant, tool)
     
     // --- 2. Paramètres de base ---
     model = aiParams.defaultModel, // modèle à utiliser (ex: "gpt-4o", "mistral-nemo:12b-instruct-2407-q5_K_M", etc.)
@@ -62,10 +62,10 @@ async function openAiClient({
     responseFormat = null, // Pour forcer le format JSON ({ type: "json_object" })
     seed = null,           // Pour la reproductibilité (same seed = même résultat)
 
-    // --- 5. Function/Tool calling ---
+    // --- 5. Function/Tool calling --- @see callableFunctions.js
     tools = null,          // Liste de définitions de fonctions (format OpenAI). Si non fourni et useTools=true, utilise availableFunctions.
     toolChoice = null,     // "auto", "none", ou un objet ciblant une fonction précise
-    useTools = true,      // Active le function calling avec le registre availableFunctions (combiné avec l'option utilisateur IAassistantToolCalling)
+    useTools = true,       // Active le function calling avec le registre availableFunctions (combiné avec l'option utilisateur IAassistantToolCalling)
 
     // --- 6. Streaming temps réel ---
     onChunk = null,        // Callback appelé à chaque fragment reçu en streaming : ({ contentDelta, reasoningDelta }) => void
@@ -85,7 +85,7 @@ async function openAiClient({
     await aiParamsReady;
     if (model === undefined) model = aiParams.defaultModel;
 
-    // Si l'utilisateur passe quand même un simple texte par habitude, on le convertit en messages
+    // Permet de faire un appel simple sans avoir à construire un tableau de messages
     if (typeof messages === 'string') {
         messages = [{ role: "user", content: messages }];
     }
@@ -115,7 +115,8 @@ async function openAiClient({
         }
     }
 
-    // Gestion des tools (function calling) : respecte à la fois le paramètre d'appel et l'option globale utilisateur
+    // Gestion des tools (function calling)
+    // seulement si option activée et useTools = true
     const effectiveUseTools = useTools && aiParams.toolCalling;
     const resolvedTools = tools || (effectiveUseTools ? Object.values(availableFunctions).map(f => f.definition) : null);
 
@@ -140,7 +141,7 @@ async function openAiClient({
 
     console.log("[openAiClient] Requête construite :", requestBody);
 
-    try {
+    try { // Appel réseau vers l'API OpenAI/Ollama
         const data = await fetchChatCompletion(requestBody);
 
         let responseMessage;
@@ -166,6 +167,7 @@ async function openAiClient({
         }
 
         // Gestion du function/tool calling : si le modèle demande à appeler une ou plusieurs fonctions
+        // le LLM peut en effet renvoyer un message assistant avec un ou plusieurs tool_calls, qu'il faut exécuter et renvoyer au modèle pour obtenir la réponse finale.
         if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
             console.log(`[openAiClient] Function calls reçus:`, responseMessage.tool_calls.map(tc => ({ name: tc.function?.name, args: tc.function?.arguments })));
 
@@ -247,11 +249,11 @@ function estimateTokens(messages) {
  * @returns {Promise<object>} Le message assistant reconstitué : { role, content, reasoning_content, tool_calls }
  */
 async function consumeStream(stream, onChunk) {
-    const reader = stream.getReader();
+    const reader = stream.getReader(); // le getReader() permet de lire le flux en chunks (Uint8Array)
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
-    let contentAcc = '';
-    let reasoningAcc = '';
+    let contentAcc = '';     // Accumulation du contenu complet de la réponse
+    let reasoningAcc = '';   // Accumulation du "raisonnement" complet (reasoning_content / reasoning)
     let finishReason = null; // raison d'arrêt renvoyée par le serveur : 'stop', 'length' (tokens épuisés), 'tool_calls', 'content_filter', etc.
     const toolCallsAcc = []; // indexé par la position (index) fournie par l'API
 
@@ -303,6 +305,7 @@ async function consumeStream(stream, onChunk) {
         }
     };
 
+    // Lecture du flux SSE en continu jusqu'à la fin
     while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -325,7 +328,7 @@ async function consumeStream(stream, onChunk) {
     }
 
     return {
-        role: 'assistant',
+        role: 'assistant', // Le rôle du message final renvoyé au modèle est toujours "assistant"
         content: contentAcc || null,
         ...(reasoningAcc && { reasoning_content: reasoningAcc }),
         ...(toolCallsAcc.length > 0 && { tool_calls: toolCallsAcc.filter(Boolean) }),
