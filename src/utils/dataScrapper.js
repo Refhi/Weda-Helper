@@ -1,6 +1,7 @@
 /**
  * @file dataScrapper.js
  * @description S’occupe de récupérer les données de Weda pour les présenter à d’autres modules de façon structurée.
+ * @see recoverData() pour la fonction principale de récupération des données.
  * 
 */
 
