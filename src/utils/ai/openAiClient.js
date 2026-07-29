@@ -65,7 +65,7 @@ async function openAiClient({
     // --- 5. Function/Tool calling ---
     tools = null,          // Liste de définitions de fonctions (format OpenAI). Si non fourni et useTools=true, utilise availableFunctions.
     toolChoice = null,     // "auto", "none", ou un objet ciblant une fonction précise
-    useTools = true,      // Active le function calling avec le registre availableFunctions // TODO : usage de effectiveUseTools ???
+    useTools = true,      // Active le function calling avec le registre availableFunctions (combiné avec l'option utilisateur IAassistantToolCalling)
 
     // --- 6. Streaming temps réel ---
     onChunk = null,        // Callback appelé à chaque fragment reçu en streaming : ({ contentDelta, reasoningDelta }) => void
@@ -115,8 +115,9 @@ async function openAiClient({
         }
     }
 
-    // Gestion des tools (function calling)
-    const resolvedTools = tools || (useTools ? Object.values(availableFunctions).map(f => f.definition) : null);
+    // Gestion des tools (function calling) : respecte à la fois le paramètre d'appel et l'option globale utilisateur
+    const effectiveUseTools = useTools && aiParams.toolCalling;
+    const resolvedTools = tools || (effectiveUseTools ? Object.values(availableFunctions).map(f => f.definition) : null);
 
     // Si un callback de streaming est fourni, on force le mode stream côté requête
     const effectiveStream = stream || !!onChunk;
