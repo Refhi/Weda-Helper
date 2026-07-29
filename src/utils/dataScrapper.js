@@ -208,6 +208,22 @@ function writeDataScrapperCache(patientId, cache) {
 }
 
 /**
+ * Supprime le cache sessionStorage du dataScrapper.
+ * @param {string|null} [patientId] - Si fourni, ne supprime que le cache de ce patient ; sinon supprime le cache de tous les patients.
+ */
+function clearDataScrapperCache(patientId = null) {
+    if (patientId) {
+        sessionStorage.removeItem(`${DATA_SCRAPPER_CACHE_STORAGE_PREFIX}${patientId}`);
+        console.log(`[dataScrapper] Cache vidé pour le patient ${patientId}`);
+        return;
+    }
+    Object.keys(sessionStorage)
+        .filter(key => key.startsWith(DATA_SCRAPPER_CACHE_STORAGE_PREFIX))
+        .forEach(key => sessionStorage.removeItem(key));
+    console.log('[dataScrapper] Cache vidé pour tous les patients');
+}
+
+/**
  * Reconstitue les données complètes d'une entrée de cache (fusion firstPage + extra pour les
  * catégories journalières, valeur brute sinon).
  * @param {Object} cacheEntry
@@ -254,7 +270,11 @@ function resolveCategoryCachePlan(category, cacheEntry, { fullPage, refreshMode 
 
     // autoRefresh
     if (!isDaily) {
-        if (cacheEntry && isDataScrapperCacheFresh(cacheEntry.fetchedAt)) {
+        // Le cache n'est utilisable que s'il a été récupéré avec un niveau de fullPage au moins
+        // aussi complet que celui demandé (sinon un appel fullPage suivant un appel classique
+        // récent réutiliserait à tort des données incomplètes).
+        const cacheSatisfiesFullPage = !fullPage || !!cacheEntry?.fullPage;
+        if (cacheEntry && cacheSatisfiesFullPage && isDataScrapperCacheFresh(cacheEntry.fetchedAt)) {
             return { needsFetch: false, effectiveFullPage: fullPage, cachedMergedData: cacheEntry.data, isDaily };
         }
         return { needsFetch: true, effectiveFullPage: fullPage, cachedMergedData: null, isDaily };
@@ -296,7 +316,7 @@ function mergeAndCacheCategoryData(cache, category, freshData, plan) {
     const now = Date.now();
 
     if (!plan.isDaily) {
-        cache[category] = { fetchedAt: now, data: freshData };
+        cache[category] = { fetchedAt: now, data: freshData, fullPage: plan.effectiveFullPage };
         return freshData;
     }
 
@@ -1944,6 +1964,7 @@ function showDataScrapperTestPanel() {
         ${categoriesHtml}
         <hr>
         <button id="dsp-run">Récupérer</button>
+        <button id="dsp-clearCache">Vider le cache (patient courant)</button>
         <button id="dsp-close">Fermer</button>
     `;
 
@@ -1951,6 +1972,12 @@ function showDataScrapperTestPanel() {
 
     panel.querySelector('#dsp-selectAll').addEventListener('change', (e) => {
         panel.querySelectorAll('.dsp-category').forEach(cb => { cb.checked = e.target.checked; });
+    });
+
+    panel.querySelector('#dsp-clearCache').addEventListener('click', () => {
+        const patientId = getCurrentPatientId();
+        clearDataScrapperCache(patientId);
+        sendWedaNotif({ message: patientId ? `Cache dataScrapper vidé pour le patient ${patientId}` : "Cache dataScrapper vidé (tous patients, patient courant introuvable)", type: "success" });
     });
 
     panel.querySelector('#dsp-close').addEventListener('click', () => {
