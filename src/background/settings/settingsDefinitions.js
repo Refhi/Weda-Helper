@@ -751,6 +751,11 @@ var advancedDefaultSettings = [
             "description": "Valide automatiquement l'inclusion du PDF de la FSE dégradée",
             "default": false
         }, {
+            "name": "showECGCotationAlert",
+            "type": TYPE_BOOL,
+            "description": "Affiche une alerte si un ECG a été détecté dans la consultation pour penser à le coter",
+            "default": true
+        }, {
             "name": "showBillingHistory",
             "type": TYPE_BOOL,
             "description": "Affiche l'historique des facturations dans la page de télétransmission.",
