@@ -37,7 +37,6 @@ const DATA_SCRAPPER_CATEGORIES = [
 async function recoverPatientData({
     categories = ["consultations"],
     fullPage = false,
-    includeLegacy = false,
     dateRange = []
 } = {}) {
     console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, includeLegacy, dateRange });
@@ -99,10 +98,6 @@ const availableFunctions = {
                         fullPage: {
                             type: "boolean",
                             description: "Si true, charge l'intégralité de l'historique au lieu des 10 dernières entrées par défaut."
-                        },
-                        includeLegacy: {
-                            type: "boolean",
-                            description: "Si true, récupère aussi les données importées d'un ancien logiciel, quand la catégorie le permet."
                         },
                         dateRange: {
                             type: "array",

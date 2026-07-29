@@ -172,10 +172,10 @@ const SELECTORS = {
 async function recoverData({
     fullPage = false, // De base on ne va vérifier que les 10 derniers subContainers chargés par défaut. N'est probablement pas possible pour charts et vaccins
     categories = ["consultations"], // Ce qui est chargé par défaut est la catégorie "consultations".
-    includeLegacy = false, // Récupère en plus les journées importées d'un ancien logiciel, quand la catégorie le permet
     dateRange = [], // Filtre les résultats sur une plage de dates : [debut, fin], chaque borne étant facultative
     debug = false, // Affiche l'iframe en plein écran et ne la supprime pas à la fin pour faciliter le debug
 } = {}) {
+    if (fullPage) includeLegacy = true; // Si on veut tout charger, on inclut les journées importées d'un ancien logiciel
     // Préparation de l'objet de données à retourner
     const data = {};
 
