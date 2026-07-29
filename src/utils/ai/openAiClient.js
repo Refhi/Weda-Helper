@@ -65,7 +65,7 @@ async function openAiClient({
     // --- 5. Function/Tool calling ---
     tools = null,          // Liste de définitions de fonctions (format OpenAI). Si non fourni et useTools=true, utilise availableFunctions.
     toolChoice = null,     // "auto", "none", ou un objet ciblant une fonction précise
-    useTools = false,      // Active le function calling avec le registre availableFunctions
+    useTools = true,      // Active le function calling avec le registre availableFunctions // TODO : usage de effectiveUseTools ???
 
     // --- 6. Streaming temps réel ---
     onChunk = null,        // Callback appelé à chaque fragment reçu en streaming : ({ contentDelta, reasoningDelta }) => void

@@ -38,7 +38,7 @@ function loadChatHistoryFromStorage(patientId) {
 }
 
 /**
- * Persiste l'état de chat (historique conversationnel + journal d'affichage) pour un patient donné.
+ * Sauvegarde l'état de chat (historique conversationnel + journal d'affichage) pour un patient donné.
  * @param {string|null} patientId
  * @param {Array} history - Historique conversationnel (format OpenAI)
  * @param {Array} displayLog - Journal complet des bulles affichées (user, assistant, raisonnement, appels de fonction, erreurs...)
@@ -60,19 +60,24 @@ function clearChatHistoryStorage(patientId) {
 }
 
 /**
- * Chat de test en bas à droite de la page.
+ * Insertion du chat en bas à droite de la page.
  */
 async function addAIChatClient() {
     // Éviter les doublons si déjà injecté
     if (document.getElementById('wedaHelper-chat-widget')) return;
 
-    // S'assurer que les paramètres (dont le prompt système) sont chargés avant de construire le chat
+    /** 
+     *  Attente de la disponibilité des paramètres de l'IA
+     * @see openAiClient.js
+     */ 
     await aiParamsReady;
 
-    // Identifiant du patient courant, déterminé une seule fois à l'initialisation du chat (le
-    // patient affiché ne change pas une fois la page chargée). Sert de clé de persistance pour
-    // que chaque patient conserve sa propre conversation dans sessionStorage.
-    const chatPatientId = (typeof getCurrentPatientId === 'function' ? getCurrentPatientId() : null) || null;
+    /**
+     * Identifiant du patient courant, déterminé une seule fois à l'initialisation du chat (le
+     * patient affiché ne change pas une fois la page chargée). Sert de clé de persistance pour
+     * que chaque patient conserve sa propre conversation dans sessionStorage.
+     */
+    const chatPatientId = getCurrentPatientId();
 
     // --- Styles ---
     const style = document.createElement('style');
@@ -104,8 +109,11 @@ async function addAIChatClient() {
         }
         #wedaHelper-chat-toggle:hover { transform: scale(1.05); }
         #wedaHelper-chat-window {
+            position: relative;
             width: 380px;
             height: 500px;
+            min-width: 260px;
+            min-height: 200px;
             background: #ffffff;
             border-radius: 12px;
             box-shadow: 0 8px 30px rgba(0,0,0,0.15);
@@ -116,6 +124,25 @@ async function addAIChatClient() {
             transform: scale(0);
             transform-origin: bottom right;
             transition: transform 0.3s cubic-bezier(0.176, 0.085, 0.432, 1.275);
+        }
+        #wedaHelper-window-resize-handle {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 16px;
+            height: 16px;
+            cursor: nwse-resize;
+            z-index: 10001;
+        }
+        #wedaHelper-window-resize-handle::before {
+            content: '';
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 8px;
+            height: 8px;
+            border-top: 2px solid rgba(255,255,255,0.7);
+            border-left: 2px solid rgba(255,255,255,0.7);
         }
         #wedaHelper-chat-window.open {
             display: flex;
@@ -290,13 +317,40 @@ async function addAIChatClient() {
             background: #ffffff;
             border-top: 1px solid #e5e5e5;
         }
-        #wedaHelper-chat-input {
+        #wedaHelper-input-wrapper {
+            position: relative;
             flex-grow: 1;
+        }
+        #wedaHelper-input-resize-handle {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 14px;
+            height: 14px;
+            cursor: ns-resize;
+            z-index: 1;
+        }
+        #wedaHelper-input-resize-handle::before {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 7px;
+            height: 7px;
+            border-top: 2px solid #999;
+            border-left: 2px solid #999;
+        }
+        #wedaHelper-chat-input {
+            width: 100%;
+            box-sizing: border-box;
             padding: 10px 15px;
             border: 1px solid #ccc;
-            border-radius: 20px;
+            border-radius: 12px;
             outline: none;
             font-size: 14px;
+            min-height: 36px;
+            max-height: 160px;
+            resize: none;
         }
         #wedaHelper-chat-input:focus { border-color: #10a37f; }
         #wedaHelper-chat-submit {
@@ -318,6 +372,7 @@ async function addAIChatClient() {
     widget.id = 'wedaHelper-chat-widget';
     widget.innerHTML = `
         <div id="wedaHelper-chat-window">
+            <div id="wedaHelper-window-resize-handle" title="Redimensionner"></div>
             <div id="wedaHelper-chat-header">
                 <span>Assistant Local</span>
                 <div id="wedaHelper-header-actions">
@@ -329,7 +384,10 @@ async function addAIChatClient() {
             <div id="wedaHelper-info-popover"></div>
             <div id="wedaHelper-chat-messages"></div>
             <form id="wedaHelper-chat-form">
-                <input type="text" id="wedaHelper-chat-input" placeholder="Écrivez un message..." autocomplete="off" required>
+                <div id="wedaHelper-input-wrapper">
+                    <div id="wedaHelper-input-resize-handle" title="Redimensionner"></div>
+                    <textarea id="wedaHelper-chat-input" placeholder="Écrivez un message..." autocomplete="off" required rows="2"></textarea>
+                </div>
                 <button type="submit" id="wedaHelper-chat-submit">Envoyer</button>
             </form>
         </div>
@@ -341,7 +399,7 @@ async function addAIChatClient() {
     // Reprend l'état persisté du patient courant s'il existe, sinon démarre une nouvelle conversation.
     const storedChatState = loadChatHistoryFromStorage(chatPatientId);
     let chatHistory = storedChatState?.chatHistory || [
-        { role: "system", content: aiParams.basicSystemPrompt }
+        { role: "system", content: aiParams.basicSystemPrompt } // prompt système de base, défini dans openAiClient.js
     ];
     // Journal complet des bulles affichées (au-delà du simple historique conversationnel envoyé au
     // modèle) : inclut le raisonnement, les appels de fonction (début/succès/erreur) et les messages
@@ -368,7 +426,51 @@ async function addAIChatClient() {
     const infoButton = widget.querySelector('#wedaHelper-info-chat');
     const infoPopover = widget.querySelector('#wedaHelper-info-popover');
     const resetButton = widget.querySelector('#wedaHelper-reset-chat');
+    const windowResizeHandle = widget.querySelector('#wedaHelper-window-resize-handle');
+    const inputResizeHandle = widget.querySelector('#wedaHelper-input-resize-handle');
 
+    /**
+     * Rend `targetEl` redimensionnable via une poignée en haut à gauche : contrairement à la
+     * poignée native CSS (`resize`), toujours ancrée en bas à droite, celle-ci convient à des
+     * éléments dont le coin bas-droit est fixe (fenêtre de chat positionnée en bottom/right,
+     * champ de saisie collé au bas du formulaire).
+     * @param {HTMLElement} handleEl - Poignée sur laquelle démarrer le glisser-déposer.
+     * @param {HTMLElement} targetEl - Élément dont la taille est modifiée.
+     * @param {{minWidth?: number, minHeight: number, maxHeight?: number, resizeWidth?: boolean}} options
+     */
+    function makeTopLeftResizable(handleEl, targetEl, { minWidth = 0, minHeight, maxHeight = Infinity, resizeWidth = false }) {
+        handleEl.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const startWidth = targetEl.offsetWidth;
+            const startHeight = targetEl.offsetHeight;
+
+            function onMouseMove(moveEvent) {
+                const deltaY = startY - moveEvent.clientY;
+                targetEl.style.height = `${Math.min(maxHeight, Math.max(minHeight, startHeight + deltaY))}px`;
+                if (resizeWidth) {
+                    const deltaX = startX - moveEvent.clientX;
+                    targetEl.style.width = `${Math.max(minWidth, startWidth + deltaX)}px`;
+                }
+            }
+            function onMouseUp() {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            }
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+    }
+
+    makeTopLeftResizable(windowResizeHandle, chatWindow, { minWidth: 260, minHeight: 200, resizeWidth: true });
+    makeTopLeftResizable(inputResizeHandle, chatInput, { minHeight: 36, maxHeight: 160 });
+
+
+    /**
+     * Fonction utilitaire pour construire le contenu HTML de la popover d'informations sur l'état du chat
+     * 
+     */
     function buildInfoContent() {
         const systemMessage = chatHistory.find(m => m.role === 'system');
         const functionsList = Object.entries(availableFunctions).map(([name, fn]) => {
@@ -412,6 +514,16 @@ async function addAIChatClient() {
     });
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
+    // Le textarea insère un saut de ligne par défaut sur Entrée : on force la soumission,
+    // sauf si Shift est maintenu (pour permettre les messages multi-lignes).
+    chatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            chatForm.requestSubmit();
+        }
+    });
+
+    // gestion de l'affichage de la popover d'informations sur l'état du chat
     infoButton.addEventListener('click', () => {
         const isPopoverOpen = infoPopover.classList.contains('open');
         if (isPopoverOpen) {
@@ -516,19 +628,25 @@ async function addAIChatClient() {
         entry.title = bubble.title || '';
     }
 
+    /**
+     * Gestion de la soumission du formulaire de chat : envoie le message de l'utilisateur au modèle,
+     * affiche la bulle correspondante, puis affiche la réponse de l'IA au fur et à mesure qu'elle est
+     * reçue (avec éventuellement des bulles de raisonnement et d'appel de fonction).
+     */
     chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const userText = chatInput.value.trim();
         if (!userText) return;
 
+        // Ajoute le message de l'utilisateur à l'affichage et à l'historique, puis enregistre l'état.
         appendMessage('user', userText);
         recordDisplayEntry(chatMessages.lastElementChild);
-        chatInput.value = '';
+        chatInput.value = ''; // réinitialise le champ de saisie
+        chatHistory.push({ role: 'user', content: userText }); // met à jour la variable d'historique
+        persistChatHistory(); // Enregistre l'état dans le sessionStorage pour le patient courant
 
-        chatHistory.push({ role: 'user', content: userText });
-        persistChatHistory();
-
+        // Gestion du message d'attente
         const loadingMsg = appendMessage('bot', "L'IA réfléchit...");
         loadingMsg.classList.add('loading');
 
@@ -543,10 +661,12 @@ async function addAIChatClient() {
             const botResponse = await openAiClient({
                 messages: chatHistory,
                 model: getCurrentModel(),
-                maxTokens: 8000,
-                temperature: 0.3,  // Plus basse température pour meilleure stabilité avec Mistral
-                useTools: true,
+                maxTokens: 8000,   // Limite large : un modèle trop limité n'est de toute façon pas souhaitable
+                temperature: 0.3,  // Température assez basse pour des réponses plus cohérentes
+                // useTools: true, // activé par défaut dans l'appel de fonction. Mais doit être à terme dépendant des options de l'utilisateur
                 stream: true,
+                // Gestion des événements de streaming
+                // Ici pour gérer la limite théorique maximale de contexte
                 onWarning: ({ type, estimatedTokens, limit, ratio }) => {
                     if (type !== 'context_limit' || contextWarningShown) return;
                     contextWarningShown = true;
@@ -558,6 +678,7 @@ async function addAIChatClient() {
                     recordDisplayEntry(warningBubble);
                     persistChatHistory();
                 },
+                // Gestion des fragments de réponse reçus en streaming
                 onChunk: ({ contentDelta, reasoningDelta, finishReason }) => {
                     if (finishReason) {
                         lastFinishReason = finishReason;
@@ -583,6 +704,7 @@ async function addAIChatClient() {
                         chatMessages.scrollTop = chatMessages.scrollHeight;
                     }
                 },
+                // Gestion des appels de fonction (start, success, error)
                 onToolCall: ({ id, name, args, status, result, error }) => {
                     // Une nouvelle étape de raisonnement pourra suivre cet appel : on force une nouvelle bulle,
                     // en persistant d'abord celle en cours si elle existe.
@@ -654,6 +776,7 @@ async function addAIChatClient() {
                 recordDisplayEntry(loadingMsg);
                 persistChatHistory();
             } else {
+                // Réponse finale reçue : on l'affiche et on l'enregistre dans l'historique
                 loadingMsg.textContent = botResponse;
                 loadingMsg.classList.remove('loading');
 
@@ -663,8 +786,10 @@ async function addAIChatClient() {
                 }
 
                 if (lastFinishReason === 'stop') {
+                    // Le modèle a terminé normalement sa réponse
                     loadingMsg.title = 'Réponse complète';
                 } else if (lastFinishReason === 'length') {
+                    // Le modèle a été interrompu avant d'avoir terminé sa réponse (limite de tokens atteinte)
                     loadingMsg.title = 'Réponse probablement tronquée (limite de tokens atteinte)';
                     const truncatedNotice = appendMessage('bot', '✂️ Cette réponse a été tronquée : la limite de tokens (maxTokens) a été atteinte avant que le modèle ait terminé.');
                     truncatedNotice.classList.remove('bot');
@@ -679,6 +804,7 @@ async function addAIChatClient() {
             }
 
         } catch (error) {
+            // Gestion des erreurs lors de l'appel au modèle (ex: serveur inaccessible, timeout, erreur interne du modèle...)
             loadingMsg.textContent = "❌ Erreur : " + error.message;
             loadingMsg.classList.remove('loading');
             loadingMsg.classList.add('tool-call', 'error');
@@ -696,5 +822,10 @@ async function addAIChatClient() {
     });
 }
 
-// Widget de test : à retirer/conditionner avant mise en production
-addAIChatClient();
+
+addTweak('*', 'enableIAassistant', function () {
+    // On attend que Weda soit prêt avant d'injecter le chat, pour éviter les conflits avec le chargement de la page.
+    waitForWeda({ logWait: 'enableIAassistant' }).then(() => {
+        addAIChatClient();
+    });
+});
