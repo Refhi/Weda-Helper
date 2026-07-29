@@ -875,8 +875,8 @@ var advancedDefaultSettings = [
             "subOptions": [{
                 "name": "IAassistantPort",
                 "type": TYPE_SMALLTEXT,
-                "description": "Port du modèle d'IA local (par défaut 11434 pour Ollama).",
-                "default": "11434"
+                "description": "Port du modèle d'IA local 1234 pour LM Studio (recommandé car + simple), 11434 pour Ollama (plus technique).",
+                "default": "1234"
             }, {
                 "name": "IAassistantModelName",
                 "type": TYPE_SMALLTEXT,

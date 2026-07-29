@@ -21,6 +21,27 @@ const aiParamsReady = (async () => {
     console.log("[openAiClient] Paramètres récupérés :", aiParams);
 })();
 
+/**
+ * Teste la disponibilité de l'API du modèle d'IA local (utile pour avertir l'utilisateur si
+ * aucun serveur n'est détecté sur le port configuré, ex: LM Studio/Ollama non démarré).
+ * @returns {Promise<boolean>} true si l'API répond, false sinon.
+ */
+async function testAiApiConnection() {
+    await aiParamsReady;
+    try {
+        const response = await fetch(`${aiParams.apiUrl}/v1/models`, {
+            method: 'GET',
+            headers: {
+                ...(aiParams.apiKey && { 'Authorization': `Bearer ${aiParams.apiKey}` }),
+            }
+        });
+        return response.ok;
+    } catch (error) {
+        console.warn("[openAiClient] Test de connexion à l'API échoué :", error.message || error);
+        return false;
+    }
+}
+
 async function openAiClient({
     // --- 1. Le Prompt ---
     messages = [],  // Liste des messages de la conversation (system, user, assistant, tool)

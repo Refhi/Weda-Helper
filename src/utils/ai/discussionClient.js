@@ -267,6 +267,11 @@ async function addAIChatClient() {
             background: #fdecea;
             border-color: #f5c2be;
         }
+        #wedaHelper-chat-messages .message.tool-call.error a {
+            color: #b3261e;
+            font-weight: bold;
+            text-decoration: underline;
+        }
         #wedaHelper-chat-form {
             display: flex;
             padding: 15px;
@@ -440,6 +445,22 @@ async function addAIChatClient() {
         chatMessages.scrollTop = chatMessages.scrollHeight;
         return msgDiv;
     }
+
+    /**
+     * Vérifie la disponibilité de l'API du modèle d'IA local à l'ouverture du chat. Si le
+     * serveur n'est pas détecté, affiche un message d'avertissement avec un lien vers le wiki
+     * expliquant comment installer une IA locale.
+     */
+    async function checkAiApiAvailability() {
+        const isAvailable = await testAiApiConnection();
+        if (isAvailable) return;
+
+        const warningBubble = appendMessage('bot', '');
+        warningBubble.classList.remove('bot');
+        warningBubble.classList.add('tool-call', 'error');
+        warningBubble.innerHTML = `⚠️ Aucune IA locale détectée sur le port ${aiParams.port}. Consultez le <a href="https://github.com/Refhi/Weda-Helper/wiki/Installation-d'une-IA-sur-votre-poste,-pour-que-Weda%E2%80%90Helper-s'en-saisisse" target="_blank" rel="noopener noreferrer">wiki d'installation d'une IA locale</a> pour configurer l'assistant.`;
+    }
+    checkAiApiAvailability();
 
     /**
      * Ajoute une entrée au journal d'affichage à partir de l'état actuel d'une bulle (classes,
