@@ -1201,3 +1201,92 @@ function updateCompanionLogLink() {
 }
 
 updateCompanionLogLink();
+
+// 8 - Menu de navigation latéral
+/**
+ * Initialise et gère le menu de navigation latéral
+ * Extrait les titres du contenu principal et crée des liens de navigation
+ */
+function initializeSidebarNavigation() {
+  const container = document.querySelector('.container');
+  const sidebarNav = document.getElementById('sidebarNav');
+  
+  if (!container || !sidebarNav) {
+    console.warn('⚠️ Éléments requis pour le menu latéral non trouvés');
+    return;
+  }
+
+  // Extraire tous les titres (h1-h6) du conteneur principal
+  const titles = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
+  
+  if (titles.length === 0) {
+    console.warn('⚠️ Aucun titre trouvé pour le menu latéral');
+    return;
+  }
+
+  // Créer les éléments du menu et ajouter des IDs aux titres
+  titles.forEach((title, index) => {
+    // Ajouter un ID au titre s'il n'en a pas
+    if (!title.id) {
+      title.id = `heading-${index}`;
+    }
+
+    // Déterminer le niveau du titre (1-6)
+    const level = parseInt(title.tagName[1]);
+
+    // Créer l'élément de menu
+    const navItem = document.createElement('a');
+    navItem.textContent = title.textContent;
+    navItem.className = 'sidebar-nav-title';
+    navItem.setAttribute('data-level', level);
+    navItem.href = `#${title.id}`;
+    
+    // Au clic, scroller vers le titre
+    navItem.addEventListener('click', (e) => {
+      e.preventDefault();
+      title.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Mettre à jour le titre actif
+      updateActiveNavItem();
+    });
+
+    sidebarNav.appendChild(navItem);
+  });
+
+  // Fonction pour mettre à jour le titre actif selon le scroll
+  function updateActiveNavItem() {
+    const navItems = sidebarNav.querySelectorAll('.sidebar-nav-title');
+    const allTitles = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    
+    let currentActiveIndex = 0;
+    
+    // Trouver le titre le plus proche du haut de la fenêtre
+    allTitles.forEach((title, index) => {
+      const rect = title.getBoundingClientRect();
+      if (rect.top <= 100) {
+        currentActiveIndex = index;
+      }
+    });
+
+    // Supprimer la classe active de tous les éléments
+    navItems.forEach(item => item.classList.remove('active'));
+    
+    // Ajouter la classe active au titre courant
+    if (navItems[currentActiveIndex]) {
+      navItems[currentActiveIndex].classList.add('active');
+    }
+  }
+
+  // Mettre à jour le titre actif au scroll
+  window.addEventListener('scroll', updateActiveNavItem);
+
+  // Initialiser le titre actif au chargement
+  updateActiveNavItem();
+
+  console.log('✅ Menu de navigation latéral initialisé');
+}
+
+// Initialiser le menu après un délai pour s'assurer que le DOM est prêt
+// (car les options peuvent être chargées asynchronement)
+setTimeout(() => {
+  initializeSidebarNavigation();
+}, 500);
