@@ -39,9 +39,9 @@ async function recoverPatientData({
     fullPage = false,
     dateRange = []
 } = {}) {
-    console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, includeLegacy, dateRange });
+    console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, dateRange });
     try {
-        const data = await recoverData({ categories, fullPage, includeLegacy, dateRange, debug: false });
+        const data = await recoverData({ categories, fullPage, dateRange, debug: false });
         return data;
     } catch (e) {
         console.error("[recoverPatientData] Erreur lors de la récupération des données :", e);
@@ -97,7 +97,7 @@ const availableFunctions = {
                         },
                         fullPage: {
                             type: "boolean",
-                            description: "Si true, charge l'intégralité de l'historique au lieu des 10 dernières entrées par défaut."
+                            description: "Si true, charge l'intégralité de l'historique au lieu des 10 dernières entrées par défaut, et inclut alors automatiquement les journées importées d'un ancien logiciel."
                         },
                         dateRange: {
                             type: "array",

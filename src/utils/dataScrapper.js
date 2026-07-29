@@ -157,9 +157,8 @@ const SELECTORS = {
  * 
  * @example
  * const data = await recoverData({
- *     fullPage: true,                              // Charge l'intégralité de la page d'historique (au lieu des 10 par défaut de Weda)
+ *     fullPage: true,                              // Charge l'intégralité de la page d'historique (au lieu des 10 par défaut de Weda), et inclut alors automatiquement les journées importées d'un ancien logiciel
  *     categories: ["consultations", "etatCivil"],  // Liste des catégories à récupérer (par défaut : ["consultations"])
- *     includeLegacy: false,                        // Récupère en plus les journées importées d'un ancien logiciel, quand la catégorie le permet (par défaut : false)
  *     dateRange: ["01/01/2021", "31/12/2026"],     // Filtre les résultats sur une plage de dates (voir resolveDateRange)
  *     debug: false,                                // Laisse l'iframe de récupération affichée en fin d'appel
  * });
@@ -175,7 +174,9 @@ async function recoverData({
     dateRange = [], // Filtre les résultats sur une plage de dates : [debut, fin], chaque borne étant facultative
     debug = false, // Affiche l'iframe en plein écran et ne la supprime pas à la fin pour faciliter le debug
 } = {}) {
-    if (fullPage) includeLegacy = true; // Si on veut tout charger, on inclut les journées importées d'un ancien logiciel
+    // Les journées importées d'un ancien logiciel ne sont récupérées qu'en mode fullPage : ce
+    // n'est plus un paramètre exposé séparément, pour éviter toute combinaison incohérente.
+    const includeLegacy = fullPage;
     // Préparation de l'objet de données à retourner
     const data = {};
 
@@ -1698,8 +1699,7 @@ function showDataScrapperTestPanel() {
     panel.style.font = "12px sans-serif";
 
     const optionsHtml = `
-        <label style="display:block;"><input type="checkbox" id="dsp-fullPage"> fullPage</label>
-        <label style="display:block;"><input type="checkbox" id="dsp-includeLegacy"> includeLegacy</label>
+        <label style="display:block;"><input type="checkbox" id="dsp-fullPage"> fullPage (inclut automatiquement les journées importées d'un ancien logiciel)</label>
         <label style="display:block;"><input type="checkbox" id="dsp-debug" checked> debug</label>
         <label style="display:block;">dateRange début : <input type="text" id="dsp-dateStart" placeholder="jj/mm/aaaa" style="width:90px;"></label>
         <label style="display:block;">dateRange fin : <input type="text" id="dsp-dateEnd" placeholder="jj/mm/aaaa" style="width:90px;"></label>
@@ -1738,22 +1738,20 @@ function showDataScrapperTestPanel() {
             return;
         }
         const fullPage = panel.querySelector('#dsp-fullPage').checked;
-        const includeLegacy = panel.querySelector('#dsp-includeLegacy').checked;
         const debug = panel.querySelector('#dsp-debug').checked;
         const dateRange = [
             panel.querySelector('#dsp-dateStart').value.trim(),
             panel.querySelector('#dsp-dateEnd').value.trim(),
         ];
-        runDebugRecoverData(categories, categories.join(', '), { fullPage, includeLegacy, debug, dateRange });
+        runDebugRecoverData(categories, categories.join(', '), { fullPage, debug, dateRange });
     });
 }
 
-async function runDebugRecoverData(categories, label, { fullPage = true, includeLegacy = true, debug = true, dateRange = [] } = {}) {
+async function runDebugRecoverData(categories, label, { fullPage = true, debug = true, dateRange = [] } = {}) {
     const data = await recoverData({
         fullPage,
         categories,
         debug,
-        includeLegacy,
         dateRange
     });
     console.log(`[dataScrapper] Données récupérées (${label}) :`, data);
