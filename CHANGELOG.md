@@ -12,6 +12,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#636](https://github.com/Refhi/Weda-Helper/issues/636) L'affichage de l'historique des FSE affiche aussi le réglement effectué par le patient et le mode de réglement.
 - [#629](https://github.com/Refhi/Weda-Helper/issues/629) - Ajout d’un bouton pour importer le contenu d’un post-it directement dans une consultation.
 - [#615](https://github.com/Refhi/Weda-Helper/issues/615) - le calcul du SCORE2 utilise bien plus de données récupérées automatiquement.
+- [#632](https://github.com/Refhi/Weda-Helper/issues/632) - Ajout d'une fonction de détection d'un ECG dans la consultation du jour pour afficher une alerte lors de la création de la FSE et inciter à le coter.
 
 ## Retrait de fonctionnalités :
 - [#619](https://github.com/Refhi/Weda-Helper/issues/619) - Il existe *déjà* une option dans Weda pour sauvegarder l’affichage préférentiel des documents dans la page de recherche des documents...

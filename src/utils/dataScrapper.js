@@ -70,6 +70,7 @@ const _DAILY = {
     mainContainer: usualMainContainer,
     subContainer:  usualSubContainer,
     date:      "[title='Cliquez sur la date pour ouvrir.']",
+    lieu:       "span[class='evelieu']", 
     author:    ".sign",
 };
 
@@ -1491,6 +1492,10 @@ function recoverMainViewData(doc, categorySelectors, includeLegacy = false, cate
 function parseDayContainer(container, categorySelectors) {
     // Extraction des métadonnées de la journée (header table)
     const dateElement = container.querySelector(categorySelectors.date);
+    const lieuElement = container.querySelector(categorySelectors.lieu);
+    const lieu = lieuElement?.textContent || '';
+    const date = dateElement.textContent.replace(lieu,'').trim(); // Si il y'a un lieu spécifié, on le retire de du texte de la date
+
     const initials = textOf(container, SELECTORS.dayContainer.initials);
 
     // Documents : tous les divs name="dhX" sauf dh10 (pièces jointes)
@@ -1534,7 +1539,8 @@ function parseDayContainer(container, categorySelectors) {
     documents.forEach(doc => { delete doc.author; delete doc.author_prenom; delete doc.author_nom; });
     
     return {
-        date: dateElement?.textContent.trim() || null,
+        date: date,
+        lieu: lieu,
         ...authorInfo,
         documents,
         attachments

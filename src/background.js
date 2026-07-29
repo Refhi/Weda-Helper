@@ -26,6 +26,3 @@ chrome.storage.local.set({
 }, function () {
     console.log('[background.js] Les valeurs et raccourcis par défaut ont été enregistrées');
 });
-
-
-
