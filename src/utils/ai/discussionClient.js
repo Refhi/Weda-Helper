@@ -1,4 +1,65 @@
 /**
+ * Préfixe des clés sessionStorage utilisées pour persister l'historique de chat, une clé par
+ * patient (voir getChatHistoryStorageKey). Un seul historique "default" est utilisé lorsqu'aucun
+ * patient n'est détecté dans l'URL.
+ *
+ * Le stockage/la lecture sont volontairement isolés dans de petites fonctions dédiées
+ * (getChatHistoryStorageKey / loadChatHistoryFromStorage / saveChatHistoryToStorage) afin de
+ * pouvoir, ultérieurement, y greffer une synchronisation cross-onglets (ex: relais via le
+ * background service worker + permission "tabs") sans toucher au reste de la logique du chat.
+ */
+const AI_CHAT_HISTORY_STORAGE_PREFIX = 'wedaHelperChatHistory_';
+
+/**
+ * Construit la clé sessionStorage pour l'historique de chat d'un patient donné.
+ * @param {string|null} patientId - Identifiant du patient (PatDk), ou null/absent si aucun patient détecté.
+ * @returns {string}
+ */
+function getChatHistoryStorageKey(patientId) {
+    return `${AI_CHAT_HISTORY_STORAGE_PREFIX}${patientId || 'default'}`;
+}
+
+/**
+ * Charge l'état de chat persisté pour un patient donné : l'historique "conversationnel"
+ * (format OpenAI, envoyé au modèle) ainsi que le journal d'affichage complet (bulles user/
+ * assistant, mais aussi raisonnement, appels de fonction et erreurs) permettant de restituer
+ * fidèlement l'état visuel du chat au rechargement.
+ * @param {string|null} patientId
+ * @returns {{chatHistory: Array, displayLog: Array}|null} L'état persisté, ou null si absent/illisible.
+ */
+function loadChatHistoryFromStorage(patientId) {
+    try {
+        const raw = sessionStorage.getItem(getChatHistoryStorageKey(patientId));
+        return raw ? JSON.parse(raw) : null;
+    } catch (error) {
+        console.warn('[discussionClient] Historique de chat illisible en sessionStorage, réinitialisation', error);
+        return null;
+    }
+}
+
+/**
+ * Persiste l'état de chat (historique conversationnel + journal d'affichage) pour un patient donné.
+ * @param {string|null} patientId
+ * @param {Array} history - Historique conversationnel (format OpenAI)
+ * @param {Array} displayLog - Journal complet des bulles affichées (user, assistant, raisonnement, appels de fonction, erreurs...)
+ */
+function saveChatHistoryToStorage(patientId, history, displayLog) {
+    try {
+        sessionStorage.setItem(getChatHistoryStorageKey(patientId), JSON.stringify({ chatHistory: history, displayLog }));
+    } catch (error) {
+        console.warn("[discussionClient] Impossible d'écrire l'historique de chat en sessionStorage", error);
+    }
+}
+
+/**
+ * Supprime l'historique de chat persisté d'un patient donné.
+ * @param {string|null} patientId
+ */
+function clearChatHistoryStorage(patientId) {
+    sessionStorage.removeItem(getChatHistoryStorageKey(patientId));
+}
+
+/**
  * Chat de test en bas à droite de la page.
  */
 async function addAIChatClient() {
@@ -7,6 +68,11 @@ async function addAIChatClient() {
 
     // S'assurer que les paramètres (dont le prompt système) sont chargés avant de construire le chat
     await aiParamsReady;
+
+    // Identifiant du patient courant, déterminé une seule fois à l'initialisation du chat (le
+    // patient affiché ne change pas une fois la page chargée). Sert de clé de persistance pour
+    // que chaque patient conserve sa propre conversation dans sessionStorage.
+    const chatPatientId = (typeof getCurrentPatientId === 'function' ? getCurrentPatientId() : null) || null;
 
     // --- Styles ---
     const style = document.createElement('style');
@@ -255,9 +321,20 @@ async function addAIChatClient() {
     document.body.appendChild(widget);
 
     // --- Logique du chat ---
-    let chatHistory = [
+    // Reprend l'état persisté du patient courant s'il existe, sinon démarre une nouvelle conversation.
+    const storedChatState = loadChatHistoryFromStorage(chatPatientId);
+    let chatHistory = storedChatState?.chatHistory || [
         { role: "system", content: aiParams.basicSystemPrompt }
     ];
+    // Journal complet des bulles affichées (au-delà du simple historique conversationnel envoyé au
+    // modèle) : inclut le raisonnement, les appels de fonction (début/succès/erreur) et les messages
+    // d'erreur/avertissement, afin de restituer fidèlement l'affichage au rechargement du chat.
+    let chatDisplayLog = storedChatState?.displayLog || [];
+
+    /** Persiste l'historique conversationnel et le journal d'affichage courants pour le patient en cours. */
+    function persistChatHistory() {
+        saveChatHistoryToStorage(chatPatientId, chatHistory, chatDisplayLog);
+    }
 
     // Modèle actuellement utilisé pour les appels (bascule possible entre principal et secondaire)
     let useSecondaryModel = false;
@@ -299,9 +376,23 @@ async function addAIChatClient() {
         chatHistory = [
             { role: "system", content: aiParams.basicSystemPrompt }
         ];
+        chatDisplayLog = [];
+        clearChatHistoryStorage(chatPatientId);
         chatMessages.innerHTML = '';
         infoPopover.classList.remove('open');
     });
+
+    // Rejoue intégralement le journal d'affichage précédemment persisté pour ce patient : messages
+    // user/assistant, mais aussi raisonnement, appels de fonction et erreurs, avec leurs classes et
+    // info-bulles (title) d'origine.
+    chatDisplayLog.forEach(entry => {
+        const msgDiv = document.createElement('div');
+        msgDiv.classList.add('message', ...entry.classes);
+        msgDiv.textContent = entry.text;
+        if (entry.title) msgDiv.title = entry.title;
+        chatMessages.appendChild(msgDiv);
+    });
+    chatMessages.scrollTop = chatMessages.scrollHeight;
 
     infoButton.addEventListener('click', () => {
         const isPopoverOpen = infoPopover.classList.contains('open');
@@ -350,6 +441,34 @@ async function addAIChatClient() {
         return msgDiv;
     }
 
+    /**
+     * Ajoute une entrée au journal d'affichage à partir de l'état actuel d'une bulle (classes,
+     * texte, info-bulle), pour qu'elle soit restituée telle quelle au rechargement du chat.
+     * @param {HTMLElement} bubble
+     * @returns {object} L'entrée ajoutée (réutilisable avec updateDisplayEntry pour les bulles évolutives, ex: appels de fonction).
+     */
+    function recordDisplayEntry(bubble) {
+        const entry = {
+            classes: Array.from(bubble.classList).filter(c => c !== 'message'),
+            text: bubble.textContent,
+            title: bubble.title || ''
+        };
+        chatDisplayLog.push(entry);
+        return entry;
+    }
+
+    /**
+     * Met à jour une entrée du journal d'affichage déjà enregistrée (ex: bulle d'appel de
+     * fonction passant de "pending" à "succès"/"erreur") à partir de l'état actuel de la bulle.
+     * @param {object} entry - Entrée précédemment obtenue via recordDisplayEntry
+     * @param {HTMLElement} bubble
+     */
+    function updateDisplayEntry(entry, bubble) {
+        entry.classes = Array.from(bubble.classList).filter(c => c !== 'message');
+        entry.text = bubble.textContent;
+        entry.title = bubble.title || '';
+    }
+
     chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -357,9 +476,11 @@ async function addAIChatClient() {
         if (!userText) return;
 
         appendMessage('user', userText);
+        recordDisplayEntry(chatMessages.lastElementChild);
         chatInput.value = '';
 
         chatHistory.push({ role: 'user', content: userText });
+        persistChatHistory();
 
         const loadingMsg = appendMessage('bot', "L'IA réfléchit...");
         loadingMsg.classList.add('loading');
@@ -369,6 +490,7 @@ async function addAIChatClient() {
         let lastFinishReason = null; // dernière raison d'arrêt renvoyée par le serveur ('length', 'stop', 'content_filter'...)
         let contextWarningShown = false; // évite de spammer une bulle à chaque relance de function calling
         const toolCallBubbles = new Map(); // id -> élément DOM du feedback d'appel de fonction
+        const toolCallEntries = new Map(); // id -> entrée du journal d'affichage correspondante (pour mise à jour lors du succès/échec)
 
         try {
             const botResponse = await openAiClient({
@@ -386,6 +508,8 @@ async function addAIChatClient() {
                     warningBubble.classList.add('tool-call', 'error');
                     chatMessages.insertBefore(warningBubble, loadingMsg);
                     chatMessages.scrollTop = chatMessages.scrollHeight;
+                    recordDisplayEntry(warningBubble);
+                    persistChatHistory();
                 },
                 onChunk: ({ contentDelta, reasoningDelta, finishReason }) => {
                     if (finishReason) {
@@ -413,7 +537,12 @@ async function addAIChatClient() {
                     }
                 },
                 onToolCall: ({ id, name, args, status, result, error }) => {
-                    // Une nouvelle étape de raisonnement pourra suivre cet appel : on force une nouvelle bulle
+                    // Une nouvelle étape de raisonnement pourra suivre cet appel : on force une nouvelle bulle,
+                    // en persistant d'abord celle en cours si elle existe.
+                    if (reasoningMsg) {
+                        recordDisplayEntry(reasoningMsg);
+                        persistChatHistory();
+                    }
                     reasoningMsg = null;
 
                     if (status === 'start') {
@@ -423,6 +552,8 @@ async function addAIChatClient() {
                         bubble.title = `Arguments :\n${JSON.stringify(args, null, 2)}`;
                         chatMessages.insertBefore(bubble, loadingMsg);
                         toolCallBubbles.set(id, bubble);
+                        toolCallEntries.set(id, recordDisplayEntry(bubble));
+                        persistChatHistory();
                         return;
                     }
 
@@ -440,6 +571,11 @@ async function addAIChatClient() {
                         bubble.title = `Erreur :\n${error}`;
                     }
                     chatMessages.scrollTop = chatMessages.scrollHeight;
+                    const entry = toolCallEntries.get(id);
+                    if (entry) {
+                        updateDisplayEntry(entry, bubble);
+                        persistChatHistory();
+                    }
                 }
             });
 
@@ -463,12 +599,21 @@ async function addAIChatClient() {
                 if (reasoningMsg) {
                     reasoningMsg.title = "La réflexion s'est arrêtée sans aboutir à une réponse.";
                     reasoningMsg.classList.add('error');
+                    recordDisplayEntry(reasoningMsg);
+                    reasoningMsg = null;
                 }
 
                 chatHistory.pop(); // on retire le message utilisateur pour permettre de reformuler/réessayer proprement
+                recordDisplayEntry(loadingMsg);
+                persistChatHistory();
             } else {
                 loadingMsg.textContent = botResponse;
                 loadingMsg.classList.remove('loading');
+
+                if (reasoningMsg) {
+                    recordDisplayEntry(reasoningMsg);
+                    reasoningMsg = null;
+                }
 
                 if (lastFinishReason === 'stop') {
                     loadingMsg.title = 'Réponse complète';
@@ -478,9 +623,12 @@ async function addAIChatClient() {
                     truncatedNotice.classList.remove('bot');
                     truncatedNotice.classList.add('tool-call', 'error');
                     console.warn("[addAIChatClient] Réponse tronquée : limite de tokens atteinte.", { reasoning: reasoningMsg?.textContent, finishReason: lastFinishReason });
+                    recordDisplayEntry(truncatedNotice);
                 }
 
                 chatHistory.push({ role: 'assistant', content: botResponse });
+                recordDisplayEntry(loadingMsg);
+                persistChatHistory();
             }
 
         } catch (error) {
@@ -489,7 +637,14 @@ async function addAIChatClient() {
             loadingMsg.classList.add('tool-call', 'error');
             console.error("[addAIChatClient] Erreur lors de l'appel OpenAI :", error);
 
+            if (reasoningMsg) {
+                recordDisplayEntry(reasoningMsg);
+                reasoningMsg = null;
+            }
+
             chatHistory.pop();
+            recordDisplayEntry(loadingMsg);
+            persistChatHistory();
         }
     });
 }
