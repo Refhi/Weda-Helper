@@ -61,7 +61,7 @@ async function displayBillingHistory() {
 
     let billingData = extractBillingData(data, loggedInUser);
     // console.log('billingData', billingData);
-    billingData = trimOldBillingData(billingData, 5); // Afficher uniquement les 5 dernières années, car certaines cotations peuvent être appliquées une fois sur 5 ans
+    billingData = trimOldBillingData(billingData, 7); // Afficher uniquement les 7 dernières années, car certaines cotations peuvent être appliquées une fois sur 5 ans
     let filteredBillingData = await filterBillingData(billingData); // Filtrer les cotations indésirables
     await showBillingData(billingData, filteredBillingData);
 }
