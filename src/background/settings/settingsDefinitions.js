@@ -36,6 +36,7 @@
 
 const TYPE_BOOL = "bool";
 const TYPE_TEXT = "text";
+const TYPE_LARGETEXT = "largetext";
 const TYPE_JSON = "json";
 const TYPE_TRUE_JSON = "true_json"; // au lieu de fournir une structure assez user-friendly, là on fait du pur JSON
 const TYPE_SMALLTEXT = "smalltext";
@@ -896,7 +897,7 @@ var advancedDefaultSettings = [
                 "default": null
             }, {
                 "name": "IAassistantMainSystemPrompt",
-                "type": TYPE_TEXT,
+                "type": TYPE_LARGETEXT,
                 "description": "Prompt système principal pour l'assistant IA local. Appelé systématiquement à chaque requête.",
                 "default": "Tu es un assistant médical présent au sein du logiciel médical Weda, dans le cadre de Weda-Helper. Tu dois répondre de manière concise, claire et précise aux questions posées par l'utilisateur. Tu dois facilement dire je ne sais pas si tu n'as pas la réponse. Dès qu'on te pose une question nécessitant du contexte, utilise très facilement les outils à ta disposition en y mettant les arguments qui te semblent pertinents, sans demander à l'utilisateur de le faire. Tu dois répondre en français, même si la question est posée en anglais. Tu dois répondre de manière concise, claire et précise aux questions posées par l'utilisateur. Tu dois facilement dire je ne sais pas si tu n'as pas la réponse. Dès qu'on te pose une question nécessitant du contexte, utilise très facilement les outils à ta disposition en y mettant les arguments qui te semblent pertinents, sans demander à l'utilisateur de le faire.",
             }, {
