@@ -875,17 +875,14 @@ var advancedDefaultSettings = [
             "subOptions": [{
                 "name": "IAassistantPort",
                 "type": TYPE_SMALLTEXT,
-                "description": "Port du modèle d'IA local 1234 pour LM Studio (recommandé car + simple), 11434 pour Ollama (plus technique).",
+                "description": "Port du modèle d'IA local (laisser en auto sauf port inhabituel).",
+                "longDescription": "1234 pour LM Studio (recommandé car + simple), 11434 pour Ollama (plus technique). Laissé sur \"auto\", tous les ports courants sont testés à chaque démarrage ; si un port précis est indiqué, seul celui-ci est testé.",
                 "default": "auto"
             }, {
                 "name": "IAassistantModelName",
                 "type": TYPE_SMALLTEXT,
-                "description": "Nom des modèles d'IA local à utiliser.",
-                "default": "auto"
-            }, {
-                "name": "IAassistantModelNameSecondary",
-                "type": TYPE_SMALLTEXT,
-                "description": "Nom du modèle d'IA local secondaire à utiliser. Le premier est toujours utilisé, sauf si vous le sélectionnez manuellement dans le Chat. Utile pour les tests.",
+                "description": "Nom du modèle d'IA local préféré.",
+                "longDescription": " La liste des modèles disponibles est téléchargée à chaque démarrage pour chaque port actif ; si le modèle préféré n'y figure pas, le premier modèle disponible est utilisé à la place. Le modèle utilisé peut aussi être changé depuis le menu déroulant du Chat.",
                 "default": "auto"
             }, {
                 "name": "AIAssistantToolCalling",

@@ -225,18 +225,18 @@ async function addAIChatClient() {
             font-family: inherit;
         }
         #wedaHelper-info-popover ul { margin: 4px 0; padding-left: 18px; }
-        #wedaHelper-toggle-model {
+        #wedaHelper-model-select {
             display: block;
+            width: 100%;
+            box-sizing: border-box;
             margin: 6px 0 10px;
-            background: #10a37f;
-            color: white;
-            border: none;
-            padding: 6px 10px;
+            background: #ffffff;
+            color: #333;
+            border: 1px solid #ccc;
+            padding: 5px 8px;
             border-radius: 6px;
-            cursor: pointer;
             font-size: 12px;
         }
-        #wedaHelper-toggle-model:hover { background: #0d8c6d; }
         #wedaHelper-disable-connector {
             display: block;
             margin: 0 0 10px;
@@ -411,10 +411,11 @@ async function addAIChatClient() {
         saveChatHistoryToStorage(chatPatientId, chatHistory, chatDisplayLog);
     }
 
-    // Modèle actuellement utilisé pour les appels (bascule possible entre principal et secondaire)
-    let useSecondaryModel = false;
+    // Modèle actuellement sélectionné pour les appels, parmi tous les modèles détectés (aiParams.availableModels,
+    // tous ports actifs confondus). Initialisé au modèle résolu au démarrage (préféré si trouvé, sinon premier disponible).
+    let selectedModel = aiParams.defaultModel;
     function getCurrentModel() {
-        return useSecondaryModel ? aiParams.IAassistantModelNameSecondary : aiParams.defaultModel;
+        return selectedModel;
     }
 
     const chatWindow = widget.querySelector('#wedaHelper-chat-window');
@@ -478,13 +479,20 @@ async function addAIChatClient() {
             return `<li><strong>${name}</strong>${description ? ' — ' + description : ''}</li>`;
         }).join('');
 
-        const hasSecondaryModel = !!aiParams.IAassistantModelNameSecondary;
+        const hasMultipleModels = (aiParams.availableModels?.length || 0) > 1;
+        // Si plusieurs ports sont actifs, on précise entre parenthèses le port de chaque modèle (utile pour
+        // distinguer d'éventuels modèles de même nom exposés sur des ports différents).
+        const showPort = (aiParams.activePorts?.length || 0) > 1;
+        const modelOptions = (aiParams.availableModels || [])
+            .filter((m, idx, arr) => arr.findIndex(other => other.model === m.model && other.port === m.port) === idx) // dédoublonnage
+            .map(m => `<option value="${m.model}" ${m.model === selectedModel ? 'selected' : ''}>${m.model}${showPort ? ` (port ${m.port})` : ''}</option>`)
+            .join('');
 
         return `
             <button id="wedaHelper-disable-connector" type="button">Désactiver l'Assistant Local</button>
             <h4>Modèle utilisé</h4>
             <pre>${getCurrentModel()}</pre>
-            ${hasSecondaryModel ? `<button id="wedaHelper-toggle-model" type="button">Basculer vers ${useSecondaryModel ? aiParams.defaultModel : aiParams.IAassistantModelNameSecondary}</button>` : ''}
+            ${hasMultipleModels ? `<select id="wedaHelper-model-select">${modelOptions}</select>` : ''}
             <h4>Prompt système</h4>
             <pre>${systemMessage ? systemMessage.content : '(aucun)'}</pre>
             <h4>Fonctions appelables</h4>
@@ -536,10 +544,11 @@ async function addAIChatClient() {
     });
 
     function bindInfoPopoverActions() {
-        const toggleModelButton = infoPopover.querySelector('#wedaHelper-toggle-model');
-        if (toggleModelButton) {
-            toggleModelButton.addEventListener('click', () => {
-                useSecondaryModel = !useSecondaryModel;
+        const modelSelect = infoPopover.querySelector('#wedaHelper-model-select');
+        if (modelSelect) {
+            modelSelect.addEventListener('change', () => {
+                selectedModel = modelSelect.value;
+                chrome.storage.local.set({ IAassistantModelName: selectedModel }); // enregistre le choix comme modèle préféré
                 infoPopover.innerHTML = buildInfoContent();
                 bindInfoPopoverActions();
             });
