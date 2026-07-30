@@ -169,34 +169,39 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
         }
         console.log('[autoScore2] Paramètres après complément par l\'historique :', SCORE2_PARAMS);
 
-        // Demander les valeurs manquantes à l'utilisateur
-        const allValuesProvided = await promptMissingValues(SCORE2_PARAMS);
-        if (!allValuesProvided) {
-            console.log('[autoScore2] Calcul annulé - valeurs manquantes');
-            return; // Sortir si l'utilisateur annule
+        // Boucle permettant de revenir en arrière depuis le résultat pour modifier les paramètres
+        // (le bouton "Modifier les paramètres" du modal de résultat redemande les valeurs)
+        while (true) {
+            // Demander les valeurs manquantes à l'utilisateur
+            const allValuesProvided = await promptMissingValues(SCORE2_PARAMS);
+            if (!allValuesProvided) {
+                console.log('[autoScore2] Calcul annulé - valeurs manquantes');
+                return; // Sortir si l'utilisateur annule
+            }
+
+            console.log('[autoScore2] Toutes les valeurs sont disponibles, calcul en cours...', SCORE2_PARAMS);
+
+            // Calculer le score2
+            const score2Result = SCORE2(
+                SCORE2_PARAMS.riskRegion.value,
+                SCORE2_PARAMS.age.value,
+                SCORE2_PARAMS.gender.value,
+                SCORE2_PARAMS.smoker.value,
+                SCORE2_PARAMS.systolicBp.value,
+                SCORE2_PARAMS.diabetes.value,
+                SCORE2_PARAMS.totalChol.value,
+                SCORE2_PARAMS.totalHdl.value,
+                SCORE2_PARAMS.classify.value
+            );
+            console.log('[autoScore2] Résultat du calcul SCORE2 :', score2Result, "%");
+
+            // Afficher le résultat dans un modal ; l'utilisateur peut revenir modifier les paramètres
+            const resultAction = await showScore2ResultModal(score2Result, SCORE2_PARAMS);
+            if (resultAction !== 'back') {
+                break;
+            }
+            console.log('[autoScore2] Retour à la modification des paramètres demandé par l\'utilisateur');
         }
-
-        console.log('[autoScore2] Toutes les valeurs sont disponibles :', SCORE2_PARAMS);
-
-        console.log('[autoScore2] Toutes les valeurs sont disponibles, calcul en cours...');
-
-
-        // Calculer le score2
-        const score2Result = SCORE2(
-            SCORE2_PARAMS.riskRegion.value,
-            SCORE2_PARAMS.age.value,
-            SCORE2_PARAMS.gender.value,
-            SCORE2_PARAMS.smoker.value,
-            SCORE2_PARAMS.systolicBp.value,
-            SCORE2_PARAMS.diabetes.value,
-            SCORE2_PARAMS.totalChol.value,
-            SCORE2_PARAMS.totalHdl.value,
-            SCORE2_PARAMS.classify.value
-        );
-        console.log('[autoScore2] Résultat du calcul SCORE2 :', score2Result, "%");
-        
-        // Afficher le résultat dans un modal
-        showScore2ResultModal(score2Result, SCORE2_PARAMS);
     }
 
     // Fonctions utilitaires
@@ -1132,9 +1137,11 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
     }
 
     /**
-     * Affiche le résultat du calcul SCORE2 dans un modal
+     * Affiche le résultat du calcul SCORE2 dans un modal.
+     * @returns {Promise<'close'|'back'>} 'back' si l'utilisateur souhaite revenir modifier les paramètres
      */
     function showScore2ResultModal(score2Result, params) {
+        return new Promise((resolve) => {
         // Créer l'overlay
         const overlay = document.createElement('div');
         overlay.style.cssText = `
@@ -1350,6 +1357,21 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
             });
         };
 
+        const backButton = document.createElement('button');
+        backButton.textContent = '◀ Modifier les paramètres';
+        backButton.style.cssText = `
+            padding: 10px 30px;
+            border: 1px solid #ccc;
+            background: white;
+            color: #333;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        `;
+        backButton.onmouseover = () => backButton.style.background = '#f0f0f0';
+        backButton.onmouseout = () => backButton.style.background = 'white';
+
         const closeButton = document.createElement('button');
         closeButton.textContent = 'Fermer';
         closeButton.style.cssText = `
@@ -1364,22 +1386,32 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
         `;
         closeButton.onmouseover = () => closeButton.style.background = '#1976D2';
         closeButton.onmouseout = () => closeButton.style.background = '#2196F3';
-        
-        closeButton.onclick = () => {
+
+        const cleanupAndResolve = (action) => {
             document.body.removeChild(overlay);
+            document.removeEventListener('keydown', handleEscape);
+            resolve(action);
+        };
+
+        backButton.onclick = () => {
+            cleanupAndResolve('back');
+        };
+
+        closeButton.onclick = () => {
+            cleanupAndResolve('close');
         };
         
         // Permettre la fermeture avec Échap
         const handleEscape = (e) => {
             if (e.key === 'Escape') {
-                document.body.removeChild(overlay);
-                document.removeEventListener('keydown', handleEscape);
+                cleanupAndResolve('close');
             }
         };
         document.addEventListener('keydown', handleEscape);
         
         // Assembler le modal
         footer.appendChild(copyButton);
+        footer.appendChild(backButton);
         footer.appendChild(closeButton);
         modal.appendChild(header);
         modal.appendChild(body);
@@ -1391,5 +1423,6 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoScore2', function () {
         
         // Focus sur le bouton de fermeture
         setTimeout(() => closeButton.focus(), 100);
+        });
     }
 });

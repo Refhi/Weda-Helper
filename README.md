@@ -301,6 +301,8 @@ Installez et laisser tourner ce logiciel sur votre ordinateur pour avoir des fon
 => Procédures d'installation et de paramétrage sur [le readme du Companion](https://github.com/Refhi/Weda-Helper-Companion)
 - pensez à vérifier votre firewall s'il ne fonctionne pas ou si des messages type "Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ?" apparaissent. Cf. [Guide de dépannage sur le firewall windows](https://github.com/Refhi/Weda-Helper/issues/377#issuecomment-2716796999)
 
+## Connecteur IA
+- Permet d'utiliser un modèle d'IA local pour questionner le dossier médical et générer des textes (ex. synthèse, courrier, compte rendu, etc.) à partir de ce dossier. **beta**.
 
 ## Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):
 *C'est là où vos pull requests sont les bienvenus*

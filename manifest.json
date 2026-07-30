@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper Beta",
-  "version": "3.2.0.0",
+  "version": "3.2.0.1",
   "options_page": "src/ui/options.html",
   "permissions": [
     "storage"
@@ -50,6 +50,9 @@
         "src/utils/iframeHelpers.js",
         "src/utils/dataScrapper.js",
         "src/utils/dataInserter.js",
+        "src/utils/ai/callableFunctions.js",
+        "src/utils/ai/openAiClient.js",
+        "src/utils/ai/discussionClient.js",
         "src/ui/tooltip.js",
         "src/ui/update.js",
         "src/ui/popupFunctions.js",
