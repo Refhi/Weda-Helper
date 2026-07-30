@@ -358,6 +358,7 @@ async function consumeStream(stream, onChunk) {
     let contentAcc = '';     // Accumulation du contenu complet de la réponse
     let reasoningAcc = '';   // Accumulation du "raisonnement" complet (reasoning_content / reasoning)
     let finishReason = null; // raison d'arrêt renvoyée par le serveur : 'stop', 'length' (tokens épuisés), 'tool_calls', 'content_filter', etc.
+    let streamError = null; // erreur explicite envoyée par le serveur en cours de flux (ex: dépassement de la taille de contexte)
     const toolCallsAcc = []; // indexé par la position (index) fournie par l'API
 
     const processLine = (line) => {
@@ -371,6 +372,16 @@ async function consumeStream(stream, onChunk) {
             json = JSON.parse(payload);
         } catch (e) {
             console.warn('[consumeStream] Impossible de parser un chunk SSE :', payload);
+            return;
+        }
+
+        // Certains serveurs (llama.cpp, LM Studio...) renvoient une erreur (ex: dépassement de la taille de
+        // contexte) sous forme d'un événement SSE dédié (`{"error": {...}}`) plutôt qu'un statut HTTP non-200,
+        // notamment lorsque l'erreur survient après le début du streaming. Sans cette détection, l'événement
+        // était silencieusement ignoré (pas de `choices`) et l'appelant ne recevait qu'un flux vide.
+        if (json?.error) {
+            streamError = json.error.message || JSON.stringify(json.error);
+            console.error('[consumeStream] Erreur renvoyée par le serveur en cours de flux :', json.error);
             return;
         }
 
@@ -423,6 +434,13 @@ async function consumeStream(stream, onChunk) {
     }
     // Traiter un éventuel reste dans le buffer
     if (buffer) processLine(buffer);
+
+    // Si le serveur a signalé une erreur explicite en cours de flux (ex: contexte dépassé), on la remonte
+    // sous forme d'exception : elle sera affichée telle quelle à l'utilisateur par l'appelant (cf. catch
+    // dans discussionClient.js), au lieu d'un message générique "aucune réponse".
+    if (streamError) {
+        throw new Error(streamError);
+    }
 
     if (finishReason === 'length') {
         console.warn('[consumeStream] Le modèle a été interrompu par la limite de tokens (max_tokens atteint) avant de terminer sa réponse.');
