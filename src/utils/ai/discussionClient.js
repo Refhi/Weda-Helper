@@ -685,7 +685,7 @@ async function addAIChatClient() {
                 onWarning: ({ type, estimatedTokens, limit, ratio }) => {
                     if (type !== 'context_limit' || contextWarningShown) return;
                     contextWarningShown = true;
-                    const warningBubble = appendMessage('bot', `⚠️ Le contexte estimé de la conversation (~${estimatedTokens} tokens) approche ou dépasse la limite configurée (${limit} tokens, ${Math.round(ratio * 100)}%). Les échanges avec les outils peuvent être tronqués par le serveur : pensez à réinitialiser la conversation si les réponses deviennent incohérentes.`);
+                    const warningBubble = appendMessage('bot', `⚠️ Le contexte estimé de la conversation (~${estimatedTokens} tokens) approche ou dépasse la limite configurée (${limit} tokens, ${Math.round(ratio * 100)}%). Les échanges avec les outils peuvent être tronqués par le serveur : pensez à augmenter la taille du contexte dans votre fournisseur de modèle et/ou réinitialiser la conversation si les réponses deviennent incohérentes. Pensez à mettre à jour les options de Weda-Helper si vous changez la limite de contexte côté serveur.`);
                     warningBubble.classList.remove('bot');
                     warningBubble.classList.add('tool-call', 'error');
                     chatMessages.insertBefore(warningBubble, loadingMsg);
