@@ -876,17 +876,17 @@ var advancedDefaultSettings = [
                 "name": "IAassistantPort",
                 "type": TYPE_SMALLTEXT,
                 "description": "Port du modèle d'IA local 1234 pour LM Studio (recommandé car + simple), 11434 pour Ollama (plus technique).",
-                "default": "1234"
+                "default": "auto"
             }, {
                 "name": "IAassistantModelName",
                 "type": TYPE_SMALLTEXT,
                 "description": "Nom des modèles d'IA local à utiliser.",
-                "default": "qwen3.5:9b"
+                "default": "auto"
             }, {
                 "name": "IAassistantModelNameSecondary",
                 "type": TYPE_SMALLTEXT,
                 "description": "Nom du modèle d'IA local secondaire à utiliser. Le premier est toujours utilisé, sauf si vous le sélectionnez manuellement dans le Chat. Utile pour les tests.",
-                "default": "mistral-nemo:12b-instruct-2407-q5_K_M"
+                "default": "auto"
             }, {
                 "name": "AIAssistantToolCalling",
                 "type": TYPE_BOOL,

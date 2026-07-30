@@ -6,11 +6,71 @@
 // Récupération des paramètres de l'appel
 let aiParams = {};
 
+// Ports les plus courants pour un serveur d'IA local, testés dans cet ordre lorsque
+// l'option IAassistantPort est laissée sur "auto" : 1234 (LM Studio, le plus simple à installer),
+// 11434 (Ollama).
+const COMMON_LOCAL_AI_PORTS = [1234, 11434];
+
+// Délai (ms) au-delà duquel une tentative de connexion à un port local est considérée comme un
+// échec : un serveur qui écoute répond quasi instantanément, inutile d'attendre le timeout TCP
+// par défaut du navigateur (plusieurs secondes) lorsqu'aucun serveur n'écoute sur ce port.
+const LOCAL_AI_PROBE_TIMEOUT_MS = 800;
+
+/**
+ * Interroge `/v1/models` sur un port donné et renvoie la liste des identifiants de modèles
+ * disponibles, ou null si le serveur ne répond pas correctement (ou pas assez vite) sur ce port.
+ * @param {number|string} port
+ * @param {string} [apiKey]
+ * @returns {Promise<string[]|null>}
+ */
+async function fetchModelsListOnPort(port, apiKey) {
+    try {
+        const response = await fetch(`http://localhost:${port}/v1/models`, {
+            method: 'GET',
+            headers: {
+                ...(apiKey && { 'Authorization': `Bearer ${apiKey}` }),
+            },
+            signal: AbortSignal.timeout(LOCAL_AI_PROBE_TIMEOUT_MS)
+        });
+        if (!response.ok) {
+            console.warn(`[openAiClient] Port ${port} : réponse HTTP ${response.status} (${response.statusText}) sur /v1/models.`);
+            return null;
+        }
+        const data = await response.json();
+        const models = Array.isArray(data?.data) ? data.data.map(m => m.id).filter(Boolean) : [];
+        return models;
+    } catch (error) {
+        console.warn(`[openAiClient] Port ${port} : échec de la requête /v1/models —`, error.name === 'TimeoutError' ? `délai de ${LOCAL_AI_PROBE_TIMEOUT_MS}ms dépassé` : (error.message || error));
+        return null;
+    }
+}
+
+/**
+ * Résout le port à utiliser lorsque l'option IAassistantPort est sur "auto" : teste les ports
+ * les plus courants (cf. COMMON_LOCAL_AI_PORTS) et retient le premier qui répond. Le port trouvé
+ * est enregistré dans les options pour éviter de refaire ce test à chaque démarrage.
+ * @param {string} apiKey
+ * @returns {Promise<{port: number|string, models: string[]|null}>} Le port résolu (ou "auto" si aucun serveur trouvé) et la liste des modèles éventuellement récupérée au passage.
+ */
+async function resolveAutoPort(apiKey) {
+    const testedPorts = [];
+    for (const candidatePort of COMMON_LOCAL_AI_PORTS) {
+        testedPorts.push(candidatePort);
+        const models = await fetchModelsListOnPort(candidatePort, apiKey);
+        if (models !== null) {
+            console.log(`[openAiClient] Port "auto" résolu : serveur IA local détecté sur le port ${candidatePort}.`);
+            chrome.storage.local.set({ IAassistantPort: candidatePort });
+            return { port: candidatePort, models, testedPorts };
+        }
+    }
+    console.warn("[openAiClient] Port \"auto\" : aucun serveur IA local détecté sur les ports courants", testedPorts);
+    return { port: 'auto', models: null, testedPorts };
+}
+
 // Initialisation asynchrone des paramètres. On garde la promesse pour pouvoir
 // l'attendre depuis openAiClient et éviter toute race condition au premier appel.
 const aiParamsReady = (async () => {
     aiParams.port = await getOptionPromise('IAassistantPort')
-    aiParams.apiUrl = `http://localhost:${aiParams.port}`
     aiParams.apiKey = await getOptionPromise('IAassistantApiKey') // Normalement non utilisé, mais bon, autant être propre.
     aiParams.defaultModel = await getOptionPromise('IAassistantModelName') // Modèle par défaut, ex: "qwen3.5:9b"
     aiParams.IAassistantModelNameSecondary = await getOptionPromise('IAassistantModelNameSecondary') // Modèle secondaire, ex: "mistral-nemo:12b-instruct-2407-q5_K_M"
@@ -18,6 +78,45 @@ const aiParamsReady = (async () => {
     aiParams.MAX_TOOL_CALL_DEPTH =  5 // Nombre maximum d'allers-retours de function calling avant d'abandonner (évite les boucles infinies)
     aiParams.basicSystemPrompt = await getOptionPromise('IAassistantMainSystemPrompt') // Prompt de base pour le modèle
     aiParams.contextTokenLimit = await getOptionPromise('IAassistantContextLimit')
+
+    // Liste des modèles disponibles éventuellement récupérée au passage (résolution du port et/ou des modèles "auto")
+    let availableModels = null;
+
+    // Ports testés lors de la résolution automatique du port (utile pour informer l'utilisateur dans le chat si aucun serveur n'a été trouvé)
+    aiParams.autoPortTestedPorts = null;
+
+    // Résolution du port si laissé sur "auto" : teste les ports les plus courants et retient le premier qui répond
+    if (!aiParams.port || aiParams.port === 'auto') {
+        const resolved = await resolveAutoPort(aiParams.apiKey);
+        aiParams.port = resolved.port;
+        availableModels = resolved.models;
+        aiParams.autoPortTestedPorts = resolved.testedPorts;
+    }
+
+    aiParams.apiUrl = `http://localhost:${aiParams.port}`;
+
+    // Résolution du/des modèle(s) si laissé(s) sur "auto" : on interroge le serveur (si pas déjà fait
+    // lors de la résolution du port) pour connaitre le(s) modèle(s) chargé(s) et les enregistrer.
+    if (aiParams.defaultModel === 'auto' || aiParams.IAassistantModelNameSecondary === 'auto') {
+        if (availableModels === null) {
+            availableModels = await fetchModelsListOnPort(aiParams.port, aiParams.apiKey);
+        }
+        if (availableModels && availableModels.length > 0) {
+            if (aiParams.defaultModel === 'auto') {
+                aiParams.defaultModel = availableModels[0];
+                chrome.storage.local.set({ IAassistantModelName: availableModels[0] });
+                console.log(`[openAiClient] Modèle "auto" résolu : ${availableModels[0]} enregistré comme modèle principal.`);
+            }
+            if (aiParams.IAassistantModelNameSecondary === 'auto' && availableModels.length > 1) {
+                aiParams.IAassistantModelNameSecondary = availableModels[1];
+                chrome.storage.local.set({ IAassistantModelNameSecondary: availableModels[1] });
+                console.log(`[openAiClient] Modèle "auto" résolu : ${availableModels[1]} enregistré comme modèle secondaire.`);
+            }
+        } else {
+            console.warn("[openAiClient] Impossible de résoudre le(s) modèle(s) \"auto\" : aucun modèle renvoyé par le serveur.");
+        }
+    }
+
     console.log("[openAiClient] Paramètres récupérés :", aiParams);
 })();
 
@@ -33,7 +132,8 @@ async function testAiApiConnection() {
             method: 'GET',
             headers: {
                 ...(aiParams.apiKey && { 'Authorization': `Bearer ${aiParams.apiKey}` }),
-            }
+            },
+            signal: AbortSignal.timeout(LOCAL_AI_PROBE_TIMEOUT_MS)
         });
         return response.ok;
     } catch (error) {

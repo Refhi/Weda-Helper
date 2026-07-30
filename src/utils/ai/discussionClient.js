@@ -593,10 +593,16 @@ async function addAIChatClient() {
         const isAvailable = await testAiApiConnection();
         if (isAvailable) return;
 
+        // Si le port était sur "auto", précise les ports testés (utile pour comprendre pourquoi
+        // aucun serveur n'a été détecté : ports courants LM Studio/Ollama non concordants, etc.)
+        const portInfo = aiParams.autoPortTestedPorts?.length
+            ? `les ports testés automatiquement (${aiParams.autoPortTestedPorts.join(', ')})`
+            : `le port ${aiParams.port}`;
+
         const warningBubble = appendMessage('bot', '');
         warningBubble.classList.remove('bot');
         warningBubble.classList.add('tool-call', 'error');
-        warningBubble.innerHTML = `⚠️ Aucune IA locale détectée sur le port ${aiParams.port}. Consultez le <a href="https://github.com/Refhi/Weda-Helper/wiki/Installation-d'une-IA-sur-votre-poste,-pour-que-Weda%E2%80%90Helper-s'en-saisisse" target="_blank" rel="noopener noreferrer">wiki d'installation d'une IA locale</a> pour configurer l'assistant. Cliquez sur le ? bleu pour le désactiver.`;
+        warningBubble.innerHTML = `⚠️ Aucune IA locale détectée sur ${portInfo}. Consultez le <a href="https://github.com/Refhi/Weda-Helper/wiki/Installation-d'une-IA-sur-votre-poste,-pour-que-Weda%E2%80%90Helper-s'en-saisisse" target="_blank" rel="noopener noreferrer">wiki d'installation d'une IA locale</a> pour configurer l'assistant. Cliquez sur le ? bleu pour le désactiver.`;
     }
     checkAiApiAvailability();
 
