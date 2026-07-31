@@ -308,7 +308,6 @@ addTweak('/FolderTools/PostItReaderInForm.aspx', '*sendPostItContent', async fun
         // le lien est au format https://secure.weda.fr/FolderMedical/PatientViewForm.aspx?PatDk=65407357|4152|630|2&crypt=15-A0-4F-82-80-4A-EB-03-E3-E4-0D-9C-F6-2F-BD-77-52-7B-3F-2D-93-A2-D0-E8-E3-A5-AF-C7-47-EF-12-B4
         const linkToPatient = document.querySelector(linkToPatientSelector);
         const questionContentIframe = document.querySelector('#CE_ContentPlaceHolder1_TextBoxPostItMessage_ID_Frame');
-        const answerContent = document.querySelector('#ContentPlaceHolder1_TextBoxPostItReadComment');
         const postItContent = questionContentIframe?.contentDocument?.querySelector('body')?.innerText?.trim();
         if (!postItContent) {
             console.warn('[sendPostItContent] Contenu du post-it vide, insertion annulée.');
@@ -325,8 +324,24 @@ addTweak('/FolderTools/PostItReaderInForm.aspx', '*sendPostItContent', async fun
         const expediteurNom = document.querySelector('#ContentPlaceHolder1_LabelUserSurname')?.textContent?.trim() || '';
         const expediteur = [expediteurTitre, expediteurPrenom, expediteurNom].filter(Boolean).join(' ') || null;
 
-        // Récipiendaire : le médecin actuellement connecté, qui consulte ce post-it
-        const recipiendaire = getConnectedDoctorName();
+        // Destinataires et leurs éventuelles réponses, listés dans la grille "PostItReadsGridOther"
+        const destinataireRows = document.querySelectorAll('#ContentPlaceHolder1_PostItReadsGridOther > tbody > tr');
+        const destinataires = [];
+        const reponses = [];
+        destinataireRows.forEach(row => {
+            const nomEl = row.querySelector('td.grid-item table tr:first-child b');
+            const nom = nomEl?.textContent?.replace(/\s+/g, ' ').trim();
+            if (!nom) {
+                return;
+            }
+            destinataires.push(nom);
+            const reponseEl = row.querySelector('td[title="Réponse du destinataire"]');
+            const reponseTexte = reponseEl?.textContent?.replace(/\s+/g, ' ').trim();
+            if (reponseTexte) {
+                reponses.push(`${nom} : ${reponseTexte}`);
+            }
+        });
+        const recipiendaire = destinataires.length ? destinataires.join(', ') : getConnectedDoctorName();
 
         // Date du post-it, affichée dans son en-tête (ex: "Post-it du 22/07/2026 14:32")
         const postItDate = document.querySelector('#ContentPlaceHolder1_LabelPostItDate')?.textContent?.trim();
@@ -345,7 +360,7 @@ addTweak('/FolderTools/PostItReaderInForm.aspx', '*sendPostItContent', async fun
             recipiendaire ? `À : ${recipiendaire}` : null,
         ].filter(Boolean).join('\n');
 
-        const content = `${enTete}\n\n${postItContent}\n\n${answerContent ? `Réponse : ${answerContent.value.trim()}` : ''}`;
+        const content = `${enTete}\n\n${postItContent}${reponses.length ? `\n\nRéponse(s) :\n${reponses.join('\n')}` : ''}`;
 
 
         const button = document.getElementById(actionButtonId);
