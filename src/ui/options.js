@@ -143,8 +143,8 @@ function createInput(option) { // gestion des différents types d'input
   let inputType = 'input';
   if (['html', 'radio'].includes(option.type)) {
     inputType = 'div';
-  } else if (['json', 'true_json'].includes(option.type)) {
-    inputType = 'textarea'; // Utiliser un textarea pour les options de type json
+  } else if (['json', 'true_json', 'largetext'].includes(option.type)) {
+    inputType = 'textarea'; // Utiliser un textarea pour les options de type json / largetext
   }
   const input = document.createElement(inputType);
   input.id = option.name;
@@ -211,6 +211,16 @@ function createInput(option) { // gestion des différents types d'input
         input.size = 20;
         input.style.width = 'auto';
         input.value = optionValue;
+        break;
+      case 'largetext':
+        input.classList.add('large-text-input');
+        input.value = optionValue;
+        input.style.width = '100%';
+        input.style.minHeight = '150px';
+        input.style.resize = 'vertical';
+        input.style.fontFamily = 'inherit';
+        input.style.fontSize = '14px';
+        input.style.boxSizing = 'border-box';
         break;
       case 'radio':
         input.classList.add('radio-group');
@@ -413,7 +423,7 @@ function createLabel(option) {
   }
 
   // Ajouter un bouton "Valeur par défaut" pour certains types d'options
-  if (['text', 'json', 'smalltext', 'true_json'].includes(option.type)) {
+  if (['text', 'json', 'smalltext', 'true_json', 'largetext'].includes(option.type)) {
     const defaultBtn = document.createElement('button');
     defaultBtn.textContent = '↻';
     defaultBtn.title = 'Restaurer la valeur par défaut';
@@ -745,6 +755,8 @@ function resetOptionToDefault(optionName, defaultValue, askConfirmation = true) 
   if (inputElement.classList.contains('json-input')) {
     // Pour les options JSON, utiliser displayCategories pour formater
     inputElement.value = displayCategories(defaultValue);
+  } else if (inputElement.classList.contains('large-text-input')) {
+    inputElement.value = defaultValue;
   } else if (inputElement.classList.contains('true-json-input')) {
     // Pour les options true_json, formater joliment le JSON
     inputElement.value = formatJsonPretty(defaultValue);

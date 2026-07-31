@@ -6,18 +6,116 @@
 // Récupération des paramètres de l'appel
 let aiParams = {};
 
+// Ports les plus courants pour un serveur d'IA local, testés dans cet ordre lorsque
+// l'option IAassistantPort est laissée sur "auto" : 1234 (LM Studio, le plus simple à installer),
+// 11434 (Ollama).
+const COMMON_LOCAL_AI_PORTS = [1234, 11434];
+
+// Délai (ms) au-delà duquel une tentative de connexion à un port local est considérée comme un
+// échec : un serveur qui écoute répond quasi instantanément, inutile d'attendre le timeout TCP
+// par défaut du navigateur (plusieurs secondes) lorsqu'aucun serveur n'écoute sur ce port.
+const LOCAL_AI_PROBE_TIMEOUT_MS = 800;
+
+/**
+ * Interroge `/v1/models` sur un port donné et renvoie la liste des identifiants de modèles
+ * disponibles, ou null si le serveur ne répond pas correctement (ou pas assez vite) sur ce port.
+ * @param {number|string} port
+ * @param {string} [apiKey]
+ * @returns {Promise<string[]|null>}
+ */
+async function fetchModelsListOnPort(port, apiKey) {
+    try {
+        const response = await fetch(`http://localhost:${port}/v1/models`, {
+            method: 'GET',
+            headers: {
+                ...(apiKey && { 'Authorization': `Bearer ${apiKey}` }),
+            },
+            signal: AbortSignal.timeout(LOCAL_AI_PROBE_TIMEOUT_MS)
+        });
+        if (!response.ok) {
+            console.warn(`[openAiClient] Port ${port} : réponse HTTP ${response.status} (${response.statusText}) sur /v1/models.`);
+            return null;
+        }
+        const data = await response.json();
+        const models = Array.isArray(data?.data) ? data.data.map(m => m.id).filter(Boolean) : [];
+        return models;
+    } catch (error) {
+        console.warn(`[openAiClient] Port ${port} : échec de la requête /v1/models —`, error.name === 'TimeoutError' ? `délai de ${LOCAL_AI_PROBE_TIMEOUT_MS}ms dépassé` : (error.message || error));
+        return null;
+    }
+}
+
+/**
+ * Teste une liste de ports en parallèle et agrège les modèles trouvés sur chacun des ports ayant
+ * répondu. Ce test est refait à chaque démarrage : rien n'est enregistré dans les options.
+ * @param {Array<number|string>} ports - Ports à tester (un seul port si l'option IAassistantPort n'est pas "auto", sinon COMMON_LOCAL_AI_PORTS).
+ * @param {string} apiKey
+ * @returns {Promise<{activePorts: Array<number|string>, availableModels: Array<{model: string, port: number|string}>, testedPorts: Array<number|string>}>}
+ */
+async function probePortsForModels(ports, apiKey) {
+    const results = await Promise.all(ports.map(async (port) => ({ port, models: await fetchModelsListOnPort(port, apiKey) })));
+    const activePorts = [];
+    const availableModels = [];
+    for (const { port, models } of results) {
+        if (models !== null) {
+            activePorts.push(port);
+            for (const model of models) availableModels.push({ model, port });
+            console.log(`[openAiClient] Serveur IA local détecté sur le port ${port} (${models.length} modèle(s) : ${models.join(', ') || 'aucun'}).`);
+        }
+    }
+    if (activePorts.length === 0) {
+        console.warn("[openAiClient] Aucun serveur IA local détecté sur les ports testés", ports);
+    }
+    return { activePorts, availableModels, testedPorts: ports };
+}
+
+/**
+ * Retrouve le port sur lequel un modèle donné est disponible (cf. aiParams.availableModels). Si le
+ * modèle n'est pas trouvé (ex: valeur non résolue), on retombe sur le premier port actif connu, ou
+ * à défaut sur le port configuré.
+ * @param {string} modelName
+ * @returns {number|string}
+ */
+function getPortForModel(modelName) {
+    const entry = aiParams.availableModels?.find(m => m.model === modelName);
+    if (entry) return entry.port;
+    return aiParams.activePorts?.[0] ?? aiParams.port;
+}
+
 // Initialisation asynchrone des paramètres. On garde la promesse pour pouvoir
 // l'attendre depuis openAiClient et éviter toute race condition au premier appel.
 const aiParamsReady = (async () => {
-    aiParams.port = await getOptionPromise('IAassistantPort')
-    aiParams.apiUrl = `http://localhost:${aiParams.port}`
+    aiParams.port = await getOptionPromise('IAassistantPort') // "auto" ou numéro de port spécifique choisi par l'utilisateur
     aiParams.apiKey = await getOptionPromise('IAassistantApiKey') // Normalement non utilisé, mais bon, autant être propre.
-    aiParams.defaultModel = await getOptionPromise('IAassistantModelName') // Modèle par défaut, ex: "qwen3.5:9b"
-    aiParams.IAassistantModelNameSecondary = await getOptionPromise('IAassistantModelNameSecondary') // Modèle secondaire, ex: "mistral-nemo:12b-instruct-2407-q5_K_M"
+    aiParams.preferredModel = await getOptionPromise('IAassistantModelName') // Nom du modèle préféré (juste le nom, indépendant du port), ex: "qwen3.5:9b", ou "auto"
     aiParams.toolCalling = await getOptionPromise('AIAssistantToolCalling') // true/false pour activer le function calling
     aiParams.MAX_TOOL_CALL_DEPTH =  5 // Nombre maximum d'allers-retours de function calling avant d'abandonner (évite les boucles infinies)
     aiParams.basicSystemPrompt = await getOptionPromise('IAassistantMainSystemPrompt') // Prompt de base pour le modèle
     aiParams.contextTokenLimit = await getOptionPromise('IAassistantContextLimit')
+
+    // Ports à tester : si un port spécifique est configuré, on ne teste que celui-ci ; sinon ("auto"),
+    // on teste systématiquement tous les ports courants à chaque démarrage (pas de mise en cache du port trouvé).
+    const portsToTest = (aiParams.port && aiParams.port !== 'auto') ? [aiParams.port] : COMMON_LOCAL_AI_PORTS;
+    const { activePorts, availableModels, testedPorts } = await probePortsForModels(portsToTest, aiParams.apiKey);
+
+    aiParams.activePorts = activePorts; // Ports ayant effectivement répondu
+    aiParams.availableModels = availableModels; // Liste [{model, port}] de tous les modèles disponibles, tous ports actifs confondus
+    aiParams.autoPortTestedPorts = testedPorts; // Ports testés (utile pour informer l'utilisateur dans le chat si aucun serveur n'a été trouvé)
+
+    // Résolution du modèle par défaut : le modèle préféré s'il est disponible parmi les modèles détectés,
+    // sinon le premier modèle disponible (peu importe son port).
+    const modelNames = availableModels.map(m => m.model);
+    if (aiParams.preferredModel && aiParams.preferredModel !== 'auto' && modelNames.includes(aiParams.preferredModel)) {
+        aiParams.defaultModel = aiParams.preferredModel;
+    } else if (modelNames.length > 0) {
+        if (aiParams.preferredModel && aiParams.preferredModel !== 'auto') {
+            console.warn(`[openAiClient] Modèle préféré "${aiParams.preferredModel}" introuvable parmi les modèles disponibles, sélection du premier modèle disponible : ${modelNames[0]}.`);
+        }
+        aiParams.defaultModel = modelNames[0];
+    } else {
+        aiParams.defaultModel = aiParams.preferredModel; // Aucun serveur/modèle détecté : on garde la valeur configurée telle quelle
+    }
+
     console.log("[openAiClient] Paramètres récupérés :", aiParams);
 })();
 
@@ -26,14 +124,16 @@ const aiParamsReady = (async () => {
  * aucun serveur n'est détecté sur le port configuré, ex: LM Studio/Ollama non démarré).
  * @returns {Promise<boolean>} true si l'API répond, false sinon.
  */
-async function testAiApiConnection() {
+async function testAiApiConnection(modelName = aiParams.defaultModel) {
     await aiParamsReady;
+    const port = getPortForModel(modelName);
     try {
-        const response = await fetch(`${aiParams.apiUrl}/v1/models`, {
+        const response = await fetch(`http://localhost:${port}/v1/models`, {
             method: 'GET',
             headers: {
                 ...(aiParams.apiKey && { 'Authorization': `Bearer ${aiParams.apiKey}` }),
-            }
+            },
+            signal: AbortSignal.timeout(LOCAL_AI_PROBE_TIMEOUT_MS)
         });
         return response.ok;
     } catch (error) {
@@ -81,9 +181,12 @@ async function openAiClient({
     // --- 8. Interne : suivi de la profondeur de récursion (ne pas fournir manuellement) ---
     _toolCallDepth = 0,
 }) {
-    // S'assurer que les paramètres (apiUrl, defaultModel, etc.) sont chargés avant le premier appel
+    // S'assurer que les paramètres (defaultModel, availableModels, etc.) sont chargés avant le premier appel
     await aiParamsReady;
     if (model === undefined) model = aiParams.defaultModel;
+
+    // Le port à utiliser dépend du modèle sélectionné (plusieurs ports peuvent être actifs simultanément)
+    const apiUrl = `http://localhost:${getPortForModel(model)}`;
 
     // Permet de faire un appel simple sans avoir à construire un tableau de messages
     if (typeof messages === 'string') {
@@ -142,7 +245,7 @@ async function openAiClient({
     console.log("[openAiClient] Requête construite :", requestBody);
 
     try { // Appel réseau vers l'API OpenAI/Ollama
-        const data = await fetchChatCompletion(requestBody);
+        const data = await fetchChatCompletion(requestBody, apiUrl);
 
         let responseMessage;
 
@@ -207,7 +310,7 @@ async function openAiClient({
     } catch (error) {
         console.error("[openAiClient] Erreur lors de l'appel OpenAI :", error.message || error);
         console.error("[openAiClient] Stack :", error.stack);
-        console.error("[openAiClient] Vérifiez que le serveur est accessible sur :", aiParams.apiUrl);
+        console.error("[openAiClient] Vérifiez que le serveur est accessible sur :", apiUrl);
         throw error;
     }
 }
@@ -255,6 +358,7 @@ async function consumeStream(stream, onChunk) {
     let contentAcc = '';     // Accumulation du contenu complet de la réponse
     let reasoningAcc = '';   // Accumulation du "raisonnement" complet (reasoning_content / reasoning)
     let finishReason = null; // raison d'arrêt renvoyée par le serveur : 'stop', 'length' (tokens épuisés), 'tool_calls', 'content_filter', etc.
+    let streamError = null; // erreur explicite envoyée par le serveur en cours de flux (ex: dépassement de la taille de contexte)
     const toolCallsAcc = []; // indexé par la position (index) fournie par l'API
 
     const processLine = (line) => {
@@ -268,6 +372,16 @@ async function consumeStream(stream, onChunk) {
             json = JSON.parse(payload);
         } catch (e) {
             console.warn('[consumeStream] Impossible de parser un chunk SSE :', payload);
+            return;
+        }
+
+        // Certains serveurs (llama.cpp, LM Studio...) renvoient une erreur (ex: dépassement de la taille de
+        // contexte) sous forme d'un événement SSE dédié (`{"error": {...}}`) plutôt qu'un statut HTTP non-200,
+        // notamment lorsque l'erreur survient après le début du streaming. Sans cette détection, l'événement
+        // était silencieusement ignoré (pas de `choices`) et l'appelant ne recevait qu'un flux vide.
+        if (json?.error) {
+            streamError = json.error.message || JSON.stringify(json.error);
+            console.error('[consumeStream] Erreur renvoyée par le serveur en cours de flux :', json.error);
             return;
         }
 
@@ -320,6 +434,13 @@ async function consumeStream(stream, onChunk) {
     }
     // Traiter un éventuel reste dans le buffer
     if (buffer) processLine(buffer);
+
+    // Si le serveur a signalé une erreur explicite en cours de flux (ex: contexte dépassé), on la remonte
+    // sous forme d'exception : elle sera affichée telle quelle à l'utilisateur par l'appelant (cf. catch
+    // dans discussionClient.js), au lieu d'un message générique "aucune réponse".
+    if (streamError) {
+        throw new Error(streamError);
+    }
 
     if (finishReason === 'length') {
         console.warn('[consumeStream] Le modèle a été interrompu par la limite de tokens (max_tokens atteint) avant de terminer sa réponse.');
@@ -384,8 +505,8 @@ function buildRequestBody({
  * Effectue l'appel réseau vers l'API de chat completions et gère les erreurs HTTP.
  * Renvoie soit le ReadableStream (si `requestBody.stream` est vrai), soit le JSON parsé de la réponse.
  */
-async function fetchChatCompletion(requestBody) {
-    console.log("[openAiClient] Tentative de connexion à :", `${aiParams.apiUrl}/v1/chat/completions`);
+async function fetchChatCompletion(requestBody, apiUrl) {
+    console.log("[openAiClient] Tentative de connexion à :", `${apiUrl}/v1/chat/completions`);
 
     const fetchOptions = {
         method: 'POST',
@@ -397,7 +518,7 @@ async function fetchChatCompletion(requestBody) {
         body: JSON.stringify(requestBody)
     };
 
-    const response = await fetch(`${aiParams.apiUrl}/v1/chat/completions`, fetchOptions);
+    const response = await fetch(`${apiUrl}/v1/chat/completions`, fetchOptions);
 
     if (!response.ok) {
         let errorMessage = `Erreur API ${response.status}`;

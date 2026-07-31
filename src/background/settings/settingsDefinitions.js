@@ -36,6 +36,7 @@
 
 const TYPE_BOOL = "bool";
 const TYPE_TEXT = "text";
+const TYPE_LARGETEXT = "largetext";
 const TYPE_JSON = "json";
 const TYPE_TRUE_JSON = "true_json"; // au lieu de fournir une structure assez user-friendly, là on fait du pur JSON
 const TYPE_SMALLTEXT = "smalltext";
@@ -875,18 +876,15 @@ var advancedDefaultSettings = [
             "subOptions": [{
                 "name": "IAassistantPort",
                 "type": TYPE_SMALLTEXT,
-                "description": "Port du modèle d'IA local 1234 pour LM Studio (recommandé car + simple), 11434 pour Ollama (plus technique).",
-                "default": "1234"
+                "description": "Port du modèle d'IA local (laisser en auto sauf port inhabituel).",
+                "longDescription": "1234 pour LM Studio (recommandé car + simple), 11434 pour Ollama (plus technique). Laissé sur \"auto\", tous les ports courants sont testés à chaque démarrage ; si un port précis est indiqué, seul celui-ci est testé.",
+                "default": "auto"
             }, {
                 "name": "IAassistantModelName",
                 "type": TYPE_SMALLTEXT,
-                "description": "Nom des modèles d'IA local à utiliser.",
-                "default": "qwen3.5:9b"
-            }, {
-                "name": "IAassistantModelNameSecondary",
-                "type": TYPE_SMALLTEXT,
-                "description": "Nom du modèle d'IA local secondaire à utiliser. Le premier est toujours utilisé, sauf si vous le sélectionnez manuellement dans le Chat. Utile pour les tests.",
-                "default": "mistral-nemo:12b-instruct-2407-q5_K_M"
+                "description": "Nom du modèle d'IA local préféré.",
+                "longDescription": " La liste des modèles disponibles est téléchargée à chaque démarrage pour chaque port actif ; si le modèle préféré n'y figure pas, le premier modèle disponible est utilisé à la place. Le modèle utilisé peut aussi être changé depuis le menu déroulant du Chat.",
+                "default": "auto"
             }, {
                 "name": "AIAssistantToolCalling",
                 "type": TYPE_BOOL,
@@ -899,7 +897,7 @@ var advancedDefaultSettings = [
                 "default": null
             }, {
                 "name": "IAassistantMainSystemPrompt",
-                "type": TYPE_TEXT,
+                "type": TYPE_LARGETEXT,
                 "description": "Prompt système principal pour l'assistant IA local. Appelé systématiquement à chaque requête.",
                 "default": "Tu es un assistant médical présent au sein du logiciel médical Weda, dans le cadre de Weda-Helper. Tu dois répondre de manière concise, claire et précise aux questions posées par l'utilisateur. Tu dois facilement dire je ne sais pas si tu n'as pas la réponse. Dès qu'on te pose une question nécessitant du contexte, utilise très facilement les outils à ta disposition en y mettant les arguments qui te semblent pertinents, sans demander à l'utilisateur de le faire. Tu dois répondre en français, même si la question est posée en anglais. Tu dois répondre de manière concise, claire et précise aux questions posées par l'utilisateur. Tu dois facilement dire je ne sais pas si tu n'as pas la réponse. Dès qu'on te pose une question nécessitant du contexte, utilise très facilement les outils à ta disposition en y mettant les arguments qui te semblent pertinents, sans demander à l'utilisateur de le faire.",
             }, {
