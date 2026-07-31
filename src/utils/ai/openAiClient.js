@@ -93,6 +93,10 @@ const aiParamsReady = (async () => {
     aiParams.basicSystemPrompt = await getOptionPromise('IAassistantMainSystemPrompt') // Prompt de base pour le modèle
     aiParams.contextTokenLimit = await getOptionPromise('IAassistantContextLimit')
 
+    // Ajout de la date du jour dans le prompt système de base, pour que le modèle sache quelle est la date actuelle.
+    const currentDateTime = new Date().toISOString();
+    aiParams.basicSystemPrompt += `\n\nDate du jour : ${currentDateTime}`;
+
     // Ports à tester : si un port spécifique est configuré, on ne teste que celui-ci ; sinon ("auto"),
     // on teste systématiquement tous les ports courants à chaque démarrage (pas de mise en cache du port trouvé).
     const portsToTest = (aiParams.port && aiParams.port !== 'auto') ? [aiParams.port] : COMMON_LOCAL_AI_PORTS;
