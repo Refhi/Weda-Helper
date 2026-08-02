@@ -280,6 +280,60 @@ async function addAIChatClient() {
             border-bottom-left-radius: 5px;
             border: 1px solid #e5e5e5;
         }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered {
+            white-space: normal;
+        }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered > :first-child { margin-top: 0; }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered > :last-child { margin-bottom: 0; }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered p,
+        #wedaHelper-chat-messages .message.bot.markdown-rendered ul,
+        #wedaHelper-chat-messages .message.bot.markdown-rendered ol,
+        #wedaHelper-chat-messages .message.bot.markdown-rendered blockquote,
+        #wedaHelper-chat-messages .message.bot.markdown-rendered pre,
+        #wedaHelper-chat-messages .message.bot.markdown-rendered table {
+            margin: 0.5em 0;
+        }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered code {
+            background: #f1f3f5;
+            padding: 0.1em 0.35em;
+            border-radius: 4px;
+            font-size: 0.92em;
+        }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered pre {
+            background: #f7f7f8;
+            padding: 8px 10px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered pre code {
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
+            font-size: 0.9em;
+        }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered a {
+            color: #0d6abf;
+            text-decoration: underline;
+        }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered table {
+            display: block;
+            max-width: 100%;
+            overflow-x: auto;
+            border-collapse: collapse;
+            border: 1px solid #d9d9d9;
+            font-size: 13px;
+        }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered th,
+        #wedaHelper-chat-messages .message.bot.markdown-rendered td {
+            border: 1px solid #d9d9d9;
+            padding: 6px 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered th {
+            background: #f3f5f7;
+            font-weight: 600;
+        }
         #wedaHelper-chat-messages .message.loading { color: #888; font-style: italic; }
         #wedaHelper-chat-messages .message.reasoning {
             background: #f0f0f0;
@@ -429,6 +483,12 @@ async function addAIChatClient() {
     const resetButton = widget.querySelector('#wedaHelper-reset-chat');
     const windowResizeHandle = widget.querySelector('#wedaHelper-window-resize-handle');
     const inputResizeHandle = widget.querySelector('#wedaHelper-input-resize-handle');
+    const markdownRenderer = typeof markdownit === 'function'
+        ? markdownit({ html: false, linkify: true, breaks: true })
+        : null;
+    const domPurifyApi = (typeof DOMPurify !== 'undefined' && typeof DOMPurify.sanitize === 'function')
+        ? DOMPurify
+        : null;
 
     /**
      * Rend `targetEl` redimensionnable via une poignée en haut à gauche : contrairement à la
@@ -516,7 +576,14 @@ async function addAIChatClient() {
     chatDisplayLog.forEach(entry => {
         const msgDiv = document.createElement('div');
         msgDiv.classList.add('message', ...entry.classes);
-        msgDiv.textContent = entry.text;
+        if (entry.messageFormat === 'markdown' && typeof entry.markdownSource === 'string' && entry.markdownSource) {
+            const markdownRendered = renderMarkdownInBubble(msgDiv, entry.markdownSource);
+            if (!markdownRendered) {
+                msgDiv.textContent = entry.text;
+            }
+        } else {
+            msgDiv.textContent = entry.text;
+        }
         if (entry.title) msgDiv.title = entry.title;
         chatMessages.appendChild(msgDiv);
     });
@@ -594,6 +661,40 @@ async function addAIChatClient() {
     }
 
     /**
+     * Rend du markdown en HTML sécurisé dans une bulle bot déjà existante.
+     * Le markdown source est conservé dans des data-attributes pour la persistance/relecture.
+     * @param {HTMLElement} bubble
+     * @param {string} markdownText
+     * @returns {boolean}
+     */
+    function renderMarkdownInBubble(bubble, markdownText) {
+        if (!markdownRenderer || !domPurifyApi || typeof markdownText !== 'string') {
+            return false;
+        }
+
+        try {
+            const rawHtml = markdownRenderer.render(markdownText);
+            const sanitizedHtml = domPurifyApi.sanitize(rawHtml, { USE_PROFILES: { html: true } });
+            const tempContainer = document.createElement('div');
+            tempContainer.innerHTML = sanitizedHtml;
+
+            tempContainer.querySelectorAll('a').forEach(link => {
+                link.setAttribute('target', '_blank');
+                link.setAttribute('rel', 'noopener noreferrer');
+            });
+
+            bubble.innerHTML = tempContainer.innerHTML;
+            bubble.classList.add('markdown-rendered');
+            bubble.dataset.messageFormat = 'markdown';
+            bubble.dataset.markdownSource = markdownText;
+            return true;
+        } catch (error) {
+            console.warn('[discussionClient] Échec du rendu markdown, retour en texte brut.', error);
+            return false;
+        }
+    }
+
+    /**
      * Vérifie la disponibilité de l'API du modèle d'IA local à l'ouverture du chat. Si le
      * serveur n'est pas détecté, affiche un message d'avertissement avec un lien vers le wiki
      * expliquant comment installer une IA locale.
@@ -627,6 +728,10 @@ async function addAIChatClient() {
             text: bubble.textContent,
             title: bubble.title || ''
         };
+        if (bubble.dataset.messageFormat === 'markdown') {
+            entry.messageFormat = 'markdown';
+            entry.markdownSource = bubble.dataset.markdownSource || bubble.textContent || '';
+        }
         chatDisplayLog.push(entry);
         return entry;
     }
@@ -641,6 +746,13 @@ async function addAIChatClient() {
         entry.classes = Array.from(bubble.classList).filter(c => c !== 'message');
         entry.text = bubble.textContent;
         entry.title = bubble.title || '';
+        if (bubble.dataset.messageFormat === 'markdown') {
+            entry.messageFormat = 'markdown';
+            entry.markdownSource = bubble.dataset.markdownSource || bubble.textContent || '';
+        } else {
+            delete entry.messageFormat;
+            delete entry.markdownSource;
+        }
     }
 
     /**
@@ -794,6 +906,10 @@ async function addAIChatClient() {
                 // Réponse finale reçue : on l'affiche et on l'enregistre dans l'historique
                 loadingMsg.textContent = botResponse;
                 loadingMsg.classList.remove('loading');
+
+                // En streaming, le texte est affiché brut pour éviter les artefacts; on applique
+                // le rendu markdown sécurisé une fois la réponse complète reçue.
+                renderMarkdownInBubble(loadingMsg, botResponse);
 
                 if (reasoningMsg) {
                     recordDisplayEntry(reasoningMsg);
