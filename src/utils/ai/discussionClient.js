@@ -807,6 +807,8 @@ async function addAIChatClient() {
         const toolCallBubbles = new Map(); // id -> élément DOM du feedback d'appel de fonction
         const toolCallEntries = new Map(); // id -> entrée du journal d'affichage correspondante (pour mise à jour lors du succès/échec)
 
+        let accumulatedContent = ''; // texte markdown brut accumulé, rendu à chaque chunk
+
         try {
             const botResponse = await openAiClient({
                 messages: chatHistory,
@@ -847,10 +849,15 @@ async function addAIChatClient() {
                     if (contentDelta) {
                         if (!contentStarted) {
                             contentStarted = true;
+                            accumulatedContent = '';
                             loadingMsg.textContent = '';
                             loadingMsg.classList.remove('loading');
                         }
-                        loadingMsg.textContent += contentDelta;
+                        accumulatedContent += contentDelta;
+
+                        if (!renderMarkdownInBubble(loadingMsg, accumulatedContent)) {
+                            loadingMsg.textContent = accumulatedContent;
+                        }
                         chatMessages.scrollTop = chatMessages.scrollHeight;
                     }
                 },
