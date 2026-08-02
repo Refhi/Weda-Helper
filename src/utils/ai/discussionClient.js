@@ -489,6 +489,10 @@ async function addAIChatClient() {
     const domPurifyApi = (typeof DOMPurify !== 'undefined' && typeof DOMPurify.sanitize === 'function')
         ? DOMPurify
         : null;
+    console.info('[discussionClient] Markdown pipeline init', {
+        markdownitAvailable: !!markdownRenderer,
+        domPurifyAvailable: !!domPurifyApi
+    });
 
     /**
      * Rend `targetEl` redimensionnable via une poignée en haut à gauche : contrairement à la
@@ -669,12 +673,27 @@ async function addAIChatClient() {
      */
     function renderMarkdownInBubble(bubble, markdownText) {
         if (!markdownRenderer || !domPurifyApi || typeof markdownText !== 'string') {
+            console.warn('[discussionClient] Markdown pipeline indisponible, rendu texte brut conservé', {
+                markdownitAvailable: !!markdownRenderer,
+                domPurifyAvailable: !!domPurifyApi,
+                isStringInput: typeof markdownText === 'string'
+            });
             return false;
         }
 
         try {
             const rawHtml = markdownRenderer.render(markdownText);
+            console.info('[discussionClient] Markdown converti en HTML', {
+                markdownLength: markdownText.length,
+                htmlLength: rawHtml.length,
+                containsTable: /<table[\s>]/i.test(rawHtml)
+            });
             const sanitizedHtml = domPurifyApi.sanitize(rawHtml, { USE_PROFILES: { html: true } });
+            console.info('[discussionClient] HTML sanitise via DOMPurify', {
+                htmlBeforeSanitizeLength: rawHtml.length,
+                htmlAfterSanitizeLength: sanitizedHtml.length,
+                removedCharacters: rawHtml.length - sanitizedHtml.length
+            });
             const tempContainer = document.createElement('div');
             tempContainer.innerHTML = sanitizedHtml;
 
@@ -687,6 +706,10 @@ async function addAIChatClient() {
             bubble.classList.add('markdown-rendered');
             bubble.dataset.messageFormat = 'markdown';
             bubble.dataset.markdownSource = markdownText;
+            console.info('[discussionClient] Bulle assistant rendue en markdown sanitise', {
+                linksCount: tempContainer.querySelectorAll('a').length,
+                tablesCount: tempContainer.querySelectorAll('table').length
+            });
             return true;
         } catch (error) {
             console.warn('[discussionClient] Échec du rendu markdown, retour en texte brut.', error);
