@@ -184,6 +184,9 @@ async function openAiClient({
 
     // --- 8. Interne : suivi de la profondeur de récursion (ne pas fournir manuellement) ---
     _toolCallDepth = 0,
+
+    // --- 9. Annulation ---
+    signal = null,         // AbortSignal permettant d'interrompre la requête (et le streaming) en cours
 }) {
     // S'assurer que les paramètres (defaultModel, availableModels, etc.) sont chargés avant le premier appel
     await aiParamsReady;
@@ -249,7 +252,7 @@ async function openAiClient({
     console.log("[openAiClient] Requête construite :", requestBody);
 
     try { // Appel réseau vers l'API OpenAI/Ollama
-        const data = await fetchChatCompletion(requestBody, apiUrl);
+        const data = await fetchChatCompletion(requestBody, apiUrl, signal);
 
         let responseMessage;
 
@@ -305,7 +308,8 @@ async function openAiClient({
                 onChunk,
                 onToolCall,
                 onWarning,
-                _toolCallDepth: _toolCallDepth + 1
+                _toolCallDepth: _toolCallDepth + 1,
+                signal
             });
         }
 
@@ -509,17 +513,18 @@ function buildRequestBody({
  * Effectue l'appel réseau vers l'API de chat completions et gère les erreurs HTTP.
  * Renvoie soit le ReadableStream (si `requestBody.stream` est vrai), soit le JSON parsé de la réponse.
  */
-async function fetchChatCompletion(requestBody, apiUrl) {
+async function fetchChatCompletion(requestBody, apiUrl, signal) {
     console.log("[openAiClient] Tentative de connexion à :", `${apiUrl}/v1/chat/completions`);
 
     const fetchOptions = {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            // Ajouter l'API key seulement si elle existe (certains serveurs locaux n'en ont pas besoin)
+            // Ajouter l'API key seulement si elle existe (certains serveurs locaux n'en ont besoin)
             ...(aiParams.apiKey && { 'Authorization': `Bearer ${aiParams.apiKey}` }),
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
+        ...(signal && { signal })
     };
 
     const response = await fetch(`${apiUrl}/v1/chat/completions`, fetchOptions);

@@ -418,6 +418,19 @@ async function addAIChatClient() {
             font-weight: bold;
         }
         #wedaHelper-chat-submit:hover { background: #0d8c6d; }
+        #wedaHelper-chat-stop {
+            display: none;
+            background: #e05252;
+            color: white;
+            border: none;
+            padding: 0 15px;
+            border-radius: 20px;
+            margin-left: 10px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #wedaHelper-chat-stop:hover { background: #c23f3f; }
+        #wedaHelper-chat-stop.visible { display: block; }
     `;
     document.head.appendChild(style);
 
@@ -443,6 +456,7 @@ async function addAIChatClient() {
                     <textarea id="wedaHelper-chat-input" placeholder="Écrivez un message..." autocomplete="off" required rows="2"></textarea>
                 </div>
                 <button type="submit" id="wedaHelper-chat-submit">Envoyer</button>
+                <button type="button" id="wedaHelper-chat-stop" title="Arrêter la génération">Stop</button>
             </form>
         </div>
         <button id="wedaHelper-chat-toggle" type="button">💬</button>
@@ -477,6 +491,8 @@ async function addAIChatClient() {
     const closeChat = widget.querySelector('#wedaHelper-close-chat');
     const chatForm = widget.querySelector('#wedaHelper-chat-form');
     const chatInput = widget.querySelector('#wedaHelper-chat-input');
+    const chatSubmitButton = widget.querySelector('#wedaHelper-chat-submit');
+    const chatStopButton = widget.querySelector('#wedaHelper-chat-stop');
     const chatMessages = widget.querySelector('#wedaHelper-chat-messages');
     const infoButton = widget.querySelector('#wedaHelper-info-chat');
     const infoPopover = widget.querySelector('#wedaHelper-info-popover');
@@ -783,6 +799,12 @@ async function addAIChatClient() {
      * affiche la bulle correspondante, puis affiche la réponse de l'IA au fur et à mesure qu'elle est
      * reçue (avec éventuellement des bulles de raisonnement et d'appel de fonction).
      */
+    let currentGenerationController = null; // AbortController de la génération en cours, pour le bouton Stop
+
+    chatStopButton.addEventListener('click', () => {
+        currentGenerationController?.abort();
+    });
+
     chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -795,6 +817,10 @@ async function addAIChatClient() {
         chatInput.value = ''; // réinitialise le champ de saisie
         chatHistory.push({ role: 'user', content: userText }); // met à jour la variable d'historique
         persistChatHistory(); // Enregistre l'état dans le sessionStorage pour le patient courant
+
+        currentGenerationController = new AbortController();
+        chatSubmitButton.style.display = 'none';
+        chatStopButton.classList.add('visible');
 
         // Gestion du message d'attente
         const loadingMsg = appendMessage('bot', "L'IA réfléchit...");
@@ -817,6 +843,7 @@ async function addAIChatClient() {
                 temperature: 0.3,  // Température assez basse pour des réponses plus cohérentes
                 // useTools: true, // activé par défaut dans l'appel de fonction. Mais doit être à terme dépendant des options de l'utilisateur
                 stream: true,
+                signal: currentGenerationController.signal,
                 // Gestion des événements de streaming
                 // Ici pour gérer la limite théorique maximale de contexte
                 onWarning: ({ type, estimatedTokens, limit, ratio }) => {
@@ -965,6 +992,32 @@ async function addAIChatClient() {
             }
 
         } catch (error) {
+            if (error.name === 'AbortError') {
+                // Arrêt volontaire via le bouton Stop : on conserve le contenu partiel déjà reçu comme
+                // réponse finale de l'assistant, plutôt que d'afficher une erreur.
+                loadingMsg.classList.remove('loading');
+                if (accumulatedContent.trim()) {
+                    if (!renderMarkdownInBubble(loadingMsg, accumulatedContent)) {
+                        loadingMsg.textContent = accumulatedContent;
+                    }
+                    loadingMsg.title = 'Génération interrompue par l’utilisateur';
+                    chatHistory.push({ role: 'assistant', content: accumulatedContent });
+                } else {
+                    loadingMsg.textContent = '⏹️ Génération interrompue.';
+                    loadingMsg.classList.add('tool-call');
+                    chatHistory.pop();
+                }
+
+                if (reasoningMsg) {
+                    recordDisplayEntry(reasoningMsg);
+                    reasoningMsg = null;
+                }
+
+                recordDisplayEntry(loadingMsg);
+                persistChatHistory();
+                return;
+            }
+
             // Gestion des erreurs lors de l'appel au modèle (ex: serveur inaccessible, timeout, erreur interne du modèle...)
             loadingMsg.textContent = "❌ Erreur : " + error.message;
             loadingMsg.classList.remove('loading');
@@ -979,6 +1032,10 @@ async function addAIChatClient() {
             chatHistory.pop();
             recordDisplayEntry(loadingMsg);
             persistChatHistory();
+        } finally {
+            currentGenerationController = null;
+            chatStopButton.classList.remove('visible');
+            chatSubmitButton.style.display = '';
         }
     });
 }
