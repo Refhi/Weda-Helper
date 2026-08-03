@@ -218,7 +218,6 @@ async function addAIChatClient() {
             transform: scale(0);
             transform-origin: bottom right;
             transition: transform 0.3s cubic-bezier(0.176, 0.085, 0.432, 1.275);
-            user-select: none;
         }
         #wedaHelper-chat-window.open {
             display: flex;
@@ -843,6 +842,7 @@ async function addAIChatClient() {
         let startX = 0;
         let startY = 0;
         let startRect = null;
+        let previousBodyUserSelect = '';
 
         function onResizeMove(event) {
             if (!isResizing || !startRect) return;
@@ -891,6 +891,7 @@ async function addAIChatClient() {
             activeResizeDirection = '';
             startRect = null;
             chatWindow.classList.remove('wedaHelper-resizing');
+            document.body.style.userSelect = previousBodyUserSelect;
             document.removeEventListener('pointermove', onResizeMove);
             document.removeEventListener('pointerup', onResizeUp);
             updateChatWindowResizeCursor('');
@@ -918,6 +919,8 @@ async function addAIChatClient() {
             startY = event.clientY;
             startRect = chatWindow.getBoundingClientRect();
             chatWindow.classList.add('wedaHelper-resizing');
+            previousBodyUserSelect = document.body.style.userSelect;
+            document.body.style.userSelect = 'none';
             document.addEventListener('pointermove', onResizeMove);
             document.addEventListener('pointerup', onResizeUp);
             updateChatWindowResizeCursor(direction);
