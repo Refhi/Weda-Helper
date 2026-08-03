@@ -9,6 +9,68 @@
  * background service worker + permission "tabs") sans toucher au reste de la logique du chat.
  */
 const AI_CHAT_HISTORY_STORAGE_PREFIX = 'wedaHelperChatHistory_';
+const AI_CHAT_WIDGET_POSITION_STORAGE_KEY = 'wedaHelperChatWidgetPosition';
+const AI_CHAT_WINDOW_POSITION_STORAGE_KEY = 'wedaHelperChatWindowPosition';
+
+/**
+ * Charge la position persistée du widget de chat si disponible.
+ * @returns {{left: number, top: number}|null}
+ */
+function loadWidgetPositionFromStorage() {
+    try {
+        const raw = localStorage.getItem(AI_CHAT_WIDGET_POSITION_STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (typeof parsed?.left === 'number' && typeof parsed?.top === 'number') {
+            return parsed;
+        }
+    } catch (error) {
+        console.warn('[discussionClient] Position du widget IA illisible, position par défaut conservée', error);
+    }
+    return null;
+}
+
+/**
+ * Persiste la position du widget de chat.
+ * @param {{left: number, top: number}} position
+ */
+function saveWidgetPositionToStorage(position) {
+    try {
+        localStorage.setItem(AI_CHAT_WIDGET_POSITION_STORAGE_KEY, JSON.stringify(position));
+    } catch (error) {
+        console.warn('[discussionClient] Impossible de sauvegarder la position du widget IA', error);
+    }
+}
+
+/**
+ * Charge la position persistée de la fenêtre de chat si disponible.
+ * @returns {{left: number, top: number}|null}
+ */
+function loadChatWindowPositionFromStorage() {
+    try {
+        const raw = localStorage.getItem(AI_CHAT_WINDOW_POSITION_STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (typeof parsed?.left === 'number' && typeof parsed?.top === 'number') {
+            return parsed;
+        }
+    } catch (error) {
+        console.warn('[discussionClient] Position de la fenetre de chat illisible, position par defaut conservee', error);
+    }
+    return null;
+}
+
+/**
+ * Persiste la position de la fenêtre de chat.
+ * @param {{left: number, top: number}} position
+ */
+function saveChatWindowPositionToStorage(position) {
+    try {
+        localStorage.setItem(AI_CHAT_WINDOW_POSITION_STORAGE_KEY, JSON.stringify(position));
+    } catch (error) {
+        console.warn('[discussionClient] Impossible de sauvegarder la position de la fenetre de chat', error);
+    }
+}
 
 /**
  * Construit la clé sessionStorage pour l'historique de chat d'un patient donné.
@@ -101,15 +163,46 @@ async function addAIChatClient() {
             border: none;
             cursor: pointer;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            font-size: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: transform 0.2s;
+            position: relative;
+            touch-action: none;
         }
         #wedaHelper-chat-toggle:hover { transform: scale(1.05); }
+        #wedaHelper-chat-toggle .wedaHelper-chat-toggle-main {
+            position: absolute;
+            font-size: 28px;
+            line-height: 1;
+            transform: translate(-1px, 2px);
+        }
+        #wedaHelper-chat-toggle .wedaHelper-chat-toggle-badge {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(2px, -14px);
+            font-size: 16px;
+            line-height: 1;
+            filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25));
+        }
+        #wedaHelper-chat-toggle .wedaHelper-chat-toggle-main,
+        #wedaHelper-chat-toggle .wedaHelper-chat-toggle-badge {
+            pointer-events: none;
+        }
+        #wedaHelper-chat-toggle .wedaHelper-visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
         #wedaHelper-chat-window {
-            position: relative;
+            position: fixed;
             width: 380px;
             height: 500px;
             min-width: 260px;
@@ -117,32 +210,15 @@ async function addAIChatClient() {
             background: #ffffff;
             border-radius: 12px;
             box-shadow: 0 8px 30px rgba(0,0,0,0.15);
-            margin-bottom: 10px;
+            bottom: 90px;
+            right: 20px;
             overflow: hidden;
             display: none;
             flex-direction: column;
             transform: scale(0);
             transform-origin: bottom right;
             transition: transform 0.3s cubic-bezier(0.176, 0.085, 0.432, 1.275);
-        }
-        #wedaHelper-window-resize-handle {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 16px;
-            height: 16px;
-            cursor: nwse-resize;
-            z-index: 10001;
-        }
-        #wedaHelper-window-resize-handle::before {
-            content: '';
-            position: absolute;
-            top: 4px;
-            left: 4px;
-            width: 8px;
-            height: 8px;
-            border-top: 2px solid rgba(255,255,255,0.7);
-            border-left: 2px solid rgba(255,255,255,0.7);
+            user-select: none;
         }
         #wedaHelper-chat-window.open {
             display: flex;
@@ -156,6 +232,8 @@ async function addAIChatClient() {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            user-select: none;
+            touch-action: none;
         }
         #wedaHelper-close-chat { background: none; border: none; color: white; cursor: pointer; font-size: 20px; }
         #wedaHelper-info-chat {
@@ -280,6 +358,60 @@ async function addAIChatClient() {
             border-bottom-left-radius: 5px;
             border: 1px solid #e5e5e5;
         }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered {
+            white-space: normal;
+        }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered > :first-child { margin-top: 0; }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered > :last-child { margin-bottom: 0; }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered p,
+        #wedaHelper-chat-messages .message.bot.markdown-rendered ul,
+        #wedaHelper-chat-messages .message.bot.markdown-rendered ol,
+        #wedaHelper-chat-messages .message.bot.markdown-rendered blockquote,
+        #wedaHelper-chat-messages .message.bot.markdown-rendered pre,
+        #wedaHelper-chat-messages .message.bot.markdown-rendered table {
+            margin: 0.5em 0;
+        }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered code {
+            background: #f1f3f5;
+            padding: 0.1em 0.35em;
+            border-radius: 4px;
+            font-size: 0.92em;
+        }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered pre {
+            background: #f7f7f8;
+            padding: 8px 10px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered pre code {
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
+            font-size: 0.9em;
+        }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered a {
+            color: #0d6abf;
+            text-decoration: underline;
+        }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered table {
+            display: block;
+            max-width: 100%;
+            overflow-x: auto;
+            border-collapse: collapse;
+            border: 1px solid #d9d9d9;
+            font-size: 13px;
+        }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered th,
+        #wedaHelper-chat-messages .message.bot.markdown-rendered td {
+            border: 1px solid #d9d9d9;
+            padding: 6px 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+        #wedaHelper-chat-messages .message.bot.markdown-rendered th {
+            background: #f3f5f7;
+            font-weight: 600;
+        }
         #wedaHelper-chat-messages .message.loading { color: #888; font-style: italic; }
         #wedaHelper-chat-messages .message.reasoning {
             background: #f0f0f0;
@@ -313,10 +445,61 @@ async function addAIChatClient() {
         }
         #wedaHelper-chat-form {
             display: flex;
+            flex-direction: column;
             padding: 15px;
             background: #ffffff;
             border-top: 1px solid #e5e5e5;
         }
+        #wedaHelper-attachments-preview {
+            display: none;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        #wedaHelper-attachments-preview.visible { display: flex; }
+        .wedaHelper-attachment-chip {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: #eef6ff;
+            color: #2f6f9e;
+            border: 1px solid #cfe4f7;
+            border-radius: 12px;
+            padding: 3px 8px;
+            font-size: 12px;
+            max-width: 200px;
+        }
+        .wedaHelper-attachment-chip span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .wedaHelper-attachment-chip button {
+            background: none;
+            border: none;
+            color: #2f6f9e;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+            line-height: 1;
+            padding: 0;
+        }
+        .wedaHelper-attachment-chip button:hover { color: #b3261e; }
+        #wedaHelper-chat-input-row {
+            display: flex;
+        }
+        #wedaHelper-attach-file {
+            background: #f0f0f0;
+            color: #555;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            width: 36px;
+            min-width: 36px;
+            margin-right: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #wedaHelper-attach-file:hover { background: #e5e5e5; }
         #wedaHelper-input-wrapper {
             position: relative;
             flex-grow: 1;
@@ -364,6 +547,19 @@ async function addAIChatClient() {
             font-weight: bold;
         }
         #wedaHelper-chat-submit:hover { background: #0d8c6d; }
+        #wedaHelper-chat-stop {
+            display: none;
+            background: #e05252;
+            color: white;
+            border: none;
+            padding: 0 15px;
+            border-radius: 20px;
+            margin-left: 10px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #wedaHelper-chat-stop:hover { background: #c23f3f; }
+        #wedaHelper-chat-stop.visible { display: block; }
     `;
     document.head.appendChild(style);
 
@@ -372,7 +568,6 @@ async function addAIChatClient() {
     widget.id = 'wedaHelper-chat-widget';
     widget.innerHTML = `
         <div id="wedaHelper-chat-window">
-            <div id="wedaHelper-window-resize-handle" title="Redimensionner"></div>
             <div id="wedaHelper-chat-header">
                 <span>Assistant Local</span>
                 <div id="wedaHelper-header-actions">
@@ -384,14 +579,24 @@ async function addAIChatClient() {
             <div id="wedaHelper-info-popover"></div>
             <div id="wedaHelper-chat-messages"></div>
             <form id="wedaHelper-chat-form">
-                <div id="wedaHelper-input-wrapper">
-                    <div id="wedaHelper-input-resize-handle" title="Redimensionner"></div>
-                    <textarea id="wedaHelper-chat-input" placeholder="Écrivez un message..." autocomplete="off" required rows="2"></textarea>
+                <div id="wedaHelper-attachments-preview"></div>
+                <div id="wedaHelper-chat-input-row">
+                    <input type="file" id="wedaHelper-file-input" accept=".pdf,.txt,.md,.csv,.log,.json,image/*" multiple style="display:none;">
+                    <button type="button" id="wedaHelper-attach-file" title="Joindre un ou plusieurs fichiers (PDF, texte, image)">📎</button>
+                    <div id="wedaHelper-input-wrapper">
+                        <div id="wedaHelper-input-resize-handle" title="Redimensionner"></div>
+                        <textarea id="wedaHelper-chat-input" placeholder="Écrivez un message..." autocomplete="off" required rows="2"></textarea>
+                    </div>
+                    <button type="submit" id="wedaHelper-chat-submit">Envoyer</button>
+                    <button type="button" id="wedaHelper-chat-stop" title="Arrêter la génération">Stop</button>
                 </div>
-                <button type="submit" id="wedaHelper-chat-submit">Envoyer</button>
             </form>
         </div>
-        <button id="wedaHelper-chat-toggle" type="button">💬</button>
+        <button id="wedaHelper-chat-toggle" type="button" title="Assistant IA ✨" aria-label="Ouvrir l'assistant IA">
+            <span class="wedaHelper-chat-toggle-main" aria-hidden="true">💬</span>
+            <span class="wedaHelper-chat-toggle-badge" aria-hidden="true">✨</span>
+            <span class="wedaHelper-visually-hidden">Assistant IA</span>
+        </button>
     `;
     document.body.appendChild(widget);
 
@@ -419,41 +624,315 @@ async function addAIChatClient() {
     }
 
     const chatWindow = widget.querySelector('#wedaHelper-chat-window');
+    const chatHeader = widget.querySelector('#wedaHelper-chat-header');
     const chatToggle = widget.querySelector('#wedaHelper-chat-toggle');
     const closeChat = widget.querySelector('#wedaHelper-close-chat');
     const chatForm = widget.querySelector('#wedaHelper-chat-form');
     const chatInput = widget.querySelector('#wedaHelper-chat-input');
+    const chatSubmitButton = widget.querySelector('#wedaHelper-chat-submit');
+    const chatStopButton = widget.querySelector('#wedaHelper-chat-stop');
     const chatMessages = widget.querySelector('#wedaHelper-chat-messages');
     const infoButton = widget.querySelector('#wedaHelper-info-chat');
     const infoPopover = widget.querySelector('#wedaHelper-info-popover');
     const resetButton = widget.querySelector('#wedaHelper-reset-chat');
-    const windowResizeHandle = widget.querySelector('#wedaHelper-window-resize-handle');
     const inputResizeHandle = widget.querySelector('#wedaHelper-input-resize-handle');
+    const fileInput = widget.querySelector('#wedaHelper-file-input');
+    const attachFileButton = widget.querySelector('#wedaHelper-attach-file');
+    const attachmentsPreview = widget.querySelector('#wedaHelper-attachments-preview');
+    const markdownRenderer = typeof markdownit === 'function'
+        ? markdownit({ html: false, linkify: true, breaks: true })
+        : null;
+    const domPurifyApi = (typeof DOMPurify !== 'undefined' && typeof DOMPurify.sanitize === 'function')
+        ? DOMPurify
+        : null;
 
-    /**
-     * Rend `targetEl` redimensionnable via une poignée en haut à gauche : contrairement à la
-     * poignée native CSS (`resize`), toujours ancrée en bas à droite, celle-ci convient à des
-     * éléments dont le coin bas-droit est fixe (fenêtre de chat positionnée en bottom/right,
-     * champ de saisie collé au bas du formulaire).
-     * @param {HTMLElement} handleEl - Poignée sur laquelle démarrer le glisser-déposer.
-     * @param {HTMLElement} targetEl - Élément dont la taille est modifiée.
-     * @param {{minWidth?: number, minHeight: number, maxHeight?: number, resizeWidth?: boolean}} options
-     */
-    function makeTopLeftResizable(handleEl, targetEl, { minWidth = 0, minHeight, maxHeight = Infinity, resizeWidth = false }) {
+    function clampWidgetPosition(left, top) {
+        const maxLeft = Math.max(0, window.innerWidth - widget.offsetWidth);
+        const maxTop = Math.max(0, window.innerHeight - widget.offsetHeight);
+        return {
+            left: Math.min(Math.max(0, left), maxLeft),
+            top: Math.min(Math.max(0, top), maxTop)
+        };
+    }
+
+    function clampChatWindowPosition(left, top) {
+        const windowRect = chatWindow.getBoundingClientRect();
+        const windowWidth = windowRect.width || chatWindow.offsetWidth || 380;
+        const windowHeight = windowRect.height || chatWindow.offsetHeight || 500;
+        const maxLeft = Math.max(0, window.innerWidth - windowWidth);
+        const maxTop = Math.max(0, window.innerHeight - windowHeight);
+        return {
+            left: Math.min(Math.max(0, left), maxLeft),
+            top: Math.min(Math.max(0, top), maxTop)
+        };
+    }
+
+    function applyWidgetPosition(left, top) {
+        const clamped = clampWidgetPosition(left, top);
+        widget.style.left = `${clamped.left}px`;
+        widget.style.top = `${clamped.top}px`;
+        widget.style.right = 'auto';
+        widget.style.bottom = 'auto';
+        return clamped;
+    }
+
+    function applyChatWindowPosition(left, top, { clamp = true } = {}) {
+        const nextPosition = clamp ? clampChatWindowPosition(left, top) : { left, top };
+        chatWindow.style.left = `${nextPosition.left}px`;
+        chatWindow.style.top = `${nextPosition.top}px`;
+        chatWindow.style.right = 'auto';
+        chatWindow.style.bottom = 'auto';
+        return nextPosition;
+    }
+
+    function bindDragHandle(handleEl, {
+        getStartRect,
+        applyPosition,
+        savePosition,
+        suppressClickOnDrag = false,
+        canStartDrag = () => true
+    } = {}) {
+        if (!handleEl) return;
+
+        let isDragging = false;
+        let pointerStartX = 0;
+        let pointerStartY = 0;
+        let widgetStartLeft = 0;
+        let widgetStartTop = 0;
+        let suppressClick = false;
+
+        function onPointerMove(event) {
+            const deltaX = event.clientX - pointerStartX;
+            const deltaY = event.clientY - pointerStartY;
+
+            if (!isDragging && (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4)) {
+                isDragging = true;
+                if (suppressClickOnDrag) suppressClick = true;
+            }
+            if (!isDragging) return;
+
+            applyPosition(widgetStartLeft + deltaX, widgetStartTop + deltaY);
+        }
+
+        function onPointerUp() {
+            document.removeEventListener('pointermove', onPointerMove);
+            document.removeEventListener('pointerup', onPointerUp);
+
+            if (isDragging) {
+                const currentRect = getStartRect();
+                const applied = applyPosition(currentRect.left, currentRect.top);
+                savePosition(applied);
+            }
+            isDragging = false;
+        }
+
+        handleEl.addEventListener('pointerdown', (event) => {
+            if (event.button !== 0 || !canStartDrag(event)) return;
+            pointerStartX = event.clientX;
+            pointerStartY = event.clientY;
+            const rect = getStartRect();
+            widgetStartLeft = rect.left;
+            widgetStartTop = rect.top;
+            suppressClick = false;
+
+            document.addEventListener('pointermove', onPointerMove);
+            document.addEventListener('pointerup', onPointerUp);
+        });
+
+        if (suppressClickOnDrag) {
+            handleEl.addEventListener('click', (event) => {
+                if (!suppressClick) return;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                suppressClick = false;
+            }, true);
+        }
+    }
+
+    function initializeDraggableChatWidget() {
+        const savedPosition = loadWidgetPositionFromStorage();
+        if (savedPosition) {
+            const applied = applyWidgetPosition(savedPosition.left, savedPosition.top);
+            saveWidgetPositionToStorage(applied);
+        }
+
+        bindDragHandle(chatToggle, {
+            getStartRect: () => widget.getBoundingClientRect(),
+            applyPosition: (left, top) => applyWidgetPosition(left, top),
+            savePosition: (position) => saveWidgetPositionToStorage(position),
+            suppressClickOnDrag: true
+        });
+
+        window.addEventListener('resize', () => {
+            if (widget.style.left && widget.style.top) {
+                const currentLeft = parseFloat(widget.style.left) || 0;
+                const currentTop = parseFloat(widget.style.top) || 0;
+                const clamped = applyWidgetPosition(currentLeft, currentTop);
+                saveWidgetPositionToStorage(clamped);
+            }
+        });
+    }
+
+    function initializeDraggableChatWindow() {
+        const savedPosition = loadChatWindowPositionFromStorage();
+        if (savedPosition) {
+            applyChatWindowPosition(savedPosition.left, savedPosition.top, { clamp: false });
+        }
+
+        bindDragHandle(chatHeader, {
+            getStartRect: () => chatWindow.getBoundingClientRect(),
+            applyPosition: (left, top) => applyChatWindowPosition(left, top),
+            savePosition: (position) => saveChatWindowPositionToStorage(position),
+            canStartDrag: (event) => !event.target.closest('button') && !getChatWindowResizeDirection(event)
+        });
+
+        window.addEventListener('resize', () => {
+            if (chatWindow.style.left && chatWindow.style.top) {
+                const currentLeft = parseFloat(chatWindow.style.left) || 0;
+                const currentTop = parseFloat(chatWindow.style.top) || 0;
+                const clamped = applyChatWindowPosition(currentLeft, currentTop);
+                saveChatWindowPositionToStorage(clamped);
+            }
+        });
+    }
+
+    initializeDraggableChatWidget();
+    initializeDraggableChatWindow();
+    console.info('[discussionClient] Markdown pipeline init', {
+        markdownitAvailable: !!markdownRenderer,
+        domPurifyAvailable: !!domPurifyApi
+    });
+
+    function getChatWindowResizeDirection(event, threshold = 8) {
+        const rect = chatWindow.getBoundingClientRect();
+        const nearLeft = event.clientX <= rect.left + threshold;
+        const nearRight = event.clientX >= rect.right - threshold;
+        const nearTop = event.clientY <= rect.top + threshold;
+        const nearBottom = event.clientY >= rect.bottom - threshold;
+
+        if (nearTop && nearLeft) return 'nw';
+        if (nearTop && nearRight) return 'ne';
+        if (nearBottom && nearLeft) return 'sw';
+        if (nearBottom && nearRight) return 'se';
+        if (nearLeft) return 'w';
+        if (nearRight) return 'e';
+        if (nearTop) return 'n';
+        if (nearBottom) return 's';
+        return '';
+    }
+
+    function updateChatWindowResizeCursor(direction) {
+        const cursorMap = {
+            n: 'ns-resize',
+            s: 'ns-resize',
+            e: 'ew-resize',
+            w: 'ew-resize',
+            ne: 'nesw-resize',
+            sw: 'nesw-resize',
+            nw: 'nwse-resize',
+            se: 'nwse-resize'
+        };
+        chatWindow.style.cursor = cursorMap[direction] || '';
+    }
+
+    function makeChatWindowResizableByEdges() {
+        const minWidth = 260;
+        const minHeight = 200;
+        let activeResizeDirection = '';
+        let isResizing = false;
+        let startX = 0;
+        let startY = 0;
+        let startRect = null;
+
+        function onResizeMove(event) {
+            if (!isResizing || !startRect) return;
+            const deltaX = event.clientX - startX;
+            const deltaY = event.clientY - startY;
+
+            let nextLeft = startRect.left;
+            let nextTop = startRect.top;
+            let nextWidth = startRect.width;
+            let nextHeight = startRect.height;
+
+            if (activeResizeDirection.includes('e')) {
+                nextWidth = Math.max(minWidth, startRect.width + deltaX);
+                nextWidth = Math.min(nextWidth, window.innerWidth - startRect.left);
+            }
+            if (activeResizeDirection.includes('s')) {
+                nextHeight = Math.max(minHeight, startRect.height + deltaY);
+                nextHeight = Math.min(nextHeight, window.innerHeight - startRect.top);
+            }
+            if (activeResizeDirection.includes('w')) {
+                const maxLeft = startRect.left + startRect.width - minWidth;
+                nextLeft = Math.max(0, Math.min(startRect.left + deltaX, maxLeft));
+                nextWidth = Math.max(minWidth, startRect.width - (nextLeft - startRect.left));
+            }
+            if (activeResizeDirection.includes('n')) {
+                const maxTop = startRect.top + startRect.height - minHeight;
+                nextTop = Math.max(0, Math.min(startRect.top + deltaY, maxTop));
+                nextHeight = Math.max(minHeight, startRect.height - (nextTop - startRect.top));
+            }
+
+            const clamped = clampChatWindowPosition(nextLeft, nextTop);
+            chatWindow.style.left = `${clamped.left}px`;
+            chatWindow.style.top = `${clamped.top}px`;
+            chatWindow.style.right = 'auto';
+            chatWindow.style.bottom = 'auto';
+            chatWindow.style.width = `${Math.min(nextWidth, window.innerWidth - clamped.left)}px`;
+            chatWindow.style.height = `${Math.min(nextHeight, window.innerHeight - clamped.top)}px`;
+        }
+
+        function onResizeUp() {
+            if (isResizing) {
+                const clamped = applyChatWindowPosition(chatWindow.getBoundingClientRect().left, chatWindow.getBoundingClientRect().top);
+                saveChatWindowPositionToStorage(clamped);
+            }
+            isResizing = false;
+            activeResizeDirection = '';
+            startRect = null;
+            chatWindow.classList.remove('wedaHelper-resizing');
+            document.removeEventListener('pointermove', onResizeMove);
+            document.removeEventListener('pointerup', onResizeUp);
+            updateChatWindowResizeCursor('');
+        }
+
+        chatWindow.addEventListener('pointermove', (event) => {
+            if (isResizing) return;
+            updateChatWindowResizeCursor(getChatWindowResizeDirection(event));
+        });
+
+        chatWindow.addEventListener('pointerleave', () => {
+            if (!isResizing) updateChatWindowResizeCursor('');
+        });
+
+        chatWindow.addEventListener('pointerdown', (event) => {
+            if (event.button !== 0) return;
+            const direction = getChatWindowResizeDirection(event);
+            if (!direction) return;
+
+            event.preventDefault();
+            event.stopPropagation();
+            activeResizeDirection = direction;
+            isResizing = true;
+            startX = event.clientX;
+            startY = event.clientY;
+            startRect = chatWindow.getBoundingClientRect();
+            chatWindow.classList.add('wedaHelper-resizing');
+            document.addEventListener('pointermove', onResizeMove);
+            document.addEventListener('pointerup', onResizeUp);
+            updateChatWindowResizeCursor(direction);
+        }, true);
+    }
+
+    function makeTopLeftResizable(handleEl, targetEl, { minHeight, maxHeight = Infinity }) {
         handleEl.addEventListener('mousedown', (e) => {
             e.preventDefault();
-            const startX = e.clientX;
             const startY = e.clientY;
-            const startWidth = targetEl.offsetWidth;
             const startHeight = targetEl.offsetHeight;
 
             function onMouseMove(moveEvent) {
                 const deltaY = startY - moveEvent.clientY;
                 targetEl.style.height = `${Math.min(maxHeight, Math.max(minHeight, startHeight + deltaY))}px`;
-                if (resizeWidth) {
-                    const deltaX = startX - moveEvent.clientX;
-                    targetEl.style.width = `${Math.max(minWidth, startWidth + deltaX)}px`;
-                }
             }
             function onMouseUp() {
                 document.removeEventListener('mousemove', onMouseMove);
@@ -464,8 +943,179 @@ async function addAIChatClient() {
         });
     }
 
-    makeTopLeftResizable(windowResizeHandle, chatWindow, { minWidth: 260, minHeight: 200, resizeWidth: true });
+    makeChatWindowResizableByEdges();
     makeTopLeftResizable(inputResizeHandle, chatInput, { minHeight: 36, maxHeight: 160 });
+
+    // --- Gestion des pièces jointes (documents/images envoyés au modèle) ---
+    // Extensions/types traités comme du texte brut (extrait puis injecté dans le message,
+    // aucune conversion n'est nécessaire côté modèle).
+    const ATTACHMENT_TEXT_EXTENSIONS = ['.txt', '.md', '.csv', '.log', '.json'];
+
+    /** Pièces jointes en attente d'envoi avec le prochain message utilisateur. */
+    let pendingAttachments = [];
+
+    /** Nombre maximum de pages converties en images pour un PDF scanné (sans texte lisible), afin d'éviter d'envoyer un nombre excessif d'images au modèle. */
+    const MAX_SCANNED_PDF_PAGES_AS_IMAGES = 50;
+
+    /** Nombre minimum de caractères "normaux" (lettres/chiffres) requis pour considérer un texte extrait de PDF comme lisible. */
+    const MIN_READABLE_PDF_CHAR_COUNT = 20;
+    /** Proportion minimale de caractères "normaux" dans le texte extrait, en dessous de laquelle on considère le texte comme du charabia (police non standard/CID mal mappée, etc.). */
+    const MIN_READABLE_PDF_CHAR_RATIO = 0.5;
+
+    /**
+     * Détermine si le texte extrait d'un PDF est réellement lisible : certains PDF scannés ou avec
+     * un encodage de police non standard renvoient un texte non vide mais illisible (charabia,
+     * caractères de contrôle/privés…), qu'il vaut mieux traiter comme si aucun texte n'avait été trouvé.
+     * @param {string} text
+     * @returns {boolean}
+     */
+    function isPdfTextReadable(text) {
+        if (!text) return false;
+        const trimmed = text.trim();
+        if (!trimmed) return false;
+        // Lettres (avec accents) et chiffres : un texte "normal" en est majoritairement composé.
+        const normalChars = trimmed.match(/[a-zA-Z0-9À-ÿ]/g) || [];
+        if (normalChars.length < MIN_READABLE_PDF_CHAR_COUNT) return false;
+        return (normalChars.length / trimmed.length) >= MIN_READABLE_PDF_CHAR_RATIO;
+    }
+
+    /**
+     * Convertit les pages d'un PDF (typiquement un document scanné, sans texte extractible) en
+     * images PNG encodées en data URL, une par page (dans la limite de MAX_SCANNED_PDF_PAGES_AS_IMAGES).
+     * Réutilise pdfjsLib et renderPagesToCanvases (@see pdfParser.js).
+     * @param {string} pdfObjectUrl
+     * @returns {Promise<string[]>}
+     */
+    async function renderPdfPagesAsImageDataUrls(pdfObjectUrl) {
+        const pdf = await pdfjsLib.getDocument(pdfObjectUrl).promise;
+        const pageCount = Math.min(pdf.numPages, MAX_SCANNED_PDF_PAGES_AS_IMAGES);
+        const pages = [];
+        for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
+            pages.push(await pdf.getPage(pageNum));
+        }
+        const canvases = await renderPagesToCanvases(pages);
+        return canvases.map(canvas => canvas.toDataURL('image/png'));
+    }
+
+    /**
+     * Lit un fichier joint et renvoie la ou les pièces jointes utilisables dans le contenu du
+     * message (un fichier peut produire plusieurs pièces jointes, ex: PDF scanné → une image par page) :
+     * - image : encodée en data URL (format 'image_url' de l'API, nécessite un modèle vision côté serveur)
+     * - PDF avec texte : texte extrait via extractTextFromPDF (@see pdfParser.js)
+     * - PDF sans texte lisible (scan) : chaque page est rendue en image et envoyée telle quelle
+     * - texte brut (.txt, .md, .csv, .log, .json) : lu tel quel
+     * @param {File} file
+     * @returns {Promise<Array<{kind: 'image'|'text', name: string, dataUrl?: string, extractedText?: string}>>}
+     */
+    async function readAttachmentFile(file) {
+        const lowerName = file.name.toLowerCase();
+
+        if (file.type.startsWith('image/')) {
+            const dataUrl = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error || new Error('Lecture du fichier image échouée'));
+                reader.readAsDataURL(file);
+            });
+            return [{ kind: 'image', name: file.name, dataUrl }];
+        }
+
+        if (lowerName.endsWith('.pdf') || file.type === 'application/pdf') {
+            const objectUrl = URL.createObjectURL(file);
+            try {
+                const extractedText = await extractTextFromPDF(objectUrl);
+                if (isPdfTextReadable(extractedText)) {
+                    return [{ kind: 'text', name: file.name, extractedText }];
+                }
+                // Aucun texte lisible trouvé (PDF scanné/image, ou texte extrait illisible/charabia) : on
+                // envoie les pages telles quelles, en images.
+                console.warn(`[discussionClient] Texte extrait de "${file.name}" absent ou illisible, envoi des pages sous forme d'images.`);
+                const pageImages = await renderPdfPagesAsImageDataUrls(objectUrl);
+                return pageImages.map((dataUrl, index) => ({
+                    kind: 'image',
+                    name: pageImages.length > 1 ? `${file.name} (page ${index + 1}/${pageImages.length})` : file.name,
+                    dataUrl
+                }));
+            } finally {
+                URL.revokeObjectURL(objectUrl);
+            }
+        }
+
+        if (ATTACHMENT_TEXT_EXTENSIONS.some(ext => lowerName.endsWith(ext)) || file.type.startsWith('text/')) {
+            const extractedText = await file.text();
+            return [{ kind: 'text', name: file.name, extractedText }];
+        }
+
+        throw new Error(`Type de fichier non supporté pour "${file.name}" (formats acceptés : PDF, image, texte).`);
+    }
+
+    /** Reconstruit l'affichage des puces de pièces jointes en attente d'envoi. */
+    function renderAttachmentsPreview() {
+        attachmentsPreview.innerHTML = '';
+        pendingAttachments.forEach((att, index) => {
+            const chip = document.createElement('div');
+            chip.classList.add('wedaHelper-attachment-chip');
+            const icon = att.kind === 'image' ? '🖼️' : '📄';
+            chip.innerHTML = `<span title="${att.name}">${icon} ${att.name}</span>`;
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.textContent = '×';
+            removeButton.title = 'Retirer cette pièce jointe';
+            removeButton.addEventListener('click', () => {
+                pendingAttachments.splice(index, 1);
+                renderAttachmentsPreview();
+            });
+            chip.appendChild(removeButton);
+            attachmentsPreview.appendChild(chip);
+        });
+        attachmentsPreview.classList.toggle('visible', pendingAttachments.length > 0);
+    }
+
+    attachFileButton.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', async () => {
+        const files = Array.from(fileInput.files || []);
+        fileInput.value = ''; // permet de resélectionner le même fichier ensuite
+        for (const file of files) {
+            try {
+                const attachments = await readAttachmentFile(file);
+                pendingAttachments.push(...attachments);
+            } catch (error) {
+                console.warn('[discussionClient] Échec de lecture de la pièce jointe', error);
+                const errorBubble = appendMessage('bot', `⚠️ ${error.message}`);
+                errorBubble.classList.remove('bot');
+                errorBubble.classList.add('tool-call', 'error');
+                recordDisplayEntry(errorBubble);
+                persistChatHistory();
+            }
+        }
+        renderAttachmentsPreview();
+    });
+
+    /**
+     * Construit le contenu du message utilisateur à partir du texte saisi et des pièces jointes en
+     * attente : renvoie une simple chaîne si aucune image n'est jointe (compatibilité maximale),
+     * ou un tableau de parts au format "vision" OpenAI ({type: 'text'|'image_url'}) sinon.
+     * @param {string} userText
+     * @param {Array} attachments
+     * @returns {string|Array}
+     */
+    function buildUserMessageContent(userText, attachments) {
+        let textContent = userText;
+        for (const att of attachments) {
+            if (att.kind === 'text') {
+                textContent += `\n\n--- Fichier joint : ${att.name} ---\n${att.extractedText}\n--- Fin du fichier ${att.name} ---`;
+            }
+        }
+
+        const images = attachments.filter(att => att.kind === 'image');
+        if (images.length === 0) return textContent;
+
+        return [
+            { type: 'text', text: textContent },
+            ...images.map(att => ({ type: 'image_url', image_url: { url: att.dataUrl } }))
+        ];
+    }
 
 
     /**
@@ -505,6 +1155,8 @@ async function addAIChatClient() {
             { role: "system", content: aiParams.basicSystemPrompt }
         ];
         chatDisplayLog = [];
+        pendingAttachments = [];
+        renderAttachmentsPreview();
         clearChatHistoryStorage(chatPatientId);
         chatMessages.innerHTML = '';
         infoPopover.classList.remove('open');
@@ -516,7 +1168,14 @@ async function addAIChatClient() {
     chatDisplayLog.forEach(entry => {
         const msgDiv = document.createElement('div');
         msgDiv.classList.add('message', ...entry.classes);
-        msgDiv.textContent = entry.text;
+        if (entry.messageFormat === 'markdown' && typeof entry.markdownSource === 'string' && entry.markdownSource) {
+            const markdownRendered = renderMarkdownInBubble(msgDiv, entry.markdownSource);
+            if (!markdownRendered) {
+                msgDiv.textContent = entry.text;
+            }
+        } else {
+            msgDiv.textContent = entry.text;
+        }
         if (entry.title) msgDiv.title = entry.title;
         chatMessages.appendChild(msgDiv);
     });
@@ -594,6 +1253,59 @@ async function addAIChatClient() {
     }
 
     /**
+     * Rend du markdown en HTML sécurisé dans une bulle bot déjà existante.
+     * Le markdown source est conservé dans des data-attributes pour la persistance/relecture.
+     * @param {HTMLElement} bubble
+     * @param {string} markdownText
+     * @returns {boolean}
+     */
+    function renderMarkdownInBubble(bubble, markdownText) {
+        if (!markdownRenderer || !domPurifyApi || typeof markdownText !== 'string') {
+            console.warn('[discussionClient] Markdown pipeline indisponible, rendu texte brut conservé', {
+                markdownitAvailable: !!markdownRenderer,
+                domPurifyAvailable: !!domPurifyApi,
+                isStringInput: typeof markdownText === 'string'
+            });
+            return false;
+        }
+
+        try {
+            const rawHtml = markdownRenderer.render(markdownText);
+            console.info('[discussionClient] Markdown converti en HTML', {
+                markdownLength: markdownText.length,
+                htmlLength: rawHtml.length,
+                containsTable: /<table[\s>]/i.test(rawHtml)
+            });
+            const sanitizedHtml = domPurifyApi.sanitize(rawHtml, { USE_PROFILES: { html: true } });
+            console.info('[discussionClient] HTML sanitise via DOMPurify', {
+                htmlBeforeSanitizeLength: rawHtml.length,
+                htmlAfterSanitizeLength: sanitizedHtml.length,
+                removedCharacters: rawHtml.length - sanitizedHtml.length
+            });
+            const tempContainer = document.createElement('div');
+            tempContainer.innerHTML = sanitizedHtml;
+
+            tempContainer.querySelectorAll('a').forEach(link => {
+                link.setAttribute('target', '_blank');
+                link.setAttribute('rel', 'noopener noreferrer');
+            });
+
+            bubble.innerHTML = tempContainer.innerHTML;
+            bubble.classList.add('markdown-rendered');
+            bubble.dataset.messageFormat = 'markdown';
+            bubble.dataset.markdownSource = markdownText;
+            console.info('[discussionClient] Bulle assistant rendue en markdown sanitise', {
+                linksCount: tempContainer.querySelectorAll('a').length,
+                tablesCount: tempContainer.querySelectorAll('table').length
+            });
+            return true;
+        } catch (error) {
+            console.warn('[discussionClient] Échec du rendu markdown, retour en texte brut.', error);
+            return false;
+        }
+    }
+
+    /**
      * Vérifie la disponibilité de l'API du modèle d'IA local à l'ouverture du chat. Si le
      * serveur n'est pas détecté, affiche un message d'avertissement avec un lien vers le wiki
      * expliquant comment installer une IA locale.
@@ -627,6 +1339,10 @@ async function addAIChatClient() {
             text: bubble.textContent,
             title: bubble.title || ''
         };
+        if (bubble.dataset.messageFormat === 'markdown') {
+            entry.messageFormat = 'markdown';
+            entry.markdownSource = bubble.dataset.markdownSource || bubble.textContent || '';
+        }
         chatDisplayLog.push(entry);
         return entry;
     }
@@ -641,6 +1357,13 @@ async function addAIChatClient() {
         entry.classes = Array.from(bubble.classList).filter(c => c !== 'message');
         entry.text = bubble.textContent;
         entry.title = bubble.title || '';
+        if (bubble.dataset.messageFormat === 'markdown') {
+            entry.messageFormat = 'markdown';
+            entry.markdownSource = bubble.dataset.markdownSource || bubble.textContent || '';
+        } else {
+            delete entry.messageFormat;
+            delete entry.markdownSource;
+        }
     }
 
     /**
@@ -648,18 +1371,38 @@ async function addAIChatClient() {
      * affiche la bulle correspondante, puis affiche la réponse de l'IA au fur et à mesure qu'elle est
      * reçue (avec éventuellement des bulles de raisonnement et d'appel de fonction).
      */
+    let currentGenerationController = null; // AbortController de la génération en cours, pour le bouton Stop
+
+    chatStopButton.addEventListener('click', () => {
+        currentGenerationController?.abort();
+    });
+
     chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const userText = chatInput.value.trim();
         if (!userText) return;
 
+        // Les pièces jointes en attente (voir readAttachmentFile/buildUserMessageContent) sont
+        // consommées ici : le texte affiché à l'utilisateur reste simple, mais le contenu envoyé
+        // au modèle inclut le texte extrait des documents et/ou les images en data URL.
+        const attachmentsForThisMessage = pendingAttachments;
+        pendingAttachments = [];
+        renderAttachmentsPreview();
+
         // Ajoute le message de l'utilisateur à l'affichage et à l'historique, puis enregistre l'état.
-        appendMessage('user', userText);
+        const attachmentsLabel = attachmentsForThisMessage.length
+            ? '\n\n' + attachmentsForThisMessage.map(att => `${att.kind === 'image' ? '🖼️' : '📄'} ${att.name}`).join('\n')
+            : '';
+        appendMessage('user', userText + attachmentsLabel);
         recordDisplayEntry(chatMessages.lastElementChild);
         chatInput.value = ''; // réinitialise le champ de saisie
-        chatHistory.push({ role: 'user', content: userText }); // met à jour la variable d'historique
+        chatHistory.push({ role: 'user', content: buildUserMessageContent(userText, attachmentsForThisMessage) }); // met à jour la variable d'historique
         persistChatHistory(); // Enregistre l'état dans le sessionStorage pour le patient courant
+
+        currentGenerationController = new AbortController();
+        chatSubmitButton.style.display = 'none';
+        chatStopButton.classList.add('visible');
 
         // Gestion du message d'attente
         const loadingMsg = appendMessage('bot', "L'IA réfléchit...");
@@ -672,6 +1415,8 @@ async function addAIChatClient() {
         const toolCallBubbles = new Map(); // id -> élément DOM du feedback d'appel de fonction
         const toolCallEntries = new Map(); // id -> entrée du journal d'affichage correspondante (pour mise à jour lors du succès/échec)
 
+        let accumulatedContent = ''; // texte markdown brut accumulé, rendu à chaque chunk
+
         try {
             const botResponse = await openAiClient({
                 messages: chatHistory,
@@ -680,6 +1425,7 @@ async function addAIChatClient() {
                 temperature: 0.3,  // Température assez basse pour des réponses plus cohérentes
                 // useTools: true, // activé par défaut dans l'appel de fonction. Mais doit être à terme dépendant des options de l'utilisateur
                 stream: true,
+                signal: currentGenerationController.signal,
                 // Gestion des événements de streaming
                 // Ici pour gérer la limite théorique maximale de contexte
                 onWarning: ({ type, estimatedTokens, limit, ratio }) => {
@@ -712,10 +1458,15 @@ async function addAIChatClient() {
                     if (contentDelta) {
                         if (!contentStarted) {
                             contentStarted = true;
+                            accumulatedContent = '';
                             loadingMsg.textContent = '';
                             loadingMsg.classList.remove('loading');
                         }
-                        loadingMsg.textContent += contentDelta;
+                        accumulatedContent += contentDelta;
+
+                        if (!renderMarkdownInBubble(loadingMsg, accumulatedContent)) {
+                            loadingMsg.textContent = accumulatedContent;
+                        }
                         chatMessages.scrollTop = chatMessages.scrollHeight;
                     }
                 },
@@ -795,6 +1546,10 @@ async function addAIChatClient() {
                 loadingMsg.textContent = botResponse;
                 loadingMsg.classList.remove('loading');
 
+                // En streaming, le texte est affiché brut pour éviter les artefacts; on applique
+                // le rendu markdown sécurisé une fois la réponse complète reçue.
+                renderMarkdownInBubble(loadingMsg, botResponse);
+
                 if (reasoningMsg) {
                     recordDisplayEntry(reasoningMsg);
                     reasoningMsg = null;
@@ -819,6 +1574,32 @@ async function addAIChatClient() {
             }
 
         } catch (error) {
+            if (error.name === 'AbortError') {
+                // Arrêt volontaire via le bouton Stop : on conserve le contenu partiel déjà reçu comme
+                // réponse finale de l'assistant, plutôt que d'afficher une erreur.
+                loadingMsg.classList.remove('loading');
+                if (accumulatedContent.trim()) {
+                    if (!renderMarkdownInBubble(loadingMsg, accumulatedContent)) {
+                        loadingMsg.textContent = accumulatedContent;
+                    }
+                    loadingMsg.title = 'Génération interrompue par l’utilisateur';
+                    chatHistory.push({ role: 'assistant', content: accumulatedContent });
+                } else {
+                    loadingMsg.textContent = '⏹️ Génération interrompue.';
+                    loadingMsg.classList.add('tool-call');
+                    chatHistory.pop();
+                }
+
+                if (reasoningMsg) {
+                    recordDisplayEntry(reasoningMsg);
+                    reasoningMsg = null;
+                }
+
+                recordDisplayEntry(loadingMsg);
+                persistChatHistory();
+                return;
+            }
+
             // Gestion des erreurs lors de l'appel au modèle (ex: serveur inaccessible, timeout, erreur interne du modèle...)
             loadingMsg.textContent = "❌ Erreur : " + error.message;
             loadingMsg.classList.remove('loading');
@@ -833,6 +1614,10 @@ async function addAIChatClient() {
             chatHistory.pop();
             recordDisplayEntry(loadingMsg);
             persistChatHistory();
+        } finally {
+            currentGenerationController = null;
+            chatStopButton.classList.remove('visible');
+            chatSubmitButton.style.display = '';
         }
     });
 }

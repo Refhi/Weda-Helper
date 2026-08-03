@@ -93,6 +93,10 @@ const aiParamsReady = (async () => {
     aiParams.basicSystemPrompt = await getOptionPromise('IAassistantMainSystemPrompt') // Prompt de base pour le modèle
     aiParams.contextTokenLimit = await getOptionPromise('IAassistantContextLimit')
 
+    // Ajout de la date du jour dans le prompt système de base, pour que le modèle sache quelle est la date actuelle.
+    const currentDateTime = new Date().toISOString();
+    aiParams.basicSystemPrompt += `\n\nDate du jour : ${currentDateTime}`;
+
     // Ports à tester : si un port spécifique est configuré, on ne teste que celui-ci ; sinon ("auto"),
     // on teste systématiquement tous les ports courants à chaque démarrage (pas de mise en cache du port trouvé).
     const portsToTest = (aiParams.port && aiParams.port !== 'auto') ? [aiParams.port] : COMMON_LOCAL_AI_PORTS;
@@ -180,6 +184,9 @@ async function openAiClient({
 
     // --- 8. Interne : suivi de la profondeur de récursion (ne pas fournir manuellement) ---
     _toolCallDepth = 0,
+
+    // --- 9. Annulation ---
+    signal = null,         // AbortSignal permettant d'interrompre la requête (et le streaming) en cours
 }) {
     // S'assurer que les paramètres (defaultModel, availableModels, etc.) sont chargés avant le premier appel
     await aiParamsReady;
@@ -195,9 +202,12 @@ async function openAiClient({
 
     // Filtrer uniquement les messages réellement vides (sans contenu ET sans tool_calls),
     // pour ne jamais supprimer un message assistant qui ne contient que des tool_calls (content: null).
+    // Le contenu peut aussi être un tableau de parts (format "vision" OpenAI, ex: pièces jointes
+    // images) : { type: 'text'|'image_url', ... } — voir buildUserMessageContent dans discussionClient.js.
     const filteredMessages = messages.filter(msg =>
         msg && (
             (typeof msg.content === 'string' && msg.content.trim()) ||
+            (Array.isArray(msg.content) && msg.content.length > 0) ||
             (msg.tool_calls && msg.tool_calls.length > 0) ||
             msg.role === 'tool'
         )
@@ -245,7 +255,7 @@ async function openAiClient({
     console.log("[openAiClient] Requête construite :", requestBody);
 
     try { // Appel réseau vers l'API OpenAI/Ollama
-        const data = await fetchChatCompletion(requestBody, apiUrl);
+        const data = await fetchChatCompletion(requestBody, apiUrl, signal);
 
         let responseMessage;
 
@@ -301,7 +311,8 @@ async function openAiClient({
                 onChunk,
                 onToolCall,
                 onWarning,
-                _toolCallDepth: _toolCallDepth + 1
+                _toolCallDepth: _toolCallDepth + 1,
+                signal
             });
         }
 
@@ -329,8 +340,18 @@ async function openAiClient({
  */
 function estimateTokens(messages) {
     let charCount = 0;
+    // Estimation grossière du coût en tokens d'une image jointe (format 'image_url'), la plupart
+    // des modèles vision consommant plusieurs centaines de tokens par image selon sa résolution.
+    const ESTIMATED_TOKENS_PER_IMAGE = 500;
     for (const msg of messages) {
-        if (typeof msg?.content === 'string') charCount += msg.content.length;
+        if (typeof msg?.content === 'string') {
+            charCount += msg.content.length;
+        } else if (Array.isArray(msg?.content)) {
+            for (const part of msg.content) {
+                if (part?.type === 'text' && typeof part.text === 'string') charCount += part.text.length;
+                else if (part?.type === 'image_url') charCount += ESTIMATED_TOKENS_PER_IMAGE * 4; // *4 pour rester homogène avec la division /4 ci-dessous
+            }
+        }
         if (Array.isArray(msg?.tool_calls)) {
             for (const tc of msg.tool_calls) {
                 charCount += tc.function?.name?.length || 0;
@@ -505,17 +526,18 @@ function buildRequestBody({
  * Effectue l'appel réseau vers l'API de chat completions et gère les erreurs HTTP.
  * Renvoie soit le ReadableStream (si `requestBody.stream` est vrai), soit le JSON parsé de la réponse.
  */
-async function fetchChatCompletion(requestBody, apiUrl) {
+async function fetchChatCompletion(requestBody, apiUrl, signal) {
     console.log("[openAiClient] Tentative de connexion à :", `${apiUrl}/v1/chat/completions`);
 
     const fetchOptions = {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            // Ajouter l'API key seulement si elle existe (certains serveurs locaux n'en ont pas besoin)
+            // Ajouter l'API key seulement si elle existe (certains serveurs locaux n'en ont besoin)
             ...(aiParams.apiKey && { 'Authorization': `Bearer ${aiParams.apiKey}` }),
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
+        ...(signal && { signal })
     };
 
     const response = await fetch(`${apiUrl}/v1/chat/completions`, fetchOptions);

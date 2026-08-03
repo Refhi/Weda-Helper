@@ -28,6 +28,8 @@
         "lib/hotkeys.js",
         "lib/pdf-lib.js",
         "lib/fuse.js",
+        "lib/markdown-it.umd.min.js",
+        "lib/purify.min.js",
         "src/utils/configs.js",
         "src/utils/date-time-helpers.js",
         "src/utils/dom-oberver.js",
