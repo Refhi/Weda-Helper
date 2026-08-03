@@ -617,6 +617,28 @@ async function addAIChatClient() {
     /** Nombre maximum de pages converties en images pour un PDF scanné (sans texte lisible), afin d'éviter d'envoyer un nombre excessif d'images au modèle. */
     const MAX_SCANNED_PDF_PAGES_AS_IMAGES = 50;
 
+    /** Nombre minimum de caractères "normaux" (lettres/chiffres) requis pour considérer un texte extrait de PDF comme lisible. */
+    const MIN_READABLE_PDF_CHAR_COUNT = 20;
+    /** Proportion minimale de caractères "normaux" dans le texte extrait, en dessous de laquelle on considère le texte comme du charabia (police non standard/CID mal mappée, etc.). */
+    const MIN_READABLE_PDF_CHAR_RATIO = 0.5;
+
+    /**
+     * Détermine si le texte extrait d'un PDF est réellement lisible : certains PDF scannés ou avec
+     * un encodage de police non standard renvoient un texte non vide mais illisible (charabia,
+     * caractères de contrôle/privés…), qu'il vaut mieux traiter comme si aucun texte n'avait été trouvé.
+     * @param {string} text
+     * @returns {boolean}
+     */
+    function isPdfTextReadable(text) {
+        if (!text) return false;
+        const trimmed = text.trim();
+        if (!trimmed) return false;
+        // Lettres (avec accents) et chiffres : un texte "normal" en est majoritairement composé.
+        const normalChars = trimmed.match(/[a-zA-Z0-9À-ÿ]/g) || [];
+        if (normalChars.length < MIN_READABLE_PDF_CHAR_COUNT) return false;
+        return (normalChars.length / trimmed.length) >= MIN_READABLE_PDF_CHAR_RATIO;
+    }
+
     /**
      * Convertit les pages d'un PDF (typiquement un document scanné, sans texte extractible) en
      * images PNG encodées en data URL, une par page (dans la limite de MAX_SCANNED_PDF_PAGES_AS_IMAGES).
@@ -662,11 +684,12 @@ async function addAIChatClient() {
             const objectUrl = URL.createObjectURL(file);
             try {
                 const extractedText = await extractTextFromPDF(objectUrl);
-                if (extractedText && extractedText.trim()) {
+                if (isPdfTextReadable(extractedText)) {
                     return [{ kind: 'text', name: file.name, extractedText }];
                 }
-                // Aucun texte lisible trouvé (PDF scanné/image) : on envoie les pages telles quelles, en images.
-                console.warn(`[discussionClient] Aucun texte extractible dans "${file.name}", envoi des pages sous forme d'images.`);
+                // Aucun texte lisible trouvé (PDF scanné/image, ou texte extrait illisible/charabia) : on
+                // envoie les pages telles quelles, en images.
+                console.warn(`[discussionClient] Texte extrait de "${file.name}" absent ou illisible, envoi des pages sous forme d'images.`);
                 const pageImages = await renderPdfPagesAsImageDataUrls(objectUrl);
                 return pageImages.map((dataUrl, index) => ({
                     kind: 'image',
