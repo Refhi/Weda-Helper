@@ -367,10 +367,61 @@ async function addAIChatClient() {
         }
         #wedaHelper-chat-form {
             display: flex;
+            flex-direction: column;
             padding: 15px;
             background: #ffffff;
             border-top: 1px solid #e5e5e5;
         }
+        #wedaHelper-attachments-preview {
+            display: none;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        #wedaHelper-attachments-preview.visible { display: flex; }
+        .wedaHelper-attachment-chip {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: #eef6ff;
+            color: #2f6f9e;
+            border: 1px solid #cfe4f7;
+            border-radius: 12px;
+            padding: 3px 8px;
+            font-size: 12px;
+            max-width: 200px;
+        }
+        .wedaHelper-attachment-chip span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .wedaHelper-attachment-chip button {
+            background: none;
+            border: none;
+            color: #2f6f9e;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+            line-height: 1;
+            padding: 0;
+        }
+        .wedaHelper-attachment-chip button:hover { color: #b3261e; }
+        #wedaHelper-chat-input-row {
+            display: flex;
+        }
+        #wedaHelper-attach-file {
+            background: #f0f0f0;
+            color: #555;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            width: 36px;
+            min-width: 36px;
+            margin-right: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #wedaHelper-attach-file:hover { background: #e5e5e5; }
         #wedaHelper-input-wrapper {
             position: relative;
             flex-grow: 1;
@@ -451,12 +502,17 @@ async function addAIChatClient() {
             <div id="wedaHelper-info-popover"></div>
             <div id="wedaHelper-chat-messages"></div>
             <form id="wedaHelper-chat-form">
-                <div id="wedaHelper-input-wrapper">
-                    <div id="wedaHelper-input-resize-handle" title="Redimensionner"></div>
-                    <textarea id="wedaHelper-chat-input" placeholder="Écrivez un message..." autocomplete="off" required rows="2"></textarea>
+                <div id="wedaHelper-attachments-preview"></div>
+                <div id="wedaHelper-chat-input-row">
+                    <input type="file" id="wedaHelper-file-input" accept=".pdf,.txt,.md,.csv,.log,.json,image/*" multiple style="display:none;">
+                    <button type="button" id="wedaHelper-attach-file" title="Joindre un ou plusieurs fichiers (PDF, texte, image)">📎</button>
+                    <div id="wedaHelper-input-wrapper">
+                        <div id="wedaHelper-input-resize-handle" title="Redimensionner"></div>
+                        <textarea id="wedaHelper-chat-input" placeholder="Écrivez un message..." autocomplete="off" required rows="2"></textarea>
+                    </div>
+                    <button type="submit" id="wedaHelper-chat-submit">Envoyer</button>
+                    <button type="button" id="wedaHelper-chat-stop" title="Arrêter la génération">Stop</button>
                 </div>
-                <button type="submit" id="wedaHelper-chat-submit">Envoyer</button>
-                <button type="button" id="wedaHelper-chat-stop" title="Arrêter la génération">Stop</button>
             </form>
         </div>
         <button id="wedaHelper-chat-toggle" type="button">💬</button>
@@ -499,6 +555,9 @@ async function addAIChatClient() {
     const resetButton = widget.querySelector('#wedaHelper-reset-chat');
     const windowResizeHandle = widget.querySelector('#wedaHelper-window-resize-handle');
     const inputResizeHandle = widget.querySelector('#wedaHelper-input-resize-handle');
+    const fileInput = widget.querySelector('#wedaHelper-file-input');
+    const attachFileButton = widget.querySelector('#wedaHelper-attach-file');
+    const attachmentsPreview = widget.querySelector('#wedaHelper-attachments-preview');
     const markdownRenderer = typeof markdownit === 'function'
         ? markdownit({ html: false, linkify: true, breaks: true })
         : null;
@@ -547,6 +606,154 @@ async function addAIChatClient() {
     makeTopLeftResizable(windowResizeHandle, chatWindow, { minWidth: 260, minHeight: 200, resizeWidth: true });
     makeTopLeftResizable(inputResizeHandle, chatInput, { minHeight: 36, maxHeight: 160 });
 
+    // --- Gestion des pièces jointes (documents/images envoyés au modèle) ---
+    // Extensions/types traités comme du texte brut (extrait puis injecté dans le message,
+    // aucune conversion n'est nécessaire côté modèle).
+    const ATTACHMENT_TEXT_EXTENSIONS = ['.txt', '.md', '.csv', '.log', '.json'];
+
+    /** Pièces jointes en attente d'envoi avec le prochain message utilisateur. */
+    let pendingAttachments = [];
+
+    /** Nombre maximum de pages converties en images pour un PDF scanné (sans texte lisible), afin d'éviter d'envoyer un nombre excessif d'images au modèle. */
+    const MAX_SCANNED_PDF_PAGES_AS_IMAGES = 50;
+
+    /**
+     * Convertit les pages d'un PDF (typiquement un document scanné, sans texte extractible) en
+     * images PNG encodées en data URL, une par page (dans la limite de MAX_SCANNED_PDF_PAGES_AS_IMAGES).
+     * Réutilise pdfjsLib et renderPagesToCanvases (@see pdfParser.js).
+     * @param {string} pdfObjectUrl
+     * @returns {Promise<string[]>}
+     */
+    async function renderPdfPagesAsImageDataUrls(pdfObjectUrl) {
+        const pdf = await pdfjsLib.getDocument(pdfObjectUrl).promise;
+        const pageCount = Math.min(pdf.numPages, MAX_SCANNED_PDF_PAGES_AS_IMAGES);
+        const pages = [];
+        for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
+            pages.push(await pdf.getPage(pageNum));
+        }
+        const canvases = await renderPagesToCanvases(pages);
+        return canvases.map(canvas => canvas.toDataURL('image/png'));
+    }
+
+    /**
+     * Lit un fichier joint et renvoie la ou les pièces jointes utilisables dans le contenu du
+     * message (un fichier peut produire plusieurs pièces jointes, ex: PDF scanné → une image par page) :
+     * - image : encodée en data URL (format 'image_url' de l'API, nécessite un modèle vision côté serveur)
+     * - PDF avec texte : texte extrait via extractTextFromPDF (@see pdfParser.js)
+     * - PDF sans texte lisible (scan) : chaque page est rendue en image et envoyée telle quelle
+     * - texte brut (.txt, .md, .csv, .log, .json) : lu tel quel
+     * @param {File} file
+     * @returns {Promise<Array<{kind: 'image'|'text', name: string, dataUrl?: string, extractedText?: string}>>}
+     */
+    async function readAttachmentFile(file) {
+        const lowerName = file.name.toLowerCase();
+
+        if (file.type.startsWith('image/')) {
+            const dataUrl = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error || new Error('Lecture du fichier image échouée'));
+                reader.readAsDataURL(file);
+            });
+            return [{ kind: 'image', name: file.name, dataUrl }];
+        }
+
+        if (lowerName.endsWith('.pdf') || file.type === 'application/pdf') {
+            const objectUrl = URL.createObjectURL(file);
+            try {
+                const extractedText = await extractTextFromPDF(objectUrl);
+                if (extractedText && extractedText.trim()) {
+                    return [{ kind: 'text', name: file.name, extractedText }];
+                }
+                // Aucun texte lisible trouvé (PDF scanné/image) : on envoie les pages telles quelles, en images.
+                console.warn(`[discussionClient] Aucun texte extractible dans "${file.name}", envoi des pages sous forme d'images.`);
+                const pageImages = await renderPdfPagesAsImageDataUrls(objectUrl);
+                return pageImages.map((dataUrl, index) => ({
+                    kind: 'image',
+                    name: pageImages.length > 1 ? `${file.name} (page ${index + 1}/${pageImages.length})` : file.name,
+                    dataUrl
+                }));
+            } finally {
+                URL.revokeObjectURL(objectUrl);
+            }
+        }
+
+        if (ATTACHMENT_TEXT_EXTENSIONS.some(ext => lowerName.endsWith(ext)) || file.type.startsWith('text/')) {
+            const extractedText = await file.text();
+            return [{ kind: 'text', name: file.name, extractedText }];
+        }
+
+        throw new Error(`Type de fichier non supporté pour "${file.name}" (formats acceptés : PDF, image, texte).`);
+    }
+
+    /** Reconstruit l'affichage des puces de pièces jointes en attente d'envoi. */
+    function renderAttachmentsPreview() {
+        attachmentsPreview.innerHTML = '';
+        pendingAttachments.forEach((att, index) => {
+            const chip = document.createElement('div');
+            chip.classList.add('wedaHelper-attachment-chip');
+            const icon = att.kind === 'image' ? '🖼️' : '📄';
+            chip.innerHTML = `<span title="${att.name}">${icon} ${att.name}</span>`;
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.textContent = '×';
+            removeButton.title = 'Retirer cette pièce jointe';
+            removeButton.addEventListener('click', () => {
+                pendingAttachments.splice(index, 1);
+                renderAttachmentsPreview();
+            });
+            chip.appendChild(removeButton);
+            attachmentsPreview.appendChild(chip);
+        });
+        attachmentsPreview.classList.toggle('visible', pendingAttachments.length > 0);
+    }
+
+    attachFileButton.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', async () => {
+        const files = Array.from(fileInput.files || []);
+        fileInput.value = ''; // permet de resélectionner le même fichier ensuite
+        for (const file of files) {
+            try {
+                const attachments = await readAttachmentFile(file);
+                pendingAttachments.push(...attachments);
+            } catch (error) {
+                console.warn('[discussionClient] Échec de lecture de la pièce jointe', error);
+                const errorBubble = appendMessage('bot', `⚠️ ${error.message}`);
+                errorBubble.classList.remove('bot');
+                errorBubble.classList.add('tool-call', 'error');
+                recordDisplayEntry(errorBubble);
+                persistChatHistory();
+            }
+        }
+        renderAttachmentsPreview();
+    });
+
+    /**
+     * Construit le contenu du message utilisateur à partir du texte saisi et des pièces jointes en
+     * attente : renvoie une simple chaîne si aucune image n'est jointe (compatibilité maximale),
+     * ou un tableau de parts au format "vision" OpenAI ({type: 'text'|'image_url'}) sinon.
+     * @param {string} userText
+     * @param {Array} attachments
+     * @returns {string|Array}
+     */
+    function buildUserMessageContent(userText, attachments) {
+        let textContent = userText;
+        for (const att of attachments) {
+            if (att.kind === 'text') {
+                textContent += `\n\n--- Fichier joint : ${att.name} ---\n${att.extractedText}\n--- Fin du fichier ${att.name} ---`;
+            }
+        }
+
+        const images = attachments.filter(att => att.kind === 'image');
+        if (images.length === 0) return textContent;
+
+        return [
+            { type: 'text', text: textContent },
+            ...images.map(att => ({ type: 'image_url', image_url: { url: att.dataUrl } }))
+        ];
+    }
+
 
     /**
      * Fonction utilitaire pour construire le contenu HTML de la popover d'informations sur l'état du chat
@@ -585,6 +792,8 @@ async function addAIChatClient() {
             { role: "system", content: aiParams.basicSystemPrompt }
         ];
         chatDisplayLog = [];
+        pendingAttachments = [];
+        renderAttachmentsPreview();
         clearChatHistoryStorage(chatPatientId);
         chatMessages.innerHTML = '';
         infoPopover.classList.remove('open');
@@ -811,11 +1020,21 @@ async function addAIChatClient() {
         const userText = chatInput.value.trim();
         if (!userText) return;
 
+        // Les pièces jointes en attente (voir readAttachmentFile/buildUserMessageContent) sont
+        // consommées ici : le texte affiché à l'utilisateur reste simple, mais le contenu envoyé
+        // au modèle inclut le texte extrait des documents et/ou les images en data URL.
+        const attachmentsForThisMessage = pendingAttachments;
+        pendingAttachments = [];
+        renderAttachmentsPreview();
+
         // Ajoute le message de l'utilisateur à l'affichage et à l'historique, puis enregistre l'état.
-        appendMessage('user', userText);
+        const attachmentsLabel = attachmentsForThisMessage.length
+            ? '\n\n' + attachmentsForThisMessage.map(att => `${att.kind === 'image' ? '🖼️' : '📄'} ${att.name}`).join('\n')
+            : '';
+        appendMessage('user', userText + attachmentsLabel);
         recordDisplayEntry(chatMessages.lastElementChild);
         chatInput.value = ''; // réinitialise le champ de saisie
-        chatHistory.push({ role: 'user', content: userText }); // met à jour la variable d'historique
+        chatHistory.push({ role: 'user', content: buildUserMessageContent(userText, attachmentsForThisMessage) }); // met à jour la variable d'historique
         persistChatHistory(); // Enregistre l'état dans le sessionStorage pour le patient courant
 
         currentGenerationController = new AbortController();

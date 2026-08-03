@@ -202,9 +202,12 @@ async function openAiClient({
 
     // Filtrer uniquement les messages réellement vides (sans contenu ET sans tool_calls),
     // pour ne jamais supprimer un message assistant qui ne contient que des tool_calls (content: null).
+    // Le contenu peut aussi être un tableau de parts (format "vision" OpenAI, ex: pièces jointes
+    // images) : { type: 'text'|'image_url', ... } — voir buildUserMessageContent dans discussionClient.js.
     const filteredMessages = messages.filter(msg =>
         msg && (
             (typeof msg.content === 'string' && msg.content.trim()) ||
+            (Array.isArray(msg.content) && msg.content.length > 0) ||
             (msg.tool_calls && msg.tool_calls.length > 0) ||
             msg.role === 'tool'
         )
@@ -337,8 +340,18 @@ async function openAiClient({
  */
 function estimateTokens(messages) {
     let charCount = 0;
+    // Estimation grossière du coût en tokens d'une image jointe (format 'image_url'), la plupart
+    // des modèles vision consommant plusieurs centaines de tokens par image selon sa résolution.
+    const ESTIMATED_TOKENS_PER_IMAGE = 500;
     for (const msg of messages) {
-        if (typeof msg?.content === 'string') charCount += msg.content.length;
+        if (typeof msg?.content === 'string') {
+            charCount += msg.content.length;
+        } else if (Array.isArray(msg?.content)) {
+            for (const part of msg.content) {
+                if (part?.type === 'text' && typeof part.text === 'string') charCount += part.text.length;
+                else if (part?.type === 'image_url') charCount += ESTIMATED_TOKENS_PER_IMAGE * 4; // *4 pour rester homogène avec la division /4 ci-dessous
+            }
+        }
         if (Array.isArray(msg?.tool_calls)) {
             for (const tc of msg.tool_calls) {
                 charCount += tc.function?.name?.length || 0;
