@@ -9,6 +9,68 @@
  * background service worker + permission "tabs") sans toucher au reste de la logique du chat.
  */
 const AI_CHAT_HISTORY_STORAGE_PREFIX = 'wedaHelperChatHistory_';
+const AI_CHAT_WIDGET_POSITION_STORAGE_KEY = 'wedaHelperChatWidgetPosition';
+const AI_CHAT_WINDOW_POSITION_STORAGE_KEY = 'wedaHelperChatWindowPosition';
+
+/**
+ * Charge la position persistée du widget de chat si disponible.
+ * @returns {{left: number, top: number}|null}
+ */
+function loadWidgetPositionFromStorage() {
+    try {
+        const raw = localStorage.getItem(AI_CHAT_WIDGET_POSITION_STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (typeof parsed?.left === 'number' && typeof parsed?.top === 'number') {
+            return parsed;
+        }
+    } catch (error) {
+        console.warn('[discussionClient] Position du widget IA illisible, position par défaut conservée', error);
+    }
+    return null;
+}
+
+/**
+ * Persiste la position du widget de chat.
+ * @param {{left: number, top: number}} position
+ */
+function saveWidgetPositionToStorage(position) {
+    try {
+        localStorage.setItem(AI_CHAT_WIDGET_POSITION_STORAGE_KEY, JSON.stringify(position));
+    } catch (error) {
+        console.warn('[discussionClient] Impossible de sauvegarder la position du widget IA', error);
+    }
+}
+
+/**
+ * Charge la position persistée de la fenêtre de chat si disponible.
+ * @returns {{left: number, top: number}|null}
+ */
+function loadChatWindowPositionFromStorage() {
+    try {
+        const raw = localStorage.getItem(AI_CHAT_WINDOW_POSITION_STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (typeof parsed?.left === 'number' && typeof parsed?.top === 'number') {
+            return parsed;
+        }
+    } catch (error) {
+        console.warn('[discussionClient] Position de la fenetre de chat illisible, position par defaut conservee', error);
+    }
+    return null;
+}
+
+/**
+ * Persiste la position de la fenêtre de chat.
+ * @param {{left: number, top: number}} position
+ */
+function saveChatWindowPositionToStorage(position) {
+    try {
+        localStorage.setItem(AI_CHAT_WINDOW_POSITION_STORAGE_KEY, JSON.stringify(position));
+    } catch (error) {
+        console.warn('[discussionClient] Impossible de sauvegarder la position de la fenetre de chat', error);
+    }
+}
 
 /**
  * Construit la clé sessionStorage pour l'historique de chat d'un patient donné.
@@ -101,15 +163,46 @@ async function addAIChatClient() {
             border: none;
             cursor: pointer;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            font-size: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: transform 0.2s;
+            position: relative;
+            touch-action: none;
         }
         #wedaHelper-chat-toggle:hover { transform: scale(1.05); }
+        #wedaHelper-chat-toggle .wedaHelper-chat-toggle-main {
+            position: absolute;
+            font-size: 28px;
+            line-height: 1;
+            transform: translate(-1px, 2px);
+        }
+        #wedaHelper-chat-toggle .wedaHelper-chat-toggle-badge {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(2px, -14px);
+            font-size: 16px;
+            line-height: 1;
+            filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25));
+        }
+        #wedaHelper-chat-toggle .wedaHelper-chat-toggle-main,
+        #wedaHelper-chat-toggle .wedaHelper-chat-toggle-badge {
+            pointer-events: none;
+        }
+        #wedaHelper-chat-toggle .wedaHelper-visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
         #wedaHelper-chat-window {
-            position: relative;
+            position: fixed;
             width: 380px;
             height: 500px;
             min-width: 260px;
@@ -117,32 +210,15 @@ async function addAIChatClient() {
             background: #ffffff;
             border-radius: 12px;
             box-shadow: 0 8px 30px rgba(0,0,0,0.15);
-            margin-bottom: 10px;
+            bottom: 90px;
+            right: 20px;
             overflow: hidden;
             display: none;
             flex-direction: column;
             transform: scale(0);
             transform-origin: bottom right;
             transition: transform 0.3s cubic-bezier(0.176, 0.085, 0.432, 1.275);
-        }
-        #wedaHelper-window-resize-handle {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 16px;
-            height: 16px;
-            cursor: nwse-resize;
-            z-index: 10001;
-        }
-        #wedaHelper-window-resize-handle::before {
-            content: '';
-            position: absolute;
-            top: 4px;
-            left: 4px;
-            width: 8px;
-            height: 8px;
-            border-top: 2px solid rgba(255,255,255,0.7);
-            border-left: 2px solid rgba(255,255,255,0.7);
+            user-select: none;
         }
         #wedaHelper-chat-window.open {
             display: flex;
@@ -156,6 +232,8 @@ async function addAIChatClient() {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            user-select: none;
+            touch-action: none;
         }
         #wedaHelper-close-chat { background: none; border: none; color: white; cursor: pointer; font-size: 20px; }
         #wedaHelper-info-chat {
@@ -490,7 +568,6 @@ async function addAIChatClient() {
     widget.id = 'wedaHelper-chat-widget';
     widget.innerHTML = `
         <div id="wedaHelper-chat-window">
-            <div id="wedaHelper-window-resize-handle" title="Redimensionner"></div>
             <div id="wedaHelper-chat-header">
                 <span>Assistant Local</span>
                 <div id="wedaHelper-header-actions">
@@ -515,7 +592,11 @@ async function addAIChatClient() {
                 </div>
             </form>
         </div>
-        <button id="wedaHelper-chat-toggle" type="button">💬</button>
+        <button id="wedaHelper-chat-toggle" type="button" title="Assistant IA ✨" aria-label="Ouvrir l'assistant IA">
+            <span class="wedaHelper-chat-toggle-main" aria-hidden="true">💬</span>
+            <span class="wedaHelper-chat-toggle-badge" aria-hidden="true">✨</span>
+            <span class="wedaHelper-visually-hidden">Assistant IA</span>
+        </button>
     `;
     document.body.appendChild(widget);
 
@@ -543,6 +624,7 @@ async function addAIChatClient() {
     }
 
     const chatWindow = widget.querySelector('#wedaHelper-chat-window');
+    const chatHeader = widget.querySelector('#wedaHelper-chat-header');
     const chatToggle = widget.querySelector('#wedaHelper-chat-toggle');
     const closeChat = widget.querySelector('#wedaHelper-close-chat');
     const chatForm = widget.querySelector('#wedaHelper-chat-form');
@@ -553,7 +635,6 @@ async function addAIChatClient() {
     const infoButton = widget.querySelector('#wedaHelper-info-chat');
     const infoPopover = widget.querySelector('#wedaHelper-info-popover');
     const resetButton = widget.querySelector('#wedaHelper-reset-chat');
-    const windowResizeHandle = widget.querySelector('#wedaHelper-window-resize-handle');
     const inputResizeHandle = widget.querySelector('#wedaHelper-input-resize-handle');
     const fileInput = widget.querySelector('#wedaHelper-file-input');
     const attachFileButton = widget.querySelector('#wedaHelper-attach-file');
@@ -564,35 +645,294 @@ async function addAIChatClient() {
     const domPurifyApi = (typeof DOMPurify !== 'undefined' && typeof DOMPurify.sanitize === 'function')
         ? DOMPurify
         : null;
+
+    function clampWidgetPosition(left, top) {
+        const maxLeft = Math.max(0, window.innerWidth - widget.offsetWidth);
+        const maxTop = Math.max(0, window.innerHeight - widget.offsetHeight);
+        return {
+            left: Math.min(Math.max(0, left), maxLeft),
+            top: Math.min(Math.max(0, top), maxTop)
+        };
+    }
+
+    function clampChatWindowPosition(left, top) {
+        const windowRect = chatWindow.getBoundingClientRect();
+        const windowWidth = windowRect.width || chatWindow.offsetWidth || 380;
+        const windowHeight = windowRect.height || chatWindow.offsetHeight || 500;
+        const maxLeft = Math.max(0, window.innerWidth - windowWidth);
+        const maxTop = Math.max(0, window.innerHeight - windowHeight);
+        return {
+            left: Math.min(Math.max(0, left), maxLeft),
+            top: Math.min(Math.max(0, top), maxTop)
+        };
+    }
+
+    function applyWidgetPosition(left, top) {
+        const clamped = clampWidgetPosition(left, top);
+        widget.style.left = `${clamped.left}px`;
+        widget.style.top = `${clamped.top}px`;
+        widget.style.right = 'auto';
+        widget.style.bottom = 'auto';
+        return clamped;
+    }
+
+    function applyChatWindowPosition(left, top, { clamp = true } = {}) {
+        const nextPosition = clamp ? clampChatWindowPosition(left, top) : { left, top };
+        chatWindow.style.left = `${nextPosition.left}px`;
+        chatWindow.style.top = `${nextPosition.top}px`;
+        chatWindow.style.right = 'auto';
+        chatWindow.style.bottom = 'auto';
+        return nextPosition;
+    }
+
+    function bindDragHandle(handleEl, {
+        getStartRect,
+        applyPosition,
+        savePosition,
+        suppressClickOnDrag = false,
+        canStartDrag = () => true
+    } = {}) {
+        if (!handleEl) return;
+
+        let isDragging = false;
+        let pointerStartX = 0;
+        let pointerStartY = 0;
+        let widgetStartLeft = 0;
+        let widgetStartTop = 0;
+        let suppressClick = false;
+
+        function onPointerMove(event) {
+            const deltaX = event.clientX - pointerStartX;
+            const deltaY = event.clientY - pointerStartY;
+
+            if (!isDragging && (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4)) {
+                isDragging = true;
+                if (suppressClickOnDrag) suppressClick = true;
+            }
+            if (!isDragging) return;
+
+            applyPosition(widgetStartLeft + deltaX, widgetStartTop + deltaY);
+        }
+
+        function onPointerUp() {
+            document.removeEventListener('pointermove', onPointerMove);
+            document.removeEventListener('pointerup', onPointerUp);
+
+            if (isDragging) {
+                const currentRect = getStartRect();
+                const applied = applyPosition(currentRect.left, currentRect.top);
+                savePosition(applied);
+            }
+            isDragging = false;
+        }
+
+        handleEl.addEventListener('pointerdown', (event) => {
+            if (event.button !== 0 || !canStartDrag(event)) return;
+            pointerStartX = event.clientX;
+            pointerStartY = event.clientY;
+            const rect = getStartRect();
+            widgetStartLeft = rect.left;
+            widgetStartTop = rect.top;
+            suppressClick = false;
+
+            document.addEventListener('pointermove', onPointerMove);
+            document.addEventListener('pointerup', onPointerUp);
+        });
+
+        if (suppressClickOnDrag) {
+            handleEl.addEventListener('click', (event) => {
+                if (!suppressClick) return;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                suppressClick = false;
+            }, true);
+        }
+    }
+
+    function initializeDraggableChatWidget() {
+        const savedPosition = loadWidgetPositionFromStorage();
+        if (savedPosition) {
+            const applied = applyWidgetPosition(savedPosition.left, savedPosition.top);
+            saveWidgetPositionToStorage(applied);
+        }
+
+        bindDragHandle(chatToggle, {
+            getStartRect: () => widget.getBoundingClientRect(),
+            applyPosition: (left, top) => applyWidgetPosition(left, top),
+            savePosition: (position) => saveWidgetPositionToStorage(position),
+            suppressClickOnDrag: true
+        });
+
+        window.addEventListener('resize', () => {
+            if (widget.style.left && widget.style.top) {
+                const currentLeft = parseFloat(widget.style.left) || 0;
+                const currentTop = parseFloat(widget.style.top) || 0;
+                const clamped = applyWidgetPosition(currentLeft, currentTop);
+                saveWidgetPositionToStorage(clamped);
+            }
+        });
+    }
+
+    function initializeDraggableChatWindow() {
+        const savedPosition = loadChatWindowPositionFromStorage();
+        if (savedPosition) {
+            applyChatWindowPosition(savedPosition.left, savedPosition.top, { clamp: false });
+        }
+
+        bindDragHandle(chatHeader, {
+            getStartRect: () => chatWindow.getBoundingClientRect(),
+            applyPosition: (left, top) => applyChatWindowPosition(left, top),
+            savePosition: (position) => saveChatWindowPositionToStorage(position),
+            canStartDrag: (event) => !event.target.closest('button') && !getChatWindowResizeDirection(event)
+        });
+
+        window.addEventListener('resize', () => {
+            if (chatWindow.style.left && chatWindow.style.top) {
+                const currentLeft = parseFloat(chatWindow.style.left) || 0;
+                const currentTop = parseFloat(chatWindow.style.top) || 0;
+                const clamped = applyChatWindowPosition(currentLeft, currentTop);
+                saveChatWindowPositionToStorage(clamped);
+            }
+        });
+    }
+
+    initializeDraggableChatWidget();
+    initializeDraggableChatWindow();
     console.info('[discussionClient] Markdown pipeline init', {
         markdownitAvailable: !!markdownRenderer,
         domPurifyAvailable: !!domPurifyApi
     });
 
-    /**
-     * Rend `targetEl` redimensionnable via une poignée en haut à gauche : contrairement à la
-     * poignée native CSS (`resize`), toujours ancrée en bas à droite, celle-ci convient à des
-     * éléments dont le coin bas-droit est fixe (fenêtre de chat positionnée en bottom/right,
-     * champ de saisie collé au bas du formulaire).
-     * @param {HTMLElement} handleEl - Poignée sur laquelle démarrer le glisser-déposer.
-     * @param {HTMLElement} targetEl - Élément dont la taille est modifiée.
-     * @param {{minWidth?: number, minHeight: number, maxHeight?: number, resizeWidth?: boolean}} options
-     */
-    function makeTopLeftResizable(handleEl, targetEl, { minWidth = 0, minHeight, maxHeight = Infinity, resizeWidth = false }) {
+    function getChatWindowResizeDirection(event, threshold = 8) {
+        const rect = chatWindow.getBoundingClientRect();
+        const nearLeft = event.clientX <= rect.left + threshold;
+        const nearRight = event.clientX >= rect.right - threshold;
+        const nearTop = event.clientY <= rect.top + threshold;
+        const nearBottom = event.clientY >= rect.bottom - threshold;
+
+        if (nearTop && nearLeft) return 'nw';
+        if (nearTop && nearRight) return 'ne';
+        if (nearBottom && nearLeft) return 'sw';
+        if (nearBottom && nearRight) return 'se';
+        if (nearLeft) return 'w';
+        if (nearRight) return 'e';
+        if (nearTop) return 'n';
+        if (nearBottom) return 's';
+        return '';
+    }
+
+    function updateChatWindowResizeCursor(direction) {
+        const cursorMap = {
+            n: 'ns-resize',
+            s: 'ns-resize',
+            e: 'ew-resize',
+            w: 'ew-resize',
+            ne: 'nesw-resize',
+            sw: 'nesw-resize',
+            nw: 'nwse-resize',
+            se: 'nwse-resize'
+        };
+        chatWindow.style.cursor = cursorMap[direction] || '';
+    }
+
+    function makeChatWindowResizableByEdges() {
+        const minWidth = 260;
+        const minHeight = 200;
+        let activeResizeDirection = '';
+        let isResizing = false;
+        let startX = 0;
+        let startY = 0;
+        let startRect = null;
+
+        function onResizeMove(event) {
+            if (!isResizing || !startRect) return;
+            const deltaX = event.clientX - startX;
+            const deltaY = event.clientY - startY;
+
+            let nextLeft = startRect.left;
+            let nextTop = startRect.top;
+            let nextWidth = startRect.width;
+            let nextHeight = startRect.height;
+
+            if (activeResizeDirection.includes('e')) {
+                nextWidth = Math.max(minWidth, startRect.width + deltaX);
+                nextWidth = Math.min(nextWidth, window.innerWidth - startRect.left);
+            }
+            if (activeResizeDirection.includes('s')) {
+                nextHeight = Math.max(minHeight, startRect.height + deltaY);
+                nextHeight = Math.min(nextHeight, window.innerHeight - startRect.top);
+            }
+            if (activeResizeDirection.includes('w')) {
+                const maxLeft = startRect.left + startRect.width - minWidth;
+                nextLeft = Math.max(0, Math.min(startRect.left + deltaX, maxLeft));
+                nextWidth = Math.max(minWidth, startRect.width - (nextLeft - startRect.left));
+            }
+            if (activeResizeDirection.includes('n')) {
+                const maxTop = startRect.top + startRect.height - minHeight;
+                nextTop = Math.max(0, Math.min(startRect.top + deltaY, maxTop));
+                nextHeight = Math.max(minHeight, startRect.height - (nextTop - startRect.top));
+            }
+
+            const clamped = clampChatWindowPosition(nextLeft, nextTop);
+            chatWindow.style.left = `${clamped.left}px`;
+            chatWindow.style.top = `${clamped.top}px`;
+            chatWindow.style.right = 'auto';
+            chatWindow.style.bottom = 'auto';
+            chatWindow.style.width = `${Math.min(nextWidth, window.innerWidth - clamped.left)}px`;
+            chatWindow.style.height = `${Math.min(nextHeight, window.innerHeight - clamped.top)}px`;
+        }
+
+        function onResizeUp() {
+            if (isResizing) {
+                const clamped = applyChatWindowPosition(chatWindow.getBoundingClientRect().left, chatWindow.getBoundingClientRect().top);
+                saveChatWindowPositionToStorage(clamped);
+            }
+            isResizing = false;
+            activeResizeDirection = '';
+            startRect = null;
+            chatWindow.classList.remove('wedaHelper-resizing');
+            document.removeEventListener('pointermove', onResizeMove);
+            document.removeEventListener('pointerup', onResizeUp);
+            updateChatWindowResizeCursor('');
+        }
+
+        chatWindow.addEventListener('pointermove', (event) => {
+            if (isResizing) return;
+            updateChatWindowResizeCursor(getChatWindowResizeDirection(event));
+        });
+
+        chatWindow.addEventListener('pointerleave', () => {
+            if (!isResizing) updateChatWindowResizeCursor('');
+        });
+
+        chatWindow.addEventListener('pointerdown', (event) => {
+            if (event.button !== 0) return;
+            const direction = getChatWindowResizeDirection(event);
+            if (!direction) return;
+
+            event.preventDefault();
+            event.stopPropagation();
+            activeResizeDirection = direction;
+            isResizing = true;
+            startX = event.clientX;
+            startY = event.clientY;
+            startRect = chatWindow.getBoundingClientRect();
+            chatWindow.classList.add('wedaHelper-resizing');
+            document.addEventListener('pointermove', onResizeMove);
+            document.addEventListener('pointerup', onResizeUp);
+            updateChatWindowResizeCursor(direction);
+        }, true);
+    }
+
+    function makeTopLeftResizable(handleEl, targetEl, { minHeight, maxHeight = Infinity }) {
         handleEl.addEventListener('mousedown', (e) => {
             e.preventDefault();
-            const startX = e.clientX;
             const startY = e.clientY;
-            const startWidth = targetEl.offsetWidth;
             const startHeight = targetEl.offsetHeight;
 
             function onMouseMove(moveEvent) {
                 const deltaY = startY - moveEvent.clientY;
                 targetEl.style.height = `${Math.min(maxHeight, Math.max(minHeight, startHeight + deltaY))}px`;
-                if (resizeWidth) {
-                    const deltaX = startX - moveEvent.clientX;
-                    targetEl.style.width = `${Math.max(minWidth, startWidth + deltaX)}px`;
-                }
             }
             function onMouseUp() {
                 document.removeEventListener('mousemove', onMouseMove);
@@ -603,7 +943,7 @@ async function addAIChatClient() {
         });
     }
 
-    makeTopLeftResizable(windowResizeHandle, chatWindow, { minWidth: 260, minHeight: 200, resizeWidth: true });
+    makeChatWindowResizableByEdges();
     makeTopLeftResizable(inputResizeHandle, chatInput, { minHeight: 36, maxHeight: 160 });
 
     // --- Gestion des pièces jointes (documents/images envoyés au modèle) ---
