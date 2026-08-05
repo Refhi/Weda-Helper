@@ -17,6 +17,11 @@ let offscreenPort = null;
 // Ports ouverts par les content scripts (un par onglet), indexés par tabId.
 const chatPortsByTabId = new Map();
 
+// Patient affiché par chaque onglet abonné (message 'subscribe'), pour diffuser (broadcast) les
+// événements de l'offpage à tous les onglets ouverts sur un même patient, pas seulement celui à
+// l'origine de la génération.
+const patientIdByTabId = new Map();
+
 /**
  * Vérifie si un document offpage est déjà ouvert.
  * @returns {Promise<boolean>}
@@ -63,8 +68,15 @@ chrome.runtime.onConnect.addListener((port) => {
         offscreenPort = port;
         console.log('[offscreenHandler] Document offpage connecté');
 
-        // Relais offpage -> onglet concerné (le message doit porter un champ tabId)
+        // Relais offpage -> onglet(s) concerné(s) : soit un onglet précis (champ tabId), soit tous
+        // les onglets abonnés au patient concerné (champ patientId + broadcast: true).
         port.onMessage.addListener((message) => {
+            if (message?.broadcast) {
+                for (const [tabId, chatPort] of chatPortsByTabId) {
+                    if (patientIdByTabId.get(tabId) === message.patientId) chatPort.postMessage(message);
+                }
+                return;
+            }
             const chatPort = chatPortsByTabId.get(message?.tabId);
             if (chatPort) chatPort.postMessage(message);
         });
@@ -87,14 +99,21 @@ chrome.runtime.onConnect.addListener((port) => {
         chatPortsByTabId.set(tabId, port);
         console.log(`[offscreenHandler] Content script connecté (tabId ${tabId})`);
 
-        // Relais onglet -> offpage (on tague le message avec le tabId d'origine pour le retour)
+        // Relais onglet -> offpage (on tague le message avec le tabId d'origine pour le retour).
+        // Le message 'subscribe' n'est pas transmis à l'offpage : il ne sert qu'à enregistrer le
+        // patient affiché par cet onglet, pour le ciblage des diffusions (broadcast).
         port.onMessage.addListener(async (message) => {
+            if (message?.type === 'subscribe') {
+                patientIdByTabId.set(tabId, message.patientId);
+                return;
+            }
             await ensureOffscreenDocument();
             offscreenPort?.postMessage({ ...message, tabId });
         });
 
         port.onDisconnect.addListener(() => {
             chatPortsByTabId.delete(tabId);
+            patientIdByTabId.delete(tabId);
             console.log(`[offscreenHandler] Content script déconnecté (tabId ${tabId})`);
             offscreenPort?.postMessage({ type: 'tabDisconnected', tabId });
         });

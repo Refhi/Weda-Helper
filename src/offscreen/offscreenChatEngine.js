@@ -41,7 +41,11 @@ async function getOrCreateConversation(patientId) {
     const conversation = {
         chatHistory: [{ role: 'system', content: aiParams.basicSystemPrompt }],
         selectedModel: aiParams.defaultModel,
-        generationController: null // AbortController de la génération en cours, pour permettre son arrêt (stopGeneration)
+        generationController: null, // AbortController de la génération en cours, pour permettre son arrêt (stopGeneration)
+        // Instantané de la génération en cours (reasoning/contenu/appels de fonction), pour qu'un
+        // onglet qui se connecte en cours de route (changement d'onglet, rechargement) puisse
+        // immédiatement afficher l'état courant plutôt que d'attendre le prochain événement.
+        liveGeneration: null
     };
     conversations.set(key, conversation);
     return conversation;
@@ -71,7 +75,10 @@ async function sendStateSync(tabId, patientId) {
         // Le message système (prompt de base) n'a pas sa place dans l'affichage, on ne renvoie que
         // les tours user/assistant.
         history: conversation.chatHistory.filter(m => m.role !== 'system'),
-        selectedModel: conversation.selectedModel
+        selectedModel: conversation.selectedModel,
+        // Permet à l'onglet qui se connecte de rattraper immédiatement une génération déjà en cours
+        // (lancée depuis un autre onglet sur ce même patient).
+        liveGeneration: conversation.liveGeneration
     });
 }
 
@@ -80,6 +87,15 @@ async function sendStateSync(tabId, patientId) {
  */
 function sendToTab(tabId, message) {
     backgroundPort.postMessage({ ...message, tabId });
+}
+
+/**
+ * Diffuse un message à tous les onglets abonnés à un patient donné (relayé par le background,
+ * @see background/offscreenHandler.js), pour que tous les onglets ouverts sur ce patient restent
+ * synchronisés en temps réel, quel que soit celui à l'origine de la génération.
+ */
+function broadcastToPatient(patientId, message) {
+    backgroundPort.postMessage({ ...message, patientId, broadcast: true });
 }
 
 /**
@@ -137,8 +153,16 @@ async function processUserMessage({ tabId, patientId, content, model }) {
     const conversation = await getOrCreateConversation(patientId);
     if (model) conversation.selectedModel = model;
 
+    if (conversation.generationController) {
+        // Un autre onglet a déjà une génération en cours pour ce patient : on refuse plutôt que de
+        // corrompre l'historique avec deux requêtes concurrentes.
+        sendToTab(tabId, { type: 'generationBusy', patientId });
+        return;
+    }
+
     conversation.chatHistory.push({ role: 'user', content });
     conversation.generationController = new AbortController();
+    conversation.liveGeneration = { reasoning: '', content: '', toolCalls: [] };
 
     let accumulatedContent = ''; // Permet, en cas d'arrêt volontaire (stopGeneration), de conserver le texte déjà généré
     let lastFinishReason = null;
@@ -151,35 +175,47 @@ async function processUserMessage({ tabId, patientId, content, model }) {
             signal: conversation.generationController.signal,
             executeToolCall: (name, args) => executeToolCallOnTab(tabId, name, args),
             onChunk: (chunk) => {
-                if (chunk.contentDelta) accumulatedContent += chunk.contentDelta;
+                if (chunk.contentDelta) {
+                    accumulatedContent += chunk.contentDelta;
+                    conversation.liveGeneration.content += chunk.contentDelta;
+                }
+                if (chunk.reasoningDelta) conversation.liveGeneration.reasoning += chunk.reasoningDelta;
                 if (chunk.finishReason) lastFinishReason = chunk.finishReason;
-                sendToTab(tabId, { type: 'assistantChunk', patientId, ...chunk });
+                broadcastToPatient(patientId, { type: 'assistantChunk', ...chunk });
             },
-            onToolCall: (event) => sendToTab(tabId, { type: 'toolCallEvent', patientId, ...event }),
-            onWarning: (warning) => sendToTab(tabId, { type: 'assistantWarning', patientId, warning })
+            onToolCall: (event) => {
+                if (event.status === 'start') conversation.liveGeneration.reasoning = ''; // une nouvelle bulle de raisonnement pourra suivre
+                const toolCalls = conversation.liveGeneration.toolCalls;
+                const index = toolCalls.findIndex(t => t.id === event.id);
+                if (index === -1) toolCalls.push({ ...event });
+                else toolCalls[index] = { ...toolCalls[index], ...event };
+                broadcastToPatient(patientId, { type: 'toolCallEvent', ...event });
+            },
+            onWarning: (warning) => broadcastToPatient(patientId, { type: 'assistantWarning', warning })
         });
 
         if (!finalContent || !finalContent.trim()) {
             // Le modèle s'est arrêté sans produire de réponse finale (limite de tokens, filtre de
             // contenu...) : on retire le message utilisateur pour permettre de reformuler proprement.
             conversation.chatHistory.pop();
-            sendToTab(tabId, { type: 'assistantEmpty', patientId, finishReason: lastFinishReason });
+            broadcastToPatient(patientId, { type: 'assistantEmpty', finishReason: lastFinishReason });
             return;
         }
 
         conversation.chatHistory.push({ role: 'assistant', content: finalContent });
-        sendToTab(tabId, { type: 'assistantDone', patientId, content: finalContent, finishReason: lastFinishReason });
+        broadcastToPatient(patientId, { type: 'assistantDone', content: finalContent, finishReason: lastFinishReason });
     } catch (error) {
         if (error.name === 'AbortError' && accumulatedContent.trim()) {
             // Arrêt volontaire (bouton Stop) : le contenu partiel déjà généré est conservé comme réponse.
             conversation.chatHistory.push({ role: 'assistant', content: accumulatedContent });
-            sendToTab(tabId, { type: 'assistantAborted', patientId, content: accumulatedContent });
+            broadcastToPatient(patientId, { type: 'assistantAborted', content: accumulatedContent });
         } else {
             conversation.chatHistory.pop(); // retire le message utilisateur pour permettre de reformuler/réessayer
             console.error('[offscreenChatEngine] Erreur lors du traitement du message utilisateur :', error);
-            sendToTab(tabId, { type: 'assistantError', patientId, error: error.message || String(error) });
+            broadcastToPatient(patientId, { type: 'assistantError', error: error.message || String(error) });
         }
     } finally {
         conversation.generationController = null;
+        conversation.liveGeneration = null;
     }
 }

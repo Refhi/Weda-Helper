@@ -1119,6 +1119,10 @@ async function addAIChatClient() {
         });
     }
 
+    // S'abonne auprès du background au patient courant, pour recevoir les diffusions (broadcast)
+    // destinées à tous les onglets ouverts sur ce patient (@see background/offscreenHandler.js).
+    sendOffscreenMessage({ type: 'subscribe', patientId: chatPatientId });
+
     // Demande à l'offpage l'état actuel de la conversation de ce patient (peut déjà exister si un
     // autre onglet a discuté avec le même patient, ou si cette page a été rechargée) afin de
     // reconstruire l'affichage. La réponse ('stateSync') est traitée par handleOffscreenMessage.
@@ -1310,6 +1314,77 @@ async function addAIChatClient() {
      * ouvert sur un patient différent, l'offpage étant partagé entre tous les onglets).
      * @param {object} message
      */
+    /**
+     * Applique un fragment de réponse en streaming (reasoning/contenu) à l'état de génération
+     * courant. Factorisé pour être rejoué tel quel lors d'un rattrapage d'état (stateSync).
+     * @param {object} gen
+     * @param {{contentDelta?: string, reasoningDelta?: string, finishReason?: string}} chunk
+     */
+    function applyAssistantChunk(gen, { contentDelta, reasoningDelta, finishReason }) {
+        if (finishReason) gen.lastFinishReason = finishReason;
+
+        if (reasoningDelta) {
+            if (!gen.reasoningMsg) {
+                gen.reasoningMsg = appendMessage('bot', '');
+                gen.reasoningMsg.classList.remove('bot');
+                gen.reasoningMsg.classList.add('reasoning');
+                // Le message de "réflexion" doit apparaître avant la réponse en cours
+                chatMessages.insertBefore(gen.reasoningMsg, gen.loadingMsg);
+            }
+            gen.reasoningMsg.textContent += reasoningDelta;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        if (contentDelta) {
+            if (!gen.contentStarted) {
+                gen.contentStarted = true;
+                gen.accumulatedContent = '';
+                gen.loadingMsg.textContent = '';
+                gen.loadingMsg.classList.remove('loading');
+            }
+            gen.accumulatedContent += contentDelta;
+            if (!renderMarkdownInBubble(gen.loadingMsg, gen.accumulatedContent)) {
+                gen.loadingMsg.textContent = gen.accumulatedContent;
+            }
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    }
+
+    /**
+     * Applique un événement d'appel de fonction (début/succès/erreur) à l'état de génération
+     * courant. Factorisé pour être rejoué tel quel lors d'un rattrapage d'état (stateSync).
+     * @param {object} gen
+     * @param {{id: string, name: string, args: object, status: string, result?: *, error?: string}} event
+     */
+    function applyToolCallEvent(gen, { id, name, args, status, result, error }) {
+        // Une nouvelle étape de raisonnement pourra suivre cet appel : on force une nouvelle bulle.
+        gen.reasoningMsg = null;
+
+        if (status === 'start') {
+            const bubble = appendMessage('bot', `🔧 Appel de la fonction "${name}"...`);
+            bubble.classList.remove('bot');
+            bubble.classList.add('tool-call', 'pending');
+            bubble.title = `Arguments :\n${JSON.stringify(args, null, 2)}`;
+            chatMessages.insertBefore(bubble, gen.loadingMsg);
+            gen.toolCallBubbles.set(id, bubble);
+            return;
+        }
+
+        const bubble = gen.toolCallBubbles.get(id);
+        if (!bubble) return;
+
+        bubble.classList.remove('pending');
+        if (status === 'success') {
+            bubble.textContent = `✅ Résultat reçu de "${name}"`;
+            const resultText = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+            bubble.title = `Résultat :\n${resultText}`;
+        } else if (status === 'error') {
+            bubble.classList.add('error');
+            bubble.textContent = `❌ Échec de l'appel à "${name}"`;
+            bubble.title = `Erreur :\n${error}`;
+        }
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
     function handleOffscreenMessage(message) {
         if (message.patientId !== chatPatientId && message.type !== 'toolCallRequest') return;
 
@@ -1317,7 +1392,24 @@ async function addAIChatClient() {
             case 'stateSync':
                 selectedModel = message.selectedModel || selectedModel;
                 renderHistoryFromState(message.history || []);
+                if (message.liveGeneration) {
+                    // Une génération est déjà en cours (lancée depuis un autre onglet) : on rejoue son
+                    // instantané pour rattraper immédiatement l'affichage, sans attendre le prochain événement.
+                    const gen = ensureActiveGeneration();
+                    for (const toolCall of message.liveGeneration.toolCalls) applyToolCallEvent(gen, toolCall);
+                    if (message.liveGeneration.reasoning) applyAssistantChunk(gen, { reasoningDelta: message.liveGeneration.reasoning });
+                    if (message.liveGeneration.content) applyAssistantChunk(gen, { contentDelta: message.liveGeneration.content });
+                }
                 break;
+
+            case 'generationBusy': {
+                const gen = ensureActiveGeneration();
+                gen.loadingMsg.textContent = '⚠️ Une génération est déjà en cours pour ce patient depuis un autre onglet : patientez qu’elle se termine.';
+                gen.loadingMsg.classList.remove('loading');
+                gen.loadingMsg.classList.add('tool-call', 'error');
+                endActiveGeneration();
+                break;
+            }
 
             case 'assistantWarning': {
                 const gen = ensureActiveGeneration();
@@ -1332,70 +1424,13 @@ async function addAIChatClient() {
                 break;
             }
 
-            case 'assistantChunk': {
-                const gen = ensureActiveGeneration();
-                const { contentDelta, reasoningDelta, finishReason } = message;
-                if (finishReason) gen.lastFinishReason = finishReason;
-
-                if (reasoningDelta) {
-                    if (!gen.reasoningMsg) {
-                        gen.reasoningMsg = appendMessage('bot', '');
-                        gen.reasoningMsg.classList.remove('bot');
-                        gen.reasoningMsg.classList.add('reasoning');
-                        // Le message de "réflexion" doit apparaître avant la réponse en cours
-                        chatMessages.insertBefore(gen.reasoningMsg, gen.loadingMsg);
-                    }
-                    gen.reasoningMsg.textContent += reasoningDelta;
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }
-                if (contentDelta) {
-                    if (!gen.contentStarted) {
-                        gen.contentStarted = true;
-                        gen.accumulatedContent = '';
-                        gen.loadingMsg.textContent = '';
-                        gen.loadingMsg.classList.remove('loading');
-                    }
-                    gen.accumulatedContent += contentDelta;
-                    if (!renderMarkdownInBubble(gen.loadingMsg, gen.accumulatedContent)) {
-                        gen.loadingMsg.textContent = gen.accumulatedContent;
-                    }
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }
+            case 'assistantChunk':
+                applyAssistantChunk(ensureActiveGeneration(), message);
                 break;
-            }
 
-            case 'toolCallEvent': {
-                const gen = ensureActiveGeneration();
-                const { id, name, args, status, result, error } = message;
-                // Une nouvelle étape de raisonnement pourra suivre cet appel : on force une nouvelle bulle.
-                gen.reasoningMsg = null;
-
-                if (status === 'start') {
-                    const bubble = appendMessage('bot', `🔧 Appel de la fonction "${name}"...`);
-                    bubble.classList.remove('bot');
-                    bubble.classList.add('tool-call', 'pending');
-                    bubble.title = `Arguments :\n${JSON.stringify(args, null, 2)}`;
-                    chatMessages.insertBefore(bubble, gen.loadingMsg);
-                    gen.toolCallBubbles.set(id, bubble);
-                    break;
-                }
-
-                const bubble = gen.toolCallBubbles.get(id);
-                if (!bubble) break;
-
-                bubble.classList.remove('pending');
-                if (status === 'success') {
-                    bubble.textContent = `✅ Résultat reçu de "${name}"`;
-                    const resultText = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
-                    bubble.title = `Résultat :\n${resultText}`;
-                } else if (status === 'error') {
-                    bubble.classList.add('error');
-                    bubble.textContent = `❌ Échec de l'appel à "${name}"`;
-                    bubble.title = `Erreur :\n${error}`;
-                }
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+            case 'toolCallEvent':
+                applyToolCallEvent(ensureActiveGeneration(), message);
                 break;
-            }
 
             case 'assistantEmpty': {
                 // Le modèle s'est arrêté (souvent après une phase de réflexion) sans produire de réponse finale
