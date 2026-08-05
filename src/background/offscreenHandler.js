@@ -104,3 +104,23 @@ chrome.runtime.onConnect.addListener((port) => {
 // Le document offpage doit persister dès le démarrage du service worker (et non uniquement à la
 // première connexion d'un onglet), pour être prêt avant toute demande.
 ensureOffscreenDocument();
+
+/**
+ * Relais de lecture des options pour le document offpage : celui-ci n'a accès qu'à chrome.runtime
+ * (les documents hors écran n'ont pas accès à chrome.storage, voir doc chrome.offscreen), le
+ * background lit donc chrome.storage.local à sa place (@see offscreen/offscreenStorage.js).
+ */
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message?.type !== 'getStorageOption') return false;
+    const isInputArray = Array.isArray(message.optionNames);
+    const names = isInputArray ? message.optionNames : [message.optionNames];
+    chrome.storage.local.get([...names, 'defaultSettings'], (result) => {
+        if (chrome.runtime.lastError) {
+            sendResponse({ error: chrome.runtime.lastError.message });
+            return;
+        }
+        const values = names.map(name => result[name] !== undefined ? result[name] : result.defaultSettings?.[name]);
+        sendResponse({ value: isInputArray ? values : values[0] });
+    });
+    return true; // réponse envoyée de façon asynchrone
+});
