@@ -180,7 +180,8 @@ addTweak(homePageUrls, 'TweakNIRTel', function () {
         callback: (elements) => {
             for (const i in elements) {
                 elements[i].id="tel"+i; //Ajout d'une id unique
-                var tel = elements[i].textContent.trim();
+                var tel = elements[i].textContent;
+                tel = tel.replace(/\s/g, ''); 
                 addCopySymbol(elements[i], tel);
             }
         }
