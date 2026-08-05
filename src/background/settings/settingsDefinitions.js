@@ -691,9 +691,9 @@ var advancedDefaultSettings = [
             "description": "Appuie automatiquement sur le bouton \"rechercher\" après avoir sélectionné la page des recettes (permet d’afficher les recettes du jour directement en arrivant sur la page).",
             "default": true
         }, {
-            "name": "TweakNIR",
+            "name": "TweakNIRTel",
             "type": TYPE_BOOL,
-            "description": "Ajoute la possibilité de copier le NIR en cliquant dessus sur la page d'accueil.",
+            "description": "Ajoute la possibilité de copier le NIR ou le numéro de téléphone en cliquant dessus sur la page d'accueil.",
             "default": true
         }]
     }, {
