@@ -1,14 +1,11 @@
 /**
- * Préfixe des clés sessionStorage utilisées pour persister l'historique de chat, une clé par
- * patient (voir getChatHistoryStorageKey). Un seul historique "default" est utilisé lorsqu'aucun
- * patient n'est détecté dans l'URL.
- *
- * Le stockage/la lecture sont volontairement isolés dans de petites fonctions dédiées
- * (getChatHistoryStorageKey / loadChatHistoryFromStorage / saveChatHistoryToStorage) afin de
- * pouvoir, ultérieurement, y greffer une synchronisation cross-onglets (ex: relais via le
- * background service worker + permission "tabs") sans toucher au reste de la logique du chat.
+ * @file discussionClient.js
+ * @description Interface du chat IA (widget, bulles, pièces jointes...). L'historique de
+ * conversation et l'orchestration des appels au modèle vivent dans le document offpage
+ * (@see offscreen/offscreenChatEngine.js), qui survit aux rechargements de page — ce fichier ne
+ * conserve donc aucun état de conversation lui-même : il envoie les messages utilisateur via
+ * offscreenBridge.js et affiche les événements reçus en retour (chunks, appels de fonction...).
  */
-const AI_CHAT_HISTORY_STORAGE_PREFIX = 'wedaHelperChatHistory_';
 const AI_CHAT_WIDGET_POSITION_STORAGE_KEY = 'wedaHelperChatWidgetPosition';
 const AI_CHAT_WINDOW_POSITION_STORAGE_KEY = 'wedaHelperChatWindowPosition';
 
@@ -73,55 +70,6 @@ function saveChatWindowPositionToStorage(position) {
 }
 
 /**
- * Construit la clé sessionStorage pour l'historique de chat d'un patient donné.
- * @param {string|null} patientId - Identifiant du patient (PatDk), ou null/absent si aucun patient détecté.
- * @returns {string}
- */
-function getChatHistoryStorageKey(patientId) {
-    return `${AI_CHAT_HISTORY_STORAGE_PREFIX}${patientId || 'default'}`;
-}
-
-/**
- * Charge l'état de chat persisté pour un patient donné : l'historique "conversationnel"
- * (format OpenAI, envoyé au modèle) ainsi que le journal d'affichage complet (bulles user/
- * assistant, mais aussi raisonnement, appels de fonction et erreurs) permettant de restituer
- * fidèlement l'état visuel du chat au rechargement.
- * @param {string|null} patientId
- * @returns {{chatHistory: Array, displayLog: Array}|null} L'état persisté, ou null si absent/illisible.
- */
-function loadChatHistoryFromStorage(patientId) {
-    try {
-        const raw = sessionStorage.getItem(getChatHistoryStorageKey(patientId));
-        return raw ? JSON.parse(raw) : null;
-    } catch (error) {
-        console.warn('[discussionClient] Historique de chat illisible en sessionStorage, réinitialisation', error);
-        return null;
-    }
-}
-
-/**
- * Sauvegarde l'état de chat (historique conversationnel + journal d'affichage) pour un patient donné.
- * @param {string|null} patientId
- * @param {Array} history - Historique conversationnel (format OpenAI)
- * @param {Array} displayLog - Journal complet des bulles affichées (user, assistant, raisonnement, appels de fonction, erreurs...)
- */
-function saveChatHistoryToStorage(patientId, history, displayLog) {
-    try {
-        sessionStorage.setItem(getChatHistoryStorageKey(patientId), JSON.stringify({ chatHistory: history, displayLog }));
-    } catch (error) {
-        console.warn("[discussionClient] Impossible d'écrire l'historique de chat en sessionStorage", error);
-    }
-}
-
-/**
- * Supprime l'historique de chat persisté d'un patient donné.
- * @param {string|null} patientId
- */
-function clearChatHistoryStorage(patientId) {
-    sessionStorage.removeItem(getChatHistoryStorageKey(patientId));
-}
-
-/**
  * Insertion du chat en bas à droite de la page.
  */
 async function addAIChatClient() {
@@ -136,8 +84,9 @@ async function addAIChatClient() {
 
     /**
      * Identifiant du patient courant, déterminé une seule fois à l'initialisation du chat (le
-     * patient affiché ne change pas une fois la page chargée). Sert de clé de persistance pour
-     * que chaque patient conserve sa propre conversation dans sessionStorage.
+     * patient affiché ne change pas une fois la page chargée). Sert de clé de conversation côté
+     * offpage (@see offscreen/offscreenChatEngine.js), partagée entre tous les onglets ouverts sur
+     * ce même patient.
      */
     const chatPatientId = getCurrentPatientId();
 
@@ -600,27 +549,21 @@ async function addAIChatClient() {
     document.body.appendChild(widget);
 
     // --- Logique du chat ---
-    // Reprend l'état persisté du patient courant s'il existe, sinon démarre une nouvelle conversation.
-    const storedChatState = loadChatHistoryFromStorage(chatPatientId);
-    let chatHistory = storedChatState?.chatHistory || [
-        { role: "system", content: aiParams.basicSystemPrompt } // prompt système de base, défini dans openAiClient.js
-    ];
-    // Journal complet des bulles affichées (au-delà du simple historique conversationnel envoyé au
-    // modèle) : inclut le raisonnement, les appels de fonction (début/succès/erreur) et les messages
-    // d'erreur/avertissement, afin de restituer fidèlement l'affichage au rechargement du chat.
-    let chatDisplayLog = storedChatState?.displayLog || [];
-
-    /** Persiste l'historique conversationnel et le journal d'affichage courants pour le patient en cours. */
-    function persistChatHistory() {
-        saveChatHistoryToStorage(chatPatientId, chatHistory, chatDisplayLog);
-    }
-
     // Modèle actuellement sélectionné pour les appels, parmi tous les modèles détectés (aiParams.availableModels,
-    // tous ports actifs confondus). Initialisé au modèle résolu au démarrage (préféré si trouvé, sinon premier disponible).
+    // tous ports actifs confondus). Initialisé au modèle résolu au démarrage (préféré si trouvé, sinon premier disponible),
+    // puis mis à jour par l'état de l'offpage (voir handleOffscreenMessage, cas 'stateSync') s'il diffère.
     let selectedModel = aiParams.defaultModel;
     function getCurrentModel() {
         return selectedModel;
     }
+
+    /**
+     * État de la génération en cours (bulles DOM à mettre à jour au fil des événements reçus de
+     * l'offpage), ou null en dehors de toute génération. Alimenté par la soumission du formulaire,
+     * consommé par handleOffscreenMessage.
+     */
+    let activeGeneration = null;
+
 
     const chatWindow = widget.querySelector('#wedaHelper-chat-window');
     const chatHeader = widget.querySelector('#wedaHelper-chat-header');
@@ -1088,8 +1031,6 @@ async function addAIChatClient() {
                 const errorBubble = appendMessage('bot', `⚠️ ${error.message}`);
                 errorBubble.classList.remove('bot');
                 errorBubble.classList.add('tool-call', 'error');
-                recordDisplayEntry(errorBubble);
-                persistChatHistory();
             }
         }
         renderAttachmentsPreview();
@@ -1126,7 +1067,6 @@ async function addAIChatClient() {
      * 
      */
     function buildInfoContent() {
-        const systemMessage = chatHistory.find(m => m.role === 'system');
         const functionsList = Object.entries(availableFunctions).map(([name, fn]) => {
             const description = fn.definition?.function?.description || '';
             return `<li><strong>${name}</strong>${description ? ' — ' + description : ''}</li>`;
@@ -1147,41 +1087,42 @@ async function addAIChatClient() {
             <pre>${getCurrentModel()}</pre>
             ${hasMultipleModels ? `<select id="wedaHelper-model-select">${modelOptions}</select>` : ''}
             <h4>Prompt système</h4>
-            <pre>${systemMessage ? systemMessage.content : '(aucun)'}</pre>
+            <pre>${aiParams.basicSystemPrompt || '(aucun)'}</pre>
             <h4>Fonctions appelables</h4>
             <ul>${functionsList || '<li>(aucune)</li>'}</ul>
         `;
     }
 
     resetButton.addEventListener('click', () => {
-        chatHistory = [
-            { role: "system", content: aiParams.basicSystemPrompt }
-        ];
-        chatDisplayLog = [];
+        sendOffscreenMessage({ type: 'resetChat', patientId: chatPatientId });
         pendingAttachments = [];
         renderAttachmentsPreview();
-        clearChatHistoryStorage(chatPatientId);
         chatMessages.innerHTML = '';
         infoPopover.classList.remove('open');
     });
 
-    // Rejoue intégralement le journal d'affichage précédemment persisté pour ce patient : messages
-    // user/assistant, mais aussi raisonnement, appels de fonction et erreurs, avec leurs classes et
-    // info-bulles (title) d'origine.
-    chatDisplayLog.forEach(entry => {
-        const msgDiv = document.createElement('div');
-        msgDiv.classList.add('message', ...entry.classes);
-        if (entry.messageFormat === 'markdown' && typeof entry.markdownSource === 'string' && entry.markdownSource) {
-            const markdownRendered = renderMarkdownInBubble(msgDiv, entry.markdownSource);
-            if (!markdownRendered) {
-                msgDiv.textContent = entry.text;
-            }
-        } else {
-            msgDiv.textContent = entry.text;
-        }
-        if (entry.title) msgDiv.title = entry.title;
-        chatMessages.appendChild(msgDiv);
-    });
+    /**
+     * Reconstruit l'affichage à partir de l'historique conversationnel renvoyé par l'offpage (voir
+     * 'stateSync'), suite à un rechargement de page : seuls les tours user/assistant sont rejoués
+     * (le détail du raisonnement et des appels de fonction d'origine n'est pas conservé par l'offpage).
+     * @param {Array} history
+     */
+    function renderHistoryFromState(history) {
+        chatMessages.innerHTML = '';
+        history.forEach(entry => {
+            const textParts = Array.isArray(entry.content)
+                ? entry.content.filter(part => part.type === 'text').map(part => part.text).join('\n')
+                : entry.content;
+            if (!textParts) return;
+            const msgDiv = appendMessage(entry.role === 'user' ? 'user' : 'bot', textParts);
+            if (entry.role !== 'user') renderMarkdownInBubble(msgDiv, textParts);
+        });
+    }
+
+    // Demande à l'offpage l'état actuel de la conversation de ce patient (peut déjà exister si un
+    // autre onglet a discuté avec le même patient, ou si cette page a été rechargée) afin de
+    // reconstruire l'affichage. La réponse ('stateSync') est traitée par handleOffscreenMessage.
+    sendOffscreenMessage({ type: 'requestState', patientId: chatPatientId });
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
     // Le textarea insère un saut de ligne par défaut sur Entrée : on force la soumission,
@@ -1211,6 +1152,7 @@ async function addAIChatClient() {
             modelSelect.addEventListener('change', () => {
                 selectedModel = modelSelect.value;
                 chrome.storage.local.set({ IAassistantModelName: selectedModel }); // enregistre le choix comme modèle préféré
+                sendOffscreenMessage({ type: 'setModel', patientId: chatPatientId, model: selectedModel });
                 infoPopover.innerHTML = buildInfoContent();
                 bindInfoPopoverActions();
             });
@@ -1331,53 +1273,212 @@ async function addAIChatClient() {
     checkAiApiAvailability();
 
     /**
-     * Ajoute une entrée au journal d'affichage à partir de l'état actuel d'une bulle (classes,
-     * texte, info-bulle), pour qu'elle soit restituée telle quelle au rechargement du chat.
-     * @param {HTMLElement} bubble
-     * @returns {object} L'entrée ajoutée (réutilisable avec updateDisplayEntry pour les bulles évolutives, ex: appels de fonction).
+     * S'assure qu'un état de génération existe pour afficher les événements reçus de l'offpage :
+     * en principe créé par la soumission du formulaire, mais peut aussi être initialisé "à la volée"
+     * si un autre onglet ouvert sur le même patient est à l'origine de la génération en cours.
+     * @returns {object}
      */
-    function recordDisplayEntry(bubble) {
-        const entry = {
-            classes: Array.from(bubble.classList).filter(c => c !== 'message'),
-            text: bubble.textContent,
-            title: bubble.title || ''
+    function ensureActiveGeneration() {
+        if (activeGeneration) return activeGeneration;
+        const loadingMsg = appendMessage('bot', "L'IA réfléchit...");
+        loadingMsg.classList.add('loading');
+        chatSubmitButton.style.display = 'none';
+        chatStopButton.classList.add('visible');
+        activeGeneration = {
+            loadingMsg,
+            reasoningMsg: null,
+            contentStarted: false,
+            lastFinishReason: null,
+            contextWarningShown: false,
+            toolCallBubbles: new Map(), // id -> élément DOM du feedback d'appel de fonction
+            accumulatedContent: ''      // texte markdown brut accumulé, rendu à chaque chunk
         };
-        if (bubble.dataset.messageFormat === 'markdown') {
-            entry.messageFormat = 'markdown';
-            entry.markdownSource = bubble.dataset.markdownSource || bubble.textContent || '';
-        }
-        chatDisplayLog.push(entry);
-        return entry;
+        return activeGeneration;
+    }
+
+    /** Termine l'état de génération courant : réactive le bouton d'envoi, masque le bouton Stop. */
+    function endActiveGeneration() {
+        activeGeneration = null;
+        chatStopButton.classList.remove('visible');
+        chatSubmitButton.style.display = '';
     }
 
     /**
-     * Met à jour une entrée du journal d'affichage déjà enregistrée (ex: bulle d'appel de
-     * fonction passant de "pending" à "succès"/"erreur") à partir de l'état actuel de la bulle.
-     * @param {object} entry - Entrée précédemment obtenue via recordDisplayEntry
-     * @param {HTMLElement} bubble
+     * Traite les messages reçus de l'offpage (@see offscreen/offscreenChatEngine.js) : fragments de
+     * réponse en streaming, événements d'appel de fonction, fin de génération, erreurs et
+     * synchronisation d'état. Ignore les messages concernant un autre patient (ex: un autre onglet
+     * ouvert sur un patient différent, l'offpage étant partagé entre tous les onglets).
+     * @param {object} message
      */
-    function updateDisplayEntry(entry, bubble) {
-        entry.classes = Array.from(bubble.classList).filter(c => c !== 'message');
-        entry.text = bubble.textContent;
-        entry.title = bubble.title || '';
-        if (bubble.dataset.messageFormat === 'markdown') {
-            entry.messageFormat = 'markdown';
-            entry.markdownSource = bubble.dataset.markdownSource || bubble.textContent || '';
-        } else {
-            delete entry.messageFormat;
-            delete entry.markdownSource;
+    function handleOffscreenMessage(message) {
+        if (message.patientId !== chatPatientId && message.type !== 'toolCallRequest') return;
+
+        switch (message.type) {
+            case 'stateSync':
+                selectedModel = message.selectedModel || selectedModel;
+                renderHistoryFromState(message.history || []);
+                break;
+
+            case 'assistantWarning': {
+                const gen = ensureActiveGeneration();
+                const { type, estimatedTokens, limit, ratio } = message.warning || {};
+                if (type !== 'context_limit' || gen.contextWarningShown) break;
+                gen.contextWarningShown = true;
+                const warningBubble = appendMessage('bot', `⚠️ Le contexte estimé de la conversation (~${estimatedTokens} tokens) approche ou dépasse la limite configurée (${limit} tokens, ${Math.round(ratio * 100)}%). Les échanges avec les outils peuvent être tronqués par le serveur : pensez à augmenter la taille du contexte dans votre fournisseur de modèle et/ou réinitialiser la conversation si les réponses deviennent incohérentes. Pensez à mettre à jour les options de Weda-Helper si vous changez la limite de contexte côté serveur.`);
+                warningBubble.classList.remove('bot');
+                warningBubble.classList.add('tool-call', 'error');
+                chatMessages.insertBefore(warningBubble, gen.loadingMsg);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                break;
+            }
+
+            case 'assistantChunk': {
+                const gen = ensureActiveGeneration();
+                const { contentDelta, reasoningDelta, finishReason } = message;
+                if (finishReason) gen.lastFinishReason = finishReason;
+
+                if (reasoningDelta) {
+                    if (!gen.reasoningMsg) {
+                        gen.reasoningMsg = appendMessage('bot', '');
+                        gen.reasoningMsg.classList.remove('bot');
+                        gen.reasoningMsg.classList.add('reasoning');
+                        // Le message de "réflexion" doit apparaître avant la réponse en cours
+                        chatMessages.insertBefore(gen.reasoningMsg, gen.loadingMsg);
+                    }
+                    gen.reasoningMsg.textContent += reasoningDelta;
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+                if (contentDelta) {
+                    if (!gen.contentStarted) {
+                        gen.contentStarted = true;
+                        gen.accumulatedContent = '';
+                        gen.loadingMsg.textContent = '';
+                        gen.loadingMsg.classList.remove('loading');
+                    }
+                    gen.accumulatedContent += contentDelta;
+                    if (!renderMarkdownInBubble(gen.loadingMsg, gen.accumulatedContent)) {
+                        gen.loadingMsg.textContent = gen.accumulatedContent;
+                    }
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+                break;
+            }
+
+            case 'toolCallEvent': {
+                const gen = ensureActiveGeneration();
+                const { id, name, args, status, result, error } = message;
+                // Une nouvelle étape de raisonnement pourra suivre cet appel : on force une nouvelle bulle.
+                gen.reasoningMsg = null;
+
+                if (status === 'start') {
+                    const bubble = appendMessage('bot', `🔧 Appel de la fonction "${name}"...`);
+                    bubble.classList.remove('bot');
+                    bubble.classList.add('tool-call', 'pending');
+                    bubble.title = `Arguments :\n${JSON.stringify(args, null, 2)}`;
+                    chatMessages.insertBefore(bubble, gen.loadingMsg);
+                    gen.toolCallBubbles.set(id, bubble);
+                    break;
+                }
+
+                const bubble = gen.toolCallBubbles.get(id);
+                if (!bubble) break;
+
+                bubble.classList.remove('pending');
+                if (status === 'success') {
+                    bubble.textContent = `✅ Résultat reçu de "${name}"`;
+                    const resultText = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+                    bubble.title = `Résultat :\n${resultText}`;
+                } else if (status === 'error') {
+                    bubble.classList.add('error');
+                    bubble.textContent = `❌ Échec de l'appel à "${name}"`;
+                    bubble.title = `Erreur :\n${error}`;
+                }
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                break;
+            }
+
+            case 'assistantEmpty': {
+                // Le modèle s'est arrêté (souvent après une phase de réflexion) sans produire de réponse finale
+                const gen = ensureActiveGeneration();
+                const finishReason = message.finishReason;
+                let reason;
+                if (finishReason === 'length') {
+                    reason = "la limite de tokens (maxTokens) a été atteinte avant la fin de sa réflexion — augmentez maxTokens ou raccourcissez le prompt système/l'historique.";
+                } else if (finishReason === 'content_filter') {
+                    reason = "la réponse a été bloquée par un filtre de contenu côté serveur.";
+                } else if (finishReason) {
+                    reason = `le serveur a renvoyé un arrêt inhabituel (finish_reason = "${finishReason}"), consultez les logs du serveur hébergeant le LLM pour plus de détails.`;
+                } else {
+                    reason = "aucune raison d'arrêt n'a été transmise par le serveur (connexion interrompue ?), consultez les logs du serveur hébergeant le LLM pour plus de détails.";
+                }
+                gen.loadingMsg.textContent = `⚠️ Le modèle n'a renvoyé aucune réponse : ${reason}`;
+                gen.loadingMsg.classList.remove('loading');
+                gen.loadingMsg.classList.add('tool-call', 'error');
+                console.warn("[discussionClient] Réponse vide reçue du modèle.", { finishReason });
+
+                if (gen.reasoningMsg) {
+                    gen.reasoningMsg.title = "La réflexion s'est arrêtée sans aboutir à une réponse.";
+                    gen.reasoningMsg.classList.add('error');
+                }
+                endActiveGeneration();
+                break;
+            }
+
+            case 'assistantDone': {
+                // Réponse finale reçue : on l'affiche
+                const gen = ensureActiveGeneration();
+                gen.loadingMsg.textContent = message.content;
+                gen.loadingMsg.classList.remove('loading');
+                // En streaming, le texte est affiché brut pour éviter les artefacts; on applique
+                // le rendu markdown sécurisé une fois la réponse complète reçue.
+                renderMarkdownInBubble(gen.loadingMsg, message.content);
+
+                if (message.finishReason === 'stop') {
+                    gen.loadingMsg.title = 'Réponse complète';
+                } else if (message.finishReason === 'length') {
+                    gen.loadingMsg.title = 'Réponse probablement tronquée (limite de tokens atteinte)';
+                    const truncatedNotice = appendMessage('bot', '✂️ Cette réponse a été tronquée : la limite de tokens (maxTokens) a été atteinte avant que le modèle ait terminé.');
+                    truncatedNotice.classList.remove('bot');
+                    truncatedNotice.classList.add('tool-call', 'error');
+                    console.warn("[discussionClient] Réponse tronquée : limite de tokens atteinte.", { finishReason: message.finishReason });
+                }
+                endActiveGeneration();
+                break;
+            }
+
+            case 'assistantAborted': {
+                // Arrêt volontaire via le bouton Stop : le contenu partiel déjà reçu est conservé comme
+                // réponse finale de l'assistant, plutôt que d'afficher une erreur.
+                const gen = ensureActiveGeneration();
+                gen.loadingMsg.classList.remove('loading');
+                if (!renderMarkdownInBubble(gen.loadingMsg, message.content)) {
+                    gen.loadingMsg.textContent = message.content;
+                }
+                gen.loadingMsg.title = 'Génération interrompue par l’utilisateur';
+                endActiveGeneration();
+                break;
+            }
+
+            case 'assistantError': {
+                // Gestion des erreurs lors de l'appel au modèle (ex: serveur inaccessible, timeout, erreur interne du modèle...)
+                const gen = ensureActiveGeneration();
+                gen.loadingMsg.textContent = "❌ Erreur : " + message.error;
+                gen.loadingMsg.classList.remove('loading');
+                gen.loadingMsg.classList.add('tool-call', 'error');
+                console.error("[discussionClient] Erreur lors de l'appel au modèle :", message.error);
+                endActiveGeneration();
+                break;
+            }
+
+            default:
+                console.warn('[discussionClient] Message offpage de type inconnu ignoré :', message);
         }
     }
 
-    /**
-     * Gestion de la soumission du formulaire de chat : envoie le message de l'utilisateur au modèle,
-     * affiche la bulle correspondante, puis affiche la réponse de l'IA au fur et à mesure qu'elle est
-     * reçue (avec éventuellement des bulles de raisonnement et d'appel de fonction).
-     */
-    let currentGenerationController = null; // AbortController de la génération en cours, pour le bouton Stop
+    onOffscreenMessage(handleOffscreenMessage);
 
     chatStopButton.addEventListener('click', () => {
-        currentGenerationController?.abort();
+        sendOffscreenMessage({ type: 'stopGeneration', patientId: chatPatientId });
     });
 
     chatForm.addEventListener('submit', async (e) => {
@@ -1393,235 +1494,20 @@ async function addAIChatClient() {
         pendingAttachments = [];
         renderAttachmentsPreview();
 
-        // Ajoute le message de l'utilisateur à l'affichage et à l'historique, puis enregistre l'état.
+        // Ajoute le message de l'utilisateur à l'affichage.
         const attachmentsLabel = attachmentsForThisMessage.length
             ? '\n\n' + attachmentsForThisMessage.map(att => `${att.kind === 'image' ? '🖼️' : '📄'} ${att.name}`).join('\n')
             : '';
         appendMessage('user', userText + attachmentsLabel);
-        recordDisplayEntry(chatMessages.lastElementChild);
         chatInput.value = ''; // réinitialise le champ de saisie
-        chatHistory.push({ role: 'user', content: buildUserMessageContent(userText, attachmentsForThisMessage) }); // met à jour la variable d'historique
-        persistChatHistory(); // Enregistre l'état dans le sessionStorage pour le patient courant
 
-        currentGenerationController = new AbortController();
-        chatSubmitButton.style.display = 'none';
-        chatStopButton.classList.add('visible');
-
-        // Gestion du message d'attente
-        const loadingMsg = appendMessage('bot', "L'IA réfléchit...");
-        loadingMsg.classList.add('loading');
-
-        let reasoningMsg = null; // créé au premier fragment de raisonnement reçu
-        let contentStarted = false;
-        let lastFinishReason = null; // dernière raison d'arrêt renvoyée par le serveur ('length', 'stop', 'content_filter'...)
-        let contextWarningShown = false; // évite de spammer une bulle à chaque relance de function calling
-        const toolCallBubbles = new Map(); // id -> élément DOM du feedback d'appel de fonction
-        const toolCallEntries = new Map(); // id -> entrée du journal d'affichage correspondante (pour mise à jour lors du succès/échec)
-
-        let accumulatedContent = ''; // texte markdown brut accumulé, rendu à chaque chunk
-
-        try {
-            const botResponse = await openAiClient({
-                messages: chatHistory,
-                model: getCurrentModel(),
-                maxTokens: 8000,   // Limite large : un modèle trop limité n'est de toute façon pas souhaitable
-                temperature: 0.3,  // Température assez basse pour des réponses plus cohérentes
-                // useTools: true, // activé par défaut dans l'appel de fonction. Mais doit être à terme dépendant des options de l'utilisateur
-                stream: true,
-                signal: currentGenerationController.signal,
-                // Gestion des événements de streaming
-                // Ici pour gérer la limite théorique maximale de contexte
-                onWarning: ({ type, estimatedTokens, limit, ratio }) => {
-                    if (type !== 'context_limit' || contextWarningShown) return;
-                    contextWarningShown = true;
-                    const warningBubble = appendMessage('bot', `⚠️ Le contexte estimé de la conversation (~${estimatedTokens} tokens) approche ou dépasse la limite configurée (${limit} tokens, ${Math.round(ratio * 100)}%). Les échanges avec les outils peuvent être tronqués par le serveur : pensez à augmenter la taille du contexte dans votre fournisseur de modèle et/ou réinitialiser la conversation si les réponses deviennent incohérentes. Pensez à mettre à jour les options de Weda-Helper si vous changez la limite de contexte côté serveur.`);
-                    warningBubble.classList.remove('bot');
-                    warningBubble.classList.add('tool-call', 'error');
-                    chatMessages.insertBefore(warningBubble, loadingMsg);
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                    recordDisplayEntry(warningBubble);
-                    persistChatHistory();
-                },
-                // Gestion des fragments de réponse reçus en streaming
-                onChunk: ({ contentDelta, reasoningDelta, finishReason }) => {
-                    if (finishReason) {
-                        lastFinishReason = finishReason;
-                    }
-                    if (reasoningDelta) {
-                        if (!reasoningMsg) {
-                            reasoningMsg = appendMessage('bot', '');
-                            reasoningMsg.classList.remove('bot');
-                            reasoningMsg.classList.add('reasoning');
-                            // Le message de "réflexion" doit apparaître avant la réponse en cours
-                            chatMessages.insertBefore(reasoningMsg, loadingMsg);
-                        }
-                        reasoningMsg.textContent += reasoningDelta;
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                    }
-                    if (contentDelta) {
-                        if (!contentStarted) {
-                            contentStarted = true;
-                            accumulatedContent = '';
-                            loadingMsg.textContent = '';
-                            loadingMsg.classList.remove('loading');
-                        }
-                        accumulatedContent += contentDelta;
-
-                        if (!renderMarkdownInBubble(loadingMsg, accumulatedContent)) {
-                            loadingMsg.textContent = accumulatedContent;
-                        }
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                    }
-                },
-                // Gestion des appels de fonction (start, success, error)
-                onToolCall: ({ id, name, args, status, result, error }) => {
-                    // Une nouvelle étape de raisonnement pourra suivre cet appel : on force une nouvelle bulle,
-                    // en persistant d'abord celle en cours si elle existe.
-                    if (reasoningMsg) {
-                        recordDisplayEntry(reasoningMsg);
-                        persistChatHistory();
-                    }
-                    reasoningMsg = null;
-
-                    if (status === 'start') {
-                        const bubble = appendMessage('bot', `🔧 Appel de la fonction "${name}"...`);
-                        bubble.classList.remove('bot');
-                        bubble.classList.add('tool-call', 'pending');
-                        bubble.title = `Arguments :\n${JSON.stringify(args, null, 2)}`;
-                        chatMessages.insertBefore(bubble, loadingMsg);
-                        toolCallBubbles.set(id, bubble);
-                        toolCallEntries.set(id, recordDisplayEntry(bubble));
-                        persistChatHistory();
-                        return;
-                    }
-
-                    const bubble = toolCallBubbles.get(id);
-                    if (!bubble) return;
-
-                    bubble.classList.remove('pending');
-                    if (status === 'success') {
-                        bubble.textContent = `✅ Résultat reçu de "${name}"`;
-                        const resultText = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
-                        bubble.title = `Résultat :\n${resultText}`;
-                    } else if (status === 'error') {
-                        bubble.classList.add('error');
-                        bubble.textContent = `❌ Échec de l'appel à "${name}"`;
-                        bubble.title = `Erreur :\n${error}`;
-                    }
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                    const entry = toolCallEntries.get(id);
-                    if (entry) {
-                        updateDisplayEntry(entry, bubble);
-                        persistChatHistory();
-                    }
-                }
-            });
-
-            if (!botResponse || !botResponse.trim()) {
-                // Le modèle s'est arrêté (souvent après une phase de réflexion) sans produire de réponse finale
-                let reason;
-                if (lastFinishReason === 'length') {
-                    reason = "la limite de tokens (maxTokens) a été atteinte avant la fin de sa réflexion — augmentez maxTokens ou raccourcissez le prompt système/l'historique.";
-                } else if (lastFinishReason === 'content_filter') {
-                    reason = "la réponse a été bloquée par un filtre de contenu côté serveur.";
-                } else if (lastFinishReason) {
-                    reason = `le serveur a renvoyé un arrêt inhabituel (finish_reason = "${lastFinishReason}"), consultez les logs du serveur hébergeant le LLM pour plus de détails.`;
-                } else {
-                    reason = "aucune raison d'arrêt n'a été transmise par le serveur (connexion interrompue ?), consultez les logs du serveur hébergeant le LLM pour plus de détails.";
-                }
-                loadingMsg.textContent = `⚠️ Le modèle n'a renvoyé aucune réponse : ${reason}`;
-                loadingMsg.classList.remove('loading');
-                loadingMsg.classList.add('tool-call', 'error');
-                console.warn("[addAIChatClient] Réponse vide reçue du modèle.", { reasoning: reasoningMsg?.textContent, finishReason: lastFinishReason });
-
-                if (reasoningMsg) {
-                    reasoningMsg.title = "La réflexion s'est arrêtée sans aboutir à une réponse.";
-                    reasoningMsg.classList.add('error');
-                    recordDisplayEntry(reasoningMsg);
-                    reasoningMsg = null;
-                }
-
-                chatHistory.pop(); // on retire le message utilisateur pour permettre de reformuler/réessayer proprement
-                recordDisplayEntry(loadingMsg);
-                persistChatHistory();
-            } else {
-                // Réponse finale reçue : on l'affiche et on l'enregistre dans l'historique
-                loadingMsg.textContent = botResponse;
-                loadingMsg.classList.remove('loading');
-
-                // En streaming, le texte est affiché brut pour éviter les artefacts; on applique
-                // le rendu markdown sécurisé une fois la réponse complète reçue.
-                renderMarkdownInBubble(loadingMsg, botResponse);
-
-                if (reasoningMsg) {
-                    recordDisplayEntry(reasoningMsg);
-                    reasoningMsg = null;
-                }
-
-                if (lastFinishReason === 'stop') {
-                    // Le modèle a terminé normalement sa réponse
-                    loadingMsg.title = 'Réponse complète';
-                } else if (lastFinishReason === 'length') {
-                    // Le modèle a été interrompu avant d'avoir terminé sa réponse (limite de tokens atteinte)
-                    loadingMsg.title = 'Réponse probablement tronquée (limite de tokens atteinte)';
-                    const truncatedNotice = appendMessage('bot', '✂️ Cette réponse a été tronquée : la limite de tokens (maxTokens) a été atteinte avant que le modèle ait terminé.');
-                    truncatedNotice.classList.remove('bot');
-                    truncatedNotice.classList.add('tool-call', 'error');
-                    console.warn("[addAIChatClient] Réponse tronquée : limite de tokens atteinte.", { reasoning: reasoningMsg?.textContent, finishReason: lastFinishReason });
-                    recordDisplayEntry(truncatedNotice);
-                }
-
-                chatHistory.push({ role: 'assistant', content: botResponse });
-                recordDisplayEntry(loadingMsg);
-                persistChatHistory();
-            }
-
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                // Arrêt volontaire via le bouton Stop : on conserve le contenu partiel déjà reçu comme
-                // réponse finale de l'assistant, plutôt que d'afficher une erreur.
-                loadingMsg.classList.remove('loading');
-                if (accumulatedContent.trim()) {
-                    if (!renderMarkdownInBubble(loadingMsg, accumulatedContent)) {
-                        loadingMsg.textContent = accumulatedContent;
-                    }
-                    loadingMsg.title = 'Génération interrompue par l’utilisateur';
-                    chatHistory.push({ role: 'assistant', content: accumulatedContent });
-                } else {
-                    loadingMsg.textContent = '⏹️ Génération interrompue.';
-                    loadingMsg.classList.add('tool-call');
-                    chatHistory.pop();
-                }
-
-                if (reasoningMsg) {
-                    recordDisplayEntry(reasoningMsg);
-                    reasoningMsg = null;
-                }
-
-                recordDisplayEntry(loadingMsg);
-                persistChatHistory();
-                return;
-            }
-
-            // Gestion des erreurs lors de l'appel au modèle (ex: serveur inaccessible, timeout, erreur interne du modèle...)
-            loadingMsg.textContent = "❌ Erreur : " + error.message;
-            loadingMsg.classList.remove('loading');
-            loadingMsg.classList.add('tool-call', 'error');
-            console.error("[addAIChatClient] Erreur lors de l'appel OpenAI :", error);
-
-            if (reasoningMsg) {
-                recordDisplayEntry(reasoningMsg);
-                reasoningMsg = null;
-            }
-
-            chatHistory.pop();
-            recordDisplayEntry(loadingMsg);
-            persistChatHistory();
-        } finally {
-            currentGenerationController = null;
-            chatStopButton.classList.remove('visible');
-            chatSubmitButton.style.display = '';
-        }
+        ensureActiveGeneration();
+        sendOffscreenMessage({
+            type: 'userMessage',
+            patientId: chatPatientId,
+            model: getCurrentModel(),
+            content: buildUserMessageContent(userText, attachmentsForThisMessage)
+        });
     });
 }
 

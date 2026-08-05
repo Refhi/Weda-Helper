@@ -182,6 +182,11 @@ async function openAiClient({
     onWarning = null,      // Callback appelé si le contexte estimé approche/dépasse IAassistantContextLimit :
                            // ({ type: 'context_limit', estimatedTokens, limit, ratio }) => void
 
+    // --- 7ter. Exécution des fonctions ---
+    executeToolCall = null, // (name, args) => résultat. Si non fourni, exécute localement via availableFunctions
+                             // (cas du content script). Le document offpage fournit ici un exécuteur qui délègue
+                             // l'appel au content script de l'onglet concerné (DOM de Weda requis, ex: recoverPatientData).
+
     // --- 8. Interne : suivi de la profondeur de récursion (ne pas fournir manuellement) ---
     _toolCallDepth = 0,
 
@@ -289,7 +294,7 @@ async function openAiClient({
                 return responseMessage.content || "Désolé, je n'ai pas pu terminer cette action après plusieurs tentatives d'appel de fonctions.";
             }
 
-            const updatedMessages = await handleToolCalls(responseMessage, filteredMessages, onToolCall);
+            const updatedMessages = await handleToolCalls(responseMessage, filteredMessages, onToolCall, executeToolCall);
 
             // On relance un appel avec les résultats des fonctions pour obtenir la réponse finale du modèle
             console.log(`[openAiClient] Re-envoi du contexte avec résultats des fonctions...`);
@@ -311,6 +316,7 @@ async function openAiClient({
                 onChunk,
                 onToolCall,
                 onWarning,
+                executeToolCall,
                 _toolCallDepth: _toolCallDepth + 1,
                 signal
             });
@@ -567,9 +573,16 @@ async function fetchChatCompletion(requestBody, apiUrl, signal) {
  * @param {object} responseMessage - Le message renvoyé par le modèle, contenant `tool_calls`.
  * @param {Array} messages - L'historique des messages envoyé lors de l'appel initial.
  * @param {(event: object) => void} [onToolCall] - Callback de feedback appelé à chaque étape (start/success/error).
+ * @param {(name: string, args: object) => Promise<*>} [executeToolCall] - Exécuteur des fonctions. Par
+ * défaut, exécute localement via availableFunctions (voir callableFunctions.js).
  * @returns {Promise<Array>} La liste de messages mise à jour, prête à être renvoyée au modèle.
  */
-async function handleToolCalls(responseMessage, messages, onToolCall) {
+async function handleToolCalls(responseMessage, messages, onToolCall, executeToolCall) {
+    const runTool = executeToolCall || ((name, args) => {
+        if (!availableFunctions[name]) throw new Error(`fonction inconnue "${name}"`);
+        return availableFunctions[name].execute(args);
+    });
+
     const updatedMessages = [...messages, responseMessage];
 
     for (const toolCall of responseMessage.tool_calls) {
@@ -585,20 +598,14 @@ async function handleToolCalls(responseMessage, messages, onToolCall) {
         onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'start' });
 
         let fnResult;
-        if (availableFunctions[fnName]) {
-            try {
-                console.log(`[handleToolCalls] Exécution de ${fnName}...`);
-                fnResult = await availableFunctions[fnName].execute(fnArgs);
-                console.log(`[handleToolCalls] Résultat de ${fnName}:`, fnResult);
-                onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'success', result: fnResult });
-            } catch (e) {
-                fnResult = `Erreur lors de l'exécution de la fonction ${fnName} : ${e.message || e}`;
-                console.error(`[handleToolCalls] Erreur:`, fnResult);
-                onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'error', error: fnResult });
-            }
-        } else {
-            fnResult = `Erreur : fonction inconnue "${fnName}"`;
-            console.error(`[handleToolCalls]`, fnResult);
+        try {
+            console.log(`[handleToolCalls] Exécution de ${fnName}...`);
+            fnResult = await runTool(fnName, fnArgs);
+            console.log(`[handleToolCalls] Résultat de ${fnName}:`, fnResult);
+            onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'success', result: fnResult });
+        } catch (e) {
+            fnResult = `Erreur lors de l'exécution de la fonction ${fnName} : ${e.message || e}`;
+            console.error(`[handleToolCalls] Erreur:`, fnResult);
             onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'error', error: fnResult });
         }
 

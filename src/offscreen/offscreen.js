@@ -1,10 +1,10 @@
 /**
  * @file offscreen.js
- * @description Document offpage (offscreen) chargé par le background pour assurer la permanence
- * du chat IA au sein d'une session : contrairement au service worker, ce document n'est pas tué
- * entre deux messages et dispose d'un contexte DOM classique (localStorage, etc.).
- * Étape 1 : uniquement le squelette de communication (port dédié avec le background). Aucune
- * logique métier (historique, appels IA...) n'est encore présente ici.
+ * @description Point d'entrée du document offpage (offscreen) chargé par le background pour
+ * assurer la permanence du chat IA au sein d'une session : contrairement au service worker, ce
+ * document n'est pas tué entre deux messages ni entre deux rechargements d'onglet. Ce fichier se
+ * contente d'ouvrir le port vers le background et de distribuer les messages reçus vers le moteur
+ * de chat (@see offscreenChatEngine.js).
  */
 
 const OFFSCREEN_PORT_NAME = 'wedaHelper-offscreen';
@@ -12,7 +12,31 @@ const OFFSCREEN_PORT_NAME = 'wedaHelper-offscreen';
 const backgroundPort = chrome.runtime.connect({ name: OFFSCREEN_PORT_NAME });
 
 backgroundPort.onMessage.addListener((message) => {
-    console.log('[offscreen] Message reçu du background :', message);
+    switch (message.type) {
+        case 'userMessage':
+            processUserMessage(message);
+            break;
+        case 'toolCallResult':
+            resolveToolCall(message);
+            break;
+        case 'resetChat':
+            resetConversation(message.patientId);
+            break;
+        case 'stopGeneration':
+            stopGeneration(message.patientId);
+            break;
+        case 'setModel':
+            setModel(message.patientId, message.model);
+            break;
+        case 'requestState':
+            sendStateSync(message.tabId, message.patientId);
+            break;
+        case 'tabDisconnected':
+            rejectPendingToolCallsForTab(message.tabId);
+            break;
+        default:
+            console.warn('[offscreen] Message de type inconnu ignoré :', message);
+    }
 });
 
 backgroundPort.onDisconnect.addListener(() => {

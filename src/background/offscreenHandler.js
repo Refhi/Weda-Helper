@@ -96,6 +96,7 @@ chrome.runtime.onConnect.addListener((port) => {
         port.onDisconnect.addListener(() => {
             chatPortsByTabId.delete(tabId);
             console.log(`[offscreenHandler] Content script déconnecté (tabId ${tabId})`);
+            offscreenPort?.postMessage({ type: 'tabDisconnected', tabId });
         });
     }
 });
