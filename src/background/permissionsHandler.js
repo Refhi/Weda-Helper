@@ -68,6 +68,14 @@ async function handlePermissionCommand(command, options, sender) {
                 result = { reset: await resetPermission(options.permission) };
                 break;
 
+            case 'checkOrigin':
+                result = { hasPermission: await checkOriginPermission(options.origin) };
+                break;
+
+            case 'requestOrigin':
+                result = { granted: await requestOriginPermission(options.origin) };
+                break;
+
             case 'tabsFeature':
                 result = { success: true, result: await handleTabsFeature(options, sender) };
                 break;
@@ -109,6 +117,33 @@ function requestPermission(permission) {
                 console.log(`L'autorisation ${permissions.join(', ')} a été refusée`);
                 resolve(false);
             }
+        });
+    });
+}
+
+/**
+ * Demande à l'utilisateur d'autoriser une origine (host permission optionnelle)
+ * @param {string} origin - Motif d'origine à demander, ex: "http://192.168.1.50/*"
+ * @returns {Promise<boolean>} - True si l'origine a été autorisée
+ */
+function requestOriginPermission(origin) {
+    return new Promise((resolve) => {
+        chrome.permissions.request({ origins: [origin] }, (granted) => {
+            console.log(`L'origine ${origin} a ${granted ? '' : 'NON '}été accordée`);
+            resolve(!!granted);
+        });
+    });
+}
+
+/**
+ * Vérifie si une origine (host permission optionnelle) est déjà accordée
+ * @param {string} origin - Motif d'origine à vérifier
+ * @returns {Promise<boolean>}
+ */
+function checkOriginPermission(origin) {
+    return new Promise((resolve) => {
+        chrome.permissions.contains({ origins: [origin] }, (hasPermission) => {
+            resolve(!!hasPermission);
         });
     });
 }

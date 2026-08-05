@@ -874,6 +874,12 @@ var advancedDefaultSettings = [
             "description": "Activer ou désactiver l'assistant IA local.",
             "default": true,
             "subOptions": [{
+                "name": "IAassistantHost",
+                "type": TYPE_SMALLTEXT,
+                "description": "Hôte du serveur d'IA (laisser \"localhost\" sauf serveur distant/réseau local).",
+                "longDescription": "Par défaut \"localhost\" (le serveur d'IA tourne sur cet ordinateur). Peut être remplacé par une adresse IP ou un nom d'hôte d'un serveur sur le réseau local (ex: 192.168.1.50). Un hôte autre que \"localhost\" nécessite d'accorder une permission supplémentaire, demandée automatiquement.",
+                "default": "localhost"
+            }, {
                 "name": "IAassistantPort",
                 "type": TYPE_SMALLTEXT,
                 "description": "Port du modèle d'IA local (laisser en auto sauf port inhabituel).",

@@ -1107,7 +1107,7 @@ async function addAIChatClient() {
         return `
             <button id="wedaHelper-disable-connector" type="button">Désactiver l'Assistant Local</button>
             <h4>Modèle utilisé</h4>
-            <pre>${getCurrentModel()}</pre>
+            <pre>${getCurrentModel()} (hôte : ${aiParams.host || 'localhost'})</pre>
             ${hasMultipleModels ? `<select id="wedaHelper-model-select">${modelOptions}</select>` : ''}
             <h4>Prompt système</h4>
             <pre>${aiParams.basicSystemPrompt || '(aucun)'}</pre>

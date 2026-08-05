@@ -13,6 +13,9 @@
   "host_permissions": [
     "http://localhost/"
   ],
+  "optional_host_permissions": [
+    "http://*/*"
+  ],
   "action": {
     "default_popup": "src/ui/popup.html"
   },

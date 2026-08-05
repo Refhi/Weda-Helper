@@ -17,15 +17,74 @@ const COMMON_LOCAL_AI_PORTS = [1234, 11434];
 const LOCAL_AI_PROBE_TIMEOUT_MS = 800;
 
 /**
- * Interroge `/v1/models` sur un port donné et renvoie la liste des identifiants de modèles
+ * Construit un motif d'origine (host permission) à partir d'un hôte, ex: "http://192.168.1.50/*".
+ * @param {string} host
+ * @returns {string}
+ */
+function buildOriginPattern(host) {
+    return `http://${host}/*`;
+}
+
+/**
+ * Si l'hôte configuré n'est pas "localhost"/"127.0.0.1" (déclaré en dur dans le manifest), tente
+ * d'obtenir la permission optionnelle correspondante (déclarée via optional_host_permissions).
+ *
+ * Remarque : cette tentative est "best effort" et non bloquante pour le fonctionnement de
+ * l'assistant. D'une part, `chrome.permissions.request` ne peut afficher de prompt qu'à la suite
+ * d'un geste utilisateur direct (clic...) : appelée ici au démarrage (sans geste utilisateur), elle
+ * échoue silencieusement sans rien demander à l'utilisateur, ce qui est normal. D'autre part, les
+ * requêtes fetch faites depuis une page d'extension (ex: le document offscreen) ne sont pas
+ * bloquées par l'absence de host_permissions tant que le serveur cible répond avec des en-têtes
+ * CORS permissifs (cas habituel de LM Studio/Ollama) : l'assistant peut donc fonctionner même sans
+ * cette permission accordée.
+ * @param {string} host
+ * @returns {Promise<boolean>} true si l'hôte est localhost, ou si la permission est accordée
+ */
+async function ensureHostPermission(host) {
+    if (!host || host === 'localhost' || host === '127.0.0.1') return true;
+    const origin = buildOriginPattern(host);
+    // chrome.permissions n'est disponible que dans certaines pages d'extension (ex: options), pas dans
+    // les content scripts ni les documents offscreen : dans ces cas, on relaie via le script background
+    // (message 'optionalPermissionHandler'), sans dépendre de optionalPermissions.js qui n'est pas
+    // toujours chargé dans ces contextes (ex: offscreen.html).
+    const hasDirectAccess = typeof chrome !== 'undefined' && !!chrome.permissions;
+    const check = hasDirectAccess
+        ? (o) => new Promise((resolve) => chrome.permissions.contains({ origins: [o] }, resolve))
+        : (o) => new Promise((resolve) => chrome.runtime.sendMessage(
+            { action: 'optionalPermissionHandler', command: 'checkOrigin', options: { origin: o } },
+            (response) => resolve(response?.hasPermission || false)
+        ));
+    const request = hasDirectAccess
+        ? (o) => new Promise((resolve) => chrome.permissions.request({ origins: [o] }, resolve))
+        : (o) => new Promise((resolve) => chrome.runtime.sendMessage(
+            { action: 'optionalPermissionHandler', command: 'requestOrigin', options: { origin: o } },
+            (response) => resolve(response?.granted || false)
+        ));
+
+    try {
+        if (await check(origin)) return true;
+        const granted = await request(origin);
+        if (!granted) {
+            console.log(`[openAiClient] Permission optionnelle non accordée pour l'hôte "${host}" (normal en l'absence de geste utilisateur) : l'assistant tentera quand même de s'y connecter.`);
+        }
+        return granted;
+    } catch (error) {
+        console.log(`[openAiClient] Impossible de demander la permission pour l'hôte "${host}" :`, error.message || error);
+        return false;
+    }
+}
+
+/**
+ * Interroge `/v1/models` sur un hôte/port donné et renvoie la liste des identifiants de modèles
  * disponibles, ou null si le serveur ne répond pas correctement (ou pas assez vite) sur ce port.
+ * @param {string} host
  * @param {number|string} port
  * @param {string} [apiKey]
  * @returns {Promise<string[]|null>}
  */
-async function fetchModelsListOnPort(port, apiKey) {
+async function fetchModelsListOnPort(host, port, apiKey) {
     try {
-        const response = await fetch(`http://localhost:${port}/v1/models`, {
+        const response = await fetch(`http://${host}:${port}/v1/models`, {
             method: 'GET',
             headers: {
                 ...(apiKey && { 'Authorization': `Bearer ${apiKey}` }),
@@ -48,12 +107,13 @@ async function fetchModelsListOnPort(port, apiKey) {
 /**
  * Teste une liste de ports en parallèle et agrège les modèles trouvés sur chacun des ports ayant
  * répondu. Ce test est refait à chaque démarrage : rien n'est enregistré dans les options.
+ * @param {string} host - Hôte à contacter (par défaut "localhost").
  * @param {Array<number|string>} ports - Ports à tester (un seul port si l'option IAassistantPort n'est pas "auto", sinon COMMON_LOCAL_AI_PORTS).
  * @param {string} apiKey
  * @returns {Promise<{activePorts: Array<number|string>, availableModels: Array<{model: string, port: number|string}>, testedPorts: Array<number|string>}>}
  */
-async function probePortsForModels(ports, apiKey) {
-    const results = await Promise.all(ports.map(async (port) => ({ port, models: await fetchModelsListOnPort(port, apiKey) })));
+async function probePortsForModels(host, ports, apiKey) {
+    const results = await Promise.all(ports.map(async (port) => ({ port, models: await fetchModelsListOnPort(host, port, apiKey) })));
     const activePorts = [];
     const availableModels = [];
     for (const { port, models } of results) {
@@ -85,6 +145,7 @@ function getPortForModel(modelName) {
 // Initialisation asynchrone des paramètres. On garde la promesse pour pouvoir
 // l'attendre depuis openAiClient et éviter toute race condition au premier appel.
 const aiParamsReady = (async () => {
+    aiParams.host = (await getOptionPromise('IAassistantHost'))?.trim() || 'localhost' // Hôte du serveur d'IA local (par défaut "localhost", peut être une IP/nom d'hôte distant)
     aiParams.port = await getOptionPromise('IAassistantPort') // "auto" ou numéro de port spécifique choisi par l'utilisateur
     aiParams.apiKey = await getOptionPromise('IAassistantApiKey') // Normalement non utilisé, mais bon, autant être propre.
     aiParams.preferredModel = await getOptionPromise('IAassistantModelName') // Nom du modèle préféré (juste le nom, indépendant du port), ex: "qwen3.5:9b", ou "auto"
@@ -97,10 +158,17 @@ const aiParamsReady = (async () => {
     const currentDateTime = new Date().toISOString();
     aiParams.basicSystemPrompt += `\n\nDate du jour : ${currentDateTime}`;
 
+    // Tentative (best effort, non bloquante) d'obtention de la permission optionnelle pour un hôte
+    // distant : voir la documentation de ensureHostPermission pour le détail des limitations (pas de
+    // prompt possible sans geste utilisateur, fetch fonctionnant déjà sans cette permission dans la
+    // plupart des cas). Le sondage des ports est donc toujours effectué, que la permission soit
+    // accordée ou non.
+    await ensureHostPermission(aiParams.host);
+
     // Ports à tester : si un port spécifique est configuré, on ne teste que celui-ci ; sinon ("auto"),
     // on teste systématiquement tous les ports courants à chaque démarrage (pas de mise en cache du port trouvé).
     const portsToTest = (aiParams.port && aiParams.port !== 'auto') ? [aiParams.port] : COMMON_LOCAL_AI_PORTS;
-    const { activePorts, availableModels, testedPorts } = await probePortsForModels(portsToTest, aiParams.apiKey);
+    const { activePorts, availableModels, testedPorts } = await probePortsForModels(aiParams.host, portsToTest, aiParams.apiKey);
 
     aiParams.activePorts = activePorts; // Ports ayant effectivement répondu
     aiParams.availableModels = availableModels; // Liste [{model, port}] de tous les modèles disponibles, tous ports actifs confondus
@@ -132,7 +200,7 @@ async function testAiApiConnection(modelName = aiParams.defaultModel) {
     await aiParamsReady;
     const port = getPortForModel(modelName);
     try {
-        const response = await fetch(`http://localhost:${port}/v1/models`, {
+        const response = await fetch(`http://${aiParams.host}:${port}/v1/models`, {
             method: 'GET',
             headers: {
                 ...(aiParams.apiKey && { 'Authorization': `Bearer ${aiParams.apiKey}` }),
@@ -198,7 +266,7 @@ async function openAiClient({
     if (model === undefined) model = aiParams.defaultModel;
 
     // Le port à utiliser dépend du modèle sélectionné (plusieurs ports peuvent être actifs simultanément)
-    const apiUrl = `http://localhost:${getPortForModel(model)}`;
+    const apiUrl = `http://${aiParams.host}:${getPortForModel(model)}`;
 
     // Permet de faire un appel simple sans avoir à construire un tableau de messages
     if (typeof messages === 'string') {
