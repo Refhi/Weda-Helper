@@ -11,14 +11,15 @@ const AI_CHAT_WINDOW_POSITION_STORAGE_KEY = 'wedaHelperChatWindowPosition';
 
 /**
  * Charge la position persistée du widget de chat si disponible.
- * @returns {{left: number, top: number}|null}
+ * Stockée en distance depuis le bas/droite de l'écran (cohérente quand la fenêtre change de taille).
+ * @returns {{right: number, bottom: number}|null}
  */
 function loadWidgetPositionFromStorage() {
     try {
         const raw = localStorage.getItem(AI_CHAT_WIDGET_POSITION_STORAGE_KEY);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
-        if (typeof parsed?.left === 'number' && typeof parsed?.top === 'number') {
+        if (typeof parsed?.right === 'number' && typeof parsed?.bottom === 'number') {
             return parsed;
         }
     } catch (error) {
@@ -29,7 +30,7 @@ function loadWidgetPositionFromStorage() {
 
 /**
  * Persiste la position du widget de chat.
- * @param {{left: number, top: number}} position
+ * @param {{right: number, bottom: number}} position
  */
 function saveWidgetPositionToStorage(position) {
     try {
@@ -41,14 +42,15 @@ function saveWidgetPositionToStorage(position) {
 
 /**
  * Charge la position persistée de la fenêtre de chat si disponible.
- * @returns {{left: number, top: number}|null}
+ * Stockée en distance depuis le bas/droite de l'écran (cohérente quand la fenêtre change de taille).
+ * @returns {{right: number, bottom: number}|null}
  */
 function loadChatWindowPositionFromStorage() {
     try {
         const raw = localStorage.getItem(AI_CHAT_WINDOW_POSITION_STORAGE_KEY);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
-        if (typeof parsed?.left === 'number' && typeof parsed?.top === 'number') {
+        if (typeof parsed?.right === 'number' && typeof parsed?.bottom === 'number') {
             return parsed;
         }
     } catch (error) {
@@ -59,7 +61,7 @@ function loadChatWindowPositionFromStorage() {
 
 /**
  * Persiste la position de la fenêtre de chat.
- * @param {{left: number, top: number}} position
+ * @param {{right: number, bottom: number}} position
  */
 function saveChatWindowPositionToStorage(position) {
     try {
@@ -67,6 +69,17 @@ function saveChatWindowPositionToStorage(position) {
     } catch (error) {
         console.warn('[discussionClient] Impossible de sauvegarder la position de la fenetre de chat', error);
     }
+}
+
+/**
+ * Convertit un rect DOM en distances depuis le bas/droite du viewport.
+ * @returns {{right: number, bottom: number}}
+ */
+function rectToBottomRightOffset(rect) {
+    return {
+        right: Math.round(window.innerWidth - rect.right),
+        bottom: Math.round(window.innerHeight - rect.bottom)
+    };
 }
 
 /**
@@ -588,42 +601,45 @@ async function addAIChatClient() {
         ? DOMPurify
         : null;
 
-    function clampWidgetPosition(left, top) {
-        const maxLeft = Math.max(0, window.innerWidth - widget.offsetWidth);
-        const maxTop = Math.max(0, window.innerHeight - widget.offsetHeight);
+    // Le positionnement (persistance, clamp, drag) se fait en distance depuis le bas/droite du
+    // viewport plutôt qu'en left/top : ça évite que le widget "saute" quand la taille de l'écran
+    // change régulièrement (l'ancrage visuel par défaut du widget est déjà bas/droite en CSS).
+    function clampWidgetPosition(right, bottom) {
+        const maxRight = Math.max(0, window.innerWidth - widget.offsetWidth);
+        const maxBottom = Math.max(0, window.innerHeight - widget.offsetHeight);
         return {
-            left: Math.min(Math.max(0, left), maxLeft),
-            top: Math.min(Math.max(0, top), maxTop)
+            right: Math.min(Math.max(0, right), maxRight),
+            bottom: Math.min(Math.max(0, bottom), maxBottom)
         };
     }
 
-    function clampChatWindowPosition(left, top) {
+    function clampChatWindowPosition(right, bottom) {
         const windowRect = chatWindow.getBoundingClientRect();
         const windowWidth = windowRect.width || chatWindow.offsetWidth || 380;
         const windowHeight = windowRect.height || chatWindow.offsetHeight || 500;
-        const maxLeft = Math.max(0, window.innerWidth - windowWidth);
-        const maxTop = Math.max(0, window.innerHeight - windowHeight);
+        const maxRight = Math.max(0, window.innerWidth - windowWidth);
+        const maxBottom = Math.max(0, window.innerHeight - windowHeight);
         return {
-            left: Math.min(Math.max(0, left), maxLeft),
-            top: Math.min(Math.max(0, top), maxTop)
+            right: Math.min(Math.max(0, right), maxRight),
+            bottom: Math.min(Math.max(0, bottom), maxBottom)
         };
     }
 
-    function applyWidgetPosition(left, top) {
-        const clamped = clampWidgetPosition(left, top);
-        widget.style.left = `${clamped.left}px`;
-        widget.style.top = `${clamped.top}px`;
-        widget.style.right = 'auto';
-        widget.style.bottom = 'auto';
+    function applyWidgetPosition(right, bottom) {
+        const clamped = clampWidgetPosition(right, bottom);
+        widget.style.right = `${clamped.right}px`;
+        widget.style.bottom = `${clamped.bottom}px`;
+        widget.style.left = 'auto';
+        widget.style.top = 'auto';
         return clamped;
     }
 
-    function applyChatWindowPosition(left, top, { clamp = true } = {}) {
-        const nextPosition = clamp ? clampChatWindowPosition(left, top) : { left, top };
-        chatWindow.style.left = `${nextPosition.left}px`;
-        chatWindow.style.top = `${nextPosition.top}px`;
-        chatWindow.style.right = 'auto';
-        chatWindow.style.bottom = 'auto';
+    function applyChatWindowPosition(right, bottom, { clamp = true } = {}) {
+        const nextPosition = clamp ? clampChatWindowPosition(right, bottom) : { right, bottom };
+        chatWindow.style.right = `${nextPosition.right}px`;
+        chatWindow.style.bottom = `${nextPosition.bottom}px`;
+        chatWindow.style.left = 'auto';
+        chatWindow.style.top = 'auto';
         return nextPosition;
     }
 
@@ -639,8 +655,8 @@ async function addAIChatClient() {
         let isDragging = false;
         let pointerStartX = 0;
         let pointerStartY = 0;
-        let widgetStartLeft = 0;
-        let widgetStartTop = 0;
+        let widgetStartRight = 0;
+        let widgetStartBottom = 0;
         let suppressClick = false;
 
         function onPointerMove(event) {
@@ -653,7 +669,8 @@ async function addAIChatClient() {
             }
             if (!isDragging) return;
 
-            applyPosition(widgetStartLeft + deltaX, widgetStartTop + deltaY);
+            // Déplacer le pointeur vers la droite/le bas réduit la distance au bord droit/bas.
+            applyPosition(widgetStartRight - deltaX, widgetStartBottom - deltaY);
         }
 
         function onPointerUp() {
@@ -661,8 +678,8 @@ async function addAIChatClient() {
             document.removeEventListener('pointerup', onPointerUp);
 
             if (isDragging) {
-                const currentRect = getStartRect();
-                const applied = applyPosition(currentRect.left, currentRect.top);
+                const currentOffset = getStartRect();
+                const applied = applyPosition(currentOffset.right, currentOffset.bottom);
                 savePosition(applied);
             }
             isDragging = false;
@@ -672,9 +689,9 @@ async function addAIChatClient() {
             if (event.button !== 0 || !canStartDrag(event)) return;
             pointerStartX = event.clientX;
             pointerStartY = event.clientY;
-            const rect = getStartRect();
-            widgetStartLeft = rect.left;
-            widgetStartTop = rect.top;
+            const offset = getStartRect();
+            widgetStartRight = offset.right;
+            widgetStartBottom = offset.bottom;
             suppressClick = false;
 
             document.addEventListener('pointermove', onPointerMove);
@@ -694,22 +711,24 @@ async function addAIChatClient() {
     function initializeDraggableChatWidget() {
         const savedPosition = loadWidgetPositionFromStorage();
         if (savedPosition) {
-            const applied = applyWidgetPosition(savedPosition.left, savedPosition.top);
+            const applied = applyWidgetPosition(savedPosition.right, savedPosition.bottom);
             saveWidgetPositionToStorage(applied);
         }
 
         bindDragHandle(chatToggle, {
-            getStartRect: () => widget.getBoundingClientRect(),
-            applyPosition: (left, top) => applyWidgetPosition(left, top),
+            getStartRect: () => rectToBottomRightOffset(widget.getBoundingClientRect()),
+            applyPosition: (right, bottom) => applyWidgetPosition(right, bottom),
             savePosition: (position) => saveWidgetPositionToStorage(position),
             suppressClickOnDrag: true
         });
 
+        // L'ancrage bas/droite (CSS) suit déjà les changements de taille d'écran automatiquement ;
+        // on ne fait que reclamper/persister au cas où le widget déborderait après un rétrécissement.
         window.addEventListener('resize', () => {
-            if (widget.style.left && widget.style.top) {
-                const currentLeft = parseFloat(widget.style.left) || 0;
-                const currentTop = parseFloat(widget.style.top) || 0;
-                const clamped = applyWidgetPosition(currentLeft, currentTop);
+            if (widget.style.right && widget.style.bottom) {
+                const currentRight = parseFloat(widget.style.right) || 0;
+                const currentBottom = parseFloat(widget.style.bottom) || 0;
+                const clamped = applyWidgetPosition(currentRight, currentBottom);
                 saveWidgetPositionToStorage(clamped);
             }
         });
@@ -718,21 +737,21 @@ async function addAIChatClient() {
     function initializeDraggableChatWindow() {
         const savedPosition = loadChatWindowPositionFromStorage();
         if (savedPosition) {
-            applyChatWindowPosition(savedPosition.left, savedPosition.top, { clamp: false });
+            applyChatWindowPosition(savedPosition.right, savedPosition.bottom, { clamp: false });
         }
 
         bindDragHandle(chatHeader, {
-            getStartRect: () => chatWindow.getBoundingClientRect(),
-            applyPosition: (left, top) => applyChatWindowPosition(left, top),
+            getStartRect: () => rectToBottomRightOffset(chatWindow.getBoundingClientRect()),
+            applyPosition: (right, bottom) => applyChatWindowPosition(right, bottom),
             savePosition: (position) => saveChatWindowPositionToStorage(position),
             canStartDrag: (event) => !event.target.closest('button') && !getChatWindowResizeDirection(event)
         });
 
         window.addEventListener('resize', () => {
-            if (chatWindow.style.left && chatWindow.style.top) {
-                const currentLeft = parseFloat(chatWindow.style.left) || 0;
-                const currentTop = parseFloat(chatWindow.style.top) || 0;
-                const clamped = applyChatWindowPosition(currentLeft, currentTop);
+            if (chatWindow.style.right && chatWindow.style.bottom) {
+                const currentRight = parseFloat(chatWindow.style.right) || 0;
+                const currentBottom = parseFloat(chatWindow.style.bottom) || 0;
+                const clamped = applyChatWindowPosition(currentRight, currentBottom);
                 saveChatWindowPositionToStorage(clamped);
             }
         });
@@ -816,18 +835,22 @@ async function addAIChatClient() {
                 nextHeight = Math.max(minHeight, startRect.height - (nextTop - startRect.top));
             }
 
-            const clamped = clampChatWindowPosition(nextLeft, nextTop);
-            chatWindow.style.left = `${clamped.left}px`;
-            chatWindow.style.top = `${clamped.top}px`;
+            // Clamp left/top ici en coordonnées écran classiques (calcul transitoire du resize) ;
+            // la position persistée bas/droite n'est recalculée qu'au relâchement (onResizeUp).
+            const clampedLeft = Math.min(Math.max(0, nextLeft), window.innerWidth - minWidth);
+            const clampedTop = Math.min(Math.max(0, nextTop), window.innerHeight - minHeight);
+            chatWindow.style.left = `${clampedLeft}px`;
+            chatWindow.style.top = `${clampedTop}px`;
             chatWindow.style.right = 'auto';
             chatWindow.style.bottom = 'auto';
-            chatWindow.style.width = `${Math.min(nextWidth, window.innerWidth - clamped.left)}px`;
-            chatWindow.style.height = `${Math.min(nextHeight, window.innerHeight - clamped.top)}px`;
+            chatWindow.style.width = `${Math.min(nextWidth, window.innerWidth - clampedLeft)}px`;
+            chatWindow.style.height = `${Math.min(nextHeight, window.innerHeight - clampedTop)}px`;
         }
 
         function onResizeUp() {
             if (isResizing) {
-                const clamped = applyChatWindowPosition(chatWindow.getBoundingClientRect().left, chatWindow.getBoundingClientRect().top);
+                const offset = rectToBottomRightOffset(chatWindow.getBoundingClientRect());
+                const clamped = applyChatWindowPosition(offset.right, offset.bottom, { clamp: false });
                 saveChatWindowPositionToStorage(clamped);
             }
             isResizing = false;
