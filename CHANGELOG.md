@@ -11,6 +11,9 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 ## Fix :
 - [#648](https://github.com/Refhi/Weda-Helper/issues/648) - La fiche mémo des raccourcis clavier se supprime + facilement dans certaines circonstances.
 
+## Evolution :
+- les numéros de téléphone peuvent désormais être cliqués pour être copiés (merci @Abeldvlpr pour le commit :)
+
 # [3.1] - Post-it et extraction de données centralisée (WhAIp à venir dans la 3.2 !)
 ## Ajouts :
 - [#627](https://github.com/Refhi/Weda-Helper/issues/627) - Ajout de raccourcis dans x jours pour les dates d'alertes dans les antécédents (3 mois, 6 mois, 1 an, 2 ans, 5 ans)
