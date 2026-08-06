@@ -9,38 +9,48 @@
 
 const OFFSCREEN_PORT_NAME = 'wedaHelper-offscreen';
 
-const backgroundPort = chrome.runtime.connect({ name: OFFSCREEN_PORT_NAME });
+// Utiliser `let` pour permettre la reconnexion automatique lorsque le service worker
+// s'arrête (ce qui arrive après une longue inactivité ou en cours de streaming).
+let backgroundPort;
 
-backgroundPort.onMessage.addListener((message) => {
-    switch (message.type) {
-        case 'userMessage':
-            processUserMessage(message);
-            break;
-        case 'toolCallResult':
-            resolveToolCall(message);
-            break;
-        case 'resetChat':
-            resetConversation(message.patientId);
-            break;
-        case 'stopGeneration':
-            stopGeneration(message.patientId);
-            break;
-        case 'setModel':
-            setModel(message.patientId, message.model);
-            break;
-        case 'requestState':
-            sendStateSync(message.tabId, message.patientId);
-            break;
-        case 'tabDisconnected':
-            rejectPendingToolCallsForTab(message.tabId);
-            break;
-        default:
-            console.warn('[offscreen] Message de type inconnu ignoré :', message);
-    }
-});
+function connectToBackground() {
+    backgroundPort = chrome.runtime.connect({ name: OFFSCREEN_PORT_NAME });
 
-backgroundPort.onDisconnect.addListener(() => {
-    console.warn('[offscreen] Port avec le background déconnecté');
-});
+    backgroundPort.onMessage.addListener((message) => {
+        switch (message.type) {
+            case 'userMessage':
+                processUserMessage(message);
+                break;
+            case 'toolCallResult':
+                resolveToolCall(message);
+                break;
+            case 'resetChat':
+                resetConversation(message.patientId);
+                break;
+            case 'stopGeneration':
+                stopGeneration(message.patientId);
+                break;
+            case 'setModel':
+                setModel(message.patientId, message.model);
+                break;
+            case 'requestState':
+                sendStateSync(message.tabId, message.patientId);
+                break;
+            case 'tabDisconnected':
+                rejectPendingToolCallsForTab(message.tabId);
+                break;
+            default:
+                console.warn('[offscreen] Message de type inconnu ignoré :', message);
+        }
+    });
 
+    backgroundPort.onDisconnect.addListener(() => {
+        console.warn('[offscreen] Port avec le background déconnecté, reconnexion...');
+        // Le service worker s'est arrêté ; on se reconnecte pour être prêt à recevoir
+        // les prochains messages dès qu'il redémarre.
+        connectToBackground();
+    });
+}
+
+connectToBackground();
 console.log('[offscreen] Document offpage prêt, port connecté au background');

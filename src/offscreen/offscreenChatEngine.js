@@ -14,7 +14,7 @@
 // Délai avant d'abandonner un appel de fonction resté sans réponse de l'onglet (ex: page bloquée).
 // Un onglet fermé/qui navigue déclenche un rejet immédiat via rejectPendingToolCallsForTab, ce
 // timeout ne couvre donc que le cas d'un onglet resté ouvert mais qui ne répond jamais.
-const TOOL_CALL_TIMEOUT_MS = 60000;
+const TOOL_CALL_TIMEOUT_MS = 120000;
 
 // Conversations actives, indexées par patientId (une seule conversation par patient, partagée
 // entre tous les onglets ouverts sur ce patient), plus une conversation "default" en l'absence de
@@ -86,7 +86,11 @@ async function sendStateSync(tabId, patientId) {
  * Envoie un message à un onglet donné, relayé par le background (@see background/offscreenHandler.js).
  */
 function sendToTab(tabId, message) {
-    backgroundPort.postMessage({ ...message, tabId });
+    try {
+        backgroundPort.postMessage({ ...message, tabId });
+    } catch (e) {
+        console.warn('[offscreenChatEngine] Port déconnecté, message non transmis :', message.type, e.message);
+    }
 }
 
 /**
@@ -95,7 +99,11 @@ function sendToTab(tabId, message) {
  * synchronisés en temps réel, quel que soit celui à l'origine de la génération.
  */
 function broadcastToPatient(patientId, message) {
-    backgroundPort.postMessage({ ...message, patientId, broadcast: true });
+    try {
+        backgroundPort.postMessage({ ...message, patientId, broadcast: true });
+    } catch (e) {
+        console.warn('[offscreenChatEngine] Port déconnecté, broadcast non transmis :', message.type, e.message);
+    }
 }
 
 /**
