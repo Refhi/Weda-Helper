@@ -914,8 +914,15 @@ var advancedDefaultSettings = [
             }, {
                 "name": "IAassistantContextLimit",
                 "type": TYPE_SMALLTEXT,
-                "description": "Nombre de tokens de contexte autorisés par le modèle d'IA utilisé. Par exemple qwen3.5:9b = 4096. Cette limite va simplement afficher un avertissement si le contexte dépasse cette limite, mais ne bloquera pas l'envoi de la requête.",
+                "description": "Avertisseur de dépassement de tokens de contexte.",
+                "longDescription": "Nombre de tokens de contexte autorisés par le modèle d'IA utilisé. Par exemple qwen3.5:9b = 4096. Cette limite va simplement afficher un avertissement si le contexte dépasse cette limite, mais ne bloquera pas l'envoi de la requête.",
                 "default": "4096"
+            }, {
+                "name": "IAassistantMaxTokensOutput",
+                "type": TYPE_SMALLTEXT,
+                "description": "Nombre max. de tokens de sorties autorisés.",
+                "default": "2048",
+                "longDescription": "Permet d’empêcher le modèle de générer des réponses trop longues. A augmenter si vous êtes trop souvent confronté à \"limite de tokens (maxTokens) a été atteinte\"."
             }]
         }]
     }, {

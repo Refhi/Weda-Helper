@@ -153,6 +153,7 @@ const aiParamsReady = (async () => {
     aiParams.MAX_TOOL_CALL_DEPTH =  5 // Nombre maximum d'allers-retours de function calling avant d'abandonner (évite les boucles infinies)
     aiParams.basicSystemPrompt = await getOptionPromise('IAassistantMainSystemPrompt') // Prompt de base pour le modèle
     aiParams.contextTokenLimit = await getOptionPromise('IAassistantContextLimit')
+    aiParams.maxTokensOutput = await getOptionPromise('IAassistantMaxTokensOutput')
 
     // Ajout de la date du jour dans le prompt système de base, pour que le modèle sache quelle est la date actuelle.
     const currentDateTime = new Date().toISOString();
@@ -222,7 +223,7 @@ async function openAiClient({
     model = aiParams.defaultModel, // modèle à utiliser (ex: "gpt-4o", "mistral-nemo:12b-instruct-2407-q5_K_M", etc.)
     
     // --- 3. Paramètres de Sampling (Ce que vous aviez déjà) ---
-    maxTokens = 1000,      // le nombre maximum de tokens à générer dans la réponse. A ajuster à terme, et discuter de mettre un appel de l'API en amont pour requêter le nombre de tokens restants pour ne pas dépasser la limite du modèle.
+    maxTokens = aiParams.maxTokensOutput,      // le nombre maximum de tokens à générer dans la réponse. A ajuster à terme, et discuter de mettre un appel de l'API en amont pour requêter le nombre de tokens restants pour ne pas dépasser la limite du modèle.
     temperature = 0.7,     // le degré de créativité (0.0 = très conservateur, 1.0 = très créatif)
     topP = 0.9,            // le pourcentage de probabilité cumulative pour le filtrage des tokens (0.0 à 1.0)
     frequencyPenalty = 0.0,// pénalité pour la fréquence des tokens (0.0 à 2.0, plus élevé = moins de répétition)
