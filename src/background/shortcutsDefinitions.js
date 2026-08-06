@@ -131,5 +131,9 @@ var defaultShortcuts = {
     "quick_access": {
         "default": "Ctrl+K",
         "description": "Active le mode Quick Access (navigation rapide par raccourcis visuels)"
+    },
+    "assistant_local": {
+        "default": "Ctrl+I",
+        "description": "Active l'assistant local (IA locale)"
     }
 };

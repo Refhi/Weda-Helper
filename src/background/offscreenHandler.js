@@ -14,6 +14,40 @@ const OFFSCREEN_DOCUMENT_PATH = 'src/offscreen/offscreen.html';
 // Port ouvert par le document offpage vers le background (un seul document offpage à la fois).
 let offscreenPort = null;
 
+// Résolue quand offscreenPort est effectivement connecté ; recréée (pending) à sa déconnexion. Le
+// service worker est tué après ~30s d'inactivité puis redémarre "à vide" (variables réinitialisées)
+// dès qu'un message arrive : `ensureOffscreenDocument` constate alors que le document offpage existe
+// déjà (il survit, lui, à la mort du service worker) et ne le recrée donc pas, mais son port vers CE
+// nouveau service worker n'est pas encore établi (l'offpage doit le reconnecter de son côté, @see
+// offscreen.js). Sans attendre cette promesse, un message arrivé dans cette fenêtre serait relayé
+// vers un offscreenPort encore `null` et silencieusement perdu (aucune erreur, aucune réponse).
+let resolveOffscreenPortReady = null;
+let offscreenPortReady = new Promise(resolve => { resolveOffscreenPortReady = resolve; });
+
+function markOffscreenPortConnected(port) {
+    offscreenPort = port;
+    resolveOffscreenPortReady();
+}
+
+function markOffscreenPortDisconnected() {
+    offscreenPort = null;
+    offscreenPortReady = new Promise(resolve => { resolveOffscreenPortReady = resolve; });
+}
+
+// Délai maximum d'attente de la reconnexion du document offpage avant d'abandonner un message (le
+// document se reconnecte normalement en quelques millisecondes, ce délai ne couvre qu'un cas anormal).
+const OFFSCREEN_PORT_READY_TIMEOUT_MS = 5000;
+
+async function waitForOffscreenPortReady() {
+    if (offscreenPort) return true;
+    const timedOut = await Promise.race([
+        offscreenPortReady.then(() => false),
+        new Promise(resolve => setTimeout(() => resolve(true), OFFSCREEN_PORT_READY_TIMEOUT_MS))
+    ]);
+    if (timedOut) console.error('[offscreenHandler] Timeout en attendant la reconnexion du document offpage');
+    return !timedOut;
+}
+
 // Ports ouverts par les content scripts (un par onglet), indexés par tabId.
 const chatPortsByTabId = new Map();
 
@@ -65,7 +99,7 @@ const CHAT_PORT_NAME = 'wedaHelper-chat';
 chrome.runtime.onConnect.addListener((port) => {
     // Cette partie est lancée quand on est dans une page de l'extension (background ou offscreen) 
     if (port.name === OFFSCREEN_PORT_NAME) {
-        offscreenPort = port;
+        markOffscreenPortConnected(port);
         console.log('[offscreenHandler] Document offpage connecté');
 
         // Relais offpage -> onglet(s) concerné(s) : soit un onglet précis (champ tabId), soit tous
@@ -83,7 +117,7 @@ chrome.runtime.onConnect.addListener((port) => {
 
         port.onDisconnect.addListener(() => {
             console.warn('[offscreenHandler] Document offpage déconnecté');
-            offscreenPort = null;
+            markOffscreenPortDisconnected();
         });
         return;
     }
@@ -108,6 +142,7 @@ chrome.runtime.onConnect.addListener((port) => {
                 return;
             }
             await ensureOffscreenDocument();
+            await waitForOffscreenPortReady();
             offscreenPort?.postMessage({ ...message, tabId });
         });
 

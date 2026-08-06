@@ -1143,13 +1143,17 @@ async function addAIChatClient() {
     }
 
     // S'abonne auprès du background au patient courant, pour recevoir les diffusions (broadcast)
-    // destinées à tous les onglets ouverts sur ce patient (@see background/offscreenHandler.js).
-    sendOffscreenMessage({ type: 'subscribe', patientId: chatPatientId });
-
-    // Demande à l'offpage l'état actuel de la conversation de ce patient (peut déjà exister si un
-    // autre onglet a discuté avec le même patient, ou si cette page a été rechargée) afin de
-    // reconstruire l'affichage. La réponse ('stateSync') est traitée par handleOffscreenMessage.
-    sendOffscreenMessage({ type: 'requestState', patientId: chatPatientId });
+    // destinées à tous les onglets ouverts sur ce patient (@see background/offscreenHandler.js), et
+    // demande l'état actuel de la conversation (peut déjà exister si un autre onglet a discuté avec
+    // le même patient, ou si cette page a été rechargée) afin de reconstruire l'affichage (la
+    // réponse 'stateSync' est traitée par handleOffscreenMessage). Rejoué à chaque reconnexion du
+    // port (@see onOffscreenReconnect dans offscreenBridge.js) : le service worker de background
+    // perd en mémoire cet abonnement à chaque redémarrage (~30s d'inactivité), il faut donc le
+    // refaire dès que la reconnexion aboutit, sans attendre une action de l'utilisateur.
+    onOffscreenReconnect(() => {
+        sendOffscreenMessage({ type: 'subscribe', patientId: chatPatientId });
+        sendOffscreenMessage({ type: 'requestState', patientId: chatPatientId });
+    });
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
     // Le textarea insère un saut de ligne par défaut sur Entrée : on force la soumission,

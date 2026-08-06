@@ -11,6 +11,33 @@ const CHAT_PORT_NAME = 'wedaHelper-chat';
 
 let chatPort = null;
 
+// Callbacks enregistrés via onOffscreenMessage : conservés ici (et pas seulement attachés au port
+// courant) car un nouveau port est créé à chaque reconnexion (@see connectChatPort), notamment
+// après la mort du service worker de background (~30s d'inactivité) qui déconnecte tous les ports
+// existants. Sans ça, les écouteurs enregistrés avant la reconnexion seraient perdus silencieusement.
+const messageListeners = [];
+
+// Callbacks appelés après une (re)connexion réussie, pour permettre à l'appelant (discussionClient)
+// de rejouer 'subscribe'/'requestState' : le service worker qui redémarre perd en mémoire
+// l'abonnement de cet onglet (@see background/offscreenHandler.js), il faut donc le refaire.
+const reconnectListeners = [];
+
+function connectChatPort() {
+    const port = chrome.runtime.connect({ name: CHAT_PORT_NAME });
+    port.onMessage.addListener((message) => {
+        if (message?.type === 'toolCallRequest') executeRequestedToolCall(message);
+        for (const callback of messageListeners) callback(message);
+    });
+    port.onDisconnect.addListener(() => {
+        console.warn('[offscreenBridge] Port avec le document offpage déconnecté, reconnexion...');
+        chatPort = null;
+        // Reconnexion immédiate (plutôt que d'attendre le prochain envoi utilisateur), pour que les
+        // onglets restés inactifs se resynchronisent au plus vite après un redémarrage du service worker.
+        getOffscreenChatPort();
+    });
+    return port;
+}
+
 /**
  * Ouvre (ou réutilise) le port de communication avec le document offpage, via le background.
  * Répond automatiquement aux demandes d'exécution de fonction ('toolCallRequest') : c'est le
@@ -19,14 +46,8 @@ let chatPort = null;
  */
 function getOffscreenChatPort() {
     if (chatPort) return chatPort;
-    chatPort = chrome.runtime.connect({ name: CHAT_PORT_NAME });
-    chatPort.onMessage.addListener((message) => {
-        if (message?.type === 'toolCallRequest') executeRequestedToolCall(message);
-    });
-    chatPort.onDisconnect.addListener(() => {
-        console.warn('[offscreenBridge] Port avec le document offpage déconnecté');
-        chatPort = null;
-    });
+    chatPort = connectChatPort();
+    for (const callback of reconnectListeners) callback();
     return chatPort;
 }
 
@@ -44,7 +65,22 @@ function sendOffscreenMessage(message) {
  * @param {(message: object) => void} callback
  */
 function onOffscreenMessage(callback) {
-    getOffscreenChatPort().onMessage.addListener(callback);
+    getOffscreenChatPort(); // s'assure que le port est ouvert
+    messageListeners.push(callback);
+}
+
+/**
+ * Enregistre un callback appelé juste après chaque (re)connexion du port offpage, y compris la
+ * toute première. Utile pour rejouer 'subscribe'/'requestState' après une reconnexion suite à la
+ * mort du service worker de background.
+ * @param {() => void} callback
+ */
+function onOffscreenReconnect(callback) {
+    reconnectListeners.push(callback);
+    // Si le port existe déjà, sa création n'invoquera pas ce nouveau callback : on le fait nous-mêmes
+    // pour l'appel initial. Sinon, connectChatPort() l'invoquera (une seule fois) via getOffscreenChatPort().
+    if (chatPort) callback();
+    else getOffscreenChatPort();
 }
 
 /**
