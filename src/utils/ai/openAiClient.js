@@ -17,6 +17,18 @@ const COMMON_LOCAL_AI_PORTS = [1234, 11434];
 const LOCAL_AI_PROBE_TIMEOUT_MS = 800;
 
 /**
+ * Convertit une valeur en entier strictement positif, sinon renvoie la valeur de repli.
+ * @param {unknown} value
+ * @param {number|null} fallback
+ * @returns {number|null}
+ */
+function toPositiveIntegerOrFallback(value, fallback = null) {
+    if (value === null || value === undefined || value === '') return fallback;
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+/**
  * Construit un motif d'origine (host permission) à partir d'un hôte, ex: "http://192.168.1.50/*".
  * @param {string} host
  * @returns {string}
@@ -152,8 +164,8 @@ const aiParamsReady = (async () => {
     aiParams.toolCalling = await getOptionPromise('AIAssistantToolCalling') // true/false pour activer le function calling
     aiParams.MAX_TOOL_CALL_DEPTH =  5 // Nombre maximum d'allers-retours de function calling avant d'abandonner (évite les boucles infinies)
     aiParams.basicSystemPrompt = await getOptionPromise('IAassistantMainSystemPrompt') // Prompt de base pour le modèle
-    aiParams.contextTokenLimit = await getOptionPromise('IAassistantContextLimit')
-    aiParams.maxTokensOutput = await getOptionPromise('IAassistantMaxTokensOutput')
+    aiParams.contextTokenLimit = toPositiveIntegerOrFallback(await getOptionPromise('IAassistantContextLimit'), 0)
+    aiParams.maxTokensOutput = toPositiveIntegerOrFallback(await getOptionPromise('IAassistantMaxTokensOutput'), null)
 
     // Ajout de la date du jour dans le prompt système de base, pour que le modèle sache quelle est la date actuelle.
     const currentDateTime = new Date().toISOString();
@@ -573,10 +585,10 @@ function buildRequestBody({
     resolvedTools,
     toolChoice
 }) {
+    const normalizedMaxTokens = toPositiveIntegerOrFallback(maxTokens, null);
     const requestBody = {
         model,
         messages,
-        max_tokens: maxTokens,
         temperature,
         top_p: topP,
         frequency_penalty: frequencyPenalty,
@@ -584,6 +596,7 @@ function buildRequestBody({
     };
 
     // Ajouter les paramètres optionnels seulement s'ils sont définis
+    if (normalizedMaxTokens !== null) requestBody.max_tokens = normalizedMaxTokens;
     if (stop) requestBody.stop = stop;
     if (stream) requestBody.stream = stream;
     if (responseFormat) requestBody.response_format = responseFormat;
