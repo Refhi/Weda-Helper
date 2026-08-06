@@ -306,6 +306,24 @@ async function addAIChatClient() {
             word-wrap: break-word;
             white-space: pre-wrap;
         }
+        #wedaHelper-copy-message-btn {
+            display: none;
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 1px solid #ccc;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+            cursor: pointer;
+            font-size: 12px;
+            line-height: 1;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            z-index: 10001;
+        }
+        #wedaHelper-copy-message-btn:hover { background: #f0f0f0; }
         #wedaHelper-chat-messages .message.user {
             background: #10a37f;
             color: white;
@@ -521,6 +539,50 @@ async function addAIChatClient() {
         }
         #wedaHelper-chat-stop:hover { background: #c23f3f; }
         #wedaHelper-chat-stop.visible { display: block; }
+        #wedaHelper-chat-shortcuts {
+            position: fixed;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            z-index: 9998;
+            pointer-events: none;
+        }
+        #wedaHelper-chat-shortcuts.open { display: flex; }
+        #wedaHelper-chat-shortcuts button {
+            pointer-events: auto;
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            border-radius: 50%;
+            background: #10a37f;
+            color: white;
+            border: 2px solid #ffffff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+        #wedaHelper-chat-shortcuts button:hover { background: #0d8c6d; }
+        #wedaHelper-chat-shortcuts button:disabled { cursor: not-allowed; opacity: 0.6; background: #aaa; }
+        #wedaHelper-shortcut-tooltip {
+            display: none;
+            position: fixed;
+            max-width: 260px;
+            background: #343541;
+            color: white;
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            line-height: 1.4;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+            z-index: 10002;
+            pointer-events: none;
+        }
     `;
     document.head.appendChild(style);
 
@@ -528,6 +590,7 @@ async function addAIChatClient() {
     const widget = document.createElement('div');
     widget.id = 'wedaHelper-chat-widget';
     widget.innerHTML = `
+        <div id="wedaHelper-chat-shortcuts"></div>
         <div id="wedaHelper-chat-window">
             <div id="wedaHelper-chat-header">
                 <span>Assistant Local</span>
@@ -558,6 +621,8 @@ async function addAIChatClient() {
             <span class="wedaHelper-chat-toggle-badge" aria-hidden="true">✨</span>
             <span class="wedaHelper-visually-hidden">Assistant IA</span>
         </button>
+        <button id="wedaHelper-copy-message-btn" type="button" title="Copier le message">📋</button>
+        <div id="wedaHelper-shortcut-tooltip"></div>
     `;
     document.body.appendChild(widget);
 
@@ -594,6 +659,9 @@ async function addAIChatClient() {
     const fileInput = widget.querySelector('#wedaHelper-file-input');
     const attachFileButton = widget.querySelector('#wedaHelper-attach-file');
     const attachmentsPreview = widget.querySelector('#wedaHelper-attachments-preview');
+    const shortcutsPanel = widget.querySelector('#wedaHelper-chat-shortcuts');
+    const copyMessageButton = widget.querySelector('#wedaHelper-copy-message-btn');
+    const shortcutTooltip = widget.querySelector('#wedaHelper-shortcut-tooltip');
     const markdownRenderer = typeof markdownit === 'function'
         ? markdownit({ html: false, linkify: true, breaks: true })
         : null;
@@ -1116,13 +1184,16 @@ async function addAIChatClient() {
         `;
     }
 
-    resetButton.addEventListener('click', () => {
+    resetButton.addEventListener('click', resetConversation);
+
+    /** Réinitialise la conversation en cours (utilisé par le bouton ↺ et la commande /clear). */
+    function resetConversation() {
         sendOffscreenMessage({ type: 'resetChat', patientId: chatPatientId });
         pendingAttachments = [];
         renderAttachmentsPreview();
         chatMessages.innerHTML = '';
         infoPopover.classList.remove('open');
-    });
+    }
 
     /**
      * Reconstruit l'affichage à partir de l'historique conversationnel renvoyé par l'offpage (voir
@@ -1203,6 +1274,79 @@ async function addAIChatClient() {
         }
     }
 
+    /**
+     * Positionne la colonne de raccourcis à cheval du bord gauche de la fenêtre de chat (moitié dans,
+     * moitié dehors), verticalement centrée : appelée en boucle (requestAnimationFrame) tant que le
+     * chat est ouvert, pour suivre le déplacement/redimensionnement de la fenêtre sans dupliquer sa
+     * logique de drag/resize.
+     */
+    function syncShortcutsPanelPosition() {
+        const rect = chatWindow.getBoundingClientRect();
+        const buttonWidth = 32;
+        shortcutsPanel.style.left = `${Math.max(4, rect.left - buttonWidth / 2)}px`;
+        shortcutsPanel.style.top = `${rect.top}px`;
+        shortcutsPanel.style.right = 'auto';
+        shortcutsPanel.style.bottom = 'auto';
+        shortcutsPanel.style.height = `${rect.height}px`;
+        shortcutsPanel.style.justifyContent = 'center';
+    }
+
+    let shortcutsSyncRafId = null;
+    function startShortcutsSyncLoop() {
+        function loop() {
+            syncShortcutsPanelPosition();
+            shortcutsSyncRafId = requestAnimationFrame(loop);
+        }
+        loop();
+    }
+    function stopShortcutsSyncLoop() {
+        if (shortcutsSyncRafId) cancelAnimationFrame(shortcutsSyncRafId);
+        shortcutsSyncRafId = null;
+    }
+
+    /**
+     * Construit les boutons ronds de raccourcis à partir des 10 prompts paramétrés dans les options
+     * (@see aiParams.promptShortcuts, réglages "IAassistantPromptShortcut0" à "9"). Un bouton affiche
+     * juste son numéro au repos, le texte complet du prompt en tooltip ; les emplacements vides ne
+     * sont pas affichés.
+     */
+    function renderShortcutButtons() {
+        shortcutsPanel.innerHTML = '';
+        (aiParams.promptShortcuts || []).forEach((promptText, index) => {
+            if (!promptText?.trim()) return;
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = String(index);
+            button.addEventListener('mouseenter', () => {
+                shortcutTooltip.textContent = promptText;
+                const buttonRect = button.getBoundingClientRect();
+                shortcutTooltip.style.top = `${buttonRect.top}px`;
+                shortcutTooltip.style.left = `${buttonRect.right + 8}px`;
+                shortcutTooltip.style.display = 'block';
+            });
+            button.addEventListener('mouseleave', () => {
+                shortcutTooltip.style.display = 'none';
+            });
+            button.addEventListener('click', () => runPromptShortcut(index));
+            shortcutsPanel.appendChild(button);
+        });
+    }
+    renderShortcutButtons();
+
+    /**
+     * Envoie le prompt configuré pour le raccourci d'index donné (utilisé par les boutons ronds et
+     * les commandes /0 à /9). Renvoie false si l'emplacement est vide ou une génération est en cours.
+     * @param {number} index
+     * @returns {boolean}
+     */
+    function runPromptShortcut(index) {
+        const promptText = aiParams.promptShortcuts?.[index];
+        if (!promptText?.trim() || activeGeneration) return false;
+        chatInput.value = promptText;
+        chatForm.requestSubmit();
+        return true;
+    }
+
     let isOpen = false;
     function toggleChat() {
         isOpen = !isOpen;
@@ -1210,14 +1354,75 @@ async function addAIChatClient() {
             chatWindow.classList.add('open');
             chatToggle.style.display = 'none';
             chatInput.focus();
+            shortcutsPanel.classList.add('open');
+            startShortcutsSyncLoop();
         } else {
             chatWindow.classList.remove('open');
             chatToggle.style.display = 'flex';
+            shortcutsPanel.classList.remove('open');
+            stopShortcutsSyncLoop();
         }
     }
 
     chatToggle.addEventListener('click', toggleChat);
     closeChat.addEventListener('click', toggleChat);
+
+    // Ferme le chat avec Echap, comme la plupart des fenêtres flottantes.
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && isOpen) {
+            toggleChat();
+        }
+    });
+
+    // --- Copie d'une bulle au survol ---
+    // Un seul bouton flottant suit la bulle survolée plutôt que d'en injecter un par bulle : plusieurs
+    // bulles voient leur contenu remplacé directement (textContent/innerHTML) au fil du streaming,
+    // ce qui aurait effacé un bouton enfant à chaque mise à jour.
+    let hoveredBubbleForCopy = null;
+    let hideCopyButtonTimeoutId = null;
+    function positionCopyButtonOverBubble(bubble) {
+        const rect = bubble.getBoundingClientRect();
+        // Ancré en bas à droite de la bulle : reste toujours cliquable même si la bulle dépasse en haut de la fenêtre.
+        copyMessageButton.style.top = `${rect.bottom - 24}px`;
+        copyMessageButton.style.left = `${rect.right - 24}px`;
+    }
+    function showCopyButtonForBubble(bubble) {
+        clearTimeout(hideCopyButtonTimeoutId);
+        hoveredBubbleForCopy = bubble;
+        positionCopyButtonOverBubble(bubble);
+        copyMessageButton.style.display = 'flex';
+    }
+    function scheduleHideCopyButton() {
+        clearTimeout(hideCopyButtonTimeoutId);
+        // Léger délai pour laisser le temps au pointeur d'atteindre le bouton sans qu'il disparaisse.
+        hideCopyButtonTimeoutId = setTimeout(() => {
+            copyMessageButton.style.display = 'none';
+            hoveredBubbleForCopy = null;
+        }, 200);
+    }
+    chatMessages.addEventListener('mouseover', (event) => {
+        const bubble = event.target.closest('.message');
+        if (!bubble) return;
+        if (bubble === hoveredBubbleForCopy) { clearTimeout(hideCopyButtonTimeoutId); return; }
+        showCopyButtonForBubble(bubble);
+    });
+    chatMessages.addEventListener('mouseout', (event) => {
+        const leavingBubble = event.target.closest('.message');
+        if (!leavingBubble) return;
+        // Ne masque pas si on se dirige vers un autre élément de la même bulle ou vers le bouton lui-même.
+        if (event.relatedTarget && (leavingBubble.contains(event.relatedTarget) || event.relatedTarget === copyMessageButton)) return;
+        scheduleHideCopyButton();
+    });
+    copyMessageButton.addEventListener('mouseenter', () => clearTimeout(hideCopyButtonTimeoutId));
+    copyMessageButton.addEventListener('mouseleave', scheduleHideCopyButton);
+    copyMessageButton.addEventListener('click', () => {
+        if (!hoveredBubbleForCopy) return;
+        const textToCopy = hoveredBubbleForCopy.dataset.markdownSource ?? hoveredBubbleForCopy.textContent;
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            copyMessageButton.textContent = '✅';
+            setTimeout(() => { copyMessageButton.textContent = '📋'; }, 1000);
+        }).catch(error => console.warn('[discussionClient] Copie du message impossible', error));
+    });
 
     function appendMessage(role, text) {
         const msgDiv = document.createElement('div');
@@ -1543,20 +1748,43 @@ async function addAIChatClient() {
         sendOffscreenMessage({ type: 'stopGeneration', patientId: chatPatientId });
     });
 
-    chatForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    /** Affiche une bulle neutre d'information système (retour des commandes /...). */
+    function showSystemNotice(text) {
+        const notice = appendMessage('bot', text);
+        notice.classList.remove('bot');
+        notice.classList.add('tool-call');
+    }
 
-        const userText = chatInput.value.trim();
-        if (!userText) return;
+    /** Affiche la liste des commandes / disponibles ainsi que les raccourcis de prompts configurés. */
+    function showHelpMessage(commands) {
+        const commandsList = Object.entries(commands)
+            .map(([name, cmd]) => `• /${name} — ${cmd.description}`)
+            .join('\n');
+        const configuredShortcuts = (aiParams.promptShortcuts || [])
+            .map((text, index) => (text?.trim() ? `• /${index} — ${text.slice(0, 60)}${text.length > 60 ? '…' : ''}` : null))
+            .filter(Boolean)
+            .join('\n');
+        showSystemNotice(`Commandes disponibles :\n${commandsList}\n\nRaccourcis de prompts configurés :\n${configuredShortcuts || '(aucun)'}`);
+    }
 
-        // Les pièces jointes en attente (voir readAttachmentFile/buildUserMessageContent) sont
-        // consommées ici : le texte affiché à l'utilisateur reste simple, mais le contenu envoyé
-        // au modèle inclut le texte extrait des documents et/ou les images en data URL.
-        const attachmentsForThisMessage = pendingAttachments;
-        pendingAttachments = [];
-        renderAttachmentsPreview();
+    // Contexte fourni à chatSlashCommands.js (@see tryHandleChatSlashCommand) : ce fichier indépendant
+    // ne connaît rien du DOM, seulement ces callbacks.
+    const slashCommandContext = {
+        closeChatWindow: () => { if (isOpen) toggleChat(); },
+        resetConversation,
+        sendUserPrompt: (text) => submitUserMessage(text, []),
+        triggerShortcut: (index) => runPromptShortcut(index),
+        showSystemNotice,
+        showHelp: showHelpMessage
+    };
 
-        // Ajoute le message de l'utilisateur à l'affichage.
+    /**
+     * Envoie effectivement un message utilisateur (bulle + génération) : factorisé pour être appelé
+     * aussi bien depuis la soumission normale du formulaire que depuis une commande / (ex: /poisson).
+     * @param {string} userText
+     * @param {Array} attachmentsForThisMessage
+     */
+    function submitUserMessage(userText, attachmentsForThisMessage = []) {
         const attachmentsLabel = attachmentsForThisMessage.length
             ? '\n\n' + attachmentsForThisMessage.map(att => `${att.kind === 'image' ? '🖼️' : '📄'} ${att.name}`).join('\n')
             : '';
@@ -1570,6 +1798,26 @@ async function addAIChatClient() {
             model: getCurrentModel(),
             content: buildUserMessageContent(userText, attachmentsForThisMessage)
         });
+    }
+
+    chatForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const userText = chatInput.value.trim();
+        if (!userText) return;
+
+        if (tryHandleChatSlashCommand(userText, slashCommandContext)) {
+            chatInput.value = '';
+            return;
+        }
+
+        // Les pièces jointes en attente (voir readAttachmentFile/buildUserMessageContent) sont
+        // consommées ici : le texte affiché à l'utilisateur reste simple, mais le contenu envoyé
+        // au modèle inclut le texte extrait des documents et/ou les images en data URL.
+        const attachmentsForThisMessage = pendingAttachments;
+        pendingAttachments = [];
+        renderAttachmentsPreview();
+        submitUserMessage(userText, attachmentsForThisMessage);
     });
 }
 

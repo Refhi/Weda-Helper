@@ -44,8 +44,6 @@ const TYPE_HTML = "html";
 const TYPE_RADIO = "radio";
 const TYPE_TITLE = "title";
 
-
-
 var advancedDefaultSettings = [
     {
         //     "name": "Options de test - Nesting profond",
@@ -923,6 +921,56 @@ var advancedDefaultSettings = [
                 "description": "Nombre max. de tokens de sorties autorisés.",
                 "default": "2048",
                 "longDescription": "Permet d’empêcher le modèle de générer des réponses trop longues. A augmenter si vous êtes trop souvent confronté à \"limite de tokens (maxTokens) a été atteinte\"."
+            }, {
+                "name": "IAassistantPromptShortcut0",
+                "type": TYPE_LARGETEXT,
+                "description": "Raccourci de prompt n°0, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
+                "default": "Au vu du dossier récent sans fullpage, avec les antécédents et l'état civil, dis-moi si le suivi du patient est à jour."
+            }, {
+                "name": "IAassistantPromptShortcut1",
+                "type": TYPE_LARGETEXT,
+                "description": "Raccourci de prompt n°1, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
+                "default": "Fais-moi un résumé synthétique du dossier de ce patient (antécédents, traitements en cours, derniers événements notables)."
+            }, {
+                "name": "IAassistantPromptShortcut2",
+                "type": TYPE_LARGETEXT,
+                "description": "Raccourci de prompt n°2, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
+                "default": ""
+            }, {
+                "name": "IAassistantPromptShortcut3",
+                "type": TYPE_LARGETEXT,
+                "description": "Raccourci de prompt n°3, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
+                "default": ""
+            }, {
+                "name": "IAassistantPromptShortcut4",
+                "type": TYPE_LARGETEXT,
+                "description": "Raccourci de prompt n°4, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
+                "default": ""
+            }, {
+                "name": "IAassistantPromptShortcut5",
+                "type": TYPE_LARGETEXT,
+                "description": "Raccourci de prompt n°5, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
+                "default": ""
+            }, {
+                "name": "IAassistantPromptShortcut6",
+                "type": TYPE_LARGETEXT,
+                "description": "Raccourci de prompt n°6, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
+                "default": ""
+            }, {
+                "name": "IAassistantPromptShortcut7",
+                "type": TYPE_LARGETEXT,
+                "description": "Raccourci de prompt n°7, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
+                "default": ""
+            }, {
+                "name": "IAassistantPromptShortcut8",
+                "type": TYPE_LARGETEXT,
+                "description": "Raccourci de prompt n°8, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
+                "default": ""
+            }, {
+                "name": "IAassistantPromptShortcut9",
+                "type": TYPE_LARGETEXT,
+                "description": "Raccourci de prompt n°9, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
+                "default": ""
             }]
         }]
     }, {

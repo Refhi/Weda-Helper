@@ -167,6 +167,11 @@ const aiParamsReady = (async () => {
     aiParams.contextTokenLimit = toPositiveIntegerOrFallback(await getOptionPromise('IAassistantContextLimit'), 0)
     aiParams.maxTokensOutput = toPositiveIntegerOrFallback(await getOptionPromise('IAassistantMaxTokensOutput'), null)
 
+    // Raccourcis de prompts affichés dans le chat : 10 réglages texte indépendants (IAassistantPromptShortcut0..9).
+    aiParams.promptShortcuts = await Promise.all(
+        Array.from({ length: 10 }, (_, index) => getOptionPromise(`IAassistantPromptShortcut${index}`))
+    );
+
     // Ajout de la date du jour dans le prompt système de base, pour que le modèle sache quelle est la date actuelle.
     const currentDateTime = new Date().toISOString();
     aiParams.basicSystemPrompt += `\n\nDate du jour : ${currentDateTime}`;

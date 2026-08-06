@@ -59,6 +59,7 @@
         "src/utils/ai/callableFunctions.js",
         "src/utils/ai/openAiClient.js",
         "src/utils/ai/offscreenBridge.js",
+        "src/utils/ai/chatSlashCommands.js",
         "src/utils/ai/discussionClient.js",
         "src/ui/tooltip.js",
         "src/ui/update.js",
