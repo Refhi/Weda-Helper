@@ -15,6 +15,10 @@ const CHAT_SLASH_COMMANDS = {
         description: "Réinitialise la conversation (identique au bouton ↺).",
         run: (context) => context.resetConversation()
     },
+    stop: {
+        description: "Arrête la génération en cours (identique au bouton Stop).",
+        run: (context) => context.stopGeneration()
+    },
     poisson: {
         description: "Demande une blague à l'IA.",
         run: (context) => context.sendUserPrompt("Raconte-moi une blague, si possible une bonne blague de poisson d'avril.")
@@ -33,6 +37,7 @@ const CHAT_SLASH_COMMANDS = {
  * @param {{
  *   closeChatWindow: () => void,
  *   resetConversation: () => void,
+ *   stopGeneration: () => void,
  *   sendUserPrompt: (text: string) => void,
  *   triggerShortcut: (index: number) => boolean,
  *   showSystemNotice: (text: string) => void,

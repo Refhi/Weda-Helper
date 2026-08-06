@@ -1336,14 +1336,19 @@ async function addAIChatClient() {
     /**
      * Envoie le prompt configuré pour le raccourci d'index donné (utilisé par les boutons ronds et
      * les commandes /0 à /9). Renvoie false si l'emplacement est vide ou une génération est en cours.
+     * Envoie directement via submitUserMessage plutôt que chatForm.requestSubmit() : ce dernier
+     * échoue silencieusement quand il est appelé alors qu'un submit est déjà en cours de traitement
+     * (cas de la commande /1, déclenchée depuis le handler 'submit' du formulaire).
      * @param {number} index
      * @returns {boolean}
      */
     function runPromptShortcut(index) {
         const promptText = aiParams.promptShortcuts?.[index];
         if (!promptText?.trim() || activeGeneration) return false;
-        chatInput.value = promptText;
-        chatForm.requestSubmit();
+        const attachmentsForThisMessage = pendingAttachments;
+        pendingAttachments = [];
+        renderAttachmentsPreview();
+        submitUserMessage(promptText, attachmentsForThisMessage);
         return true;
     }
 
@@ -1744,9 +1749,12 @@ async function addAIChatClient() {
 
     onOffscreenMessage(handleOffscreenMessage);
 
-    chatStopButton.addEventListener('click', () => {
+    chatStopButton.addEventListener('click', stopGeneration);
+
+    /** Arrête la génération en cours (utilisé par le bouton Stop et la commande /stop). */
+    function stopGeneration() {
         sendOffscreenMessage({ type: 'stopGeneration', patientId: chatPatientId });
-    });
+    }
 
     /** Affiche une bulle neutre d'information système (retour des commandes /...). */
     function showSystemNotice(text) {
@@ -1772,6 +1780,7 @@ async function addAIChatClient() {
     const slashCommandContext = {
         closeChatWindow: () => { if (isOpen) toggleChat(); },
         resetConversation,
+        stopGeneration,
         sendUserPrompt: (text) => submitUserMessage(text, []),
         triggerShortcut: (index) => runPromptShortcut(index),
         showSystemNotice,
