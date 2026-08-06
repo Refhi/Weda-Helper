@@ -925,7 +925,7 @@ var advancedDefaultSettings = [
                 "name": "IAassistantPromptShortcut0",
                 "type": TYPE_LARGETEXT,
                 "description": "Raccourci de prompt n°0, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
-                "default": "Au vu du dossier récent sans fullpage, avec les antécédents et l'état civil, dis-moi si le suivi du patient est à jour."
+                "default": "Au vu du dossier récent sans fullpage, avec les antécédents et l'état civil, dis-moi si le suivi prévu du patient est à jour."
             }, {
                 "name": "IAassistantPromptShortcut1",
                 "type": TYPE_LARGETEXT,
