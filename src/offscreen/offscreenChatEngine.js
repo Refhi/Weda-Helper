@@ -14,7 +14,9 @@
 // Délai avant d'abandonner un appel de fonction resté sans réponse de l'onglet (ex: page bloquée).
 // Un onglet fermé/qui navigue déclenche un rejet immédiat via rejectPendingToolCallsForTab, ce
 // timeout ne couvre donc que le cas d'un onglet resté ouvert mais qui ne répond jamais.
-const TOOL_CALL_TIMEOUT_MS = 120000;
+// Les fonctions longues (ex: data scrapping) évitent ce timeout en envoyant des keepalives
+// périodiques (@see offscreenBridge.js executeRequestedToolCall), qui le remettent à zéro.
+const TOOL_CALL_TIMEOUT_MS = 20000;
 
 // Conversations actives, indexées par patientId (une seule conversation par patient, partagée
 // entre tous les onglets ouverts sur ce patient), plus une conversation "default" en l'absence de
@@ -115,14 +117,30 @@ function broadcastToPatient(patientId, message) {
 function executeToolCallOnTab(tabId, name, args) {
     return new Promise((resolve, reject) => {
         const callId = crypto.randomUUID();
-        const timeoutId = setTimeout(() => {
-            pendingToolCalls.delete(callId);
-            reject(new Error(`Délai dépassé en attendant la réponse de l'onglet pour la fonction "${name}"`));
-        }, TOOL_CALL_TIMEOUT_MS);
+        const pending = { tabId, resolve, reject, timeoutId: null };
 
-        pendingToolCalls.set(callId, { tabId, resolve, reject, timeoutId });
+        const armTimeout = () => {
+            clearTimeout(pending.timeoutId);
+            pending.timeoutId = setTimeout(() => {
+                pendingToolCalls.delete(callId);
+                reject(new Error(`Délai dépassé en attendant la réponse de l'onglet pour la fonction "${name}"`));
+            }, TOOL_CALL_TIMEOUT_MS);
+        };
+
+        pending.armTimeout = armTimeout;
+        armTimeout();
+        pendingToolCalls.set(callId, pending);
         sendToTab(tabId, { type: 'toolCallRequest', callId, name, args });
     });
+}
+
+/**
+ * Remet à zéro le timer d'un appel de fonction en attente, sur réception d'un keepalive envoyé
+ * par le content script pendant l'exécution d'une fonction longue (@see offscreenBridge.js).
+ * @param {{callId: string}} message
+ */
+function keepaliveToolCall({ callId }) {
+    pendingToolCalls.get(callId)?.armTimeout();
 }
 
 /**

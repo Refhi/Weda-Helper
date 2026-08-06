@@ -24,6 +24,9 @@ function connectToBackground() {
             case 'toolCallResult':
                 resolveToolCall(message);
                 break;
+            case 'toolCallKeepalive':
+                keepaliveToolCall(message);
+                break;
             case 'resetChat':
                 resetConversation(message.patientId);
                 break;

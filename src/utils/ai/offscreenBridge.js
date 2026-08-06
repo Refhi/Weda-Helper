@@ -52,13 +52,26 @@ function onOffscreenMessage(callback) {
  * Weda nécessaire, ex: recoverPatientData) et renvoie le résultat.
  * @param {{callId: string, name: string, args: object}} request
  */
+// Intervalle d'envoi des keepalives pour les fonctions longues (doit être nettement inférieur à
+// TOOL_CALL_TIMEOUT_MS côté offscreenChatEngine pour éviter tout risque d'expiration entre deux pings).
+const KEEPALIVE_INTERVAL_MS = 10000;
+
 async function executeRequestedToolCall({ callId, name, args }) {
+    // Signale régulièrement à l'engine que l'exécution est toujours en cours, afin qu'il remette
+    // son timer à zéro (@see offscreenChatEngine.js keepaliveToolCall). Permet aux fonctions
+    // lentes (ex: data scrapping) de dépasser le timeout de base sans que celui-ci soit élevé.
+    const keepaliveId = setInterval(
+        () => sendOffscreenMessage({ type: 'toolCallKeepalive', callId }),
+        KEEPALIVE_INTERVAL_MS
+    );
     try {
         if (!availableFunctions[name]) throw new Error(`fonction inconnue "${name}"`);
         const result = await availableFunctions[name].execute(args);
         sendOffscreenMessage({ type: 'toolCallResult', callId, result });
     } catch (error) {
         sendOffscreenMessage({ type: 'toolCallResult', callId, error: error.message || String(error) });
+    } finally {
+        clearInterval(keepaliveId);
     }
 }
 
