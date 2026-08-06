@@ -14,7 +14,7 @@
 // Délai avant d'abandonner un appel de fonction resté sans réponse de l'onglet (ex: page bloquée).
 // Un onglet fermé/qui navigue déclenche un rejet immédiat via rejectPendingToolCallsForTab, ce
 // timeout ne couvre donc que le cas d'un onglet resté ouvert mais qui ne répond jamais.
-const TOOL_CALL_TIMEOUT_MS = 30000;
+const TOOL_CALL_TIMEOUT_MS = 60000;
 
 // Conversations actives, indexées par patientId (une seule conversation par patient, partagée
 // entre tous les onglets ouverts sur ce patient), plus une conversation "default" en l'absence de
