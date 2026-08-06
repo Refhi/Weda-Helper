@@ -112,6 +112,12 @@ chrome.runtime.onConnect.addListener((port) => {
         });
 
         port.onDisconnect.addListener(() => {
+            // Un rechargement d'onglet garde le même tabId : l'ancien port se déconnecte pendant
+            // que le nouveau se (re)connecte déjà, sans garantie d'ordre entre les deux événements.
+            // Si ce disconnect (tardif) s'exécute après l'enregistrement du nouveau port, il ne
+            // faut PAS effacer ce nouvel enregistrement, sous peine de désabonner silencieusement
+            // un onglet pourtant bien connecté (broadcasts perdus jusqu'au prochain reload).
+            if (chatPortsByTabId.get(tabId) !== port) return;
             chatPortsByTabId.delete(tabId);
             patientIdByTabId.delete(tabId);
             console.log(`[offscreenHandler] Content script déconnecté (tabId ${tabId})`);
