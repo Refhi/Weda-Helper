@@ -132,6 +132,11 @@ const keyCommands = {
     'quick_access': function () {
         console.log('quick_access activé');
         activateQuickAccess();
+    },
+    'assistant_local': function () {
+        console.log('assistant_local activé');
+        const assistantButton = document.getElementById('wedaHelper-chat-toggle');
+        assistantButton?.click();
     }
 };
 

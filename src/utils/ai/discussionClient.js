@@ -1,27 +1,25 @@
 /**
- * Préfixe des clés sessionStorage utilisées pour persister l'historique de chat, une clé par
- * patient (voir getChatHistoryStorageKey). Un seul historique "default" est utilisé lorsqu'aucun
- * patient n'est détecté dans l'URL.
- *
- * Le stockage/la lecture sont volontairement isolés dans de petites fonctions dédiées
- * (getChatHistoryStorageKey / loadChatHistoryFromStorage / saveChatHistoryToStorage) afin de
- * pouvoir, ultérieurement, y greffer une synchronisation cross-onglets (ex: relais via le
- * background service worker + permission "tabs") sans toucher au reste de la logique du chat.
+ * @file discussionClient.js
+ * @description Interface du chat IA (widget, bulles, pièces jointes...). L'historique de
+ * conversation et l'orchestration des appels au modèle vivent dans le document offpage
+ * (@see offscreen/offscreenChatEngine.js), qui survit aux rechargements de page — ce fichier ne
+ * conserve donc aucun état de conversation lui-même : il envoie les messages utilisateur via
+ * offscreenBridge.js et affiche les événements reçus en retour (chunks, appels de fonction...).
  */
-const AI_CHAT_HISTORY_STORAGE_PREFIX = 'wedaHelperChatHistory_';
 const AI_CHAT_WIDGET_POSITION_STORAGE_KEY = 'wedaHelperChatWidgetPosition';
 const AI_CHAT_WINDOW_POSITION_STORAGE_KEY = 'wedaHelperChatWindowPosition';
 
 /**
  * Charge la position persistée du widget de chat si disponible.
- * @returns {{left: number, top: number}|null}
+ * Stockée en distance depuis le bas/droite de l'écran (cohérente quand la fenêtre change de taille).
+ * @returns {{right: number, bottom: number}|null}
  */
 function loadWidgetPositionFromStorage() {
     try {
         const raw = localStorage.getItem(AI_CHAT_WIDGET_POSITION_STORAGE_KEY);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
-        if (typeof parsed?.left === 'number' && typeof parsed?.top === 'number') {
+        if (typeof parsed?.right === 'number' && typeof parsed?.bottom === 'number') {
             return parsed;
         }
     } catch (error) {
@@ -32,7 +30,7 @@ function loadWidgetPositionFromStorage() {
 
 /**
  * Persiste la position du widget de chat.
- * @param {{left: number, top: number}} position
+ * @param {{right: number, bottom: number}} position
  */
 function saveWidgetPositionToStorage(position) {
     try {
@@ -44,14 +42,15 @@ function saveWidgetPositionToStorage(position) {
 
 /**
  * Charge la position persistée de la fenêtre de chat si disponible.
- * @returns {{left: number, top: number}|null}
+ * Stockée en distance depuis le bas/droite de l'écran (cohérente quand la fenêtre change de taille).
+ * @returns {{right: number, bottom: number}|null}
  */
 function loadChatWindowPositionFromStorage() {
     try {
         const raw = localStorage.getItem(AI_CHAT_WINDOW_POSITION_STORAGE_KEY);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
-        if (typeof parsed?.left === 'number' && typeof parsed?.top === 'number') {
+        if (typeof parsed?.right === 'number' && typeof parsed?.bottom === 'number') {
             return parsed;
         }
     } catch (error) {
@@ -62,7 +61,7 @@ function loadChatWindowPositionFromStorage() {
 
 /**
  * Persiste la position de la fenêtre de chat.
- * @param {{left: number, top: number}} position
+ * @param {{right: number, bottom: number}} position
  */
 function saveChatWindowPositionToStorage(position) {
     try {
@@ -73,52 +72,14 @@ function saveChatWindowPositionToStorage(position) {
 }
 
 /**
- * Construit la clé sessionStorage pour l'historique de chat d'un patient donné.
- * @param {string|null} patientId - Identifiant du patient (PatDk), ou null/absent si aucun patient détecté.
- * @returns {string}
+ * Convertit un rect DOM en distances depuis le bas/droite du viewport.
+ * @returns {{right: number, bottom: number}}
  */
-function getChatHistoryStorageKey(patientId) {
-    return `${AI_CHAT_HISTORY_STORAGE_PREFIX}${patientId || 'default'}`;
-}
-
-/**
- * Charge l'état de chat persisté pour un patient donné : l'historique "conversationnel"
- * (format OpenAI, envoyé au modèle) ainsi que le journal d'affichage complet (bulles user/
- * assistant, mais aussi raisonnement, appels de fonction et erreurs) permettant de restituer
- * fidèlement l'état visuel du chat au rechargement.
- * @param {string|null} patientId
- * @returns {{chatHistory: Array, displayLog: Array}|null} L'état persisté, ou null si absent/illisible.
- */
-function loadChatHistoryFromStorage(patientId) {
-    try {
-        const raw = sessionStorage.getItem(getChatHistoryStorageKey(patientId));
-        return raw ? JSON.parse(raw) : null;
-    } catch (error) {
-        console.warn('[discussionClient] Historique de chat illisible en sessionStorage, réinitialisation', error);
-        return null;
-    }
-}
-
-/**
- * Sauvegarde l'état de chat (historique conversationnel + journal d'affichage) pour un patient donné.
- * @param {string|null} patientId
- * @param {Array} history - Historique conversationnel (format OpenAI)
- * @param {Array} displayLog - Journal complet des bulles affichées (user, assistant, raisonnement, appels de fonction, erreurs...)
- */
-function saveChatHistoryToStorage(patientId, history, displayLog) {
-    try {
-        sessionStorage.setItem(getChatHistoryStorageKey(patientId), JSON.stringify({ chatHistory: history, displayLog }));
-    } catch (error) {
-        console.warn("[discussionClient] Impossible d'écrire l'historique de chat en sessionStorage", error);
-    }
-}
-
-/**
- * Supprime l'historique de chat persisté d'un patient donné.
- * @param {string|null} patientId
- */
-function clearChatHistoryStorage(patientId) {
-    sessionStorage.removeItem(getChatHistoryStorageKey(patientId));
+function rectToBottomRightOffset(rect) {
+    return {
+        right: Math.round(window.innerWidth - rect.right),
+        bottom: Math.round(window.innerHeight - rect.bottom)
+    };
 }
 
 /**
@@ -136,8 +97,9 @@ async function addAIChatClient() {
 
     /**
      * Identifiant du patient courant, déterminé une seule fois à l'initialisation du chat (le
-     * patient affiché ne change pas une fois la page chargée). Sert de clé de persistance pour
-     * que chaque patient conserve sa propre conversation dans sessionStorage.
+     * patient affiché ne change pas une fois la page chargée). Sert de clé de conversation côté
+     * offpage (@see offscreen/offscreenChatEngine.js), partagée entre tous les onglets ouverts sur
+     * ce même patient.
      */
     const chatPatientId = getCurrentPatientId();
 
@@ -218,7 +180,6 @@ async function addAIChatClient() {
             transform: scale(0);
             transform-origin: bottom right;
             transition: transform 0.3s cubic-bezier(0.176, 0.085, 0.432, 1.275);
-            user-select: none;
         }
         #wedaHelper-chat-window.open {
             display: flex;
@@ -345,6 +306,24 @@ async function addAIChatClient() {
             word-wrap: break-word;
             white-space: pre-wrap;
         }
+        #wedaHelper-copy-message-btn {
+            display: none;
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 1px solid #ccc;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+            cursor: pointer;
+            font-size: 12px;
+            line-height: 1;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            z-index: 10001;
+        }
+        #wedaHelper-copy-message-btn:hover { background: #f0f0f0; }
         #wedaHelper-chat-messages .message.user {
             background: #10a37f;
             color: white;
@@ -560,6 +539,50 @@ async function addAIChatClient() {
         }
         #wedaHelper-chat-stop:hover { background: #c23f3f; }
         #wedaHelper-chat-stop.visible { display: block; }
+        #wedaHelper-chat-shortcuts {
+            position: fixed;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            z-index: 9998;
+            pointer-events: none;
+        }
+        #wedaHelper-chat-shortcuts.open { display: flex; }
+        #wedaHelper-chat-shortcuts button {
+            pointer-events: auto;
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            border-radius: 50%;
+            background: #10a37f;
+            color: white;
+            border: 2px solid #ffffff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+        #wedaHelper-chat-shortcuts button:hover { background: #0d8c6d; }
+        #wedaHelper-chat-shortcuts button:disabled { cursor: not-allowed; opacity: 0.6; background: #aaa; }
+        #wedaHelper-shortcut-tooltip {
+            display: none;
+            position: fixed;
+            max-width: 260px;
+            background: #343541;
+            color: white;
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            line-height: 1.4;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+            z-index: 10002;
+            pointer-events: none;
+        }
     `;
     document.head.appendChild(style);
 
@@ -567,6 +590,7 @@ async function addAIChatClient() {
     const widget = document.createElement('div');
     widget.id = 'wedaHelper-chat-widget';
     widget.innerHTML = `
+        <div id="wedaHelper-chat-shortcuts"></div>
         <div id="wedaHelper-chat-window">
             <div id="wedaHelper-chat-header">
                 <span>Assistant Local</span>
@@ -597,31 +621,27 @@ async function addAIChatClient() {
             <span class="wedaHelper-chat-toggle-badge" aria-hidden="true">✨</span>
             <span class="wedaHelper-visually-hidden">Assistant IA</span>
         </button>
+        <button id="wedaHelper-copy-message-btn" type="button" title="Copier le message">📋</button>
+        <div id="wedaHelper-shortcut-tooltip"></div>
     `;
     document.body.appendChild(widget);
 
     // --- Logique du chat ---
-    // Reprend l'état persisté du patient courant s'il existe, sinon démarre une nouvelle conversation.
-    const storedChatState = loadChatHistoryFromStorage(chatPatientId);
-    let chatHistory = storedChatState?.chatHistory || [
-        { role: "system", content: aiParams.basicSystemPrompt } // prompt système de base, défini dans openAiClient.js
-    ];
-    // Journal complet des bulles affichées (au-delà du simple historique conversationnel envoyé au
-    // modèle) : inclut le raisonnement, les appels de fonction (début/succès/erreur) et les messages
-    // d'erreur/avertissement, afin de restituer fidèlement l'affichage au rechargement du chat.
-    let chatDisplayLog = storedChatState?.displayLog || [];
-
-    /** Persiste l'historique conversationnel et le journal d'affichage courants pour le patient en cours. */
-    function persistChatHistory() {
-        saveChatHistoryToStorage(chatPatientId, chatHistory, chatDisplayLog);
-    }
-
     // Modèle actuellement sélectionné pour les appels, parmi tous les modèles détectés (aiParams.availableModels,
-    // tous ports actifs confondus). Initialisé au modèle résolu au démarrage (préféré si trouvé, sinon premier disponible).
+    // tous ports actifs confondus). Initialisé au modèle résolu au démarrage (préféré si trouvé, sinon premier disponible),
+    // puis mis à jour par l'état de l'offpage (voir handleOffscreenMessage, cas 'stateSync') s'il diffère.
     let selectedModel = aiParams.defaultModel;
     function getCurrentModel() {
         return selectedModel;
     }
+
+    /**
+     * État de la génération en cours (bulles DOM à mettre à jour au fil des événements reçus de
+     * l'offpage), ou null en dehors de toute génération. Alimenté par la soumission du formulaire,
+     * consommé par handleOffscreenMessage.
+     */
+    let activeGeneration = null;
+
 
     const chatWindow = widget.querySelector('#wedaHelper-chat-window');
     const chatHeader = widget.querySelector('#wedaHelper-chat-header');
@@ -639,6 +659,9 @@ async function addAIChatClient() {
     const fileInput = widget.querySelector('#wedaHelper-file-input');
     const attachFileButton = widget.querySelector('#wedaHelper-attach-file');
     const attachmentsPreview = widget.querySelector('#wedaHelper-attachments-preview');
+    const shortcutsPanel = widget.querySelector('#wedaHelper-chat-shortcuts');
+    const copyMessageButton = widget.querySelector('#wedaHelper-copy-message-btn');
+    const shortcutTooltip = widget.querySelector('#wedaHelper-shortcut-tooltip');
     const markdownRenderer = typeof markdownit === 'function'
         ? markdownit({ html: false, linkify: true, breaks: true })
         : null;
@@ -646,42 +669,45 @@ async function addAIChatClient() {
         ? DOMPurify
         : null;
 
-    function clampWidgetPosition(left, top) {
-        const maxLeft = Math.max(0, window.innerWidth - widget.offsetWidth);
-        const maxTop = Math.max(0, window.innerHeight - widget.offsetHeight);
+    // Le positionnement (persistance, clamp, drag) se fait en distance depuis le bas/droite du
+    // viewport plutôt qu'en left/top : ça évite que le widget "saute" quand la taille de l'écran
+    // change régulièrement (l'ancrage visuel par défaut du widget est déjà bas/droite en CSS).
+    function clampWidgetPosition(right, bottom) {
+        const maxRight = Math.max(0, window.innerWidth - widget.offsetWidth);
+        const maxBottom = Math.max(0, window.innerHeight - widget.offsetHeight);
         return {
-            left: Math.min(Math.max(0, left), maxLeft),
-            top: Math.min(Math.max(0, top), maxTop)
+            right: Math.min(Math.max(0, right), maxRight),
+            bottom: Math.min(Math.max(0, bottom), maxBottom)
         };
     }
 
-    function clampChatWindowPosition(left, top) {
+    function clampChatWindowPosition(right, bottom) {
         const windowRect = chatWindow.getBoundingClientRect();
         const windowWidth = windowRect.width || chatWindow.offsetWidth || 380;
         const windowHeight = windowRect.height || chatWindow.offsetHeight || 500;
-        const maxLeft = Math.max(0, window.innerWidth - windowWidth);
-        const maxTop = Math.max(0, window.innerHeight - windowHeight);
+        const maxRight = Math.max(0, window.innerWidth - windowWidth);
+        const maxBottom = Math.max(0, window.innerHeight - windowHeight);
         return {
-            left: Math.min(Math.max(0, left), maxLeft),
-            top: Math.min(Math.max(0, top), maxTop)
+            right: Math.min(Math.max(0, right), maxRight),
+            bottom: Math.min(Math.max(0, bottom), maxBottom)
         };
     }
 
-    function applyWidgetPosition(left, top) {
-        const clamped = clampWidgetPosition(left, top);
-        widget.style.left = `${clamped.left}px`;
-        widget.style.top = `${clamped.top}px`;
-        widget.style.right = 'auto';
-        widget.style.bottom = 'auto';
+    function applyWidgetPosition(right, bottom) {
+        const clamped = clampWidgetPosition(right, bottom);
+        widget.style.right = `${clamped.right}px`;
+        widget.style.bottom = `${clamped.bottom}px`;
+        widget.style.left = 'auto';
+        widget.style.top = 'auto';
         return clamped;
     }
 
-    function applyChatWindowPosition(left, top, { clamp = true } = {}) {
-        const nextPosition = clamp ? clampChatWindowPosition(left, top) : { left, top };
-        chatWindow.style.left = `${nextPosition.left}px`;
-        chatWindow.style.top = `${nextPosition.top}px`;
-        chatWindow.style.right = 'auto';
-        chatWindow.style.bottom = 'auto';
+    function applyChatWindowPosition(right, bottom, { clamp = true } = {}) {
+        const nextPosition = clamp ? clampChatWindowPosition(right, bottom) : { right, bottom };
+        chatWindow.style.right = `${nextPosition.right}px`;
+        chatWindow.style.bottom = `${nextPosition.bottom}px`;
+        chatWindow.style.left = 'auto';
+        chatWindow.style.top = 'auto';
         return nextPosition;
     }
 
@@ -697,8 +723,8 @@ async function addAIChatClient() {
         let isDragging = false;
         let pointerStartX = 0;
         let pointerStartY = 0;
-        let widgetStartLeft = 0;
-        let widgetStartTop = 0;
+        let widgetStartRight = 0;
+        let widgetStartBottom = 0;
         let suppressClick = false;
 
         function onPointerMove(event) {
@@ -711,7 +737,8 @@ async function addAIChatClient() {
             }
             if (!isDragging) return;
 
-            applyPosition(widgetStartLeft + deltaX, widgetStartTop + deltaY);
+            // Déplacer le pointeur vers la droite/le bas réduit la distance au bord droit/bas.
+            applyPosition(widgetStartRight - deltaX, widgetStartBottom - deltaY);
         }
 
         function onPointerUp() {
@@ -719,8 +746,8 @@ async function addAIChatClient() {
             document.removeEventListener('pointerup', onPointerUp);
 
             if (isDragging) {
-                const currentRect = getStartRect();
-                const applied = applyPosition(currentRect.left, currentRect.top);
+                const currentOffset = getStartRect();
+                const applied = applyPosition(currentOffset.right, currentOffset.bottom);
                 savePosition(applied);
             }
             isDragging = false;
@@ -730,9 +757,9 @@ async function addAIChatClient() {
             if (event.button !== 0 || !canStartDrag(event)) return;
             pointerStartX = event.clientX;
             pointerStartY = event.clientY;
-            const rect = getStartRect();
-            widgetStartLeft = rect.left;
-            widgetStartTop = rect.top;
+            const offset = getStartRect();
+            widgetStartRight = offset.right;
+            widgetStartBottom = offset.bottom;
             suppressClick = false;
 
             document.addEventListener('pointermove', onPointerMove);
@@ -752,22 +779,24 @@ async function addAIChatClient() {
     function initializeDraggableChatWidget() {
         const savedPosition = loadWidgetPositionFromStorage();
         if (savedPosition) {
-            const applied = applyWidgetPosition(savedPosition.left, savedPosition.top);
+            const applied = applyWidgetPosition(savedPosition.right, savedPosition.bottom);
             saveWidgetPositionToStorage(applied);
         }
 
         bindDragHandle(chatToggle, {
-            getStartRect: () => widget.getBoundingClientRect(),
-            applyPosition: (left, top) => applyWidgetPosition(left, top),
+            getStartRect: () => rectToBottomRightOffset(widget.getBoundingClientRect()),
+            applyPosition: (right, bottom) => applyWidgetPosition(right, bottom),
             savePosition: (position) => saveWidgetPositionToStorage(position),
             suppressClickOnDrag: true
         });
 
+        // L'ancrage bas/droite (CSS) suit déjà les changements de taille d'écran automatiquement ;
+        // on ne fait que reclamper/persister au cas où le widget déborderait après un rétrécissement.
         window.addEventListener('resize', () => {
-            if (widget.style.left && widget.style.top) {
-                const currentLeft = parseFloat(widget.style.left) || 0;
-                const currentTop = parseFloat(widget.style.top) || 0;
-                const clamped = applyWidgetPosition(currentLeft, currentTop);
+            if (widget.style.right && widget.style.bottom) {
+                const currentRight = parseFloat(widget.style.right) || 0;
+                const currentBottom = parseFloat(widget.style.bottom) || 0;
+                const clamped = applyWidgetPosition(currentRight, currentBottom);
                 saveWidgetPositionToStorage(clamped);
             }
         });
@@ -776,21 +805,21 @@ async function addAIChatClient() {
     function initializeDraggableChatWindow() {
         const savedPosition = loadChatWindowPositionFromStorage();
         if (savedPosition) {
-            applyChatWindowPosition(savedPosition.left, savedPosition.top, { clamp: false });
+            applyChatWindowPosition(savedPosition.right, savedPosition.bottom, { clamp: false });
         }
 
         bindDragHandle(chatHeader, {
-            getStartRect: () => chatWindow.getBoundingClientRect(),
-            applyPosition: (left, top) => applyChatWindowPosition(left, top),
+            getStartRect: () => rectToBottomRightOffset(chatWindow.getBoundingClientRect()),
+            applyPosition: (right, bottom) => applyChatWindowPosition(right, bottom),
             savePosition: (position) => saveChatWindowPositionToStorage(position),
             canStartDrag: (event) => !event.target.closest('button') && !getChatWindowResizeDirection(event)
         });
 
         window.addEventListener('resize', () => {
-            if (chatWindow.style.left && chatWindow.style.top) {
-                const currentLeft = parseFloat(chatWindow.style.left) || 0;
-                const currentTop = parseFloat(chatWindow.style.top) || 0;
-                const clamped = applyChatWindowPosition(currentLeft, currentTop);
+            if (chatWindow.style.right && chatWindow.style.bottom) {
+                const currentRight = parseFloat(chatWindow.style.right) || 0;
+                const currentBottom = parseFloat(chatWindow.style.bottom) || 0;
+                const clamped = applyChatWindowPosition(currentRight, currentBottom);
                 saveChatWindowPositionToStorage(clamped);
             }
         });
@@ -843,6 +872,7 @@ async function addAIChatClient() {
         let startX = 0;
         let startY = 0;
         let startRect = null;
+        let previousBodyUserSelect = '';
 
         function onResizeMove(event) {
             if (!isResizing || !startRect) return;
@@ -873,24 +903,29 @@ async function addAIChatClient() {
                 nextHeight = Math.max(minHeight, startRect.height - (nextTop - startRect.top));
             }
 
-            const clamped = clampChatWindowPosition(nextLeft, nextTop);
-            chatWindow.style.left = `${clamped.left}px`;
-            chatWindow.style.top = `${clamped.top}px`;
+            // Clamp left/top ici en coordonnées écran classiques (calcul transitoire du resize) ;
+            // la position persistée bas/droite n'est recalculée qu'au relâchement (onResizeUp).
+            const clampedLeft = Math.min(Math.max(0, nextLeft), window.innerWidth - minWidth);
+            const clampedTop = Math.min(Math.max(0, nextTop), window.innerHeight - minHeight);
+            chatWindow.style.left = `${clampedLeft}px`;
+            chatWindow.style.top = `${clampedTop}px`;
             chatWindow.style.right = 'auto';
             chatWindow.style.bottom = 'auto';
-            chatWindow.style.width = `${Math.min(nextWidth, window.innerWidth - clamped.left)}px`;
-            chatWindow.style.height = `${Math.min(nextHeight, window.innerHeight - clamped.top)}px`;
+            chatWindow.style.width = `${Math.min(nextWidth, window.innerWidth - clampedLeft)}px`;
+            chatWindow.style.height = `${Math.min(nextHeight, window.innerHeight - clampedTop)}px`;
         }
 
         function onResizeUp() {
             if (isResizing) {
-                const clamped = applyChatWindowPosition(chatWindow.getBoundingClientRect().left, chatWindow.getBoundingClientRect().top);
+                const offset = rectToBottomRightOffset(chatWindow.getBoundingClientRect());
+                const clamped = applyChatWindowPosition(offset.right, offset.bottom, { clamp: false });
                 saveChatWindowPositionToStorage(clamped);
             }
             isResizing = false;
             activeResizeDirection = '';
             startRect = null;
             chatWindow.classList.remove('wedaHelper-resizing');
+            document.body.style.userSelect = previousBodyUserSelect;
             document.removeEventListener('pointermove', onResizeMove);
             document.removeEventListener('pointerup', onResizeUp);
             updateChatWindowResizeCursor('');
@@ -918,6 +953,8 @@ async function addAIChatClient() {
             startY = event.clientY;
             startRect = chatWindow.getBoundingClientRect();
             chatWindow.classList.add('wedaHelper-resizing');
+            previousBodyUserSelect = document.body.style.userSelect;
+            document.body.style.userSelect = 'none';
             document.addEventListener('pointermove', onResizeMove);
             document.addEventListener('pointerup', onResizeUp);
             updateChatWindowResizeCursor(direction);
@@ -1085,8 +1122,6 @@ async function addAIChatClient() {
                 const errorBubble = appendMessage('bot', `⚠️ ${error.message}`);
                 errorBubble.classList.remove('bot');
                 errorBubble.classList.add('tool-call', 'error');
-                recordDisplayEntry(errorBubble);
-                persistChatHistory();
             }
         }
         renderAttachmentsPreview();
@@ -1123,7 +1158,6 @@ async function addAIChatClient() {
      * 
      */
     function buildInfoContent() {
-        const systemMessage = chatHistory.find(m => m.role === 'system');
         const functionsList = Object.entries(availableFunctions).map(([name, fn]) => {
             const description = fn.definition?.function?.description || '';
             return `<li><strong>${name}</strong>${description ? ' — ' + description : ''}</li>`;
@@ -1141,43 +1175,55 @@ async function addAIChatClient() {
         return `
             <button id="wedaHelper-disable-connector" type="button">Désactiver l'Assistant Local</button>
             <h4>Modèle utilisé</h4>
-            <pre>${getCurrentModel()}</pre>
+            <pre>${getCurrentModel()} (hôte : ${aiParams.host || 'localhost'})</pre>
             ${hasMultipleModels ? `<select id="wedaHelper-model-select">${modelOptions}</select>` : ''}
             <h4>Prompt système</h4>
-            <pre>${systemMessage ? systemMessage.content : '(aucun)'}</pre>
+            <pre>${aiParams.basicSystemPrompt || '(aucun)'}</pre>
             <h4>Fonctions appelables</h4>
             <ul>${functionsList || '<li>(aucune)</li>'}</ul>
         `;
     }
 
-    resetButton.addEventListener('click', () => {
-        chatHistory = [
-            { role: "system", content: aiParams.basicSystemPrompt }
-        ];
-        chatDisplayLog = [];
+    resetButton.addEventListener('click', resetConversation);
+
+    /** Réinitialise la conversation en cours (utilisé par le bouton ↺ et la commande /clear). */
+    function resetConversation() {
+        sendOffscreenMessage({ type: 'resetChat', patientId: chatPatientId });
         pendingAttachments = [];
         renderAttachmentsPreview();
-        clearChatHistoryStorage(chatPatientId);
         chatMessages.innerHTML = '';
         infoPopover.classList.remove('open');
-    });
+    }
 
-    // Rejoue intégralement le journal d'affichage précédemment persisté pour ce patient : messages
-    // user/assistant, mais aussi raisonnement, appels de fonction et erreurs, avec leurs classes et
-    // info-bulles (title) d'origine.
-    chatDisplayLog.forEach(entry => {
-        const msgDiv = document.createElement('div');
-        msgDiv.classList.add('message', ...entry.classes);
-        if (entry.messageFormat === 'markdown' && typeof entry.markdownSource === 'string' && entry.markdownSource) {
-            const markdownRendered = renderMarkdownInBubble(msgDiv, entry.markdownSource);
-            if (!markdownRendered) {
-                msgDiv.textContent = entry.text;
-            }
-        } else {
-            msgDiv.textContent = entry.text;
-        }
-        if (entry.title) msgDiv.title = entry.title;
-        chatMessages.appendChild(msgDiv);
+    /**
+     * Reconstruit l'affichage à partir de l'historique conversationnel renvoyé par l'offpage (voir
+     * 'stateSync'), suite à un rechargement de page : seuls les tours user/assistant sont rejoués
+     * (le détail du raisonnement et des appels de fonction d'origine n'est pas conservé par l'offpage).
+     * @param {Array} history
+     */
+    function renderHistoryFromState(history) {
+        chatMessages.innerHTML = '';
+        history.forEach(entry => {
+            const textParts = Array.isArray(entry.content)
+                ? entry.content.filter(part => part.type === 'text').map(part => part.text).join('\n')
+                : entry.content;
+            if (!textParts) return;
+            const msgDiv = appendMessage(entry.role === 'user' ? 'user' : 'bot', textParts);
+            if (entry.role !== 'user') renderMarkdownInBubble(msgDiv, textParts);
+        });
+    }
+
+    // S'abonne auprès du background au patient courant, pour recevoir les diffusions (broadcast)
+    // destinées à tous les onglets ouverts sur ce patient (@see background/offscreenHandler.js), et
+    // demande l'état actuel de la conversation (peut déjà exister si un autre onglet a discuté avec
+    // le même patient, ou si cette page a été rechargée) afin de reconstruire l'affichage (la
+    // réponse 'stateSync' est traitée par handleOffscreenMessage). Rejoué à chaque reconnexion du
+    // port (@see onOffscreenReconnect dans offscreenBridge.js) : le service worker de background
+    // perd en mémoire cet abonnement à chaque redémarrage (~30s d'inactivité), il faut donc le
+    // refaire dès que la reconnexion aboutit, sans attendre une action de l'utilisateur.
+    onOffscreenReconnect(() => {
+        sendOffscreenMessage({ type: 'subscribe', patientId: chatPatientId });
+        sendOffscreenMessage({ type: 'requestState', patientId: chatPatientId });
     });
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
@@ -1208,6 +1254,7 @@ async function addAIChatClient() {
             modelSelect.addEventListener('change', () => {
                 selectedModel = modelSelect.value;
                 chrome.storage.local.set({ IAassistantModelName: selectedModel }); // enregistre le choix comme modèle préféré
+                sendOffscreenMessage({ type: 'setModel', patientId: chatPatientId, model: selectedModel });
                 infoPopover.innerHTML = buildInfoContent();
                 bindInfoPopoverActions();
             });
@@ -1227,6 +1274,84 @@ async function addAIChatClient() {
         }
     }
 
+    /**
+     * Positionne la colonne de raccourcis à cheval du bord gauche de la fenêtre de chat (moitié dans,
+     * moitié dehors), verticalement centrée : appelée en boucle (requestAnimationFrame) tant que le
+     * chat est ouvert, pour suivre le déplacement/redimensionnement de la fenêtre sans dupliquer sa
+     * logique de drag/resize.
+     */
+    function syncShortcutsPanelPosition() {
+        const rect = chatWindow.getBoundingClientRect();
+        const buttonWidth = 32;
+        shortcutsPanel.style.left = `${Math.max(4, rect.left - buttonWidth / 2)}px`;
+        shortcutsPanel.style.top = `${rect.top}px`;
+        shortcutsPanel.style.right = 'auto';
+        shortcutsPanel.style.bottom = 'auto';
+        shortcutsPanel.style.height = `${rect.height}px`;
+        shortcutsPanel.style.justifyContent = 'center';
+    }
+
+    let shortcutsSyncRafId = null;
+    function startShortcutsSyncLoop() {
+        function loop() {
+            syncShortcutsPanelPosition();
+            shortcutsSyncRafId = requestAnimationFrame(loop);
+        }
+        loop();
+    }
+    function stopShortcutsSyncLoop() {
+        if (shortcutsSyncRafId) cancelAnimationFrame(shortcutsSyncRafId);
+        shortcutsSyncRafId = null;
+    }
+
+    /**
+     * Construit les boutons ronds de raccourcis à partir des 10 prompts paramétrés dans les options
+     * (@see aiParams.promptShortcuts, réglages "IAassistantPromptShortcut0" à "9"). Un bouton affiche
+     * juste son numéro au repos, le texte complet du prompt en tooltip ; les emplacements vides ne
+     * sont pas affichés.
+     */
+    function renderShortcutButtons() {
+        shortcutsPanel.innerHTML = '';
+        (aiParams.promptShortcuts || []).forEach((promptText, index) => {
+            if (!promptText?.trim()) return;
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = String(index);
+            button.addEventListener('mouseenter', () => {
+                shortcutTooltip.textContent = promptText;
+                const buttonRect = button.getBoundingClientRect();
+                shortcutTooltip.style.top = `${buttonRect.top}px`;
+                shortcutTooltip.style.left = `${buttonRect.right + 8}px`;
+                shortcutTooltip.style.display = 'block';
+            });
+            button.addEventListener('mouseleave', () => {
+                shortcutTooltip.style.display = 'none';
+            });
+            button.addEventListener('click', () => runPromptShortcut(index));
+            shortcutsPanel.appendChild(button);
+        });
+    }
+    renderShortcutButtons();
+
+    /**
+     * Envoie le prompt configuré pour le raccourci d'index donné (utilisé par les boutons ronds et
+     * les commandes /0 à /9). Renvoie false si l'emplacement est vide ou une génération est en cours.
+     * Envoie directement via submitUserMessage plutôt que chatForm.requestSubmit() : ce dernier
+     * échoue silencieusement quand il est appelé alors qu'un submit est déjà en cours de traitement
+     * (cas de la commande /1, déclenchée depuis le handler 'submit' du formulaire).
+     * @param {number} index
+     * @returns {boolean}
+     */
+    function runPromptShortcut(index) {
+        const promptText = aiParams.promptShortcuts?.[index];
+        if (!promptText?.trim() || activeGeneration) return false;
+        const attachmentsForThisMessage = pendingAttachments;
+        pendingAttachments = [];
+        renderAttachmentsPreview();
+        submitUserMessage(promptText, attachmentsForThisMessage);
+        return true;
+    }
+
     let isOpen = false;
     function toggleChat() {
         isOpen = !isOpen;
@@ -1234,14 +1359,75 @@ async function addAIChatClient() {
             chatWindow.classList.add('open');
             chatToggle.style.display = 'none';
             chatInput.focus();
+            shortcutsPanel.classList.add('open');
+            startShortcutsSyncLoop();
         } else {
             chatWindow.classList.remove('open');
             chatToggle.style.display = 'flex';
+            shortcutsPanel.classList.remove('open');
+            stopShortcutsSyncLoop();
         }
     }
 
     chatToggle.addEventListener('click', toggleChat);
     closeChat.addEventListener('click', toggleChat);
+
+    // Ferme le chat avec Echap, comme la plupart des fenêtres flottantes.
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && isOpen) {
+            toggleChat();
+        }
+    });
+
+    // --- Copie d'une bulle au survol ---
+    // Un seul bouton flottant suit la bulle survolée plutôt que d'en injecter un par bulle : plusieurs
+    // bulles voient leur contenu remplacé directement (textContent/innerHTML) au fil du streaming,
+    // ce qui aurait effacé un bouton enfant à chaque mise à jour.
+    let hoveredBubbleForCopy = null;
+    let hideCopyButtonTimeoutId = null;
+    function positionCopyButtonOverBubble(bubble) {
+        const rect = bubble.getBoundingClientRect();
+        // Ancré en bas à droite de la bulle : reste toujours cliquable même si la bulle dépasse en haut de la fenêtre.
+        copyMessageButton.style.top = `${rect.bottom - 24}px`;
+        copyMessageButton.style.left = `${rect.right - 24}px`;
+    }
+    function showCopyButtonForBubble(bubble) {
+        clearTimeout(hideCopyButtonTimeoutId);
+        hoveredBubbleForCopy = bubble;
+        positionCopyButtonOverBubble(bubble);
+        copyMessageButton.style.display = 'flex';
+    }
+    function scheduleHideCopyButton() {
+        clearTimeout(hideCopyButtonTimeoutId);
+        // Léger délai pour laisser le temps au pointeur d'atteindre le bouton sans qu'il disparaisse.
+        hideCopyButtonTimeoutId = setTimeout(() => {
+            copyMessageButton.style.display = 'none';
+            hoveredBubbleForCopy = null;
+        }, 200);
+    }
+    chatMessages.addEventListener('mouseover', (event) => {
+        const bubble = event.target.closest('.message');
+        if (!bubble) return;
+        if (bubble === hoveredBubbleForCopy) { clearTimeout(hideCopyButtonTimeoutId); return; }
+        showCopyButtonForBubble(bubble);
+    });
+    chatMessages.addEventListener('mouseout', (event) => {
+        const leavingBubble = event.target.closest('.message');
+        if (!leavingBubble) return;
+        // Ne masque pas si on se dirige vers un autre élément de la même bulle ou vers le bouton lui-même.
+        if (event.relatedTarget && (leavingBubble.contains(event.relatedTarget) || event.relatedTarget === copyMessageButton)) return;
+        scheduleHideCopyButton();
+    });
+    copyMessageButton.addEventListener('mouseenter', () => clearTimeout(hideCopyButtonTimeoutId));
+    copyMessageButton.addEventListener('mouseleave', scheduleHideCopyButton);
+    copyMessageButton.addEventListener('click', () => {
+        if (!hoveredBubbleForCopy) return;
+        const textToCopy = hoveredBubbleForCopy.dataset.markdownSource ?? hoveredBubbleForCopy.textContent;
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            copyMessageButton.textContent = '✅';
+            setTimeout(() => { copyMessageButton.textContent = '📋'; }, 1000);
+        }).catch(error => console.warn('[discussionClient] Copie du message impossible', error));
+    });
 
     function appendMessage(role, text) {
         const msgDiv = document.createElement('div');
@@ -1328,60 +1514,311 @@ async function addAIChatClient() {
     checkAiApiAvailability();
 
     /**
-     * Ajoute une entrée au journal d'affichage à partir de l'état actuel d'une bulle (classes,
-     * texte, info-bulle), pour qu'elle soit restituée telle quelle au rechargement du chat.
-     * @param {HTMLElement} bubble
-     * @returns {object} L'entrée ajoutée (réutilisable avec updateDisplayEntry pour les bulles évolutives, ex: appels de fonction).
+     * S'assure qu'un état de génération existe pour afficher les événements reçus de l'offpage :
+     * en principe créé par la soumission du formulaire, mais peut aussi être initialisé "à la volée"
+     * si un autre onglet ouvert sur le même patient est à l'origine de la génération en cours.
+     * @returns {object}
      */
-    function recordDisplayEntry(bubble) {
-        const entry = {
-            classes: Array.from(bubble.classList).filter(c => c !== 'message'),
-            text: bubble.textContent,
-            title: bubble.title || ''
+    function ensureActiveGeneration() {
+        if (activeGeneration) return activeGeneration;
+        const loadingMsg = appendMessage('bot', "L'IA réfléchit...");
+        loadingMsg.classList.add('loading');
+        chatSubmitButton.style.display = 'none';
+        chatStopButton.classList.add('visible');
+        activeGeneration = {
+            loadingMsg,
+            reasoningMsg: null,
+            contentStarted: false,
+            lastFinishReason: null,
+            contextWarningShown: false,
+            toolCallBubbles: new Map(), // id -> élément DOM du feedback d'appel de fonction
+            accumulatedContent: ''      // texte markdown brut accumulé, rendu à chaque chunk
         };
-        if (bubble.dataset.messageFormat === 'markdown') {
-            entry.messageFormat = 'markdown';
-            entry.markdownSource = bubble.dataset.markdownSource || bubble.textContent || '';
-        }
-        chatDisplayLog.push(entry);
-        return entry;
+        return activeGeneration;
+    }
+
+    /** Termine l'état de génération courant : réactive le bouton d'envoi, masque le bouton Stop. */
+    function endActiveGeneration() {
+        activeGeneration = null;
+        chatStopButton.classList.remove('visible');
+        chatSubmitButton.style.display = '';
     }
 
     /**
-     * Met à jour une entrée du journal d'affichage déjà enregistrée (ex: bulle d'appel de
-     * fonction passant de "pending" à "succès"/"erreur") à partir de l'état actuel de la bulle.
-     * @param {object} entry - Entrée précédemment obtenue via recordDisplayEntry
-     * @param {HTMLElement} bubble
+     * Traite les messages reçus de l'offpage (@see offscreen/offscreenChatEngine.js) : fragments de
+     * réponse en streaming, événements d'appel de fonction, fin de génération, erreurs et
+     * synchronisation d'état. Ignore les messages concernant un autre patient (ex: un autre onglet
+     * ouvert sur un patient différent, l'offpage étant partagé entre tous les onglets).
+     * @param {object} message
      */
-    function updateDisplayEntry(entry, bubble) {
-        entry.classes = Array.from(bubble.classList).filter(c => c !== 'message');
-        entry.text = bubble.textContent;
-        entry.title = bubble.title || '';
-        if (bubble.dataset.messageFormat === 'markdown') {
-            entry.messageFormat = 'markdown';
-            entry.markdownSource = bubble.dataset.markdownSource || bubble.textContent || '';
-        } else {
-            delete entry.messageFormat;
-            delete entry.markdownSource;
+    /**
+     * Applique un fragment de réponse en streaming (reasoning/contenu) à l'état de génération
+     * courant. Factorisé pour être rejoué tel quel lors d'un rattrapage d'état (stateSync).
+     * @param {object} gen
+     * @param {{contentDelta?: string, reasoningDelta?: string, finishReason?: string}} chunk
+     */
+    function applyAssistantChunk(gen, { contentDelta, reasoningDelta, finishReason }) {
+        if (finishReason) gen.lastFinishReason = finishReason;
+
+        if (reasoningDelta) {
+            if (!gen.reasoningMsg) {
+                gen.reasoningMsg = appendMessage('bot', '');
+                gen.reasoningMsg.classList.remove('bot');
+                gen.reasoningMsg.classList.add('reasoning');
+                // Le message de "réflexion" doit apparaître avant la réponse en cours
+                chatMessages.insertBefore(gen.reasoningMsg, gen.loadingMsg);
+            }
+            gen.reasoningMsg.textContent += reasoningDelta;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        if (contentDelta) {
+            if (!gen.contentStarted) {
+                gen.contentStarted = true;
+                gen.accumulatedContent = '';
+                gen.loadingMsg.textContent = '';
+                gen.loadingMsg.classList.remove('loading');
+            }
+            gen.accumulatedContent += contentDelta;
+            if (!renderMarkdownInBubble(gen.loadingMsg, gen.accumulatedContent)) {
+                gen.loadingMsg.textContent = gen.accumulatedContent;
+            }
+            chatMessages.scrollTop = chatMessages.scrollHeight;
         }
     }
 
     /**
-     * Gestion de la soumission du formulaire de chat : envoie le message de l'utilisateur au modèle,
-     * affiche la bulle correspondante, puis affiche la réponse de l'IA au fur et à mesure qu'elle est
-     * reçue (avec éventuellement des bulles de raisonnement et d'appel de fonction).
+     * Applique un événement d'appel de fonction (début/succès/erreur) à l'état de génération
+     * courant. Factorisé pour être rejoué tel quel lors d'un rattrapage d'état (stateSync).
+     * @param {object} gen
+     * @param {{id: string, name: string, args: object, status: string, result?: *, error?: string}} event
      */
-    let currentGenerationController = null; // AbortController de la génération en cours, pour le bouton Stop
+    function applyToolCallEvent(gen, { id, name, args, status, result, error }) {
+        // Une nouvelle étape de raisonnement pourra suivre cet appel : on force une nouvelle bulle.
+        gen.reasoningMsg = null;
 
-    chatStopButton.addEventListener('click', () => {
-        currentGenerationController?.abort();
-    });
+        if (status === 'start') {
+            const bubble = appendMessage('bot', `🔧 Appel de la fonction "${name}"...`);
+            bubble.classList.remove('bot');
+            bubble.classList.add('tool-call', 'pending');
+            bubble.title = `Arguments :\n${JSON.stringify(args, null, 2)}`;
+            chatMessages.insertBefore(bubble, gen.loadingMsg);
+            gen.toolCallBubbles.set(id, bubble);
+            return;
+        }
 
-    chatForm.addEventListener('submit', async (e) => {
+        const bubble = gen.toolCallBubbles.get(id);
+        if (!bubble) return;
+
+        bubble.classList.remove('pending');
+        if (status === 'success') {
+            bubble.textContent = `✅ Résultat reçu de "${name}"`;
+            const resultText = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+            bubble.title = `Résultat :\n${resultText}`;
+        } else if (status === 'error') {
+            bubble.classList.add('error');
+            bubble.textContent = `❌ Échec de l'appel à "${name}"`;
+            bubble.title = `Erreur :\n${error}`;
+        }
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function handleOffscreenMessage(message) {
+        if (message.patientId !== chatPatientId && message.type !== 'toolCallRequest') return;
+
+        switch (message.type) {
+            case 'stateSync':
+                selectedModel = message.selectedModel || selectedModel;
+                renderHistoryFromState(message.history || []);
+                if (message.liveGeneration) {
+                    // Une génération est déjà en cours (lancée depuis un autre onglet) : on rejoue son
+                    // instantané pour rattraper immédiatement l'affichage, sans attendre le prochain événement.
+                    const gen = ensureActiveGeneration();
+                    for (const toolCall of message.liveGeneration.toolCalls) applyToolCallEvent(gen, toolCall);
+                    if (message.liveGeneration.reasoning) applyAssistantChunk(gen, { reasoningDelta: message.liveGeneration.reasoning });
+                    if (message.liveGeneration.content) applyAssistantChunk(gen, { contentDelta: message.liveGeneration.content });
+                }
+                break;
+
+            case 'generationBusy': {
+                const gen = ensureActiveGeneration();
+                gen.loadingMsg.textContent = '⚠️ Une génération est déjà en cours pour ce patient depuis un autre onglet : patientez qu’elle se termine.';
+                gen.loadingMsg.classList.remove('loading');
+                gen.loadingMsg.classList.add('tool-call', 'error');
+                endActiveGeneration();
+                break;
+            }
+
+            case 'assistantWarning': {
+                const gen = ensureActiveGeneration();
+                const { type, estimatedTokens, limit, ratio } = message.warning || {};
+                if (type !== 'context_limit' || gen.contextWarningShown) break;
+                gen.contextWarningShown = true;
+                const warningBubble = appendMessage('bot', `⚠️ Le contexte estimé de la conversation (~${estimatedTokens} tokens) approche ou dépasse la limite configurée (${limit} tokens, ${Math.round(ratio * 100)}%). Les échanges avec les outils peuvent être tronqués par le serveur : pensez à augmenter la taille du contexte dans votre fournisseur de modèle et/ou réinitialiser la conversation si les réponses deviennent incohérentes. Pensez à mettre à jour les options de Weda-Helper si vous changez la limite de contexte côté serveur.`);
+                warningBubble.classList.remove('bot');
+                warningBubble.classList.add('tool-call', 'error');
+                chatMessages.insertBefore(warningBubble, gen.loadingMsg);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                break;
+            }
+
+            case 'assistantChunk':
+                applyAssistantChunk(ensureActiveGeneration(), message);
+                break;
+
+            case 'toolCallEvent':
+                applyToolCallEvent(ensureActiveGeneration(), message);
+                break;
+
+            case 'assistantEmpty': {
+                // Le modèle s'est arrêté (souvent après une phase de réflexion) sans produire de réponse finale
+                const gen = ensureActiveGeneration();
+                const finishReason = message.finishReason;
+                let reason;
+                if (finishReason === 'length') {
+                    reason = "la limite de tokens (maxTokens) a été atteinte avant la fin de sa réflexion — augmentez maxTokens ou raccourcissez le prompt système/l'historique.";
+                } else if (finishReason === 'content_filter') {
+                    reason = "la réponse a été bloquée par un filtre de contenu côté serveur.";
+                } else if (finishReason) {
+                    reason = `le serveur a renvoyé un arrêt inhabituel (finish_reason = "${finishReason}"), consultez les logs du serveur hébergeant le LLM pour plus de détails.`;
+                } else {
+                    reason = "aucune raison d'arrêt n'a été transmise par le serveur (connexion interrompue ?), consultez les logs du serveur hébergeant le LLM pour plus de détails.";
+                }
+                gen.loadingMsg.textContent = `⚠️ Le modèle n'a renvoyé aucune réponse : ${reason}`;
+                gen.loadingMsg.classList.remove('loading');
+                gen.loadingMsg.classList.add('tool-call', 'error');
+                console.warn("[discussionClient] Réponse vide reçue du modèle.", { finishReason });
+
+                if (gen.reasoningMsg) {
+                    gen.reasoningMsg.title = "La réflexion s'est arrêtée sans aboutir à une réponse.";
+                    gen.reasoningMsg.classList.add('error');
+                }
+                endActiveGeneration();
+                break;
+            }
+
+            case 'assistantDone': {
+                // Réponse finale reçue : on l'affiche
+                const gen = ensureActiveGeneration();
+                gen.loadingMsg.textContent = message.content;
+                gen.loadingMsg.classList.remove('loading');
+                // En streaming, le texte est affiché brut pour éviter les artefacts; on applique
+                // le rendu markdown sécurisé une fois la réponse complète reçue.
+                renderMarkdownInBubble(gen.loadingMsg, message.content);
+
+                if (message.finishReason === 'stop') {
+                    gen.loadingMsg.title = 'Réponse complète';
+                } else if (message.finishReason === 'length') {
+                    gen.loadingMsg.title = 'Réponse probablement tronquée (limite de tokens atteinte)';
+                    const truncatedNotice = appendMessage('bot', '✂️ Cette réponse a été tronquée : la limite de tokens (maxTokens) a été atteinte avant que le modèle ait terminé.');
+                    truncatedNotice.classList.remove('bot');
+                    truncatedNotice.classList.add('tool-call', 'error');
+                    console.warn("[discussionClient] Réponse tronquée : limite de tokens atteinte.", { finishReason: message.finishReason });
+                }
+                endActiveGeneration();
+                break;
+            }
+
+            case 'assistantAborted': {
+                // Arrêt volontaire via le bouton Stop : le contenu partiel déjà reçu est conservé comme
+                // réponse finale de l'assistant, plutôt que d'afficher une erreur.
+                const gen = ensureActiveGeneration();
+                gen.loadingMsg.classList.remove('loading');
+                if (!renderMarkdownInBubble(gen.loadingMsg, message.content)) {
+                    gen.loadingMsg.textContent = message.content;
+                }
+                gen.loadingMsg.title = 'Génération interrompue par l’utilisateur';
+                endActiveGeneration();
+                break;
+            }
+
+            case 'assistantError': {
+                // Gestion des erreurs lors de l'appel au modèle (ex: serveur inaccessible, timeout, erreur interne du modèle...)
+                const gen = ensureActiveGeneration();
+                gen.loadingMsg.textContent = "❌ Erreur : " + message.error;
+                gen.loadingMsg.classList.remove('loading');
+                gen.loadingMsg.classList.add('tool-call', 'error');
+                console.error("[discussionClient] Erreur lors de l'appel au modèle :", message.error);
+                endActiveGeneration();
+                break;
+            }
+
+            default:
+                console.warn('[discussionClient] Message offpage de type inconnu ignoré :', message);
+        }
+    }
+
+    onOffscreenMessage(handleOffscreenMessage);
+
+    chatStopButton.addEventListener('click', stopGeneration);
+
+    /** Arrête la génération en cours (utilisé par le bouton Stop et la commande /stop). */
+    function stopGeneration() {
+        sendOffscreenMessage({ type: 'stopGeneration', patientId: chatPatientId });
+    }
+
+    /** Affiche une bulle neutre d'information système (retour des commandes /...). */
+    function showSystemNotice(text) {
+        const notice = appendMessage('bot', text);
+        notice.classList.remove('bot');
+        notice.classList.add('tool-call');
+    }
+
+    /** Affiche la liste des commandes / disponibles ainsi que les raccourcis de prompts configurés. */
+    function showHelpMessage(commands) {
+        const commandsList = Object.entries(commands)
+            .map(([name, cmd]) => `• /${name} — ${cmd.description}`)
+            .join('\n');
+        const configuredShortcuts = (aiParams.promptShortcuts || [])
+            .map((text, index) => (text?.trim() ? `• /${index} — ${text.slice(0, 60)}${text.length > 60 ? '…' : ''}` : null))
+            .filter(Boolean)
+            .join('\n');
+        showSystemNotice(`Commandes disponibles :\n${commandsList}\n\nRaccourcis de prompts configurés :\n${configuredShortcuts || '(aucun)'}`);
+    }
+
+    // Contexte fourni à chatSlashCommands.js (@see tryHandleChatSlashCommand) : ce fichier indépendant
+    // ne connaît rien du DOM, seulement ces callbacks.
+    const slashCommandContext = {
+        closeChatWindow: () => { if (isOpen) toggleChat(); },
+        resetConversation,
+        stopGeneration,
+        sendUserPrompt: (text) => submitUserMessage(text, []),
+        triggerShortcut: (index) => runPromptShortcut(index),
+        showSystemNotice,
+        showHelp: showHelpMessage
+    };
+
+    /**
+     * Envoie effectivement un message utilisateur (bulle + génération) : factorisé pour être appelé
+     * aussi bien depuis la soumission normale du formulaire que depuis une commande / (ex: /poisson).
+     * @param {string} userText
+     * @param {Array} attachmentsForThisMessage
+     */
+    function submitUserMessage(userText, attachmentsForThisMessage = []) {
+        const attachmentsLabel = attachmentsForThisMessage.length
+            ? '\n\n' + attachmentsForThisMessage.map(att => `${att.kind === 'image' ? '🖼️' : '📄'} ${att.name}`).join('\n')
+            : '';
+        appendMessage('user', userText + attachmentsLabel);
+        chatInput.value = ''; // réinitialise le champ de saisie
+
+        ensureActiveGeneration();
+        sendOffscreenMessage({
+            type: 'userMessage',
+            patientId: chatPatientId,
+            model: getCurrentModel(),
+            content: buildUserMessageContent(userText, attachmentsForThisMessage)
+        });
+    }
+
+    chatForm.addEventListener('submit', (e) => {
         e.preventDefault();
 
         const userText = chatInput.value.trim();
         if (!userText) return;
+
+        if (tryHandleChatSlashCommand(userText, slashCommandContext)) {
+            chatInput.value = '';
+            return;
+        }
 
         // Les pièces jointes en attente (voir readAttachmentFile/buildUserMessageContent) sont
         // consommées ici : le texte affiché à l'utilisateur reste simple, mais le contenu envoyé
@@ -1389,236 +1826,7 @@ async function addAIChatClient() {
         const attachmentsForThisMessage = pendingAttachments;
         pendingAttachments = [];
         renderAttachmentsPreview();
-
-        // Ajoute le message de l'utilisateur à l'affichage et à l'historique, puis enregistre l'état.
-        const attachmentsLabel = attachmentsForThisMessage.length
-            ? '\n\n' + attachmentsForThisMessage.map(att => `${att.kind === 'image' ? '🖼️' : '📄'} ${att.name}`).join('\n')
-            : '';
-        appendMessage('user', userText + attachmentsLabel);
-        recordDisplayEntry(chatMessages.lastElementChild);
-        chatInput.value = ''; // réinitialise le champ de saisie
-        chatHistory.push({ role: 'user', content: buildUserMessageContent(userText, attachmentsForThisMessage) }); // met à jour la variable d'historique
-        persistChatHistory(); // Enregistre l'état dans le sessionStorage pour le patient courant
-
-        currentGenerationController = new AbortController();
-        chatSubmitButton.style.display = 'none';
-        chatStopButton.classList.add('visible');
-
-        // Gestion du message d'attente
-        const loadingMsg = appendMessage('bot', "L'IA réfléchit...");
-        loadingMsg.classList.add('loading');
-
-        let reasoningMsg = null; // créé au premier fragment de raisonnement reçu
-        let contentStarted = false;
-        let lastFinishReason = null; // dernière raison d'arrêt renvoyée par le serveur ('length', 'stop', 'content_filter'...)
-        let contextWarningShown = false; // évite de spammer une bulle à chaque relance de function calling
-        const toolCallBubbles = new Map(); // id -> élément DOM du feedback d'appel de fonction
-        const toolCallEntries = new Map(); // id -> entrée du journal d'affichage correspondante (pour mise à jour lors du succès/échec)
-
-        let accumulatedContent = ''; // texte markdown brut accumulé, rendu à chaque chunk
-
-        try {
-            const botResponse = await openAiClient({
-                messages: chatHistory,
-                model: getCurrentModel(),
-                maxTokens: 8000,   // Limite large : un modèle trop limité n'est de toute façon pas souhaitable
-                temperature: 0.3,  // Température assez basse pour des réponses plus cohérentes
-                // useTools: true, // activé par défaut dans l'appel de fonction. Mais doit être à terme dépendant des options de l'utilisateur
-                stream: true,
-                signal: currentGenerationController.signal,
-                // Gestion des événements de streaming
-                // Ici pour gérer la limite théorique maximale de contexte
-                onWarning: ({ type, estimatedTokens, limit, ratio }) => {
-                    if (type !== 'context_limit' || contextWarningShown) return;
-                    contextWarningShown = true;
-                    const warningBubble = appendMessage('bot', `⚠️ Le contexte estimé de la conversation (~${estimatedTokens} tokens) approche ou dépasse la limite configurée (${limit} tokens, ${Math.round(ratio * 100)}%). Les échanges avec les outils peuvent être tronqués par le serveur : pensez à augmenter la taille du contexte dans votre fournisseur de modèle et/ou réinitialiser la conversation si les réponses deviennent incohérentes. Pensez à mettre à jour les options de Weda-Helper si vous changez la limite de contexte côté serveur.`);
-                    warningBubble.classList.remove('bot');
-                    warningBubble.classList.add('tool-call', 'error');
-                    chatMessages.insertBefore(warningBubble, loadingMsg);
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                    recordDisplayEntry(warningBubble);
-                    persistChatHistory();
-                },
-                // Gestion des fragments de réponse reçus en streaming
-                onChunk: ({ contentDelta, reasoningDelta, finishReason }) => {
-                    if (finishReason) {
-                        lastFinishReason = finishReason;
-                    }
-                    if (reasoningDelta) {
-                        if (!reasoningMsg) {
-                            reasoningMsg = appendMessage('bot', '');
-                            reasoningMsg.classList.remove('bot');
-                            reasoningMsg.classList.add('reasoning');
-                            // Le message de "réflexion" doit apparaître avant la réponse en cours
-                            chatMessages.insertBefore(reasoningMsg, loadingMsg);
-                        }
-                        reasoningMsg.textContent += reasoningDelta;
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                    }
-                    if (contentDelta) {
-                        if (!contentStarted) {
-                            contentStarted = true;
-                            accumulatedContent = '';
-                            loadingMsg.textContent = '';
-                            loadingMsg.classList.remove('loading');
-                        }
-                        accumulatedContent += contentDelta;
-
-                        if (!renderMarkdownInBubble(loadingMsg, accumulatedContent)) {
-                            loadingMsg.textContent = accumulatedContent;
-                        }
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                    }
-                },
-                // Gestion des appels de fonction (start, success, error)
-                onToolCall: ({ id, name, args, status, result, error }) => {
-                    // Une nouvelle étape de raisonnement pourra suivre cet appel : on force une nouvelle bulle,
-                    // en persistant d'abord celle en cours si elle existe.
-                    if (reasoningMsg) {
-                        recordDisplayEntry(reasoningMsg);
-                        persistChatHistory();
-                    }
-                    reasoningMsg = null;
-
-                    if (status === 'start') {
-                        const bubble = appendMessage('bot', `🔧 Appel de la fonction "${name}"...`);
-                        bubble.classList.remove('bot');
-                        bubble.classList.add('tool-call', 'pending');
-                        bubble.title = `Arguments :\n${JSON.stringify(args, null, 2)}`;
-                        chatMessages.insertBefore(bubble, loadingMsg);
-                        toolCallBubbles.set(id, bubble);
-                        toolCallEntries.set(id, recordDisplayEntry(bubble));
-                        persistChatHistory();
-                        return;
-                    }
-
-                    const bubble = toolCallBubbles.get(id);
-                    if (!bubble) return;
-
-                    bubble.classList.remove('pending');
-                    if (status === 'success') {
-                        bubble.textContent = `✅ Résultat reçu de "${name}"`;
-                        const resultText = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
-                        bubble.title = `Résultat :\n${resultText}`;
-                    } else if (status === 'error') {
-                        bubble.classList.add('error');
-                        bubble.textContent = `❌ Échec de l'appel à "${name}"`;
-                        bubble.title = `Erreur :\n${error}`;
-                    }
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                    const entry = toolCallEntries.get(id);
-                    if (entry) {
-                        updateDisplayEntry(entry, bubble);
-                        persistChatHistory();
-                    }
-                }
-            });
-
-            if (!botResponse || !botResponse.trim()) {
-                // Le modèle s'est arrêté (souvent après une phase de réflexion) sans produire de réponse finale
-                let reason;
-                if (lastFinishReason === 'length') {
-                    reason = "la limite de tokens (maxTokens) a été atteinte avant la fin de sa réflexion — augmentez maxTokens ou raccourcissez le prompt système/l'historique.";
-                } else if (lastFinishReason === 'content_filter') {
-                    reason = "la réponse a été bloquée par un filtre de contenu côté serveur.";
-                } else if (lastFinishReason) {
-                    reason = `le serveur a renvoyé un arrêt inhabituel (finish_reason = "${lastFinishReason}"), consultez les logs du serveur hébergeant le LLM pour plus de détails.`;
-                } else {
-                    reason = "aucune raison d'arrêt n'a été transmise par le serveur (connexion interrompue ?), consultez les logs du serveur hébergeant le LLM pour plus de détails.";
-                }
-                loadingMsg.textContent = `⚠️ Le modèle n'a renvoyé aucune réponse : ${reason}`;
-                loadingMsg.classList.remove('loading');
-                loadingMsg.classList.add('tool-call', 'error');
-                console.warn("[addAIChatClient] Réponse vide reçue du modèle.", { reasoning: reasoningMsg?.textContent, finishReason: lastFinishReason });
-
-                if (reasoningMsg) {
-                    reasoningMsg.title = "La réflexion s'est arrêtée sans aboutir à une réponse.";
-                    reasoningMsg.classList.add('error');
-                    recordDisplayEntry(reasoningMsg);
-                    reasoningMsg = null;
-                }
-
-                chatHistory.pop(); // on retire le message utilisateur pour permettre de reformuler/réessayer proprement
-                recordDisplayEntry(loadingMsg);
-                persistChatHistory();
-            } else {
-                // Réponse finale reçue : on l'affiche et on l'enregistre dans l'historique
-                loadingMsg.textContent = botResponse;
-                loadingMsg.classList.remove('loading');
-
-                // En streaming, le texte est affiché brut pour éviter les artefacts; on applique
-                // le rendu markdown sécurisé une fois la réponse complète reçue.
-                renderMarkdownInBubble(loadingMsg, botResponse);
-
-                if (reasoningMsg) {
-                    recordDisplayEntry(reasoningMsg);
-                    reasoningMsg = null;
-                }
-
-                if (lastFinishReason === 'stop') {
-                    // Le modèle a terminé normalement sa réponse
-                    loadingMsg.title = 'Réponse complète';
-                } else if (lastFinishReason === 'length') {
-                    // Le modèle a été interrompu avant d'avoir terminé sa réponse (limite de tokens atteinte)
-                    loadingMsg.title = 'Réponse probablement tronquée (limite de tokens atteinte)';
-                    const truncatedNotice = appendMessage('bot', '✂️ Cette réponse a été tronquée : la limite de tokens (maxTokens) a été atteinte avant que le modèle ait terminé.');
-                    truncatedNotice.classList.remove('bot');
-                    truncatedNotice.classList.add('tool-call', 'error');
-                    console.warn("[addAIChatClient] Réponse tronquée : limite de tokens atteinte.", { reasoning: reasoningMsg?.textContent, finishReason: lastFinishReason });
-                    recordDisplayEntry(truncatedNotice);
-                }
-
-                chatHistory.push({ role: 'assistant', content: botResponse });
-                recordDisplayEntry(loadingMsg);
-                persistChatHistory();
-            }
-
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                // Arrêt volontaire via le bouton Stop : on conserve le contenu partiel déjà reçu comme
-                // réponse finale de l'assistant, plutôt que d'afficher une erreur.
-                loadingMsg.classList.remove('loading');
-                if (accumulatedContent.trim()) {
-                    if (!renderMarkdownInBubble(loadingMsg, accumulatedContent)) {
-                        loadingMsg.textContent = accumulatedContent;
-                    }
-                    loadingMsg.title = 'Génération interrompue par l’utilisateur';
-                    chatHistory.push({ role: 'assistant', content: accumulatedContent });
-                } else {
-                    loadingMsg.textContent = '⏹️ Génération interrompue.';
-                    loadingMsg.classList.add('tool-call');
-                    chatHistory.pop();
-                }
-
-                if (reasoningMsg) {
-                    recordDisplayEntry(reasoningMsg);
-                    reasoningMsg = null;
-                }
-
-                recordDisplayEntry(loadingMsg);
-                persistChatHistory();
-                return;
-            }
-
-            // Gestion des erreurs lors de l'appel au modèle (ex: serveur inaccessible, timeout, erreur interne du modèle...)
-            loadingMsg.textContent = "❌ Erreur : " + error.message;
-            loadingMsg.classList.remove('loading');
-            loadingMsg.classList.add('tool-call', 'error');
-            console.error("[addAIChatClient] Erreur lors de l'appel OpenAI :", error);
-
-            if (reasoningMsg) {
-                recordDisplayEntry(reasoningMsg);
-                reasoningMsg = null;
-            }
-
-            chatHistory.pop();
-            recordDisplayEntry(loadingMsg);
-            persistChatHistory();
-        } finally {
-            currentGenerationController = null;
-            chatStopButton.classList.remove('visible');
-            chatSubmitButton.style.display = '';
-        }
+        submitUserMessage(userText, attachmentsForThisMessage);
     });
 }
 

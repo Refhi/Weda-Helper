@@ -879,6 +879,23 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
   document.getElementById('save').addEventListener('click', function () {
     collectCurrentValues(defaultSettings, defaultShortcuts)
       .then(valuesToSave => {
+        const host = valuesToSave['IAassistantHost']?.trim();
+        if (host && host !== 'localhost' && host !== '127.0.0.1') {
+          const confirmed = confirm(
+            "⚠️ ATTENTION DONNÉES DE SANTÉ ⚠️\n\n" +
+            `Vous configurez l'assistant IA pour envoyer des données vers un hôte distant ("${host}") au lieu de "localhost".\n\n` +
+            "Les échanges avec l'assistant (questions, données de patients éventuellement transmises comme contexte, etc.) " +
+            "constituent des données de santé à caractère personnel. Les envoyer à un serveur autre que celui tournant sur cet " +
+            "ordinateur peut constituer une violation du secret médical et de la réglementation (RGPD, hébergement de données de " +
+            "santé - HDS) si cet hôte n'est pas un hébergeur certifié et autorisé à recevoir ce type de données.\n\n" +
+            "N'utilisez cette option que si vous savez exactement ce que vous faites (ex: serveur d'IA sur votre propre réseau local, " +
+            "sous votre entière responsabilité).\n\n" +
+            "Confirmez-vous vouloir continuer ?"
+          );
+          if (!confirmed) {
+            return;
+          }
+        }
         chrome.storage.local.set(valuesToSave, function () {
           console.log('✅ Sauvegardé avec succès');
           alert('✅ Les options ont été sauvegardées avec succès');

@@ -1,16 +1,20 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper Beta",
-  "version": "3.2.0.2",
+  "version": "3.2.0.5",
   "options_page": "src/ui/options.html",
   "permissions": [
-    "storage"
+    "storage",
+    "offscreen"
   ],
   "optional_permissions": [
     "tabs"
   ],
   "host_permissions": [
     "http://localhost/"
+  ],
+  "optional_host_permissions": [
+    "http://*/*"
   ],
   "action": {
     "default_popup": "src/ui/popup.html"
@@ -54,6 +58,8 @@
         "src/utils/dataInserter.js",
         "src/utils/ai/callableFunctions.js",
         "src/utils/ai/openAiClient.js",
+        "src/utils/ai/offscreenBridge.js",
+        "src/utils/ai/chatSlashCommands.js",
         "src/utils/ai/discussionClient.js",
         "src/ui/tooltip.js",
         "src/ui/update.js",

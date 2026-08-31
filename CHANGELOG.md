@@ -5,11 +5,18 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
 # [3.2] - Assistant Local IA ! (en beta)
-- [#634](https://github.com/Refhi/Weda-Helper/issues/634) - Ajout d'un Assistant Local (en beta) - vos tests et retours sont les bienvenus ! Pour l’instant ses capacités sont limitées à la recherche d’informations dans le dossier patient, mais va être amené à gérer de + en + de choses. (rédaction de courrier, résumé de pdf, assistant vocal ?, etc.). N’hésitez pas à le désactiver si vous ne souhaitez pas l’utiliser. Il peut être réactivé à tout moment dans les options de Weda-Helper.
+- [#634](https://github.com/Refhi/Weda-Helper/issues/634) - Ajout d'un Assistant Local (en beta) - vos tests et retours sont les bienvenus ! Pour l’instant ses capacités sont limitées à la recherche d’informations dans le dossier patient, mais va être amené à gérer de + en + de choses. (rédaction de courrier, résumé de pdf, assistant vocal ?, etc.). N’hésitez pas à le désactiver si vous ne souhaitez pas l’utiliser. Il peut être réactivé à tout moment dans les options de Weda-Helper. Parmis ses fonctions :
+    - analyse du dossier patient (antécédents, traitements, allergies, etc.)
+    - prompts favoris
+    - Ctrl+I pour ouvrir la fenêtre de l’assistant
+    - /help pour accéder aux commandes slash disponibles
 - [#632](https://github.com/Refhi/Weda-Helper/issues/632) - Ajout d'une fonction de détection d'un ECG dans la consultation du jour pour afficher une alerte lors de la création de la FSE et inciter à le coter.
 
 ## Fix :
 - [#648](https://github.com/Refhi/Weda-Helper/issues/648) - La fiche mémo des raccourcis clavier se supprime + facilement dans certaines circonstances.
+
+## Evolution :
+- les numéros de téléphone peuvent désormais être cliqués pour être copiés (merci @Abeldvlpr pour le commit :)
 
 # [3.1] - Post-it et extraction de données centralisée (WhAIp à venir dans la 3.2 !)
 ## Ajouts :

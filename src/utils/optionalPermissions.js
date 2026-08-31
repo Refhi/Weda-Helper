@@ -51,6 +51,42 @@ function requestPermission(permission) {
     });
 }
 
+/**
+ * Vérifie si une origine (host permission optionnelle, ex: "http://192.168.1.50/*") est déjà accordée
+ * @param {string} origin - Motif d'origine à vérifier
+ * @returns {Promise<boolean>} - True si l'origine est déjà autorisée
+ */
+function checkOriginPermission(origin) {
+    return new Promise((resolve) => {
+        chrome.runtime.sendMessage(
+            {
+                action: 'optionalPermissionHandler',
+                command: 'checkOrigin',
+                options: { origin }
+            },
+            (response) => resolve(response?.hasPermission || false)
+        );
+    });
+}
+
+/**
+ * Demande à l'utilisateur d'autoriser une origine (host permission optionnelle)
+ * @param {string} origin - Motif d'origine à demander, ex: "http://192.168.1.50/*"
+ * @returns {Promise<boolean>} - True si l'origine a été autorisée
+ */
+function requestOriginPermission(origin) {
+    return new Promise((resolve) => {
+        chrome.runtime.sendMessage(
+            {
+                action: 'optionalPermissionHandler',
+                command: 'requestOrigin',
+                options: { origin }
+            },
+            (response) => resolve(response?.granted || false)
+        );
+    });
+}
+
 /** 
  * Annule une permission accordée via le script background
  * @param {string} permission - Permission à réinitialiser

@@ -128,7 +128,7 @@ addTweak(homePageUrls, 'autoSelectPatientCV', async function () {
     });
 });
 
-addTweak(homePageUrls, 'TweakNIR', function () {
+addTweak(homePageUrls, 'TweakNIRTel', function () {
     function addCopySymbol(element, copyText) {
         // Define the id for the copySymbol
         var copySymbolId = 'copySymbol-' + element.id;
@@ -138,9 +138,9 @@ addTweak(homePageUrls, 'TweakNIR', function () {
             console.log('copySymbolId', copySymbolId, 'not found, creating it');
             // Create a new element for the copy symbol
             var copySymbol = document.createElement('span');
-            copySymbol.textContent = '📋'; // Use clipboard emoji as copy symbol
+            copySymbol.textContent = ' 📋'; // Use clipboard emoji as copy symbol
             copySymbol.style.cursor = 'pointer'; // Change cursor to pointer when hovering over the copy symbol
-            copySymbol.title = 'Cliquez ici pour copier le NIR dans le presse-papiers'; // Add tooltip text
+            copySymbol.title = 'Cliquez ici pour copier dans le presse-papiers'; // Add tooltip text
             copySymbol.id = copySymbolId;
 
             // Add a click event handler to the copy symbol
@@ -176,15 +176,14 @@ addTweak(homePageUrls, 'TweakNIR', function () {
 
 
     waitForElement({
-        selector: '#ContentPlaceHolder1_EtatCivilUCForm1_LabelPatientSecuriteSocial',
+        selector: '#ContentPlaceHolder1_EtatCivilUCForm1_PanelAdresseCom span[title="Cliquez pour zoomer"]',
         callback: (elements) => {
-            var secu = elements[0].textContent.match(/(\d{1} \d{2} \d{2} \d{2} \d{3} \d{3} \d{2})/)[1];
-            secu = secu.replace(/\s/g, ''); // Supprime tous les espaces de la chaîne
-            addCopySymbol(elements[0], secu);
-            elements[0].addEventListener('click', function () {
-                navigator.clipboard.writeText(secu);
-                recordMetrics({ clicks: 3, drags: 2 });
-            });
+            for (const i in elements) {
+                elements[i].id="tel"+i; //Ajout d'une id unique
+                var tel = elements[i].textContent;
+                tel = tel.replace(/\s/g, ''); 
+                addCopySymbol(elements[i], tel);
+            }
         }
     });
 });
