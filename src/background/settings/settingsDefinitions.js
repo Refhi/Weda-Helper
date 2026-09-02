@@ -870,7 +870,7 @@ var advancedDefaultSettings = [
             "name": "enableIAassistant",
             "type": TYPE_BOOL,
             "description": "Activer ou désactiver l'assistant IA local.",
-            "default": true,
+            "default": false,
             "subOptions": [{
                 "name": "IAassistantHost",
                 "type": TYPE_SMALLTEXT,
