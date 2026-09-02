@@ -4,6 +4,20 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [3.2] - Assistant Local IA ! (en beta)
+- [#634](https://github.com/Refhi/Weda-Helper/issues/634) - Ajout d'un Assistant Local (en beta) - vos tests et retours sont les bienvenus ! Pour l’instant ses capacités sont limitées à la recherche d’informations dans le dossier patient, mais va être amené à gérer de + en + de choses. (rédaction de courrier, résumé de pdf, assistant vocal ?, etc.) :
+    - analyse du dossier patient (antécédents, traitements, allergies, etc.)
+    - prompts favoris
+    - Ctrl+I pour ouvrir la fenêtre de l’assistant
+    - /help pour accéder aux commandes slash disponibles
+- [#632](https://github.com/Refhi/Weda-Helper/issues/632) - Ajout d'une fonction de détection d'un ECG dans la consultation du jour pour afficher une alerte lors de la création de la FSE et inciter à le coter.
+
+## Fix :
+- [#648](https://github.com/Refhi/Weda-Helper/issues/648) - La fiche mémo des raccourcis clavier se supprime + facilement dans certaines circonstances.
+
+## Evolution :
+- les numéros de téléphone peuvent désormais être cliqués pour être copiés (merci @Abeldvlpr pour le commit :)
+
 # [3.1] - Post-it et extraction de données centralisée (WhAIp à venir dans la 3.2 !)
 ## Ajouts :
 - [#627](https://github.com/Refhi/Weda-Helper/issues/627) - Ajout de raccourcis dans x jours pour les dates d'alertes dans les antécédents (3 mois, 6 mois, 1 an, 2 ans, 5 ans)
@@ -12,6 +26,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#636](https://github.com/Refhi/Weda-Helper/issues/636) L'affichage de l'historique des FSE affiche aussi le réglement effectué par le patient et le mode de réglement.
 - [#629](https://github.com/Refhi/Weda-Helper/issues/629) - Ajout d’un bouton pour importer le contenu d’un post-it directement dans une consultation.
 - [#615](https://github.com/Refhi/Weda-Helper/issues/615) - le calcul du SCORE2 utilise bien plus de données récupérées automatiquement.
+
 
 ## Retrait de fonctionnalités :
 - [#619](https://github.com/Refhi/Weda-Helper/issues/619) - Il existe *déjà* une option dans Weda pour sauvegarder l’affichage préférentiel des documents dans la page de recherche des documents...

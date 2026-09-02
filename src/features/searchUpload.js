@@ -324,8 +324,8 @@ addTweak('/FolderMedical/FindPatientForm.aspx', 'TweakTabSearchPatient', functio
         var timeDifference = currentTime - result.searchTime;
         var timeDifferenceInSeconds = timeDifference / 1000;
         const idsSearchBox = 'ContentPlaceHolder1_FindPatientUcForm1_TextBoxRecherche';
-        const validTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_0';
-        const secondTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_1';
+        const validTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonPatientGetNomPrenom_0';
+        const secondTarget = 'ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonPatientGetNomPrenom_1';
         if (timeDifferenceInSeconds >= 5 || isNaN(timeDifferenceInSeconds)) {
             console.log('délais depuis le dernier alt+r :', timeDifferenceInSeconds, 'secondes donc on lance le tweak');
             console.log('TweakTabSearchPatient started');

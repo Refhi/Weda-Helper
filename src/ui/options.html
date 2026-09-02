@@ -280,8 +280,17 @@
             #save {
                 bottom: 10px;
                 right: 10px;
-                left: 10px;
                 width: auto;
+            }
+
+            .sidebar-nav {
+                width: 180px;
+                left: -180px;
+                transition: left 0.3s ease;
+            }
+
+            .sidebar-nav.open {
+                left: 0;
             }
         }
 
@@ -325,10 +334,90 @@
         .level-6 {
             position: relative;
         }
+
+        /* Menu de navigation latéral */
+        .sidebar-nav {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 250px;
+            height: 100vh;
+            background-color: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+            overflow-y: auto;
+            padding: 20px 0;
+            z-index: 999;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-nav-title {
+            font-size: 14px;
+            font-weight: 600;
+            padding: 10px 20px;
+            cursor: pointer;
+            color: #495057;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-nav-title:hover {
+            background-color: #e9ecef;
+            color: #007bff;
+        }
+
+        .sidebar-nav-title.active {
+            background-color: #e7f3ff;
+            color: #007bff;
+            border-left-color: #007bff;
+            font-weight: 700;
+        }
+
+        /* Niveaux d'indentation dans le menu */
+        .sidebar-nav-title[data-level="1"] {
+            padding-left: 20px;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .sidebar-nav-title[data-level="2"] {
+            padding-left: 40px;
+            font-size: 14px;
+        }
+
+        .sidebar-nav-title[data-level="3"] {
+            padding-left: 60px;
+            font-size: 13px;
+        }
+
+        .sidebar-nav-title[data-level="4"] {
+            padding-left: 80px;
+            font-size: 12px;
+        }
+
+        /* Décalage du contenu principal */
+        body {
+            margin-left: 250px;
+        }
+
+        /* Responsive: cacher le menu sur petits écrans */
+        @media (max-width: 768px) {
+            .sidebar-nav {
+                width: 200px;
+            }
+
+            body {
+                margin-left: 0;
+            }
+        }
     </style>
 </head>
 
 <body>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
     <div class="container">
         <!-- ...existing code... -->
         <h1 id="MainTitle">Options de Weda-Helper</h1>
@@ -354,10 +443,10 @@
 
         <div id="advanced-options"></div>
 
-        <h2>Raccourcis</h2>
+        <h2 id="shortcuts-heading">Raccourcis</h2>
         <div id="shortcuts"></div>
 
-        <h2>Métriques</h2>
+        <h2 id="metrics-heading">Métriques</h2>
         <div id="metrics"></div>
         </br>
 

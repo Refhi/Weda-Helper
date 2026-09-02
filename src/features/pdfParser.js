@@ -371,7 +371,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     // ===========================================
     // ÉTAPE 4 : Focus sur l'élément de validation
     // ===========================================
-    const patientLinkButton = document.querySelector("#ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_0");
+    const patientLinkButton = document.querySelector("#ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonPatientGetNomPrenom_0");
     if (patientLinkButton) {
         console.log("[pdfParser] Mise au focus sur le patient sélectionné");
         patientLinkButton.focus();
@@ -423,8 +423,8 @@ async function showClickedPatient() {
                 console.log("[pdfParser] Patient cliqué :", patient.innerText);
                 // La DDN a un id qui commence par "ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatienDateNaissance_"
                 const DDN = patient.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatienDateNaissance_']");
-                // Le NOM PRENOM a un id qui commence par "ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_"
-                const NOM_PRENOM = patient.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_']");
+                // Le NOM PRENOM a un id qui commence par "ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonPatientGetNomPrenom_"
+                const NOM_PRENOM = patient.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonPatientGetNomPrenom_']");
 
                 // Correction de la ligne pour éviter les erreurs de concaténation avec null
                 const nomPrenom = NOM_PRENOM ? NOM_PRENOM.innerText : "";
@@ -1090,8 +1090,8 @@ function checkAlreadyExtractedData(hashId) {
 
 // Renvoie la liste des patients trouvés après recherche
 function getPatientsList() {
-    // #ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_0
-    const patientListSelector = "[id^='ContentPlaceHolder1_FindPatientUcForm'][id*='_PatientsGridOld_LinkButtonOldPatientGetNomPrenom_']";
+    // #ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonPatientGetNomPrenom_0
+    const patientListSelector = "[id^='ContentPlaceHolder1_FindPatientUcForm'][id*='_PatientsGridOld_LinkButtonPatientGetNomPrenom_']";
     const patientElements = document.querySelectorAll(patientListSelector);
     return patientElements;
 }

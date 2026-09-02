@@ -143,8 +143,8 @@ function createInput(option) { // gestion des différents types d'input
   let inputType = 'input';
   if (['html', 'radio'].includes(option.type)) {
     inputType = 'div';
-  } else if (['json', 'true_json'].includes(option.type)) {
-    inputType = 'textarea'; // Utiliser un textarea pour les options de type json
+  } else if (['json', 'true_json', 'largetext'].includes(option.type)) {
+    inputType = 'textarea'; // Utiliser un textarea pour les options de type json / largetext
   }
   const input = document.createElement(inputType);
   input.id = option.name;
@@ -211,6 +211,16 @@ function createInput(option) { // gestion des différents types d'input
         input.size = 20;
         input.style.width = 'auto';
         input.value = optionValue;
+        break;
+      case 'largetext':
+        input.classList.add('large-text-input');
+        input.value = optionValue;
+        input.style.width = '100%';
+        input.style.minHeight = '150px';
+        input.style.resize = 'vertical';
+        input.style.fontFamily = 'inherit';
+        input.style.fontSize = '14px';
+        input.style.boxSizing = 'border-box';
         break;
       case 'radio':
         input.classList.add('radio-group');
@@ -413,7 +423,7 @@ function createLabel(option) {
   }
 
   // Ajouter un bouton "Valeur par défaut" pour certains types d'options
-  if (['text', 'json', 'smalltext', 'true_json'].includes(option.type)) {
+  if (['text', 'json', 'smalltext', 'true_json', 'largetext'].includes(option.type)) {
     const defaultBtn = document.createElement('button');
     defaultBtn.textContent = '↻';
     defaultBtn.title = 'Restaurer la valeur par défaut';
@@ -745,6 +755,8 @@ function resetOptionToDefault(optionName, defaultValue, askConfirmation = true) 
   if (inputElement.classList.contains('json-input')) {
     // Pour les options JSON, utiliser displayCategories pour formater
     inputElement.value = displayCategories(defaultValue);
+  } else if (inputElement.classList.contains('large-text-input')) {
+    inputElement.value = defaultValue;
   } else if (inputElement.classList.contains('true-json-input')) {
     // Pour les options true_json, formater joliment le JSON
     inputElement.value = formatJsonPretty(defaultValue);
@@ -867,6 +879,23 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
   document.getElementById('save').addEventListener('click', function () {
     collectCurrentValues(defaultSettings, defaultShortcuts)
       .then(valuesToSave => {
+        const host = valuesToSave['IAassistantHost']?.trim();
+        if (host && host !== 'localhost' && host !== '127.0.0.1') {
+          const confirmed = confirm(
+            "⚠️ ATTENTION DONNÉES DE SANTÉ ⚠️\n\n" +
+            `Vous configurez l'assistant IA pour envoyer des données vers un hôte distant ("${host}") au lieu de "localhost".\n\n` +
+            "Les échanges avec l'assistant (questions, données de patients éventuellement transmises comme contexte, etc.) " +
+            "constituent des données de santé à caractère personnel. Les envoyer à un serveur autre que celui tournant sur cet " +
+            "ordinateur peut constituer une violation du secret médical et de la réglementation (RGPD, hébergement de données de " +
+            "santé - HDS) si cet hôte n'est pas un hébergeur certifié et autorisé à recevoir ce type de données.\n\n" +
+            "N'utilisez cette option que si vous savez exactement ce que vous faites (ex: serveur d'IA sur votre propre réseau local, " +
+            "sous votre entière responsabilité).\n\n" +
+            "Confirmez-vous vouloir continuer ?"
+          );
+          if (!confirmed) {
+            return;
+          }
+        }
         chrome.storage.local.set(valuesToSave, function () {
           console.log('✅ Sauvegardé avec succès');
           alert('✅ Les options ont été sauvegardées avec succès');
@@ -1201,3 +1230,92 @@ function updateCompanionLogLink() {
 }
 
 updateCompanionLogLink();
+
+// 8 - Menu de navigation latéral
+/**
+ * Initialise et gère le menu de navigation latéral
+ * Extrait les titres du contenu principal et crée des liens de navigation
+ */
+function initializeSidebarNavigation() {
+  const container = document.querySelector('.container');
+  const sidebarNav = document.getElementById('sidebarNav');
+  
+  if (!container || !sidebarNav) {
+    console.warn('⚠️ Éléments requis pour le menu latéral non trouvés');
+    return;
+  }
+
+  // Extraire tous les titres (h1-h6) du conteneur principal
+  const titles = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
+  
+  if (titles.length === 0) {
+    console.warn('⚠️ Aucun titre trouvé pour le menu latéral');
+    return;
+  }
+
+  // Créer les éléments du menu et ajouter des IDs aux titres
+  titles.forEach((title, index) => {
+    // Ajouter un ID au titre s'il n'en a pas
+    if (!title.id) {
+      title.id = `heading-${index}`;
+    }
+
+    // Déterminer le niveau du titre (1-6)
+    const level = parseInt(title.tagName[1]);
+
+    // Créer l'élément de menu
+    const navItem = document.createElement('a');
+    navItem.textContent = title.textContent;
+    navItem.className = 'sidebar-nav-title';
+    navItem.setAttribute('data-level', level);
+    navItem.href = `#${title.id}`;
+    
+    // Au clic, scroller vers le titre
+    navItem.addEventListener('click', (e) => {
+      e.preventDefault();
+      title.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Mettre à jour le titre actif
+      updateActiveNavItem();
+    });
+
+    sidebarNav.appendChild(navItem);
+  });
+
+  // Fonction pour mettre à jour le titre actif selon le scroll
+  function updateActiveNavItem() {
+    const navItems = sidebarNav.querySelectorAll('.sidebar-nav-title');
+    const allTitles = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    
+    let currentActiveIndex = 0;
+    
+    // Trouver le titre le plus proche du haut de la fenêtre
+    allTitles.forEach((title, index) => {
+      const rect = title.getBoundingClientRect();
+      if (rect.top <= 100) {
+        currentActiveIndex = index;
+      }
+    });
+
+    // Supprimer la classe active de tous les éléments
+    navItems.forEach(item => item.classList.remove('active'));
+    
+    // Ajouter la classe active au titre courant
+    if (navItems[currentActiveIndex]) {
+      navItems[currentActiveIndex].classList.add('active');
+    }
+  }
+
+  // Mettre à jour le titre actif au scroll
+  window.addEventListener('scroll', updateActiveNavItem);
+
+  // Initialiser le titre actif au chargement
+  updateActiveNavItem();
+
+  console.log('✅ Menu de navigation latéral initialisé');
+}
+
+// Initialiser le menu après un délai pour s'assurer que le DOM est prêt
+// (car les options peuvent être chargées asynchronement)
+setTimeout(() => {
+  initializeSidebarNavigation();
+}, 500);
