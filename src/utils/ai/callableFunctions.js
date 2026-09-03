@@ -32,7 +32,9 @@ const DATA_SCRAPPER_CATEGORIES = [
 /**
  * Fonction appelable par le modèle pour récupérer les données de l'historique du patient
  * actuellement ouvert dans Weda (consultations, résultats d'examens, antécédents, etc.).
- * S'appuie sur recoverData (voir dataScrapper.js).
+ * S'appuie sur recoverData (voir dataScrapper.js). Cette fonction n'est jamais invoquée depuis le
+ * document offpage (qui ne charge pas dataScrapper.js) : seul son `definition` y est lu, pour
+ * construire la liste des tools envoyée au modèle (@see offscreenChatEngine.js).
  */
 async function recoverPatientData({
     categories = ["consultations"],
@@ -50,9 +52,11 @@ async function recoverPatientData({
 }
 
 /**
- * Registre des fonctions disponibles pour le modèle :
+ * Registre des fonctions disponibles pour le modèle, source unique de vérité pour tout nouveau
+ * tool :
  * - `definition` : la description au format attendu par l'API OpenAI (tools)
- * - `execute` : l'implémentation JS réellement appelée
+ * - `execute` : l'implémentation JS réellement appelée (nécessite le DOM de la page Weda, donc
+ *   uniquement exécutée côté content script)
  */
 const availableFunctions = {
     // Simple fonction de test pour vérifier que le system de function calling fonctionne correctement.

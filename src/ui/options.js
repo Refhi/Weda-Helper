@@ -143,8 +143,8 @@ function createInput(option) { // gestion des différents types d'input
   let inputType = 'input';
   if (['html', 'radio'].includes(option.type)) {
     inputType = 'div';
-  } else if (['json', 'true_json'].includes(option.type)) {
-    inputType = 'textarea'; // Utiliser un textarea pour les options de type json
+  } else if (['json', 'true_json', 'largetext'].includes(option.type)) {
+    inputType = 'textarea'; // Utiliser un textarea pour les options de type json / largetext
   }
   const input = document.createElement(inputType);
   input.id = option.name;
@@ -211,6 +211,16 @@ function createInput(option) { // gestion des différents types d'input
         input.size = 20;
         input.style.width = 'auto';
         input.value = optionValue;
+        break;
+      case 'largetext':
+        input.classList.add('large-text-input');
+        input.value = optionValue;
+        input.style.width = '100%';
+        input.style.minHeight = '150px';
+        input.style.resize = 'vertical';
+        input.style.fontFamily = 'inherit';
+        input.style.fontSize = '14px';
+        input.style.boxSizing = 'border-box';
         break;
       case 'radio':
         input.classList.add('radio-group');
@@ -413,7 +423,7 @@ function createLabel(option) {
   }
 
   // Ajouter un bouton "Valeur par défaut" pour certains types d'options
-  if (['text', 'json', 'smalltext', 'true_json'].includes(option.type)) {
+  if (['text', 'json', 'smalltext', 'true_json', 'largetext'].includes(option.type)) {
     const defaultBtn = document.createElement('button');
     defaultBtn.textContent = '↻';
     defaultBtn.title = 'Restaurer la valeur par défaut';
@@ -745,6 +755,8 @@ function resetOptionToDefault(optionName, defaultValue, askConfirmation = true) 
   if (inputElement.classList.contains('json-input')) {
     // Pour les options JSON, utiliser displayCategories pour formater
     inputElement.value = displayCategories(defaultValue);
+  } else if (inputElement.classList.contains('large-text-input')) {
+    inputElement.value = defaultValue;
   } else if (inputElement.classList.contains('true-json-input')) {
     // Pour les options true_json, formater joliment le JSON
     inputElement.value = formatJsonPretty(defaultValue);
@@ -867,6 +879,23 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
   document.getElementById('save').addEventListener('click', function () {
     collectCurrentValues(defaultSettings, defaultShortcuts)
       .then(valuesToSave => {
+        const host = valuesToSave['IAassistantHost']?.trim();
+        if (host && host !== 'localhost' && host !== '127.0.0.1') {
+          const confirmed = confirm(
+            "⚠️ ATTENTION DONNÉES DE SANTÉ ⚠️\n\n" +
+            `Vous configurez l'assistant IA pour envoyer des données vers un hôte distant ("${host}") au lieu de "localhost".\n\n` +
+            "Les échanges avec l'assistant (questions, données de patients éventuellement transmises comme contexte, etc.) " +
+            "constituent des données de santé à caractère personnel. Les envoyer à un serveur autre que celui tournant sur cet " +
+            "ordinateur peut constituer une violation du secret médical et de la réglementation (RGPD, hébergement de données de " +
+            "santé - HDS) si cet hôte n'est pas un hébergeur certifié et autorisé à recevoir ce type de données.\n\n" +
+            "N'utilisez cette option que si vous savez exactement ce que vous faites (ex: serveur d'IA sur votre propre réseau local, " +
+            "sous votre entière responsabilité).\n\n" +
+            "Confirmez-vous vouloir continuer ?"
+          );
+          if (!confirmed) {
+            return;
+          }
+        }
         chrome.storage.local.set(valuesToSave, function () {
           console.log('✅ Sauvegardé avec succès');
           alert('✅ Les options ont été sauvegardées avec succès');

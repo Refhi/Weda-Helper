@@ -428,7 +428,9 @@ async function recoverData({
         }
 
         const effectiveFullPage = plan.effectiveFullPage;
-        const includeLegacy = effectiveFullPage;
+        // Pour les vaccins, on récupère systématiquement les entrées legacy (importées d'un
+        // ancien logiciel), même hors mode fullPage.
+        const includeLegacy = effectiveFullPage || category === 'vaccins';
 
         let iframeDocument = iframe.contentDocument || iframe.contentWindow.document; // Indispensable car le document semble changer dans certains cas après un clic
         // On appuie sur le bouton pour charger la catégorie si nécessaire (sauf si déjà affichée par défaut)

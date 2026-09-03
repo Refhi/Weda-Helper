@@ -36,14 +36,13 @@
 
 const TYPE_BOOL = "bool";
 const TYPE_TEXT = "text";
+const TYPE_LARGETEXT = "largetext";
 const TYPE_JSON = "json";
 const TYPE_TRUE_JSON = "true_json"; // au lieu de fournir une structure assez user-friendly, là on fait du pur JSON
 const TYPE_SMALLTEXT = "smalltext";
 const TYPE_HTML = "html";
 const TYPE_RADIO = "radio";
 const TYPE_TITLE = "title";
-
-
 
 var advancedDefaultSettings = [
     {
@@ -690,9 +689,9 @@ var advancedDefaultSettings = [
             "description": "Appuie automatiquement sur le bouton \"rechercher\" après avoir sélectionné la page des recettes (permet d’afficher les recettes du jour directement en arrivant sur la page).",
             "default": true
         }, {
-            "name": "TweakNIR",
+            "name": "TweakNIRTel",
             "type": TYPE_BOOL,
-            "description": "Ajoute la possibilité de copier le NIR en cliquant dessus sur la page d'accueil.",
+            "description": "Ajoute la possibilité de copier le NIR ou le numéro de téléphone en cliquant dessus sur la page d'accueil.",
             "default": true
         }]
     }, {
@@ -871,22 +870,25 @@ var advancedDefaultSettings = [
             "name": "enableIAassistant",
             "type": TYPE_BOOL,
             "description": "Activer ou désactiver l'assistant IA local.",
-            "default": true,
+            "default": false,
             "subOptions": [{
+                "name": "IAassistantHost",
+                "type": TYPE_SMALLTEXT,
+                "description": "Hôte du serveur d'IA (laisser \"localhost\" sauf serveur distant/réseau local).",
+                "longDescription": "Par défaut \"localhost\" (le serveur d'IA tourne sur cet ordinateur). Peut être remplacé par une adresse IP ou un nom d'hôte d'un serveur sur le réseau local (ex: 192.168.1.50). Un hôte autre que \"localhost\" nécessite d'accorder une permission supplémentaire, demandée automatiquement.",
+                "default": "localhost"
+            }, {
                 "name": "IAassistantPort",
                 "type": TYPE_SMALLTEXT,
-                "description": "Port du modèle d'IA local 1234 pour LM Studio (recommandé car + simple), 11434 pour Ollama (plus technique).",
-                "default": "1234"
+                "description": "Port du modèle d'IA local (laisser en auto sauf port inhabituel).",
+                "longDescription": "1234 pour LM Studio (recommandé car + simple), 11434 pour Ollama (plus technique). Laissé sur \"auto\", tous les ports courants sont testés à chaque démarrage ; si un port précis est indiqué, seul celui-ci est testé.",
+                "default": "auto"
             }, {
                 "name": "IAassistantModelName",
                 "type": TYPE_SMALLTEXT,
-                "description": "Nom des modèles d'IA local à utiliser.",
-                "default": "qwen3.5:9b"
-            }, {
-                "name": "IAassistantModelNameSecondary",
-                "type": TYPE_SMALLTEXT,
-                "description": "Nom du modèle d'IA local secondaire à utiliser. Le premier est toujours utilisé, sauf si vous le sélectionnez manuellement dans le Chat. Utile pour les tests.",
-                "default": "mistral-nemo:12b-instruct-2407-q5_K_M"
+                "description": "Nom du modèle d'IA local préféré.",
+                "longDescription": " La liste des modèles disponibles est téléchargée à chaque démarrage pour chaque port actif ; si le modèle préféré n'y figure pas, le premier modèle disponible est utilisé à la place. Le modèle utilisé peut aussi être changé depuis le menu déroulant du Chat.",
+                "default": "auto"
             }, {
                 "name": "AIAssistantToolCalling",
                 "type": TYPE_BOOL,
@@ -899,14 +901,76 @@ var advancedDefaultSettings = [
                 "default": null
             }, {
                 "name": "IAassistantMainSystemPrompt",
-                "type": TYPE_TEXT,
+                "type": TYPE_LARGETEXT,
                 "description": "Prompt système principal pour l'assistant IA local. Appelé systématiquement à chaque requête.",
-                "default": "Tu es un assistant médical présent au sein du logiciel médical Weda, dans le cadre de Weda-Helper. Tu dois répondre de manière concise, claire et précise aux questions posées par l'utilisateur. Tu dois facilement dire je ne sais pas si tu n'as pas la réponse. Dès qu'on te pose une question nécessitant du contexte, utilise très facilement les outils à ta disposition en y mettant les arguments qui te semblent pertinents, sans demander à l'utilisateur de le faire. Tu dois répondre en français, même si la question est posée en anglais. Tu dois répondre de manière concise, claire et précise aux questions posées par l'utilisateur. Tu dois facilement dire je ne sais pas si tu n'as pas la réponse. Dès qu'on te pose une question nécessitant du contexte, utilise très facilement les outils à ta disposition en y mettant les arguments qui te semblent pertinents, sans demander à l'utilisateur de le faire.",
+                "default": "Tu es un assistant médical présent au sein du logiciel médical Weda, dans le cadre de Weda-Helper. \
+                            Tu dois répondre de manière concise, claire et précise aux questions posées par l'utilisateur. \
+                            Tu dois facilement dire je ne sais pas si tu n'as pas la réponse. \
+                            Dès qu'on te pose une question nécessitant du contexte, utilise très facilement les outils à ta \
+                            disposition en y mettant les arguments qui te semblent pertinents, sans demander à l'utilisateur de le faire. \
+                            Tu dois répondre en français, même si la question est posée en anglais.",
             }, {
                 "name": "IAassistantContextLimit",
                 "type": TYPE_SMALLTEXT,
-                "description": "Nombre de tokens de contexte autorisés par le modèle d'IA utilisé. Par exemple qwen3.5:9b = 4096. Cette limite va simplement afficher un avertissement si le contexte dépasse cette limite, mais ne bloquera pas l'envoi de la requête.",
+                "description": "Avertisseur de dépassement de tokens de contexte.",
+                "longDescription": "Nombre de tokens de contexte autorisés par le modèle d'IA utilisé. Par exemple qwen3.5:9b = 4096. Cette limite va simplement afficher un avertissement si le contexte dépasse cette limite, mais ne bloquera pas l'envoi de la requête.",
                 "default": "4096"
+            }, {
+                "name": "IAassistantMaxTokensOutput",
+                "type": TYPE_SMALLTEXT,
+                "description": "Nombre max. de tokens de sorties autorisés.",
+                "default": "2048",
+                "longDescription": "Permet d’empêcher le modèle de générer des réponses trop longues. A augmenter si vous êtes trop souvent confronté à \"limite de tokens (maxTokens) a été atteinte\"."
+            }, {
+                "name": "IAassistantPromptShortcut0",
+                "type": TYPE_LARGETEXT,
+                "description": "Raccourci de prompt n°0, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
+                "default": "Au vu du dossier récent sans fullpage, avec les antécédents et l'état civil, dis-moi si le suivi prévu du patient est à jour."
+            }, {
+                "name": "IAassistantPromptShortcut1",
+                "type": TYPE_LARGETEXT,
+                "description": "Raccourci de prompt n°1, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
+                "default": "Fais-moi un résumé synthétique du dossier de ce patient (antécédents, traitements en cours, derniers événements notables)."
+            }, {
+                "name": "IAassistantPromptShortcut2",
+                "type": TYPE_LARGETEXT,
+                "description": "Raccourci de prompt n°2, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
+                "default": ""
+            }, {
+                "name": "IAassistantPromptShortcut3",
+                "type": TYPE_LARGETEXT,
+                "description": "Raccourci de prompt n°3, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
+                "default": ""
+            }, {
+                "name": "IAassistantPromptShortcut4",
+                "type": TYPE_LARGETEXT,
+                "description": "Raccourci de prompt n°4, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
+                "default": ""
+            }, {
+                "name": "IAassistantPromptShortcut5",
+                "type": TYPE_LARGETEXT,
+                "description": "Raccourci de prompt n°5, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
+                "default": ""
+            }, {
+                "name": "IAassistantPromptShortcut6",
+                "type": TYPE_LARGETEXT,
+                "description": "Raccourci de prompt n°6, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
+                "default": ""
+            }, {
+                "name": "IAassistantPromptShortcut7",
+                "type": TYPE_LARGETEXT,
+                "description": "Raccourci de prompt n°7, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
+                "default": ""
+            }, {
+                "name": "IAassistantPromptShortcut8",
+                "type": TYPE_LARGETEXT,
+                "description": "Raccourci de prompt n°8, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
+                "default": ""
+            }, {
+                "name": "IAassistantPromptShortcut9",
+                "type": TYPE_LARGETEXT,
+                "description": "Raccourci de prompt n°9, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
+                "default": ""
             }]
         }]
     }, {

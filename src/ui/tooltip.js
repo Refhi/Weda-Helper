@@ -114,6 +114,9 @@ function mouseoutW() {
 
 }
 
+/**
+ * Affiche les tooltips d'aide contextuelle lorsque la touche Alt est maintenue enfoncée pendant 1 seconde.
+ */
 addTweak('*', 'EnableHelp', function () {
 
     let isAltKeyDown = false;
@@ -168,6 +171,15 @@ addTweak('*', 'EnableHelp', function () {
                 mouseoutW();
                 tooltipsVisible = false;
             }
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        // Masquer les tooltips si une autre touche que Alt est enfoncée pendant leur affichage
+        if (tooltipsVisible && event.key !== "Alt") {
+            console.log('[EnableHelp] Another key pressed - hiding tooltips');
+            mouseoutW();
+            tooltipsVisible = false;
         }
     });
 });
