@@ -343,7 +343,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
             if (searchResult.needsPageRefresh) {
                 // Dans les échanges, on attend le changement DOM au lieu d'un refresh complet
                 console.log("[pdfParser] Echanges - Attente changement DOM :", searchResult.message);
-                await new Promise(resolve => setTimeout(resolve, 500));
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 continue; // Nouvelle tentative
             }
 
@@ -1458,10 +1458,16 @@ async function extractLines(textItems) {
  * }
  */
 async function extractRelevantData(fullText) {
+    // Récupérer les patterns d'exclusion de dates depuis les settings
+    const excludeDatePatterns = await getOptionPromise('PdfParserExcludeDatePatterns');
+    const excludePatternList = excludeDatePatterns
+        ? excludeDatePatterns.split('\n').filter(p => p.trim()).map(p => p.trim())
+        : [];
+
     const regexPatterns = {
         dateRegexes: [
-            /(?!(06\/01\/1978)|(17\/12\/2003))[0-9]{2}[\/\-.][0-9]{2}[\/\-.][0-9]{4}/g, // Match dates dd/mm/yyyy ou dd-mm-yyyy sauf 06/01/1978 (date loi informatique et liberté) et 17/12/2003 (circulaire décontamination)
-            /(?!(6 janvier 1978)|(17 décembre 2003))([0-9]{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+([0-9]{4})/gi // Match dates comme "28 novembre 2024"
+            /[0-9]{2}[\/\-.][0-9]{2}[\/\-.][0-9]{4}/g, // Match dates dd/mm/yyyy ou dd-mm-yyyy
+            /([0-9]{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+([0-9]{4})/gi // Match dates comme "28 novembre 2024"
         ],
         dateOfBirthRegexes: [
             /(?:né\(e\) le|date de naissance:|date de naissance :|née le|né le)[\s\S]([0-9]{2}[\/\-.][0-9]{4})/gi // Match la date de naissance
@@ -1508,7 +1514,11 @@ async function extractRelevantData(fullText) {
 
     sessionStorage.setItem('logExtraction', ""); // Pour debug
     // Dates et NIR : recherche via regex pur et priorisation
-    const dateMatches = await extractDates(fullText, regexPatterns.dateRegexes);
+    let dateMatches = await extractDates(fullText, regexPatterns.dateRegexes);
+    
+    // Filtrer les dates exclues
+    dateMatches = filterExcludedDates(fullText, dateMatches, excludePatternList);
+    
     const documentDate = await determineDocumentDate(fullText, dateMatches, regexPatterns.documentDateRegexes);
     const dateOfBirth = determineDateOfBirth(fullText, dateMatches, regexPatterns.dateOfBirthRegexes);
     const nirMatches = extractNIR(fullText, regexPatterns.nirRegexes);
@@ -2662,6 +2672,62 @@ function extractDoctorName(fullText) {
 
         return false;
     }
+}
+
+/**
+ * Normalise un texte pour une recherche flexible en supprimant les espaces multiples, 
+ * sauts de ligne, et caractères de contrôle
+ * @param {string} text - Le texte à normaliser
+ * @returns {string} Le texte normalisé
+ */
+function normalizeTextForSearch(text) {
+    return text
+        .replace(/[\n\r\t]+/g, ' ')  // Remplacer sauts de ligne et tabs par un espace
+        .replace(/\s+/g, ' ')         // Remplacer les espaces multiples par un seul espace
+        .trim();                      // Supprimer les espaces de début et fin
+}
+
+/**
+ * Filtre les dates extraites en excluant celles qui se trouvent dans un contexte contenant une des phrases-types à exclure
+ * @param {string} fullText - Le texte complet du PDF
+ * @param {Date[]} dateMatches - Les dates extraites
+ * @param {string[]} excludePatternList - Liste des phrases-types à exclure
+ * @returns {Date[]} Les dates filtrées
+ */
+function filterExcludedDates(fullText, dateMatches, excludePatternList) {
+    if (!excludePatternList || excludePatternList.length === 0) {
+        return dateMatches;
+    }
+
+    // Normaliser le texte une seule fois pour améliorer les performances
+    const normalizedFullText = normalizeTextForSearch(fullText);
+
+    return dateMatches.filter(date => {
+        // Formater la date pour la recherche
+        const dateStr = formatDate(date);
+        
+        // Chercher si cette date se trouve dans un contexte d'une phrase exclue
+        for (const pattern of excludePatternList) {
+            // Normaliser le pattern pour une recherche flexible
+            const normalizedPattern = normalizeTextForSearch(pattern);
+            
+            // Chercher le pattern normalisé dans le texte normalisé
+            const idx = normalizedFullText.indexOf(normalizedPattern);
+            if (idx !== -1) {
+                // Extraire le contexte autour du pattern (500 caractères avant et après)
+                const startIdx = Math.max(0, idx - 500);
+                const endIdx = Math.min(normalizedFullText.length, idx + normalizedPattern.length + 500);
+                const context = normalizedFullText.substring(startIdx, endIdx);
+                
+                // Vérifier si la date se trouve dans ce contexte
+                if (context.includes(dateStr)) {
+                    return false; // Exclure cette date
+                }
+            }
+        }
+        
+        return true; // Garder cette date
+    });
 }
 
 // Extraction des dates du texte
