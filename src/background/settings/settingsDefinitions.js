@@ -723,7 +723,7 @@ var advancedDefaultSettings = [
             "name": "autoNoemieSubstitutionTable",
             "type": TYPE_JSON,
             "description": "Tableau de correspondance entre le nom du retour Noémie et le nom du virement en banque",
-            "default": false
+            "default": NoemieSubstitutionTableDefaut
         }]
     }, {
         "name": "FSE",
