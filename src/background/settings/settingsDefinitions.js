@@ -477,6 +477,12 @@ var advancedDefaultSettings = [
                     "description": "Recherche également les dates type 15 novembre 2021.",
                     "default": false,
                     "longDescription": "Cette option est utile si vous recevez des courriers avec des dates à ce format, mais peut interférer avec les addresses si elles contiennent une date",
+                }, {
+                    "name": "PdfParserExcludeDatePatterns",
+                    "type": TYPE_LARGETEXT,
+                    "description": "Phrases-types à exclure de la recherche de dates",
+                    "longDescription": "Entrez les phrases-types contenant des dates que vous souhaitez exclure de l'extraction de dates du PDF. Une phrase par ligne. Par exemple :\n06/01/1978\n17/12/2003\n6 janvier 1978\n17 décembre 2003",
+                    "default": "06/01/1978\n17/12/2003\n6 janvier 1978\n17 décembre 2003"
                 }]
             }]
         }]
