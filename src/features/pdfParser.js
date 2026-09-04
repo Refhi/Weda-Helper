@@ -71,10 +71,16 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
 addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
     console.log('[pdfParser] Chargement de la page d\'échanges');
     waitForElement({
-        // Ici on déclenche la procédure à la détection de la page de sélection du patient
-        selector: "#ContentPlaceHolder1_FindPatientUcForm1_DropDownListRechechePatient",
-        callback: function () {
-            processFoundPdfIframeEchanges(false);
+        // Ici on déclenche la procédure lors du clic sur le bouton "Un patient".
+        selector: ".importPatient",
+        callback: function (elements) {
+            elements.forEach(function (element) { //Ajout d'un listener sur tous les boutons "Un patient".
+                element.addEventListener("click", function () {
+                    console.log("[pdfParser] Importation du message cliqué, je vais traiter le PDF présent dans l'iframe.");
+                    setTimeout(() => processFoundPdfIframeEchanges(false), 500); //Délai pour permettre à la fenetre de recherche de s'afficher
+                    
+                });
+            });
         }
     });
 
@@ -337,7 +343,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
             if (searchResult.needsPageRefresh) {
                 // Dans les échanges, on attend le changement DOM au lieu d'un refresh complet
                 console.log("[pdfParser] Echanges - Attente changement DOM :", searchResult.message);
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 continue; // Nouvelle tentative
             }
 
