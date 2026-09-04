@@ -31,8 +31,8 @@ async function ajustNoemie(event)
         }
     }
     if (substitute) {
-        noemieInput.value = substitute[1][0] ?? "";
-        var delaiJours = Number(substitute[1][1]) ?? 0;
+        noemieInput.value = substitute[1][0] ?? ""; //Substitution du nom de l'organisme pour le nom de substitution
+        var delaiJours = Number(substitute[1][1]) ?? 0; 
         dateInput.value = ajouterJour(selectedDate, delaiJours);
         var change = new Event('change');
         dateInput.dispatchEvent(change);
@@ -41,15 +41,15 @@ async function ajustNoemie(event)
 }
 
 function ajouterJour(dateStr, numDay) {
-    
+
   const [jour, mois, annee] = dateStr.split('/').map(num => parseInt(num, 10));
   const date = new Date(annee, mois - 1, jour); // Le mois commence à 0 en JS
 
   date.setDate(date.getDate() + numDay);
-  if(date.getDay() == 0) { //Si dimanche ajout de 1 jour
+  if(date.getDay() == 0) { //Si dimanche ajout de 1 jour car virements des caisses ne se font que du lundi au vendredi
     date.setDate(date.getDate() + 1);
   }
-  else if (date.getDay() == 6){ //Si smaedi ajout de 2 jours
+  else if (date.getDay() == 6){ //Si samedi ajout de 2 jours
     date.setDate(date.getDate() + 2);
   }
   const jourAjoute = String(date.getDate()).padStart(2, '0');
