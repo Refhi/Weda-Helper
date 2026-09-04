@@ -711,6 +711,21 @@ var advancedDefaultSettings = [
             "default": false
         }]
     }, {
+        "name": "Gestion des Noémie",
+        "description": "Des options spécifiques à la gestion des NOEMIE",
+        "type": TYPE_TITLE,
+        "options": [{
+            "name": "autoNoemie",
+            "type": TYPE_BOOL,
+            "description": "Ajuste automatiquement le nom et la date lors du pointage des NOEMIE",
+            "default": false
+        },{
+            "name": "autoNoemieSubstitutionTable",
+            "type": TYPE_JSON,
+            "description": "Tableau de correspondance entre le nom du retour Noémie et le nom du virement en banque",
+            "default": false
+        }]
+    }, {
         "name": "FSE",
         "description": "Des options spécifiques aux FSE",
         "type": TYPE_TITLE,

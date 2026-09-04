@@ -10,6 +10,7 @@ importScripts(
     'background/settings/alertesParams.js',
     'background/settings/settingsDefinitions.js',
     'background/settings/settingsValidation.js',
+    'background/settings/noemieDefautParams.js'
     'background/shortcutsDefinitions.js',
     'background/tabsHandler.js',
     'background/permissionsHandler.js',
