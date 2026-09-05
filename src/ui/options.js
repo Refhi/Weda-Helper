@@ -565,7 +565,63 @@ ${cabinetId}: ${jsonContent}
     
     label.appendChild(poleBtn);
   }
+  if(option.name == "autoNoemieSubstitutionTable") {
 
+    const noemieBtn = document.createElement('button');
+    noemieBtn.textContent = '🌐 Partager avec les autres utilisateurs';
+    noemieBtn.title = 'Partager cette liste de correspondance des Noémie avec les autres utilsiateurs de Weda-Helper via GitHub';
+    noemieBtn.className = 'default-value-btn';
+    noemieBtn.style.background = '#007bff';
+    noemieBtn.style.color = 'white';
+    noemieBtn.type = 'button';
+    
+    noemieBtn.addEventListener('click', async function(e) {
+      e.preventDefault();
+      
+      const confirmMessage = `📋 Diffusion de la liste de correspondance des Noémie\n\n` +
+        `Avant de continuer, assurez-vous que :\n\n` +
+        `✅ Vous avez un compte GitHub (gratuit)\n` +
+        `✅ Vots correspondances et délais sont bien configurées et testées\n` +
+        `Une demande GitHub s'ouvrira avec le template pré-rempli.\n` +
+        `Délai de diffusion : environ 2 semaines.\n\n` +
+        `Voulez-vous continuer ?`;
+      
+      if (!confirm(confirmMessage)) {
+        return;
+      }
+      
+      // Récupérer le JSON au moment du clic
+      const textarea = document.getElementById(option.name);
+      const jsonContent = textarea ? textarea.value : '';
+      
+      const issueBody = `Bonjour @Refhi,
+
+Je souhaite diffuser ma liste de correspondance des Noémie
+
+\`\`\`javascript
+${jsonContent}
+\`\`\`
+
+`;
+      
+      // Construire l'URL avec les paramètres correctement encodés
+      const params = new URLSearchParams({
+        template: 'demande-de-diffusion-d-alertes-au-pole-cabinet-groupement.md',
+        title: 'Demande de diffusion de ma liste de correspondance des Noémie',
+        labels: 'Noémie à diffuser',
+        body: issueBody
+      });
+      
+      const issueUrl = `https://github.com/Refhi/Weda-Helper/issues/new?${params.toString()}`;
+      
+      // Ouvrir l'URL
+      window.open(issueUrl, '_blank');
+    });
+    
+    label.appendChild(noemieBtn);
+
+
+  }
   return label;
 }
 function createOptionElement(option) { // Création des éléments de l'option
