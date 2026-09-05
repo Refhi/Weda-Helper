@@ -735,6 +735,7 @@ addTweak('*', 'WarpButtons', async function () {
                 'Supprimer': [
                     'Valider et mettre à la corbeille',
                     'Supprimer',
+                    ' Un patient '
                 ]
         
             };
