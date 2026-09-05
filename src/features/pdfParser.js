@@ -428,7 +428,7 @@ async function showClickedPatient() {
             patient.addEventListener("click", function () {
                 console.log("[pdfParser] Patient cliqué :", patient.innerText);
                 // La DDN a un id qui commence par "ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatienDateNaissance_"
-                const DDN = patient.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatienDateNaissance_']");
+                const DDN = patient.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatienDateNaissance_']");
                 // Le NOM PRENOM a un id qui commence par "ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonPatientGetNomPrenom_"
                 const NOM_PRENOM = patient.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonPatientGetNomPrenom_']");
 
@@ -579,15 +579,17 @@ async function setTitleIfNeededES(Titre) {
         return;
     }
     // Le champ de titre est l'input avec le titre "C'est le titre qu'aura le document dans le dossier patient"
-    let titleInput = document.querySelectorAll("input[title=\"C'est le titre qu'aura le document dans le dossier patient\"]");
+    let titleInputs = document.querySelectorAll("input[title=\"C'est le titre qu'aura le document dans le dossier patient\"]");
     // On sélectionne le dernier input (le plus bas dans le DOM)
-    titleInput = titleInput[titleInput.length - 1];
-    if (titleInput) {
-        console.log("[pdfParser] Titre trouvé, on le met dans le champ de titre", Titre);
-        titleInput.value = Titre;
-        titleInput.dispatchEvent(new Event('change'));
-        titleInput.dispatchEvent(new Event('input')); // dans certains cas, l'input est écouté via un listener 'input'
-        return;
+    for (const element of titleInputs)
+    {
+        let documentTitle = element.value;
+        if (documentTitle.includes(".pdf")) {
+            console.log("[pdfParser] Titre trouvé, on le met dans le champ de titre", Titre);
+            element.value = Titre;
+            element.dispatchEvent(new Event('change'));
+            element.dispatchEvent(new Event('input')); // dans certains cas, l'input est écouté via un listener 'input'
+        }
     }
     console.error("[pdfParser] Titre non trouvé, impossible de le mettre dans le champ de titre");
 }
