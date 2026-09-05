@@ -606,14 +606,15 @@ ${cabinetId}: ${jsonContent}
       // Récupérer le JSON au moment du clic
       const textarea = document.getElementById(option.name);
       const input = textarea ? textarea.value : '';
-      const jsonContent = JSON.stringify(getCategoriesFromJsonInput(input));
+      const json = JSON.stringify(getCategoriesFromJsonInput(input));
+      const prettyJSON = json.replace(/],\[/g,"],\n[");
       
       const issueBody = `Bonjour @Refhi,
 
 Je souhaite diffuser ma liste de correspondance des Noémie
 
 \`\`\`javascript
-${jsonContent}
+${prettyJSON}
 \`\`\`
 
 `;
