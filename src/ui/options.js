@@ -291,7 +291,7 @@ function displayCategories(jsonStr) {
 // Récupérer les données affichées et les convertir en JSON
 function getCategoriesFromJsonInput(input, optionName = 'cette option') {
   const categories = [];
-  const lines = input.value.split('\n');
+  const lines = input.split('\n');
   let hasError = false; // Flag pour détecter les erreurs
 
   lines.forEach((line, lineIndex) => {
@@ -300,7 +300,12 @@ function getCategoriesFromJsonInput(input, optionName = 'cette option') {
       const lastColonIndex = line.lastIndexOf(':');
       if (lastColonIndex === -1) {
         console.warn(`[${optionName}] Ligne ${lineIndex + 1}: Pas de ':' trouvé, ligne ignorée`);
-        alert(`❌ Erreur dans l'option "${optionName}"\n\nLigne ${lineIndex + 1}: Pas de ':' trouvé.\n\nFormat attendu: "nom : mot1, mot2"`);
+        if (optionName == "autoNoemieSubstitutionTable") {
+          alert(`❌ Erreur dans l'option "${optionName}"\n\nLigne ${lineIndex + 1}: Pas de ':' trouvé.\n\nFormat attendu: "NomDansWeda : NomEnBanque , DelaiDePaiementEnJours"`);
+        }
+        else {
+          alert(`❌ Erreur dans l'option "${optionName}"\n\nLigne ${lineIndex + 1}: Pas de ':' trouvé.\n\nFormat attendu: "nom : mot1, mot2"`);
+        }
         hasError = true;
         return; // Pas de ':', ligne invalide
       }
@@ -309,6 +314,14 @@ function getCategoriesFromJsonInput(input, optionName = 'cette option') {
       const afterColon = line.substring(lastColonIndex + 1).trim();
 
       const keywords = afterColon ? afterColon.split(',').map(keyword => keyword.trim()) : [];
+      if (optionName == "autoNoemieSubstitutionTable") {
+        if (keywords.length != 2 || isNaN(keywords[1]) || keywords[0] == '' || keywords[1] == '') {
+          console.warn(`[${optionName}] Ligne ${lineIndex + 1}: Format incorrect`);
+          alert(`❌ Erreur dans l'option "${optionName}"\n\nLigne ${lineIndex + 1}: Format attendu: "NomDansWeda : NomEnBanque , DelaiDePaiementEnJours"`);
+          hasError = true;
+          return;
+        }
+      }
       if (beforeColon) {
         categories.push([beforeColon, keywords]);
       }
@@ -592,7 +605,8 @@ ${cabinetId}: ${jsonContent}
       
       // Récupérer le JSON au moment du clic
       const textarea = document.getElementById(option.name);
-      const jsonContent = textarea ? textarea.value : '';
+      const input = textarea ? textarea.value : '';
+      const jsonContent = JSON.stringify(getCategoriesFromJsonInput(input));
       
       const issueBody = `Bonjour @Refhi,
 
@@ -857,7 +871,7 @@ function collectCurrentValues(defaultSettings, defaultShortcuts) {
         if (element && element.classList.contains('radio-group')) {
           valuesToSave[option] = getSelectedRadioValue(option);
         } else if (element && element.classList.contains('json-input')) {
-          const jsonData = getCategoriesFromJsonInput(element, option);
+          const jsonData = getCategoriesFromJsonInput(element.value, option);
           // Si la conversion retourne null, il y a eu une erreur
           if (jsonData === null) {
             console.error('❌ Erreur lors de la validation pour l\'option', option);
