@@ -717,7 +717,8 @@ var advancedDefaultSettings = [
         "options": [{
             "name": "autoNoemie",
             "type": TYPE_BOOL,
-            "description": "Ajuste automatiquement le nom et la date lors du pointage des NOEMIE. Cette option permet le remplacement du nom de l'organisme remonté dans le NOEMIE par WEDA par son nom tel qu'il apparait sur le relevé bancaire. Il ajuste également la date comptable selon le délai habituel de paiement des caisses (ex: 1 jour pour les CPAM, 3 jours pour la MGEN).",
+            "description": "Ajuste automatiquement le nom et la date lors du pointage des NOEMIE.",
+            "longDescription": "Cette option permet le remplacement du nom de l'organisme remonté dans le NOEMIE par WEDA par son nom tel qu'il apparait sur le relevé bancaire. Il ajuste également la date comptable selon le délai habituel de paiement des caisses (ex: 1 jour pour les CPAM, 3 jours pour la MGEN).", 
             "default": false
         },{
             "name": "autoNoemieSubstitutionTable",
