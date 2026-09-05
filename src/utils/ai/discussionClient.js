@@ -1422,11 +1422,37 @@ async function addAIChatClient() {
     copyMessageButton.addEventListener('mouseleave', scheduleHideCopyButton);
     copyMessageButton.addEventListener('click', () => {
         if (!hoveredBubbleForCopy) return;
-        const textToCopy = hoveredBubbleForCopy.dataset.markdownSource ?? hoveredBubbleForCopy.textContent;
-        navigator.clipboard.writeText(textToCopy).then(() => {
-            copyMessageButton.textContent = '✅';
-            setTimeout(() => { copyMessageButton.textContent = '📋'; }, 1000);
-        }).catch(error => console.warn('[discussionClient] Copie du message impossible', error));
+        
+        // Copie avec mise en forme (HTML) si le markdown a été rendu, sinon copie du texte brut
+        const isMarkdownRendered = hoveredBubbleForCopy.classList.contains('markdown-rendered');
+        
+        if (isMarkdownRendered) {
+            // Copie l'HTML rendu avec mise en forme
+            const htmlToCopy = hoveredBubbleForCopy.innerHTML;
+            const plainTextToCopy = hoveredBubbleForCopy.textContent;
+            
+            const blob = new Blob([htmlToCopy], { type: 'text/html' });
+            const data = [new ClipboardItem({ 'text/html': blob, 'text/plain': new Blob([plainTextToCopy], { type: 'text/plain' }) })];
+            
+            navigator.clipboard.write(data).then(() => {
+                copyMessageButton.textContent = '✅';
+                setTimeout(() => { copyMessageButton.textContent = '📋'; }, 1000);
+            }).catch(error => {
+                console.warn('[discussionClient] Copie formatée du message impossible, fallback sur texte brut', error);
+                // Fallback sur copie texte brut
+                navigator.clipboard.writeText(plainTextToCopy).then(() => {
+                    copyMessageButton.textContent = '✅';
+                    setTimeout(() => { copyMessageButton.textContent = '📋'; }, 1000);
+                }).catch(err => console.warn('[discussionClient] Copie du message impossible', err));
+            });
+        } else {
+            // Copie du texte brut si pas de mise en forme
+            const textToCopy = hoveredBubbleForCopy.textContent;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                copyMessageButton.textContent = '✅';
+                setTimeout(() => { copyMessageButton.textContent = '📋'; }, 1000);
+            }).catch(error => console.warn('[discussionClient] Copie du message impossible', error));
+        }
     });
 
     function appendMessage(role, text) {
