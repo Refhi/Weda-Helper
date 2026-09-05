@@ -18,14 +18,15 @@ async function ajustNoemie(event)
 {
     var noemieInput = document.getElementById("ContentPlaceHolder1_TextBoxRecetteLibelle");
     var dateInput = document.getElementById("ContentPlaceHolder1_TextBoxRecetteDate");
-    var organismeName = noemieInput.value;
+    var noemieName = noemieInput.value;
     var selectedDate = event.target.value;
     var substitute = null;
 
     var noemieSubstitutionTable = await getOptionPromise('autoNoemieSubstitutionTable');
     noemieSubstitutionTable=JSON.parse(noemieSubstitutionTable);
     for (const element of noemieSubstitutionTable) {
-        if (element[0] == organismeName) {
+        const organismeName = element[0] ?? "";
+        if (organismeName.toUpperCase() == noemieName.toUpperCase()) {
             substitute = element;
             break;
         }
