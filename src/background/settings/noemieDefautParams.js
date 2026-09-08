@@ -6,6 +6,7 @@ const NoemieSubstitutionTableDefaut = JSON.stringify([
 ["Albi",[ "CPAM ALBI","1"]],
 ["Mont de Marsan",["CPAM MONT DE MARSAN","1"]],
 ["CPAM de Rouen-Elbeuf-Dieppe-Seine-Maritime",["CPAM R.E.D.76","1"]],
+["CPAM du Bas-Rhin", ["CPAM DU BAS-RHIN - STRAS", "1"]],
 ["Pau",["CPAM PAU","1"]],
 ["Paris",["CPAM 75 PRESTATIONS","1"]],
 ["Agen",["CPAM AGEN","1"]],
