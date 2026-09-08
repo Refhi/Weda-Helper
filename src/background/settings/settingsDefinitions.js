@@ -711,6 +711,22 @@ var advancedDefaultSettings = [
             "default": false
         }]
     }, {
+        "name": "Gestion des Noémie",
+        "description": "Des options spécifiques à la gestion des NOEMIE",
+        "type": TYPE_TITLE,
+        "options": [{
+            "name": "autoNoemie",
+            "type": TYPE_BOOL,
+            "description": "Ajuste automatiquement le nom et la date lors du pointage des NOEMIE.",
+            "longDescription": "Cette option permet le remplacement du nom de l'organisme remonté dans le NOEMIE par WEDA par son nom tel qu'il apparait sur le relevé bancaire. Il ajuste également la date comptable selon le délai habituel de paiement des caisses (ex: 1 jour pour les CPAM, 3 jours pour la MGEN).", 
+            "default": false
+        },{
+            "name": "autoNoemieSubstitutionTable",
+            "type": TYPE_JSON,
+            "description": "Tableau de correspondance entre le nom du retour Noémie et le nom du virement en banque asocié au délai de paiement. Le format doit être NomDansWeda : NomEnBanque , DelaiDePaiementEnJours",
+            "default": NoemieSubstitutionTableDefaut
+        }]
+    }, {
         "name": "FSE",
         "description": "Des options spécifiques aux FSE",
         "type": TYPE_TITLE,
