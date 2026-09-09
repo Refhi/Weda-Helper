@@ -482,7 +482,7 @@ var advancedDefaultSettings = [
                     "type": TYPE_LARGETEXT,
                     "description": "Phrases-types à exclure de la recherche de dates",
                     "longDescription": "Entrez les phrases-types contenant des dates que vous souhaitez exclure de l'extraction de dates du PDF. Une phrase par ligne. Par exemple :\n06/01/1978\n17/12/2003\n6 janvier 1978\n17 décembre 2003",
-                    "default": "06/01/1978\n17/12/2003\n6 janvier 1978\n17 décembre 2003"
+                    "default": "Loi du 6 janvier 1978 Informatique et Libertés\nrue du dix-huit juin"
                 }]
             }]
         }]
