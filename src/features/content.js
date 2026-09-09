@@ -176,15 +176,20 @@ addTweak('/FolderMedical/AntecedentForm.aspx', '*autoSelectTitleField', function
 addTweak('/FolderTools/BiblioForm.aspx', '*addPrintIcon', function () {
     function addPrintIcon() {
         let allElements = document.querySelectorAll('[id^="ContentPlaceHolder1_TreeViewBibliot"]');
+        console.log('[addPrintIcon] allElements', allElements);
         let allElementsEndingWithI = Array.from(allElements).filter(element => element.id.endsWith('i'));
+        console.log('[addPrintIcon] allElementsEndingWithI', allElementsEndingWithI);
         let filteredElementspdf = Array.from(allElementsEndingWithI).filter(element => {
             let imgTags = element.querySelectorAll('img');
-            return Array.from(imgTags).some(img => img.getAttribute('src') === "../Images/Icons/pdf.gif");
+            return Array.from(imgTags).some(img => img.getAttribute('src')?.endsWith('/Images/Icons/pdf.gif'));
         });
-        console.log('filteredElementspdf', filteredElementspdf);
+        console.log('[addPrintIcon] filteredElementspdf', filteredElementspdf);
 
-        // Ajouter l'emoji d'imprimante à chaque élément filtré
+        // Ajouter l'emoji d'imprimante à chaque élément filtré, sauf si déjà présente
         filteredElementspdf.forEach(element => {
+            if (element.querySelector('.print-icon-addPrintIcon-wh')) {
+                return;
+            }
             let printIcon = document.createElement('span');
             printIcon.textContent = '🖨️'; // Utiliser l'emoji d'imprimante
             printIcon.style.fontSize = '16px'; // Ajuster la taille si nécessaire
