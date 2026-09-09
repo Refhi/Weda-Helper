@@ -9,6 +9,7 @@ importScripts(
     'background/settings/pdfParserDefautParams.js',
     'background/settings/noemieDefautParams.js',
     'background/settings/alertesParams.js',
+    'background/settings/unitConverterDefaultTable.js',
     'background/settings/settingsDefinitions.js',
     'background/settings/settingsValidation.js',
     'background/shortcutsDefinitions.js',

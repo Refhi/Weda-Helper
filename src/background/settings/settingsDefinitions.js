@@ -482,7 +482,7 @@ var advancedDefaultSettings = [
                     "type": TYPE_LARGETEXT,
                     "description": "Phrases-types à exclure de la recherche de dates",
                     "longDescription": "Entrez les phrases-types contenant des dates que vous souhaitez exclure de l'extraction de dates du PDF. Une phrase par ligne. Par exemple :\n06/01/1978\n17/12/2003\n6 janvier 1978\n17 décembre 2003",
-                    "default": "06/01/1978\n17/12/2003\n6 janvier 1978\n17 décembre 2003"
+                    "default": "Loi du 6 janvier 1978 Informatique et Libertés\nrue du dix-huit juin"
                 }]
             }]
         }]
@@ -525,6 +525,23 @@ var advancedDefaultSettings = [
             "type": TYPE_BOOL,
             "description": "Affiche un bouton pour calculer le SCORE2 depuis la page de consultation.",
             "default": true
+        }]
+    }, {
+        "name": "Résultats d'examens",
+        "description": "Des options concernant l'affichage des tableaux de résultats d'examens (biologie)",
+        "type": TYPE_TITLE,
+        "options": [{
+            "name": "unitConverter",
+            "type": TYPE_BOOL,
+            "description": "Affiche une conversion d'unité au survol de la souris dans les tableaux de résultats d'examens.",
+            "default": false,
+            "subOptions": [{
+                "name": "unitConverterTable",
+                "type": TYPE_JSON,
+                "description": "Table des conversions d'unités",
+                "longDescription": "Chaque ligne définit une conversion : libellé (correspond au code du résultat, ex. CHOLESTEROL) suivi de : unité source, facteur de conversion, unité cible, nombre de décimales (optionnel, défaut 2).\nLa conversion est appliquée si le libellé du résultat contient le libellé indiqué et que son unité correspond à l'unité source.",
+                "default": unitConverterDefaultTable
+            }]
         }]
     }, {
         "name": "Prescription",

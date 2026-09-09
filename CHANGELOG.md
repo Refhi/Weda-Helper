@@ -7,12 +7,14 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 # [3.3] -
 ## Ajouts :
 - [#665](https://github.com/Refhi/Weda-Helper/issues/665) - Ajout d'une fonction d'automatisation de la gestion des NOEMIE. Cette fonction vous permet d'associer un organisme de tiers payant tel qu'il apprait dans les retour NOEMIE à son nom tel qu'il apparait sur vos relevés bancaires (ex: Organisme 91919000 correspond à la MGEN). Elle permet également de définir un délai de paiement pour chaque organisme ce qui ajuste automatiquement la date de la recette lors du pointage des NOEMIE (ex: 3 jours pour la MGEN, 1 jour pour les CPAM). Des valeurs par défaut sont déjà présentes pour les caisses que @Abelvlpr rencontre dans sa pratique mais vous pouvez ajouter vos caisses et les partager avec le reste des utilisateurs directement dans les options de Weda-Helper !
+- [#661](https://github.com/Refhi/Weda-Helper/issues/661) - ajout d'un convertisseur d'unités pour les analyses biologiques (ex. mmol/L <-> g/L) dans les page de résultats. Désactivé par défaut, il peut être activé dans les options de Weda-Helper.
 
 ## Fix :
 - [#637](https://github.com/Refhi/Weda-Helper/issues/637) - il est désormais possible d’exclure certains paterns de dates de l’analyse automatique des pdf. Utile si votre addresse contiens des dates qui ne doivent pas être prises en compte.
 - [#655](https://github.com/Refhi/Weda-Helper/issues/655) - la copie des sorties du client IA local garde désormais la mise en forme du texte (gras, italique, souligné, etc.) et les sauts de ligne.
 - [#660](https://github.com/Refhi/Weda-Helper/issues/660) - le titre du document s'applique correctement en cas de pièces jointes multiples dans les Echanges Sécurisés
 - [#664](https://github.com/Refhi/Weda-Helper/issues/664) - les fonctions de clic droit et clic du milieu sur un patient fonctionnent à nouveau
+- [#649](https://github.com/Refhi/Weda-Helper/issues/649) - désactivation de l’IA locale sur certaines pages (ex. PopUpUploader) où elle n'est pas considérée comme pertinente.
 
 # [3.2] - Assistant Local IA ! (en beta)
 - [#634](https://github.com/Refhi/Weda-Helper/issues/634) - Ajout d'un Assistant Local (en beta) - vos tests et retours sont les bienvenus ! Pour l’instant ses capacités sont limitées à la recherche d’informations dans le dossier patient, mais va être amené à gérer de + en + de choses. (rédaction de courrier, résumé de pdf, assistant vocal ?, etc.) :
