@@ -955,6 +955,7 @@ async function setExtractedDataInForm(extractedData, fullText) {
         documentTitle: `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_${ligneAction}`,
         documentAddressedTo: `#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementUser_${ligneAction}`,
         documentDestinationClass: `#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementEvenementType_${ligneAction}`,
+        documentCommentaire: `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementCommentaire_${ligneAction}` 
     };
 
     // Récupère les éléments du DOM correspondant aux sélecteurs
@@ -963,7 +964,8 @@ async function setExtractedDataInForm(extractedData, fullText) {
         documentType: document.querySelector(selectors.documentType),
         documentTitle: document.querySelector(selectors.documentTitle),
         documentAddressedTo: document.querySelector(selectors.documentAddressedTo),
-        documentDestinationClass: document.querySelector(selectors.documentDestinationClass)
+        documentDestinationClass: document.querySelector(selectors.documentDestinationClass),
+        documentCommentaire: document.querySelector(selectors.documentCommentaire)
     };
 
     PdfParserAutoTitle = await getOptionPromise('PdfParserAutoTitle')
@@ -976,7 +978,8 @@ async function setExtractedDataInForm(extractedData, fullText) {
         documentType: extractedData.documentType,
         documentTitle: PdfParserAutoTitle ? extractedData.documentTitle : null,
         documentAddressedTo: extractedData.addressedTo,
-        documentDestinationClass: PdfParserAutoClassification ? extractedData.destinationClass : null
+        documentDestinationClass: PdfParserAutoClassification ? extractedData.destinationClass : null,
+        documentCommentaire: extractedData.documentCommentaire
     };
 
     console.log('[pdfParser] INtroduction des données dans les champs : ', fields);
@@ -1554,6 +1557,7 @@ async function extractRelevantData(fullText) {
         nameMatches: nameMatches,
         documentType: documentType,
         documentTitle: null,
+        documentCommentaire: null, // Non extrait pour l'instant, sera rempli par l'outil d'IA
         nirMatches: nirMatches,
         addressedTo: addressedTo,
         destinationClass: destinationClass,
