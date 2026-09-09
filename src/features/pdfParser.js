@@ -1515,14 +1515,14 @@ async function extractRelevantData(fullText) {
     };
 
     sessionStorage.setItem('logExtraction', ""); // Pour debug
+    // Masquer les phrases-types à exclure avant toute recherche de date (ex: "Loi du 6 janvier 1940")
+    const textForDateSearch = maskExcludedPatterns(fullText, excludePatternList);
+
     // Dates et NIR : recherche via regex pur et priorisation
-    let dateMatches = await extractDates(fullText, regexPatterns.dateRegexes);
-    
-    // Filtrer les dates exclues
-    dateMatches = filterExcludedDates(fullText, dateMatches, excludePatternList);
-    
-    const documentDate = await determineDocumentDate(fullText, dateMatches, regexPatterns.documentDateRegexes);
-    const dateOfBirth = determineDateOfBirth(fullText, dateMatches, regexPatterns.dateOfBirthRegexes);
+    let dateMatches = await extractDates(textForDateSearch, regexPatterns.dateRegexes);
+
+    const documentDate = await determineDocumentDate(textForDateSearch, dateMatches, regexPatterns.documentDateRegexes);
+    const dateOfBirth = determineDateOfBirth(textForDateSearch, dateMatches, regexPatterns.dateOfBirthRegexes);
     const nirMatches = extractNIR(fullText, regexPatterns.nirRegexes);
 
     // Noms : recherche via contexte des mots avant/après et place théorique dans le document
@@ -2690,46 +2690,27 @@ function normalizeTextForSearch(text) {
 }
 
 /**
- * Filtre les dates extraites en excluant celles qui se trouvent dans un contexte contenant une des phrases-types à exclure
+ * Masque les occurrences des phrases-types à exclure dans le texte, pour que les dates qu'elles contiennent
+ * (ex: "Loi du 6 janvier 1940") ne soient jamais extraites, sans affecter les dates situées ailleurs dans le document
  * @param {string} fullText - Le texte complet du PDF
- * @param {Date[]} dateMatches - Les dates extraites
  * @param {string[]} excludePatternList - Liste des phrases-types à exclure
- * @returns {Date[]} Les dates filtrées
+ * @returns {string} Le texte avec les phrases-types remplacées par un marqueur explicite
  */
-function filterExcludedDates(fullText, dateMatches, excludePatternList) {
+function maskExcludedPatterns(fullText, excludePatternList) {
     if (!excludePatternList || excludePatternList.length === 0) {
-        return dateMatches;
+        return fullText;
     }
 
-    // Normaliser le texte une seule fois pour améliorer les performances
-    const normalizedFullText = normalizeTextForSearch(fullText);
+    let maskedText = fullText;
+    for (const pattern of excludePatternList) {
+        if (!pattern || !pattern.trim()) continue;
+        // Tolérer des espaces/sauts de ligne variables entre les mots du pattern
+        const flexiblePattern = escapeRegExp(pattern.trim()).replace(/\s+/g, '\\s+');
+        const regex = new RegExp(flexiblePattern, 'gi');
+        maskedText = maskedText.replace(regex, `[phrase supprimée car exclue par les filtres de WH]`);
+    }
 
-    return dateMatches.filter(date => {
-        // Formater la date pour la recherche
-        const dateStr = formatDate(date);
-        
-        // Chercher si cette date se trouve dans un contexte d'une phrase exclue
-        for (const pattern of excludePatternList) {
-            // Normaliser le pattern pour une recherche flexible
-            const normalizedPattern = normalizeTextForSearch(pattern);
-            
-            // Chercher le pattern normalisé dans le texte normalisé
-            const idx = normalizedFullText.indexOf(normalizedPattern);
-            if (idx !== -1) {
-                // Extraire le contexte autour du pattern (500 caractères avant et après)
-                const startIdx = Math.max(0, idx - 500);
-                const endIdx = Math.min(normalizedFullText.length, idx + normalizedPattern.length + 500);
-                const context = normalizedFullText.substring(startIdx, endIdx);
-                
-                // Vérifier si la date se trouve dans ce contexte
-                if (context.includes(dateStr)) {
-                    return false; // Exclure cette date
-                }
-            }
-        }
-        
-        return true; // Garder cette date
-    });
+    return maskedText;
 }
 
 // Extraction des dates du texte
