@@ -1858,6 +1858,13 @@ async function addAIChatClient() {
 
 
 addTweak('*', 'enableIAassistant', function () {
+    const urlBlacklist = [
+        '/FolderMedical/PopUpUploader.aspx',
+    ];
+    if (urlBlacklist.some(urlPart => window.location.href.includes(urlPart))) {
+        // On considère que l'IA n'est pas pertinente sur ces pages
+        return;
+    }
     // On attend que Weda soit prêt avant d'injecter le chat, pour éviter les conflits avec le chargement de la page.
     waitForWeda({ logWait: 'enableIAassistant' }).then(() => {
         addAIChatClient();
