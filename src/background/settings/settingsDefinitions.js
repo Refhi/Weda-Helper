@@ -527,6 +527,23 @@ var advancedDefaultSettings = [
             "default": true
         }]
     }, {
+        "name": "Résultats d'examens",
+        "description": "Des options concernant l'affichage des tableaux de résultats d'examens (biologie)",
+        "type": TYPE_TITLE,
+        "options": [{
+            "name": "unitConverter",
+            "type": TYPE_BOOL,
+            "description": "Affiche une conversion d'unité au survol de la souris dans les tableaux de résultats d'examens.",
+            "default": false,
+            "subOptions": [{
+                "name": "unitConverterTable",
+                "type": TYPE_JSON,
+                "description": "Table des conversions d'unités",
+                "longDescription": "Chaque ligne définit une conversion : [libellé (correspond au code du résultat, ex. CHOLESTEROL), unité source, facteur de conversion, unité cible, nombre de décimales (optionnel, défaut 2)].\nLa conversion est appliquée si le libellé du résultat contient le libellé indiqué et que son unité correspond à l'unité source.",
+                "default": unitConverterDefaultTable
+            }]
+        }]
+    }, {
         "name": "Prescription",
         "description": "Des options spécifiques aux prescriptions",
         "type": TYPE_TITLE,

@@ -90,7 +90,8 @@
         "src/features/accoladesHandling.js",
         "src/features/VSM.js",
         "src/features/vueTraitements.js",
-        "src/features/score2prompter.js"
+        "src/features/score2prompter.js",
+        "src/features/unitConverter.js"
       ]
     }
   ],

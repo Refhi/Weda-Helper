@@ -5,6 +5,9 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
 # [3.3] -
+## Ajouts :
+- [#661](https://github.com/Refhi/Weda-Helper/issues/661) - ajout d'un convertisseur d'unités pour les analyses biologiques (ex. mmol/L <-> g/L) dans les page de résultats. Désactivé par défaut, il peut être activé dans les options de Weda-Helper.
+
 ## Fix :
 - [#637](https://github.com/Refhi/Weda-Helper/issues/637) - il est désormais possible d’exclure certains paterns de dates de l’analyse automatique des pdf. Utile si votre addresse contiens des dates qui ne doivent pas être prises en compte.
 - [#655](https://github.com/Refhi/Weda-Helper/issues/655) - la copie des sorties du client IA local garde désormais la mise en forme du texte (gras, italique, souligné, etc.) et les sauts de ligne.
