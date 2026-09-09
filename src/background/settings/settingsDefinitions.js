@@ -539,7 +539,7 @@ var advancedDefaultSettings = [
                 "name": "unitConverterTable",
                 "type": TYPE_JSON,
                 "description": "Table des conversions d'unités",
-                "longDescription": "Chaque ligne définit une conversion : [libellé (correspond au code du résultat, ex. CHOLESTEROL), unité source, facteur de conversion, unité cible, nombre de décimales (optionnel, défaut 2)].\nLa conversion est appliquée si le libellé du résultat contient le libellé indiqué et que son unité correspond à l'unité source.",
+                "longDescription": "Chaque ligne définit une conversion : libellé (correspond au code du résultat, ex. CHOLESTEROL) suivi de : unité source, facteur de conversion, unité cible, nombre de décimales (optionnel, défaut 2).\nLa conversion est appliquée si le libellé du résultat contient le libellé indiqué et que son unité correspond à l'unité source.",
                 "default": unitConverterDefaultTable
             }]
         }]

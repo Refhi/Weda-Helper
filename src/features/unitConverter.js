@@ -36,8 +36,9 @@ addTweak("*", "unitConverter", async function () {
     }
 
     // trouve la première règle de conversion dont le libellé et l'unité source correspondent à la ligne
+    // structure attendue (format TYPE_JSON) : [libelleMatch, [uniteSource, facteur, uniteCible, decimales?]]
     function findMatchingConversion(libelle, unite) {
-        return conversionTable.find(([libelleMatch, uniteSource]) =>
+        return conversionTable.find(([libelleMatch, [uniteSource]]) =>
             libelle.toUpperCase().includes(libelleMatch.toUpperCase()) &&
             unite.toLowerCase() === uniteSource.toLowerCase()
         );
@@ -114,8 +115,8 @@ addTweak("*", "unitConverter", async function () {
             const conversion = findMatchingConversion(libelle, unite);
             if (!conversion) return;
 
-            const [, , facteur, uniteCible, decimales = 2] = conversion;
-            const convertedValue = (value * facteur).toFixed(decimales);
+            const [, [, facteur, uniteCible, decimales = 2]] = conversion;
+            const convertedValue = (value * parseFloat(facteur)).toFixed(decimales);
             const tooltip = `${convertedValue} ${uniteCible}`;
 
             valueCell.appendChild(createConversionIcon(tooltip));
