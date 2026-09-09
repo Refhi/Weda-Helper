@@ -6,6 +6,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 
 # [3.3] -
 ## Ajouts :
+- [#665](https://github.com/Refhi/Weda-Helper/issues/665) - Ajout d'une fonction d'automatisation de la gestion des NOEMIE. Cette fonction vous permet d'associer un organisme de tiers payant tel qu'il apprait dans les retour NOEMIE à son nom tel qu'il apparait sur vos relevés bancaires (ex: Organisme 91919000 correspond à la MGEN). Elle permet également de définir un délai de paiement pour chaque organisme ce qui ajuste automatiquement la date de la recette lors du pointage des NOEMIE (ex: 3 jours pour la MGEN, 1 jour pour les CPAM). Des valeurs par défaut sont déjà présentes pour les caisses que @Abelvlpr rencontre dans sa pratique mais vous pouvez ajouter vos caisses et les partager avec le reste des utilisateurs directement dans les options de Weda-Helper !
 - [#661](https://github.com/Refhi/Weda-Helper/issues/661) - ajout d'un convertisseur d'unités pour les analyses biologiques (ex. mmol/L <-> g/L) dans les page de résultats. Désactivé par défaut, il peut être activé dans les options de Weda-Helper.
 
 ## Fix :
