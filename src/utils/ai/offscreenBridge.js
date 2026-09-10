@@ -111,3 +111,39 @@ async function executeRequestedToolCall({ callId, name, args }) {
     }
 }
 
+// Requêtes IA "silencieuses" en attente (hors chat visible, sans historique de conversation),
+// indexées par requestId. @see requestSilentAICompletion
+const pendingSilentCompletions = new Map();
+const SILENT_COMPLETION_TIMEOUT_MS = 30000;
+
+onOffscreenMessage((message) => {
+    if (message?.type !== 'silentCompletionResult') return;
+    const pending = pendingSilentCompletions.get(message.requestId);
+    if (!pending) return; // réponse tardive (timeout déjà déclenché) ou requestId inconnu
+    clearTimeout(pending.timeoutId);
+    pendingSilentCompletions.delete(message.requestId);
+    if (message.error) pending.reject(new Error(message.error));
+    else pending.resolve(message.content);
+});
+
+/**
+ * Demande une complétion IA ponctuelle à l'offpage (@see offscreenChatEngine.js processSilentCompletion),
+ * sans passer par le chat visible ni son historique de conversation : ni bulle affichée, ni impact
+ * sur `chatHistory`. Utile pour des extractions ciblées (ex: champs du PDF Parser non détectés par
+ * les regex).
+ * @param {string} systemPrompt
+ * @param {string} userText
+ * @returns {Promise<string>} Le contenu texte renvoyé par le modèle.
+ */
+function requestSilentAICompletion(systemPrompt, userText) {
+    return new Promise((resolve, reject) => {
+        const requestId = crypto.randomUUID();
+        const timeoutId = setTimeout(() => {
+            pendingSilentCompletions.delete(requestId);
+            reject(new Error('Délai dépassé en attendant la réponse de l\'assistant IA'));
+        }, SILENT_COMPLETION_TIMEOUT_MS);
+        pendingSilentCompletions.set(requestId, { resolve, reject, timeoutId });
+        sendOffscreenMessage({ type: 'silentCompletion', requestId, systemPrompt, userText });
+    });
+}
+

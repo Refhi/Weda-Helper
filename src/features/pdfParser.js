@@ -371,6 +371,8 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     await setTitleIfNeededES(extractedData.documentTitle);
     // 3. Sélectionner la bonne catégorie
     await selectDocumentTypeES(extractedData.documentType);
+    // 4. Mettre le commentaire
+    await setCommentaireIfNeededES(extractedData.documentCommentaire);
     // Marquage des données comme déjà importées
     markDataAsImported(hashId, extractedData);
 
@@ -622,6 +624,30 @@ async function selectDestinationIfNeededES(destinationNumber) {
     console.error("[pdfParser] Aucune destination d'importation trouvée pour le numéro :", destinationNumber);
 }
 
+/**
+ * Insère le commentaire dans les échanges sécurisés, dans l'attachment actuellement sélectionné
+ * (celui dont la case à cocher est cochée).
+ */
+async function setCommentaireIfNeededES(commentaire) {
+    if (!commentaire) return;
+    const attachments = document.querySelectorAll(".messageAttachment");
+    for (const attachment of attachments) {
+        const checkbox = attachment.querySelector("input[type='checkbox']");
+        if (!checkbox?.checked) continue;
+        const commentInput = attachment.querySelector("input[placeholder='Commentaire']");
+        if (!commentInput) {
+            console.warn("[pdfParser] Champ commentaire introuvable dans l'attachment sélectionné");
+            return;
+        }
+        commentInput.value = commentaire;
+        commentInput.dispatchEvent(new Event('change'));
+        commentInput.dispatchEvent(new Event('input'));
+        console.log("[pdfParser] Commentaire inséré :", commentaire);
+        return;
+    }
+    console.warn("[pdfParser] Aucun attachment coché trouvé pour insérer le commentaire");
+}
+
 
 
 
@@ -712,6 +738,10 @@ async function handleDataExtraction(fullText, urlPDF, hashId) {
         // Stockage et priorisation des informations pertinentes
         // => le dataMatrix est prioritaire sur les informations extraites du texte
         completeExtractedData(extractedData, dataMatrixReturn);
+
+        // Complète via l'IA les champs encore manquants (@see utils/ai/pdfParserAIExtraction.js)
+        await completeExtractedDataWithAI(extractedData, fullText);
+
         console.log('[pdfParser] extractedData', JSON.stringify(extractedData));
         setPdfData(hashId, extractedData);
 

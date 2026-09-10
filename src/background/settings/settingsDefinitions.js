@@ -1010,6 +1010,18 @@ var advancedDefaultSettings = [
                 "type": TYPE_LARGETEXT,
                 "description": "Raccourci de prompt n°9, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
                 "default": ""
+            }, {
+                "name": "PdfParserAutoAIExtraction",
+                "type": TYPE_BOOL,
+                "description": "Complète via l'assistant IA local les champs du PDF Parser non trouvés par l'analyse automatique (date, nom du patient, commentaire...).",
+                "longDescription": "N'est tenté que pour les champs restés vides après l'analyse par mots-clés/regex, et n'écrase jamais une valeur déjà trouvée. En cas d'échec (serveur IA indisponible, réponse invalide...), l'extraction se poursuit normalement sans ces champs.",
+                "default": false,
+                "subOptions": [{
+                    "name": "PdfParserAutoAIExtractionPrompt",
+                    "type": TYPE_LARGETEXT,
+                    "description": "Prompt système envoyé à l'IA pour compléter les champs manquants du PDF Parser.",
+                    "default": "Tu es un extracteur de données médicales. On te fournit le texte brut d'un document PDF importé dans un dossier patient. Réponds UNIQUEMENT avec un objet JSON, une clé par champ demandé, en mettant la valeur null si l'information est introuvable dans le texte."
+                }]
             }]
         }]
     }, {

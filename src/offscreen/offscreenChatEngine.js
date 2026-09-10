@@ -170,6 +170,30 @@ function rejectPendingToolCallsForTab(tabId) {
 }
 
 /**
+ * Traite une complétion IA ponctuelle, hors chat visible : ni historique de conversation, ni
+ * notification en direct, un simple aller-retour avec le modèle (@see offscreenBridge.js
+ * requestSilentAICompletion, utilisé notamment par le PDF Parser pour les champs non détectés).
+ * @param {{tabId: number, requestId: string, systemPrompt: string, userText: string}} message
+ */
+async function processSilentCompletion({ tabId, requestId, systemPrompt, userText }) {
+    await aiParamsReady;
+    try {
+        const content = await openAiClient({
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userText }
+            ],
+            model: aiParams.defaultModel,
+            useTools: false,
+            responseFormat: { type: 'json_object' }
+        });
+        sendToTab(tabId, { type: 'silentCompletionResult', requestId, content });
+    } catch (error) {
+        sendToTab(tabId, { type: 'silentCompletionResult', requestId, error: error.message || String(error) });
+    }
+}
+
+/**
  * Traite un nouveau message utilisateur : l'ajoute à l'historique, interroge le modèle (avec
  * streaming et function calling délégué à l'onglet), et notifie l'onglet d'origine au fur et à
  * mesure via des messages relayés par le background.
