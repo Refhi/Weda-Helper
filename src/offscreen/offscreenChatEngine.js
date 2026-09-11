@@ -210,6 +210,12 @@ async function processUserMessage({ tabId, patientId, content, model }) {
         return;
     }
 
+    // Si le serveur n'était pas disponible au démarrage, relancer une recherche
+    if (aiParams.serverStatus === 'unavailable') {
+        console.log('[offscreenChatEngine] Serveur LLM indisponible — relance de la recherche');
+        await recheckServerAvailability();
+    }
+
     conversation.chatHistory.push({ role: 'user', content });
     conversation.generationController = new AbortController();
     conversation.liveGeneration = { reasoning: '', content: '', toolCalls: [] };

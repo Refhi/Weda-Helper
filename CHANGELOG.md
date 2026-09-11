@@ -17,6 +17,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#664](https://github.com/Refhi/Weda-Helper/issues/664) - les fonctions de clic droit et clic du milieu sur un patient fonctionnent à nouveau
 - [#649](https://github.com/Refhi/Weda-Helper/issues/649) - désactivation de l’IA locale sur certaines pages (ex. PopUpUploader) où elle n'est pas considérée comme pertinente.
 - le raccourcis d'impression des documents PDF dans les "Documents du cabinet" a été restauré.
+- [#666](https://github.com/Refhi/Weda-Helper/issues/666) - le client ia fonctionne correctement même si le serveur de modèles LLM est indisponible au démarrage.
 
 # [3.2] - Assistant Local IA ! (en beta)
 - [#634](https://github.com/Refhi/Weda-Helper/issues/634) - Ajout d'un Assistant Local (en beta) - vos tests et retours sont les bienvenus ! Pour l’instant ses capacités sont limitées à la recherche d’informations dans le dossier patient, mais va être amené à gérer de + en + de choses. (rédaction de courrier, résumé de pdf, assistant vocal ?, etc.) :

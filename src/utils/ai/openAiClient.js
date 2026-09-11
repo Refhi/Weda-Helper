@@ -210,8 +210,42 @@ const aiParamsReady = (async () => {
         aiParams.defaultModel = aiParams.preferredModel; // Aucun serveur/modèle détecté : on garde la valeur configurée telle quelle
     }
 
+    // Status du serveur : "available" si des modèles ont été détectés, "unavailable" sinon
+    aiParams.serverStatus = availableModels.length > 0 ? 'available' : 'unavailable';
+    if (aiParams.serverStatus === 'unavailable') {
+        console.warn("[openAiClient] Serveur LLM indisponible — relance de la recherche à la prochaine requête");
+    }
+
     console.log("[openAiClient] Paramètres récupérés :", aiParams);
 })();
+
+/**
+ * Relance la recherche des modèles disponibles (utile si le serveur n'était pas disponible au
+ * démarrage mais est maintenant accessible). Met à jour aiParams et retourne true si au moins
+ * un serveur a répondu.
+ * @returns {Promise<boolean>} true si le serveur est maintenant disponible
+ */
+async function recheckServerAvailability() {
+    await aiParamsReady;
+    const portsToTest = (aiParams.port && aiParams.port !== 'auto') ? [aiParams.port] : COMMON_LOCAL_AI_PORTS;
+    const { activePorts, availableModels, testedPorts } = await probePortsForModels(aiParams.host, portsToTest, aiParams.apiKey);
+
+    aiParams.activePorts = activePorts;
+    aiParams.availableModels = availableModels;
+    aiParams.autoPortTestedPorts = testedPorts;
+
+    // Mise à jour du status
+    const wasUnavailable = aiParams.serverStatus === 'unavailable';
+    aiParams.serverStatus = availableModels.length > 0 ? 'available' : 'unavailable';
+    
+    if (wasUnavailable && aiParams.serverStatus === 'available') {
+        console.log("[openAiClient] Serveur LLM détecté après une indisponibilité antérieure");
+    } else if (wasUnavailable) {
+        console.warn("[openAiClient] Serveur LLM toujours indisponible");
+    }
+
+    return aiParams.serverStatus === 'available';
+}
 
 /**
  * Teste la disponibilité de l'API du modèle d'IA local (utile pour avertir l'utilisateur si

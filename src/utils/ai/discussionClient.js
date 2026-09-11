@@ -1237,11 +1237,14 @@ async function addAIChatClient() {
     });
 
     // gestion de l'affichage de la popover d'informations sur l'état du chat
-    infoButton.addEventListener('click', () => {
+    infoButton.addEventListener('click', async () => {
         const isPopoverOpen = infoPopover.classList.contains('open');
         if (isPopoverOpen) {
             infoPopover.classList.remove('open');
         } else {
+            // Relance la recherche des modèles disponibles quand on ouvre la popover
+            await recheckServerAvailability().catch(e => console.warn('[discussionClient] Erreur lors du re-check serveur :', e));
+            
             infoPopover.innerHTML = buildInfoContent();
             infoPopover.classList.add('open');
             bindInfoPopoverActions();
