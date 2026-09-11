@@ -144,14 +144,18 @@ async function probePortsForModels(host, ports, apiKey) {
 /**
  * Retrouve le port sur lequel un modèle donné est disponible (cf. aiParams.availableModels). Si le
  * modèle n'est pas trouvé (ex: valeur non résolue), on retombe sur le premier port actif connu, ou
- * à défaut sur le port configuré.
+ * à défaut sur le port configuré. Ne retourne jamais "auto" : si le port était "auto" et aucun
+ * serveur n'a été détecté, retourne le premier port courant par défaut (1234).
  * @param {string} modelName
  * @returns {number|string}
  */
 function getPortForModel(modelName) {
     const entry = aiParams.availableModels?.find(m => m.model === modelName);
     if (entry) return entry.port;
-    return aiParams.activePorts?.[0] ?? aiParams.port;
+    const fallbackPort = aiParams.activePorts?.[0] ?? aiParams.port;
+    // Ne jamais retourner la chaîne "auto" dans une URL : fallback sur le premier port courant
+    if (fallbackPort === 'auto') return COMMON_LOCAL_AI_PORTS[0];
+    return fallbackPort;
 }
 
 // Initialisation asynchrone des paramètres. On garde la promesse pour pouvoir
