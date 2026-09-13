@@ -16,9 +16,15 @@
 /**
  * @deprecated Utilisez `waitForElement` à la place.
  * @see waitForElement
- * laissé en place pour une disparition progressive
+ * Tout de même utile dans certains cas.
  */
 function waitLegacyForElement(selector, text = null, timeout, callback) {
+    if (!callback) {
+        return new Promise(resolve => {
+            waitLegacyForElement(selector, text, timeout, resolve);
+        });
+    }
+
     var checkInterval = setInterval(function () {
         var elements = document.querySelectorAll(selector);
         for (var i = 0; i < elements.length; i++) {

@@ -155,6 +155,9 @@ async function insertAntecedent(data = {}) {
         if (onglet && onglet.freeAtcdButton) {
             onglet.freeAtcdButton.click(); // Ouvre un panneau vide
         }
+
+        // Suppression des données d'onglet, car on considère qu'on a du déclencher avec le bon appuis.
+        delete data.onglet;
     } else {
         if (!data.nom) {
             console.warn("[dataInserterATCD] Aucun nom fourni pour la recherche.");
@@ -174,7 +177,7 @@ async function insertAntecedent(data = {}) {
         const searchInput = document.querySelector(AntecedentFormSelectors.searchPanel.searchInput);
         const toSearch = data.nom
         if (searchInput) searchInput.value = toSearch;
-        searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+        searchInput.dispatchEvent(new Event('change', { bubbles: true }));
         await sleep(300); // Attend que les résultats de recherche se mettent à jour
 
         // Ensuite on doit sélectionner le premier résultat de la recherche et
@@ -185,8 +188,13 @@ async function insertAntecedent(data = {}) {
     }
 
     // À ce stade, le panneau de l'antécédent ciblé devrait être ouvert et prêt à être rempli.
+    await waitLegacyForElement(AntecedentFormSelectors.pannelAntecedents.panel, null, 5000)
+    .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente du panneau des antécédents :", err));
 
     remplirPaneauAntecedent(data);
+
+    // Validation de l'antécédent
+    document.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonValider)?.click();
 }
 
 //----------------------------------------------------------------------------------------
@@ -233,6 +241,7 @@ async function selectionnerPremierResultatRecherche(searchType, onglet, timeoutM
  * Remplis les champs d'un paneau atcd ouvert à partir des données fournies.
  */
 function remplirPaneauAntecedent(data = {}) {
+    console.log("[dataInserterATCD] Remplissage du panneau des antécédents avec les données :", data);
     const sel = AntecedentFormSelectors.pannelAntecedents;
 
     AntecedentFieldTypes.dropDownMenus.forEach(champ => {
