@@ -83,7 +83,7 @@ const AntecedentFormSelectors = {
         // Résultats de la recherche selon la modalité active
         resultats: {
             // Les résultats CIM-10 sont des liens dans l'arbre de recherche (sFINDER)
-            CIM10: 'a[href*="sFINDER"]',
+            CIM10: '#ContentPlaceHolder1_ArbreCim10UCForm1_TreeViewCim10n2',
             // Les résultats allergie portent un attribut title ("...par rapport à une classe/molécule"), contrairement aux médicaments
             allergieMolecule: '.ap[title]',
             allergiePrinceps: '.ap:not([title])',
@@ -208,28 +208,27 @@ async function insertAntecedent(data = {}) {
  * @param {object} onglet onglet cible (issu de ongletsPossibles()), dont la propriété zoneDepot sera cliquée
  * @param {number} timeoutMs délai maximal d'attente d'un résultat
  */
-async function selectionnerPremierResultatRecherche(searchType, onglet, timeoutMs = 15000) {
-    const selecteur = AntecedentFormSelectors.searchPanel.resultats[searchType];
-    if (!selecteur) return null;
+async function selectionnerPremierResultatRecherche(searchType, onglet, timeoutMs = 5000) {
+    await sleep(1000); // Petite pause avant de chercher le premier résultat
+    const selecteur1erResultatRecherche = AntecedentFormSelectors.searchPanel.resultats[searchType];
+    await waitLegacyForElement(selecteur1erResultatRecherche, null, timeoutMs)
+    .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente des résultats de recherche :", err));
 
-    const debut = Date.now();
-    let resultat = null;
-    while (Date.now() - debut < timeoutMs) {
-        resultat = document.querySelector(selecteur);
-        if (resultat) break;
-        await sleep(300);
-    }
 
+    const resultat = document.querySelector(selecteur1erResultatRecherche);
     if (!resultat) {
         console.log("[dataInserterATCD] Aucun résultat de recherche trouvé pour", searchType);
         return null;
     }
 
+    console.log("[dataInserterATCD] Premier résultat de recherche sélectionné pour", searchType, ":", resultat, "de selecteur :", selecteur1erResultatRecherche);
+    clicCSPLockedElement(selecteur1erResultatRecherche)
     resultat.click(); // Accroche l'antécédent à la souris
     await sleep(300);
 
     if (onglet && onglet.zoneDepot) {
-        onglet.zoneDepot.click(); // Dépose l'antécédent sur l'onglet visé, ouvre le panneau
+
+        // onglet.zoneDepot.click(); // Dépose l'antécédent sur l'onglet visé, ouvre le panneau
     } else {
         console.warn("[dataInserterATCD] Aucune zone de dépôt disponible pour l'onglet visé.");
     }
