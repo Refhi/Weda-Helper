@@ -320,21 +320,124 @@ function ongletsPossibles() {
     return toReturn;
 }
 
+
+
+//----------------------------------------------------------------------------------------
 /**
- * Fonction test, ajoute un bouton de test en haut de la page
+ * Description des champs du formulaire de test, utilisée pour générer les inputs et lire les valeurs saisies.
+ */
+const champsFormulaireTest = [
+    { champ: 'searchType', label: 'Type de recherche', type: 'select', options: ['', 'CIM10', 'allergieMolecule', 'allergiePrinceps'] },
+    { champ: 'nom', label: 'Nom / recherche', type: 'text' },
+    { champ: 'onglet', label: 'Onglet cible', type: 'text' },
+    { champ: 'commentaire', label: 'Commentaire', type: 'text' },
+    { champ: 'dateDebut', label: 'Date début', type: 'text', placeholder: 'jj/mm/aaaa' },
+    { champ: 'dateFin', label: 'Date fin', type: 'text', placeholder: 'jj/mm/aaaa' },
+    { champ: 'datePonctuelle', label: 'Date ponctuelle', type: 'text', placeholder: 'jj/mm/aaaa' },
+    { champ: 'dateAlerte', label: 'Date alerte', type: 'text', placeholder: 'jj/mm/aaaa' },
+    { champ: 'couleur', label: 'Couleur', type: 'text', placeholder: '#0099ff' },
+    { champ: 'validation', label: 'Validation', type: 'select', options: ['', '1', '2', '3', '4', '5'] },
+    { champ: 'lateralite', label: 'Latéralité', type: 'select', options: ['', '0', '1', '2', '3'] },
+    { champ: 'tri', label: 'Tri', type: 'text' },
+    { champ: 'isImportant', label: 'Important', type: 'checkbox' },
+    { champ: 'isHeritage', label: 'Héréditaire', type: 'checkbox' },
+    { champ: 'isPrive', label: 'Privé', type: 'checkbox' },
+    { champ: 'isExclureVsm', label: 'Exclure VSM', type: 'checkbox' },
+];
+
+/**
+ * Lit les valeurs saisies dans le formulaire de test et construit l'objet data attendu par insertAntecedent.
+ */
+function lireDonneesFormulaireTest(panneau) {
+    const data = {};
+    champsFormulaireTest.forEach(({ champ, type }) => {
+        const element = panneau.querySelector(`[name="${champ}"]`);
+        if (!element) return;
+        if (type === 'checkbox') {
+            if (element.checked) data[champ] = true;
+        } else if (element.value !== '') {
+            data[champ] = element.value;
+        }
+    });
+    return data;
+}
+
+/**
+ * Fonction test, ajoute un panneau de test permettant de saisir tous les paramètres pertinents d'insertAntecedent
  */
 function ajouterBoutonTest() {
-    const bouton = document.createElement('button');
-    bouton.textContent = 'Test';
-    bouton.style.position = 'fixed';
-    bouton.style.top = '10px';
-    bouton.style.right = '10px';
-    bouton.style.zIndex = 1000;
-    bouton.addEventListener('click', () => {
-        console.log('[dataInserterATCD] Bouton de test cliqué');
-        // Insérer ici les fonctions à tester lors du clic sur le bouton
-        console.log(insertAntecedent({onglet: "ANTÉCÉDENTS CHIRURGICAUX"}));
+    const panneau = document.createElement('div');
+    panneau.style.position = 'fixed';
+    panneau.style.top = '500px';
+    panneau.style.left = '1000px';
+    panneau.style.zIndex = 10000;
+    panneau.style.background = '#fff';
+    panneau.style.border = '1px solid #888';
+    panneau.style.borderRadius = '4px';
+    panneau.style.padding = '8px';
+    panneau.style.maxHeight = '90vh';
+    panneau.style.overflowY = 'auto';
+    panneau.style.font = '12px sans-serif';
+    panneau.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+
+    const titre = document.createElement('div');
+    titre.textContent = 'Test insertAntecedent';
+    titre.style.fontWeight = 'bold';
+    titre.style.marginBottom = '6px';
+    panneau.appendChild(titre);
+
+    champsFormulaireTest.forEach(({ champ, label, type, options, placeholder }) => {
+        const ligne = document.createElement('div');
+        ligne.style.display = 'flex';
+        ligne.style.justifyContent = 'space-between';
+        ligne.style.alignItems = 'center';
+        ligne.style.gap = '6px';
+        ligne.style.marginBottom = '4px';
+
+        const labelEl = document.createElement('label');
+        labelEl.textContent = label;
+        labelEl.style.flex = '0 0 auto';
+        ligne.appendChild(labelEl);
+
+        let input;
+        if (type === 'select') {
+            input = document.createElement('select');
+            options.forEach(opt => {
+                const optionEl = document.createElement('option');
+                optionEl.value = opt;
+                optionEl.textContent = opt || '(aucun)';
+                input.appendChild(optionEl);
+            });
+        } else if (type === 'checkbox') {
+            input = document.createElement('input');
+            input.type = 'checkbox';
+        } else {
+            input = document.createElement('input');
+            input.type = 'text';
+            if (placeholder) input.placeholder = placeholder;
+        }
+        input.name = champ;
+        if (type !== 'checkbox') input.style.width = '140px';
+        ligne.appendChild(input);
+
+        panneau.appendChild(ligne);
     });
-    document.body.appendChild(bouton);
+
+    const bouton = document.createElement('button');
+    bouton.textContent = 'Insérer';
+    bouton.style.marginTop = '4px';
+    bouton.style.width = '100%';
+    bouton.addEventListener('click', () => {
+        const data = lireDonneesFormulaireTest(panneau);
+        console.log('[dataInserterATCD] Insertion test avec données :', data);
+        console.log(insertAntecedent(data));
+    });
+    panneau.appendChild(bouton);
+
+    document.body.appendChild(panneau);
 }
-ajouterBoutonTest();
+
+addTweak("/FolderMedical/AntecedentForm.aspx", "*boutonTestAtcd", function() {
+    ajouterBoutonTest();
+});
+
