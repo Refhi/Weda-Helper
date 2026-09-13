@@ -56,6 +56,7 @@
         "src/utils/iframeHelpers.js",
         "src/utils/dataScrapper.js",
         "src/utils/dataInserter.js",
+        "src/utils/dataInserterATCD.js",
         "src/utils/ai/callableFunctions.js",
         "src/utils/ai/openAiClient.js",
         "src/utils/ai/offscreenBridge.js",
