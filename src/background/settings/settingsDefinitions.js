@@ -1056,5 +1056,11 @@ var advancedDefaultSettings = [
             "description": "Active le mode debug du Data Scrapper.",
             "default": false,
             "longDescription": "Affiche un bouton pour tester rapidement le scrapper de données. Utile pour les développeurs.",
+        }, {
+            "name": "boutonTestAtcd",
+            "type": TYPE_BOOL,
+            "description": "Active le panneau de test d'insertion d'antécédents.",
+            "longDescription": "Affiche un panneau pour tester rapidement l'insertion des antécédents. Utile pour les développeurs.",
+            "default": false
         }],
     }];

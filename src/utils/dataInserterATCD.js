@@ -443,7 +443,7 @@ function ajouterBoutonTest() {
     document.body.appendChild(panneau);
 }
 
-addTweak("/FolderMedical/AntecedentForm.aspx", "*boutonTestAtcd", function() {
+addTweak("/FolderMedical/AntecedentForm.aspx", "boutonTestAtcd", function() {
     ajouterBoutonTest();
 });
 
