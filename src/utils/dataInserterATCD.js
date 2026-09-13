@@ -82,8 +82,8 @@ const AntecedentFormSelectors = {
 
         // Résultats de la recherche selon la modalité active
         resultats: {
-            // Les résultats CIM-10 sont des liens dans l'arbre de recherche (sFINDER)
-            CIM10: '#ContentPlaceHolder1_ArbreCim10UCForm1_TreeViewCim10n2',
+            // Les résultats CIM-10 sont des icônes "main" (drag) dans l'arbre de recherche, dont le clic déclenche SetParamID(...)
+            CIM10: '#ContentPlaceHolder1_ArbreCim10UCForm1_TreeViewCim10n2 img',
             // Les résultats allergie portent un attribut title ("...par rapport à une classe/molécule"), contrairement aux médicaments
             allergieMolecule: '.ap[title]',
             allergiePrinceps: '.ap:not([title])',
@@ -188,6 +188,7 @@ async function insertAntecedent(data = {}) {
     }
 
     // À ce stade, le panneau de l'antécédent ciblé devrait être ouvert et prêt à être rempli.
+    // on attend son ouverture
     await waitLegacyForElement(AntecedentFormSelectors.pannelAntecedents.panel, null, 5000)
     .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente du panneau des antécédents :", err));
 
@@ -209,7 +210,6 @@ async function insertAntecedent(data = {}) {
  * @param {number} timeoutMs délai maximal d'attente d'un résultat
  */
 async function selectionnerPremierResultatRecherche(searchType, onglet, timeoutMs = 5000) {
-    await sleep(1000); // Petite pause avant de chercher le premier résultat
     const selecteur1erResultatRecherche = AntecedentFormSelectors.searchPanel.resultats[searchType];
     await waitLegacyForElement(selecteur1erResultatRecherche, null, timeoutMs)
     .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente des résultats de recherche :", err));
@@ -222,17 +222,13 @@ async function selectionnerPremierResultatRecherche(searchType, onglet, timeoutM
     }
 
     console.log("[dataInserterATCD] Premier résultat de recherche sélectionné pour", searchType, ":", resultat, "de selecteur :", selecteur1erResultatRecherche);
-    clicCSPLockedElement(selecteur1erResultatRecherche)
-    resultat.click(); // Accroche l'antécédent à la souris
-    await sleep(300);
+    resultat.click(); 
 
     if (onglet && onglet.zoneDepot) {
-
-        // onglet.zoneDepot.click(); // Dépose l'antécédent sur l'onglet visé, ouvre le panneau
+        onglet.zoneDepot.click(); // Dépose l'antécédent sur l'onglet visé, ouvre le panneau
     } else {
         console.warn("[dataInserterATCD] Aucune zone de dépôt disponible pour l'onglet visé.");
     }
-    await sleep(800); // Laisse le temps à la popup de s'ouvrir/se mettre à jour
     return resultat;
 }
 
@@ -316,7 +312,9 @@ function ongletsPossibles() {
             categorie: type,
             autorise: table.matches(ongletsAutorisés),
             freeAtcdButton: freeAtcdButton, // Ajout du bouton d'antécédent libre pour référence future
-            zoneDepot: table // La table de l'onglet est elle-même la cible sur laquelle cliquer pour y déposer un antécédent accroché
+            // Zone de dépôt = le libellé de l'onglet (onclick="OnDropPostBack(id)"), PAS l'icône verte
+            // (onclick="OnDropPostBackDirect(id)") qui dépose sans ouvrir la fenêtre de paramétrage.
+            zoneDepot: table.querySelector('div.sta[onclick^="OnDropPostBack("]'),
         });
     });
     // Exemple d'onglet possible
