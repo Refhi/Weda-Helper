@@ -74,11 +74,12 @@ const AntecedentFormSelectors = {
         // Le champ de recherche commun
         searchInput: "input[name='ctl00$ContentPlaceHolder1$TextBoxFind']",
 
-        CIM10: "ContentPlaceHolder1_ImageButtonPathologieCIM10",
-        allergieMolecule: "ContentPlaceHolder1_ImageButtonAllergieMolecule",
-        allergiePrinceps: "ContentPlaceHolder1_ImageButtonMedicament",
-        // aldVIDAL: "ContentPlaceHolder1_ButtonAldVIDAL",
-        titreRecherche: "ContentPlaceHolder1_LabelILTitreRecherche",
+        // ":has()" cible le parent direct de l'id, car le clic doit être fait sur ce conteneur et non sur l'icône elle-même
+        CIM10: "*:has(> #ContentPlaceHolder1_ImageButtonPathologieCIM10)",
+        allergieMolecule: "*:has(> #ContentPlaceHolder1_ImageButtonAllergieMolecule)",
+        allergiePrinceps: "*:has(> #ContentPlaceHolder1_ImageButtonMedicament)",
+        // aldVIDAL: "#ContentPlaceHolder1_ButtonAldVIDAL",
+        titreRecherche: "#ContentPlaceHolder1_LabelILTitreRecherche",
 
         // Résultats de la recherche selon la modalité active
         resultats: {
@@ -137,9 +138,8 @@ async function insertAntecedent(data = {}) {
     //     commentaire: "valeur"
     //     autres issus de la partie classification
     // }
-    // Création de l'objet antecedent à partir des données fournies
-    let antecedent = {} // Etonnament, aucun champ n'est nécessaire ! On peut très bien créer un antécédent libre totalement vide.
-
+    // mais étonnament on peut créer un antécédent libre sans fournir aucun champ.
+    
     // Lecture des onglets possibles pour déterminer où insérer l'antécédent
     const onglets = ongletsPossibles();
     console.log("[dataInserterATCD] Onglets possibles:", onglets);
@@ -165,14 +165,8 @@ async function insertAntecedent(data = {}) {
         }
         // Si le champ searchType est présent, on va utiliser le module de recherche d'atcd.
         
-        // Est-ce que la bonne modalité de recherche est déjà sélectionnée ?
-        const titreRechercheElement = document.querySelector(AntecedentFormSelectors.searchPanel.titreRecherche);
-        if (titreRechercheElement && titreRechercheElement.textContent.trim() !== titreRecherche[data.searchType]) {
-            const searchButton = document.querySelector(AntecedentFormSelectors.searchPanel[data.searchType]);
-            // Non, donc on clique sur le bouton correspondant à la modalité de recherche souhaitée.
-            if (searchButton) searchButton.click();
-            await sleep(100) // Et on attend que le panneau de recherche se mette à jour
-        }
+        await ensureProperSearchType(data.searchType);
+
         // On considère que la bonne modalité de recherche est maintenant sélectionnée.
         const searchInput = document.querySelector(AntecedentFormSelectors.searchPanel.searchInput);
         const toSearch = data.nom
@@ -201,6 +195,22 @@ async function insertAntecedent(data = {}) {
 //----------------------------------------------------------------------------------------
 // Fonctions support
 //----------------------------------------------------------------------------------------
+/**
+ * vérifie que la modalité de recherche sélectionnée est correcte.
+ */
+async function ensureProperSearchType(searchType) {
+    console.log("[dataInserterATCD] Vérification de la modalité de recherche :", searchType);
+    const titreRechercheElement = document.querySelector(AntecedentFormSelectors.searchPanel.titreRecherche);
+    console.log("[dataInserterATCD] Élément du titre de recherche actuel :", titreRechercheElement);
+    if (titreRechercheElement && titreRechercheElement.textContent.trim() !== titreRecherche[searchType]) {
+        console.log("[dataInserterATCD] Modalité de recherche actuelle incorrecte, correction en cours...");
+        const searchButton = document.querySelector(AntecedentFormSelectors.searchPanel[searchType]);
+        console.log("[dataInserterATCD] Bouton de recherche à cliquer :", searchButton);
+        if (searchButton) searchButton.click();
+        await sleep(100) // Et on attend que le panneau de recherche se mette à jour
+    }
+}
+
 /**
  * Selectionne l'antécédent présent dans les résultats de la recherche CIM-10, allergie ou médicament,
  * puis le dépose sur l'onglet visé. Le clic sur le résultat "accroche" l'antécédent à la souris ;
@@ -305,7 +315,7 @@ function ongletsPossibles() {
         const nom = ongletDiv.textContent.split('[')[0].trim();
         const type = (ongletDiv.getAttribute('title') || '').replace("Type de l'onglet :", '').trim();
         const freeAtcdButton = table.querySelector(AntecedentFormSelectors.antecedentList.boutonAjouterLibre);
-        console.log("[dataInserterATCD] freeAtcdButton:", freeAtcdButton);
+        // console.log("[dataInserterATCD] freeAtcdButton:", freeAtcdButton);
 
         toReturn.push({
             titre: nom,
