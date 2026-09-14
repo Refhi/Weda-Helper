@@ -191,9 +191,12 @@ async function insertAntecedent(data = {}) {
 
         // Dans le cas d'une allergie, le panneau ne s'ouvre pas automatiquement...
         if (data.searchType === "allergieMolecule" || data.searchType === "allergiePrinceps") {
-            console.log("[dataInserterATCD] Ouverture du panneau de l'antécédent ciblé.");
+            console.log("[dataInserterATCD] Ouverture du panneau de l'antécédent ciblé.", resultatSelectionne);
             ouvrirPanneauAntecedent(resultatSelectionne);
         }
+
+        // Enfin, nous sommes dans un cas où le nom est automatique et géré par Weda. On le retire de data pour ne pas l'écraser.
+        delete data.nom;
     }
 
 
@@ -213,11 +216,27 @@ async function insertAntecedent(data = {}) {
 //----------------------------------------------------------------------------------------
 /**
  * Clique sur l'antécédent/allergie de la liste dont le texte contient celui fourni, pour ouvrir son panneau de modification.
+ * La comparaison se fait sur le premier mot du texte recherché (nom du médicament/pathologie), insensible à la casse,
+ * car le texte affiché dans la liste peut être tronqué ou écrit différemment (ex. "gel transderm" vs "Gel transdermique Récip").
  */
-function ouvrirPanneauAntecedent(titre) {
+async function ouvrirPanneauAntecedent(titre) {
+    // On commence par vérifier que le titre est valide.
     if (!titre) return;
-    const items = document.querySelectorAll(AntecedentFormSelectors.antecedentList.atcdItem);
-    const item = Array.from(items).find(el => el.textContent.includes(titre));
+    const premierMot = titre.trim().split(/\s+/)[0]?.toLowerCase();
+    if (!premierMot) return;
+
+    let counter = 0;
+    let item = null;
+    while (!item && counter < 50) {
+        const items = document.querySelectorAll(AntecedentFormSelectors.antecedentList.atcdItem);
+        item = Array.from(items).find(el => el.textContent.toLowerCase().includes(premierMot));
+        if (!item) {
+            await sleep(10);
+            counter++;
+        }
+    }
+
+    console.log("[dataInserterATCD] Item trouvé pour ouverture du panneau :", item);
     if (item) item.click();
 }
 
