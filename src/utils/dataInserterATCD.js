@@ -88,8 +88,9 @@ const AntecedentFormSelectors = {
             // Les résultats allergie portent un attribut title ("...par rapport à une classe/molécule"), contrairement aux médicaments
             allergieMolecule: '.ap[title]',
             allergiePrinceps: '.ap:not([title])',
+            allergiePrincepsValidationButton: '#ContentPlaceHolder1_ButtonValidMolecule',
             // Les résultats ALD portent aussi un attribut title, mais au format "ALD : Code X", ex. <div class="ap" title="ALD : Code 08">DIABETE DE TYPE 1 ET DIABETE DE TYPE 2</div>
-            // aldVIDAL: '.ap[title^="ALD"]',
+            // aldVIDAL: '.ap[title^="ALD"]',            
         }
     },
     antecedentList: {
@@ -98,13 +99,17 @@ const AntecedentFormSelectors = {
 
         // Selon le mode de recherche, seuls certains onglets sont autorisés.
         // La table entière porte l'attribut title indiquant l'autorisation, ex. <table title="Les éléments resultant de la recherche d'une contre-indications sont autorisés à être lâché sur cet onglet.">...<div title="Type de l'onglet : Pathologies actives" class="sma">ANTÉCÉDENTS MÉDICAUX <span class="smna">[Pathologies actives]</span></div>...</table>
-        ongletsAutorisés: `table[title="Les éléments resultant de la recherche d'une contre-indications sont autorisés à être lâché sur cet onglet."]`,
+        // Le milieu du titre varie selon la modalité de recherche (contre-indications, molécule, etc.), d'où l'utilisation de ^= et $= pour ignorer cette partie.
+        ongletsAutorisés: `table[title^="Les éléments resultant de la recherche d"][title$="sont autorisés à être lâché sur cet onglet."]`,
 
         // Onglets interdits (ceux qui ne peuvent pas être utilisés dans le mode de recherche actuel, mais tout de même utilisable en atcd libre)
-        ongletsInterdits: `table[title="Les éléments resultant de la recherche d'une contre-indications ne peuvent pas être lâché sur cet onglet."]`,
+        ongletsInterdits: `table[title^="Les éléments resultant de la recherche d"][title$="ne peuvent pas être lâché sur cet onglet."]`,
 
         // Bouton pour ajouter un antécédent libre
-        boutonAjouterLibre: 'img[title="Ajouter un antécédent (libre)"]'
+        boutonAjouterLibre: 'img[title="Ajouter un antécédent (libre)"]',
+
+        // Chaque antécédent/allergie déjà inséré est une table cliquable qui ouvre son panneau de modification
+        atcdItem: 'table[onclick^="ModifyAtcd("]'
     }
 }
 
@@ -140,20 +145,15 @@ async function insertAntecedent(data = {}) {
     // }
     // mais étonnament on peut créer un antécédent libre sans fournir aucun champ.
     
-    // Lecture des onglets possibles pour déterminer où insérer l'antécédent
-    const onglets = ongletsPossibles();
-    console.log("[dataInserterATCD] Onglets possibles:", onglets);
-
-
     if (!data.searchType) {
         // Aucune modalité de recherche n'est spécifiée, on crée donc un antécédent libre.
         
-        // Si aucun onglet n'est spécifié dans les données, on prend le premier onglet disponible.
-        const onglet = trouverOnglet(onglets, data.onglet) || onglets[0];
+        // Si aucun onglet n'est spécifié dans les données, on prend le premier onglet autorisé.
+        const ongletCible = trouverOnglet(ongletsPossibles(), data.onglet);
         
         // On cliques sur le bouton d'ajout d'antécédent libre.
-        if (onglet && onglet.freeAtcdButton) {
-            onglet.freeAtcdButton.click(); // Ouvre un panneau vide
+        if (ongletCible && ongletCible.freeAtcdButton) {
+            ongletCible.freeAtcdButton.click(); // Ouvre un panneau vide
         }
 
         // Suppression des données d'onglet, car on considère qu'on a du déclencher avec le bon appuis.
@@ -176,14 +176,30 @@ async function insertAntecedent(data = {}) {
 
         // Ensuite on doit sélectionner le premier résultat de la recherche et
         // l'envoyer vers l'onglet correspondant.
-        const ongletCible = trouverOnglet(onglets, data.onglet) || onglets[0];
-        await selectionnerPremierResultatRecherche(data.searchType, ongletCible);
+        const ongletCible = trouverOnglet(ongletsPossibles(), data.onglet);
+        const resultatSelectionne = await selectionnerPremierResultatRecherche(data.searchType, ongletCible);
+        console.log("[dataInserterATCD] Résultat sélectionné :", resultatSelectionne);
 
+        // Dans le cas où une recherche de medicament a été effectuée, et que le princeps contiens
+        // plusieurs molécules, il faut pouvoir valider le panneau.
+        waitLegacyForElement(AntecedentFormSelectors.searchPanel.resultats.allergiePrincepsValidationButton, null, 300)
+        .then(() => {
+            console.log("[dataInserterATCD] Panneau de validation des molécules affiché.");
+            document.querySelector(AntecedentFormSelectors.searchPanel.resultats.allergiePrincepsValidationButton)?.click();
+        })
+        .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente du panneau de validation des molécules :", err));
+
+        // Dans le cas d'une allergie, le panneau ne s'ouvre pas automatiquement...
+        if (data.searchType === "allergieMolecule" || data.searchType === "allergiePrinceps") {
+            console.log("[dataInserterATCD] Ouverture du panneau de l'antécédent ciblé.");
+            ouvrirPanneauAntecedent(resultatSelectionne);
+        }
     }
+
 
     // À ce stade, le panneau de l'antécédent ciblé devrait être ouvert et prêt à être rempli.
     // on attend son ouverture
-    await waitLegacyForElement(AntecedentFormSelectors.pannelAntecedents.panel, null, 5000)
+    await waitLegacyForElement(AntecedentFormSelectors.pannelAntecedents.panel, null, 500)
     .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente du panneau des antécédents :", err));
 
     remplirPaneauAntecedent(data);
@@ -196,19 +212,54 @@ async function insertAntecedent(data = {}) {
 // Fonctions support
 //----------------------------------------------------------------------------------------
 /**
+ * Clique sur l'antécédent/allergie de la liste dont le texte contient celui fourni, pour ouvrir son panneau de modification.
+ */
+function ouvrirPanneauAntecedent(titre) {
+    if (!titre) return;
+    const items = document.querySelectorAll(AntecedentFormSelectors.antecedentList.atcdItem);
+    const item = Array.from(items).find(el => el.textContent.includes(titre));
+    if (item) item.click();
+}
+
+/**
  * vérifie que la modalité de recherche sélectionnée est correcte.
  */
 async function ensureProperSearchType(searchType) {
+    const expectedTitle = titreRecherche[searchType];
+
+    async function awaitProperTitle() {
+        const titleSelector = AntecedentFormSelectors.searchPanel.titreRecherche;
+        let counter = 0;
+        while (document.querySelector(titleSelector) !== null && !currentTitleIsCorrect(expectedTitle)) {
+            counter++;
+            if (counter > 50) {
+                console.error("[dataInserterATCD] Timeout lors de l'attente du titre de recherche correct :", expectedTitle);
+                break;
+            }
+            await sleep(10);
+        }
+        console.log("[dataInserterATCD] Titre de recherche correct :", getCurrentTitle());
+    }
+
+    function getCurrentTitle() {
+        const titreRechercheElement = document.querySelector(AntecedentFormSelectors.searchPanel.titreRecherche);
+        return titreRechercheElement ? titreRechercheElement.textContent.trim() : "";
+    }
+
+    function currentTitleIsCorrect(expectedTitle) {
+        return getCurrentTitle() === expectedTitle;
+    }
+
     console.log("[dataInserterATCD] Vérification de la modalité de recherche :", searchType);
-    const titreRechercheElement = document.querySelector(AntecedentFormSelectors.searchPanel.titreRecherche);
-    console.log("[dataInserterATCD] Élément du titre de recherche actuel :", titreRechercheElement);
-    if (titreRechercheElement && titreRechercheElement.textContent.trim() !== titreRecherche[searchType]) {
+    
+    if (!currentTitleIsCorrect(expectedTitle)) {
         console.log("[dataInserterATCD] Modalité de recherche actuelle incorrecte, correction en cours...");
         const searchButton = document.querySelector(AntecedentFormSelectors.searchPanel[searchType]);
         console.log("[dataInserterATCD] Bouton de recherche à cliquer :", searchButton);
         if (searchButton) searchButton.click();
-        await sleep(100) // Et on attend que le panneau de recherche se mette à jour
     }
+
+    await awaitProperTitle();
 }
 
 /**
@@ -239,7 +290,7 @@ async function selectionnerPremierResultatRecherche(searchType, onglet, timeoutM
     } else {
         console.warn("[dataInserterATCD] Aucune zone de dépôt disponible pour l'onglet visé.");
     }
-    return resultat;
+    return resultat.textContent;
 }
 
 /**
@@ -288,15 +339,28 @@ function remplirPaneauAntecedent(data = {}) {
 
 
 /**
- * Recherche un onglet parmi une liste par son titre, ou à défaut par son type (categorie), en ignorant la casse et les espaces superflus.
+ * Recherche un onglet parmi une liste par son titre, à défaut par son type (categorie),
+ * et à défaut (ou si aucune recherche n'est fournie) retourne le premier onglet autorisé.
  * @param {Array} onglets liste retournée par ongletsPossibles()
- * @param {string} recherche titre ou type recherché
+ * @param {string} ongletSouhaite titre ou type recherché
  */
-function trouverOnglet(onglets, recherche) {
-    if (!recherche) return undefined;
-    const cible = recherche.trim().toLowerCase();
-    return onglets.find(o => o.titre.trim().toLowerCase() === cible)
-        || onglets.find(o => o.categorie.trim().toLowerCase() === cible);
+function trouverOnglet(ongletsPossibles, ongletSouhaite) {
+    console.log("[dataInserterATCD] ongletsPossibles:", ongletsPossibles, "recherche:", ongletSouhaite);
+    let toReturn = null;
+    if (ongletSouhaite) {
+        const cible = ongletSouhaite.trim().toLowerCase();
+        const parTitre = ongletsPossibles.find(o => o.titre.trim().toLowerCase() === cible);
+        if (parTitre)  toReturn = parTitre;
+        const parCategorie = ongletsPossibles.find(o => o.categorie.trim().toLowerCase() === cible);
+        if (parCategorie) toReturn = parCategorie;
+    }
+    if (!toReturn) {
+        const premierOngletAutorise = ongletsPossibles.find(o => o.autorise) || ongletsPossibles[0];
+        toReturn = premierOngletAutorise;
+    }
+    
+    console.log("[dataInserterATCD] onglet trouvé:", toReturn);
+    return toReturn;
 }
 
 function ongletsPossibles() {
@@ -333,6 +397,7 @@ function ongletsPossibles() {
     //     "categorie": "Pathologies actives",
     //     "autorise": true
     // }
+    console.log("[dataInserterATCD] onglets possibles:", toReturn); 
     return toReturn;
 }
 
