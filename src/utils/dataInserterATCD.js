@@ -202,7 +202,7 @@ async function insertAntecedent(data = {}) {
 
     // À ce stade, le panneau de l'antécédent ciblé devrait être ouvert et prêt à être rempli.
     // on attend son ouverture
-    await waitLegacyForElement(AntecedentFormSelectors.pannelAntecedents.panel, null, 500)
+    await waitLegacyForElement(AntecedentFormSelectors.pannelAntecedents.panel, null, 3000) // Sur les connexions lentes, 3 sec n'est pas de trop
     .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente du panneau des antécédents :", err));
 
     remplirPaneauAntecedent(data);
