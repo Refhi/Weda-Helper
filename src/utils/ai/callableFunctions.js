@@ -114,6 +114,102 @@ const availableFunctions = {
             }
         },
         execute: recoverPatientData
+    },
+    insertAntecedent: {
+        definition: {
+            type: "function",
+            function: {
+                name: "insertAntecedent",
+                description: "Ajoute un nouvel antécédent (libre, ou issu d'une recherche CIM-10/allergie/médicament) au dossier du patient actuellement ouvert dans Weda. Ouvre et remplit le panneau de saisie puis valide. IMPORTANT : appeler au préalable recoverPatientData avec categories=['antecedents'] pour connaître les onglets disponibles et éviter les doublons avec des antécédents déjà présents.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        searchType: {
+                            type: "string",
+                            enum: ["CIM10", "allergieMolecule", "allergiePrinceps"],
+                            description: "Modalité de recherche à utiliser. Si absent, un antécédent libre est créé (le champ 'nom' est alors utilisé tel quel)."
+                        },
+                        nom: {
+                            type: "string",
+                            description: "Nom de l'antécédent (saisie libre), ou terme à rechercher si searchType est fourni."
+                        },
+                        onglet: {
+                            type: "string",
+                            description: "Titre ou catégorie de l'onglet cible (ex. 'ANTÉCÉDENTS MÉDICAUX'). Si absent, le premier onglet autorisé est utilisé."
+                        },
+                        commentaire: { type: "string", description: "Commentaire libre associé à l'antécédent." },
+                        dateDebut: { type: "string", description: "Date de début au format jj/mm/aaaa." },
+                        dateFin: { type: "string", description: "Date de fin au format jj/mm/aaaa." },
+                        datePonctuelle: { type: "string", description: "Date ponctuelle au format jj/mm/aaaa." },
+                        dateAlerte: { type: "string", description: "Date d'alerte au format jj/mm/aaaa." },
+                        couleur: { type: "string", description: "Couleur de l'antécédent au format hexadécimal, ex. '#0099ff'." },
+                        validation: {
+                            type: "string",
+                            enum: ["1", "2", "3", "4", "5"],
+                            description: "Statut de validation : 1=Confirmé, 2=Hypothétique, 3=Non confirmé, 4=Exclu, 5=Désactivé."
+                        },
+                        lateralite: {
+                            type: "string",
+                            enum: ["0", "1", "2", "3"],
+                            description: "Latéralité : 0=non spécifié, 1=Droite, 2=Gauche, 3=D + G."
+                        },
+                        tri: { type: "string", description: "Ordre de tri (valeur numérique, plus petit = plus haut dans la liste)." },
+                        isImportant: { type: "boolean", description: "Affiche l'antécédent en gras." },
+                        isHeritage: { type: "boolean", description: "Marque l'antécédent comme héréditaire (visible sur les ayants-droits)." },
+                        isPrive: { type: "boolean", description: "Rend l'antécédent privé, visible uniquement par son créateur." },
+                        isExclureVsm: { type: "boolean", description: "Exclut l'antécédent du VSM." }
+                    },
+                    required: []
+                }
+            }
+        },
+        // Référence indirecte : insertAntecedent n'existe que côté content script (dataInserterATCD.js),
+        // pas dans la page offscreen qui ne fait que lire les `definition` de ce registre.
+        execute: (args) => insertAntecedent(args)
+    },
+    modifierAntecedent: {
+        definition: {
+            type: "function",
+            function: {
+                name: "modifierAntecedent",
+                description: "Modifie un antécédent déjà existant dans le dossier du patient, retrouvé par son nom. Demande une confirmation à l'utilisateur en détaillant les champs qui vont changer avant d'appliquer les modifications. IMPORTANT : appeler au préalable recoverPatientData avec categories=['antecedents'] pour connaître le nom exact et l'état actuel de l'antécédent ciblé.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        nomCible: {
+                            type: "string",
+                            description: "Nom (ou début du nom) de l'antécédent existant à modifier."
+                        },
+                        data: {
+                            type: "object",
+                            description: "Champs à modifier, mêmes propriétés que insertAntecedent (onglet, commentaire, dateDebut, dateFin, datePonctuelle, dateAlerte, couleur, validation, lateralite, tri, isImportant, isHeritage, isPrive, isExclureVsm). Seuls les champs fournis sont modifiés. 'onglet' doit être le libellé exact de l'onglet cible (ex. 'ANTÉCÉDENTS GYNECOLOGIQUES')."
+                        }
+                    },
+                    required: ["nomCible"]
+                }
+            }
+        },
+        execute: ({ nomCible, data = {} } = {}) => modifierAntecedent(nomCible, data)
+    },
+    supprimerAntecedent: {
+        definition: {
+            type: "function",
+            function: {
+                name: "supprimerAntecedent",
+                description: "Supprime définitivement un antécédent existant dans le dossier du patient, retrouvé par son nom. Demande une confirmation à l'utilisateur avant suppression. IMPORTANT : appeler au préalable recoverPatientData avec categories=['antecedents'] pour vérifier le nom exact de l'antécédent à supprimer.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        nomCible: {
+                            type: "string",
+                            description: "Nom (ou début du nom) de l'antécédent existant à supprimer."
+                        }
+                    },
+                    required: ["nomCible"]
+                }
+            }
+        },
+        execute: ({ nomCible } = {}) => supprimerAntecedent(nomCible)
     }
 };
 

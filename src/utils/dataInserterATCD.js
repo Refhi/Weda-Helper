@@ -211,6 +211,7 @@ async function insertAntecedent(data = {}) {
 
     // Validation de l'antécédent
     document.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonValider)?.click();
+    return { success: true };
 }
 
 /**
@@ -252,8 +253,14 @@ async function supprimerAntecedent(nomCible) {
         return { success: false, message: `Aucun antécédent trouvé pour "${nomCible}".` };
     }
 
-    // La confirmation est directement gérée par Weda
+    if (!confirm(`Supprimer définitivement l'antécédent "${avant.nom}" ?\n${avant.commentaire ? `Commentaire : ${avant.commentaire}` : ''}`)) {
+        document.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonAnnuler)?.click();
+        return { success: false, message: "Suppression annulée par l'utilisateur." };
+    }
 
+    // Le bouton de suppression déclenche lui-même un confirm() natif ; on l'autorise puisque l'utilisateur vient de valider le nôtre.
+    const originalConfirm = window.confirm;
+    window.confirm = () => true;
     try {
         document.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonSupprimer)?.click();
     } finally {
@@ -405,7 +412,19 @@ function remplirPaneauAntecedent(data = {}) {
     AntecedentFieldTypes.dropDownMenus.forEach(champ => {
         if (data[champ] === undefined) return;
         const element = document.querySelector(sel[champ]);
-        if (element) element.value = data[champ];
+        if (!element) return;
+
+        if (champ === 'onglet') {
+            // Le select "onglet" a des value numériques arbitraires (ex. 71871) sans rapport avec le libellé
+            // affiché : on doit donc retrouver l'<option> correspondante par son texte plutôt que par sa value.
+            const cible = String(data[champ]).trim().toLowerCase();
+            const option = Array.from(element.options).find(o => o.textContent.trim().toLowerCase() === cible);
+            if (option) element.value = option.value;
+            else console.warn(`[dataInserterATCD] Aucun onglet trouvé pour le libellé "${data[champ]}", valeur non modifiée.`);
+            return;
+        }
+
+        element.value = data[champ];
     });
 
     AntecedentFieldTypes.dates.forEach(champ => {
