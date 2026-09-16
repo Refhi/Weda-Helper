@@ -156,8 +156,6 @@ async function insertAntecedent(data = {}) {
             ongletCible.freeAtcdButton.click(); // Ouvre un panneau vide
         }
 
-        // Suppression des données d'onglet, car on considère qu'on a du déclencher avec le bon appuis.
-        delete data.onglet;
     } else {
         if (!data.nom) {
             console.warn("[dataInserterATCD] Aucun nom fourni pour la recherche.");
@@ -198,6 +196,10 @@ async function insertAntecedent(data = {}) {
         // Enfin, nous sommes dans un cas où le nom est automatique et géré par Weda. On le retire de data pour ne pas l'écraser.
         delete data.nom;
     }
+
+    // Suppression des données d'onglet, car on considère qu'on a du déclencher avec le bon appuis.
+    delete data.onglet;
+
 
 
     // À ce stade, le panneau de l'antécédent ciblé devrait être ouvert et prêt à être rempli.
