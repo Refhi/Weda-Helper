@@ -213,6 +213,87 @@ async function insertAntecedent(data = {}) {
     document.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonValider)?.click();
 }
 
+/**
+ * Modifie un antécédent déjà existant, retrouvé par son nom (comme pour l'ajout d'une allergie).
+ * Demande une confirmation à l'utilisateur en détaillant les champs qui vont changer avant d'appliquer les modifications.
+ * @param {string} nomCible nom (ou début du nom) de l'antécédent à modifier
+ * @param {object} data mêmes champs que insertAntecedent, uniquement ceux fournis seront modifiés
+ */
+async function modifierAntecedent(nomCible, data = {}) {
+    await ouvrirPanneauAntecedent(nomCible);
+    await waitLegacyForElement(AntecedentFormSelectors.pannelAntecedents.panel, null, 3000)
+    .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente du panneau des antécédents :", err));
+
+    const avant = lireEtatPanneauAntecedent();
+    const message = construireMessageConfirmationModification(avant, data);
+
+    if (!confirm(message)) {
+        document.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonAnnuler)?.click();
+        return { success: false, message: "Modification annulée par l'utilisateur." };
+    }
+
+    remplirPaneauAntecedent(data);
+    document.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonValider)?.click();
+    return { success: true };
+}
+
+/**
+ * Supprime un antécédent déjà existant, retrouvé par son nom.
+ * Demande une confirmation à l'utilisateur en précisant l'antécédent ciblé avant suppression.
+ * @param {string} nomCible nom (ou début du nom) de l'antécédent à supprimer
+ */
+async function supprimerAntecedent(nomCible) {
+    await ouvrirPanneauAntecedent(nomCible);
+    await waitLegacyForElement(AntecedentFormSelectors.pannelAntecedents.panel, null, 3000)
+    .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente du panneau des antécédents :", err));
+
+    const avant = lireEtatPanneauAntecedent();
+    if (!avant.nom) {
+        return { success: false, message: `Aucun antécédent trouvé pour "${nomCible}".` };
+    }
+
+    // La confirmation est directement gérée par Weda
+
+    try {
+        document.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonSupprimer)?.click();
+    } finally {
+        window.confirm = originalConfirm;
+    }
+    return { success: true };
+}
+
+/**
+ * Lit l'état actuel des champs du panneau d'antécédent ouvert, pour comparaison avant/après.
+ */
+function lireEtatPanneauAntecedent() {
+    const sel = AntecedentFormSelectors.pannelAntecedents;
+    const etat = {};
+
+    [...AntecedentFieldTypes.dropDownMenus, ...AntecedentFieldTypes.dates, ...AntecedentFieldTypes.text].forEach(champ => {
+        const element = document.querySelector(sel[champ]);
+        if (element) etat[champ] = element.value;
+    });
+
+    AntecedentFieldTypes.checkboxes.forEach(champ => {
+        const element = document.querySelector(sel[champ]);
+        if (element) etat[champ] = element.checked;
+    });
+
+    return etat;
+}
+
+/**
+ * Construit le message de confirmation listant les champs qui changeraient (avant -> après).
+ */
+function construireMessageConfirmationModification(avant, apres) {
+    const lignes = Object.keys(apres)
+        .filter(champ => champ !== 'onglet' && String(avant[champ]) !== String(apres[champ]))
+        .map(champ => `${champ} : "${avant[champ] ?? ''}" → "${apres[champ]}"`);
+
+    const intro = `Modifier l'antécédent "${avant.nom ?? ''}" ?`;
+    return lignes.length ? `${intro}\n\n${lignes.join('\n')}` : intro;
+}
+
 //----------------------------------------------------------------------------------------
 // Fonctions support
 //----------------------------------------------------------------------------------------
@@ -483,10 +564,33 @@ function ajouterBoutonTest() {
     panneau.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
 
     const titre = document.createElement('div');
-    titre.textContent = 'Test insertAntecedent';
+    titre.textContent = 'Test antécédents';
     titre.style.fontWeight = 'bold';
     titre.style.marginBottom = '6px';
     panneau.appendChild(titre);
+
+    const ligneMode = document.createElement('div');
+    ligneMode.style.display = 'flex';
+    ligneMode.style.justifyContent = 'space-between';
+    ligneMode.style.alignItems = 'center';
+    ligneMode.style.gap = '6px';
+    ligneMode.style.marginBottom = '4px';
+
+    const labelMode = document.createElement('label');
+    labelMode.textContent = 'Action';
+    ligneMode.appendChild(labelMode);
+
+    const selectMode = document.createElement('select');
+    selectMode.name = 'mode';
+    [['insert', 'Insérer'], ['modifier', 'Modifier'], ['supprimer', 'Supprimer']].forEach(([valeur, texte]) => {
+        const optionEl = document.createElement('option');
+        optionEl.value = valeur;
+        optionEl.textContent = texte;
+        selectMode.appendChild(optionEl);
+    });
+    selectMode.style.width = '140px';
+    ligneMode.appendChild(selectMode);
+    panneau.appendChild(ligneMode);
 
     champsFormulaireTest.forEach(({ champ, label, type, options, placeholder }) => {
         const ligne = document.createElement('div');
@@ -526,13 +630,23 @@ function ajouterBoutonTest() {
     });
 
     const bouton = document.createElement('button');
-    bouton.textContent = 'Insérer';
+    bouton.textContent = 'Exécuter';
     bouton.style.marginTop = '4px';
     bouton.style.width = '100%';
     bouton.addEventListener('click', () => {
+        const mode = panneau.querySelector('[name="mode"]').value;
         const data = lireDonneesFormulaireTest(panneau);
-        console.log('[dataInserterATCD] Insertion test avec données :', data);
-        console.log(insertAntecedent(data));
+        console.log(`[dataInserterATCD] Test '${mode}' avec données :`, data);
+
+        if (mode === 'insert') {
+            console.log(insertAntecedent(data));
+        } else if (mode === 'modifier') {
+            const nomCible = data.nom;
+            delete data.nom;
+            console.log(modifierAntecedent(nomCible, data));
+        } else if (mode === 'supprimer') {
+            console.log(supprimerAntecedent(data.nom));
+        }
     });
     panneau.appendChild(bouton);
 
