@@ -317,7 +317,7 @@ const availableFunctions = {
                         },
                         content: {
                             type: "string",
-                            description: "Contenu texte à insérer dans la zone de saisie du document."
+                            description: "Contenu texte principal qui sera inséré dans le corps du document. Doit impérativement être fourni."
                         }
                     },
                     required: ["target", "content"]
