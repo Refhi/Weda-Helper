@@ -974,7 +974,7 @@ var advancedDefaultSettings = [
                 "name": "IAassistantPromptShortcut2",
                 "type": TYPE_LARGETEXT,
                 "description": "Raccourci de prompt n°2, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
-                "default": ""
+                "default": "au vu de ce document, vérifie que les antécédents soient à jour, et met à jour ou ajoute le nécessaire."
             }, {
                 "name": "IAassistantPromptShortcut3",
                 "type": TYPE_LARGETEXT,
