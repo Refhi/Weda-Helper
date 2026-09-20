@@ -1528,17 +1528,17 @@ async function addAIChatClient() {
 
         try {
             const rawHtml = markdownRenderer.render(markdownText);
-            console.info('[discussionClient] Markdown converti en HTML', {
-                markdownLength: markdownText.length,
-                htmlLength: rawHtml.length,
-                containsTable: /<table[\s>]/i.test(rawHtml)
-            });
+            // console.info('[discussionClient] Markdown converti en HTML', {
+            //     markdownLength: markdownText.length,
+            //     htmlLength: rawHtml.length,
+            //     containsTable: /<table[\s>]/i.test(rawHtml)
+            // });
             const sanitizedHtml = domPurifyApi.sanitize(rawHtml, { USE_PROFILES: { html: true } });
-            console.info('[discussionClient] HTML sanitise via DOMPurify', {
-                htmlBeforeSanitizeLength: rawHtml.length,
-                htmlAfterSanitizeLength: sanitizedHtml.length,
-                removedCharacters: rawHtml.length - sanitizedHtml.length
-            });
+            // console.info('[discussionClient] HTML sanitise via DOMPurify', {
+            //     htmlBeforeSanitizeLength: rawHtml.length,
+            //     htmlAfterSanitizeLength: sanitizedHtml.length,
+            //     removedCharacters: rawHtml.length - sanitizedHtml.length
+            // });
             const tempContainer = document.createElement('div');
             tempContainer.innerHTML = sanitizedHtml;
 
@@ -1551,10 +1551,10 @@ async function addAIChatClient() {
             bubble.classList.add('markdown-rendered');
             bubble.dataset.messageFormat = 'markdown';
             bubble.dataset.markdownSource = markdownText;
-            console.info('[discussionClient] Bulle assistant rendue en markdown sanitise', {
-                linksCount: tempContainer.querySelectorAll('a').length,
-                tablesCount: tempContainer.querySelectorAll('table').length
-            });
+            // console.info('[discussionClient] Bulle assistant rendue en markdown sanitise', {
+            //     linksCount: tempContainer.querySelectorAll('a').length,
+            //     tablesCount: tempContainer.querySelectorAll('table').length
+            // });
             return true;
         } catch (error) {
             console.warn('[discussionClient] Échec du rendu markdown, retour en texte brut.', error);
@@ -1857,8 +1857,12 @@ async function addAIChatClient() {
         showSystemNotice,
         showHelp: showHelpMessage,
         switchPatient: (arg) => {
-            if (!arg) { showSystemNotice('Usage : /patient <identifiant patient>'); return; }
-            if (switchToPatient(arg)) showSystemNotice(`Conversation associée au patient ${arg}.`);
+            if (!arg) { showSystemNotice('Usage : /patient <identifiant patient>' + ` (patient courant : ${chatPatientId})`); return; }
+            showSystemNotice(`Commande /patient reçue (argument : "${arg}", patient courant : ${chatPatientId}).`);
+            const switched = switchToPatient(arg);
+            showSystemNotice(switched
+                ? `Conversation associée au patient ${arg}.`
+                : `Aucun changement : déjà sur le patient ${arg} ou identifiant invalide.`);
         }
     };
 
@@ -1923,6 +1927,7 @@ async function addAIChatClient() {
         sendPrompt: (text) => submitUserMessage(text, []),
         sendPromptWithFile: submitPromptWithFile,
         switchToPatient,
+        resetConversation,
         open: () => { if (!isOpen) toggleChat(); }
     });
 }

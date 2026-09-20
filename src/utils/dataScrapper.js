@@ -379,6 +379,7 @@ async function recoverData({
     dateRange = [], // Filtre les résultats sur une plage de dates : [debut, fin], chaque borne étant facultative
     debug = false, // Affiche l'iframe en plein écran et ne la supprime pas à la fin pour faciliter le debug
     refreshMode = "autoRefresh", // "autoRefresh" | "fullRefresh" | "noRefresh" — voir doc ci-dessus
+    patientId = null, // Patient explicitement ciblé (ex: appel depuis le chat IA via /patient) ; sinon déduit de l'URL courante
 } = {}) {
     // Préparation de l'objet de données à retourner
     const data = {};
@@ -386,8 +387,9 @@ async function recoverData({
     // Résolution de la plage de dates demandée (bornes converties en objets Date, ou null si absentes)
     const resolvedDateRange = resolveDateRange(dateRange);
 
-    // Chargement du cache sessionStorage propre à ce patient (une clé par patient)
-    const patientId = getCurrentPatientId();
+    // Chargement du cache sessionStorage propre à ce patient (une clé par patient) : patientId fourni
+    // en priorité (ex: /patient), sinon déduit de la page actuellement affichée.
+    patientId = patientId || getCurrentPatientId();
     if (!patientId) {
         console.warn('[dataScrapper] Impossible de déterminer le patient courant, le cache sera ignoré');
     }
@@ -412,7 +414,7 @@ async function recoverData({
     let iframe = null;
     if (categoriesNeedingFetch.length > 0) {
         await loadPersistentInitialsToAuthorMap();
-        const urlToLoad = await constructPatientHistoryUrl();
+        const urlToLoad = await constructPatientHistoryUrl(patientId);
         iframe = await createHiddenIframe(urlToLoad, debug, 'dataScrapperIframe');
     }
 
@@ -784,9 +786,10 @@ function chartsLoadedCheck(iframe) {
 
 /**
  * Constructeur d'url pour la page d'historique patient (voir getCurrentPatientPageUrl dans patientLink.js)
+ * @param {string} [patientId] - Patient ciblé ; sinon déduit de l'URL de la page courante.
  */
-async function constructPatientHistoryUrl() {
-    const urlToLoad = await getCurrentPatientPageUrl('/FolderMedical/PopUpHistoriqueForm.aspx');
+async function constructPatientHistoryUrl(patientId = null) {
+    const urlToLoad = await getCurrentPatientPageUrl('/FolderMedical/PopUpHistoriqueForm.aspx', patientId);
     console.log(`[dataScrapper] URL de la page d'historique : ${urlToLoad}`);
     return urlToLoad;
 }

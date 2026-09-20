@@ -114,7 +114,7 @@ function broadcastToPatient(patientId, message) {
  * `executeToolCall` d'openAiClient.
  * @returns {Promise<*>} Le résultat renvoyé par le content script.
  */
-function executeToolCallOnTab(tabId, name, args) {
+function executeToolCallOnTab(tabId, name, args, patientId) {
     return new Promise((resolve, reject) => {
         const callId = crypto.randomUUID();
         const pending = { tabId, resolve, reject, timeoutId: null };
@@ -130,7 +130,8 @@ function executeToolCallOnTab(tabId, name, args) {
         pending.armTimeout = armTimeout;
         armTimeout();
         pendingToolCalls.set(callId, pending);
-        sendToTab(tabId, { type: 'toolCallRequest', callId, name, args });
+        // patientId transmis pour que le content script vérifie qu'il correspond au dossier réellement ouvert (@see offscreenBridge.js).
+        sendToTab(tabId, { type: 'toolCallRequest', callId, name, args, patientId });
     });
 }
 
@@ -205,7 +206,7 @@ async function processUserMessage({ tabId, patientId, content, model }) {
             model: conversation.selectedModel,
             tools: Object.values(availableFunctions).map(f => f.definition),
             signal: conversation.generationController.signal,
-            executeToolCall: (name, args) => executeToolCallOnTab(tabId, name, args),
+            executeToolCall: (name, args) => executeToolCallOnTab(tabId, name, args, patientId),
             onChunk: (chunk) => {
                 if (chunk.contentDelta) {
                     accumulatedContent += chunk.contentDelta;

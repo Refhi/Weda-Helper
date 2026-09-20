@@ -92,7 +92,7 @@ function onOffscreenReconnect(callback) {
 // TOOL_CALL_TIMEOUT_MS côté offscreenChatEngine pour éviter tout risque d'expiration entre deux pings).
 const KEEPALIVE_INTERVAL_MS = 10000;
 
-async function executeRequestedToolCall({ callId, name, args }) {
+async function executeRequestedToolCall({ callId, name, args, patientId }) {
     // Signale régulièrement à l'engine que l'exécution est toujours en cours, afin qu'il remette
     // son timer à zéro (@see offscreenChatEngine.js keepaliveToolCall). Permet aux fonctions
     // lentes (ex: data scrapping) de dépasser le timeout de base sans que celui-ci soit élevé.
@@ -102,7 +102,7 @@ async function executeRequestedToolCall({ callId, name, args }) {
     );
     try {
         if (!availableFunctions[name]) throw new Error(`fonction inconnue "${name}"`);
-        const result = await availableFunctions[name].execute(args);
+        const result = await availableFunctions[name].execute(args, patientId);
         sendOffscreenMessage({ type: 'toolCallResult', callId, result });
     } catch (error) {
         sendOffscreenMessage({ type: 'toolCallResult', callId, error: error.message || String(error) });

@@ -98,10 +98,10 @@ async function recoverPatientData({
     categories = ["consultations"],
     fullPage = false,
     dateRange = []
-} = {}) {
-    console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, dateRange });
+} = {}, patientId = null) {
+    console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, dateRange, patientId });
     try {
-        const data = await recoverData({ categories, fullPage, dateRange, debug: false });
+        const data = await recoverData({ categories, fullPage, dateRange, debug: false, patientId });
         return data;
     } catch (e) {
         console.error("[recoverPatientData] Erreur lors de la récupération des données :", e);
@@ -171,7 +171,7 @@ const availableFunctions = {
                 }
             }
         },
-        execute: recoverPatientData
+        execute: (args, patientId) => recoverPatientData(args, patientId)
     },
     rechercherCim10: {
         definition: {

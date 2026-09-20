@@ -66,10 +66,23 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
         return;
     }
 
+    // Repart d'une conversation vierge à chaque PDF : sans cela, l'historique (et les pièces
+    // jointes) des documents précédents restait dans le contexte envoyé au modèle.
+    chatApi.resetConversation();
+
     // Rattache la conversation au patient déjà identifié à ce stade, s'il y en a un (le PDF Parser
     // peut appeler cette fonction avant même qu'un patient n'ait été trouvé pour ce document).
-    const currentPatientId = getCurrentPatientId();
-    if (currentPatientId) chatApi.switchToPatient(currentPatientId);
+    // getCurrentPatientId() se base sur l'URL de la page, absente sur la page d'import
+    // (UpLoaderForm.aspx) : on se rabat alors sur le patient sélectionné dans la grille d'import.
+    const currentPatientId = getImportGridPatientId();
+    if (currentPatientId) {
+        console.log('[pdfParserAIExtraction] Association de la conversation au patient :', currentPatientId);
+        chatApi.switchToPatient(currentPatientId);
+    } else {
+        console.log('[pdfParserAIExtraction] Aucun patient associé à la conversation.');
+    }
+
+
 
     const basePrompt = await getOptionPromise('PdfParserAutoAIExtractionPrompt');
     const fieldsDescription = missingFields.map(field => `- "${field.key}" : ${field.description}`).join('\n');

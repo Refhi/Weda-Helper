@@ -109,6 +109,30 @@ function getCurrentPatientId() {
 }
 
 /**
+ * Extrait l'identifiant patient (PatDk) d'une URL de dossier patient Weda (ex: href d'un lien
+ * "Ouvrir" du dossier, du type "../FolderMedical/PatientViewForm.aspx?PatDk=68880641|...").
+ * @param {string} url
+ * @returns {string|null}
+ */
+function extractPatDkFromUrl(url) {
+    return url?.match(/PatDk=(\d+)/)?.[1] || null;
+}
+
+/**
+ * Récupère l'identifiant du patient actuellement sélectionné dans la grille d'import de documents
+ * (UpLoaderForm.aspx), via le lien "Ouvrir" de son dossier. Utile quand aucun patient n'est
+ * identifiable via l'URL de la page (@see getCurrentPatientId), par ex. pour la complétion IA du
+ * PDF Parser (@see pdfParserAIExtraction.js).
+ * @returns {string|null}
+ */
+function getImportGridPatientId() {
+    const link = document.querySelector('[id^="ContentPlaceHolder1_FileStreamClassementsGrid_HyperLinkGotoPatient_"]');
+    const patientId = extractPatDkFromUrl(link?.getAttribute('href'));
+    // console.log('Import grid patient ID:', patientId);
+    return patientId;
+}
+
+/**
  * Récupère les paramètres URL (PatDk, crypt...) du dossier d'un patient donné, à partir de
  * son patientFileUrl retourné par l'API patient.
  *
@@ -275,8 +299,8 @@ addTweak(urls, '*addATCDShortcut', function () {
         console.log('ProcessImportDocument', elements);
         elements.forEach(element => {
             let href = element.getAttribute('href');
-            if (href) {
-                let patientFileNumber = href.match(/PatDk=(\d+)/)[1];
+            let patientFileNumber = extractPatDkFromUrl(href);
+            if (patientFileNumber) {
                 addPatientUrlParams(element, patientFileNumber);
                 addATCDShortcut(element);
                 console.log('[ProcessImportDocument]', element, 'patientFileNumber', patientFileNumber, 'href', href);
