@@ -9,6 +9,20 @@
 const AI_CHAT_WIDGET_POSITION_STORAGE_KEY = 'wedaHelperChatWidgetPosition';
 const AI_CHAT_WINDOW_POSITION_STORAGE_KEY = 'wedaHelperChatWindowPosition';
 
+// Petit pont KISS exposant quelques actions du chat (envoyer un prompt "comme si l'utilisateur
+// l'avait tapé", changer de patient...) aux autres scripts du content script (ex: pdfParserAIExtraction.js),
+// sans qu'ils aient à connaître le DOM du widget. Résolu une fois par page, à la fin de addAIChatClient().
+let publishedChatApi = null;
+const chatApiWaiters = [];
+function whenChatApiReady() {
+    if (publishedChatApi) return Promise.resolve(publishedChatApi);
+    return new Promise(resolve => chatApiWaiters.push(resolve));
+}
+function publishChatApi(api) {
+    publishedChatApi = api;
+    chatApiWaiters.splice(0).forEach(resolve => resolve(api));
+}
+
 /**
  * Charge la position persistée du widget de chat si disponible.
  * Stockée en distance depuis le bas/droite de l'écran (cohérente quand la fenêtre change de taille).
@@ -99,9 +113,11 @@ async function addAIChatClient() {
      * Identifiant du patient courant, déterminé une seule fois à l'initialisation du chat (le
      * patient affiché ne change pas une fois la page chargée). Sert de clé de conversation côté
      * offpage (@see offscreen/offscreenChatEngine.js), partagée entre tous les onglets ouverts sur
-     * ce même patient.
+     * ce même patient. `let` plutôt que `const` : modifiable via switchToPatient (@see plus bas et
+     * la commande /patient), utilisé notamment par le PDF Parser pour rattacher la complétion IA
+     * au bon dossier patient une fois celui-ci identifié.
      */
-    const chatPatientId = getCurrentPatientId();
+    let chatPatientId = getCurrentPatientId();
 
     // --- Styles ---
     const style = document.createElement('style');
@@ -1196,6 +1212,26 @@ async function addAIChatClient() {
     }
 
     /**
+     * Change le patient associé à la conversation courante (commande /patient, ou appelé
+     * directement via l'API publiée par publishChatApi) : la conversation offpage étant indexée
+     * par patientId, changer d'id revient à basculer sur une conversation différente (nouvelle ou
+     * déjà existante si un autre onglet discute déjà avec ce patient).
+     * @param {string} newPatientId
+     * @returns {boolean} false si l'id est vide ou déjà celui en cours.
+     */
+    function switchToPatient(newPatientId) {
+        if (!newPatientId || newPatientId === chatPatientId) return false;
+        chatPatientId = newPatientId;
+        pendingAttachments = [];
+        renderAttachmentsPreview();
+        chatMessages.innerHTML = '';
+        infoPopover.classList.remove('open');
+        sendOffscreenMessage({ type: 'subscribe', patientId: chatPatientId });
+        sendOffscreenMessage({ type: 'requestState', patientId: chatPatientId });
+        return true;
+    }
+
+    /**
      * Reconstruit l'affichage à partir de l'historique conversationnel renvoyé par l'offpage (voir
      * 'stateSync'), suite à un rechargement de page : seuls les tours user/assistant sont rejoués
      * (le détail du raisonnement et des appels de fonction d'origine n'est pas conservé par l'offpage).
@@ -1813,7 +1849,11 @@ async function addAIChatClient() {
         sendUserPrompt: (text) => submitUserMessage(text, []),
         triggerShortcut: (index) => runPromptShortcut(index),
         showSystemNotice,
-        showHelp: showHelpMessage
+        showHelp: showHelpMessage,
+        switchPatient: (arg) => {
+            if (!arg) { showSystemNotice('Usage : /patient <identifiant patient>'); return; }
+            if (switchToPatient(arg)) showSystemNotice(`Conversation associée au patient ${arg}.`);
+        }
     };
 
     /**
@@ -1856,6 +1896,15 @@ async function addAIChatClient() {
         pendingAttachments = [];
         renderAttachmentsPreview();
         submitUserMessage(userText, attachmentsForThisMessage);
+    });
+
+    // Publie le pont utilisable par d'autres scripts (ex: pdfParserAIExtraction.js) pour envoyer un
+    // prompt "comme si l'utilisateur l'avait tapé" (visible dans le chat, réponse via tool call) et
+    // rattacher la conversation au bon patient une fois celui-ci identifié.
+    publishChatApi({
+        sendPrompt: (text) => submitUserMessage(text, []),
+        switchToPatient,
+        open: () => { if (!isOpen) toggleChat(); }
     });
 }
 

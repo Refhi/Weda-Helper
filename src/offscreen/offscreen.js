@@ -21,9 +21,6 @@ function connectToBackground() {
             case 'userMessage':
                 processUserMessage(message);
                 break;
-            case 'silentCompletion':
-                processSilentCompletion(message);
-                break;
             case 'toolCallResult':
                 resolveToolCall(message);
                 break;

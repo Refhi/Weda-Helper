@@ -735,12 +735,17 @@ async function handleDataExtraction(fullText, urlPDF, hashId) {
             }
         }
 
+        // On ajoute les données manquantes par l'ia si nécessaire
+        console.log("[pdfParser] Vérification des données manquantes avant complétion IA.");
+        const aiReturn = await completeExtractedDataWithAI(extractedData, fullText);
+        if (aiReturn) {extractedData = aiReturn}
+        console.log("[pdfParser] Données après complétion IA.", extractedData);
+        
+
         // Stockage et priorisation des informations pertinentes
         // => le dataMatrix est prioritaire sur les informations extraites du texte
         completeExtractedData(extractedData, dataMatrixReturn);
 
-        // Complète via l'IA les champs encore manquants (@see utils/ai/pdfParserAIExtraction.js)
-        await completeExtractedDataWithAI(extractedData, fullText);
 
         console.log('[pdfParser] extractedData', JSON.stringify(extractedData));
         setPdfData(hashId, extractedData);

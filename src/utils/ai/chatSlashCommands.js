@@ -23,6 +23,10 @@ const CHAT_SLASH_COMMANDS = {
         description: "Demande une blague à l'IA.",
         run: (context) => context.sendUserPrompt("Raconte-moi une blague, si possible une bonne blague de poisson d'avril.")
     },
+    patient: {
+        description: "Associe la conversation à un autre patient, ex. /patient 65407357 (réinitialise l'affichage sur sa conversation).",
+        run: (context, arg) => context.switchPatient(arg)
+    },
     help: {
         description: "Affiche l'aide sur les commandes et raccourcis disponibles.",
         run: (context) => context.showHelp(CHAT_SLASH_COMMANDS)
@@ -41,7 +45,8 @@ const CHAT_SLASH_COMMANDS = {
  *   sendUserPrompt: (text: string) => void,
  *   triggerShortcut: (index: number) => boolean,
  *   showSystemNotice: (text: string) => void,
- *   showHelp: (commands: typeof CHAT_SLASH_COMMANDS) => void
+ *   showHelp: (commands: typeof CHAT_SLASH_COMMANDS) => void,
+ *   switchPatient: (patientId: string) => void
  * }} context
  * @returns {boolean}
  */

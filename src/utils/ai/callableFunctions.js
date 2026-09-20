@@ -326,6 +326,31 @@ const availableFunctions = {
         },
         // Référence indirecte : insertData n'existe que côté content script (dataInserter.js).
         execute: ({ target, title, subtitle, content } = {}) => insertData(target, { title, subtitle, content })
+    },
+    submitPdfParserFields: {
+        definition: {
+            type: "function",
+            function: {
+                name: "submitPdfParserFields",
+                description: "Renvoie les champs demandés par une complétion automatique du PDF Parser (documentDate, dateOfBirth, nameMatches, documentCommentaire) déduits du texte du document fourni dans le message. À n'appeler QUE en réponse à une telle demande explicite, jamais spontanément.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        documentDate: { type: "string", description: "Date du document, au format JJ/MM/AAAA. Laisser vide si introuvable." },
+                        dateOfBirth: { type: "string", description: "Date de naissance du patient, au format JJ/MM/AAAA. Laisser vide si introuvable." },
+                        nameMatches: {
+                            type: "array",
+                            items: { type: "string" },
+                            description: "Nom complet (nom et prénom) du patient. Tableau vide si introuvable."
+                        },
+                        documentCommentaire: { type: "string", description: "Bref commentaire (1 à 2 phrases) résumant le contenu du document. Laisser vide si non pertinent." }
+                    },
+                    required: []
+                }
+            }
+        },
+        // Référence indirecte : resolvePendingPdfParserFields n'existe que côté content script (pdfParserAIExtraction.js).
+        execute: (args) => resolvePendingPdfParserFields(args)
     }
 };
 
