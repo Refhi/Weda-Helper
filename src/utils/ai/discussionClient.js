@@ -23,6 +23,34 @@ function publishChatApi(api) {
     chatApiWaiters.splice(0).forEach(resolve => resolve(api));
 }
 
+/** Nombre minimum de caractères "normaux" (lettres/chiffres) requis pour considérer un texte extrait de PDF comme lisible. */
+const MIN_READABLE_PDF_CHAR_COUNT = 20;
+/** Proportion minimale de caractères "normaux" dans le texte extrait, en dessous de laquelle on considère le texte comme du charabia (police non standard/CID mal mappée, etc.). */
+const MIN_READABLE_PDF_CHAR_RATIO = 0.5;
+
+/**
+ * Détermine si le texte extrait d'un PDF est réellement lisible : certains PDF scannés ou avec
+ * un encodage de police non standard renvoient un texte non vide mais illisible (charabia,
+ * caractères de contrôle/privés…), qu'il vaut mieux traiter comme si aucun texte n'avait été trouvé.
+ * Global (hors de addAIChatClient) pour être réutilisable par pdfParserAIExtraction.js.
+ * @param {string} text
+ * @returns {boolean}
+ */
+function isPdfTextReadable(text) {
+    if (!text) return false;
+    // On retire tout ce qui est entre crochets [WedaAutoParse...]et qui a été rajouté par Weda-Helper
+    const cleanedText = text.replace(/\[WedaAutoParse.*?\]/g, '');
+
+    const trimmed = cleanedText.trim();
+    if (!trimmed) return false;
+    // Lettres (avec accents) et chiffres : un texte "normal" en est majoritairement composé.
+    const normalChars = trimmed.match(/[a-zA-Z0-9À-ÿ]/g) || [];
+    if (normalChars.length < MIN_READABLE_PDF_CHAR_COUNT) return false;
+    const isReadable = (normalChars.length / trimmed.length) >= MIN_READABLE_PDF_CHAR_RATIO;
+    console.log('[discussionClient] Texte PDF lisible :', isReadable, '(', normalChars.length, '/', trimmed.length, ')', 'Texte :', trimmed);
+    return isReadable;
+}
+
 /**
  * Charge la position persistée du widget de chat si disponible.
  * Stockée en distance depuis le bas/droite de l'écran (cohérente quand la fenêtre change de taille).
@@ -1010,28 +1038,6 @@ async function addAIChatClient() {
     /** Nombre maximum de pages converties en images pour un PDF scanné (sans texte lisible), afin d'éviter d'envoyer un nombre excessif d'images au modèle. */
     const MAX_SCANNED_PDF_PAGES_AS_IMAGES = 50;
 
-    /** Nombre minimum de caractères "normaux" (lettres/chiffres) requis pour considérer un texte extrait de PDF comme lisible. */
-    const MIN_READABLE_PDF_CHAR_COUNT = 20;
-    /** Proportion minimale de caractères "normaux" dans le texte extrait, en dessous de laquelle on considère le texte comme du charabia (police non standard/CID mal mappée, etc.). */
-    const MIN_READABLE_PDF_CHAR_RATIO = 0.5;
-
-    /**
-     * Détermine si le texte extrait d'un PDF est réellement lisible : certains PDF scannés ou avec
-     * un encodage de police non standard renvoient un texte non vide mais illisible (charabia,
-     * caractères de contrôle/privés…), qu'il vaut mieux traiter comme si aucun texte n'avait été trouvé.
-     * @param {string} text
-     * @returns {boolean}
-     */
-    function isPdfTextReadable(text) {
-        if (!text) return false;
-        const trimmed = text.trim();
-        if (!trimmed) return false;
-        // Lettres (avec accents) et chiffres : un texte "normal" en est majoritairement composé.
-        const normalChars = trimmed.match(/[a-zA-Z0-9À-ÿ]/g) || [];
-        if (normalChars.length < MIN_READABLE_PDF_CHAR_COUNT) return false;
-        return (normalChars.length / trimmed.length) >= MIN_READABLE_PDF_CHAR_RATIO;
-    }
-
     /**
      * Convertit les pages d'un PDF (typiquement un document scanné, sans texte extractible) en
      * images PNG encodées en data URL, une par page (dans la limite de MAX_SCANNED_PDF_PAGES_AS_IMAGES).
@@ -1898,11 +1904,24 @@ async function addAIChatClient() {
         submitUserMessage(userText, attachmentsForThisMessage);
     });
 
+    /**
+     * Envoie un prompt accompagné d'un fichier à analyser (ex: PDF), pour les scripts externes
+     * utilisant l'API publiée par publishChatApi (@see readAttachmentFile pour les formats
+     * supportés). Réutilise le même traitement des pièces jointes que l'envoi manuel via le trombone.
+     * @param {string} text
+     * @param {File} file
+     */
+    async function submitPromptWithFile(text, file) {
+        const attachments = await readAttachmentFile(file);
+        submitUserMessage(text, attachments);
+    }
+
     // Publie le pont utilisable par d'autres scripts (ex: pdfParserAIExtraction.js) pour envoyer un
     // prompt "comme si l'utilisateur l'avait tapé" (visible dans le chat, réponse via tool call) et
     // rattacher la conversation au bon patient une fois celui-ci identifié.
     publishChatApi({
         sendPrompt: (text) => submitUserMessage(text, []),
+        sendPromptWithFile: submitPromptWithFile,
         switchToPatient,
         open: () => { if (!isOpen) toggleChat(); }
     });

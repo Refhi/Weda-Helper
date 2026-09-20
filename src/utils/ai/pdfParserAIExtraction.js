@@ -45,9 +45,12 @@ function resolvePendingPdfParserFields(fields) {
  * si l'option est désactivée, le chat IA indisponible, ou la fonction jamais appelée : le PDF Parser
  * continue alors normalement avec les seules données regex.
  * @param {object} extractedData - Modifié en place avec les champs complétés par l'IA.
- * @param {string} fullText - Texte complet du PDF, envoyé au modèle.
+ * @param {string} fullText - Texte complet du PDF, envoyé au modèle si suffisamment lisible.
+ * @param {string|null} urlPDF - URL du PDF (@see extractBasePdfData), utilisée pour envoyer le PDF
+ * complet en pièce jointe (@see discussionClient.js sendPromptWithFile) quand le texte extrait est
+ * absent ou illisible (PDF scanné, police non standard...).
  */
-async function completeExtractedDataWithAI(extractedData, fullText) {
+async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = null) {
     const missingFields = PDF_PARSER_AI_FIELDS.filter(field => field.missing(extractedData[field.key]));
     if (missingFields.length === 0) return;
 
@@ -70,7 +73,21 @@ async function completeExtractedDataWithAI(extractedData, fullText) {
 
     const basePrompt = await getOptionPromise('PdfParserAutoAIExtractionPrompt');
     const fieldsDescription = missingFields.map(field => `- "${field.key}" : ${field.description}`).join('\n');
-    const prompt = `${basePrompt}\n\nAppelle la fonction submitPdfParserFields avec les champs suivants déduits du texte ci-dessous (laisse un champ vide si introuvable) :\n${fieldsDescription}\n\n--- Texte du document ---\n${fullText}\n--- Fin du texte du document ---`;
+    const instructions = `${basePrompt}\n\nAppelle la fonction submitPdfParserFields avec les champs suivants déduits du texte ci-dessous (laisse un champ vide si introuvable) :\n${fieldsDescription}`;
+
+    // Texte extrait absent/illisible (PDF scanné, police non standard...) : on envoie le PDF
+    // complet en pièce jointe (@see isPdfTextReadable, discussionClient.js) plutôt que le texte,
+    // pour laisser le modèle l'analyser lui-même (OCR via image si nécessaire).
+    const textReadable = isPdfTextReadable(fullText);
+    let sendToChatApi;
+    if (!textReadable && urlPDF) {
+        console.log('[pdfParserAIExtraction] Texte du PDF absent ou illisible, envoi du PDF complet en pièce jointe.');
+        const pdfFile = new File([await pdfBlob(urlPDF)], 'document.pdf', { type: 'application/pdf' });
+        sendToChatApi = () => chatApi.sendPromptWithFile(instructions, pdfFile);
+    } else {
+        const prompt = `${instructions}\n\n--- Texte du document ---\n${fullText}\n--- Fin du texte du document ---`;
+        sendToChatApi = () => chatApi.sendPrompt(prompt);
+    }
 
     console.log('[pdfParserAIExtraction] Champs manquants, tentative de complétion IA :', missingFields.map(f => f.key));
 
@@ -83,12 +100,13 @@ async function completeExtractedDataWithAI(extractedData, fullText) {
                 pendingPdfParserResolve = null;
                 reject(new Error("Délai dépassé en attendant l'appel de submitPdfParserFields"));
             }, PDF_PARSER_AI_TIMEOUT_MS);
-            chatApi.sendPrompt(prompt);
+            sendToChatApi();
         });
     } catch (error) {
         console.warn('[pdfParserAIExtraction] Échec de la complétion IA, poursuite sans ces champs :', error.message || error);
         return;
     }
+
 
     for (const field of missingFields) {
         const value = parsedFields?.[field.key];
