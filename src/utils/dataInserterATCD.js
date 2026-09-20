@@ -135,54 +135,6 @@ const titreRecherche = {
 // (si on est déjà sur AntecedentForm.aspx), soit celui d'une iframe cachée naviguant dessus.
 let _atcdDoc = document;
 
-// Cache partagé (promesse unique) des lignes CIM-10 (type "category" uniquement) et de leur index Fuse.js.
-let _cim10IndexPromise = null;
-
-/**
- * ressources/cim10.parquet : base CIM-10 FR PMSI (~19 075 lignes, dont ~18 778 codes exploitables de type "category" ;
- * les ~297 lignes restantes sont des regroupements "chapter"/"block" non assignables à un patient).
- * Colonnes disponibles (seules "code", "label" et "type" sont chargées ici) :
- *   - code (string)              ex. "A00.0"
- *   - label (string)             libellé du diagnostic, ex. "À Vibrio cholerae 01, biovar cholerae"
- *   - type (string)              "chapter" | "block" | "category" (seul "category" est un diagnostic assignable)
- *   - depth (int)                profondeur dans l'arborescence CIM-10
- *   - lft, rgt (int)             bornes de l'arbre (nested set model), non utilisées ici
- *   - path (string)              chemin hiérarchique du code
- *   - synonymes (liste de string), inclusion_note, exclusion_note, exclusion_codes (liste), keywords
- * Pour retrouver un code à partir d'un libellé, appeler `await trouverCodeCim10(libelle)`, qui retourne
- * `{ code, label } | null` (recherche floue via Fuse.js, tolérante aux fautes/variantes). `chargerIndexCim10()`
- * fait le chargement + parsing (hyparquet) une seule fois par content script et met le résultat en cache.
- */
-async function chargerIndexCim10() {
-    if (!_cim10IndexPromise) {
-        _cim10IndexPromise = (async () => {
-            const { parquetReadObjects } = await import(chrome.runtime.getURL('lib/hyparquet/index.js'));
-            const file = await fetch(chrome.runtime.getURL('ressources/cim10.parquet')).then(r => r.arrayBuffer());
-            const rows = await parquetReadObjects({ file, columns: ['code', 'label', 'type'] });
-            // Seuls les codes "category" sont de véritables diagnostics assignables (chapter/block sont des regroupements).
-            const codes = rows.filter(r => r.type === 'category');
-            const fuse = new Fuse(codes, { keys: ['label'], threshold: 0.4, ignoreLocation: true, includeScore: true });
-            console.log(`[dataInserterATCD] Base CIM-10 chargée : ${codes.length} codes indexés.`);
-            return fuse;
-        })();
-    }
-    return _cim10IndexPromise;
-}
-
-/**
- * Retrouve le code CIM-10 le plus pertinent pour un libellé donné, par recherche floue sur ressources/cim10.parquet.
- * @param {string} libelle
- * @returns {Promise<{code: string, label: string}|null>}
- */
-async function trouverCodeCim10(libelle) {
-    if (!libelle) return null;
-    const fuse = await chargerIndexCim10();
-    const [meilleur] = fuse.search(libelle);
-    if (!meilleur) return null;
-    console.log(`[dataInserterATCD] Correspondance CIM-10 pour "${libelle}" :`, meilleur.item, 'score:', meilleur.score);
-    return meilleur.item;
-}
-
 /**
  * Exécute fn() dans le contexte du formulaire antécédents : si la page courante n'est pas
  * AntecedentForm.aspx, ouvre une iframe cachée dessus (pour le patient courant) et fait pointer
@@ -256,20 +208,11 @@ async function _insertAntecedent(data = {}) {
         
         await ensureProperSearchType(data.searchType);
 
-        // En CIM-10, on recherche par code plutôt que par nom : bien plus robuste face aux variations de libellé.
-        let toSearch = data.nom;
-        if (data.searchType === "CIM10") {
-            const correspondance = await trouverCodeCim10(data.nom);
-            if (correspondance) {
-                toSearch = correspondance.code;
-                console.log(`[dataInserterATCD] Correspondance CIM-10 trouvée pour "${data.nom}" :`, correspondance);
-            } else {
-                console.warn(`[dataInserterATCD] Aucun code CIM-10 trouvé pour "${data.nom}", recherche par nom en direct.`);
-            }
-        }
-
         // On considère que la bonne modalité de recherche est maintenant sélectionnée.
+        // Pour searchType="CIM10", data.nom doit être le code exact (ex. "J18.9"), déjà choisi en amont
+        // par l'IA via le tool rechercherCim10 (voir callableFunctions.js).
         const searchInput = _atcdDoc.querySelector(AntecedentFormSelectors.searchPanel.searchInput);
+        const toSearch = data.nom;
         if (searchInput) searchInput.value = toSearch;
         searchInput.dispatchEvent(new Event('change', { bubbles: true }));
         await sleep(300); // Attend que les résultats de recherche se mettent à jour

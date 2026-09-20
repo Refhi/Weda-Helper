@@ -29,6 +29,64 @@ const DATA_SCRAPPER_CATEGORIES = [
     "contacts"
 ];
 
+// Cache partagé (promesse unique) de l'index de recherche CIM-10 (voir rechercherCim10 ci-dessous).
+let _cim10IndexPromise = null;
+
+/**
+ * ressources/cim10.parquet : base CIM-10 FR PMSI (~19 075 lignes, dont ~18 778 codes exploitables de type "category" ;
+ * les ~297 lignes restantes sont des regroupements "chapter"/"block" non assignables à un patient).
+ * Colonnes disponibles (seules "code", "label", "type" et "synonymes" sont chargées ici) :
+ *   - code (string)              ex. "A00.0"
+ *   - label (string)             libellé officiel du diagnostic, ex. "À Vibrio cholerae 01, biovar cholerae"
+ *   - type (string)              "chapter" | "block" | "category" (seul "category" est un diagnostic assignable)
+ *   - synonymes (liste de string) variantes/termes courants associés au code, également indexés pour la recherche
+ *   - depth, lft, rgt, path, inclusion_note, exclusion_note, exclusion_codes, keywords (non chargées ici)
+ * Charge et met en cache (une seule fois par content script) un index de recherche floue Fuse.js sur label+synonymes.
+ */
+async function chargerIndexCim10() {
+    if (!_cim10IndexPromise) {
+        _cim10IndexPromise = (async () => {
+            const { parquetReadObjects } = await import(chrome.runtime.getURL('lib/hyparquet/index.js'));
+            const file = await fetch(chrome.runtime.getURL('ressources/cim10.parquet')).then(r => r.arrayBuffer());
+            const rows = await parquetReadObjects({ file, columns: ['code', 'label', 'type', 'synonymes'] });
+            // Seuls les codes "category" sont de véritables diagnostics assignables (chapter/block sont des regroupements).
+            const codes = rows.filter(r => r.type === 'category');
+            const fuse = new Fuse(codes, {
+                keys: [
+                    { name: 'label', weight: 0.7 },
+                    { name: 'synonymes', weight: 0.3 }
+                ],
+                threshold: 0.4,
+                ignoreLocation: true,
+                includeScore: true
+            });
+            console.log(`[callableFunctions] Base CIM-10 chargée : ${codes.length} codes indexés.`);
+            return fuse;
+        })();
+    }
+    return _cim10IndexPromise;
+}
+
+/**
+ * Fonction appelable par le modèle pour rechercher des codes CIM-10 correspondant à un terme (recherche floue sur
+ * le libellé officiel et les synonymes). Ne modifie rien dans Weda : c'est à l'IA d'examiner les résultats retournés
+ * et de choisir le code le plus pertinent avant d'appeler insertAntecedent, ou de se rabattre sur un antécédent
+ * libre si aucun résultat ne correspond réellement au diagnostic voulu (éviter la sur-précision, ex. ne pas choisir
+ * un germe précis non mentionné par l'utilisateur).
+ */
+async function rechercherCim10({ terme, limite = 20 } = {}) {
+    console.log(`[rechercherCim10] Appelée avec:`, { terme, limite });
+    if (!terme) return { error: "Aucun terme de recherche fourni." };
+    try {
+        const fuse = await chargerIndexCim10();
+        const resultats = fuse.search(terme, { limit: limite });
+        return resultats.map(r => ({ code: r.item.code, label: r.item.label, score: r.score }));
+    } catch (e) {
+        console.error("[rechercherCim10] Erreur lors de la recherche :", e);
+        return { error: `Erreur lors de la recherche CIM-10 : ${e.message || e}` };
+    }
+}
+
 /**
  * Fonction appelable par le modèle pour récupérer les données de l'historique du patient
  * actuellement ouvert dans Weda (consultations, résultats d'examens, antécédents, etc.).
@@ -115,12 +173,36 @@ const availableFunctions = {
         },
         execute: recoverPatientData
     },
+    rechercherCim10: {
+        definition: {
+            type: "function",
+            function: {
+                name: "rechercherCim10",
+                description: "Recherche des codes CIM-10 (diagnostics) correspondant à un terme, par recherche floue sur le libellé officiel et les synonymes. Renvoie jusqu'à 20 résultats {code, label, score}. IMPORTANT : à appeler systématiquement avant insertAntecedent avec searchType='CIM10' ; examiner les résultats et choisir le code le plus pertinent et le moins spécifique que nécessaire (ex. préférer un code 'sans précision' si l'utilisateur n'a donné aucun détail complémentaire). Si aucun résultat ne correspond réellement au diagnostic voulu, se rabattre sur un antécédent libre (insertAntecedent sans searchType).",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        terme: {
+                            type: "string",
+                            description: "Terme médical à rechercher, ex. 'pneumonie'."
+                        },
+                        limite: {
+                            type: "integer",
+                            description: "Nombre maximal de résultats à renvoyer (défaut 20)."
+                        }
+                    },
+                    required: ["terme"]
+                }
+            }
+        },
+        execute: ({ terme, limite } = {}) => rechercherCim10({ terme, limite })
+    },
     insertAntecedent: {
         definition: {
             type: "function",
             function: {
                 name: "insertAntecedent",
-                description: "Ajoute un nouvel antécédent (libre, ou issu d'une recherche CIM-10/allergie/médicament) au dossier du patient actuellement ouvert dans Weda. Ouvre et remplit le panneau de saisie puis valide. IMPORTANT : appeler au préalable recoverPatientData avec categories=['antecedents'] pour connaître les onglets disponibles et éviter les doublons avec des antécédents déjà présents.",
+                description: "Ajoute un nouvel antécédent (libre, ou issu d'une recherche CIM-10/allergie/médicament) au dossier du patient actuellement ouvert dans Weda. Ouvre et remplit le panneau de saisie puis valide. IMPORTANT : appeler au préalable recoverPatientData avec categories=['antecedents'] pour connaître les onglets disponibles et éviter les doublons avec des antécédents déjà présents. Pour searchType='CIM10', appeler d'abord rechercherCim10 et fournir dans 'nom' le CODE exact choisi parmi ses résultats (pas un libellé libre) ; si aucun résultat n'est pertinent, omettre searchType pour créer un antécédent libre à la place.",
                 parameters: {
                     type: "object",
                     properties: {
@@ -131,7 +213,7 @@ const availableFunctions = {
                         },
                         nom: {
                             type: "string",
-                            description: "Nom de l'antécédent (saisie libre), ou terme à rechercher si searchType est fourni."
+                            description: "Nom de l'antécédent (saisie libre), ou terme à rechercher si searchType est 'allergieMolecule'/'allergiePrinceps'. Pour searchType='CIM10', doit être le code exact obtenu via rechercherCim10 (ex. 'J18.9')."
                         },
                         onglet: {
                             type: "string",
