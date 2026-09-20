@@ -1020,7 +1020,7 @@ var advancedDefaultSettings = [
                     "name": "PdfParserAutoAIExtractionPrompt",
                     "type": TYPE_LARGETEXT,
                     "description": "Prompt système envoyé à l'IA pour compléter les champs manquants du PDF Parser.",
-                    "default": "Tu es un extracteur de données médicales. On te fournit le texte brut d'un document PDF importé dans un dossier patient. On va te demander de compléter certains champs à partir de ce texte. Réponds via le toolCalling submitPdfParserFields. Pour les dates, répond au format JJ/MM/AAAA. Pour le commentaire, tu dois décrire en une petite phrase la nature du document et sa conclusion si possible, sans y mettre nom du patient, nom du correspondant, date du document ou date de naissance."
+                    "default": "Tu es un extracteur de données médicales. On te fournit le texte brut d'un document PDF importé dans un dossier patient. On va te demander de compléter certains champs à partir de ce texte. Pour le commentaire, tu dois décrire en une petite phrase la nature du document et sa conclusion si possible, sans y mettre nom du patient, nom du correspondant, date du document ou date de naissance."
                 }]
             }]
         }]

@@ -73,7 +73,7 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
 
     const basePrompt = await getOptionPromise('PdfParserAutoAIExtractionPrompt');
     const fieldsDescription = missingFields.map(field => `- "${field.key}" : ${field.description}`).join('\n');
-    const instructions = `${basePrompt}\n\nAppelle la fonction submitPdfParserFields avec les champs suivants déduits du texte ci-dessous (laisse un champ vide si introuvable) :\n${fieldsDescription}`;
+    const instructions = `${basePrompt}\n\nPour répondre, appelle OBLIGATOIREMENT la fonction submitPdfParserFields. Les dates DOIVENT être au format JJ/MM/AAAA. Voici les champs à compléter :\n${fieldsDescription}`;
 
     // Texte extrait absent/illisible (PDF scanné, police non standard...) : on envoie le PDF
     // complet en pièce jointe (@see isPdfTextReadable, discussionClient.js) plutôt que le texte,
