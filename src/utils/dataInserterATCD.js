@@ -5,6 +5,9 @@
  * Elle gère les antécédents en saisie libre, ou en CIM-10.
  * 
  * Elle peut également insérer des ALD,allergie, médicament.
+ * 
+ * Ne peut être appellée que depuis la page antécédents.
+ * Pour un appel depuis n'importe quel autre page, passer par l'appel de fonction dans dataInserter.js
  */
 
 
@@ -128,12 +131,52 @@ const titreRecherche = {
     // aldVIDAL: "Recherche dans les ALD"
 };
 
+// Document courant utilisé par toutes les fonctions internes : soit le document de la page
+// (si on est déjà sur AntecedentForm.aspx), soit celui d'une iframe cachée naviguant dessus.
+let _atcdDoc = document;
+
+/**
+ * Exécute fn() dans le contexte du formulaire antécédents : si la page courante n'est pas
+ * AntecedentForm.aspx, ouvre une iframe cachée dessus (pour le patient courant) et fait pointer
+ * _atcdDoc sur son document le temps de l'exécution, avant de nettoyer.
+ * @param {() => Promise<*>} fn
+ * @param {{debug?: boolean}} [options]
+ */
+async function withAntecedentContext(fn, { debug = false } = {}) {
+    const onAntecedentPage = window.location.pathname.includes('/FolderMedical/AntecedentForm.aspx');
+    if (onAntecedentPage) {
+        _atcdDoc = document;
+        return await fn();
+    }
+
+    let iframe = null;
+    try {
+        const url = await getCurrentPatientPageUrl('/FolderMedical/AntecedentForm.aspx');
+        iframe = await createHiddenIframe(url, debug, 'WedaHelperAntecedentIframe');
+        const getDoc = () => iframe.contentDocument || iframe.contentWindow?.document;
+        await waitForElementInDocument(getDoc, AntecedentFormSelectors.antecedentList.panel, 12000, 100);
+        _atcdDoc = getDoc();
+        return await fn();
+    } finally {
+        _atcdDoc = document;
+        if (iframe && !debug) {
+            iframe.remove();
+        }
+    }
+}
+
 /**
  * Fonction pour insérer un antécédent. Prend en paramètre un objet avec les même données
  * que les sélecteurs définis dans l'objet ci-dessus.
- * @param {*} data 
+ * Peut être appelée depuis n'importe quelle page (voir withAntecedentContext).
+ * @param {*} data
+ * @param {{debug?: boolean}} [options]
  */
-async function insertAntecedent(data = {}) {
+async function insertAntecedent(data = {}, options = {}) {
+    return withAntecedentContext(() => _insertAntecedent(data), options);
+}
+
+async function _insertAntecedent(data = {}) {
     // Exemple d'objet data attendu :
     // {
     //     searchType: "CIM10" | "allergieMolecule" | "allergiePrinceps",
@@ -166,7 +209,7 @@ async function insertAntecedent(data = {}) {
         await ensureProperSearchType(data.searchType);
 
         // On considère que la bonne modalité de recherche est maintenant sélectionnée.
-        const searchInput = document.querySelector(AntecedentFormSelectors.searchPanel.searchInput);
+        const searchInput = _atcdDoc.querySelector(AntecedentFormSelectors.searchPanel.searchInput);
         const toSearch = data.nom
         if (searchInput) searchInput.value = toSearch;
         searchInput.dispatchEvent(new Event('change', { bubbles: true }));
@@ -180,10 +223,10 @@ async function insertAntecedent(data = {}) {
 
         // Dans le cas où une recherche de medicament a été effectuée, et que le princeps contiens
         // plusieurs molécules, il faut pouvoir valider le panneau.
-        waitLegacyForElement(AntecedentFormSelectors.searchPanel.resultats.allergiePrincepsValidationButton, null, 300)
+        waitForElementInDocument(() => _atcdDoc, AntecedentFormSelectors.searchPanel.resultats.allergiePrincepsValidationButton, 300)
         .then(() => {
             console.log("[dataInserterATCD] Panneau de validation des molécules affiché.");
-            document.querySelector(AntecedentFormSelectors.searchPanel.resultats.allergiePrincepsValidationButton)?.click();
+            _atcdDoc.querySelector(AntecedentFormSelectors.searchPanel.resultats.allergiePrincepsValidationButton)?.click();
         })
         .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente du panneau de validation des molécules :", err));
 
@@ -204,48 +247,60 @@ async function insertAntecedent(data = {}) {
 
     // À ce stade, le panneau de l'antécédent ciblé devrait être ouvert et prêt à être rempli.
     // on attend son ouverture
-    await waitLegacyForElement(AntecedentFormSelectors.pannelAntecedents.panel, null, 3000) // Sur les connexions lentes, 3 sec n'est pas de trop
+    await waitForElementInDocument(() => _atcdDoc, AntecedentFormSelectors.pannelAntecedents.panel, 3000) // Sur les connexions lentes, 3 sec n'est pas de trop
     .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente du panneau des antécédents :", err));
 
     remplirPaneauAntecedent(data);
 
     // Validation de l'antécédent
-    document.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonValider)?.click();
+    _atcdDoc.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonValider)?.click();
     return { success: true };
 }
 
 /**
  * Modifie un antécédent déjà existant, retrouvé par son nom (comme pour l'ajout d'une allergie).
  * Demande une confirmation à l'utilisateur en détaillant les champs qui vont changer avant d'appliquer les modifications.
+ * Peut être appelée depuis n'importe quelle page (voir withAntecedentContext).
  * @param {string} nomCible nom (ou début du nom) de l'antécédent à modifier
  * @param {object} data mêmes champs que insertAntecedent, uniquement ceux fournis seront modifiés
+ * @param {{debug?: boolean}} [options]
  */
-async function modifierAntecedent(nomCible, data = {}) {
+async function modifierAntecedent(nomCible, data = {}, options = {}) {
+    return withAntecedentContext(() => _modifierAntecedent(nomCible, data), options);
+}
+
+async function _modifierAntecedent(nomCible, data = {}) {
     await ouvrirPanneauAntecedent(nomCible);
-    await waitLegacyForElement(AntecedentFormSelectors.pannelAntecedents.panel, null, 3000)
+    await waitForElementInDocument(() => _atcdDoc, AntecedentFormSelectors.pannelAntecedents.panel, 3000)
     .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente du panneau des antécédents :", err));
 
     const avant = lireEtatPanneauAntecedent();
     const message = construireMessageConfirmationModification(avant, data);
 
     if (!confirm(message)) {
-        document.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonAnnuler)?.click();
+        _atcdDoc.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonAnnuler)?.click();
         return { success: false, message: "Modification annulée par l'utilisateur." };
     }
 
     remplirPaneauAntecedent(data);
-    document.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonValider)?.click();
+    _atcdDoc.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonValider)?.click();
     return { success: true };
 }
 
 /**
  * Supprime un antécédent déjà existant, retrouvé par son nom.
  * Demande une confirmation à l'utilisateur en précisant l'antécédent ciblé avant suppression.
+ * Peut être appelée depuis n'importe quelle page (voir withAntecedentContext).
  * @param {string} nomCible nom (ou début du nom) de l'antécédent à supprimer
+ * @param {{debug?: boolean}} [options]
  */
-async function supprimerAntecedent(nomCible) {
+async function supprimerAntecedent(nomCible, options = {}) {
+    return withAntecedentContext(() => _supprimerAntecedent(nomCible), options);
+}
+
+async function _supprimerAntecedent(nomCible) {
     await ouvrirPanneauAntecedent(nomCible);
-    await waitLegacyForElement(AntecedentFormSelectors.pannelAntecedents.panel, null, 3000)
+    await waitForElementInDocument(() => _atcdDoc, AntecedentFormSelectors.pannelAntecedents.panel, 3000)
     .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente du panneau des antécédents :", err));
 
     const avant = lireEtatPanneauAntecedent();
@@ -254,7 +309,7 @@ async function supprimerAntecedent(nomCible) {
     }
 
     if (!confirm(`Supprimer définitivement l'antécédent "${avant.nom}" ?\n${avant.commentaire ? `Commentaire : ${avant.commentaire}` : ''}`)) {
-        document.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonAnnuler)?.click();
+        _atcdDoc.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonAnnuler)?.click();
         return { success: false, message: "Suppression annulée par l'utilisateur." };
     }
 
@@ -262,7 +317,7 @@ async function supprimerAntecedent(nomCible) {
     const originalConfirm = window.confirm;
     window.confirm = () => true;
     try {
-        document.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonSupprimer)?.click();
+        _atcdDoc.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonSupprimer)?.click();
     } finally {
         window.confirm = originalConfirm;
     }
@@ -277,12 +332,12 @@ function lireEtatPanneauAntecedent() {
     const etat = {};
 
     [...AntecedentFieldTypes.dropDownMenus, ...AntecedentFieldTypes.dates, ...AntecedentFieldTypes.text].forEach(champ => {
-        const element = document.querySelector(sel[champ]);
+        const element = _atcdDoc.querySelector(sel[champ]);
         if (element) etat[champ] = element.value;
     });
 
     AntecedentFieldTypes.checkboxes.forEach(champ => {
-        const element = document.querySelector(sel[champ]);
+        const element = _atcdDoc.querySelector(sel[champ]);
         if (element) etat[champ] = element.checked;
     });
 
@@ -318,7 +373,7 @@ async function ouvrirPanneauAntecedent(titre) {
     let counter = 0;
     let item = null;
     while (!item && counter < 50) {
-        const items = document.querySelectorAll(AntecedentFormSelectors.antecedentList.atcdItem);
+        const items = _atcdDoc.querySelectorAll(AntecedentFormSelectors.antecedentList.atcdItem);
         item = Array.from(items).find(el => el.textContent.toLowerCase().includes(premierMot));
         if (!item) {
             await sleep(10);
@@ -339,7 +394,7 @@ async function ensureProperSearchType(searchType) {
     async function awaitProperTitle() {
         const titleSelector = AntecedentFormSelectors.searchPanel.titreRecherche;
         let counter = 0;
-        while (document.querySelector(titleSelector) !== null && !currentTitleIsCorrect(expectedTitle)) {
+        while (_atcdDoc.querySelector(titleSelector) !== null && !currentTitleIsCorrect(expectedTitle)) {
             counter++;
             if (counter > 50) {
                 console.error("[dataInserterATCD] Timeout lors de l'attente du titre de recherche correct :", expectedTitle);
@@ -351,7 +406,7 @@ async function ensureProperSearchType(searchType) {
     }
 
     function getCurrentTitle() {
-        const titreRechercheElement = document.querySelector(AntecedentFormSelectors.searchPanel.titreRecherche);
+        const titreRechercheElement = _atcdDoc.querySelector(AntecedentFormSelectors.searchPanel.titreRecherche);
         return titreRechercheElement ? titreRechercheElement.textContent.trim() : "";
     }
 
@@ -363,7 +418,7 @@ async function ensureProperSearchType(searchType) {
     
     if (!currentTitleIsCorrect(expectedTitle)) {
         console.log("[dataInserterATCD] Modalité de recherche actuelle incorrecte, correction en cours...");
-        const searchButton = document.querySelector(AntecedentFormSelectors.searchPanel[searchType]);
+        const searchButton = _atcdDoc.querySelector(AntecedentFormSelectors.searchPanel[searchType]);
         console.log("[dataInserterATCD] Bouton de recherche à cliquer :", searchButton);
         if (searchButton) searchButton.click();
     }
@@ -381,11 +436,11 @@ async function ensureProperSearchType(searchType) {
  */
 async function selectionnerPremierResultatRecherche(searchType, onglet, timeoutMs = 5000) {
     const selecteur1erResultatRecherche = AntecedentFormSelectors.searchPanel.resultats[searchType];
-    await waitLegacyForElement(selecteur1erResultatRecherche, null, timeoutMs)
+    await waitForElementInDocument(() => _atcdDoc, selecteur1erResultatRecherche, timeoutMs)
     .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente des résultats de recherche :", err));
 
 
-    const resultat = document.querySelector(selecteur1erResultatRecherche);
+    const resultat = _atcdDoc.querySelector(selecteur1erResultatRecherche);
     if (!resultat) {
         console.log("[dataInserterATCD] Aucun résultat de recherche trouvé pour", searchType);
         return null;
@@ -411,7 +466,7 @@ function remplirPaneauAntecedent(data = {}) {
 
     AntecedentFieldTypes.dropDownMenus.forEach(champ => {
         if (data[champ] === undefined) return;
-        const element = document.querySelector(sel[champ]);
+        const element = _atcdDoc.querySelector(sel[champ]);
         if (!element) return;
 
         if (champ === 'onglet') {
@@ -429,29 +484,29 @@ function remplirPaneauAntecedent(data = {}) {
 
     AntecedentFieldTypes.dates.forEach(champ => {
         if (data[champ] === undefined) return;
-        const element = document.querySelector(sel[champ]);
+        const element = _atcdDoc.querySelector(sel[champ]);
         if (element) element.value = data[champ];
     });
 
     AntecedentFieldTypes.text.forEach(champ => {
         if (data[champ] === undefined) return;
-        const element = document.querySelector(sel[champ]);
+        const element = _atcdDoc.querySelector(sel[champ]);
         if (element) element.value = data[champ];
     });
 
     AntecedentFieldTypes.checkboxes.forEach(champ => {
         if (data[champ] === undefined) return;
-        const element = document.querySelector(sel[champ]);
+        const element = _atcdDoc.querySelector(sel[champ]);
         if (element) element.checked = !!data[champ];
     });
 
     // La couleur nécessite d'ouvrir la palette puis de cliquer sur la case correspondante
     if (data.couleur !== undefined) {
-        const openColorGrid = document.querySelector(sel.couleur.openColorGrid);
+        const openColorGrid = _atcdDoc.querySelector(sel.couleur.openColorGrid);
         if (openColorGrid) openColorGrid.click();
 
         const cible = data.couleur.trim().toLowerCase();
-        const cases = document.querySelectorAll(sel.couleur.colorSquares);
+        const cases = _atcdDoc.querySelectorAll(sel.couleur.colorSquares);
         const caseCorrespondante = Array.from(cases).find(c => (c.getAttribute('bgcolor') || '').toLowerCase() === cible);
         if (caseCorrespondante) caseCorrespondante.click();
     }
@@ -488,7 +543,7 @@ function ongletsPossibles() {
     // Retourne la liste des onglets possibles avec les caractéristiques importantes
     // à savoir titre, catégorie, et statut d'autorisation
     const { ongletsAutorisés, ongletsInterdits } = AntecedentFormSelectors.antecedentList;
-    const tables = document.querySelectorAll(`${ongletsAutorisés}, ${ongletsInterdits}`);
+    const tables = _atcdDoc.querySelectorAll(`${ongletsAutorisés}, ${ongletsInterdits}`);
 
     let toReturn = [];
 

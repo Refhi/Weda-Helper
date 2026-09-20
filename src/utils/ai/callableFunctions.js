@@ -202,7 +202,7 @@ const availableFunctions = {
                     properties: {
                         nomCible: {
                             type: "string",
-                            description: "Nom (ou début du nom) de l'antécédent existant à supprimer."
+                            description: "Nom (ou début du nom) de l'antécédent existant à supprimer. Un appel par antécédent."
                         }
                     },
                     required: ["nomCible"]
