@@ -27,6 +27,10 @@ const CHAT_SLASH_COMMANDS = {
         description: "Associe la conversation à un autre patient, ex. /patient 65407357 (réinitialise l'affichage sur sa conversation).",
         run: (context, arg) => context.switchPatient(arg)
     },
+    set: {
+        description: "Enregistre un raccourci de prompt (/0 à /9), ex. /set 2 fait les courses. Sans texte, reprend le dernier message envoyé : /set 2.",
+        run: (context, arg) => context.setShortcut(arg)
+    },
     help: {
         description: "Affiche l'aide sur les commandes et raccourcis disponibles.",
         run: (context) => context.showHelp(CHAT_SLASH_COMMANDS)
@@ -46,7 +50,8 @@ const CHAT_SLASH_COMMANDS = {
  *   triggerShortcut: (index: number) => boolean,
  *   showSystemNotice: (text: string) => void,
  *   showHelp: (commands: typeof CHAT_SLASH_COMMANDS) => void,
- *   switchPatient: (patientId: string) => void
+ *   switchPatient: (patientId: string) => void,
+ *   setShortcut: (arg: string) => void
  * }} context
  * @returns {boolean}
  */

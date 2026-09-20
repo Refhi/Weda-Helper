@@ -691,6 +691,14 @@ async function addAIChatClient() {
     // ~30s) n'efface les notices système et bulles de réflexion, absentes de l'historique persisté.
     let hasRenderedInitialState = false;
 
+    // Historique des messages tapés par l'utilisateur (repris de l'historique offpage au chargement,
+    // puis complété à chaque envoi) : sert à la navigation ↑/↓ dans le champ de saisie et à /set
+    // sans texte explicite (reprend alors le dernier message).
+    let promptHistory = [];
+    // Index courant de navigation dans promptHistory (null = pas en cours de navigation).
+    let promptHistoryIndex = null;
+    let promptHistoryDraft = ''; // texte en cours de saisie, sauvegardé avant de naviguer dans l'historique
+
 
     const chatWindow = widget.querySelector('#wedaHelper-chat-window');
     const chatHeader = widget.querySelector('#wedaHelper-chat-header');
@@ -1251,6 +1259,7 @@ async function addAIChatClient() {
      */
     function renderHistoryFromState(history) {
         chatMessages.innerHTML = '';
+        promptHistory = [];
         history.forEach(entry => {
             const textParts = Array.isArray(entry.content)
                 ? entry.content.filter(part => part.type === 'text').map(part => part.text).join('\n')
@@ -1258,6 +1267,7 @@ async function addAIChatClient() {
             if (!textParts) return;
             const msgDiv = appendMessage(entry.role === 'user' ? 'user' : 'bot', textParts);
             if (entry.role !== 'user') renderMarkdownInBubble(msgDiv, textParts);
+            else promptHistory.push(textParts);
         });
     }
 
@@ -1281,6 +1291,33 @@ async function addAIChatClient() {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             chatForm.requestSubmit();
+            return;
+        }
+        // Navigation ↑/↓ dans l'historique des prompts envoyés, uniquement quand le curseur est en
+        // tout début (↑) ou toute fin (↓) du texte, pour ne pas gêner l'édition multi-lignes.
+        const atStart = chatInput.selectionStart === 0 && chatInput.selectionEnd === 0;
+        const atEnd = chatInput.selectionStart === chatInput.value.length && chatInput.selectionEnd === chatInput.value.length;
+        if (e.key === 'ArrowUp' && atStart && promptHistory.length) {
+            e.preventDefault();
+            if (promptHistoryIndex === null) {
+                promptHistoryDraft = chatInput.value;
+                promptHistoryIndex = promptHistory.length;
+            }
+            if (promptHistoryIndex > 0) {
+                promptHistoryIndex--;
+                chatInput.value = promptHistory[promptHistoryIndex];
+                chatInput.setSelectionRange(0, 0);
+            }
+        } else if (e.key === 'ArrowDown' && atEnd && promptHistoryIndex !== null) {
+            e.preventDefault();
+            if (promptHistoryIndex < promptHistory.length - 1) {
+                promptHistoryIndex++;
+                chatInput.value = promptHistory[promptHistoryIndex];
+            } else {
+                promptHistoryIndex = null;
+                chatInput.value = promptHistoryDraft;
+            }
+            chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
         }
     });
 
@@ -1875,6 +1912,27 @@ async function addAIChatClient() {
             showSystemNotice(switched
                 ? `Conversation associée au patient ${arg}.`
                 : `Aucun changement : déjà sur le patient ${arg} ou identifiant invalide.`);
+        },
+        // Enregistre un raccourci de prompt : /set <index> [texte]. Sans texte, reprend le dernier
+        // message envoyé (promptHistory) — pratique pour transformer à la volée un message qu'on vient
+        // d'envoyer en raccourci permanent.
+        setShortcut: (arg) => {
+            const [indexText, ...rest] = arg.trim().split(/\s+/).filter(Boolean);
+            const index = Number(indexText);
+            if (!Number.isInteger(index) || index < 0 || index > 9) {
+                showSystemNotice('Usage : /set <index 0-9> [texte du prompt] (sans texte, reprend le dernier message envoyé).');
+                return;
+            }
+            const promptText = rest.length ? rest.join(' ') : promptHistory[promptHistory.length - 1];
+            if (!promptText?.trim()) {
+                showSystemNotice('Aucun texte fourni et aucun dernier message envoyé à utiliser.');
+                return;
+            }
+            aiParams.promptShortcuts = aiParams.promptShortcuts || [];
+            aiParams.promptShortcuts[index] = promptText;
+            chrome.storage.local.set({ [`IAassistantPromptShortcut${index}`]: promptText });
+            renderShortcutButtons();
+            showSystemNotice(`Raccourci /${index} enregistré : ${promptText.slice(0, 60)}${promptText.length > 60 ? '…' : ''}`);
         }
     };
 
@@ -1885,6 +1943,8 @@ async function addAIChatClient() {
      * @param {Array} attachmentsForThisMessage
      */
     function submitUserMessage(userText, attachmentsForThisMessage = []) {
+        promptHistory.push(userText);
+        promptHistoryIndex = null;
         const attachmentsLabel = attachmentsForThisMessage.length
             ? '\n\n' + attachmentsForThisMessage.map(att => `${att.kind === 'image' ? '🖼️' : '📄'} ${att.name}`).join('\n')
             : '';
