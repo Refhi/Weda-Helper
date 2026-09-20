@@ -1053,8 +1053,9 @@ function clicPatient(extractedData) {
         const patientList = getPatientsList();
         if (patientList.length === 1) {
             patientToClick = getPatientsList()[0];
-        } else {
+        } else if (patientList.length > 1) {
             patientToClick = null;
+            return { status: 'error', message: "Plusieurs patients trouvés, impossible de déterminer lequel sélectionner" };
         }
     }
     if (!patientToClick) {
