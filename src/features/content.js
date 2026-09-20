@@ -372,7 +372,7 @@ addTweak('/FolderTools/PostItReaderInForm.aspx', '*sendPostItContent', async fun
         button.disabled = true;
         button.textContent = 'Envoi en cours...';
 
-        const result = await insertData('toConsultation', { content, titleForConsultation: timestampedTitle }, { homeUrl: linkToPatient.href });
+        const result = await insertData('toConsultation', { subtitle: timestampedTitle, content }, { homeUrl: linkToPatient.href });
 
         if (result) {
             button.textContent = 'Envoi terminé !';

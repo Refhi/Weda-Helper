@@ -210,6 +210,40 @@ const availableFunctions = {
             }
         },
         execute: ({ nomCible } = {}) => supprimerAntecedent(nomCible)
+    },
+    insertWedaDocument: {
+        definition: {
+            type: "function",
+            function: {
+                name: "insertWedaDocument",
+                description: "Crée un nouveau document (consultation, certificat, demande ou courrier) pour le patient actuellement ouvert dans Weda, via un iframe caché, puis l'enregistre. Utile pour rédiger rapidement un document à partir d'un contenu fourni par l'utilisateur.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        target: {
+                            type: "string",
+                            enum: ["toConsultation", "toCertificat", "toDemande", "toCourrier"],
+                            description: "Type de document à créer."
+                        },
+                        title: {
+                            type: "string",
+                            description: "Titre du document (champ 'Titre'). Optionnel."
+                        },
+                        subtitle: {
+                            type: "string",
+                            description: "Sous-titre du document (champ 'Titre du document'). Optionnel."
+                        },
+                        content: {
+                            type: "string",
+                            description: "Contenu texte à insérer dans la zone de saisie du document."
+                        }
+                    },
+                    required: ["target", "content"]
+                }
+            }
+        },
+        // Référence indirecte : insertData n'existe que côté content script (dataInserter.js).
+        execute: ({ target, title, subtitle, content } = {}) => insertData(target, { title, subtitle, content })
     }
 };
 

@@ -1062,5 +1062,11 @@ var advancedDefaultSettings = [
             "description": "Active le panneau de test d'insertion d'antécédents.",
             "longDescription": "Affiche un panneau pour tester rapidement l'insertion des antécédents. Utile pour les développeurs.",
             "default": false
+        }, {
+            "name": "boutonTestDataInserter",
+            "type": TYPE_BOOL,
+            "description": "Active le panneau de test de dataInserter.",
+            "longDescription": "Affiche un panneau pour tester rapidement l'insertion de documents (consultation, certificat, demande, courrier). Utile pour les développeurs.",
+            "default": false
         }],
     }];
