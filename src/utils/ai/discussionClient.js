@@ -686,6 +686,11 @@ async function addAIChatClient() {
      */
     let activeGeneration = null;
 
+    // Passe à true après le premier rendu complet de l'historique (stateSync) : évite qu'un resync
+    // ultérieur (déclenché à chaque reconnexion du port, ex: réveil du service worker toutes les
+    // ~30s) n'efface les notices système et bulles de réflexion, absentes de l'historique persisté.
+    let hasRenderedInitialState = false;
+
 
     const chatWindow = widget.querySelector('#wedaHelper-chat-window');
     const chatHeader = widget.querySelector('#wedaHelper-chat-header');
@@ -1232,6 +1237,7 @@ async function addAIChatClient() {
         renderAttachmentsPreview();
         chatMessages.innerHTML = '';
         infoPopover.classList.remove('open');
+        hasRenderedInitialState = false;
         sendOffscreenMessage({ type: 'subscribe', patientId: chatPatientId });
         sendOffscreenMessage({ type: 'requestState', patientId: chatPatientId });
         return true;
@@ -1699,7 +1705,13 @@ async function addAIChatClient() {
         switch (message.type) {
             case 'stateSync':
                 selectedModel = message.selectedModel || selectedModel;
-                renderHistoryFromState(message.history || []);
+                // Ne reconstruit l'affichage qu'une seule fois (premier chargement / changement de
+                // patient) : les resyncs suivants (reconnexion du port) ne doivent pas effacer les
+                // notices système et bulles de réflexion déjà affichées, absentes de l'historique persisté.
+                if (!hasRenderedInitialState) {
+                    hasRenderedInitialState = true;
+                    renderHistoryFromState(message.history || []);
+                }
                 if (message.liveGeneration) {
                     // Une génération est déjà en cours (lancée depuis un autre onglet) : on rejoue son
                     // instantané pour rattraper immédiatement l'affichage, sans attendre le prochain événement.
