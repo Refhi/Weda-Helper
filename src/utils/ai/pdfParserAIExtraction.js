@@ -125,7 +125,14 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
     for (const field of missingFields) {
         const value = parsedFields?.[field.key];
         if (value === undefined || value === null || value === '') continue;
-        completedFields[field.key] = field.key === 'nameMatches' ? [value].flat() : value;
+        if (field.key === 'nameMatches') {
+            completedFields[field.key] = [value].flat();
+        } else if (field.key === 'documentCommentaire') {
+            // Marque le commentaire comme généré par l'IA, pour distinction visuelle dans le formulaire
+            completedFields[field.key] = `[IA] ${value}`;
+        } else {
+            completedFields[field.key] = value;
+        }
     }
 
     console.log('[pdfParserAIExtraction] Champs complétés par l\'IA :', completedFields);
