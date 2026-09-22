@@ -40,22 +40,23 @@ function resolvePendingPdfParserFields(fields) {
 }
 
 /**
- * Tente de compléter, via l'assistant IA local, les champs de `extractedData` non trouvés par
- * l'analyse regex. N'écrase jamais une valeur déjà trouvée. Échoue silencieusement (log uniquement)
- * si l'option est désactivée, le chat IA indisponible, ou la fonction jamais appelée : le PDF Parser
- * continue alors normalement avec les seules données regex.
- * @param {object} extractedData - Modifié en place avec les champs complétés par l'IA.
+ * Tente de compléter, via l'assistant IA local, les champs non trouvés par l'analyse regex dans
+ * `extractedData`. Échoue silencieusement (log uniquement) si l'option est désactivée, le chat IA
+ * indisponible, ou la fonction jamais appelée : le PDF Parser continue alors normalement avec les
+ * seules données regex.
+ * @param {object} extractedData - Données déjà extraites, utilisées pour déterminer les champs manquants (non modifié).
  * @param {string} fullText - Texte complet du PDF, envoyé au modèle si suffisamment lisible.
  * @param {string|null} urlPDF - URL du PDF (@see extractBasePdfData), utilisée pour envoyer le PDF
  * complet en pièce jointe (@see discussionClient.js sendPromptWithFile) quand le texte extrait est
  * absent ou illisible (PDF scanné, police non standard...).
+ * @returns {Promise<object>} Les champs complétés par l'IA (sous-ensemble de PDF_PARSER_AI_FIELDS), objet vide si rien n'a pu être complété.
  */
 async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = null) {
     const missingFields = PDF_PARSER_AI_FIELDS.filter(field => field.missing(extractedData[field.key]));
-    if (missingFields.length === 0) return;
+    if (missingFields.length === 0) return {};
 
     const aiExtractionEnabled = await getOptionPromise('PdfParserAutoAIExtraction');
-    if (!aiExtractionEnabled) return;
+    if (!aiExtractionEnabled) return {};
 
     const chatApi = await Promise.race([
         whenChatApiReady(),
@@ -63,7 +64,7 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
     ]);
     if (!chatApi) {
         console.warn('[pdfParserAIExtraction] Client de chat IA indisponible (désactivé ou non chargé), poursuite sans complétion IA.');
-        return;
+        return {};
     }
 
     // Repart d'une conversation vierge à chaque PDF : sans cela, l'historique (et les pièces
@@ -117,16 +118,17 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
         });
     } catch (error) {
         console.warn('[pdfParserAIExtraction] Échec de la complétion IA, poursuite sans ces champs :', error.message || error);
-        return;
+        return {};
     }
 
-
+    const completedFields = {};
     for (const field of missingFields) {
         const value = parsedFields?.[field.key];
         if (value === undefined || value === null || value === '') continue;
-        extractedData[field.key] = field.key === 'nameMatches' ? [value].flat() : value;
+        completedFields[field.key] = field.key === 'nameMatches' ? [value].flat() : value;
     }
 
-    console.log('[pdfParserAIExtraction] Champs complétés par l\'IA :', extractedData);
+    console.log('[pdfParserAIExtraction] Champs complétés par l\'IA :', completedFields);
+    return completedFields;
 }
 

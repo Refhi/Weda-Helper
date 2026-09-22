@@ -737,8 +737,8 @@ async function handleDataExtraction(fullText, urlPDF, hashId) {
 
         // On ajoute les données manquantes par l'ia si nécessaire
         console.log("[pdfParser] Vérification des données manquantes avant complétion IA.");
-        const aiReturn = await completeExtractedDataWithAI(extractedData, fullText, urlPDF);
-        if (aiReturn) {extractedData = aiReturn}
+        const aiCompletedFields = await completeExtractedDataWithAI(extractedData, fullText, urlPDF);
+        Object.assign(extractedData, aiCompletedFields);
         console.log("[pdfParser] Données après complétion IA.", extractedData);
         
 
