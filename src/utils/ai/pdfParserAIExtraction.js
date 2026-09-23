@@ -29,7 +29,7 @@ const PDF_PARSER_AI_FULL_MODE_FIELDS = [
 
 // Délai maximum d'attente de l'appel de fonction submitPdfParserFields avant d'abandonner (le
 // client de chat peut être indisponible, désactivé, ou le modèle peut ne jamais appeler la fonction).
-const PDF_PARSER_AI_TIMEOUT_MS = 30000;
+const PDF_PARSER_AI_TIMEOUT_MS = 60000;
 
 // Résolveur de la complétion IA en cours (un seul PDF traité à la fois), appelé par le tool call
 // "submitPdfParserFields" une fois le modèle exécuté (@see callableFunctions.js).
@@ -42,7 +42,10 @@ let pendingPdfParserResolve = null;
  */
 function resolvePendingPdfParserFields(fields) {
     if (!pendingPdfParserResolve) {
-        return { error: "Aucune complétion du PDF Parser en attente." };
+        // Lève une erreur (plutôt que de la renvoyer comme résultat) pour que le tool call soit
+        // marqué en échec côté chat (bulle ❌) et que le modèle en informe explicitement l'utilisateur,
+        // au lieu d'un résultat "réussi" contenant silencieusement un champ error ignoré.
+        throw new Error("Aucune complétion du PDF Parser en attente (délai déjà dépassé, ou fonction appelée deux fois pour la même demande).");
     }
     pendingPdfParserResolve(fields);
     pendingPdfParserResolve = null;
