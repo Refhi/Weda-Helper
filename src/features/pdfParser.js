@@ -737,7 +737,10 @@ async function handleDataExtraction(fullText, urlPDF, hashId) {
 
         // On ajoute les données manquantes par l'ia si nécessaire
         console.log("[pdfParser] Vérification des données manquantes avant complétion IA.");
-        const aiCompletedFields = await completeExtractedDataWithAI(extractedData, fullText, urlPDF);
+        // En mode complet (PdfParserAutoAIFullMode), l'IA doit choisir la classification parmi les
+        // valeurs réellement disponibles dans le menu déroulant, récupérées ici au moment de l'appel.
+        const possibleDocumentTypes = initDocumentTypes();
+        const aiCompletedFields = await completeExtractedDataWithAI(extractedData, fullText, urlPDF, possibleDocumentTypes);
         Object.assign(extractedData, aiCompletedFields);
         console.log("[pdfParser] Données après complétion IA.", extractedData);
         

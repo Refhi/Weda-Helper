@@ -331,7 +331,7 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "submitPdfParserFields",
-                description: "Renvoie les champs demandés par une complétion automatique du PDF Parser (documentDate, dateOfBirth, nameMatches, documentCommentaire) déduits du texte du document fourni dans le message. À n'appeler QUE en réponse à une telle demande explicite, jamais spontanément.",
+                description: "Renvoie les champs demandés par une complétion automatique du PDF Parser, déduits du texte du document fourni dans le message. À n'appeler QUE en réponse à une telle demande explicite, jamais spontanément. Les champs documentTitle, destinationClass et documentType ne sont demandés que si le mode complet est activé, et doivent alors respecter les valeurs autorisées indiquées dans le message.",
                 parameters: {
                     type: "object",
                     properties: {
@@ -342,7 +342,10 @@ const availableFunctions = {
                             items: { type: "string" },
                             description: "Nom complet (nom et prénom) du patient. Tableau vide si introuvable."
                         },
-                        documentCommentaire: { type: "string", description: "Bref commentaire (1 à 2 phrases) résumant le contenu du document. Laisser vide si non pertinent." }
+                        documentCommentaire: { type: "string", description: "Bref commentaire (1 à 2 phrases) résumant le contenu du document. Laisser vide si non pertinent." },
+                        documentTitle: { type: "string", description: "Titre complet du document, tel qu'il doit apparaître dans le dossier patient." },
+                        destinationClass: { type: "string", enum: ["1", "2", "3"], description: "Destination du classement : '1' pour Consultation, '2' pour Résultats d'examens, '3' pour Courrier." },
+                        documentType: { type: "string", description: "Classification du document, parmi les valeurs autorisées indiquées dans le message." }
                     },
                     required: []
                 }
@@ -352,5 +355,7 @@ const availableFunctions = {
         execute: (args) => resolvePendingPdfParserFields(args)
     }
 };
+
+
 
 

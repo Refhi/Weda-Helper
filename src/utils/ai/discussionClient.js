@@ -2020,6 +2020,7 @@ async function addAIChatClient() {
         sendPromptWithFile: submitPromptWithFile,
         switchToPatient,
         resetConversation,
+        stop: stopGeneration,
         open: () => { if (!isOpen) toggleChat(); }
     });
 }

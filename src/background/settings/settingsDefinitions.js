@@ -401,7 +401,7 @@ var advancedDefaultSettings = [
                             "name": "PdfParserAutoCategoryDict",
                             "type": TYPE_JSON,
                             "description": "Catégorie de classement du document importé [category]",
-                            "longDescription": "Parcours la liste et valide la première catégorie qui correspond.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple. Vous devez initialiser la votre depuis la fenêtre des imports avec la petite icone ⚙️.",
+                            "longDescription": "Parcours la liste et valide la première catégorie qui correspond.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple. Vous devez initialiser la votre depuis la fenêtre des imports avec la petite icone ⚙️.\n\nPour laisser l'IA déterminer elle-même la classification : videz ce champ (liste vide) et cochez l'option 'Laisse l'IA déterminer elle-même le titre, la destination et la classification du document' dans la partie IA.",
                             "default": PdfParserAutoCategoryDefaut
                         }, {
                             "name": "PdfParserAutoSpecialiteDict",
@@ -468,7 +468,7 @@ var advancedDefaultSettings = [
                         "name": "PdfParserAutoDestinationClassDict",
                         "type": TYPE_JSON,
                         "description": "Règles de classification : destination du document importé",
-                        "longDescription": "Règles pour déterminer automatiquement si un document doit être classé en :\n1 : Consultation\n2 : Résultats d'examens\n3 : Courrier\n\nL'ordre définit la priorité de détection.",
+                        "longDescription": "Règles pour déterminer automatiquement si un document doit être classé en :\n1 : Consultation\n2 : Résultats d'examens\n3 : Courrier\n\nL'ordre définit la priorité de détection.\n\nPour laisser l'IA déterminer elle-même la destination : videz ce champ (liste vide) et cochez l'option 'Laisse l'IA déterminer elle-même le titre, la destination et la classification du document' dans la partie IA.",
                         "default": PdfParserAutoDestinationClass
                     }]
                 }, {
@@ -1027,6 +1027,12 @@ var advancedDefaultSettings = [
                     "type": TYPE_LARGETEXT,
                     "description": "Prompt système envoyé à l'IA pour compléter les champs manquants du PDF Parser.",
                     "default": "Tu es un extracteur de données médicales. On te fournit le texte brut d'un document PDF importé dans un dossier patient. On va te demander de compléter certains champs à partir de ce texte. Pour le commentaire, tu dois décrire en une petite phrase la nature du document et sa conclusion si possible, sans y mettre nom du patient, nom du correspondant, date du document ou date de naissance."
+                }, {
+                    "name": "PdfParserAutoAIFullMode",
+                    "type": TYPE_BOOL,
+                    "description": "Laisse l'IA déterminer elle-même le titre, la destination (Consultation/Résultats d'examens/Courrier) et la classification du document, au lieu de s'appuyer uniquement sur l'analyse par mots-clés.",
+                    "longDescription": "La liste des classifications réellement disponibles dans Weda est transmise à l'IA pour qu'elle choisisse parmi celles-ci. Voir aussi les options 'Catégorie de classement' et 'Règles de classification : destination' pour n'activer l'IA que sur l'une de ces deux thématiques.",
+                    "default": false
                 }]
             }]
         }]
