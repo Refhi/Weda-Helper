@@ -242,7 +242,7 @@ async function addAIChatClient() {
         }
         #wedaHelper-close-chat { background: none; border: none; color: white; cursor: pointer; font-size: 20px; }
         #wedaHelper-info-chat {
-            background: #2f80ed;
+            background: white;
             color: white;
             border: none;
             border-radius: 50%;
@@ -250,15 +250,14 @@ async function addAIChatClient() {
             height: 22px;
             min-width: 22px;
             cursor: pointer;
-            font-size: 13px;
-            font-weight: bold;
+            font-size: 12px;
             line-height: 1;
             display: flex;
             align-items: center;
             justify-content: center;
             margin-right: 8px;
         }
-        #wedaHelper-info-chat:hover { background: #1c66c9; }
+        #wedaHelper-info-chat:hover { background: #dcdcdc; }
         #wedaHelper-reset-chat {
             background: #e05252;
             color: white;
@@ -640,7 +639,7 @@ async function addAIChatClient() {
                 <span>Assistant Local</span>
                 <div id="wedaHelper-header-actions">
                     <button id="wedaHelper-reset-chat" type="button" title="Réinitialiser la conversation">↺</button>
-                    <button id="wedaHelper-info-chat" type="button" title="Informations">?</button>
+                    <button id="wedaHelper-info-chat" type="button" title="Paramètres">⚙️</button>
                     <button id="wedaHelper-close-chat" type="button">&times;</button>
                 </div>
             </div>
@@ -1227,8 +1226,11 @@ async function addAIChatClient() {
         return `
             <button id="wedaHelper-disable-connector" type="button">Désactiver l'Assistant Local</button>
             <h4>Modèle utilisé</h4>
-            <pre>${getCurrentModel()} (hôte : ${aiParams.host || 'localhost'})</pre>
-            ${hasMultipleModels ? `<select id="wedaHelper-model-select">${modelOptions}</select>` : ''}
+            ${hasMultipleModels
+                ? `<select id="wedaHelper-model-select">${modelOptions}</select>`
+                : `<pre>${getCurrentModel()} (hôte : ${aiParams.host || 'localhost'})</pre>`}
+            <h4>Tool Calling</h4>
+            <pre>Max. Tool Calling = ${aiParams.MAX_TOOL_CALL_DEPTH}, cf. options Weda-Helper</pre>
             <h4>Prompt système</h4>
             <pre>${aiParams.basicSystemPrompt || '(aucun)'}</pre>
             <h4>Fonctions appelables</h4>

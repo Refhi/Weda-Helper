@@ -166,7 +166,7 @@ const aiParamsReady = (async () => {
     aiParams.apiKey = await getOptionPromise('IAassistantApiKey') // Normalement non utilisé, mais bon, autant être propre.
     aiParams.preferredModel = await getOptionPromise('IAassistantModelName') // Nom du modèle préféré (juste le nom, indépendant du port), ex: "qwen3.5:9b", ou "auto"
     aiParams.toolCalling = await getOptionPromise('AIAssistantToolCalling') // true/false pour activer le function calling
-    aiParams.MAX_TOOL_CALL_DEPTH =  5 // Nombre maximum d'allers-retours de function calling avant d'abandonner (évite les boucles infinies)
+    aiParams.MAX_TOOL_CALL_DEPTH = toPositiveIntegerOrFallback(await getOptionPromise('IAassistantMaxToolCalls'), 5) // Nombre maximum d'allers-retours de function calling avant d'abandonner (évite les boucles infinies)
     aiParams.basicSystemPrompt = await getOptionPromise('IAassistantMainSystemPrompt') // Prompt de base pour le modèle
     aiParams.contextTokenLimit = toPositiveIntegerOrFallback(await getOptionPromise('IAassistantContextLimit'), 0)
     aiParams.maxTokensOutput = toPositiveIntegerOrFallback(await getOptionPromise('IAassistantMaxTokensOutput'), null)
