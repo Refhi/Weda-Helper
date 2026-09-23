@@ -1249,15 +1249,22 @@ async function addAIChatClient() {
         infoPopover.classList.remove('open');
     }
 
+    // Callback appelé une seule fois, après que le prochain 'stateSync' pour le patient ciblé par
+    // switchToPatient ait été appliqué (@see handleOffscreenMessage 'stateSync') : permet à un
+    // appelant externe (ex: pdfParserAIExtraction.js) d'attendre la fin de la resynchronisation
+    // avant d'envoyer un prompt, pour éviter qu'il ne soit effacé par un stateSync arrivant après coup.
+    let onNextStateSyncRendered = null;
+
     /**
      * Change le patient associé à la conversation courante (commande /patient, ou appelé
      * directement via l'API publiée par publishChatApi) : la conversation offpage étant indexée
      * par patientId, changer d'id revient à basculer sur une conversation différente (nouvelle ou
      * déjà existante si un autre onglet discute déjà avec ce patient).
      * @param {string} newPatientId
-     * @returns {boolean} false si l'id est vide ou déjà celui en cours.
+     * @param {() => void} [onSynced] - Rappelé une fois le prochain stateSync pour ce patient appliqué.
+     * @returns {boolean} false si l'id est vide ou déjà celui en cours (onSynced n'est alors jamais appelé).
      */
-    function switchToPatient(newPatientId) {
+    function switchToPatient(newPatientId, onSynced) {
         if (!newPatientId || newPatientId === chatPatientId) return false;
         chatPatientId = newPatientId;
         pendingAttachments = [];
@@ -1265,6 +1272,7 @@ async function addAIChatClient() {
         chatMessages.innerHTML = '';
         infoPopover.classList.remove('open');
         hasRenderedInitialState = false;
+        onNextStateSyncRendered = onSynced || null;
         sendOffscreenMessage({ type: 'subscribe', patientId: chatPatientId });
         sendOffscreenMessage({ type: 'requestState', patientId: chatPatientId });
         return true;
@@ -1769,6 +1777,11 @@ async function addAIChatClient() {
                     hasRenderedInitialState = true;
                     renderHistoryFromState(message.history || []);
                 }
+                if (onNextStateSyncRendered) {
+                    const callback = onNextStateSyncRendered;
+                    onNextStateSyncRendered = null;
+                    callback();
+                }
                 if (message.liveGeneration) {
                     // Une génération est déjà en cours (lancée depuis un autre onglet) : on rejoue son
                     // instantané pour rattraper immédiatement l'affichage, sans attendre le prochain événement.
@@ -2018,7 +2031,14 @@ async function addAIChatClient() {
     publishChatApi({
         sendPrompt: (text) => submitUserMessage(text, []),
         sendPromptWithFile: submitPromptWithFile,
-        switchToPatient,
+        // Renvoie une Promise résolue une fois le prochain stateSync appliqué (ou immédiatement si
+        // aucun changement n'était nécessaire) : permet à l'appelant (ex: pdfParserAIExtraction.js)
+        // d'attendre la resynchronisation avant d'envoyer un prompt, pour éviter qu'il ne soit
+        // effacé par un stateSync arrivant après coup (@see switchToPatient).
+        switchToPatient: (newPatientId) => new Promise((resolve) => {
+            const switched = switchToPatient(newPatientId, () => resolve(true));
+            if (!switched) resolve(false);
+        }),
         resetConversation,
         stop: stopGeneration,
         open: () => { if (!isOpen) toggleChat(); }
