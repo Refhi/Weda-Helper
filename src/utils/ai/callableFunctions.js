@@ -68,19 +68,26 @@ async function chargerIndexCim10() {
 }
 
 /**
- * Fonction appelable par le modèle pour rechercher des codes CIM-10 correspondant à un terme (recherche floue sur
- * le libellé officiel et les synonymes). Ne modifie rien dans Weda : c'est à l'IA d'examiner les résultats retournés
- * et de choisir le code le plus pertinent avant d'appeler insertAntecedent, ou de se rabattre sur un antécédent
- * libre si aucun résultat ne correspond réellement au diagnostic voulu (éviter la sur-précision, ex. ne pas choisir
- * un germe précis non mentionné par l'utilisateur).
+ * Fonction appelable par le modèle pour rechercher des codes CIM-10 correspondant à un ou plusieurs termes
+ * (recherche floue sur le libellé officiel et les synonymes). Accepte `terme` (unique, rétrocompat) et/ou `termes`
+ * (lot) afin d'éviter un aller-retour tool-call par diagnostic quand plusieurs codes sont à chercher d'un coup.
+ * Ne modifie rien dans Weda : c'est à l'IA d'examiner les résultats retournés et de choisir le code le plus
+ * pertinent avant d'appeler traiterAntecedents (action='ajouter'), ou de se rabattre sur un antécédent libre si aucun résultat ne
+ * correspond réellement au diagnostic voulu (éviter la sur-précision, ex. ne pas choisir un germe précis non
+ * mentionné par l'utilisateur).
  */
-async function rechercherCim10({ terme, limite = 20 } = {}) {
-    console.log(`[rechercherCim10] Appelée avec:`, { terme, limite });
-    if (!terme) return { error: "Aucun terme de recherche fourni." };
+async function rechercherCim10({ terme, termes, limite = 20 } = {}) {
+    const termesAChercher = [...new Set([...(Array.isArray(termes) ? termes : []), terme].filter(Boolean))];
+    console.log(`[rechercherCim10] Appelée avec:`, { termesAChercher, limite });
+    if (!termesAChercher.length) return { error: "Aucun terme de recherche fourni (utiliser 'terme' ou 'termes')." };
     try {
         const fuse = await chargerIndexCim10();
-        const resultats = fuse.search(terme, { limit: limite });
-        return resultats.map(r => ({ code: r.item.code, label: r.item.label, score: r.score }));
+        const resultatsParTerme = termesAChercher.map(t => ({
+            terme: t,
+            resultats: fuse.search(t, { limit: limite }).map(r => ({ code: r.item.code, label: r.item.label, score: r.score }))
+        }));
+        // Un seul terme demandé : renvoie directement la liste des résultats (rétrocompat avec l'ancien format).
+        return termesAChercher.length === 1 ? resultatsParTerme[0].resultats : resultatsParTerme;
     } catch (e) {
         console.error("[rechercherCim10] Erreur lors de la recherche :", e);
         return { error: `Erreur lors de la recherche CIM-10 : ${e.message || e}` };
@@ -178,120 +185,87 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "rechercherCim10",
-                description: "Recherche des codes CIM-10 (diagnostics) correspondant à un terme, par recherche floue sur le libellé officiel et les synonymes. Renvoie jusqu'à 20 résultats {code, label, score}. IMPORTANT : à appeler systématiquement avant insertAntecedent avec searchType='CIM10' ; examiner les résultats et choisir le code le plus pertinent et le moins spécifique que nécessaire (ex. préférer un code 'sans précision' si l'utilisateur n'a donné aucun détail complémentaire). Si aucun résultat ne correspond réellement au diagnostic voulu, se rabattre sur un antécédent libre (insertAntecedent sans searchType).",
+                description: "Recherche des codes CIM-10 (diagnostics) correspondant à un ou plusieurs termes, par recherche floue sur le libellé officiel et les synonymes. Utiliser 'termes' (tableau) pour chercher plusieurs diagnostics en un seul appel plutôt que d'enchaîner plusieurs appels successifs. Renvoie jusqu'à 'limite' résultats {code, label, score} par terme (résultats groupés par terme si 'termes' contient plusieurs entrées). IMPORTANT : à appeler systématiquement avant traiterAntecedents (action='ajouter') avec searchType='CIM10' ; examiner les résultats et choisir le code le plus pertinent et le moins spécifique que nécessaire (ex. préférer un code 'sans précision' si l'utilisateur n'a donné aucun détail complémentaire). Si aucun résultat ne correspond réellement au diagnostic voulu, se rabattre sur un antécédent libre (action='ajouter' sans searchType).",
                 parameters: {
                     type: "object",
                     properties: {
                         terme: {
                             type: "string",
-                            description: "Terme médical à rechercher, ex. 'pneumonie'."
+                            description: "Terme médical unique à rechercher, ex. 'pneumonie'. Préférer 'termes' si plusieurs diagnostics sont à chercher."
+                        },
+                        termes: {
+                            type: "array",
+                            items: { type: "string" },
+                            description: "Liste de termes médicaux à rechercher en un seul appel, ex. ['pneumonie', 'diabète type 2']."
                         },
                         limite: {
                             type: "integer",
-                            description: "Nombre maximal de résultats à renvoyer (défaut 20)."
+                            description: "Nombre maximal de résultats à renvoyer par terme (défaut 20)."
                         }
-                    },
-                    required: ["terme"]
+                    }
                 }
             }
         },
-        execute: ({ terme, limite } = {}) => rechercherCim10({ terme, limite })
+        execute: ({ terme, termes, limite } = {}) => rechercherCim10({ terme, termes, limite })
     },
-    insertAntecedent: {
+    traiterAntecedents: {
         definition: {
             type: "function",
             function: {
-                name: "insertAntecedent",
-                description: "Ajoute un nouvel antécédent (libre, ou issu d'une recherche CIM-10/allergie/médicament) au dossier du patient actuellement ouvert dans Weda. Ouvre et remplit le panneau de saisie puis valide. IMPORTANT : appeler au préalable recoverPatientData avec categories=['antecedents'] pour connaître les onglets disponibles et éviter les doublons avec des antécédents déjà présents. Pour searchType='CIM10', appeler d'abord rechercherCim10 et fournir dans 'nom' le CODE exact choisi parmi ses résultats (pas un libellé libre) ; si aucun résultat n'est pertinent, omettre searchType pour créer un antécédent libre à la place.",
+                name: "traiterAntecedents",
+                description: "Ajoute, modifie et/ou supprime un ou plusieurs antécédents du dossier du patient actuellement ouvert dans Weda, en une seule instruction. Chaque opération est traitée séquentiellement, dans l'ordre fourni. IMPORTANT : appeler au préalable recoverPatientData avec categories=['antecedents'] pour connaître les onglets/noms exacts existants et éviter les doublons ; pour action='ajouter' avec searchType='CIM10', appeler d'abord rechercherCim10 et fournir dans 'nom' le CODE exact choisi parmi ses résultats (pas un libellé libre). Les opérations 'modifier'/'supprimer' déclenchent chacune leur propre confirmation utilisateur avant application. Renvoie un tableau de résultats {action, nomCible, success, message}, dans le même ordre que les opérations fournies.",
                 parameters: {
                     type: "object",
                     properties: {
-                        searchType: {
-                            type: "string",
-                            enum: ["CIM10", "allergieMolecule", "allergiePrinceps"],
-                            description: "Modalité de recherche à utiliser. Si absent, un antécédent libre est créé (le champ 'nom' est alors utilisé tel quel)."
-                        },
-                        nom: {
-                            type: "string",
-                            description: "Nom de l'antécédent (saisie libre), ou terme à rechercher si searchType est 'allergieMolecule'/'allergiePrinceps'. Pour searchType='CIM10', doit être le code exact obtenu via rechercherCim10 (ex. 'J18.9')."
-                        },
-                        onglet: {
-                            type: "string",
-                            description: "Titre ou catégorie de l'onglet cible (ex. 'ANTÉCÉDENTS MÉDICAUX'). Si absent, le premier onglet autorisé est utilisé."
-                        },
-                        commentaire: { type: "string", description: "Commentaire libre associé à l'antécédent." },
-                        dateDebut: { type: "string", description: "Date de début au format jj/mm/aaaa." },
-                        dateFin: { type: "string", description: "Date de fin au format jj/mm/aaaa." },
-                        datePonctuelle: { type: "string", description: "Date ponctuelle au format jj/mm/aaaa." },
-                        dateAlerte: { type: "string", description: "Date d'alerte au format jj/mm/aaaa." },
-                        couleur: { type: "string", description: "Couleur de l'antécédent au format hexadécimal, ex. '#0099ff'." },
-                        validation: {
-                            type: "string",
-                            enum: ["1", "2", "3", "4", "5"],
-                            description: "Statut de validation : 1=Confirmé, 2=Hypothétique, 3=Non confirmé, 4=Exclu, 5=Désactivé."
-                        },
-                        lateralite: {
-                            type: "string",
-                            enum: ["0", "1", "2", "3"],
-                            description: "Latéralité : 0=non spécifié, 1=Droite, 2=Gauche, 3=D + G."
-                        },
-                        tri: { type: "string", description: "Ordre de tri (valeur numérique, plus petit = plus haut dans la liste)." },
-                        isImportant: { type: "boolean", description: "Affiche l'antécédent en gras." },
-                        isHeritage: { type: "boolean", description: "Marque l'antécédent comme héréditaire (visible sur les ayants-droits)." },
-                        isPrive: { type: "boolean", description: "Rend l'antécédent privé, visible uniquement par son créateur." },
-                        isExclureVsm: { type: "boolean", description: "Exclut l'antécédent du VSM." }
+                        operations: {
+                            type: "array",
+                            description: "Liste ordonnée d'une ou plusieurs opérations à exécuter séquentiellement.",
+                            items: {
+                                type: "object",
+                                properties: {
+                                    action: {
+                                        type: "string",
+                                        enum: ["ajouter", "modifier", "supprimer"],
+                                        description: "Type d'opération à effectuer."
+                                    },
+                                    nomCible: {
+                                        type: "string",
+                                        description: "Requis pour 'modifier'/'supprimer' : nom (ou début du nom) de l'antécédent existant ciblé."
+                                    },
+                                    data: {
+                                        type: "object",
+                                        description: "Requis pour 'ajouter'/'modifier' (ignoré pour 'supprimer'). Pour 'ajouter' : searchType ('CIM10'/'allergieMolecule'/'allergiePrinceps', absent = antécédent libre), nom (saisie libre, terme de recherche, ou code CIM-10 exact selon searchType). Pour 'modifier' : seuls les champs fournis sont modifiés. Propriétés communes : onglet (libellé exact de l'onglet cible, ex. 'ANTÉCÉDENTS GYNECOLOGIQUES'), commentaire, dateDebut/dateFin/datePonctuelle/dateAlerte (jj/mm/aaaa), couleur (hexadécimal), validation ('1'=Confirmé,'2'=Hypothétique,'3'=Non confirmé,'4'=Exclu,'5'=Désactivé), lateralite ('0'=non spécifié,'1'=Droite,'2'=Gauche,'3'=D + G), tri (ordre numérique), isImportant, isHeritage, isPrive, isExclureVsm (booléens).",
+                                        properties: {
+                                            searchType: { type: "string", enum: ["CIM10", "allergieMolecule", "allergiePrinceps"] },
+                                            nom: { type: "string" },
+                                            onglet: { type: "string" },
+                                            commentaire: { type: "string" },
+                                            dateDebut: { type: "string" },
+                                            dateFin: { type: "string" },
+                                            datePonctuelle: { type: "string" },
+                                            dateAlerte: { type: "string" },
+                                            couleur: { type: "string" },
+                                            validation: { type: "string", enum: ["1", "2", "3", "4", "5"] },
+                                            lateralite: { type: "string", enum: ["0", "1", "2", "3"] },
+                                            tri: { type: "string" },
+                                            isImportant: { type: "boolean" },
+                                            isHeritage: { type: "boolean" },
+                                            isPrive: { type: "boolean" },
+                                            isExclureVsm: { type: "boolean" }
+                                        }
+                                    }
+                                },
+                                required: ["action"]
+                            }
+                        }
                     },
-                    required: []
+                    required: ["operations"]
                 }
             }
         },
-        // Référence indirecte : insertAntecedent n'existe que côté content script (dataInserterATCD.js),
+        // Référence indirecte : traiterAntecedentsBatch n'existe que côté content script (dataInserterATCD.js),
         // pas dans la page offscreen qui ne fait que lire les `definition` de ce registre.
-        execute: (args) => insertAntecedent(args)
-    },
-    modifierAntecedent: {
-        definition: {
-            type: "function",
-            function: {
-                name: "modifierAntecedent",
-                description: "Modifie un antécédent déjà existant dans le dossier du patient, retrouvé par son nom. Demande une confirmation à l'utilisateur en détaillant les champs qui vont changer avant d'appliquer les modifications. IMPORTANT : appeler au préalable recoverPatientData avec categories=['antecedents'] pour connaître le nom exact et l'état actuel de l'antécédent ciblé.",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        nomCible: {
-                            type: "string",
-                            description: "Nom (ou début du nom) de l'antécédent existant à modifier."
-                        },
-                        data: {
-                            type: "object",
-                            description: "Champs à modifier, mêmes propriétés que insertAntecedent (onglet, commentaire, dateDebut, dateFin, datePonctuelle, dateAlerte, couleur, validation, lateralite, tri, isImportant, isHeritage, isPrive, isExclureVsm). Seuls les champs fournis sont modifiés. 'onglet' doit être le libellé exact de l'onglet cible (ex. 'ANTÉCÉDENTS GYNECOLOGIQUES')."
-                        }
-                    },
-                    required: ["nomCible"]
-                }
-            }
-        },
-        execute: ({ nomCible, data = {} } = {}) => modifierAntecedent(nomCible, data)
-    },
-    supprimerAntecedent: {
-        definition: {
-            type: "function",
-            function: {
-                name: "supprimerAntecedent",
-                description: "Supprime définitivement un antécédent existant dans le dossier du patient, retrouvé par son nom. Demande une confirmation à l'utilisateur avant suppression. IMPORTANT : appeler au préalable recoverPatientData avec categories=['antecedents'] pour vérifier le nom exact de l'antécédent à supprimer.",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        nomCible: {
-                            type: "string",
-                            description: "Nom (ou début du nom) de l'antécédent existant à supprimer. Un appel par antécédent."
-                        }
-                    },
-                    required: ["nomCible"]
-                }
-            }
-        },
-        execute: ({ nomCible } = {}) => supprimerAntecedent(nomCible)
+        execute: ({ operations = [] } = {}) => traiterAntecedentsBatch(operations)
     },
     insertWedaDocument: {
         definition: {

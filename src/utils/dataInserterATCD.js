@@ -86,8 +86,9 @@ const AntecedentFormSelectors = {
 
         // Résultats de la recherche selon la modalité active
         resultats: {
-            // Les résultats CIM-10 sont des icônes "main" (drag) dans l'arbre de recherche, dont le clic déclenche SetParamID(...)
-            CIM10: '#ContentPlaceHolder1_ArbreCim10UCForm1_TreeViewCim10n2 img',
+            // Les résultats CIM-10 sont des icônes "main" (drag) dans l'arbre de recherche, dont le clic déclenche SetParamID(...).
+            // Utilisé uniquement pour attendre l'apparition d'AU MOINS un résultat (voir trouverResultatCim10 pour le choix précis).
+            CIM10: 'img[title="Drag and Drop"]',
             // Les résultats allergie portent un attribut title ("...par rapport à une classe/molécule"), contrairement aux médicaments
             allergieMolecule: '.ap[title]',
             allergiePrinceps: '.ap:not([title])',
@@ -223,6 +224,12 @@ async function _insertAntecedent(data = {}) {
         const resultatSelectionne = await selectionnerPremierResultatRecherche(data.searchType, ongletCible);
         console.log("[dataInserterATCD] Résultat sélectionné :", resultatSelectionne);
 
+        // Pour CIM10, l'absence de résultat "Vos favoris"/"Votre recherche" pertinent est un échec franc :
+        // on n'a jamais le droit de retomber sur un chapitre/bloc générique sans rapport avec le terme cherché.
+        if (data.searchType === "CIM10" && !resultatSelectionne) {
+            return { success: false, message: `Aucun résultat pertinent (favoris/recherche) trouvé pour le code CIM-10 "${toSearch}".` };
+        }
+
         // Dans le cas où une recherche de medicament a été effectuée, et que le princeps contiens
         // plusieurs molécules, il faut pouvoir valider le panneau.
         waitForElementInDocument(() => _atcdDoc, AntecedentFormSelectors.searchPanel.resultats.allergiePrincepsValidationButton, 300)
@@ -324,6 +331,72 @@ async function _supprimerAntecedent(nomCible) {
         window.confirm = originalConfirm;
     }
     return { success: true };
+}
+
+/**
+ * Exécute une liste d'opérations (ajout/modification/suppression) sur les antécédents en réutilisant le
+ * même contexte (même iframe cachée le cas échéant), au lieu d'en rouvrir une par opération.
+ * Peut être appelée depuis n'importe quelle page (voir withAntecedentContext).
+ * @param {Array<{action: 'ajouter'|'modifier'|'supprimer', nomCible?: string, data?: object}>} operations
+ * @param {{debug?: boolean}} [options]
+ * @returns {Promise<Array<object>>} un résultat par opération, dans le même ordre
+ */
+async function traiterAntecedentsBatch(operations = [], options = {}) {
+    return withAntecedentContext(() => _traiterAntecedentsBatch(operations), options);
+}
+
+async function _traiterAntecedentsBatch(operations = []) {
+    const resultats = [];
+    for (const operation of operations) {
+        const { action, nomCible, data = {} } = operation || {};
+        try {
+            let resultat;
+            switch (action) {
+                case 'ajouter':
+                    resultat = await _insertAntecedent({ ...data });
+                    break;
+                case 'modifier':
+                    resultat = await _modifierAntecedent(nomCible, { ...data });
+                    break;
+                case 'supprimer':
+                    resultat = await _supprimerAntecedent(nomCible);
+                    break;
+                default:
+                    resultat = { success: false, message: `Action inconnue : "${action}" (attendu 'ajouter', 'modifier' ou 'supprimer').` };
+            }
+            resultats.push({ action, nomCible, ...resultat });
+        } catch (e) {
+            console.error("[dataInserterATCD] Erreur lors d'une opération du batch :", operation, e);
+            resultats.push({ action, nomCible, success: false, message: `Erreur : ${e.message || e}` });
+        }
+        // Laisse le postback ASP.NET déclenché par l'opération précédente se terminer avant d'enchaîner.
+        await attendreStabilisationPage();
+    }
+    return resultats;
+}
+
+/**
+ * Attend que l'indicateur de chargement ASP.NET (UpdateProgress) soit masqué depuis au moins `stableMs`,
+ * pour éviter d'enchaîner une opération pendant qu'un postback est encore en cours.
+ * @param {number} [stableMs] durée minimale (ms) pendant laquelle l'indicateur doit rester masqué
+ * @param {number} [timeoutMs] délai maximal d'attente avant d'abandonner
+ */
+async function attendreStabilisationPage(stableMs = 300, timeoutMs = 10000) {
+    const selector = '#ContentPlaceHolder1_UpdateProgress1';
+    const debut = Date.now();
+    let masqueDepuis = null;
+    while (Date.now() - debut < timeoutMs) {
+        const element = _atcdDoc.querySelector(selector);
+        const estMasque = !element || element.style.display === 'none' || element.offsetParent === null;
+        if (estMasque) {
+            if (masqueDepuis === null) masqueDepuis = Date.now();
+            if (Date.now() - masqueDepuis >= stableMs) return;
+        } else {
+            masqueDepuis = null;
+        }
+        await sleep(20);
+    }
+    console.warn("[dataInserterATCD] Timeout en attendant la stabilisation de la page (UpdateProgress toujours visible).");
 }
 
 /**
@@ -429,6 +502,41 @@ async function ensureProperSearchType(searchType) {
 }
 
 /**
+ * Choisit le meilleur résultat parmi l'arbre de recherche CIM-10, qui regroupe plusieurs sections
+ * (dans l'ordre d'affichage : "Vos favoris : ...", "Votre recherche : ...", puis les chapitres/blocs
+ * CIM-10 contenant le terme). Chaque section est une <table> d'en-tête suivie d'un <div id="...Nodes">
+ * listant ses résultats cliquables (icônes "main", title="Drag and Drop"). Seules les sections "Vos
+ * favoris" et "Votre recherche" contiennent des diagnostics réellement pertinents pour le terme
+ * recherché : les autres sections (chapitres/blocs CIM-10 génériques) ne doivent JAMAIS être choisies
+ * automatiquement, sous peine de sélectionner un diagnostic sans rapport avec la recherche.
+ * @returns {Element|null} l'icône "main" du résultat choisi, ou null si aucun résultat pertinent n'est présent.
+ */
+function trouverResultatCim10() {
+    const racine = _atcdDoc.querySelector('#ContentPlaceHolder1_ArbreCim10UCForm1_TreeViewCim10');
+    if (!racine) return null;
+
+    const sections = Array.from(racine.querySelectorAll(':scope > table')).map(table => {
+        // Chaque en-tête contient 2 <a id="..."> : l'icône (id se terminant par "i", sans texte) puis le
+        // lien texte réel ("Vos favoris : ...", "Votre recherche : ..."). Ne pas prendre le premier venu.
+        const liensEnTete = Array.from(table.querySelectorAll('a[id]'));
+        const enTete = liensEnTete.find(a => a.textContent.trim().length > 0) || liensEnTete[0];
+        const nodesDiv = table.nextElementSibling?.id?.endsWith('Nodes') ? table.nextElementSibling : null;
+        return {
+            texte: enTete ? enTete.textContent.trim() : '',
+            resultat: nodesDiv ? nodesDiv.querySelector('img[title="Drag and Drop"]') : null
+        };
+    }).filter(s => s.resultat);
+
+    const favoris = sections.find(s => s.texte.startsWith('Vos favoris'));
+    const recherche = sections.find(s => s.texte.startsWith('Votre recherche'));
+    // Ni fallback sur sections[0], ni sur un autre chapitre générique : mieux vaut échouer que
+    // d'insérer un diagnostic sans rapport avec le terme recherché.
+    const choisi = favoris || recherche;
+    console.log("[dataInserterATCD] Sections CIM-10 trouvées :", sections.map(s => s.texte), "→ section retenue :", choisi?.texte || "(aucune, échec)");
+    return choisi?.resultat || null;
+}
+
+/**
  * Selectionne l'antécédent présent dans les résultats de la recherche CIM-10, allergie ou médicament,
  * puis le dépose sur l'onglet visé. Le clic sur le résultat "accroche" l'antécédent à la souris ;
  * il faut ensuite cliquer sur la zone de dépôt de l'onglet cible pour le relâcher et ouvrir le panneau.
@@ -442,14 +550,14 @@ async function selectionnerPremierResultatRecherche(searchType, onglet, timeoutM
     .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente des résultats de recherche :", err));
 
 
-    const resultat = _atcdDoc.querySelector(selecteur1erResultatRecherche);
+    const resultat = searchType === 'CIM10' ? trouverResultatCim10() : _atcdDoc.querySelector(selecteur1erResultatRecherche);
     if (!resultat) {
         console.log("[dataInserterATCD] Aucun résultat de recherche trouvé pour", searchType);
         return null;
     }
 
     console.log("[dataInserterATCD] Premier résultat de recherche sélectionné pour", searchType, ":", resultat, "de selecteur :", selecteur1erResultatRecherche);
-    resultat.click(); 
+    resultat.click(); // Déclenche une alerte CSP dans le log mais fonctionne quand même
 
     if (onglet && onglet.zoneDepot) {
         onglet.zoneDepot.click(); // Dépose l'antécédent sur l'onglet visé, ouvre le panneau
@@ -668,6 +776,27 @@ function ajouterBoutonTest() {
     ligneMode.appendChild(selectMode);
     panneau.appendChild(ligneMode);
 
+    const ligneNombre = document.createElement('div');
+    ligneNombre.style.display = 'flex';
+    ligneNombre.style.justifyContent = 'space-between';
+    ligneNombre.style.alignItems = 'center';
+    ligneNombre.style.gap = '6px';
+    ligneNombre.style.marginBottom = '4px';
+
+    const labelNombre = document.createElement('label');
+    labelNombre.textContent = "Nombre d'exemplaires";
+    ligneNombre.appendChild(labelNombre);
+
+    const inputNombre = document.createElement('input');
+    inputNombre.type = 'number';
+    inputNombre.name = 'nombre';
+    inputNombre.min = '1';
+    inputNombre.value = '1';
+    inputNombre.title = "Uniquement pour l'action 'Insérer' : insère plusieurs fois le même antécédent en un seul batch (via traiterAntecedentsBatch).";
+    inputNombre.style.width = '140px';
+    ligneNombre.appendChild(inputNombre);
+    panneau.appendChild(ligneNombre);
+
     champsFormulaireTest.forEach(({ champ, label, type, options, placeholder }) => {
         const ligne = document.createElement('div');
         ligne.style.display = 'flex';
@@ -712,10 +841,17 @@ function ajouterBoutonTest() {
     bouton.addEventListener('click', () => {
         const mode = panneau.querySelector('[name="mode"]').value;
         const data = lireDonneesFormulaireTest(panneau);
-        console.log(`[dataInserterATCD] Test '${mode}' avec données :`, data);
+        const nombre = Math.max(1, parseInt(panneau.querySelector('[name="nombre"]').value, 10) || 1);
+        console.log(`[dataInserterATCD] Test '${mode}' (x${nombre}) avec données :`, data);
 
         if (mode === 'insert') {
-            console.log(insertAntecedent(data));
+            if (nombre > 1) {
+                // Identiques d'un exemplaire à l'autre, pas grave : le but est juste de tester le batch.
+                const operations = Array.from({ length: nombre }, () => ({ action: 'ajouter', data: { ...data } }));
+                console.log(traiterAntecedentsBatch(operations));
+            } else {
+                console.log(insertAntecedent(data));
+            }
         } else if (mode === 'modifier') {
             const nomCible = data.nom;
             delete data.nom;
