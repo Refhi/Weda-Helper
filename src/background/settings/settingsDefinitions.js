@@ -938,7 +938,7 @@ var advancedDefaultSettings = [
                 "type": TYPE_SMALLTEXT,
                 "description": "Nombre max. d'allers-retours de function calling par réponse.",
                 "longDescription": "Nombre maximum d'allers-retours (appels d'outils successifs) que l'assistant peut effectuer avant d'être forcé de répondre. Évite les boucles infinies si le modèle enchaîne les appels d'outils sans jamais conclure. Augmentez si vos tâches nécessitent beaucoup d'étapes.",
-                "default": "5"
+                "default": "10"
             }, {
                 "name": "IAassistantApiKey",
                 "type": TYPE_SMALLTEXT,
