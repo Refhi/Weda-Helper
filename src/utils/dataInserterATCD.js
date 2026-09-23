@@ -262,7 +262,13 @@ async function _insertAntecedent(data = {}) {
     remplirPaneauAntecedent(data);
 
     // Validation de l'antécédent
-    _atcdDoc.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonValider)?.click();
+    const boutonValider = _atcdDoc.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonValider);
+    if (boutonValider) {
+        console.log("[dataInserterATCD] Bouton de validation trouvé, clic en cours.");
+        boutonValider.click();
+    } else {
+        console.warn("[dataInserterATCD] Bouton de validation introuvable.");
+    }
     return { success: true };
 }
 
@@ -564,7 +570,11 @@ async function selectionnerPremierResultatRecherche(searchType, onglet, timeoutM
     } else {
         console.warn("[dataInserterATCD] Aucune zone de dépôt disponible pour l'onglet visé.");
     }
-    return resultat.textContent;
+    // Pour CIM10, resultat est l'icône <img> "main" (title="Drag and Drop"), sans texte propre :
+    // le libellé réel est porté par le lien <a> englobant. resultat.textContent serait alors une
+    // chaîne vide, faussement interprétée comme un échec par l'appelant (`!resultatSelectionne`).
+    const resultatTexte = resultat.closest('a')?.textContent?.trim() || resultat.textContent?.trim() || resultat.getAttribute('alt') || 'résultat sélectionné';
+    return resultatTexte;
 }
 
 /**
