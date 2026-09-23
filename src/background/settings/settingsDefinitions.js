@@ -964,7 +964,7 @@ var advancedDefaultSettings = [
                 "name": "IAassistantMaxTokensOutput",
                 "type": TYPE_SMALLTEXT,
                 "description": "Nombre max. de tokens de sorties autorisés.",
-                "default": "2048",
+                "default": "4096",
                 "longDescription": "Permet d’empêcher le modèle de générer des réponses trop longues. A augmenter si vous êtes trop souvent confronté à \"limite de tokens (maxTokens) a été atteinte\"."
             }, {
                 "name": "IAassistantPromptShortcut0",

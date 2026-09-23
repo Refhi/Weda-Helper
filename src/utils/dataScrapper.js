@@ -1079,6 +1079,33 @@ function parseAntecedents(container) {
 }
 
 /**
+ * Filtre le résultat de parseAntecedents (sections d'antécédents) selon le type (libre/codifié) et/ou
+ * une plage de dates portant sur un seul champ de date à la fois (debut, fin, ponctuelle ou alerte).
+ * Les sections qui n'ont plus aucun item après filtrage sont retirées du résultat.
+ * @param {Array<{titre: string, items: Array<Object>}>} sections résultat de parseAntecedents
+ * @param {{type?: 'libre'|'codifie', champDate?: 'debut'|'fin'|'ponctuelle'|'alerte', dateRange?: Array<string>}} [filtre]
+ * @returns {Array<{titre: string, items: Array<Object>}>} sections filtrées (nouveau tableau, ne mute pas l'entrée)
+ */
+function filtrerAntecedents(sections, { type, champDate, dateRange } = {}) {
+    if (!Array.isArray(sections)) return sections;
+    if (!type && !champDate) return sections;
+
+    const range = champDate ? resolveDateRange(dateRange) : null;
+
+    return sections
+        .map(section => ({
+            titre: section.titre,
+            items: section.items.filter(item => {
+                if (type === 'libre' && item.cim10Code) return false;
+                if (type === 'codifie' && !item.cim10Code) return false;
+                if (champDate && !isDateStringInRange(item.dates?.[champDate], range)) return false;
+                return true;
+            })
+        }))
+        .filter(section => section.items.length > 0);
+}
+
+/**
  * Extrait l'identifiant d'événement (Eve) et de fichier (Fil) depuis un attribut onclick
  * de type OpenViewBinaryForm('Eve=xxx&Fil=yyy&...', '...')
  * @param {string} onclickAttr - Le contenu de l'attribut onclick

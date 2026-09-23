@@ -104,11 +104,21 @@ async function rechercherCim10({ terme, termes, limite = 20 } = {}) {
 async function recoverPatientData({
     categories = ["consultations"],
     fullPage = false,
-    dateRange = []
+    dateRange = [],
+    antecedentsType,
+    antecedentsChampDate,
+    antecedentsDateRange = []
 } = {}, patientId = null) {
-    console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, dateRange, patientId });
+    console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, dateRange, antecedentsType, antecedentsChampDate, antecedentsDateRange, patientId });
     try {
         const data = await recoverData({ categories, fullPage, dateRange, debug: false, patientId });
+        if (data?.antecedents && (antecedentsType || antecedentsChampDate)) {
+            data.antecedents = filtrerAntecedents(data.antecedents, {
+                type: antecedentsType,
+                champDate: antecedentsChampDate,
+                dateRange: antecedentsDateRange
+            });
+        }
         return data;
     } catch (e) {
         console.error("[recoverPatientData] Erreur lors de la récupération des données :", e);
@@ -152,7 +162,7 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "recoverPatientData",
-                description: "Récupère les données de l'historique du patient actuellement ouvert dans Weda (consultations, résultats d'examens, courriers, arrêts de travail, vaccins, courbes de suivi, documents, grossesse, état civil, antécédents, contacts). Utile pour répondre à des questions sur le dossier du patient en cours.",
+                description: "Récupère les données de l'historique du patient actuellement ouvert dans Weda (consultations, résultats d'examens, courriers, arrêts de travail, vaccins, courbes de suivi, documents, grossesse, état civil, antécédents, contacts). Utile pour répondre à des questions sur le dossier du patient en cours. Pour la catégorie 'antecedents', antecedentsType/antecedentsChampDate/antecedentsDateRange permettent de filtrer par type (libre/codifié) et/ou par plage de dates sur un champ précis (début, fin, ponctuelle, alerte).",
                 parameters: {
                     type: "object",
                     properties: {
@@ -171,6 +181,21 @@ const availableFunctions = {
                         dateRange: {
                             type: "array",
                             description: "Filtre optionnel sur une plage de dates : [dateDebut, dateFin] au format 'jj/mm/aaaa'. Chaque borne est facultative.",
+                            items: { type: "string" }
+                        },
+                        antecedentsType: {
+                            type: "string",
+                            enum: ["libre", "codifie"],
+                            description: "Filtre optionnel sur les antécédents (categories doit inclure 'antecedents') selon leur type : 'libre' (saisie libre, sans code CIM-10) ou 'codifie' (avec un code CIM-10). Si absent, tous les types sont renvoyés."
+                        },
+                        antecedentsChampDate: {
+                            type: "string",
+                            enum: ["debut", "fin", "ponctuelle", "alerte"],
+                            description: "Champ de date des antécédents sur lequel appliquer antecedentsDateRange (Début, Fin, date Ponctuelle ou date d'Alerte). Requis pour que antecedentsDateRange ait un effet."
+                        },
+                        antecedentsDateRange: {
+                            type: "array",
+                            description: "Filtre optionnel sur une plage de dates des antécédents, appliqué au champ désigné par antecedentsChampDate : [dateDebut, dateFin] au format 'jj/mm/aaaa'. Chaque borne est facultative.",
                             items: { type: "string" }
                         }
                     },
