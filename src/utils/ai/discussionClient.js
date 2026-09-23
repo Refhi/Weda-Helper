@@ -713,6 +713,23 @@ async function addAIChatClient() {
     const infoPopover = widget.querySelector('#wedaHelper-info-popover');
     const resetButton = widget.querySelector('#wedaHelper-reset-chat');
     const inputResizeHandle = widget.querySelector('#wedaHelper-input-resize-handle');
+
+    // Ancrage automatique en bas de la conversation : désactivé si l'utilisateur remonte
+    // manuellement pour relire un échange, réactivé dès qu'il revient près du bas.
+    let stickToBottom = true;
+    const STICK_TO_BOTTOM_THRESHOLD = 40; // px de tolérance pour considérer qu'on est "en bas"
+    function isNearBottom() {
+        return chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight <= STICK_TO_BOTTOM_THRESHOLD;
+    }
+    chatMessages.addEventListener('scroll', () => {
+        stickToBottom = isNearBottom();
+    });
+    function scrollChatToBottom(force = false) {
+        if (force || stickToBottom) {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            stickToBottom = true;
+        }
+    }
     const fileInput = widget.querySelector('#wedaHelper-file-input');
     const attachFileButton = widget.querySelector('#wedaHelper-attach-file');
     const attachmentsPreview = widget.querySelector('#wedaHelper-attachments-preview');
@@ -1283,7 +1300,7 @@ async function addAIChatClient() {
         sendOffscreenMessage({ type: 'subscribe', patientId: chatPatientId });
         sendOffscreenMessage({ type: 'requestState', patientId: chatPatientId });
     });
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    scrollChatToBottom(true); // ouverture du chat : toujours ancré en bas
 
     // Le textarea insère un saut de ligne par défaut sur Entrée : on force la soumission,
     // sauf si Shift est maintenu (pour permettre les messages multi-lignes).
@@ -1548,7 +1565,8 @@ async function addAIChatClient() {
         msgDiv.classList.add('message', role === 'user' ? 'user' : 'bot');
         msgDiv.textContent = text;
         chatMessages.appendChild(msgDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        // Un message de l'utilisateur force le réancrage en bas ; un message du bot respecte le décollage manuel.
+        scrollChatToBottom(role === 'user');
         return msgDiv;
     }
 
@@ -1683,7 +1701,7 @@ async function addAIChatClient() {
                 chatMessages.insertBefore(gen.reasoningMsg, gen.loadingMsg);
             }
             gen.reasoningMsg.textContent += reasoningDelta;
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            scrollChatToBottom();
         }
         if (contentDelta) {
             if (!gen.contentStarted) {
@@ -1696,7 +1714,7 @@ async function addAIChatClient() {
             if (!renderMarkdownInBubble(gen.loadingMsg, gen.accumulatedContent)) {
                 gen.loadingMsg.textContent = gen.accumulatedContent;
             }
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            scrollChatToBottom();
         }
     }
 
@@ -1733,7 +1751,7 @@ async function addAIChatClient() {
             bubble.textContent = `❌ Échec de l'appel à "${name}"`;
             bubble.title = `Erreur :\n${error}`;
         }
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        scrollChatToBottom();
     }
 
     function handleOffscreenMessage(message) {
@@ -1777,7 +1795,7 @@ async function addAIChatClient() {
                 warningBubble.classList.remove('bot');
                 warningBubble.classList.add('tool-call', 'error');
                 chatMessages.insertBefore(warningBubble, gen.loadingMsg);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+                scrollChatToBottom();
                 break;
             }
 
