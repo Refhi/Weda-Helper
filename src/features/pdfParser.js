@@ -739,11 +739,13 @@ async function handleDataExtraction(fullText, urlPDF, hashId) {
         console.log("[pdfParser] Vérification des données manquantes avant complétion IA.");
         // En mode complet (PdfParserAutoAIFullMode), l'IA doit choisir la classification parmi les
         // valeurs réellement disponibles dans le menu déroulant, récupérées ici au moment de l'appel.
-        const possibleDocumentTypes = initDocumentTypes();
-        const aiCompletedFields = await completeExtractedDataWithAI(extractedData, fullText, urlPDF, possibleDocumentTypes);
-        Object.assign(extractedData, aiCompletedFields);
-        console.log("[pdfParser] Données après complétion IA.", extractedData);
-        
+        const pdfParserAutoAIExtraction = await getOptionPromise('PdfParserAutoAIExtraction'); // normalement completeExtractedDataWithAI échoue de façon précoce si cette option est désactivée, mais ajouté ici également pour plus de sécurité.
+        if (pdfParserAutoAIExtraction) {
+            const possibleDocumentTypes = initDocumentTypes();
+            const aiCompletedFields = await completeExtractedDataWithAI(extractedData, fullText, urlPDF, possibleDocumentTypes);
+            Object.assign(extractedData, aiCompletedFields);
+            console.log("[pdfParser] Données après complétion IA.", extractedData);
+        }
 
         // Stockage et priorisation des informations pertinentes
         // => le dataMatrix est prioritaire sur les informations extraites du texte

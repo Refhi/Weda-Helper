@@ -30,6 +30,9 @@ const PDF_PARSER_AI_FULL_MODE_FIELDS = [
 // Délai maximum d'attente de l'appel de fonction submitPdfParserFields avant d'abandonner (le
 // client de chat peut être indisponible, désactivé, ou le modèle peut ne jamais appeler la fonction).
 const PDF_PARSER_AI_TIMEOUT_MS = 60000;
+// Timeout court utilisé quand le mode complet (PdfParserAutoAIFullMode) est activé :
+// on souhaite échouer rapidement si l'IA n'est pas disponible.
+const PDF_PARSER_AI_QUICK_TIMEOUT_MS = 1000;
 
 // Résolveur de la complétion IA en cours (un seul PDF traité à la fois), appelé par le tool call
 // "submitPdfParserFields" une fois le modèle exécuté (@see callableFunctions.js).
@@ -76,12 +79,19 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
     const fieldsToAsk = fullModeEnabled ? missingFields.concat(PDF_PARSER_AI_FULL_MODE_FIELDS) : missingFields;
     if (fieldsToAsk.length === 0) return {};
 
+    const waitTimeout = fullModeEnabled ? PDF_PARSER_AI_QUICK_TIMEOUT_MS : PDF_PARSER_AI_TIMEOUT_MS;
     const chatApi = await Promise.race([
         whenChatApiReady(),
-        new Promise(resolve => setTimeout(() => resolve(null), PDF_PARSER_AI_TIMEOUT_MS))
+        new Promise(resolve => setTimeout(() => resolve(null), waitTimeout))
     ]);
     if (!chatApi) {
-        console.warn('[pdfParserAIExtraction] Client de chat IA indisponible (désactivé ou non chargé), poursuite sans complétion IA.');
+        const msg = fullModeEnabled
+            ? '[pdfParserAIExtraction] Mode complet activé mais client de chat IA indisponible : arrêt rapide de la complétion IA.'
+            : '[pdfParserAIExtraction] Client de chat IA indisponible (désactivé ou non chargé), poursuite sans complétion IA.';
+        console.warn(msg);
+        // En mode complet, échouer rapidement en rejetant pour que l'appelant puisse gérer l'échec
+        // explicitement (par ex. annuler la procédure ou avertir l'utilisateur).
+        if (fullModeEnabled) throw new Error('Client IA indisponible en mode complet');
         return {};
     }
 
@@ -146,7 +156,7 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
                 if (pendingPdfParserResolve !== resolve) return; // déjà résolu entre-temps
                 pendingPdfParserResolve = null;
                 reject(new Error("Délai dépassé en attendant l'appel de submitPdfParserFields"));
-            }, PDF_PARSER_AI_TIMEOUT_MS);
+            }, waitTimeout);
             sendToChatApi();
         });
     } catch (error) {
