@@ -42,6 +42,7 @@ const TYPE_TRUE_JSON = "true_json"; // au lieu de fournir une structure assez us
 const TYPE_SMALLTEXT = "smalltext";
 const TYPE_HTML = "html";
 const TYPE_RADIO = "radio";
+const TYPE_SELECT = "select"; // menu déroulant, valeurs fournies via "selectOptions": [{value, description}]
 const TYPE_TITLE = "title";
 
 var advancedDefaultSettings = [
@@ -966,6 +967,40 @@ var advancedDefaultSettings = [
                 "description": "Nombre max. de tokens de sorties autorisés.",
                 "default": "4096",
                 "longDescription": "Permet d’empêcher le modèle de générer des réponses trop longues. A augmenter si vous êtes trop souvent confronté à \"limite de tokens (maxTokens) a été atteinte\"."
+            }, {
+                "name": "IAassistantReasoningEffort",
+                "type": TYPE_SELECT,
+                "description": "Niveau de raisonnement (\"thinking\") demandé au modèle.",
+                "longDescription": "Envoyé via le paramètre \"reasoning_effort\" de l'API. Uniquement pris en compte par les modèles compatibles \"reasoning\"/\"thinking\" (ex: gpt-oss, qwen3) ; ignoré silencieusement par les autres. \"Auto\" ne transmet pas le paramètre et laisse le modèle/serveur décider. Valeurs alignées sur la doc officielle Ollama (some sont des alias de compatibilité résolus par le serveur selon le modèle : \"minimal\"→\"low\", \"xhigh\"/\"ultra\"→\"max\" ou \"high\" selon le modèle). Peut aussi être changé depuis le menu déroulant du Chat.",
+                "default": "auto",
+                "selectOptions": [{
+                    "value": "auto",
+                    "description": "Auto (ne pas envoyer le paramètre)"
+                }, {
+                    "value": "none",
+                    "description": "Aucun (désactive le raisonnement)"
+                }, {
+                    "value": "minimal",
+                    "description": "Minimal"
+                }, {
+                    "value": "low",
+                    "description": "Bas"
+                }, {
+                    "value": "medium",
+                    "description": "Moyen"
+                }, {
+                    "value": "high",
+                    "description": "Haut"
+                }, {
+                    "value": "xhigh",
+                    "description": "Très haut (xhigh)"
+                }, {
+                    "value": "ultra",
+                    "description": "Ultra"
+                }, {
+                    "value": "max",
+                    "description": "Maximum"
+                }]
             }, {
                 "name": "IAassistantPromptShortcut0",
                 "type": TYPE_LARGETEXT,

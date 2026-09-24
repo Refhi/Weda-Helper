@@ -143,6 +143,8 @@ function createInput(option) { // gestion des différents types d'input
   let inputType = 'input';
   if (['html', 'radio'].includes(option.type)) {
     inputType = 'div';
+  } else if (option.type === 'select') {
+    inputType = 'select';
   } else if (['json', 'true_json', 'largetext'].includes(option.type)) {
     inputType = 'textarea'; // Utiliser un textarea pour les options de type json / largetext
   }
@@ -239,6 +241,15 @@ function createInput(option) { // gestion des différents types d'input
           input.appendChild(radioInput);
           input.appendChild(radioLabel);
           input.appendChild(document.createElement('br')); // Ajoute une nouvelle ligne après chaque option
+        });
+        break;
+      case 'select':
+        option.selectOptions.forEach(selectOption => {
+          const optionElement = document.createElement('option');
+          optionElement.value = selectOption.value;
+          optionElement.textContent = selectOption.description;
+          optionElement.selected = selectOption.value === optionValue;
+          input.appendChild(optionElement);
         });
         break;
       case 'html':

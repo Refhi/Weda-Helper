@@ -170,6 +170,7 @@ const aiParamsReady = (async () => {
     aiParams.basicSystemPrompt = await getOptionPromise('IAassistantMainSystemPrompt') // Prompt de base pour le modèle
     aiParams.contextTokenLimit = toPositiveIntegerOrFallback(await getOptionPromise('IAassistantContextLimit'), 0)
     aiParams.maxTokensOutput = toPositiveIntegerOrFallback(await getOptionPromise('IAassistantMaxTokensOutput'), null)
+    aiParams.reasoningEffort = await getOptionPromise('IAassistantReasoningEffort') // "auto"/"minimal"/"low"/"medium"/"high", "auto" = ne pas envoyer le paramètre
 
     // Raccourcis de prompts affichés dans le chat : 10 réglages texte indépendants (IAassistantPromptShortcut0..9).
     aiParams.promptShortcuts = await Promise.all(
@@ -279,6 +280,7 @@ async function openAiClient({
     
     // --- 3. Paramètres de Sampling (Ce que vous aviez déjà) ---
     maxTokens = aiParams.maxTokensOutput,      // le nombre maximum de tokens à générer dans la réponse. A ajuster à terme, et discuter de mettre un appel de l'API en amont pour requêter le nombre de tokens restants pour ne pas dépasser la limite du modèle.
+    reasoningEffort = aiParams.reasoningEffort, // "low"/"medium"/"high" (modèles "reasoning"), ou "auto"/falsy pour ne pas envoyer le paramètre
     temperature = 0.7,     // le degré de créativité (0.0 = très conservateur, 1.0 = très créatif)
     topP = 0.9,            // le pourcentage de probabilité cumulative pour le filtrage des tokens (0.0 à 1.0)
     frequencyPenalty = 0.0,// pénalité pour la fréquence des tokens (0.0 à 2.0, plus élevé = moins de répétition)
@@ -377,6 +379,7 @@ async function openAiClient({
         stream: effectiveStream,
         responseFormat,
         seed,
+        reasoningEffort,
         resolvedTools,
         toolChoice
     });
@@ -437,6 +440,7 @@ async function openAiClient({
                 tools: resolvedTools,
                 toolChoice,
                 useTools,
+                reasoningEffort,
                 onChunk,
                 onToolCall,
                 onWarning,
@@ -625,6 +629,7 @@ function buildRequestBody({
     stream,
     responseFormat,
     seed,
+    reasoningEffort,
     resolvedTools,
     toolChoice
 }) {
@@ -644,6 +649,7 @@ function buildRequestBody({
     if (stream) requestBody.stream = stream;
     if (responseFormat) requestBody.response_format = responseFormat;
     if (seed !== null) requestBody.seed = seed;
+    if (reasoningEffort && reasoningEffort !== 'auto') requestBody.reasoning_effort = reasoningEffort;
 
     if (resolvedTools && resolvedTools.length > 0) {
         requestBody.tools = resolvedTools;
