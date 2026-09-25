@@ -624,7 +624,7 @@ async function addAIChatClient() {
             line-height: 1.4;
             box-shadow: 0 4px 15px rgba(0,0,0,0.25);
             z-index: 10002;
-            pointer-events: none;
+            cursor: pointer;
         }
     `;
     document.head.appendChild(style);
@@ -1447,6 +1447,11 @@ async function addAIChatClient() {
         });
     }
     renderShortcutButtons();
+
+    // La tooltip peut rester affichée à tort (ex. mouseleave manqué) ; un clic dessus la masque.
+    shortcutTooltip.addEventListener('click', () => {
+        shortcutTooltip.style.display = 'none';
+    });
 
     /**
      * Envoie le prompt configuré pour le raccourci d'index donné (utilisé par les boutons ronds et
