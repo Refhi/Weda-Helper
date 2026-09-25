@@ -1971,6 +1971,22 @@ async function addAIChatClient() {
             chrome.storage.local.set({ [`IAassistantPromptShortcut${index}`]: promptText });
             renderShortcutButtons();
             showSystemNotice(`Raccourci /${index} enregistré : ${promptText.slice(0, 60)}${promptText.length > 60 ? '…' : ''}`);
+        },
+        // Supprime un raccourci de prompt : /del <index>.
+        deleteShortcut: (arg) => {
+            const index = Number(arg.trim());
+            if (!Number.isInteger(index) || index < 0 || index > 9) {
+                showSystemNotice('Usage : /del <index 0-9>.');
+                return;
+            }
+            if (!aiParams.promptShortcuts?.[index]?.trim()) {
+                showSystemNotice(`Le raccourci /${index} est déjà vide.`);
+                return;
+            }
+            aiParams.promptShortcuts[index] = '';
+            chrome.storage.local.set({ [`IAassistantPromptShortcut${index}`]: '' });
+            renderShortcutButtons();
+            showSystemNotice(`Raccourci /${index} supprimé.`);
         }
     };
 
