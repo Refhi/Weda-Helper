@@ -3,9 +3,6 @@
  * @description Contiens le nécessaire pour interagir avec l'API OpenAI.
  */
 
-// Récupération des paramètres de l'appel
-let aiParams = {};
-
 // Ports les plus courants pour un serveur d'IA local, testés dans cet ordre lorsque
 // l'option IAassistantPort est laissée sur "auto" : 1234 (LM Studio, le plus simple à installer),
 // 11434 (Ollama).
@@ -147,105 +144,141 @@ async function probePortsForModels(host, ports, apiKey) {
  * à défaut sur le port configuré. Ne retourne jamais "auto" : si le port était "auto" et aucun
  * serveur n'a été détecté, retourne le premier port courant par défaut (1234).
  * @param {string} modelName
- * @returns {number|string}
+ * @returns {Promise<number|string>}
  */
-function getPortForModel(modelName) {
-    const entry = aiParams.availableModels?.find(m => m.model === modelName);
+async function getPortForModel(modelName) {
+    const entry = (await getAiParams()).availableModels?.find(m => m.model === modelName);
     if (entry) return entry.port;
-    const fallbackPort = aiParams.activePorts?.[0] ?? aiParams.port;
+    const fallbackPort = (await getAiParams()).activePorts?.[0] ?? (await getAiParams()).port;
     // Ne jamais retourner la chaîne "auto" dans une URL : fallback sur le premier port courant
     if (fallbackPort === 'auto') return COMMON_LOCAL_AI_PORTS[0];
     return fallbackPort;
 }
 
-// Initialisation asynchrone des paramètres. On garde la promesse pour pouvoir
-// l'attendre depuis openAiClient et éviter toute race condition au premier appel.
-const aiParamsReady = (async () => {
-    aiParams.host = (await getOptionPromise('IAassistantHost'))?.trim() || 'localhost' // Hôte du serveur d'IA local (par défaut "localhost", peut être une IP/nom d'hôte distant)
-    aiParams.port = await getOptionPromise('IAassistantPort') // "auto" ou numéro de port spécifique choisi par l'utilisateur
-    aiParams.apiKey = await getOptionPromise('IAassistantApiKey') // Normalement non utilisé, mais bon, autant être propre.
-    aiParams.preferredModel = await getOptionPromise('IAassistantModelName') // Nom du modèle préféré (juste le nom, indépendant du port), ex: "qwen3.5:9b", ou "auto"
-    aiParams.toolCalling = await getOptionPromise('AIAssistantToolCalling') // true/false pour activer le function calling
-    aiParams.MAX_TOOL_CALL_DEPTH = toPositiveIntegerOrFallback(await getOptionPromise('IAassistantMaxToolCalls'), 5) // Nombre maximum d'allers-retours de function calling avant d'abandonner (évite les boucles infinies)
-    aiParams.basicSystemPrompt = await getOptionPromise('IAassistantMainSystemPrompt') // Prompt de base pour le modèle
-    aiParams.contextTokenLimit = toPositiveIntegerOrFallback(await getOptionPromise('IAassistantContextLimit'), 0)
-    aiParams.maxTokensOutput = toPositiveIntegerOrFallback(await getOptionPromise('IAassistantMaxTokensOutput'), null)
-    aiParams.reasoningEffort = await getOptionPromise('IAassistantReasoningEffort') // "auto"/"minimal"/"low"/"medium"/"high", "auto" = ne pas envoyer le paramètre
-
-    // Raccourcis de prompts affichés dans le chat : 10 réglages texte indépendants (IAassistantPromptShortcut0..9).
-    aiParams.promptShortcuts = await Promise.all(
-        Array.from({ length: 10 }, (_, index) => getOptionPromise(`IAassistantPromptShortcut${index}`))
-    );
-
-    // Ajout de la date du jour dans le prompt système de base, pour que le modèle sache quelle est la date actuelle.
-    const currentDateTime = new Date().toISOString();
-    aiParams.basicSystemPrompt += `\n\nDate du jour : ${currentDateTime}`;
-
-    // Tentative (best effort, non bloquante) d'obtention de la permission optionnelle pour un hôte
-    // distant : voir la documentation de ensureHostPermission pour le détail des limitations (pas de
-    // prompt possible sans geste utilisateur, fetch fonctionnant déjà sans cette permission dans la
-    // plupart des cas). Le sondage des ports est donc toujours effectué, que la permission soit
-    // accordée ou non.
-    await ensureHostPermission(aiParams.host);
-
-    // Ports à tester : si un port spécifique est configuré, on ne teste que celui-ci ; sinon ("auto"),
-    // on teste systématiquement tous les ports courants à chaque démarrage (pas de mise en cache du port trouvé).
-    const portsToTest = (aiParams.port && aiParams.port !== 'auto') ? [aiParams.port] : COMMON_LOCAL_AI_PORTS;
-    const { activePorts, availableModels, testedPorts } = await probePortsForModels(aiParams.host, portsToTest, aiParams.apiKey);
-
-    aiParams.activePorts = activePorts; // Ports ayant effectivement répondu
-    aiParams.availableModels = availableModels; // Liste [{model, port}] de tous les modèles disponibles, tous ports actifs confondus
-    aiParams.autoPortTestedPorts = testedPorts; // Ports testés (utile pour informer l'utilisateur dans le chat si aucun serveur n'a été trouvé)
-
-    // Résolution du modèle par défaut : le modèle préféré s'il est disponible parmi les modèles détectés,
-    // sinon le premier modèle disponible (peu importe son port).
-    const modelNames = availableModels.map(m => m.model);
-    if (aiParams.preferredModel && aiParams.preferredModel !== 'auto' && modelNames.includes(aiParams.preferredModel)) {
-        aiParams.defaultModel = aiParams.preferredModel;
+/**
+ * (Re)calcule le modèle par défaut à partir du modèle préféré configuré et des modèles
+ * effectivement détectés lors du dernier sondage réseau des ports.
+ * @param {object} params - Objet aiParams en cours de construction (preferredModel, availableModels déjà renseignés).
+ */
+function resolveDefaultModel(params) {
+    const modelNames = params.availableModels.map(m => m.model);
+    if (params.preferredModel && params.preferredModel !== 'auto' && modelNames.includes(params.preferredModel)) {
+        params.defaultModel = params.preferredModel;
     } else if (modelNames.length > 0) {
-        if (aiParams.preferredModel && aiParams.preferredModel !== 'auto') {
-            console.warn(`[openAiClient] Modèle préféré "${aiParams.preferredModel}" introuvable parmi les modèles disponibles, sélection du premier modèle disponible : ${modelNames[0]}.`);
+        if (params.preferredModel && params.preferredModel !== 'auto') {
+            console.warn(`[openAiClient] Modèle préféré "${params.preferredModel}" introuvable parmi les modèles disponibles, sélection du premier modèle disponible : ${modelNames[0]}.`);
         }
-        aiParams.defaultModel = modelNames[0];
+        params.defaultModel = modelNames[0];
     } else {
-        aiParams.defaultModel = aiParams.preferredModel; // Aucun serveur/modèle détecté : on garde la valeur configurée telle quelle
+        params.defaultModel = params.preferredModel; // Aucun serveur/modèle détecté : on garde la valeur configurée telle quelle
+    }
+}
+
+// Noms des options simples (lues via un seul appel groupé à getOptionPromise) et raccourcis de
+// prompts affichés dans le chat : 10 réglages texte indépendants (IAassistantPromptShortcut0..9).
+const AI_OPTION_KEYS = [
+    'IAassistantHost', 'IAassistantPort', 'IAassistantApiKey', 'IAassistantModelName',
+    'AIAssistantToolCalling', 'IAassistantMaxToolCalls', 'IAassistantMainSystemPrompt',
+    'IAassistantContextLimit', 'IAassistantMaxTokensOutput', 'IAassistantReasoningEffort',
+];
+const AI_PROMPT_SHORTCUT_KEYS = Array.from({ length: 10 }, (_, index) => `IAassistantPromptShortcut${index}`);
+
+/**
+ * Lit (à chaque appel, via un unique appel groupé à getOptionPromise) les options simples de
+ * l'assistant, hors sondage réseau des ports.
+ * @returns {Promise<object>} Un objet aiParams partiel (sans activePorts/availableModels/defaultModel/serverStatus).
+ */
+async function loadAiOptions() {
+    const [
+        host, port, apiKey, preferredModel, toolCalling, maxToolCalls, basicSystemPrompt,
+        contextTokenLimit, maxTokensOutput, reasoningEffort, ...promptShortcuts
+    ] = await getOptionPromise([...AI_OPTION_KEYS, ...AI_PROMPT_SHORTCUT_KEYS]);
+
+    return {
+        host: host?.trim() || 'localhost', // Hôte du serveur d'IA local (par défaut "localhost", peut être une IP/nom d'hôte distant)
+        port, // "auto" ou numéro de port spécifique choisi par l'utilisateur
+        apiKey, // Normalement non utilisé, mais bon, autant être propre.
+        preferredModel, // Nom du modèle préféré (juste le nom, indépendant du port), ex: "qwen3.5:9b", ou "auto"
+        toolCalling, // true/false pour activer le function calling
+        MAX_TOOL_CALL_DEPTH: toPositiveIntegerOrFallback(maxToolCalls, 5), // Nombre maximum d'allers-retours de function calling avant d'abandonner (évite les boucles infinies)
+        contextTokenLimit: toPositiveIntegerOrFallback(contextTokenLimit, 0),
+        maxTokensOutput: toPositiveIntegerOrFallback(maxTokensOutput, null),
+        reasoningEffort, // "auto"/"minimal"/"low"/"medium"/"high", "auto" = ne pas envoyer le paramètre
+        promptShortcuts,
+        // Ajout de la date du jour, pour que le modèle sache quelle est la date actuelle.
+        basicSystemPrompt: `${basicSystemPrompt}\n\nDate du jour : ${new Date().toISOString()}`,
+    };
+}
+
+/**
+ * Sonde les ports pour trouver un serveur d'IA locale et renvoie le résultat du sondage
+ * (activePorts, availableModels, autoPortTestedPorts, serverStatus).
+ * @param {string} host
+ * @param {string|number} port
+ * @param {string} apiKey
+ * @returns {Promise<object>}
+ */
+async function probeServerPorts(host, port, apiKey) {
+    const portsToTest = (port && port !== 'auto') ? [port] : COMMON_LOCAL_AI_PORTS;
+    const { activePorts, availableModels, testedPorts } = await probePortsForModels(host, portsToTest, apiKey);
+    return {
+        activePorts, // Ports ayant effectivement répondu
+        availableModels, // Liste [{model, port}] de tous les modèles disponibles, tous ports actifs confondus
+        autoPortTestedPorts: testedPorts, // Ports testés (utile pour informer l'utilisateur dans le chat si aucun serveur n'a été trouvé)
+        serverStatus: availableModels.length > 0 ? 'available' : 'unavailable',
+    };
+}
+
+// Résultat du dernier sondage réseau des ports (coûteux) : seul état conservé d'un appel à l'autre,
+// volontairement séparé des options (relues à chaque appel par getAiParams). Rempli au premier appel
+// à getAiParams(), puis uniquement mis à jour via recheckServerAvailability().
+let lastProbeResult = null;
+
+/**
+ * Renvoie l'ensemble des paramètres nécessaires à un appel API : les options utilisateur (relues à
+ * chaque appel) fusionnées avec le résultat du dernier sondage réseau des ports. C'est le seul point
+ * d'accès aux paramètres de l'assistant : ni discussionClient.js ni offscreenChatEngine.js ne
+ * doivent maintenir leur propre copie de ces valeurs.
+ * @returns {Promise<object>}
+ */
+async function getAiParams() {
+    const options = await loadAiOptions();
+    if (!lastProbeResult) {
+        // Premier appel : tentative (best effort, non bloquante) d'obtention de la permission
+        // optionnelle pour un hôte distant (voir ensureHostPermission), puis sondage des ports.
+        await ensureHostPermission(options.host);
+        lastProbeResult = await probeServerPorts(options.host, options.port, options.apiKey);
+        if (lastProbeResult.serverStatus === 'unavailable') {
+            console.warn("[openAiClient] Serveur LLM indisponible — relance de la recherche à la prochaine requête");
+        }
     }
 
-    // Status du serveur : "available" si des modèles ont été détectés, "unavailable" sinon
-    aiParams.serverStatus = availableModels.length > 0 ? 'available' : 'unavailable';
-    if (aiParams.serverStatus === 'unavailable') {
-        console.warn("[openAiClient] Serveur LLM indisponible — relance de la recherche à la prochaine requête");
-    }
+    const params = { ...options, ...lastProbeResult };
+    resolveDefaultModel(params);
+    return params;
+}
 
-    console.log("[openAiClient] Paramètres récupérés :", aiParams);
-})();
+// Promesse résolue après le tout premier appel à getAiParams() (sondage réseau initial effectué),
+// pour que le sondage démarre dès le chargement du script plutôt que d'attendre le premier appel réel.
+getAiParams();
 
 /**
  * Relance la recherche des modèles disponibles (utile si le serveur n'était pas disponible au
- * démarrage mais est maintenant accessible). Met à jour aiParams et retourne true si au moins
- * un serveur a répondu.
+ * démarrage mais est maintenant accessible). Retourne true si au moins un serveur a répondu.
  * @returns {Promise<boolean>} true si le serveur est maintenant disponible
  */
 async function recheckServerAvailability() {
-    await aiParamsReady;
-    const portsToTest = (aiParams.port && aiParams.port !== 'auto') ? [aiParams.port] : COMMON_LOCAL_AI_PORTS;
-    const { activePorts, availableModels, testedPorts } = await probePortsForModels(aiParams.host, portsToTest, aiParams.apiKey);
+    const { host, port, apiKey } = await getAiParams();
+    const wasUnavailable = lastProbeResult?.serverStatus === 'unavailable';
+    lastProbeResult = await probeServerPorts(host, port, apiKey);
 
-    aiParams.activePorts = activePorts;
-    aiParams.availableModels = availableModels;
-    aiParams.autoPortTestedPorts = testedPorts;
-
-    // Mise à jour du status
-    const wasUnavailable = aiParams.serverStatus === 'unavailable';
-    aiParams.serverStatus = availableModels.length > 0 ? 'available' : 'unavailable';
-    
-    if (wasUnavailable && aiParams.serverStatus === 'available') {
+    if (wasUnavailable && lastProbeResult.serverStatus === 'available') {
         console.log("[openAiClient] Serveur LLM détecté après une indisponibilité antérieure");
     } else if (wasUnavailable) {
         console.warn("[openAiClient] Serveur LLM toujours indisponible");
     }
 
-    return aiParams.serverStatus === 'available';
+    return lastProbeResult.serverStatus === 'available';
 }
 
 /**
@@ -253,14 +286,14 @@ async function recheckServerAvailability() {
  * aucun serveur n'est détecté sur le port configuré, ex: LM Studio/Ollama non démarré).
  * @returns {Promise<boolean>} true si l'API répond, false sinon.
  */
-async function testAiApiConnection(modelName = aiParams.defaultModel) {
-    await aiParamsReady;
-    const port = getPortForModel(modelName);
+async function testAiApiConnection(modelName) {
+    if (modelName === undefined) modelName = (await getAiParams()).defaultModel;
+    const port = await getPortForModel(modelName);
     try {
-        const response = await fetch(`http://${aiParams.host}:${port}/v1/models`, {
+        const response = await fetch(`http://${(await getAiParams()).host}:${port}/v1/models`, {
             method: 'GET',
             headers: {
-                ...(aiParams.apiKey && { 'Authorization': `Bearer ${aiParams.apiKey}` }),
+                ...((await getAiParams()).apiKey && { 'Authorization': `Bearer ${(await getAiParams()).apiKey}` }),
             },
             signal: AbortSignal.timeout(LOCAL_AI_PROBE_TIMEOUT_MS)
         });
@@ -276,11 +309,11 @@ async function openAiClient({
     messages = [],         // Liste des messages de la conversation (system, user, assistant, tool)
     
     // --- 2. Paramètres de base ---
-    model = aiParams.defaultModel, // modèle à utiliser (ex: "gpt-4o", "mistral-nemo:12b-instruct-2407-q5_K_M", etc.)
+    model = undefined, // modèle à utiliser (ex: "gpt-4o", "mistral-nemo:12b-instruct-2407-q5_K_M", etc.), par défaut aiParams.defaultModel
     
     // --- 3. Paramètres de Sampling (Ce que vous aviez déjà) ---
-    maxTokens = aiParams.maxTokensOutput,      // le nombre maximum de tokens à générer dans la réponse. A ajuster à terme, et discuter de mettre un appel de l'API en amont pour requêter le nombre de tokens restants pour ne pas dépasser la limite du modèle.
-    reasoningEffort = aiParams.reasoningEffort, // "low"/"medium"/"high" (modèles "reasoning"), ou "auto"/falsy pour ne pas envoyer le paramètre
+    maxTokens = undefined,      // le nombre maximum de tokens à générer dans la réponse (par défaut aiParams.maxTokensOutput, réactualisé à chaque appel). A ajuster à terme, et discuter de mettre un appel de l'API en amont pour requêter le nombre de tokens restants pour ne pas dépasser la limite du modèle.
+    reasoningEffort = undefined, // "low"/"medium"/"high" (modèles "reasoning"), ou "auto"/falsy pour ne pas envoyer le paramètre (par défaut aiParams.reasoningEffort, réactualisé à chaque appel)
     temperature = 0.7,     // le degré de créativité (0.0 = très conservateur, 1.0 = très créatif)
     topP = 0.9,            // le pourcentage de probabilité cumulative pour le filtrage des tokens (0.0 à 1.0)
     frequencyPenalty = 0.0,// pénalité pour la fréquence des tokens (0.0 à 2.0, plus élevé = moins de répétition)
@@ -319,12 +352,13 @@ async function openAiClient({
     // --- 9. Annulation ---
     signal = null,         // AbortSignal permettant d'interrompre la requête (et le streaming) en cours
 }) {
-    // S'assurer que les paramètres (defaultModel, availableModels, etc.) sont chargés avant le premier appel
-    await aiParamsReady;
-    if (model === undefined) model = aiParams.defaultModel;
+    // Paramètres réactualisés à chaque appel (options utilisateur susceptibles d'avoir changé depuis le dernier appel).
+    if (model === undefined) model = (await getAiParams()).defaultModel;
+    if (maxTokens === undefined) maxTokens = (await getAiParams()).maxTokensOutput;
+    if (reasoningEffort === undefined) reasoningEffort = (await getAiParams()).reasoningEffort;
 
     // Le port à utiliser dépend du modèle sélectionné (plusieurs ports peuvent être actifs simultanément)
-    const apiUrl = `http://${aiParams.host}:${getPortForModel(model)}`;
+    const apiUrl = `http://${(await getAiParams()).host}:${await getPortForModel(model)}`;
 
     // Permet de faire un appel simple sans avoir à construire un tableau de messages
     if (typeof messages === 'string') {
@@ -349,7 +383,7 @@ async function openAiClient({
 
     // Avertir si le contexte estimé approche/dépasse la limite configurée (IAassistantContextLimit).
     // Utile notamment quand le function calling s'enchaîne et gonfle l'historique (résultats d'outils volumineux).
-    const contextLimit = Number(aiParams.contextTokenLimit) || 0;
+    const contextLimit = Number((await getAiParams()).contextTokenLimit) || 0;
     if (contextLimit > 0) {
         const estimatedTokens = estimateTokens(filteredMessages);
         const ratio = estimatedTokens / contextLimit;
@@ -361,7 +395,7 @@ async function openAiClient({
 
     // Gestion des tools (function calling)
     // seulement si option activée et useTools = true
-    const effectiveUseTools = useTools && aiParams.toolCalling;
+    const effectiveUseTools = useTools && (await getAiParams()).toolCalling;
     const resolvedTools = tools || (effectiveUseTools ? Object.values(availableFunctions).map(f => f.definition) : null);
 
     // Si un callback de streaming est fourni, on force le mode stream côté requête
@@ -387,7 +421,7 @@ async function openAiClient({
     console.log("[openAiClient] Requête construite :", requestBody);
 
     try { // Appel réseau vers l'API OpenAI/Ollama
-        const data = await fetchChatCompletion(requestBody, apiUrl, signal);
+        const data = await fetchChatCompletion(requestBody, apiUrl, signal, (await getAiParams()).apiKey);
 
         let responseMessage;
 
@@ -416,8 +450,8 @@ async function openAiClient({
         if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
             console.log(`[openAiClient] Function calls reçus:`, responseMessage.tool_calls.map(tc => ({ name: tc.function?.name, args: tc.function?.arguments })));
 
-            if (_toolCallDepth >= aiParams.MAX_TOOL_CALL_DEPTH) {
-                console.warn(`[openAiClient] Profondeur maximale de function calling atteinte (${aiParams.MAX_TOOL_CALL_DEPTH}), arrêt de la boucle.`);
+            if (_toolCallDepth >= (await getAiParams()).MAX_TOOL_CALL_DEPTH) {
+                console.warn(`[openAiClient] Profondeur maximale de function calling atteinte (${(await getAiParams()).MAX_TOOL_CALL_DEPTH}), arrêt de la boucle.`);
                 return responseMessage.content || "Désolé, je n'ai pas pu terminer cette action après plusieurs tentatives d'appel de fonctions.";
             }
 
@@ -663,7 +697,7 @@ function buildRequestBody({
  * Effectue l'appel réseau vers l'API de chat completions et gère les erreurs HTTP.
  * Renvoie soit le ReadableStream (si `requestBody.stream` est vrai), soit le JSON parsé de la réponse.
  */
-async function fetchChatCompletion(requestBody, apiUrl, signal) {
+async function fetchChatCompletion(requestBody, apiUrl, signal, apiKey) {
     console.log("[openAiClient] Tentative de connexion à :", `${apiUrl}/v1/chat/completions`);
 
     const fetchOptions = {
@@ -671,7 +705,7 @@ async function fetchChatCompletion(requestBody, apiUrl, signal) {
         headers: {
             'Content-Type': 'application/json',
             // Ajouter l'API key seulement si elle existe (certains serveurs locaux n'en ont besoin)
-            ...(aiParams.apiKey && { 'Authorization': `Bearer ${aiParams.apiKey}` }),
+            ...(apiKey && { 'Authorization': `Bearer ${apiKey}` }),
         },
         body: JSON.stringify(requestBody),
         ...(signal && { signal })

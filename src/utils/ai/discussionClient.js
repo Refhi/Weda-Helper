@@ -131,11 +131,12 @@ async function addAIChatClient() {
     // Éviter les doublons si déjà injecté
     if (document.getElementById('wedaHelper-chat-widget')) return;
 
-    /** 
-     *  Attente de la disponibilité des paramètres de l'IA
-     * @see openAiClient.js
-     */ 
-    await aiParamsReady;
+    /**
+     * Paramètres de l'assistant (host, modèles détectés, prompt système, raccourcis...), lus une
+     * fois à l'ouverture du chat via getAiParams() (@see openAiClient.js). Ne jamais réassigner ni
+     * muter ses propriétés directement : toute persistance passe par chrome.storage.local.set.
+     */
+    const aiParams = await getAiParams();
 
     /**
      * Identifiant du patient courant, déterminé une seule fois à l'initialisation du chat (le
@@ -677,6 +678,11 @@ async function addAIChatClient() {
     function getCurrentModel() {
         return selectedModel;
     }
+
+    // Copie locale et modifiable des raccourcis de prompts, indépendante de aiParams (jamais muté
+    // directement) : mise à jour optimiste par setShortcut/deleteShortcut, en parallèle de la
+    // persistance via chrome.storage.local.set.
+    let promptShortcuts = aiParams.promptShortcuts || [];
 
     /**
      * État de la génération en cours (bulles DOM à mettre à jour au fil des événements reçus de
@@ -1427,7 +1433,7 @@ async function addAIChatClient() {
      */
     function renderShortcutButtons() {
         shortcutsPanel.innerHTML = '';
-        (aiParams.promptShortcuts || []).forEach((promptText, index) => {
+        (promptShortcuts || []).forEach((promptText, index) => {
             if (!promptText?.trim()) return;
             const button = document.createElement('button');
             button.type = 'button';
@@ -1463,7 +1469,7 @@ async function addAIChatClient() {
      * @returns {boolean}
      */
     function runPromptShortcut(index) {
-        const promptText = aiParams.promptShortcuts?.[index];
+        const promptText = promptShortcuts?.[index];
         if (!promptText?.trim() || activeGeneration) return false;
         const attachmentsForThisMessage = pendingAttachments;
         pendingAttachments = [];
@@ -1926,7 +1932,7 @@ async function addAIChatClient() {
         const commandsList = Object.entries(commands)
             .map(([name, cmd]) => `• /${name} — ${cmd.description}`)
             .join('\n');
-        const configuredShortcuts = (aiParams.promptShortcuts || [])
+        const configuredShortcuts = (promptShortcuts || [])
             .map((text, index) => (text?.trim() ? `• /${index} — ${text.slice(0, 60)}${text.length > 60 ? '…' : ''}` : null))
             .filter(Boolean)
             .join('\n');
@@ -1966,8 +1972,7 @@ async function addAIChatClient() {
                 showSystemNotice('Aucun texte fourni et aucun dernier message envoyé à utiliser.');
                 return;
             }
-            aiParams.promptShortcuts = aiParams.promptShortcuts || [];
-            aiParams.promptShortcuts[index] = promptText;
+            promptShortcuts[index] = promptText;
             chrome.storage.local.set({ [`IAassistantPromptShortcut${index}`]: promptText });
             renderShortcutButtons();
             showSystemNotice(`Raccourci /${index} enregistré : ${promptText.slice(0, 60)}${promptText.length > 60 ? '…' : ''}`);
@@ -1979,11 +1984,11 @@ async function addAIChatClient() {
                 showSystemNotice('Usage : /del <index 0-9>.');
                 return;
             }
-            if (!aiParams.promptShortcuts?.[index]?.trim()) {
+            if (!promptShortcuts?.[index]?.trim()) {
                 showSystemNotice(`Le raccourci /${index} est déjà vide.`);
                 return;
             }
-            aiParams.promptShortcuts[index] = '';
+            promptShortcuts[index] = '';
             chrome.storage.local.set({ [`IAassistantPromptShortcut${index}`]: '' });
             renderShortcutButtons();
             showSystemNotice(`Raccourci /${index} supprimé.`);

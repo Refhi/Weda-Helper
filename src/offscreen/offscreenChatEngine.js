@@ -39,7 +39,7 @@ async function getOrCreateConversation(patientId) {
     const key = getConversationKey(patientId);
     if (conversations.has(key)) return conversations.get(key);
 
-    await aiParamsReady;
+    const aiParams = await getAiParams();
     const conversation = {
         chatHistory: [{ role: 'system', content: aiParams.basicSystemPrompt }],
         selectedModel: aiParams.defaultModel,
@@ -188,7 +188,7 @@ async function processUserMessage({ tabId, patientId, content, model }) {
     }
 
     // Si le serveur n'était pas disponible au démarrage, relancer une recherche
-    if (aiParams.serverStatus === 'unavailable') {
+    if ((await getAiParams()).serverStatus === 'unavailable') {
         console.log('[offscreenChatEngine] Serveur LLM indisponible — relance de la recherche');
         await recheckServerAvailability();
     }
