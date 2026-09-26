@@ -51,16 +51,16 @@ const CHAT_SLASH_COMMANDS = {
  *   resetConversation: () => void,
  *   stopGeneration: () => void,
  *   sendUserPrompt: (text: string) => void,
- *   triggerShortcut: (index: number) => boolean,
+ *   triggerShortcut: (index: number) => Promise<boolean>,
  *   showSystemNotice: (text: string) => void,
  *   showHelp: (commands: typeof CHAT_SLASH_COMMANDS) => void,
  *   switchPatient: (patientId: string) => void,
  *   setShortcut: (arg: string) => void,
  *   deleteShortcut: (arg: string) => void
  * }} context
- * @returns {boolean}
+ * @returns {Promise<boolean>}
  */
-function tryHandleChatSlashCommand(rawText, context) {
+async function tryHandleChatSlashCommand(rawText, context) {
     const trimmed = rawText.trim();
     if (!trimmed.startsWith('/')) return false;
 
@@ -70,7 +70,7 @@ function tryHandleChatSlashCommand(rawText, context) {
     // /0 à /9 déclenchent directement le raccourci de prompt configuré au même index.
     if (/^[0-9]$/.test(commandName)) {
         const shortcutIndex = Number(commandName);
-        if (!context.triggerShortcut(shortcutIndex)) {
+        if (!(await context.triggerShortcut(shortcutIndex))) {
             context.showSystemNotice(`Le raccourci /${shortcutIndex} n'est pas configuré (texte vide dans les options).`);
         }
         return true;

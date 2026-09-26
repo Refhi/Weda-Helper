@@ -101,7 +101,7 @@ async function fetchModelsListOnPort(host, port, apiKey) {
             signal: AbortSignal.timeout(LOCAL_AI_PROBE_TIMEOUT_MS)
         });
         if (!response.ok) {
-            console.warn(`[openAiClient] Port ${port} : réponse HTTP ${response.status} (${response.statusText}) sur /v1/models.`);
+            console.warn(`[openAiClient] Port ${port} : réponse HTTP ${response.status} (${response.statusText}) sur $http://${host}:${port}/v1/models.`);
             return null;
         }
         const data = await response.json();

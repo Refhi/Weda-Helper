@@ -9,6 +9,8 @@
 const AI_CHAT_WIDGET_POSITION_STORAGE_KEY = 'wedaHelperChatWidgetPosition';
 const AI_CHAT_WINDOW_POSITION_STORAGE_KEY = 'wedaHelperChatWindowPosition';
 
+
+
 // Petit pont KISS exposant quelques actions du chat (envoyer un prompt "comme si l'utilisateur
 // l'avait tapé", changer de patient...) aux autres scripts du content script (ex: pdfParserAIExtraction.js),
 // sans qu'ils aient à connaître le DOM du widget. Résolu une fois par page, à la fin de addAIChatClient().
@@ -130,13 +132,6 @@ function rectToBottomRightOffset(rect) {
 async function addAIChatClient() {
     // Éviter les doublons si déjà injecté
     if (document.getElementById('wedaHelper-chat-widget')) return;
-
-    /**
-     * Paramètres de l'assistant (host, modèles détectés, prompt système, raccourcis...), lus une
-     * fois à l'ouverture du chat via getAiParams() (@see openAiClient.js). Ne jamais réassigner ni
-     * muter ses propriétés directement : toute persistance passe par chrome.storage.local.set.
-     */
-    const aiParams = await getAiParams();
 
     /**
      * Identifiant du patient courant, déterminé une seule fois à l'initialisation du chat (le
@@ -671,18 +666,14 @@ async function addAIChatClient() {
     document.body.appendChild(widget);
 
     // --- Logique du chat ---
-    // Modèle actuellement sélectionné pour les appels, parmi tous les modèles détectés (aiParams.availableModels,
+    // Modèle actuellement sélectionné pour les appels, parmi tous les modèles détectés (getAiParams().availableModels,
     // tous ports actifs confondus). Initialisé au modèle résolu au démarrage (préféré si trouvé, sinon premier disponible),
     // puis mis à jour par l'état de l'offpage (voir handleOffscreenMessage, cas 'stateSync') s'il diffère.
-    let selectedModel = aiParams.defaultModel;
+    let selectedModel = (await getAiParams()).defaultModel;
     function getCurrentModel() {
         return selectedModel;
     }
 
-    // Copie locale et modifiable des raccourcis de prompts, indépendante de aiParams (jamais muté
-    // directement) : mise à jour optimiste par setShortcut/deleteShortcut, en parallèle de la
-    // persistance via chrome.storage.local.set.
-    let promptShortcuts = aiParams.promptShortcuts || [];
 
     /**
      * État de la génération en cours (bulles DOM à mettre à jour au fil des événements reçus de
@@ -1211,10 +1202,11 @@ async function addAIChatClient() {
 
 
     /**
-     * Fonction utilitaire pour construire le contenu HTML de la popover d'informations sur l'état du chat
-     * 
+     * Fonction utilitaire pour construire le contenu HTML de la popover d'informations sur l'état du chat.
+     * Relit systématiquement getAiParams() pour refléter les derniers réglages (aucune valeur mise en cache ici).
      */
-    function buildInfoContent() {
+    async function buildInfoContent() {
+        const aiParams = await getAiParams();
         const functionsList = Object.entries(availableFunctions).map(([name, fn]) => {
             const description = fn.definition?.function?.description || '';
             return `<li><strong>${name}</strong>${description ? ' — ' + description : ''}</li>`;
@@ -1362,8 +1354,8 @@ async function addAIChatClient() {
         } else {
             // Relance la recherche des modèles disponibles quand on ouvre la popover
             await recheckServerAvailability().catch(e => console.warn('[discussionClient] Erreur lors du re-check serveur :', e));
-            
-            infoPopover.innerHTML = buildInfoContent();
+
+            infoPopover.innerHTML = await buildInfoContent();
             infoPopover.classList.add('open');
             bindInfoPopoverActions();
         }
@@ -1372,11 +1364,11 @@ async function addAIChatClient() {
     function bindInfoPopoverActions() {
         const modelSelect = infoPopover.querySelector('#wedaHelper-model-select');
         if (modelSelect) {
-            modelSelect.addEventListener('change', () => {
+            modelSelect.addEventListener('change', async () => {
                 selectedModel = modelSelect.value;
                 chrome.storage.local.set({ IAassistantModelName: selectedModel }); // enregistre le choix comme modèle préféré
                 sendOffscreenMessage({ type: 'setModel', patientId: chatPatientId, model: selectedModel });
-                infoPopover.innerHTML = buildInfoContent();
+                infoPopover.innerHTML = await buildInfoContent();
                 bindInfoPopoverActions();
             });
         }
@@ -1431,15 +1423,19 @@ async function addAIChatClient() {
      * juste son numéro au repos, le texte complet du prompt en tooltip ; les emplacements vides ne
      * sont pas affichés.
      */
-    function renderShortcutButtons() {
+    async function renderShortcutButtons() {
+        const { promptShortcuts } = await getAiParams();
         shortcutsPanel.innerHTML = '';
         (promptShortcuts || []).forEach((promptText, index) => {
             if (!promptText?.trim()) return;
             const button = document.createElement('button');
             button.type = 'button';
             button.textContent = String(index);
-            button.addEventListener('mouseenter', () => {
-                shortcutTooltip.textContent = promptText;
+            // Recharge le texte au survol plutôt que de fermer sur la valeur capturée au rendu,
+            // pour refléter un raccourci modifié entre-temps depuis un autre onglet/les options.
+            button.addEventListener('mouseenter', async () => {
+                const { promptShortcuts: freshShortcuts } = await getAiParams();
+                shortcutTooltip.textContent = freshShortcuts?.[index] ?? promptText;
                 const buttonRect = button.getBoundingClientRect();
                 shortcutTooltip.style.top = `${buttonRect.top}px`;
                 shortcutTooltip.style.left = `${buttonRect.right + 8}px`;
@@ -1466,9 +1462,10 @@ async function addAIChatClient() {
      * échoue silencieusement quand il est appelé alors qu'un submit est déjà en cours de traitement
      * (cas de la commande /1, déclenchée depuis le handler 'submit' du formulaire).
      * @param {number} index
-     * @returns {boolean}
+     * @returns {Promise<boolean>}
      */
-    function runPromptShortcut(index) {
+    async function runPromptShortcut(index) {
+        const { promptShortcuts } = await getAiParams();
         const promptText = promptShortcuts?.[index];
         if (!promptText?.trim() || activeGeneration) return false;
         const attachmentsForThisMessage = pendingAttachments;
@@ -1477,6 +1474,7 @@ async function addAIChatClient() {
         submitUserMessage(promptText, attachmentsForThisMessage);
         return true;
     }
+
 
     let isOpen = false;
     function toggleChat() {
@@ -1655,9 +1653,10 @@ async function addAIChatClient() {
 
         // Si le port était sur "auto", précise les ports testés (utile pour comprendre pourquoi
         // aucun serveur n'a été détecté : ports courants LM Studio/Ollama non concordants, etc.)
-        const portInfo = aiParams.autoPortTestedPorts?.length
-            ? `les ports testés automatiquement (${aiParams.autoPortTestedPorts.join(', ')})`
-            : `le port ${aiParams.port}`;
+        const { autoPortTestedPorts, port } = await getAiParams();
+        const portInfo = autoPortTestedPorts?.length
+            ? `les ports testés automatiquement (${autoPortTestedPorts.join(', ')})`
+            : `le port ${port}`;
 
         const warningBubble = appendMessage('bot', '');
         warningBubble.classList.remove('bot');
@@ -1928,7 +1927,8 @@ async function addAIChatClient() {
     }
 
     /** Affiche la liste des commandes / disponibles ainsi que les raccourcis de prompts configurés. */
-    function showHelpMessage(commands) {
+    async function showHelpMessage(commands) {
+        const { promptShortcuts } = await getAiParams();
         const commandsList = Object.entries(commands)
             .map(([name, cmd]) => `• /${name} — ${cmd.description}`)
             .join('\n');
@@ -1960,7 +1960,7 @@ async function addAIChatClient() {
         // Enregistre un raccourci de prompt : /set <index> [texte]. Sans texte, reprend le dernier
         // message envoyé (promptHistory) — pratique pour transformer à la volée un message qu'on vient
         // d'envoyer en raccourci permanent.
-        setShortcut: (arg) => {
+        setShortcut: async (arg) => {
             const [indexText, ...rest] = arg.trim().split(/\s+/).filter(Boolean);
             const index = Number(indexText);
             if (!Number.isInteger(index) || index < 0 || index > 9) {
@@ -1972,24 +1972,23 @@ async function addAIChatClient() {
                 showSystemNotice('Aucun texte fourni et aucun dernier message envoyé à utiliser.');
                 return;
             }
-            promptShortcuts[index] = promptText;
-            chrome.storage.local.set({ [`IAassistantPromptShortcut${index}`]: promptText });
+            await setStorageOption({ [`IAassistantPromptShortcut${index}`]: promptText });
             renderShortcutButtons();
             showSystemNotice(`Raccourci /${index} enregistré : ${promptText.slice(0, 60)}${promptText.length > 60 ? '…' : ''}`);
         },
         // Supprime un raccourci de prompt : /del <index>.
-        deleteShortcut: (arg) => {
+        deleteShortcut: async (arg) => {
             const index = Number(arg.trim());
             if (!Number.isInteger(index) || index < 0 || index > 9) {
                 showSystemNotice('Usage : /del <index 0-9>.');
                 return;
             }
+            const { promptShortcuts } = await getAiParams();
             if (!promptShortcuts?.[index]?.trim()) {
                 showSystemNotice(`Le raccourci /${index} est déjà vide.`);
                 return;
             }
-            promptShortcuts[index] = '';
-            chrome.storage.local.set({ [`IAassistantPromptShortcut${index}`]: '' });
+            await setStorageOption({ [`IAassistantPromptShortcut${index}`]: '' });
             renderShortcutButtons();
             showSystemNotice(`Raccourci /${index} supprimé.`);
         }
@@ -2019,13 +2018,13 @@ async function addAIChatClient() {
         });
     }
 
-    chatForm.addEventListener('submit', (e) => {
+    chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const userText = chatInput.value.trim();
         if (!userText) return;
 
-        if (tryHandleChatSlashCommand(userText, slashCommandContext)) {
+        if (await tryHandleChatSlashCommand(userText, slashCommandContext)) {
             chatInput.value = '';
             return;
         }
