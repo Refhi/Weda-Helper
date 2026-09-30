@@ -121,6 +121,48 @@ async function lirePiecesJointesPdf(data) {
 }
 
 /**
+ * Retrouve, dans un résultat de recoverData, la pièce jointe portant le fileId donné.
+ * @param {Object} data
+ * @param {string} fileId
+ * @returns {Object|null}
+ */
+function trouverAttachmentParFileId(data, fileId) {
+    for (const categoryData of Object.values(data)) {
+        if (!Array.isArray(categoryData)) continue;
+        for (const day of categoryData) {
+            const attachment = (day.attachments || []).find(a => a.fileId === fileId);
+            if (attachment) return attachment;
+        }
+    }
+    return null;
+}
+
+/**
+ * Contexte (categories/dateRange/patientId) nécessaire pour retrouver un fileId donné dans
+ * l'iframe de scraping, indexé par fileId. Alimenté à chaque recoverPatientData, consommé par
+ * lireDocumentJoint : le modèle n'a ainsi plus besoin de re-fournir categories/dateRange pour lire
+ * un document repéré lors d'un appel précédent, un simple fileId suffit.
+ */
+const _attachmentContextByFileId = new Map();
+
+/**
+ * Enregistre, pour chaque pièce jointe trouvée dans le résultat, le contexte d'appel ayant permis
+ * de la trouver (voir _attachmentContextByFileId).
+ * @param {Object} data - Résultat de recoverData
+ * @param {{categories: string[], dateRange: Array, patientId: string|null}} context
+ */
+function enregistrerContextePiecesJointes(data, context) {
+    for (const categoryData of Object.values(data)) {
+        if (!Array.isArray(categoryData)) continue;
+        for (const day of categoryData) {
+            for (const attachment of day.attachments || []) {
+                if (attachment.fileId) _attachmentContextByFileId.set(attachment.fileId, context);
+            }
+        }
+    }
+}
+
+/**
  * Fonction appelable par le modèle pour récupérer les données de l'historique du patient
  * actuellement ouvert dans Weda (consultations, résultats d'examens, antécédents, etc.).
  * S'appuie sur recoverData (voir dataScrapper.js). Cette fonction n'est jamais invoquée depuis le
@@ -133,12 +175,12 @@ async function recoverPatientData({
     dateRange = [],
     antecedentsType,
     antecedentsChampDate,
-    antecedentsDateRange = [],
-    fileIds = []
+    antecedentsDateRange = []
 } = {}, patientId = null) {
-    console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, dateRange, antecedentsType, antecedentsChampDate, antecedentsDateRange, fileIds, patientId });
+    console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, dateRange, antecedentsType, antecedentsChampDate, antecedentsDateRange, patientId });
     try {
-        const data = await recoverData({ categories, fullPage, dateRange, debug: false, patientId, resolveAttachmentFileIds: fileIds });
+        const data = await recoverData({ categories, fullPage, dateRange, debug: false, patientId });
+        enregistrerContextePiecesJointes(data, { categories, dateRange, patientId });
         if (data?.antecedents && (antecedentsType || antecedentsChampDate)) {
             data.antecedents = filtrerAntecedents(data.antecedents, {
                 type: antecedentsType,
@@ -146,14 +188,69 @@ async function recoverPatientData({
                 dateRange: antecedentsDateRange
             });
         }
-        if (fileIds.length > 0) {
-            await lirePiecesJointesPdf(data);
-        }
         return data;
     } catch (e) {
         console.error("[recoverPatientData] Erreur lors de la récupération des données :", e);
         return { error: `Erreur lors de la récupération des données : ${e.message || e}` };
     }
+}
+
+/**
+ * Fonction appelable par le modèle pour lire le contenu (texte) d'une ou plusieurs pièces jointes
+ * pdf déjà repérées via un appel précédent à recoverPatientData (champ attachment.fileId).
+ * `fileId` accepte indifféremment une chaîne unique ou un tableau, pour lire plusieurs documents
+ * en un seul appel plutôt que d'enchâiner plusieurs appels successifs. Retrouve seule la
+ * catégorie/plage de dates de chaque fileId via _attachmentContextByFileId (regroupés par
+ * contexte identique pour ne rejouer recoverData qu'une fois par groupe).
+ */
+async function lireDocumentsJoints({ fileId } = {}, patientId = null) {
+    const fileIdsAChercher = [...new Set((Array.isArray(fileId) ? fileId : [fileId]).filter(Boolean))];
+    console.log(`[lireDocumentsJoints] Appelée avec:`, { fileIdsAChercher, patientId });
+    if (!fileIdsAChercher.length) return { error: "fileId requis." };
+
+    // Regroupe les fileId partageant le même contexte (categories/dateRange/patientId) pour ne
+    // rejouer recoverData qu'une fois par groupe plutôt qu'une fois par fileId.
+    const groupesParContexte = new Map();
+    const resultatsParFileId = {};
+
+    for (const id of fileIdsAChercher) {
+        const context = _attachmentContextByFileId.get(id);
+        if (!context) {
+            resultatsParFileId[id] = { fileId: id, error: `fileId "${id}" inconnu : appelez d'abord recoverPatientData pour le repérer.` };
+            continue;
+        }
+        const cleContexte = JSON.stringify([context.categories, context.dateRange, patientId || context.patientId]);
+        if (!groupesParContexte.has(cleContexte)) groupesParContexte.set(cleContexte, { context, fileIds: [] });
+        groupesParContexte.get(cleContexte).fileIds.push(id);
+    }
+
+    for (const { context, fileIds: idsDuGroupe } of groupesParContexte.values()) {
+        try {
+            const data = await recoverData({
+                categories: context.categories,
+                dateRange: context.dateRange,
+                debug: false,
+                patientId: patientId || context.patientId,
+                resolveAttachmentFileIds: idsDuGroupe,
+            });
+            await lirePiecesJointesPdf(data);
+
+            for (const id of idsDuGroupe) {
+                const attachment = trouverAttachmentParFileId(data, id);
+                resultatsParFileId[id] = attachment
+                    ? { fileId: id, name: attachment.name, pdfText: attachment.pdfText }
+                    : { fileId: id, error: `Document introuvable pour fileId "${id}" (a-t-il disparu depuis le précédent appel ?).` };
+            }
+        } catch (e) {
+            console.error("[lireDocumentsJoints] Erreur lors de la lecture des documents :", e);
+            for (const id of idsDuGroupe) {
+                resultatsParFileId[id] = { fileId: id, error: `Erreur lors de la lecture du document : ${e.message || e}` };
+            }
+        }
+    }
+
+    const resultats = fileIdsAChercher.map(id => resultatsParFileId[id]);
+    return resultats.length === 1 ? resultats[0] : resultats;
 }
 
 /**
@@ -227,11 +324,6 @@ const availableFunctions = {
                             type: "array",
                             description: "Filtre optionnel sur une plage de dates des antécédents, appliqué au champ désigné par antecedentsChampDate : [dateDebut, dateFin] au format 'jj/mm/aaaa'. Chaque borne est facultative.",
                             items: { type: "string" }
-                        },
-                        fileIds: {
-                            type: "array",
-                            description: "Liste de fileId de pièces jointes (champ attachment.fileId déjà obtenu via un appel précédent) dont on veut lire le contenu : le pdf est récupéré et son texte directement ajouté en tant qu'attachment.pdfText dans le résultat. Coûteux : ne renseigner qu'avec les fileId réellement utiles, jamais de façon systématique.",
-                            items: { type: "string" }
                         }
                     },
                     required: []
@@ -239,6 +331,29 @@ const availableFunctions = {
             }
         },
         execute: (args, patientId) => recoverPatientData(args, patientId)
+    },
+    lireDocumentJoint: {
+        definition: {
+            type: "function",
+            function: {
+                name: "lireDocumentJoint",
+                description: "Lit le contenu texte d'une ou plusieurs pièces jointes (pdf) du dossier patient, repérées par leur fileId (champ attachment.fileId renvoyé par un appel précédent à recoverPatientData). Ne fournir QUE le/les fileId : la catégorie et la plage de dates d'origine sont retrouvées automatiquement. Renvoie {fileId, name, pdfText} (ou {fileId, error} si le fileId est inconnu, appeler recoverPatientData avant), groupé dans un tableau si plusieurs fileId demandés.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        fileId: {
+                            description: "fileId (chaîne) ou liste de fileId (tableau de chaînes) des pièces jointes à lire, ex. '893222115' ou ['893222115', '893222126'].",
+                            oneOf: [
+                                { type: "string" },
+                                { type: "array", items: { type: "string" } }
+                            ]
+                        }
+                    },
+                    required: ["fileId"]
+                }
+            }
+        },
+        execute: ({ fileId } = {}, patientId) => lireDocumentsJoints({ fileId }, patientId)
     },
     rechercherCim10: {
         definition: {
