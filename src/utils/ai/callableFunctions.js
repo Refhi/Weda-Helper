@@ -196,17 +196,65 @@ async function recoverPatientData({
 }
 
 /**
+ * Parcourt toutes les iframes présentes dans la page actuelle et renvoie les URLs ressemblant à
+ * un pdf (src ou, si accessible, l'URL réellement chargée dans l'iframe une fois le pdf ouvert).
+ */
+function trouverUrlsPdfDansIframes() {
+    const urls = new Set();
+    for (const iframe of document.querySelectorAll('iframe')) {
+        let url = null;
+        try {
+            url = iframe.contentWindow?.location?.href;
+        } catch (e) { /* iframe cross-origin, inaccessible */ }
+        if (!url || url === 'about:blank') url = iframe.src;
+        // Le src ne contient pas toujours "pdf" (ex. BinaryData.aspx?id=...) : on se base aussi
+        // sur l'id/nom de l'iframe, utilisé par Weda pour ses viewers de pdf.
+        const ressembleAUnPdf = /pdf|binarydata|downloadattachment/i.test(url || '')
+            || /viewpdfdocumentucform|iframeviewfile/i.test(iframe.id || '');
+        if (url && url !== 'about:blank' && ressembleAUnPdf) urls.add(url);
+    }
+    return [...urls];
+}
+
+/**
+ * Recherche et lit le contenu de tous les pdf trouvés dans les iframes de la page actuelle.
+ * Appelée par lireDocumentsJoints lorsqu'aucun fileId n'est fourni (ex. pdf ouvert manuellement
+ * par l'utilisateur en dehors du scraping habituel de recoverPatientData).
+ */
+async function lireDocumentsPdfDepuisIframes() {
+    const urls = trouverUrlsPdfDansIframes();
+    console.log(`[lireDocumentsJoints] Aucun fileId fourni, recherche de pdf dans les iframes de la page :`, urls);
+    if (!urls.length) return { error: "Aucun fileId fourni et aucune iframe contenant un pdf n'a été trouvée sur la page actuelle." };
+
+    const resultats = [];
+    for (const url of urls) {
+        try {
+            resultats.push({ url, pdfText: await extractTextFromPDF(url) });
+        } catch (e) {
+            console.error(`[lireDocumentsJoints] Erreur lors de la lecture du pdf (url=${url}) :`, e);
+            resultats.push({ url, error: `Erreur lors de la lecture du document : ${e.message || e}` });
+        }
+    }
+    return resultats.length === 1 ? resultats[0] : resultats;
+}
+
+/**
  * Fonction appelable par le modèle pour lire le contenu (texte) d'une ou plusieurs pièces jointes
  * pdf déjà repérées via un appel précédent à recoverPatientData (champ attachment.fileId).
  * `fileId` accepte indifféremment une chaîne unique ou un tableau, pour lire plusieurs documents
  * en un seul appel plutôt que d'enchâiner plusieurs appels successifs. Retrouve seule la
  * catégorie/plage de dates de chaque fileId via _attachmentContextByFileId (regroupés par
  * contexte identique pour ne rejouer recoverData qu'une fois par groupe).
+ * Si fileId est absent, recherche plutôt directement les pdf présents dans les iframes de la page
+ * (voir lireDocumentsPdfDepuisIframes), sans passer par recoverPatientData.
  */
 async function lireDocumentsJoints({ fileId } = {}, patientId = null) {
+    if (fileId === undefined || fileId === null || (Array.isArray(fileId) && fileId.length === 0)) {
+        return await lireDocumentsPdfDepuisIframes();
+    }
     const fileIdsAChercher = [...new Set((Array.isArray(fileId) ? fileId : [fileId]).filter(Boolean))];
     console.log(`[lireDocumentsJoints] Appelée avec:`, { fileIdsAChercher, patientId });
-    if (!fileIdsAChercher.length) return { error: "fileId requis." };
+    if (!fileIdsAChercher.length) return await lireDocumentsPdfDepuisIframes();
 
     // Regroupe les fileId partageant le même contexte (categories/dateRange/patientId) pour ne
     // rejouer recoverData qu'une fois par groupe plutôt qu'une fois par fileId.
@@ -341,19 +389,19 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "lireDocumentJoint",
-                description: "Lit le contenu texte d'une ou plusieurs pièces jointes (pdf) du dossier patient, repérées par leur fileId (champ attachment.fileId renvoyé par un appel précédent à recoverPatientData). Ne fournir QUE le/les fileId : la catégorie et la plage de dates d'origine sont retrouvées automatiquement. Renvoie {fileId, name, pdfText} (ou {fileId, error} si le fileId est inconnu, appeler recoverPatientData avant), groupé dans un tableau si plusieurs fileId demandés.",
+                description: "Lit le contenu texte d'une ou plusieurs pièces jointes (pdf) du dossier patient, repérées par leur fileId (champ attachment.fileId renvoyé par un appel précédent à recoverPatientData). Ne fournir QUE le/les fileId : la catégorie et la plage de dates d'origine sont retrouvées automatiquement. Renvoie {fileId, name, pdfText} (ou {fileId, error} si le fileId est inconnu, appeler recoverPatientData avant), groupé dans un tableau si plusieurs fileId demandés. Si appelée SANS argument (fileId omis), recherche à la place tous les pdf présents dans les iframes de la page actuelle (ex. pdf ouvert manuellement par l'utilisateur) et en lit directement le contenu, renvoyant {url, pdfText} (ou {url, error}).",
                 parameters: {
                     type: "object",
                     properties: {
                         fileId: {
-                            description: "fileId (chaîne) ou liste de fileId (tableau de chaînes) des pièces jointes à lire, ex. '893222115' ou ['893222115', '893222126'].",
+                            description: "fileId (chaîne) ou liste de fileId (tableau de chaînes) des pièces jointes à lire, ex. '893222115' ou ['893222115', '893222126']. Omettre pour rechercher plutôt les pdf ouverts dans les iframes de la page actuelle.",
                             oneOf: [
                                 { type: "string" },
                                 { type: "array", items: { type: "string" } }
                             ]
                         }
                     },
-                    required: ["fileId"]
+                    required: []
                 }
             }
         },
