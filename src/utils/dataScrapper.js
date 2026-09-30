@@ -2080,8 +2080,9 @@ function showRecoveredData(data) {
     pre.style.zIndex = 1000; // Assurez-vous que le pré est au-dessus des autres éléments
     document.body.appendChild(pre);
 
-    // si on clique sur le pré, on le supprime
-    pre.addEventListener("click", () => {
+    // si on clique droit sur le pré, on le supprime
+    pre.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
         pre.remove();
     });
 }
