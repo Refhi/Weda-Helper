@@ -95,6 +95,32 @@ async function rechercherCim10({ terme, termes, limite = 20 } = {}) {
 }
 
 /**
+ * Parcourt le résultat de recoverData et remplace, pour chaque pièce jointe dont l'URL a été
+ * résolue (attachment.url, voir resolveAttachmentFileIds), le champ url par le texte extrait du
+ * pdf (attachment.pdfText) : le modèle reçoit directement le contenu du document, comme si
+ * l'utilisateur le lui avait fourni et confirmé, plutôt qu'un simple lien à rappeler.
+ * @param {Object} data - Résultat de recoverData, potentiellement enrichi d'attachment.url
+ */
+async function lirePiecesJointesPdf(data) {
+    for (const categoryData of Object.values(data)) {
+        if (!Array.isArray(categoryData)) continue;
+        for (const day of categoryData) {
+            for (const attachment of day.attachments || []) {
+                if (!attachment.url) continue;
+                try {
+                    attachment.pdfText = await extractTextFromPDF(attachment.url);
+                } catch (e) {
+                    console.error(`[recoverPatientData] Erreur lors de la lecture du pdf (fileId=${attachment.fileId}) :`, e);
+                    attachment.pdfText = null;
+                } finally {
+                    delete attachment.url;
+                }
+            }
+        }
+    }
+}
+
+/**
  * Fonction appelable par le modèle pour récupérer les données de l'historique du patient
  * actuellement ouvert dans Weda (consultations, résultats d'examens, antécédents, etc.).
  * S'appuie sur recoverData (voir dataScrapper.js). Cette fonction n'est jamais invoquée depuis le
@@ -107,17 +133,21 @@ async function recoverPatientData({
     dateRange = [],
     antecedentsType,
     antecedentsChampDate,
-    antecedentsDateRange = []
+    antecedentsDateRange = [],
+    fileIds = []
 } = {}, patientId = null) {
-    console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, dateRange, antecedentsType, antecedentsChampDate, antecedentsDateRange, patientId });
+    console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, dateRange, antecedentsType, antecedentsChampDate, antecedentsDateRange, fileIds, patientId });
     try {
-        const data = await recoverData({ categories, fullPage, dateRange, debug: false, patientId });
+        const data = await recoverData({ categories, fullPage, dateRange, debug: false, patientId, resolveAttachmentFileIds: fileIds });
         if (data?.antecedents && (antecedentsType || antecedentsChampDate)) {
             data.antecedents = filtrerAntecedents(data.antecedents, {
                 type: antecedentsType,
                 champDate: antecedentsChampDate,
                 dateRange: antecedentsDateRange
             });
+        }
+        if (fileIds.length > 0) {
+            await lirePiecesJointesPdf(data);
         }
         return data;
     } catch (e) {
@@ -196,6 +226,11 @@ const availableFunctions = {
                         antecedentsDateRange: {
                             type: "array",
                             description: "Filtre optionnel sur une plage de dates des antécédents, appliqué au champ désigné par antecedentsChampDate : [dateDebut, dateFin] au format 'jj/mm/aaaa'. Chaque borne est facultative.",
+                            items: { type: "string" }
+                        },
+                        fileIds: {
+                            type: "array",
+                            description: "Liste de fileId de pièces jointes (champ attachment.fileId déjà obtenu via un appel précédent) dont on veut lire le contenu : le pdf est récupéré et son texte directement ajouté en tant qu'attachment.pdfText dans le résultat. Coûteux : ne renseigner qu'avec les fileId réellement utiles, jamais de façon systématique.",
                             items: { type: "string" }
                         }
                     },
