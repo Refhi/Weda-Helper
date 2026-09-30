@@ -972,7 +972,7 @@ var advancedDefaultSettings = [
                 "type": TYPE_SELECT,
                 "description": "Niveau de raisonnement (\"thinking\") demandé au modèle.",
                 "longDescription": "Envoyé via le paramètre \"reasoning_effort\" de l'API. Uniquement pris en compte par les modèles compatibles \"reasoning\"/\"thinking\" (ex: gpt-oss, qwen3) ; ignoré silencieusement par les autres. \"Auto\" ne transmet pas le paramètre et laisse le modèle/serveur décider. Valeurs alignées sur la doc officielle Ollama (some sont des alias de compatibilité résolus par le serveur selon le modèle : \"minimal\"→\"low\", \"xhigh\"/\"ultra\"→\"max\" ou \"high\" selon le modèle). Peut aussi être changé depuis le menu déroulant du Chat.",
-                "default": "auto",
+                "default": "none",
                 "selectOptions": [{
                     "value": "auto",
                     "description": "Auto (ne pas envoyer le paramètre)"
