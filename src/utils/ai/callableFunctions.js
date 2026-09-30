@@ -217,25 +217,73 @@ function trouverUrlsPdfDansIframes() {
 }
 
 /**
- * Recherche et lit le contenu de tous les pdf trouvés dans les iframes de la page actuelle.
- * Appelée par lireDocumentsJoints lorsqu'aucun fileId n'est fourni (ex. pdf ouvert manuellement
- * par l'utilisateur en dehors du scraping habituel de recoverPatientData).
+ * Recherche et lit le contenu de tous les pdf trouvés dans les iframes de la page actuelle
+ * (PopUpViewBinaryForm.aspx, ouverte manuellement par l'utilisateur pour visualiser une pièce
+ * jointe hors du scraping habituel de recoverPatientData).
  */
-async function lireDocumentsPdfDepuisIframes() {
+async function lirePdfDepuisIframesPage() {
     const urls = trouverUrlsPdfDansIframes();
-    console.log(`[lireDocumentsJoints] Aucun fileId fourni, recherche de pdf dans les iframes de la page :`, urls);
-    if (!urls.length) return { error: "Aucun fileId fourni et aucune iframe contenant un pdf n'a été trouvée sur la page actuelle." };
+    console.log(`[pageContext] Recherche de pdf dans les iframes de la page :`, urls);
+    if (!urls.length) return { error: "Aucune iframe contenant un pdf n'a été trouvée sur la page actuelle." };
 
     const resultats = [];
     for (const url of urls) {
         try {
             resultats.push({ url, pdfText: await extractTextFromPDF(url) });
         } catch (e) {
-            console.error(`[lireDocumentsJoints] Erreur lors de la lecture du pdf (url=${url}) :`, e);
+            console.error(`[pageContext] Erreur lors de la lecture du pdf (url=${url}) :`, e);
             resultats.push({ url, error: `Erreur lors de la lecture du document : ${e.message || e}` });
         }
     }
     return resultats.length === 1 ? resultats[0] : resultats;
+}
+
+/**
+ * Extrait, depuis la page HprimForm.aspx (résultat de biologie importé), le tableau structuré des
+ * valeurs (#ContentPlaceHolder1_LabelHprimDataStructure) sous forme de lignes {libelle, valeur,
+ * unite, min, max}. Se rabat sur le texte brut du compte-rendu (#ContentPlaceHolder1_DivDataHprim)
+ * si le tableau est absent ou vide.
+ */
+function lireResultatsHprim() {
+    const table = document.querySelector('#ContentPlaceHolder1_LabelHprimDataStructure table');
+    if (table) {
+        const lignes = [...table.querySelectorAll('tr')]
+            .slice(1) // première ligne = en-têtes (Libellé, Valeur, Unité, Mininum, Maximum)
+            .map(tr => {
+                const tds = tr.querySelectorAll('td');
+                return {
+                    libelle: tds[1]?.innerText.trim(),
+                    valeur: tds[2]?.innerText.trim(),
+                    unite: tds[3]?.innerText.trim(),
+                    min: tds[4]?.innerText.trim(),
+                    max: tds[5]?.innerText.trim()
+                };
+            })
+            .filter(ligne => ligne.libelle);
+        if (lignes.length) return { resultats: lignes };
+    }
+
+    const texteBrut = document.querySelector('#ContentPlaceHolder1_DivDataHprim')?.innerText?.trim();
+    if (texteBrut) return { compteRendu: texteBrut };
+
+    return { error: "Aucun résultat d'analyse (tableau ou compte-rendu) n'a été trouvé sur la page actuelle." };
+}
+
+/**
+ * Fonction appelable par le modèle pour récupérer des informations contextuelles propres à la
+ * page Weda actuellement affichée (en dehors du dossier patient classique consultable via
+ * recoverPatientData), lorsque son contenu dépend de l'URL en cours :
+ * - PopUpViewBinaryForm.aspx (visualisation manuelle d'une pièce jointe) : lecture des pdf trouvés
+ *   dans les iframes de la page.
+ * - HprimForm.aspx (résultat de biologie importé) : tableau structuré des valeurs ou, à défaut,
+ *   texte brut du compte-rendu.
+ */
+async function pageContext() {
+    const url = window.location.href;
+    console.log(`[pageContext] Appelée, url actuelle :`, url);
+    if (url.includes('/FolderMedical/PopUpViewBinaryForm.aspx')) return await lirePdfDepuisIframesPage();
+    if (url.includes('/FolderMedical/HprimForm.aspx')) return lireResultatsHprim();
+    return { error: "Aucune information contextuelle disponible pour la page actuelle." };
 }
 
 /**
@@ -245,16 +293,11 @@ async function lireDocumentsPdfDepuisIframes() {
  * en un seul appel plutôt que d'enchâiner plusieurs appels successifs. Retrouve seule la
  * catégorie/plage de dates de chaque fileId via _attachmentContextByFileId (regroupés par
  * contexte identique pour ne rejouer recoverData qu'une fois par groupe).
- * Si fileId est absent, recherche plutôt directement les pdf présents dans les iframes de la page
- * (voir lireDocumentsPdfDepuisIframes), sans passer par recoverPatientData.
  */
 async function lireDocumentsJoints({ fileId } = {}, patientId = null) {
-    if (fileId === undefined || fileId === null || (Array.isArray(fileId) && fileId.length === 0)) {
-        return await lireDocumentsPdfDepuisIframes();
-    }
     const fileIdsAChercher = [...new Set((Array.isArray(fileId) ? fileId : [fileId]).filter(Boolean))];
     console.log(`[lireDocumentsJoints] Appelée avec:`, { fileIdsAChercher, patientId });
-    if (!fileIdsAChercher.length) return await lireDocumentsPdfDepuisIframes();
+    if (!fileIdsAChercher.length) return { error: "fileId requis." };
 
     // Regroupe les fileId partageant le même contexte (categories/dateRange/patientId) pour ne
     // rejouer recoverData qu'une fois par groupe plutôt qu'une fois par fileId.
@@ -389,23 +432,38 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "lireDocumentJoint",
-                description: "Lit le contenu texte d'une ou plusieurs pièces jointes (pdf) du dossier patient, repérées par leur fileId (champ attachment.fileId renvoyé par un appel précédent à recoverPatientData). Ne fournir QUE le/les fileId : la catégorie et la plage de dates d'origine sont retrouvées automatiquement. Renvoie {fileId, name, pdfText} (ou {fileId, error} si le fileId est inconnu, appeler recoverPatientData avant), groupé dans un tableau si plusieurs fileId demandés. Si appelée SANS argument (fileId omis), recherche à la place tous les pdf présents dans les iframes de la page actuelle (ex. pdf ouvert manuellement par l'utilisateur) et en lit directement le contenu, renvoyant {url, pdfText} (ou {url, error}).",
+                description: "Lit le contenu texte d'une ou plusieurs pièces jointes (pdf) du dossier patient, repérées par leur fileId (champ attachment.fileId renvoyé par un appel précédent à recoverPatientData). Ne fournir QUE le/les fileId : la catégorie et la plage de dates d'origine sont retrouvées automatiquement. Renvoie {fileId, name, pdfText} (ou {fileId, error} si le fileId est inconnu, appeler recoverPatientData avant), groupé dans un tableau si plusieurs fileId demandés.",
                 parameters: {
                     type: "object",
                     properties: {
                         fileId: {
-                            description: "fileId (chaîne) ou liste de fileId (tableau de chaînes) des pièces jointes à lire, ex. '893222115' ou ['893222115', '893222126']. Omettre pour rechercher plutôt les pdf ouverts dans les iframes de la page actuelle.",
+                            description: "fileId (chaîne) ou liste de fileId (tableau de chaînes) des pièces jointes à lire, ex. '893222115' ou ['893222115', '893222126'].",
                             oneOf: [
                                 { type: "string" },
                                 { type: "array", items: { type: "string" } }
                             ]
                         }
                     },
-                    required: []
+                    required: ["fileId"]
                 }
             }
         },
         execute: ({ fileId } = {}, patientId) => lireDocumentsJoints({ fileId }, patientId)
+    },
+    pageContext: {
+        definition: {
+            type: "function",
+            function: {
+                name: "pageContext",
+                description: "Récupère des informations contextuelles propres à la page Weda actuellement affichée, en dehors du dossier patient classique consultable via recoverPatientData. Le contenu renvoyé dépend de l'URL en cours : sur une page de visualisation manuelle d'une pièce jointe (PopUpViewBinaryForm.aspx), lit le(s) pdf trouvé(s) dans les iframes de la page et renvoie {url, pdfText} (ou un tableau si plusieurs) ; sur une page de résultat de biologie importé (HprimForm.aspx), renvoie soit {resultats: [{libelle, valeur, unite, min, max}, ...]} si un tableau structuré est disponible, soit {compteRendu} (texte brut) sinon. Renvoie {error} si l'URL actuelle n'est pas prise en charge.",
+                parameters: {
+                    type: "object",
+                    properties: {},
+                    required: []
+                }
+            }
+        },
+        execute: () => pageContext()
     },
     rechercherCim10: {
         definition: {
