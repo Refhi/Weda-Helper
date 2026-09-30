@@ -542,8 +542,9 @@ function returnMessageBodyES() {
 
 /**
  * Repère la méta-zone d'action (.messageAttachment) sur laquelle il faut agir pour les échanges
- * sécurisés : celle dont le champ de titre contient encore ".pdf" (valeur par défaut posée par
- * Weda avant tout traitement), ce qui identifie la pièce jointe PDF concernée par l'extraction.
+ * sécurisés : celle contenant le visualiseur pdf (.view-pdf-document-uc-form), ce qui identifie la
+ * pièce jointe PDF concernée par l'extraction (le champ titre n'est plus pré-rempli avec ".pdf" par
+ * Weda, il ne peut donc plus servir à ce ciblage).
  * Toutes les fonctions ci-dessous (titre, type, destination, commentaire) doivent scoper leurs
  * recherches à cette zone pour éviter d'agir sur la mauvaise pièce jointe lorsqu'il y en a plusieurs.
  *
@@ -552,12 +553,11 @@ function returnMessageBodyES() {
 function getActiveAttachmentZoneES() {
     const attachments = document.querySelectorAll(".messageAttachment");
     for (const attachment of attachments) {
-        const titleInput = attachment.querySelector("input[title=\"C'est le titre qu'aura le document dans le dossier patient\"]");
-        if (titleInput?.value.includes(".pdf")) {
+        if (attachment.querySelector(".view-pdf-document-uc-form")) {
             return attachment;
         }
     }
-    console.warn("[pdfParser] Aucune pièce jointe avec un titre en '.pdf' trouvée pour cibler la zone d'action.");
+    console.warn("[pdfParser] Aucune pièce jointe avec un visualiseur pdf trouvée pour cibler la zone d'action.");
     return null;
 }
 

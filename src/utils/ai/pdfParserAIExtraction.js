@@ -152,11 +152,13 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
     try {
         parsedFields = await new Promise((resolve, reject) => {
             pendingPdfParserResolve = resolve;
+            // Le timeout court (mode complet) ne sert qu'à vérifier la disponibilité du client plus
+            // haut : l'attente de la réponse du modèle doit toujours utiliser le délai complet.
             setTimeout(() => {
                 if (pendingPdfParserResolve !== resolve) return; // déjà résolu entre-temps
                 pendingPdfParserResolve = null;
                 reject(new Error("Délai dépassé en attendant l'appel de submitPdfParserFields"));
-            }, waitTimeout);
+            }, PDF_PARSER_AI_TIMEOUT_MS);
             sendToChatApi();
         });
     } catch (error) {
