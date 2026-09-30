@@ -55,6 +55,7 @@
         "src/utils/score2handler.js",
         "src/utils/iframeHelpers.js",
         "src/utils/dataScrapper.js",
+        "src/utils/dataScrapperFileHandler.js",
         "src/utils/dataInserter.js",
         "src/utils/dataInserterATCD.js",
         "src/utils/ai/callableFunctions.js",

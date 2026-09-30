@@ -372,6 +372,10 @@ function mergeAndCacheCategoryData(cache, category, freshData, plan) {
  *     "Suite" est inhibé et seule la première page (10 plus récents) est rafraîchie.
  *   - "fullRefresh" : ignore le cache, récupère systématiquement des données fraîches.
  *   - "noRefresh" : utilise le cache tel quel s'il existe, même périmé (récupère uniquement en son absence).
+ * @argument resolveAttachmentFileIds Liste de fileId (voir attachment.fileId dans un résultat précédent) dont on
+ *   veut résoudre l'URL réelle du pdf. Coûteux (rejoue un clic par fileId) : à ne demander explicitement que sur
+ *   un appel ultérieur ciblé, pas systématiquement. Force le re-fetch des catégories demandées (l'iframe doit
+ *   rester chargée avec les pièces jointes visibles pour pouvoir cliquer dessus).
  */
 async function recoverData({
     fullPage = false, // De base on ne va vérifier que les 10 derniers subContainers chargés par défaut. N'est probablement pas possible pour charts et vaccins
@@ -380,6 +384,7 @@ async function recoverData({
     debug = false, // Affiche l'iframe en plein écran et ne la supprime pas à la fin pour faciliter le debug
     refreshMode = "autoRefresh", // "autoRefresh" | "fullRefresh" | "noRefresh" — voir doc ci-dessus
     patientId = null, // Patient explicitement ciblé (ex: appel depuis le chat IA via /patient) ; sinon déduit de l'URL courante
+    resolveAttachmentFileIds = [], // Liste de fileId dont on veut résoudre l'URL réelle du pdf (voir doc ci-dessus)
 } = {}) {
     // Préparation de l'objet de données à retourner
     const data = {};
@@ -405,6 +410,11 @@ async function recoverData({
             continue;
         }
         plans[category] = resolveCategoryCachePlan(category, cache[category], { fullPage, refreshMode });
+        // Résoudre des fileId nécessite que l'iframe reste chargée avec les pièces jointes visibles :
+        // on force donc un re-fetch même si le cache aurait suffi pour le reste des données.
+        if (resolveAttachmentFileIds.length > 0) {
+            plans[category].needsFetch = true;
+        }
     }
 
     const categoriesNeedingFetch = Object.keys(plans).filter(category => plans[category].needsFetch);
@@ -479,6 +489,12 @@ async function recoverData({
 
         // Filtrage a posteriori sur la plage de dates demandée (retire les entrées non pertinentes)
         data[category] = filterCategoryDataByDateRange(mergedData, resolvedDateRange, category);
+    }
+
+    // Résolution explicite de l'URL réelle de certaines pièces jointes, avant de fermer l'iframe
+    if (resolveAttachmentFileIds.length > 0 && iframe) {
+        const attachmentUrls = await resolveAttachmentUrls(iframe, resolveAttachmentFileIds);
+        injectAttachmentUrls(data, attachmentUrls);
     }
 
     // Nettoyage : supprimer l'iframe si on n'est pas en mode debug
@@ -1993,6 +2009,7 @@ function showDataScrapperTestPanel() {
                 <option value="noRefresh">noRefresh</option>
             </select>
         </label>
+        <label style="display:block;">fileId à résoudre (pièces jointes, séparés par virgule/espace) :<br><textarea id="dsp-fileIds" rows="2" style="width:200px;"></textarea></label>
         <hr>
     `;
 
@@ -2041,17 +2058,22 @@ function showDataScrapperTestPanel() {
             panel.querySelector('#dsp-dateStart').value.trim(),
             panel.querySelector('#dsp-dateEnd').value.trim(),
         ];
-        runDebugRecoverData(categories, categories.join(', '), { fullPage, debug, dateRange, refreshMode });
+        const resolveAttachmentFileIds = panel.querySelector('#dsp-fileIds').value
+            .split(/[\s,]+/)
+            .map(fileId => fileId.trim())
+            .filter(Boolean);
+        runDebugRecoverData(categories, categories.join(', '), { fullPage, debug, dateRange, refreshMode, resolveAttachmentFileIds });
     });
 }
 
-async function runDebugRecoverData(categories, label, { fullPage = true, debug = true, dateRange = [], refreshMode = "autoRefresh" } = {}) {
+async function runDebugRecoverData(categories, label, { fullPage = true, debug = true, dateRange = [], refreshMode = "autoRefresh", resolveAttachmentFileIds = [] } = {}) {
     const data = await recoverData({
         fullPage,
         categories,
         debug,
         dateRange,
         refreshMode,
+        resolveAttachmentFileIds,
     });
     console.log(`[dataScrapper] Données récupérées (${label}) :`, data);
     showRecoveredData(data);
