@@ -6,8 +6,11 @@
  * conserve donc aucun état de conversation lui-même : il envoie les messages utilisateur via
  * offscreenBridge.js et affiche les événements reçus en retour (chunks, appels de fonction...).
  */
-const AI_CHAT_WIDGET_POSITION_STORAGE_KEY = 'wedaHelperChatWidgetPosition';
-const AI_CHAT_WINDOW_POSITION_STORAGE_KEY = 'wedaHelperChatWindowPosition';
+/** Clé unique regroupant position du widget, position et taille de la fenêtre de chat (@see loadDiscussionClientData / saveDiscussionClientData). */
+const DISCUSSION_CLIENT_DATA_STORAGE_KEY = 'discussionClientData';
+/** Dimensions minimales autorisées pour la fenêtre de chat (drag/resize par les bords). */
+const CHAT_WINDOW_MIN_WIDTH = 260;
+const CHAT_WINDOW_MIN_HEIGHT = 200;
 
 
 
@@ -54,65 +57,32 @@ function isPdfTextReadable(text) {
 }
 
 /**
- * Charge la position persistée du widget de chat si disponible.
- * Stockée en distance depuis le bas/droite de l'écran (cohérente quand la fenêtre change de taille).
- * @returns {{right: number, bottom: number}|null}
+ * Charge l'objet unique regroupant la position du widget (bulle flottante), ainsi que la
+ * position et la taille de la fenêtre de chat. Les positions sont stockées en distance depuis
+ * le bas/droite de l'écran (cohérent quand l'écran change de taille).
+ * @returns {Promise<{widgetPosition: {right:number,bottom:number}|null, windowPosition: {right:number,bottom:number}|null, windowSize: {width:number,height:number}|null}>}
  */
-function loadWidgetPositionFromStorage() {
-    try {
-        const raw = localStorage.getItem(AI_CHAT_WIDGET_POSITION_STORAGE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (typeof parsed?.right === 'number' && typeof parsed?.bottom === 'number') {
-            return parsed;
-        }
-    } catch (error) {
-        console.warn('[discussionClient] Position du widget IA illisible, position par défaut conservée', error);
-    }
-    return null;
+async function loadDiscussionClientData() {
+    const stored = await getOptionPromise(DISCUSSION_CLIENT_DATA_STORAGE_KEY);
+    return {
+        widgetPosition: null,
+        windowPosition: null,
+        windowSize: null,
+        ...stored
+    };
 }
 
 /**
- * Persiste la position du widget de chat.
- * @param {{right: number, bottom: number}} position
+ * Fusionne les champs fournis avec les données déjà persistées, puis sauvegarde le tout sous
+ * une seule clé de stockage.
+ * @param {object} partialData - Un sous-ensemble de {widgetPosition, windowPosition, windowSize}.
+ * @returns {Promise<object>} L'objet complet une fois fusionné et persisté.
  */
-function saveWidgetPositionToStorage(position) {
-    try {
-        localStorage.setItem(AI_CHAT_WIDGET_POSITION_STORAGE_KEY, JSON.stringify(position));
-    } catch (error) {
-        console.warn('[discussionClient] Impossible de sauvegarder la position du widget IA', error);
-    }
-}
-
-/**
- * Charge la position persistée de la fenêtre de chat si disponible.
- * Stockée en distance depuis le bas/droite de l'écran (cohérente quand la fenêtre change de taille).
- * @returns {{right: number, bottom: number}|null}
- */
-function loadChatWindowPositionFromStorage() {
-    try {
-        const raw = localStorage.getItem(AI_CHAT_WINDOW_POSITION_STORAGE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (typeof parsed?.right === 'number' && typeof parsed?.bottom === 'number') {
-            return parsed;
-        }
-    } catch (error) {
-        console.warn('[discussionClient] Position de la fenetre de chat illisible, position par defaut conservee', error);
-    }
-    return null;
-}
-
-/**
- * Persiste la position de la fenêtre de chat.
- * @param {{right: number, bottom: number}} position
- */
-function saveChatWindowPositionToStorage(position) {
-    try {
-        localStorage.setItem(AI_CHAT_WINDOW_POSITION_STORAGE_KEY, JSON.stringify(position));
-    } catch (error) {
-        console.warn('[discussionClient] Impossible de sauvegarder la position de la fenetre de chat', error);
-    }
+async function saveDiscussionClientData(partialData) {
+    const current = await loadDiscussionClientData();
+    const merged = { ...current, ...partialData };
+    await setStorageOption({ [DISCUSSION_CLIENT_DATA_STORAGE_KEY]: merged });
+    return merged;
 }
 
 /**
@@ -781,6 +751,20 @@ async function addAIChatClient() {
         return nextPosition;
     }
 
+    /**
+     * Applique une taille à la fenêtre de chat, en la contraignant aux bornes min/écran.
+     * @param {number} width
+     * @param {number} height
+     * @returns {{width: number, height: number}}
+     */
+    function applyChatWindowSize(width, height) {
+        const clampedWidth = Math.min(Math.max(CHAT_WINDOW_MIN_WIDTH, width), window.innerWidth);
+        const clampedHeight = Math.min(Math.max(CHAT_WINDOW_MIN_HEIGHT, height), window.innerHeight);
+        chatWindow.style.width = `${clampedWidth}px`;
+        chatWindow.style.height = `${clampedHeight}px`;
+        return { width: clampedWidth, height: clampedHeight };
+    }
+
     function bindDragHandle(handleEl, {
         getStartRect,
         applyPosition,
@@ -846,17 +830,17 @@ async function addAIChatClient() {
         }
     }
 
-    function initializeDraggableChatWidget() {
-        const savedPosition = loadWidgetPositionFromStorage();
+    async function initializeDraggableChatWidget() {
+        const { widgetPosition: savedPosition } = await loadDiscussionClientData();
         if (savedPosition) {
             const applied = applyWidgetPosition(savedPosition.right, savedPosition.bottom);
-            saveWidgetPositionToStorage(applied);
+            saveDiscussionClientData({ widgetPosition: applied });
         }
 
         bindDragHandle(chatToggle, {
             getStartRect: () => rectToBottomRightOffset(widget.getBoundingClientRect()),
             applyPosition: (right, bottom) => applyWidgetPosition(right, bottom),
-            savePosition: (position) => saveWidgetPositionToStorage(position),
+            savePosition: (position) => saveDiscussionClientData({ widgetPosition: position }),
             suppressClickOnDrag: true
         });
 
@@ -867,13 +851,16 @@ async function addAIChatClient() {
                 const currentRight = parseFloat(widget.style.right) || 0;
                 const currentBottom = parseFloat(widget.style.bottom) || 0;
                 const clamped = applyWidgetPosition(currentRight, currentBottom);
-                saveWidgetPositionToStorage(clamped);
+                saveDiscussionClientData({ widgetPosition: clamped });
             }
         });
     }
 
-    function initializeDraggableChatWindow() {
-        const savedPosition = loadChatWindowPositionFromStorage();
+    async function initializeDraggableChatWindow() {
+        const { windowPosition: savedPosition, windowSize: savedSize } = await loadDiscussionClientData();
+        if (savedSize) {
+            applyChatWindowSize(savedSize.width, savedSize.height);
+        }
         if (savedPosition) {
             applyChatWindowPosition(savedPosition.right, savedPosition.bottom, { clamp: false });
         }
@@ -881,7 +868,7 @@ async function addAIChatClient() {
         bindDragHandle(chatHeader, {
             getStartRect: () => rectToBottomRightOffset(chatWindow.getBoundingClientRect()),
             applyPosition: (right, bottom) => applyChatWindowPosition(right, bottom),
-            savePosition: (position) => saveChatWindowPositionToStorage(position),
+            savePosition: (position) => saveDiscussionClientData({ windowPosition: position }),
             canStartDrag: (event) => !event.target.closest('button') && !getChatWindowResizeDirection(event)
         });
 
@@ -890,7 +877,7 @@ async function addAIChatClient() {
                 const currentRight = parseFloat(chatWindow.style.right) || 0;
                 const currentBottom = parseFloat(chatWindow.style.bottom) || 0;
                 const clamped = applyChatWindowPosition(currentRight, currentBottom);
-                saveChatWindowPositionToStorage(clamped);
+                saveDiscussionClientData({ windowPosition: clamped });
             }
         });
     }
@@ -935,8 +922,8 @@ async function addAIChatClient() {
     }
 
     function makeChatWindowResizableByEdges() {
-        const minWidth = 260;
-        const minHeight = 200;
+        const minWidth = CHAT_WINDOW_MIN_WIDTH;
+        const minHeight = CHAT_WINDOW_MIN_HEIGHT;
         let activeResizeDirection = '';
         let isResizing = false;
         let startX = 0;
@@ -987,9 +974,13 @@ async function addAIChatClient() {
 
         function onResizeUp() {
             if (isResizing) {
-                const offset = rectToBottomRightOffset(chatWindow.getBoundingClientRect());
-                const clamped = applyChatWindowPosition(offset.right, offset.bottom, { clamp: false });
-                saveChatWindowPositionToStorage(clamped);
+                const finalRect = chatWindow.getBoundingClientRect();
+                const offset = rectToBottomRightOffset(finalRect);
+                const clampedPosition = applyChatWindowPosition(offset.right, offset.bottom, { clamp: false });
+                saveDiscussionClientData({
+                    windowPosition: clampedPosition,
+                    windowSize: { width: finalRect.width, height: finalRect.height }
+                });
             }
             isResizing = false;
             activeResizeDirection = '';
