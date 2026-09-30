@@ -35,12 +35,25 @@ addTweak("*", "unitConverter", async function () {
         return isNaN(value) ? null : value;
     }
 
-    // trouve la première règle de conversion dont le libellé et l'unité source correspondent à la ligne
-    // structure attendue (format TYPE_JSON) : [libelleMatch, [uniteSource, facteur, uniteCible, decimales?]]
+    // retire accents et points d'abréviation pour une comparaison tolérante (ex: "L.D.L." ~ "LDL", "Cholestérol" ~ "CHOLESTEROL")
+    function normalizeLibelle(text) {
+        return text
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // retire les accents
+            .replace(/\./g, "") // retire les points d'abréviation
+            .toUpperCase();
+    }
+
+    // trouve la règle de conversion la plus spécifique (libellé le plus long) dont le libellé et l'unité source
+    // correspondent à la ligne. structure attendue (format TYPE_JSON) : [libelleMatch, [uniteSource, facteur, uniteCible, decimales?]]
     function findMatchingConversion(libelle, unite) {
-        return conversionTable.find(([libelleMatch, [uniteSource]]) =>
-            libelle.toUpperCase().includes(libelleMatch.toUpperCase()) &&
+        const normalizedLibelle = normalizeLibelle(libelle);
+        const matches = conversionTable.filter(([libelleMatch, [uniteSource]]) =>
+            normalizedLibelle.includes(normalizeLibelle(libelleMatch)) &&
             unite.toLowerCase() === uniteSource.toLowerCase()
+        );
+        if (matches.length === 0) return undefined;
+        return matches.reduce((best, current) =>
+            current[0].length > best[0].length ? current : best
         );
     }
 
