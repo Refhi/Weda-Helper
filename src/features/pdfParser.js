@@ -541,16 +541,40 @@ function returnMessageBodyES() {
 }
 
 /**
+ * Repère la méta-zone d'action (.messageAttachment) sur laquelle il faut agir pour les échanges
+ * sécurisés : celle dont le champ de titre contient encore ".pdf" (valeur par défaut posée par
+ * Weda avant tout traitement), ce qui identifie la pièce jointe PDF concernée par l'extraction.
+ * Toutes les fonctions ci-dessous (titre, type, destination, commentaire) doivent scoper leurs
+ * recherches à cette zone pour éviter d'agir sur la mauvaise pièce jointe lorsqu'il y en a plusieurs.
+ *
+ * @returns {Element|null} - Le conteneur `.messageAttachment` ciblé, ou null si aucun ne correspond.
+ */
+function getActiveAttachmentZoneES() {
+    const attachments = document.querySelectorAll(".messageAttachment");
+    for (const attachment of attachments) {
+        const titleInput = attachment.querySelector("input[title=\"C'est le titre qu'aura le document dans le dossier patient\"]");
+        if (titleInput?.value.includes(".pdf")) {
+            return attachment;
+        }
+    }
+    console.warn("[pdfParser] Aucune pièce jointe avec un titre en '.pdf' trouvée pour cibler la zone d'action.");
+    return null;
+}
+
+/**
  * Sélectionne le bon type de document pour les échanges sécurisés
  */
 async function selectDocumentTypeES(documentType) {
     console.log("[pdfParser] Sélection du type de document :", documentType);
+    const attachmentZone = getActiveAttachmentZoneES();
+    if (!attachmentZone || !documentType) {
+        console.log("[pdfParser] Pas de pièce jointe ciblée ou pas de type de document défini");
+        return;
+    }
     // Le menu déroulant est le select avec le titre "Attribuer une classification au document"
-    const selectElement = document.querySelector("select[title='Attribuer une classification au document']");
-
-    // Vérifier si on a un élément select et un type de document spécifié
-    if (!selectElement || !documentType) {
-        console.log("[pdfParser] Pas de select ou pas de type de document défini");
+    const selectElement = attachmentZone.querySelector("select[title='Attribuer une classification au document']");
+    if (!selectElement) {
+        console.log("[pdfParser] Pas de select trouvé dans la pièce jointe ciblée");
         return;
     }
 
@@ -580,20 +604,18 @@ async function setTitleIfNeededES(Titre) {
         console.log("[pdfParser] Option PdfParserAutoTitle désactivée, pas de titre à mettre");
         return;
     }
+    const attachmentZone = getActiveAttachmentZoneES();
+    if (!attachmentZone) return;
     // Le champ de titre est l'input avec le titre "C'est le titre qu'aura le document dans le dossier patient"
-    let titleInputs = document.querySelectorAll("input[title=\"C'est le titre qu'aura le document dans le dossier patient\"]");
-    // On sélectionne le dernier input (le plus bas dans le DOM)
-    for (const element of titleInputs)
-    {
-        let documentTitle = element.value;
-        if (documentTitle.includes(".pdf")) {
-            console.log("[pdfParser] Titre trouvé, on le met dans le champ de titre", Titre);
-            element.value = Titre;
-            element.dispatchEvent(new Event('change'));
-            element.dispatchEvent(new Event('input')); // dans certains cas, l'input est écouté via un listener 'input'
-        }
+    const titleInput = attachmentZone.querySelector("input[title=\"C'est le titre qu'aura le document dans le dossier patient\"]");
+    if (!titleInput) {
+        console.error("[pdfParser] Titre non trouvé, impossible de le mettre dans le champ de titre");
+        return;
     }
-    console.error("[pdfParser] Titre non trouvé, impossible de le mettre dans le champ de titre");
+    console.log("[pdfParser] Titre trouvé, on le met dans le champ de titre", Titre);
+    titleInput.value = Titre;
+    titleInput.dispatchEvent(new Event('change'));
+    titleInput.dispatchEvent(new Event('input')); // dans certains cas, l'input est écouté via un listener 'input'
 }
 
 /**
@@ -604,6 +626,8 @@ async function selectDestinationIfNeededES(destinationNumber) {
     if (!selectionNeeded) {
         return;
     }
+    const attachmentZone = getActiveAttachmentZoneES();
+    if (!attachmentZone) return;
     // Si l'option est activée, on va chercher la bonne destination
     // Les destinations possibles sont sélectionnées via des éléments clickables
     // On reprend la classification de extractDestinationClass, mais les noms sont différents
@@ -613,7 +637,7 @@ async function selectDestinationIfNeededES(destinationNumber) {
         '3': "Ranger dans les courriers"
     };
     // On va cliquer sur l'élément .weImportDocTargets dont le titre est celui de la destination
-    const elementACliquer = document.querySelector(`.weImportDocTargets[title="${destinations[destinationNumber]}"]`);
+    const elementACliquer = attachmentZone.querySelector(`.weImportDocTargets[title="${destinations[destinationNumber]}"]`);
     if (elementACliquer) {
         console.log("[pdfParser] Sélection de la destination d'importation :", destinations[destinationNumber]);
         // On va cliquer sur l'élément
@@ -630,22 +654,17 @@ async function selectDestinationIfNeededES(destinationNumber) {
  */
 async function setCommentaireIfNeededES(commentaire) {
     if (!commentaire) return;
-    const attachments = document.querySelectorAll(".messageAttachment");
-    for (const attachment of attachments) {
-        const checkbox = attachment.querySelector("input[type='checkbox']");
-        if (!checkbox?.checked) continue;
-        const commentInput = attachment.querySelector("input[placeholder='Commentaire']");
-        if (!commentInput) {
-            console.warn("[pdfParser] Champ commentaire introuvable dans l'attachment sélectionné");
-            return;
-        }
-        commentInput.value = commentaire;
-        commentInput.dispatchEvent(new Event('change'));
-        commentInput.dispatchEvent(new Event('input'));
-        console.log("[pdfParser] Commentaire inséré :", commentaire);
+    const attachmentZone = getActiveAttachmentZoneES();
+    if (!attachmentZone) return;
+    const commentInput = attachmentZone.querySelector("input[placeholder='Commentaire']");
+    if (!commentInput) {
+        console.warn("[pdfParser] Champ commentaire introuvable dans l'attachment sélectionné");
         return;
     }
-    console.warn("[pdfParser] Aucun attachment coché trouvé pour insérer le commentaire");
+    commentInput.value = commentaire;
+    commentInput.dispatchEvent(new Event('change'));
+    commentInput.dispatchEvent(new Event('input'));
+    console.log("[pdfParser] Commentaire inséré :", commentaire);
 }
 
 
