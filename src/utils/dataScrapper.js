@@ -136,7 +136,7 @@ const SELECTORS = {
         item:              '.bufi, .pja',
         titleContainer:    '.buft',
         visualizeLink:     'span[title^="Visualiser"]',
-        viewLink:          '[onclick*="OpenViewBinaryFormLC"]',
+        viewLink:          '[onclick*="OpenViewBinaryForm"]',
         description:       '.cfc',
     },
 
@@ -1903,10 +1903,12 @@ function parseAttachments(pjmDiv) {
             fileType = fileName?.includes('.') ? fileName.split('.').pop().toLowerCase() : 'unknown';
         }
         
-        // ID de fichier depuis le onclick => pour l’instant non utilisé
-        // const onclickAttr = viewLink?.getAttribute('onclick') || '';
-        // const fileIdMatch = onclickAttr.match(/Fil=(\d+)/);
-        // const fileId = fileIdMatch ? fileIdMatch[1] : null;
+        // ID d'événement et de fichier depuis le onclick, pour pouvoir rouvrir le document plus tard.
+        // Ne pas reconstruire l'URL PopUpViewBinaryForm soi-même : Weda exige un Referer/état de session
+        // valide, il faut rejouer OpenViewBinaryForm depuis une page Weda déjà ouverte (cf. window.open
+        // utilisé ailleurs dans le code, ex. patientLink.js) plutôt que d'ouvrir l'URL depuis un contexte externe.
+        const onclickAttr = viewLink?.getAttribute('onclick') || '';
+        const { eventId, fileId } = extractDocMetaFromOnclick(onclickAttr);
         
         // Description libre éventuellement ajoutée sur la pièce jointe (uniquement présente sur les ".pja")
         const description = textOf(div, SELECTORS.attachments.description);
@@ -1914,7 +1916,8 @@ function parseAttachments(pjmDiv) {
         return {
             type: fileType,
             name: fileName,
-            // id: fileId,
+            ...(eventId ? { eventId } : {}),
+            ...(fileId ? { fileId } : {}),
             ...(category ? { category } : {}),
             ...(description ? { description } : {})
         };
