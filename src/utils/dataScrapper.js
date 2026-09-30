@@ -428,7 +428,12 @@ async function recoverData({
         iframe = await createHiddenIframe(urlToLoad, debug, 'dataScrapperIframe');
     }
 
-    // On traite chaque catégorie demandée, en servant le cache quand c'est possible
+    // On traite chaque catégorie demandée, en servant le cache quand c'est possible. La résolution
+    // des fileId demandés se fait catégorie par catégorie (voir plus bas) : Weda n'affiche qu'une
+    // seule catégorie à la fois dans l'iframe, il faut donc cliquer sur les pièces jointes pendant
+    // que la bonne catégorie est encore affichée, pas après avoir parcouru toutes les catégories.
+    const attachmentUrlsByFileId = {};
+    let remainingFileIds = [...resolveAttachmentFileIds];
     for (const category of Object.keys(plans)) {
         const plan = plans[category];
         const categorySelectors = SELECTORS.categories[category];
@@ -483,6 +488,16 @@ async function recoverData({
         iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
         const freshData = recoverMainViewData(iframeDocument, categorySelectors, includeLegacy, category);
 
+        // Résolution des fileId demandés présents dans cette catégorie, pendant qu'elle est encore
+        // affichée dans l'iframe (voir resolveAttachmentUrls : nécessite que le lien soit dans le DOM).
+        if (remainingFileIds.length > 0) {
+            const fileIdsInThisCategory = collectAttachmentFileIds(freshData).filter(id => remainingFileIds.includes(id));
+            if (fileIdsInThisCategory.length > 0) {
+                Object.assign(attachmentUrlsByFileId, await resolveAttachmentUrls(iframe, fileIdsInThisCategory));
+                remainingFileIds = remainingFileIds.filter(id => !fileIdsInThisCategory.includes(id));
+            }
+        }
+
         // Mise à jour du cache en mémoire (fusion avec la partie "extra" conservée le cas échéant)
         const mergedData = mergeAndCacheCategoryData(cache, category, freshData, plan);
         cacheChanged = true;
@@ -491,10 +506,12 @@ async function recoverData({
         data[category] = filterCategoryDataByDateRange(mergedData, resolvedDateRange, category);
     }
 
-    // Résolution explicite de l'URL réelle de certaines pièces jointes, avant de fermer l'iframe
-    if (resolveAttachmentFileIds.length > 0 && iframe) {
-        const attachmentUrls = await resolveAttachmentUrls(iframe, resolveAttachmentFileIds);
-        injectAttachmentUrls(data, attachmentUrls);
+    // Injection des URLs résolues au fil des catégories (voir plus haut), avant de fermer l'iframe
+    if (resolveAttachmentFileIds.length > 0) {
+        injectAttachmentUrls(data, attachmentUrlsByFileId);
+        if (remainingFileIds.length > 0) {
+            console.warn('[dataScrapper] fileId(s) non trouvés dans les catégories/plage de dates demandées :', remainingFileIds);
+        }
     }
 
     // Nettoyage : supprimer l'iframe si on n'est pas en mode debug

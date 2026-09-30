@@ -10,6 +10,7 @@
  *
  * @exports resolveAttachmentUrls - Résout l'URL du pdf pour une liste de fileId
  * @exports injectAttachmentUrls - Injecte les URLs résolues dans le résultat de recoverData
+ * @exports collectAttachmentFileIds - Liste les fileId présents dans le résultat d'une catégorie
  */
 
 /** Type de message postMessage envoyé par la popup PopUpViewBinaryForm vers sa fenêtre ouvrante */
@@ -112,4 +113,16 @@ function injectAttachmentUrls(data, urlsByFileId) {
             }
         }
     }
+}
+
+/**
+ * Liste les fileId présents dans le résultat (brut, avant filtrage par date) d'une seule
+ * catégorie de recoverMainViewData, pour savoir lesquels des fileId demandés peuvent être
+ * résolus pendant que cette catégorie est encore affichée dans l'iframe.
+ * @param {Array<Object>|*} categoryData - Résultat de recoverMainViewData pour une catégorie
+ * @returns {Array<string>}
+ */
+function collectAttachmentFileIds(categoryData) {
+    if (!Array.isArray(categoryData)) return [];
+    return categoryData.flatMap(day => (day.attachments || []).map(a => a.fileId).filter(Boolean));
 }

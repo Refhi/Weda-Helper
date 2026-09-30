@@ -237,9 +237,13 @@ async function lireDocumentsJoints({ fileId } = {}, patientId = null) {
 
             for (const id of idsDuGroupe) {
                 const attachment = trouverAttachmentParFileId(data, id);
-                resultatsParFileId[id] = attachment
-                    ? { fileId: id, name: attachment.name, pdfText: attachment.pdfText }
-                    : { fileId: id, error: `Document introuvable pour fileId "${id}" (a-t-il disparu depuis le précédent appel ?).` };
+                if (!attachment) {
+                    resultatsParFileId[id] = { fileId: id, error: `Document introuvable pour fileId "${id}" (a-t-il disparu depuis le précédent appel ?).` };
+                } else if (!attachment.pdfText) {
+                    resultatsParFileId[id] = { fileId: id, name: attachment.name, error: `Impossible de récupérer le contenu du document "${attachment.name}" (fileId "${id}") : la résolution de son URL a échoué (voir la console du navigateur pour le détail).` };
+                } else {
+                    resultatsParFileId[id] = { fileId: id, name: attachment.name, pdfText: attachment.pdfText };
+                }
             }
         } catch (e) {
             console.error("[lireDocumentsJoints] Erreur lors de la lecture des documents :", e);
