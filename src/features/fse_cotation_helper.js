@@ -7,8 +7,9 @@
  * @requires tweaks.js (addTweak)
  * @requires storage.js (getOptionPromise)
  * @requires notifications.js (sendWedaNotif)
- * @requires fse.js (patientAgeInFSE, estMTdeclareOuReferent, loggedInUser)
+ * @requires fse.js (patientAgeInFSE, estMTdeclareOuReferent)
  * @requires fse_history.js (getHiddenBillingData)
+ * @requires dom-helpers.js (getConnectedDoctorName)
  */
 
 addTweak('/vitalzen/fse.aspx', 'cotationHelper2', function () {
@@ -149,7 +150,7 @@ const cotationHelper = [
         cotation: ['MOP'],
         test: function (context) {
             let ageOK = patientAgeInFSE() >= 80;
-            let isMT = estMTdeclareOuReferent(loggedInUser());
+            let isMT = estMTdeclareOuReferent(getConnectedDoctorName());
             let noMopSelected = !context.cotation.includes('MOP');
             return ageOK && !isMT && noMopSelected;
         },
@@ -231,7 +232,7 @@ const cotationHelper = [
         cotation: ['GL1', 'GL2', 'GL3'],
         test: function (context) { // dès que l’âge est >= 80 ans et que c’est le médecin traitant
             let ageOK = patientAgeInFSE() >= 80;
-            let isMT = estMTdeclareOuReferent(loggedInUser());
+            let isMT = estMTdeclareOuReferent(getConnectedDoctorName());
             let hasGL = context.cotation.some(cot => cot.includes('GL1') || cot.includes('GL2') || cot.includes('GL3'));
             return ageOK && isMT && !hasGL;
         },

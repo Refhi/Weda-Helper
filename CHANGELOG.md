@@ -10,6 +10,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#661](https://github.com/Refhi/Weda-Helper/issues/661) - ajout d'un convertisseur d'unités pour les analyses biologiques (ex. mmol/L <-> g/L) dans les page de résultats. Désactivé par défaut, il peut être activé dans les options de Weda-Helper.
 - Imports - la zone de commentaire est présente dans la navigation par tabulation.
 - le client IA peut désormais modifier les antécédents, créer des consultations, prescriptions d'examens, courrier et certificat. Il peut également aider l'importation des documents dans l'onglet d'importation.
+- [#686](https://github.com/Refhi/Weda-Helper/issues/686) - l'historique de facturation peut désormais également être affiché dans la page des règlements manuels
 
 ## Fix :
 - [#637](https://github.com/Refhi/Weda-Helper/issues/637) - il est désormais possible d’exclure certains paterns de dates de l’analyse automatique des pdf. Utile si votre addresse contiens des dates qui ne doivent pas être prises en compte.

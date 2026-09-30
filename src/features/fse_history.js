@@ -98,7 +98,7 @@ function showECGAlert() {
 
 }
 
-addTweak('/vitalzen/fse.aspx', '*showBillingHistory', async function () {
+addTweak(['/vitalzen/fse.aspx','/FolderGestion/ReglementForm.aspx'], '*showBillingHistory', async function () {
     // Si l’option est désactivée, affiche un bouton simple pour déclencher tout de même l’affichage de l’historique des fse
     // sinon, fait l’affichage automatiquement
     const showBillingHistoryOption = await getOptionPromise('showBillingHistory');
@@ -139,7 +139,8 @@ function addShowBillingHistoryButton() {
  * Récupère l'historique des facturations et l'affiche dans un panneau fixe de l'interface.
  */
 async function displayBillingHistory() {
-    const loggedInUser = document.getElementById('LabelUserLog').innerText.trim();
+    const loggedInUser = getConnectedDoctorName();
+    console.log('[fse_history] utilisateur connecté :', loggedInUser);
 
     const data = await getRecoverData();
 

@@ -9,7 +9,7 @@
  * - Détection automatique du médecin traitant
  * - Gestion du SCOR (auto-sélection, validation PDF)
  * - Envoi automatique du montant au TPE
- * - Utilitaires FSE partagés : patientAgeInFSE, estMTdeclareOuReferent, loggedInUser
+ * - Utilitaires FSE partagés : patientAgeInFSE, estMTdeclareOuReferent
  *
  * L'aide à la cotation a été déplacée dans fse_cotation_helper.js.
  * L'historique des facturations a été déplacé dans fse_history.js.
@@ -19,6 +19,7 @@
  * @requires companionLink.js (sendtpeinstruction)
  * @requires notifications.js (sendWedaNotif, sendWedaNotifAllTabs)
  * @requires metrics.js (recordMetrics)
+ * @requires dom-helpers.js (getConnectedDoctorName)
  */
 
 let fseUrl = '/vitalzen/fse.aspx';
@@ -381,7 +382,7 @@ addTweak(fseUrl, 'defaultCotation', function tweakFSECotationDefaut() {
             {
                 condition: function () {
                     let ageOK = patientAgeInFSE() >= 80;
-                    let isMT = estMTdeclareOuReferent(loggedInUser());
+                    let isMT = estMTdeclareOuReferent(getConnectedDoctorName());
                     return ageOK && !isMT
                 },
                 action: 'DéfautMOP'
@@ -489,7 +490,7 @@ addTweak(fseUrl, 'TweakFSEDetectMT', function () {
     waitForElement({
         selector: 'vz-medecin-traitant-weda div.mt10.ng-star-inserted',
         callback: function (element) {
-            let userName = loggedInUser();
+            let userName = getConnectedDoctorName();
             let isMT = estMTdeclareOuReferent(userName);
             if (isMT) {
                 console.log('MT déclaré = utilisateur en cours => je coche MT déclaré');
@@ -723,18 +724,6 @@ function estMTdeclareOuReferent(userName) {
         }
     }
     return false;
-}
-
-/**
- * Récupère le nom de l'utilisateur actuellement connecté.
- * Recherche dans l'interface Weda l'élément contenant le nom d'utilisateur.
- * 
- * @returns {string|null} - Nom de l'utilisateur, ou null si non trouvé
- */
-function loggedInUser() {
-    // Récupère le nom de l'utilisateur connecté
-    let userName = document.getElementById('LabelUserLog').innerText;
-    return userName;
 }
 
 /**
