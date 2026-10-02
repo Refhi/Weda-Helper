@@ -542,9 +542,13 @@ function returnMessageBodyES() {
 
 /**
  * Repère la méta-zone d'action (.messageAttachment) sur laquelle il faut agir pour les échanges
- * sécurisés : celle contenant le visualiseur pdf (.view-pdf-document-uc-form), ce qui identifie la
- * pièce jointe PDF concernée par l'extraction (le champ titre n'est plus pré-rempli avec ".pdf" par
- * Weda, il ne peut donc plus servir à ce ciblage).
+ * sécurisés : celle contenant le visualiseur pdf effectif, ce qui identifie la pièce jointe PDF
+ * concernée par l'extraction (le champ titre n'est plus pré-rempli avec ".pdf" par Weda, il ne peut
+ * donc plus servir à ce ciblage).
+ * Attention : `.view-pdf-document-uc-form` est présent dans TOUTES les pièces jointes (y compris les
+ * .zip ou autres fichiers non-pdf, qui n'affichent qu'un lien de téléchargement statique dans ce même
+ * conteneur). Il faut donc exiger la présence d'un visualiseur pdf réel (iframe/embed/object) à
+ * l'intérieur pour ne pas matcher la mauvaise pièce jointe.
  * Toutes les fonctions ci-dessous (titre, type, destination, commentaire) doivent scoper leurs
  * recherches à cette zone pour éviter d'agir sur la mauvaise pièce jointe lorsqu'il y en a plusieurs.
  *
@@ -552,12 +556,14 @@ function returnMessageBodyES() {
  */
 function getActiveAttachmentZoneES() {
     const attachments = document.querySelectorAll(".messageAttachment");
+    const pdfViewerSelector = "#iFrameViewFile, .mssAttachment embed, object[type='application/pdf']";
     for (const attachment of attachments) {
-        if (attachment.querySelector(".view-pdf-document-uc-form")) {
+        const viewerForm = attachment.querySelector(".view-pdf-document-uc-form");
+        if (viewerForm && viewerForm.querySelector(pdfViewerSelector)) {
             return attachment;
         }
     }
-    console.warn("[pdfParser] Aucune pièce jointe avec un visualiseur pdf trouvée pour cibler la zone d'action.");
+    console.warn("[pdfParser] Aucune pièce jointe avec un visualiseur pdf effectif trouvée pour cibler la zone d'action.");
     return null;
 }
 
