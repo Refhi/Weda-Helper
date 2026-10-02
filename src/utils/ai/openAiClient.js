@@ -734,9 +734,9 @@ async function fetchChatCompletion(requestBody, apiUrl, signal, apiKey) {
 
 /**
  * Remplace récursivement tout tableau `images` (data URL, @see resolvePdfAttachment dans
- * pdfAttachmentHelper.js) par un simple décompte dans le texte envoyé au modèle : le contenu d'un
- * message "tool" doit rester une chaîne de caractères (l'API n'accepte pas de parts image_url à
- * cet endroit), les data URL (volumineuses) y seraient donc inutilement coûteuses en tokens.
+ * pdfAttachmentHelper.js) par un simple décompte dans le texte JSON du résultat : les data URL
+ * elles-mêmes sont de toute façon rejointes séparément en parts `image_url` (@see buildToolResultContent),
+ * inutile de les dupliquer en texte brut (coûteux en tokens).
  * @param {*} value
  * @returns {*}
  */
@@ -746,7 +746,7 @@ function omitImagesFromToolResult(value) {
         const clone = {};
         for (const [key, val] of Object.entries(value)) {
             clone[key] = (key === 'images' && Array.isArray(val))
-                ? `[${val.length} page(s) illisible(s) rendue(s) en image(s), transmise(s) séparément au chat]`
+                ? `[${val.length} page(s) illisible(s) rendue(s) en image(s), jointe(s) ci-dessous]`
                 : omitImagesFromToolResult(val);
         }
         return clone;
@@ -757,9 +757,7 @@ function omitImagesFromToolResult(value) {
 /**
  * Parcourt récursivement un résultat de tool call et regroupe chaque tableau `images` (data URL,
  * @see resolvePdfAttachment dans pdfAttachmentHelper.js) rencontré avec un libellé (nom du
- * document si disponible). Permet de transmettre ces images au modèle via le même canal qu'une
- * pièce jointe utilisateur (@see buildUserMessageContent dans discussionClient.js), puisque le
- * contenu d'un message "tool" ne peut pas porter de parts image_url.
+ * document si disponible).
  * @param {*} value
  * @param {Array<{label: string, images: string[]}>} [groups]
  * @returns {Array<{label: string, images: string[]}>}
@@ -778,6 +776,29 @@ function collectImageGroupsFromToolResult(value, groups = []) {
         }
     }
     return groups;
+}
+
+/**
+ * Construit le contenu d'un message "tool" : une simple chaîne JSON si le résultat ne contient
+ * aucune image, ou un tableau de parts au même format "vision" qu'une pièce jointe utilisateur
+ * (@see buildUserMessageContent dans discussionClient.js) sinon, pour que le modèle reçoive les
+ * images (pages de pdf illisibles rendues en image) directement dans la réponse de l'outil plutôt
+ * que via un message séparé.
+ * @param {*} fnResult
+ * @returns {string|Array}
+ */
+function buildToolResultContent(fnResult) {
+    const textContent = typeof fnResult === 'string' ? fnResult : JSON.stringify(omitImagesFromToolResult(fnResult));
+    const imageGroups = typeof fnResult === 'string' ? [] : collectImageGroupsFromToolResult(fnResult);
+    if (imageGroups.length === 0) return textContent;
+
+    return [
+        { type: 'text', text: textContent },
+        ...imageGroups.flatMap(group => [
+            { type: 'text', text: `— ${group.label} —` },
+            ...group.images.map(dataUrl => ({ type: 'image_url', image_url: { url: dataUrl } }))
+        ])
+    ];
 }
 
 /**
@@ -826,24 +847,8 @@ async function handleToolCalls(responseMessage, messages, onToolCall, executeToo
             role: "tool",
             tool_call_id: toolCall.id,
             name: fnName,
-            content: typeof fnResult === 'string' ? fnResult : JSON.stringify(omitImagesFromToolResult(fnResult))
+            content: buildToolResultContent(fnResult)
         });
-
-        // Les images (pages de pdf illisibles rendues en image, @see resolvePdfAttachment) ne peuvent
-        // pas voyager dans le message "tool" ci-dessus : on les transmet au modèle via un message
-        // "user" de suivi au format vision, exactement comme une pièce jointe envoyée manuellement par
-        // l'utilisateur (@see buildUserMessageContent dans discussionClient.js).
-        if (typeof fnResult !== 'string') {
-            const imageGroups = collectImageGroupsFromToolResult(fnResult);
-            if (imageGroups.length > 0) {
-                const contentParts = [{ type: 'text', text: `Pages du document (fonction "${fnName}") rendues en image car le texte n'était pas exploitable :` }];
-                for (const group of imageGroups) {
-                    contentParts.push({ type: 'text', text: `— ${group.label} —` });
-                    group.images.forEach(dataUrl => contentParts.push({ type: 'image_url', image_url: { url: dataUrl } }));
-                }
-                updatedMessages.push({ role: 'user', content: contentParts });
-            }
-        }
     }
 
     return updatedMessages;
