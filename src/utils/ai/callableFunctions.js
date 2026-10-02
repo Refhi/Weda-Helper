@@ -97,8 +97,10 @@ async function rechercherCim10({ terme, termes, limite = 20 } = {}) {
 /**
  * Parcourt le résultat de recoverData et remplace, pour chaque pièce jointe dont l'URL a été
  * résolue (attachment.url, voir resolveAttachmentFileIds), le champ url par le texte extrait du
- * pdf (attachment.pdfText) : le modèle reçoit directement le contenu du document, comme si
- * l'utilisateur le lui avait fourni et confirmé, plutôt qu'un simple lien à rappeler.
+ * pdf (attachment.pdfText), ou par des images de ses pages (attachment.images) si le pdf est un
+ * scan sans texte lisible (@see resolvePdfAttachment, pdfAttachmentHelper.js) : le modèle reçoit
+ * directement le contenu du document, comme si l'utilisateur le lui avait fourni et confirmé,
+ * plutôt qu'un simple lien à rappeler.
  * @param {Object} data - Résultat de recoverData, potentiellement enrichi d'attachment.url
  */
 async function lirePiecesJointesPdf(data) {
@@ -108,7 +110,9 @@ async function lirePiecesJointesPdf(data) {
             for (const attachment of day.attachments || []) {
                 if (!attachment.url) continue;
                 try {
-                    attachment.pdfText = await extractTextFromPDF(attachment.url);
+                    const resolved = await resolvePdfAttachment(attachment.url);
+                    if (resolved.kind === 'text') attachment.pdfText = resolved.text;
+                    else attachment.images = resolved.images;
                 } catch (e) {
                     console.error(`[recoverPatientData] Erreur lors de la lecture du pdf (fileId=${attachment.fileId}) :`, e);
                     attachment.pdfText = null;
@@ -229,7 +233,8 @@ async function lirePdfDepuisIframesPage() {
     const resultats = [];
     for (const url of urls) {
         try {
-            resultats.push({ url, pdfText: await extractTextFromPDF(url) });
+            const resolved = await resolvePdfAttachment(url);
+            resultats.push(resolved.kind === 'text' ? { url, pdfText: resolved.text } : { url, images: resolved.images });
         } catch (e) {
             console.error(`[pageContext] Erreur lors de la lecture du pdf (url=${url}) :`, e);
             resultats.push({ url, error: `Erreur lors de la lecture du document : ${e.message || e}` });
@@ -330,6 +335,8 @@ async function lireDocumentsJoints({ fileId } = {}, patientId = null) {
                 const attachment = trouverAttachmentParFileId(data, id);
                 if (!attachment) {
                     resultatsParFileId[id] = { fileId: id, error: `Document introuvable pour fileId "${id}" (a-t-il disparu depuis le précédent appel ?).` };
+                } else if (attachment.images?.length) {
+                    resultatsParFileId[id] = { fileId: id, name: attachment.name, images: attachment.images };
                 } else if (!attachment.pdfText) {
                     resultatsParFileId[id] = { fileId: id, name: attachment.name, error: `Impossible de récupérer le contenu du document "${attachment.name}" (fileId "${id}") : la résolution de son URL a échoué (voir la console du navigateur pour le détail).` };
                 } else {
@@ -432,7 +439,7 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "lireDocumentJoint",
-                description: "Lit le contenu texte d'une ou plusieurs pièces jointes (pdf) du dossier patient, repérées par leur fileId (champ attachment.fileId renvoyé par un appel précédent à recoverPatientData). Ne fournir QUE le/les fileId : la catégorie et la plage de dates d'origine sont retrouvées automatiquement. Renvoie {fileId, name, pdfText} (ou {fileId, error} si le fileId est inconnu, appeler recoverPatientData avant), groupé dans un tableau si plusieurs fileId demandés.",
+                description: "Lit le contenu d'une ou plusieurs pièces jointes (pdf) du dossier patient, repérées par leur fileId (champ attachment.fileId renvoyé par un appel précédent à recoverPatientData). Ne fournir QUE le/les fileId : la catégorie et la plage de dates d'origine sont retrouvées automatiquement. Renvoie {fileId, name, pdfText} si le texte du pdf est lisible, ou {fileId, name, images} (pages du document transmises séparément au chat sous forme d'images, pour un pdf scanné/illisible) sinon (ou {fileId, error} si le fileId est inconnu, appeler recoverPatientData avant), groupé dans un tableau si plusieurs fileId demandés.",
                 parameters: {
                     type: "object",
                     properties: {

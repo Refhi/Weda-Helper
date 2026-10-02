@@ -28,34 +28,6 @@ function publishChatApi(api) {
     chatApiWaiters.splice(0).forEach(resolve => resolve(api));
 }
 
-/** Nombre minimum de caractères "normaux" (lettres/chiffres) requis pour considérer un texte extrait de PDF comme lisible. */
-const MIN_READABLE_PDF_CHAR_COUNT = 20;
-/** Proportion minimale de caractères "normaux" dans le texte extrait, en dessous de laquelle on considère le texte comme du charabia (police non standard/CID mal mappée, etc.). */
-const MIN_READABLE_PDF_CHAR_RATIO = 0.5;
-
-/**
- * Détermine si le texte extrait d'un PDF est réellement lisible : certains PDF scannés ou avec
- * un encodage de police non standard renvoient un texte non vide mais illisible (charabia,
- * caractères de contrôle/privés…), qu'il vaut mieux traiter comme si aucun texte n'avait été trouvé.
- * Global (hors de addAIChatClient) pour être réutilisable par pdfParserAIExtraction.js.
- * @param {string} text
- * @returns {boolean}
- */
-function isPdfTextReadable(text) {
-    if (!text) return false;
-    // On retire tout ce qui est entre crochets [WedaAutoParse...]et qui a été rajouté par Weda-Helper
-    const cleanedText = text.replace(/\[WedaAutoParse.*?\]/g, '');
-
-    const trimmed = cleanedText.trim();
-    if (!trimmed) return false;
-    // Lettres (avec accents) et chiffres : un texte "normal" en est majoritairement composé.
-    const normalChars = trimmed.match(/[a-zA-Z0-9À-ÿ]/g) || [];
-    if (normalChars.length < MIN_READABLE_PDF_CHAR_COUNT) return false;
-    const isReadable = (normalChars.length / trimmed.length) >= MIN_READABLE_PDF_CHAR_RATIO;
-    console.log('[discussionClient] Texte PDF lisible :', isReadable, '(', normalChars.length, '/', trimmed.length, ')', 'Texte :', trimmed);
-    return isReadable;
-}
-
 /**
  * Charge l'objet unique regroupant la position du widget (bulle flottante), ainsi que la
  * position et la taille de la fenêtre de chat. Les positions sont stockées en distance depuis
@@ -1052,33 +1024,11 @@ async function addAIChatClient() {
     /** Pièces jointes en attente d'envoi avec le prochain message utilisateur. */
     let pendingAttachments = [];
 
-    /** Nombre maximum de pages converties en images pour un PDF scanné (sans texte lisible), afin d'éviter d'envoyer un nombre excessif d'images au modèle. */
-    const MAX_SCANNED_PDF_PAGES_AS_IMAGES = 50;
-
-    /**
-     * Convertit les pages d'un PDF (typiquement un document scanné, sans texte extractible) en
-     * images PNG encodées en data URL, une par page (dans la limite de MAX_SCANNED_PDF_PAGES_AS_IMAGES).
-     * Réutilise pdfjsLib et renderPagesToCanvases (@see pdfParser.js).
-     * @param {string} pdfObjectUrl
-     * @returns {Promise<string[]>}
-     */
-    async function renderPdfPagesAsImageDataUrls(pdfObjectUrl) {
-        const pdf = await pdfjsLib.getDocument(pdfObjectUrl).promise;
-        const pageCount = Math.min(pdf.numPages, MAX_SCANNED_PDF_PAGES_AS_IMAGES);
-        const pages = [];
-        for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
-            pages.push(await pdf.getPage(pageNum));
-        }
-        const canvases = await renderPagesToCanvases(pages);
-        return canvases.map(canvas => canvas.toDataURL('image/png'));
-    }
-
     /**
      * Lit un fichier joint et renvoie la ou les pièces jointes utilisables dans le contenu du
      * message (un fichier peut produire plusieurs pièces jointes, ex: PDF scanné → une image par page) :
      * - image : encodée en data URL (format 'image_url' de l'API, nécessite un modèle vision côté serveur)
-     * - PDF avec texte : texte extrait via extractTextFromPDF (@see pdfParser.js)
-     * - PDF sans texte lisible (scan) : chaque page est rendue en image et envoyée telle quelle
+     * - PDF : texte extrait, ou pages rendues en images si non lisible (@see resolvePdfAttachment, pdfAttachmentHelper.js)
      * - texte brut (.txt, .md, .csv, .log, .json) : lu tel quel
      * @param {File} file
      * @returns {Promise<Array<{kind: 'image'|'text', name: string, dataUrl?: string, extractedText?: string}>>}
@@ -1099,17 +1049,14 @@ async function addAIChatClient() {
         if (lowerName.endsWith('.pdf') || file.type === 'application/pdf') {
             const objectUrl = URL.createObjectURL(file);
             try {
-                const extractedText = await extractTextFromPDF(objectUrl);
-                if (isPdfTextReadable(extractedText)) {
-                    return [{ kind: 'text', name: file.name, extractedText }];
+                const resolved = await resolvePdfAttachment(objectUrl);
+                if (resolved.kind === 'text') {
+                    return [{ kind: 'text', name: file.name, extractedText: resolved.text }];
                 }
-                // Aucun texte lisible trouvé (PDF scanné/image, ou texte extrait illisible/charabia) : on
-                // envoie les pages telles quelles, en images.
                 console.warn(`[discussionClient] Texte extrait de "${file.name}" absent ou illisible, envoi des pages sous forme d'images.`);
-                const pageImages = await renderPdfPagesAsImageDataUrls(objectUrl);
-                return pageImages.map((dataUrl, index) => ({
+                return resolved.images.map((dataUrl, index) => ({
                     kind: 'image',
-                    name: pageImages.length > 1 ? `${file.name} (page ${index + 1}/${pageImages.length})` : file.name,
+                    name: resolved.images.length > 1 ? `${file.name} (page ${index + 1}/${resolved.images.length})` : file.name,
                     dataUrl
                 }));
             } finally {
@@ -1730,6 +1677,22 @@ async function addAIChatClient() {
     }
 
     /**
+     * Compte récursivement les data URL trouvées dans les tableaux `images` d'un résultat de tool
+     * call (@see resolvePdfAttachment, pdfAttachmentHelper.js), pour afficher une puce 🖼️ par image
+     * sur la bulle de résultat, comme pour une pièce jointe envoyée par l'utilisateur.
+     * @param {*} value
+     * @returns {number}
+     */
+    function countImagesInResult(value) {
+        if (Array.isArray(value)) return value.reduce((total, item) => total + countImagesInResult(item), 0);
+        if (value && typeof value === 'object') {
+            if (Array.isArray(value.images)) return value.images.length;
+            return Object.values(value).reduce((total, item) => total + countImagesInResult(item), 0);
+        }
+        return 0;
+    }
+
+    /**
      * Applique un événement d'appel de fonction (début/succès/erreur) à l'état de génération
      * courant. Factorisé pour être rejoué tel quel lors d'un rattrapage d'état (stateSync).
      * @param {object} gen
@@ -1754,8 +1717,13 @@ async function addAIChatClient() {
 
         bubble.classList.remove('pending');
         if (status === 'success') {
-            bubble.textContent = `✅ Résultat reçu de "${name}"`;
-            const resultText = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+            // Affiche une puce 🖼️ par image trouvée dans le résultat (ex: pages de pdf scanné rendues
+            // en images par resolvePdfAttachment), comme pour une pièce jointe envoyée par l'utilisateur.
+            const imageCount = countImagesInResult(result);
+            const imageLabel = imageCount ? ` ${'🖼️'.repeat(Math.min(imageCount, 5))}${imageCount > 5 ? ` (+${imageCount - 5})` : ''}` : '';
+            bubble.textContent = `✅ Résultat reçu de "${name}"${imageLabel}`;
+            // omitImagesFromToolResult (@see openAiClient.js) évite d'alourdir le tooltip avec les data URL.
+            const resultText = typeof result === 'string' ? result : JSON.stringify(omitImagesFromToolResult(result), null, 2);
             bubble.title = `Résultat :\n${resultText}`;
         } else if (status === 'error') {
             bubble.classList.add('error');
