@@ -563,11 +563,20 @@ function formatFrenchDate(date) {
  * @returns {{start: Date|null, end: Date|null}}
  */
 function resolveDateRange(dateRange) {
-    const [startRaw, endRaw] = Array.isArray(dateRange) ? dateRange : [];
+    console.log("[dataScrapper] Resolving date range from:", dateRange);
+    // Flatten nested arrays (handle error from LLM case where dateRange is [[value1, value2]] instead of [value1, value2])
+    let flatDateRange = Array.isArray(dateRange) ? dateRange : [];
+    if (flatDateRange.length === 1 && Array.isArray(flatDateRange[0])) {
+        flatDateRange = flatDateRange[0];
+    }
+    const [startRaw, endRaw] = flatDateRange;
+    console.log("[dataScrapper] Parsed raw start and end:", startRaw, endRaw);
 
     // Plage relative [n, unité] (ex. [7,'days'], [1,'month'], [1,'year']) : de il y a n unités jusqu'à aujourd'hui.
     const amount = Number(startRaw);
+    console.log("[dataScrapper] Parsed amount for relative range:", amount);
     const unitMatch = typeof endRaw === 'string' ? endRaw.trim().toLowerCase().match(/^(day|jour|week|semaine|month|mois|year|an)/) : null;
+    console.log("[dataScrapper] Parsed unit for relative range:", unitMatch);
     if (Number.isInteger(amount) && amount >= 0 && unitMatch && !String(startRaw).includes('/')) {
         const start = new Date();
         const unit = unitMatch[1];
@@ -584,7 +593,9 @@ function resolveDateRange(dateRange) {
     const start = parseFrenchDate(startRaw);
     const end = parseFrenchDate(endRaw);
     if (end) end.setHours(23, 59, 59, 999);
-    return { start, end };
+    const result = { start, end };
+    console.log("[dataScrapper] Resolved date range:", result);
+    return result;
 }
 
 /**

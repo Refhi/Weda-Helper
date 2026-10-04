@@ -410,8 +410,8 @@ const availableFunctions = {
                         },
                         dateRange: {
                             type: "array",
-                            description: "Date range filter [dd/mm/yyyy,dd/mm/yyyy] or [int,type] for relative ranges like [7,'days'] or [1,'month'] or [1,'year']. A range of one month or less loads only the most recent entries (fast); a longer range, or no range, loads the entire history (slower): prefer a short range when possible.",
-                            items: { type: "string" }
+                            description: "Date range filter [int,type] for relative ranges like [7,'days'] or [1,'month'] or [1,'year'] or [dd/mm/yyyy,dd/mm/yyyy]. A range of one month or less loads only the most recent entries (fast); a longer range, or no range, loads the entire history (slower): prefer a short range when possible.",
+                            items: { type: ["string", "number"] }
                         },
                         antecedentsType: {
                             type: "string",
