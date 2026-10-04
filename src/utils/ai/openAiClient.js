@@ -802,6 +802,16 @@ function buildToolResultContent(fnResult) {
 }
 
 /**
+ * Normalise les arguments JSON en remplaçant les apostrophes simples par des guillemets doubles.
+ * @param {string} jsonStr - La chaîne JSON potentiellement malformée
+ * @returns {string} La chaîne JSON normalisée
+ */
+function normalizeJsonArguments(jsonStr) {
+    if (!jsonStr) return '{}';
+    return jsonStr.replace(/'/g, '"');
+}
+
+/**
  * Exécute les function calls demandés par le modèle et construit la liste de messages
  * mise à jour (historique + message assistant contenant les tool_calls + résultats des fonctions).
  * @param {object} responseMessage - Le message renvoyé par le modèle, contenant `tool_calls`.
@@ -823,7 +833,9 @@ async function handleToolCalls(responseMessage, messages, onToolCall, executeToo
         const fnName = toolCall.function?.name;
         let fnArgs = {};
         try {
-            fnArgs = toolCall.function?.arguments ? JSON.parse(toolCall.function.arguments) : {};
+            const rawArguments = toolCall.function?.arguments;
+            const normalizedArguments = normalizeJsonArguments(rawArguments);
+            fnArgs = normalizedArguments ? JSON.parse(normalizedArguments) : {};
             console.log(`[handleToolCalls] Parsing arguments pour ${fnName}:`, fnArgs);
         } catch (e) {
             console.error("[handleToolCalls] Impossible de parser les arguments de la fonction :", toolCall.function?.arguments, e);
