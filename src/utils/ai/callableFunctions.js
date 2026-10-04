@@ -175,12 +175,17 @@ function enregistrerContextePiecesJointes(data, context) {
  */
 async function recoverPatientData({
     categories = ["consultations"],
-    fullPage = false,
     dateRange = [],
     antecedentsType,
     antecedentsChampDate,
     antecedentsDateRange = []
 } = {}, patientId = null) {
+    // Une plage d'au plus un mois tient dans les 10 dernières entrées chargées par défaut ; au-delà (ou sans plage), tout l'historique est chargé.
+    const { start, end } = resolveDateRange(dateRange);
+    const limiteUnMois = new Date(end || Date.now());
+    limiteUnMois.setHours(0, 0, 0, 0);
+    limiteUnMois.setMonth(limiteUnMois.getMonth() - 1);
+    const fullPage = !(start && start >= limiteUnMois);
     console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, dateRange, antecedentsType, antecedentsChampDate, antecedentsDateRange, patientId });
     try {
         const data = await recoverData({ categories, fullPage, dateRange, debug: false, patientId });
@@ -403,13 +408,9 @@ const availableFunctions = {
                                 enum: DATA_SCRAPPER_CATEGORIES
                             }
                         },
-                        fullPage: {
-                            type: "boolean",
-                            description: "If true loads the entire history instead of the last 10 entries by default. Only set to false if you want to limit the retrieval to the most recent entries."
-                        },
                         dateRange: {
                             type: "array",
-                            description: "Date range filter [dd/mm/yyyy,dd/mm/yyyy] or [int,type] for relative ranges like [7,'days'] or [1,'month'] or [1,'year']",
+                            description: "Date range filter [dd/mm/yyyy,dd/mm/yyyy] or [int,type] for relative ranges like [7,'days'] or [1,'month'] or [1,'year']. A range of one month or less loads only the most recent entries (fast); a longer range, or no range, loads the entire history (slower): prefer a short range when possible.",
                             items: { type: "string" }
                         },
                         antecedentsType: {

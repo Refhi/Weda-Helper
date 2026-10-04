@@ -565,39 +565,25 @@ function formatFrenchDate(date) {
 function resolveDateRange(dateRange) {
     const [startRaw, endRaw] = Array.isArray(dateRange) ? dateRange : [];
 
-    // Helper: apply end-of-day to a Date
-    function endOfDay(d) {
-        if (!d) return d;
-        d.setHours(23, 59, 59, 999);
-        return d;
+    // Plage relative [n, unité] (ex. [7,'days'], [1,'month'], [1,'year']) : de il y a n unités jusqu'à aujourd'hui.
+    const amount = Number(startRaw);
+    const unitMatch = typeof endRaw === 'string' ? endRaw.trim().toLowerCase().match(/^(day|jour|week|semaine|month|mois|year|an)/) : null;
+    if (Number.isInteger(amount) && amount >= 0 && unitMatch && !String(startRaw).includes('/')) {
+        const start = new Date();
+        const unit = unitMatch[1];
+        if (unit === 'day' || unit === 'jour') start.setDate(start.getDate() - amount);
+        else if (unit === 'week' || unit === 'semaine') start.setDate(start.getDate() - 7 * amount);
+        else if (unit === 'month' || unit === 'mois') start.setMonth(start.getMonth() - amount);
+        else start.setFullYear(start.getFullYear() - amount);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+        return { start, end };
     }
 
-    // Support relative ranges expressed as [amount, unit], e.g. [7, 'days'], [1, 'month']
-    // If startRaw is an Array like [n, unit] and endRaw is absent -> interpret as last n units
-    if (Array.isArray(startRaw) && startRaw.length === 2 && (endRaw === undefined || endRaw === null || endRaw === '')) {
-        const [amount, unitRaw] = startRaw;
-        const unit = String(unitRaw || '').toLowerCase();
-        const now = new Date();
-        let start = new Date(now);
-        if (typeof amount === 'number' && isFinite(amount) && amount >= 0) {
-            if (/^d(ays?)?$/.test(unit)) {
-                start.setDate(start.getDate() - amount);
-            } else if (/^m(onths?)?$/.test(unit)) {
-                start.setMonth(start.getMonth() - amount);
-            } else if (/^y(ears?)?$/.test(unit)) {
-                start.setFullYear(start.getFullYear() - amount);
-            } else {
-                // Unknown unit: fall back to days
-                start.setDate(start.getDate() - amount);
-            }
-            return { start: start, end: endOfDay(now) };
-        }
-    }
-
-    // Fallback: parse French date strings or Date objects for explicit bounds
-    const start = parseFrenchDate(startRaw) || (startRaw instanceof Date ? startRaw : null);
-    const end = parseFrenchDate(endRaw) || (endRaw instanceof Date ? endRaw : null);
-    if (end) endOfDay(end);
+    const start = parseFrenchDate(startRaw);
+    const end = parseFrenchDate(endRaw);
+    if (end) end.setHours(23, 59, 59, 999);
     return { start, end };
 }
 

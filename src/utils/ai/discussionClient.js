@@ -287,7 +287,8 @@ async function addAIChatClient() {
             word-wrap: break-word;
             white-space: pre-wrap;
         }
-        #wedaHelper-copy-message-btn {
+        #wedaHelper-copy-message-btn,
+        #wedaHelper-tool-result-btn {
             display: none;
             position: fixed;
             width: 20px;
@@ -304,7 +305,27 @@ async function addAIChatClient() {
             padding: 0;
             z-index: 10001;
         }
-        #wedaHelper-copy-message-btn:hover { background: #f0f0f0; }
+        #wedaHelper-copy-message-btn:hover,
+        #wedaHelper-tool-result-btn:hover { background: #f0f0f0; }
+        #wedaHelper-tool-result-popover {
+            display: none;
+            position: fixed;
+            width: 420px;
+            max-width: calc(100vw - 16px);
+            max-height: 300px;
+            overflow: auto;
+            box-sizing: border-box;
+            padding: 8px 10px;
+            background: #ffffff;
+            color: #333;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+            font: 11px/1.4 monospace;
+            white-space: pre-wrap;
+            word-break: break-word;
+            z-index: 10002;
+        }
         #wedaHelper-chat-messages .message.user {
             background: #10a37f;
             color: white;
@@ -603,6 +624,8 @@ async function addAIChatClient() {
             <span class="wedaHelper-visually-hidden">Assistant IA</span>
         </button>
         <button id="wedaHelper-copy-message-btn" type="button" title="Copier le message">📋</button>
+        <button id="wedaHelper-tool-result-btn" type="button">?</button>
+        <div id="wedaHelper-tool-result-popover"></div>
         <div id="wedaHelper-shortcut-tooltip"></div>
     `;
     document.body.appendChild(widget);
@@ -673,6 +696,8 @@ async function addAIChatClient() {
     const attachmentsPreview = widget.querySelector('#wedaHelper-attachments-preview');
     const shortcutsPanel = widget.querySelector('#wedaHelper-chat-shortcuts');
     const copyMessageButton = widget.querySelector('#wedaHelper-copy-message-btn');
+    const toolResultButton = widget.querySelector('#wedaHelper-tool-result-btn');
+    const toolResultPopover = widget.querySelector('#wedaHelper-tool-result-popover');
     const shortcutTooltip = widget.querySelector('#wedaHelper-shortcut-tooltip');
     const markdownRenderer = typeof markdownit === 'function'
         ? markdownit({ html: false, linkify: true, breaks: true })
@@ -1452,21 +1477,58 @@ async function addAIChatClient() {
         // Ancré en bas à droite de la bulle : reste toujours cliquable même si la bulle dépasse en haut de la fenêtre.
         copyMessageButton.style.top = `${rect.bottom - 24}px`;
         copyMessageButton.style.left = `${rect.right - 24}px`;
+        toolResultButton.style.top = copyMessageButton.style.top;
+        toolResultButton.style.left = `${rect.right - 48}px`;
     }
     function showCopyButtonForBubble(bubble) {
         clearTimeout(hideCopyButtonTimeoutId);
         hoveredBubbleForCopy = bubble;
         positionCopyButtonOverBubble(bubble);
         copyMessageButton.style.display = 'flex';
+        // Le "?" n'existe que pour les bulles d'appel de fonction dont le résultat est connu.
+        toolResultButton.style.display = bubble.toolResultText !== undefined ? 'flex' : 'none';
     }
     function scheduleHideCopyButton() {
         clearTimeout(hideCopyButtonTimeoutId);
         // Léger délai pour laisser le temps au pointeur d'atteindre le bouton sans qu'il disparaisse.
         hideCopyButtonTimeoutId = setTimeout(() => {
             copyMessageButton.style.display = 'none';
+            toolResultButton.style.display = 'none';
+            toolResultPopover.style.display = 'none';
             hoveredBubbleForCopy = null;
         }, 200);
     }
+
+    // Popover du résultat d'un appel de fonction, affiché au survol du "?".
+    let hideToolResultPopoverTimeoutId = null;
+    function scheduleHideToolResultPopover() {
+        clearTimeout(hideToolResultPopoverTimeoutId);
+        hideToolResultPopoverTimeoutId = setTimeout(() => { toolResultPopover.style.display = 'none'; }, 200);
+    }
+    toolResultButton.addEventListener('mouseenter', () => {
+        clearTimeout(hideCopyButtonTimeoutId);
+        clearTimeout(hideToolResultPopoverTimeoutId);
+        if (!hoveredBubbleForCopy || hoveredBubbleForCopy.toolResultText === undefined) return;
+        toolResultPopover.textContent = hoveredBubbleForCopy.toolResultText;
+        toolResultPopover.style.display = 'block';
+        const buttonRect = toolResultButton.getBoundingClientRect();
+        const popoverRect = toolResultPopover.getBoundingClientRect();
+        const top = buttonRect.top - popoverRect.height - 4;
+        toolResultPopover.style.top = `${top >= 8 ? top : buttonRect.bottom + 4}px`;
+        toolResultPopover.style.left = `${Math.max(8, buttonRect.right - popoverRect.width)}px`;
+    });
+    toolResultButton.addEventListener('mouseleave', () => {
+        scheduleHideCopyButton();
+        scheduleHideToolResultPopover();
+    });
+    toolResultPopover.addEventListener('mouseenter', () => {
+        clearTimeout(hideCopyButtonTimeoutId);
+        clearTimeout(hideToolResultPopoverTimeoutId);
+    });
+    toolResultPopover.addEventListener('mouseleave', () => {
+        scheduleHideCopyButton();
+        scheduleHideToolResultPopover();
+    });
     chatMessages.addEventListener('mouseover', (event) => {
         const bubble = event.target.closest('.message');
         if (!bubble) return;
@@ -1477,7 +1539,7 @@ async function addAIChatClient() {
         const leavingBubble = event.target.closest('.message');
         if (!leavingBubble) return;
         // Ne masque pas si on se dirige vers un autre élément de la même bulle ou vers le bouton lui-même.
-        if (event.relatedTarget && (leavingBubble.contains(event.relatedTarget) || event.relatedTarget === copyMessageButton)) return;
+        if (event.relatedTarget && (leavingBubble.contains(event.relatedTarget) || event.relatedTarget === copyMessageButton || event.relatedTarget === toolResultButton)) return;
         scheduleHideCopyButton();
     });
     copyMessageButton.addEventListener('mouseenter', () => clearTimeout(hideCopyButtonTimeoutId));
@@ -1706,7 +1768,7 @@ async function addAIChatClient() {
             const bubble = appendMessage('bot', `🔧 Appel de la fonction "${name}"...`);
             bubble.classList.remove('bot');
             bubble.classList.add('tool-call', 'pending');
-            bubble.title = `Arguments :\n${JSON.stringify(args, null, 2)}`;
+            bubble.title = `${name}(${JSON.stringify(args ?? {}, null, 2)})`;
             chatMessages.insertBefore(bubble, gen.loadingMsg);
             gen.toolCallBubbles.set(id, bubble);
             return;
@@ -1722,14 +1784,16 @@ async function addAIChatClient() {
             const imageCount = countImagesInResult(result);
             const imageLabel = imageCount ? ` ${'🖼️'.repeat(Math.min(imageCount, 5))}${imageCount > 5 ? ` (+${imageCount - 5})` : ''}` : '';
             bubble.textContent = `✅ Résultat reçu de "${name}"${imageLabel}`;
-            // omitImagesFromToolResult (@see openAiClient.js) évite d'alourdir le tooltip avec les data URL.
-            const resultText = typeof result === 'string' ? result : JSON.stringify(omitImagesFromToolResult(result), null, 2);
-            bubble.title = `Résultat :\n${resultText}`;
+            // Les data URL d'images sont remplacées par une simple icône pour garder un aperçu lisible.
+            bubble.toolResultText = typeof result === 'string'
+                ? result
+                : JSON.stringify(result, (key, value) => (typeof value === 'string' && value.startsWith('data:image/') ? '🖼️' : value), 2);
         } else if (status === 'error') {
             bubble.classList.add('error');
             bubble.textContent = `❌ Échec de l'appel à "${name}"`;
-            bubble.title = `Erreur :\n${error}`;
+            bubble.toolResultText = String(error);
         }
+        if (hoveredBubbleForCopy === bubble) showCopyButtonForBubble(bubble);
         scrollChatToBottom();
     }
 
