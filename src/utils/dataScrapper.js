@@ -305,6 +305,18 @@ function resolveCategoryCachePlan(category, cacheEntry, { fullPage, refreshMode 
 }
 
 /**
+ * Indique, d'après le cache d'une catégorie journalière, si les fileId demandés se trouvent dans
+ * la première page (10 plus récents) et/ou dans la partie "extra" (plus anciens).
+ * @param {Object|undefined} cacheEntry
+ * @param {Array<string>} fileIds
+ * @returns {{inFirstPage: boolean, inExtra: boolean}}
+ */
+function locateFileIdsInCache(cacheEntry, fileIds) {
+    const contains = pageData => collectAttachmentFileIds(pageData).some(id => fileIds.includes(id));
+    return { inFirstPage: contains(cacheEntry?.firstPage?.data), inExtra: contains(cacheEntry?.extra?.data) };
+}
+
+/**
  * Met à jour l'objet de cache (en mémoire) pour une catégorie après une récupération fraîche,
  * et retourne les données à utiliser (fraîches, éventuellement recollées à la partie "extra"
  * conservée du cache).
@@ -374,8 +386,11 @@ function mergeAndCacheCategoryData(cache, category, freshData, plan) {
  *   - "noRefresh" : utilise le cache tel quel s'il existe, même périmé (récupère uniquement en son absence).
  * @argument resolveAttachmentFileIds Liste de fileId (voir attachment.fileId dans un résultat précédent) dont on
  *   veut résoudre l'URL réelle du pdf. Coûteux (rejoue un clic par fileId) : à ne demander explicitement que sur
- *   un appel ultérieur ciblé, pas systématiquement. Force le re-fetch des catégories demandées (l'iframe doit
- *   rester chargée avec les pièces jointes visibles pour pouvoir cliquer dessus).
+ *   un appel ultérieur ciblé, pas systématiquement. Le cache sert à localiser les fileId : seules les catégories
+ *   qui les contiennent sont re-fetchées (l'iframe doit rester chargée avec les pièces jointes visibles pour
+ *   pouvoir cliquer dessus, avec un chargement complet si le fileId est dans la partie ancienne). Les catégories
+ *   avec un fileId en cache sont traitées en premier, et une fois tous les fileId résolus les catégories
+ *   restantes ne sont plus rafraîchies (absentes du résultat si elles n'étaient pas en cache).
  */
 async function recoverData({
     fullPage = false, // De base on ne va vérifier que les 10 derniers subContainers chargés par défaut. N'est probablement pas possible pour charts et vaccins
@@ -404,16 +419,24 @@ async function recoverData({
     // Détermination, pour chaque catégorie demandée, du plan de récupération (cache réutilisable
     // ou récupération nécessaire, et avec quel fullPage effectif)
     const plans = {};
+    const categoriesWithRequestedFileIds = new Set();
     for (const category of categories) {
         if (!SELECTORS.categories[category]) {
             console.warn(`[dataScrapper] Catégorie inconnue : ${category}`);
             continue;
         }
         plans[category] = resolveCategoryCachePlan(category, cache[category], { fullPage, refreshMode });
-        // Résoudre des fileId nécessite que l'iframe reste chargée avec les pièces jointes visibles :
-        // on force donc un re-fetch même si le cache aurait suffi pour le reste des données.
-        if (resolveAttachmentFileIds.length > 0) {
-            plans[category].needsFetch = true;
+        // Résoudre des fileId nécessite que la catégorie soit affichée dans l'iframe avec la journée
+        // concernée chargée : on ne force donc le re-fetch que là où le cache contient ces fileId.
+        if (resolveAttachmentFileIds.length > 0 && plans[category].isDaily) {
+            const { inFirstPage, inExtra } = locateFileIdsInCache(cache[category], resolveAttachmentFileIds);
+            if (inExtra) {
+                // Journée ancienne : un vrai chargement complet (clic "Suite") est indispensable.
+                plans[category] = { needsFetch: true, effectiveFullPage: true, cachedMergedData: null, isDaily: true };
+            } else if (inFirstPage && !plans[category].needsFetch) {
+                plans[category] = { needsFetch: true, effectiveFullPage: false, cachedMergedData: null, isDaily: true, reuseExtra: cache[category].extra };
+            }
+            if (inFirstPage || inExtra) categoriesWithRequestedFileIds.add(category);
         }
     }
 
@@ -434,9 +457,16 @@ async function recoverData({
     // que la bonne catégorie est encore affichée, pas après avoir parcouru toutes les catégories.
     const attachmentUrlsByFileId = {};
     let remainingFileIds = [...resolveAttachmentFileIds];
-    for (const category of Object.keys(plans)) {
+    // Les catégories dont le cache contient les fileId demandés passent en premier (tri stable).
+    const orderedCategories = Object.keys(plans).sort((a, b) => categoriesWithRequestedFileIds.has(b) - categoriesWithRequestedFileIds.has(a));
+    for (const category of orderedCategories) {
         const plan = plans[category];
         const categorySelectors = SELECTORS.categories[category];
+
+        if (plan.needsFetch && resolveAttachmentFileIds.length > 0 && remainingFileIds.length === 0) {
+            console.log(`[dataScrapper] Catégorie "${category}" ignorée : tous les fileId demandés sont déjà résolus`);
+            continue;
+        }
 
         if (!plan.needsFetch) {
             console.log(`[dataScrapper] Catégorie "${category}" servie depuis le cache (${refreshMode})`);

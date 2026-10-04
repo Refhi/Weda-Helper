@@ -142,31 +142,6 @@ function trouverAttachmentParFileId(data, fileId) {
 }
 
 /**
- * Contexte (categories/dateRange/patientId) nécessaire pour retrouver un fileId donné dans
- * l'iframe de scraping, indexé par fileId. Alimenté à chaque recoverPatientData, consommé par
- * lireDocumentJoint : le modèle n'a ainsi plus besoin de re-fournir categories/dateRange pour lire
- * un document repéré lors d'un appel précédent, un simple fileId suffit.
- */
-const _attachmentContextByFileId = new Map();
-
-/**
- * Enregistre, pour chaque pièce jointe trouvée dans le résultat, le contexte d'appel ayant permis
- * de la trouver (voir _attachmentContextByFileId).
- * @param {Object} data - Résultat de recoverData
- * @param {{categories: string[], dateRange: Array, patientId: string|null}} context
- */
-function enregistrerContextePiecesJointes(data, context) {
-    for (const categoryData of Object.values(data)) {
-        if (!Array.isArray(categoryData)) continue;
-        for (const day of categoryData) {
-            for (const attachment of day.attachments || []) {
-                if (attachment.fileId) _attachmentContextByFileId.set(attachment.fileId, context);
-            }
-        }
-    }
-}
-
-/**
  * Fonction appelable par le modèle pour récupérer les données de l'historique du patient
  * actuellement ouvert dans Weda (consultations, résultats d'examens, antécédents, etc.).
  * S'appuie sur recoverData (voir dataScrapper.js). Cette fonction n'est jamais invoquée depuis le
@@ -189,7 +164,6 @@ async function recoverPatientData({
     console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, dateRange, antecedentsType, antecedentsChampDate, antecedentsDateRange, patientId });
     try {
         const data = await recoverData({ categories, fullPage, dateRange, debug: false, patientId });
-        enregistrerContextePiecesJointes(data, { categories, dateRange, patientId });
         if (data?.antecedents && (antecedentsType || antecedentsChampDate)) {
             data.antecedents = filtrerAntecedents(data.antecedents, {
                 type: antecedentsType,
@@ -297,15 +271,19 @@ async function pageContext() {
 }
 
 /**
+ * Catégories journalières de Weda dont les journées peuvent contenir des pièces jointes
+ * (attachment.fileId), dans lesquelles lireDocumentsJoints retrouve les fileId demandés.
+ */
+const CATEGORIES_AVEC_PIECES_JOINTES = ["consultations", "resultatsExamens", "courriers", "arretsTravail", "documents"];
+
+/**
  * Fonction appelable par le modèle pour lire le contenu (texte) d'une ou plusieurs pièces jointes
  * pdf déjà repérées via un appel précédent à recoverPatientData (champ attachment.fileId).
- * `fileId` accepte indifféremment une chaîne unique ou un tableau, pour lire plusieurs documents
- * en un seul appel plutôt que d'enchâiner plusieurs appels successifs. Retrouve seule la
- * catégorie/plage de dates de chaque fileId via _attachmentContextByFileId (regroupés par
- * contexte identique pour ne rejouer recoverData qu'une fois par groupe).
+ * `fileId` accepte indifféremment une chaîne unique (éventuellement séparée par des virgules) ou un
+ * tableau, pour lire plusieurs documents en un seul appel. Les fileId sont localisés par recoverData
+ * lui-même grâce à son cache sessionStorage (voir resolveAttachmentFileIds dans dataScrapper.js).
  */
 async function lireDocumentsJoints({ fileId } = {}, patientId = null) {
-    // Accepte fileId en tant que string (simple ou comma-separated) ou array
     let fileIds = fileId;
     if (typeof fileId === 'string') {
         fileIds = fileId.split(',').map(id => id.trim()).filter(Boolean);
@@ -314,65 +292,38 @@ async function lireDocumentsJoints({ fileId } = {}, patientId = null) {
     console.log(`[lireDocumentsJoints] Appelée avec:`, { fileIdsAChercher, patientId });
     if (!fileIdsAChercher.length) return { error: "fileId requis." };
 
-    // Regroupe les fileId partageant le même contexte (categories/dateRange/patientId) pour ne
-    // rejouer recoverData qu'une fois par groupe plutôt qu'une fois par fileId.
-    const groupesParContexte = new Map();
     const resultatsParFileId = {};
+    try {
+        const data = await recoverData({
+            categories: CATEGORIES_AVEC_PIECES_JOINTES,
+            fullPage: true,
+            debug: false,
+            patientId,
+            resolveAttachmentFileIds: fileIdsAChercher,
+        });
+        await lirePiecesJointesPdf(data);
 
-    // Pour chaque fileId à chercher, on récupère son contexte et on le regroupe par contexte identique.
-    // Cela permet de ne pas appeler recoverData plusieurs fois pour des fileId partageant le même contexte.
-    for (const id of fileIdsAChercher) {
-        const context = _attachmentContextByFileId.get(id);
-        if (!context) {
-            resultatsParFileId[id] = { fileId: id, error: `fileId "${id}" inconnu : appelez d'abord recoverPatientData pour le repérer.` };
-            continue;
+        for (const id of fileIdsAChercher) {
+            const attachment = trouverAttachmentParFileId(data, id);
+            if (!attachment) {
+                console.warn(`[lireDocumentsJoints] Aucun attachment trouvé pour fileId "${id}".`);
+                resultatsParFileId[id] = { fileId: id, error: `Document introuvable pour fileId "${id}" : vérifiez qu'il provient bien d'un appel à recoverPatientData sur le patient actuellement ouvert.` };
+            } else if (attachment.images?.length) {
+                resultatsParFileId[id] = { fileId: id, name: attachment.name, images: attachment.images };
+            } else if (!attachment.pdfText) {
+                resultatsParFileId[id] = { fileId: id, name: attachment.name, error: `Impossible de récupérer le contenu du document "${attachment.name}" (fileId "${id}") : la résolution de son URL a échoué (voir la console du navigateur pour le détail).` };
+            } else {
+                resultatsParFileId[id] = { fileId: id, name: attachment.name, pdfText: attachment.pdfText };
+            }
         }
-        const cleContexte = JSON.stringify([context.categories, context.dateRange, patientId || context.patientId]);
-        if (!groupesParContexte.has(cleContexte)) groupesParContexte.set(cleContexte, { context, fileIds: [] });
-        groupesParContexte.get(cleContexte).fileIds.push(id);
-    }
-    console.log(`[lireDocumentsJoints] Groupes par contexte:`, groupesParContexte);
-
-    for (const { context, fileIds: idsDuGroupe } of groupesParContexte.values()) {
-        console.log(`[lireDocumentsJoints] Traitement du groupe avec contexte:`, context, `et fileIds:`, idsDuGroupe);
-        try {
-            const data = await recoverData({
-                categories: context.categories,
-                dateRange: context.dateRange,
-                debug: false,
-                patientId: patientId || context.patientId,
-                resolveAttachmentFileIds: idsDuGroupe,
-            });
-            console.log(`[lireDocumentsJoints] Données récupérées pour le groupe:`, data, `avec fileIds:`, idsDuGroupe);
-            await lirePiecesJointesPdf(data);
-
-            for (const id of idsDuGroupe) {
-                const attachment = trouverAttachmentParFileId(data, id);
-                console.log(`[lireDocumentsJoints] Attachment trouvé pour fileId "${id}":`, attachment);
-                if (!attachment) {
-                    console.warn(`[lireDocumentsJoints] Aucun attachment trouvé pour fileId "${id}".`);
-                    resultatsParFileId[id] = { fileId: id, error: `Document introuvable pour fileId "${id}" (a-t-il disparu depuis le précédent appel ?).` };
-                } else if (attachment.images?.length) {
-                    console.log(`[lireDocumentsJoints] Attachment pour fileId "${id}" contient des images:`, attachment.images);
-                    resultatsParFileId[id] = { fileId: id, name: attachment.name, images: attachment.images };
-                } else if (!attachment.pdfText) {
-                    console.log(`[lireDocumentsJoints] Attachment pour fileId "${id}" ne contient pas de texte PDF.`);
-                    resultatsParFileId[id] = { fileId: id, name: attachment.name, error: `Impossible de récupérer le contenu du document "${attachment.name}" (fileId "${id}") : la résolution de son URL a échoué (voir la console du navigateur pour le détail).` };
-                } else {
-                    console.log(`[lireDocumentsJoints] Attachment pour fileId "${id}" contient du texte PDF.`);
-                    resultatsParFileId[id] = { fileId: id, name: attachment.name, pdfText: attachment.pdfText };
-                }
-            }
-        } catch (e) {
-            console.error("[lireDocumentsJoints] Erreur lors de la lecture des documents :", e);
-            for (const id of idsDuGroupe) {
-                resultatsParFileId[id] = { fileId: id, error: `Erreur lors de la lecture du document : ${e.message || e}` };
-            }
+    } catch (e) {
+        console.error("[lireDocumentsJoints] Erreur lors de la lecture des documents :", e);
+        for (const id of fileIdsAChercher) {
+            resultatsParFileId[id] = { fileId: id, error: `Erreur lors de la lecture du document : ${e.message || e}` };
         }
     }
 
     const resultats = fileIdsAChercher.map(id => resultatsParFileId[id]);
-    console.log(`[lireDocumentsJoints] Résultats finaux pour les fileIds recherchés:`, resultats);
     return resultats.length === 1 ? resultats[0] : resultats;
 }
 
@@ -456,7 +407,7 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "lireDocumentJoint",
-                description: "Lit le contenu d'une ou plusieurs pièces jointes (pdf) du dossier patient, repérées par leur fileId (champ attachment.fileId renvoyé par un appel précédent à recoverPatientData). Ne fournir QUE le/les fileId : la catégorie et la plage de dates d'origine sont retrouvées automatiquement. Renvoie {fileId, name, pdfText} si le texte du pdf est lisible, ou {fileId, name, images} (pages du document transmises séparément au chat sous forme d'images, pour un pdf scanné/illisible) sinon (ou {fileId, error} si le fileId est inconnu, appeler recoverPatientData avant), groupé dans un tableau si plusieurs fileId demandés.",
+                description: "Lit le contenu d'une ou plusieurs pièces jointes (pdf) du dossier patient, repérées par leur fileId (champ attachment.fileId renvoyé par un appel précédent à recoverPatientData). Ne fournir QUE le/les fileId : ils sont retrouvés automatiquement dans l'historique du patient. Renvoie {fileId, name, pdfText} si le texte du pdf est lisible, ou {fileId, name, images} (pages du document transmises séparément au chat sous forme d'images, pour un pdf scanné/illisible) sinon (ou {fileId, error} si le fileId est introuvable, appeler recoverPatientData avant), groupé dans un tableau si plusieurs fileId demandés.",
                 parameters: {
                     type: "object",
                     properties: {
