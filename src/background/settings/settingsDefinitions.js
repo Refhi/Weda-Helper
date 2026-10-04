@@ -941,6 +941,12 @@ var advancedDefaultSettings = [
                 "longDescription": "Nombre maximum d'allers-retours (appels d'outils successifs) que l'assistant peut effectuer avant d'être forcé de répondre. Évite les boucles infinies si le modèle enchaîne les appels d'outils sans jamais conclure. Augmentez si vos tâches nécessitent beaucoup d'étapes.",
                 "default": "10"
             }, {
+                "name": "IAassistantMaxFileIds",
+                "type": TYPE_SMALLTEXT,
+                "description": "Nombre max. de pièces jointes lues par l'assistant en un seul appel.",
+                "longDescription": "Limite le nombre de documents (pdf, etc.) dont l'assistant peut lire le contenu en une fois, que ce soit via la lecture directe des documents de recoverPatientData ou via lireDocumentJoint. Chaque document lu augmente fortement la taille du contexte et le temps de traitement. Les premiers documents dans l'ordre d'affichage de Weda (les plus récents) sont lus, les autres sont signalés comme non lus.",
+                "default": "10"
+            }, {
                 "name": "IAassistantApiKey",
                 "type": TYPE_SMALLTEXT,
                 "description": "Clé API pour l'assistant IA local (si nécessaire).",

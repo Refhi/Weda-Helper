@@ -142,6 +142,12 @@ function trouverAttachmentParFileId(data, fileId) {
 }
 
 /**
+ * Catégories journalières de Weda dont les journées peuvent contenir des pièces jointes
+ * (attachment.fileId), dans lesquelles lireDocumentsJoints retrouve les fileId demandés.
+ */
+const CATEGORIES_AVEC_PIECES_JOINTES = ["consultations", "resultatsExamens", "courriers", "arretsTravail", "documents"];
+
+/**
  * Fonction appelable par le modèle pour récupérer les données de l'historique du patient
  * actuellement ouvert dans Weda (consultations, résultats d'examens, antécédents, etc.).
  * S'appuie sur recoverData (voir dataScrapper.js). Cette fonction n'est jamais invoquée depuis le
@@ -151,6 +157,7 @@ function trouverAttachmentParFileId(data, fileId) {
 async function recoverPatientData({
     categories = ["consultations"],
     dateRange = [],
+    lireDocuments = false,
     antecedentsType,
     antecedentsChampDate,
     antecedentsDateRange = []
@@ -161,9 +168,10 @@ async function recoverPatientData({
     limiteUnMois.setHours(0, 0, 0, 0);
     limiteUnMois.setMonth(limiteUnMois.getMonth() - 1);
     const fullPage = !(start && start >= limiteUnMois);
-    console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, dateRange, antecedentsType, antecedentsChampDate, antecedentsDateRange, patientId });
+    console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, dateRange, lireDocuments, antecedentsType, antecedentsChampDate, antecedentsDateRange, patientId });
     try {
-        const data = await recoverData({ categories, fullPage, dateRange, debug: false, patientId });
+        const data = await recoverData({ categories, fullPage, dateRange, debug: false, patientId, resolveAllAttachments: lireDocuments });
+        if (lireDocuments) await lirePiecesJointesPdf(data);
         if (data?.antecedents && (antecedentsType || antecedentsChampDate)) {
             data.antecedents = filtrerAntecedents(data.antecedents, {
                 type: antecedentsType,
@@ -271,12 +279,6 @@ async function pageContext() {
 }
 
 /**
- * Catégories journalières de Weda dont les journées peuvent contenir des pièces jointes
- * (attachment.fileId), dans lesquelles lireDocumentsJoints retrouve les fileId demandés.
- */
-const CATEGORIES_AVEC_PIECES_JOINTES = ["consultations", "resultatsExamens", "courriers", "arretsTravail", "documents"];
-
-/**
  * Fonction appelable par le modèle pour lire le contenu (texte) d'une ou plusieurs pièces jointes
  * pdf déjà repérées via un appel précédent à recoverPatientData (champ attachment.fileId).
  * `fileId` accepte indifféremment une chaîne unique (éventuellement séparée par des virgules) ou un
@@ -311,7 +313,7 @@ async function lireDocumentsJoints({ fileId } = {}, patientId = null) {
             } else if (attachment.images?.length) {
                 resultatsParFileId[id] = { fileId: id, name: attachment.name, images: attachment.images };
             } else if (!attachment.pdfText) {
-                resultatsParFileId[id] = { fileId: id, name: attachment.name, error: `Impossible de récupérer le contenu du document "${attachment.name}" (fileId "${id}") : la résolution de son URL a échoué (voir la console du navigateur pour le détail).` };
+                resultatsParFileId[id] = { fileId: id, name: attachment.name, error: `Impossible de récupérer le contenu du document "${attachment.name}" (fileId "${id}") : la résolution de son URL a échoué (voir la console du navigateur pour le détail).${data.avertissement ? ` ${data.avertissement}` : ''}` };
             } else {
                 resultatsParFileId[id] = { fileId: id, name: attachment.name, pdfText: attachment.pdfText };
             }
@@ -379,6 +381,10 @@ const availableFunctions = {
                             type: "array",
                             description: "Date range filter for relative or absolute dates. For relative ranges, use [number, unit] like [7, \"days\"], [1, \"month\"], or [1, \"year\"] to get the last N days/months/years. For absolute dates, use [\"dd/mm/yyyy\", \"dd/mm/yyyy\"] format. A range of one month or less loads only recent entries (fast); longer ranges load entire history (slower). Prefer short ranges when possible.",
                             items: { type: ["string", "number"] }
+                        },
+                        lireDocuments: {
+                            type: "boolean",
+                            description: "If true, also reads the content (pdfText, or images for scanned pdf) of the attachments found within the requested categories and dateRange (consultations, resultatsExamens, courriers, arretsTravail), instead of requiring a separate lireDocumentJoint call. Only a limited number of attachments are read, in display order (limit set in the user options); the result then carries an 'avertissement' message, and the remaining ones can still be read with lireDocumentJoint. Use only when the document contents are really needed, with a short dateRange: it is slow and fills the context.",
                         },
                         antecedentsType: {
                             type: "string",

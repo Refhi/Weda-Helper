@@ -391,6 +391,13 @@ function mergeAndCacheCategoryData(cache, category, freshData, plan) {
  *   pouvoir cliquer dessus, avec un chargement complet si le fileId est dans la partie ancienne). Les catégories
  *   avec un fileId en cache sont traitées en premier, et une fois tous les fileId résolus les catégories
  *   restantes ne sont plus rafraîchies (absentes du résultat si elles n'étaient pas en cache).
+ * @argument resolveAllAttachments Si true, résout l'URL du pdf de toutes les pièces jointes des catégories journalières
+ *   demandées, dans la plage dateRange (équivalent d'un resolveAttachmentFileIds contenant tous leurs fileId, sans
+ *   avoir à les connaître à l'avance). Force le re-fetch de ces catégories (avec le fullPage demandé, sans réutiliser
+ *   la partie "extra" du cache) car les liens doivent être présents dans l'iframe.
+ *
+ * Le nombre de pièces jointes résolues par appel est limité par l'option IAassistantMaxFileIds (lue ici, 10 par défaut) :
+ * au-delà, les pièces jointes ne sont plus résolues et le résultat contient un champ `avertissement` (message texte).
  */
 async function recoverData({
     fullPage = false, // De base on ne va vérifier que les 10 derniers subContainers chargés par défaut. N'est probablement pas possible pour charts et vaccins
@@ -400,9 +407,21 @@ async function recoverData({
     refreshMode = "autoRefresh", // "autoRefresh" | "fullRefresh" | "noRefresh" — voir doc ci-dessus
     patientId = null, // Patient explicitement ciblé (ex: appel depuis le chat IA via /patient) ; sinon déduit de l'URL courante
     resolveAttachmentFileIds = [], // Liste de fileId dont on veut résoudre l'URL réelle du pdf (voir doc ci-dessus)
+    resolveAllAttachments = false, // Résout l'URL de toutes les pièces jointes de la plage dateRange (voir doc ci-dessus)
 } = {}) {
     // Préparation de l'objet de données à retourner
     const data = {};
+
+    // Limite du nombre de pièces jointes résolues (les fileId demandés en excès sont ignorés, dans l'ordre fourni)
+    // L'option peut être absente ou invalide : une valeur non numérique donnerait un quota NaN (aucune pièce jointe résolue).
+    const maxFileIds = await getOptionPromise('IAassistantMaxFileIds');
+    const limitMessage = `Limite de ${maxFileIds} pièces jointes lues par appel atteinte : Tu DOIS informer l'utilisateur que certaines pièces jointes n'ont pas été lues car ayant dépassé le nombre prévu dans les options.`;
+    let limitReached = false;
+    if (resolveAttachmentFileIds.length > maxFileIds) {
+        console.warn(`[dataScrapper] ${resolveAttachmentFileIds.length} fileId demandés, limités à ${maxFileIds} : ignorés →`, resolveAttachmentFileIds.slice(maxFileIds));
+        resolveAttachmentFileIds = resolveAttachmentFileIds.slice(0, maxFileIds);
+        limitReached = true;
+    }
 
     // Résolution de la plage de dates demandée (bornes converties en objets Date, ou null si absentes)
     const resolvedDateRange = resolveDateRange(dateRange);
@@ -438,6 +457,10 @@ async function recoverData({
             }
             if (inFirstPage || inExtra) categoriesWithRequestedFileIds.add(category);
         }
+        // Toutes les pièces jointes de la plage : la catégorie doit être affichée dans l'iframe, avec le fullPage demandé.
+        if (resolveAllAttachments && plans[category].isDaily) {
+            plans[category] = { needsFetch: true, effectiveFullPage: fullPage, cachedMergedData: null, isDaily: true };
+        }
     }
 
     const categoriesNeedingFetch = Object.keys(plans).filter(category => plans[category].needsFetch);
@@ -463,7 +486,7 @@ async function recoverData({
         const plan = plans[category];
         const categorySelectors = SELECTORS.categories[category];
 
-        if (plan.needsFetch && resolveAttachmentFileIds.length > 0 && remainingFileIds.length === 0) {
+        if (plan.needsFetch && !resolveAllAttachments && resolveAttachmentFileIds.length > 0 && remainingFileIds.length === 0) {
             console.log(`[dataScrapper] Catégorie "${category}" ignorée : tous les fileId demandés sont déjà résolus`);
             continue;
         }
@@ -520,12 +543,20 @@ async function recoverData({
 
         // Résolution des fileId demandés présents dans cette catégorie, pendant qu'elle est encore
         // affichée dans l'iframe (voir resolveAttachmentUrls : nécessite que le lien soit dans le DOM).
-        if (remainingFileIds.length > 0) {
-            const fileIdsInThisCategory = collectAttachmentFileIds(freshData).filter(id => remainingFileIds.includes(id));
-            if (fileIdsInThisCategory.length > 0) {
-                Object.assign(attachmentUrlsByFileId, await resolveAttachmentUrls(iframe, fileIdsInThisCategory));
-                remainingFileIds = remainingFileIds.filter(id => !fileIdsInThisCategory.includes(id));
-            }
+        const fileIdsInFreshData = collectAttachmentFileIds(freshData);
+        const fileIdsInThisCategory = remainingFileIds.filter(id => fileIdsInFreshData.includes(id));
+        if (resolveAllAttachments) {
+            // Pièces jointes de la plage demandée, dans la limite du quota restant (ordre d'affichage de Weda)
+            const quota = Math.max(0, maxFileIds - Object.keys(attachmentUrlsByFileId).length - fileIdsInThisCategory.length);
+            const fileIdsInRange = collectAttachmentFileIds(filterCategoryDataByDateRange(freshData, resolvedDateRange, category))
+                .filter(id => !fileIdsInThisCategory.includes(id));
+            if (fileIdsInRange.length > quota) limitReached = true;
+            console.log(`[dataScrapper] resolveAllAttachments, catégorie "${category}" : ${fileIdsInRange.length} pièce(s) jointe(s) dans la plage, quota restant ${quota}`);
+            fileIdsInThisCategory.push(...fileIdsInRange.slice(0, quota));
+        }
+        if (fileIdsInThisCategory.length > 0) {
+            Object.assign(attachmentUrlsByFileId, await resolveAttachmentUrls(iframe, fileIdsInThisCategory));
+            remainingFileIds = remainingFileIds.filter(id => !fileIdsInThisCategory.includes(id));
         }
 
         // Mise à jour du cache en mémoire (fusion avec la partie "extra" conservée le cas échéant)
@@ -536,21 +567,24 @@ async function recoverData({
         data[category] = filterCategoryDataByDateRange(mergedData, resolvedDateRange, category);
     }
 
+    // Persistance du cache sessionStorage si des données ont été rafraîchies. Avant l'injection
+    // ci-dessous, car les entrées de `data` sont partagées avec le cache : le champ url
+    // (propre à cet appel) ne doit pas y être persisté.
+    if (patientId && cacheChanged) {
+        writeDataScrapperCache(patientId, cache);
+    }
+
     // Injection des URLs résolues au fil des catégories (voir plus haut), avant de fermer l'iframe
-    if (resolveAttachmentFileIds.length > 0) {
+    if (resolveAttachmentFileIds.length > 0 || resolveAllAttachments) {
         injectAttachmentUrls(data, attachmentUrlsByFileId);
-        if (remainingFileIds.length > 0) {
+        if (remainingFileIds.length > 0 && !resolveAllAttachments) {
             console.warn('[dataScrapper] fileId(s) non trouvés dans les catégories/plage de dates demandées :', remainingFileIds);
         }
+        if (limitReached) data.avertissement = limitMessage;
     }
 
     // Nettoyage : supprimer l'iframe si on n'est pas en mode debug
     if (iframe && !debug) { iframe.remove(); }
-
-    // Persistance du cache sessionStorage si des données ont été rafraîchies
-    if (patientId && cacheChanged) {
-        writeDataScrapperCache(patientId, cache);
-    }
 
     console.log('[dataScrapper] Données récupérées pour les catégories :', Object.keys(data), data);
 
