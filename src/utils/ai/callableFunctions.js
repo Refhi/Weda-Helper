@@ -397,7 +397,7 @@ const availableFunctions = {
                     properties: {
                         categories: {
                             type: "array",
-                            description: "Catégories de données à récupérer. Le nom est dans etatCivil",
+                            description: "Categories of data to retrieve. The name is in etatCivil",
                             items: {
                                 type: "string",
                                 enum: DATA_SCRAPPER_CATEGORIES
@@ -405,26 +405,26 @@ const availableFunctions = {
                         },
                         fullPage: {
                             type: "boolean",
-                            description: "Si true, charge l'intégralité de l'historique au lieu des 10 dernières entrées par défaut, et inclut alors automatiquement les journées importées d'un ancien logiciel."
+                            description: "If true loads the entire history instead of the last 10 entries by default. Only set to false if you want to limit the retrieval to the most recent entries."
                         },
                         dateRange: {
                             type: "array",
-                            description: "Filtre optionnel sur une plage de dates : [dateDebut, dateFin] au format 'jj/mm/aaaa'. Chaque borne est facultative.",
+                            description: "Date range filter [dd/mm/yyyy,dd/mm/yyyy] or [int,type] for relative ranges like [7,'days'] or [1,'month'] or [1,'year']",
                             items: { type: "string" }
                         },
                         antecedentsType: {
                             type: "string",
                             enum: ["libre", "codifie"],
-                            description: "Filtre optionnel sur les antécédents (categories doit inclure 'antecedents') selon leur type : 'libre' (saisie libre, sans code CIM-10) ou 'codifie' (avec un code CIM-10). Si absent, tous les types sont renvoyés."
+                            description: "Optional filter on antecedents (categories must include 'antecedents') based on their type: 'libre' (free entry, without CIM-10 code) or 'codifie' (with a CIM-10 code). If absent, all types are returned."
                         },
                         antecedentsChampDate: {
                             type: "string",
                             enum: ["debut", "fin", "ponctuelle", "alerte"],
-                            description: "Champ de date des antécédents sur lequel appliquer antecedentsDateRange (Début, Fin, date Ponctuelle ou date d'Alerte). Requis pour que antecedentsDateRange ait un effet."
+                            description: "Specify which date field of the antecedents to apply antecedentsDateRange to (Début, Fin, date Ponctuelle ou date d'Alerte). Required for antecedentsDateRange to take effect."
                         },
                         antecedentsDateRange: {
                             type: "array",
-                            description: "Filtre optionnel sur une plage de dates des antécédents, appliqué au champ désigné par antecedentsChampDate : [dateDebut, dateFin] au format 'jj/mm/aaaa'. Chaque borne est facultative.",
+                            description: "Specify an optional date range filter for antecedents, applied to the field designated by antecedentsChampDate: [startDate, endDate] in the format 'dd/mm/yyyy'. Each bound is optional.",
                             items: { type: "string" }
                         }
                     },
