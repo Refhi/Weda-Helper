@@ -11,6 +11,7 @@
  * @exports resolveAttachmentUrls - Résout l'URL du pdf pour une liste de fileId
  * @exports injectAttachmentUrls - Injecte les URLs résolues dans le résultat de recoverData
  * @exports collectAttachmentFileIds - Liste les fileId présents dans le résultat d'une catégorie
+ * @exports iterateAttachments - Parcourt toutes les pièces jointes (avec fileId) d'un résultat de recoverData
  */
 
 /** Type de message postMessage envoyé par la popup PopUpViewBinaryForm vers sa fenêtre ouvrante */
@@ -103,13 +104,27 @@ addTweak('/FolderMedical/PopUpViewBinaryForm.aspx', '*dataScrapperFileHandlerUrl
  * @param {Object<string, string|null>} urlsByFileId - Map produite par resolveAttachmentUrls
  */
 function injectAttachmentUrls(data, urlsByFileId) {
-    for (const categoryData of Object.values(data)) {
+    for (const attachment of iterateAttachments(data)) {
+        if (urlsByFileId[attachment.fileId]) attachment.url = urlsByFileId[attachment.fileId];
+    }
+}
+
+/**
+ * Parcourt les pièces jointes ayant un fileId dans un résultat de recoverData (ou dans les
+ * données d'une seule catégorie). Deux formes coexistent : les catégories journalières portent
+ * leurs pièces jointes dans `day.attachments`, alors que la catégorie "documents" a un fileId
+ * directement sur chacune de ses entrées.
+ * @param {Object|Array} dataOrCategoryData - Résultat de recoverData, ou données d'une catégorie
+ * @returns {Generator<Object>} Les objets portant un fileId (modifiables en place)
+ */
+function* iterateAttachments(dataOrCategoryData) {
+    const categories = Array.isArray(dataOrCategoryData) ? [dataOrCategoryData] : Object.values(dataOrCategoryData || {});
+    for (const categoryData of categories) {
         if (!Array.isArray(categoryData)) continue;
-        for (const day of categoryData) {
-            for (const attachment of day.attachments || []) {
-                if (attachment.fileId && urlsByFileId[attachment.fileId]) {
-                    attachment.url = urlsByFileId[attachment.fileId];
-                }
+        for (const entry of categoryData) {
+            if (entry?.fileId) yield entry;
+            for (const attachment of entry?.attachments || []) {
+                if (attachment.fileId) yield attachment;
             }
         }
     }
@@ -123,6 +138,5 @@ function injectAttachmentUrls(data, urlsByFileId) {
  * @returns {Array<string>}
  */
 function collectAttachmentFileIds(categoryData) {
-    if (!Array.isArray(categoryData)) return [];
-    return categoryData.flatMap(day => (day.attachments || []).map(a => a.fileId).filter(Boolean));
+    return [...iterateAttachments(categoryData)].map(a => a.fileId);
 }

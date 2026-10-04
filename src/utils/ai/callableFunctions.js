@@ -104,22 +104,17 @@ async function rechercherCim10({ terme, termes, limite = 20 } = {}) {
  * @param {Object} data - Résultat de recoverData, potentiellement enrichi d'attachment.url
  */
 async function lirePiecesJointesPdf(data) {
-    for (const categoryData of Object.values(data)) {
-        if (!Array.isArray(categoryData)) continue;
-        for (const day of categoryData) {
-            for (const attachment of day.attachments || []) {
-                if (!attachment.url) continue;
-                try {
-                    const resolved = await resolvePdfAttachment(attachment.url);
-                    if (resolved.kind === 'text') attachment.pdfText = resolved.text;
-                    else attachment.images = resolved.images;
-                } catch (e) {
-                    console.error(`[recoverPatientData] Erreur lors de la lecture du pdf (fileId=${attachment.fileId}) :`, e);
-                    attachment.pdfText = null;
-                } finally {
-                    delete attachment.url;
-                }
-            }
+    for (const attachment of iterateAttachments(data)) {
+        if (!attachment.url) continue;
+        try {
+            const resolved = await resolvePdfAttachment(attachment.url);
+            if (resolved.kind === 'text') attachment.pdfText = resolved.text;
+            else attachment.images = resolved.images;
+        } catch (e) {
+            console.error(`[recoverPatientData] Erreur lors de la lecture du pdf (fileId=${attachment.fileId}) :`, e);
+            attachment.pdfText = null;
+        } finally {
+            delete attachment.url;
         }
     }
 }
@@ -131,12 +126,8 @@ async function lirePiecesJointesPdf(data) {
  * @returns {Object|null}
  */
 function trouverAttachmentParFileId(data, fileId) {
-    for (const categoryData of Object.values(data)) {
-        if (!Array.isArray(categoryData)) continue;
-        for (const day of categoryData) {
-            const attachment = (day.attachments || []).find(a => a.fileId === fileId);
-            if (attachment) return attachment;
-        }
+    for (const attachment of iterateAttachments(data)) {
+        if (attachment.fileId === fileId) return attachment;
     }
     return null;
 }
@@ -307,15 +298,16 @@ async function lireDocumentsJoints({ fileId } = {}, patientId = null) {
 
         for (const id of fileIdsAChercher) {
             const attachment = trouverAttachmentParFileId(data, id);
+            const nom = attachment?.name || attachment?.fileName; // les entrées de la catégorie documents ont fileName et non name
             if (!attachment) {
                 console.warn(`[lireDocumentsJoints] Aucun attachment trouvé pour fileId "${id}".`);
                 resultatsParFileId[id] = { fileId: id, error: `Document introuvable pour fileId "${id}" : vérifiez qu'il provient bien d'un appel à recoverPatientData sur le patient actuellement ouvert.` };
             } else if (attachment.images?.length) {
-                resultatsParFileId[id] = { fileId: id, name: attachment.name, images: attachment.images };
+                resultatsParFileId[id] = { fileId: id, name: nom, images: attachment.images };
             } else if (!attachment.pdfText) {
-                resultatsParFileId[id] = { fileId: id, name: attachment.name, error: `Impossible de récupérer le contenu du document "${attachment.name}" (fileId "${id}") : la résolution de son URL a échoué (voir la console du navigateur pour le détail).${data.avertissement ? ` ${data.avertissement}` : ''}` };
+                resultatsParFileId[id] = { fileId: id, name: nom, error: `Impossible de récupérer le contenu du document "${nom}" (fileId "${id}") : la résolution de son URL a échoué (voir la console du navigateur pour le détail).${data.avertissement ? ` ${data.avertissement}` : ''}` };
             } else {
-                resultatsParFileId[id] = { fileId: id, name: attachment.name, pdfText: attachment.pdfText };
+                resultatsParFileId[id] = { fileId: id, name: nom, pdfText: attachment.pdfText };
             }
         }
     } catch (e) {
@@ -384,7 +376,7 @@ const availableFunctions = {
                         },
                         lireDocuments: {
                             type: "boolean",
-                            description: "If true, also reads the content (pdfText, or images for scanned pdf) of the attachments found within the requested categories and dateRange (consultations, resultatsExamens, courriers, arretsTravail), instead of requiring a separate lireDocumentJoint call. Only a limited number of attachments are read, in display order (limit set in the user options); the result then carries an 'avertissement' message, and the remaining ones can still be read with lireDocumentJoint. Use only when the document contents are really needed, with a short dateRange: it is slow and fills the context.",
+                            description: "If true, also reads the content (pdfText, or images for scanned pdf) of the attachments found within the requested categories and dateRange (consultations, resultatsExamens, courriers, arretsTravail, documents), instead of requiring a separate lireDocumentJoint call. Only a limited number of attachments are read, in display order (limit set in the user options); the result then carries an 'avertissement' message, and the remaining ones can still be read with lireDocumentJoint. Use only when the document contents are really needed, with a short dateRange: it is slow and fills the context.",
                         },
                         antecedentsType: {
                             type: "string",

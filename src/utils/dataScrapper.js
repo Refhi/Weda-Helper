@@ -392,7 +392,7 @@ function mergeAndCacheCategoryData(cache, category, freshData, plan) {
  *   avec un fileId en cache sont traitées en premier, et une fois tous les fileId résolus les catégories
  *   restantes ne sont plus rafraîchies (absentes du résultat si elles n'étaient pas en cache).
  * @argument resolveAllAttachments Si true, résout l'URL du pdf de toutes les pièces jointes des catégories journalières
- *   demandées, dans la plage dateRange (équivalent d'un resolveAttachmentFileIds contenant tous leurs fileId, sans
+ *   et de la catégorie "documents" demandées, dans la plage dateRange (équivalent d'un resolveAttachmentFileIds contenant tous leurs fileId, sans
  *   avoir à les connaître à l'avance). Force le re-fetch de ces catégories (avec le fullPage demandé, sans réutiliser
  *   la partie "extra" du cache) car les liens doivent être présents dans l'iframe.
  *
@@ -447,6 +447,13 @@ async function recoverData({
         plans[category] = resolveCategoryCachePlan(category, cache[category], { fullPage, refreshMode });
         // Résoudre des fileId nécessite que la catégorie soit affichée dans l'iframe avec la journée
         // concernée chargée : on ne force donc le re-fetch que là où le cache contient ces fileId.
+        if (resolveAttachmentFileIds.length > 0 && !plans[category].isDaily && category === 'documents') {
+            // Catégorie non paginée : un simple re-fetch suffit si le cache contient un des fileId demandés.
+            if (collectAttachmentFileIds(cache[category]?.data).some(id => resolveAttachmentFileIds.includes(id))) {
+                plans[category] = { needsFetch: true, effectiveFullPage: fullPage, cachedMergedData: null, isDaily: false };
+                categoriesWithRequestedFileIds.add(category);
+            }
+        }
         if (resolveAttachmentFileIds.length > 0 && plans[category].isDaily) {
             const { inFirstPage, inExtra } = locateFileIdsInCache(cache[category], resolveAttachmentFileIds);
             if (inExtra) {
@@ -458,8 +465,9 @@ async function recoverData({
             if (inFirstPage || inExtra) categoriesWithRequestedFileIds.add(category);
         }
         // Toutes les pièces jointes de la plage : la catégorie doit être affichée dans l'iframe, avec le fullPage demandé.
-        if (resolveAllAttachments && plans[category].isDaily) {
-            plans[category] = { needsFetch: true, effectiveFullPage: fullPage, cachedMergedData: null, isDaily: true };
+        // ("documents" n'est pas paginée mais liste aussi des pièces jointes, avec un fileId par entrée.)
+        if (resolveAllAttachments && (plans[category].isDaily || category === 'documents')) {
+            plans[category] = { needsFetch: true, effectiveFullPage: fullPage, cachedMergedData: null, isDaily: plans[category].isDaily };
         }
     }
 
