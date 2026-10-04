@@ -802,13 +802,13 @@ function buildToolResultContent(fnResult) {
 }
 
 /**
- * Normalise les arguments JSON en remplaçant les apostrophes simples par des guillemets doubles.
+ * Normalise les arguments JSON en remplaçant les apostrophes simples et les marqueurs spéciaux par des guillemets doubles.
  * @param {string} jsonStr - La chaîne JSON potentiellement malformée
  * @returns {string} La chaîne JSON normalisée
  */
 function normalizeJsonArguments(jsonStr) {
     if (!jsonStr) return '{}';
-    return jsonStr.replace(/'/g, '"');
+    return jsonStr.replace(/'/g, '"').replace(/<\|\"\|>/g, '"');
 }
 
 /**

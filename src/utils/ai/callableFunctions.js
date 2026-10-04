@@ -305,7 +305,12 @@ async function pageContext() {
  * contexte identique pour ne rejouer recoverData qu'une fois par groupe).
  */
 async function lireDocumentsJoints({ fileId } = {}, patientId = null) {
-    const fileIdsAChercher = [...new Set((Array.isArray(fileId) ? fileId : [fileId]).filter(Boolean))];
+    // Accepte fileId en tant que string (simple ou comma-separated) ou array
+    let fileIds = fileId;
+    if (typeof fileId === 'string') {
+        fileIds = fileId.split(',').map(id => id.trim()).filter(Boolean);
+    }
+    const fileIdsAChercher = [...new Set((Array.isArray(fileIds) ? fileIds : [fileIds]).filter(Boolean))];
     console.log(`[lireDocumentsJoints] Appelée avec:`, { fileIdsAChercher, patientId });
     if (!fileIdsAChercher.length) return { error: "fileId requis." };
 
@@ -314,6 +319,8 @@ async function lireDocumentsJoints({ fileId } = {}, patientId = null) {
     const groupesParContexte = new Map();
     const resultatsParFileId = {};
 
+    // Pour chaque fileId à chercher, on récupère son contexte et on le regroupe par contexte identique.
+    // Cela permet de ne pas appeler recoverData plusieurs fois pour des fileId partageant le même contexte.
     for (const id of fileIdsAChercher) {
         const context = _attachmentContextByFileId.get(id);
         if (!context) {
@@ -324,8 +331,10 @@ async function lireDocumentsJoints({ fileId } = {}, patientId = null) {
         if (!groupesParContexte.has(cleContexte)) groupesParContexte.set(cleContexte, { context, fileIds: [] });
         groupesParContexte.get(cleContexte).fileIds.push(id);
     }
+    console.log(`[lireDocumentsJoints] Groupes par contexte:`, groupesParContexte);
 
     for (const { context, fileIds: idsDuGroupe } of groupesParContexte.values()) {
+        console.log(`[lireDocumentsJoints] Traitement du groupe avec contexte:`, context, `et fileIds:`, idsDuGroupe);
         try {
             const data = await recoverData({
                 categories: context.categories,
@@ -334,17 +343,23 @@ async function lireDocumentsJoints({ fileId } = {}, patientId = null) {
                 patientId: patientId || context.patientId,
                 resolveAttachmentFileIds: idsDuGroupe,
             });
+            console.log(`[lireDocumentsJoints] Données récupérées pour le groupe:`, data, `avec fileIds:`, idsDuGroupe);
             await lirePiecesJointesPdf(data);
 
             for (const id of idsDuGroupe) {
                 const attachment = trouverAttachmentParFileId(data, id);
+                console.log(`[lireDocumentsJoints] Attachment trouvé pour fileId "${id}":`, attachment);
                 if (!attachment) {
+                    console.warn(`[lireDocumentsJoints] Aucun attachment trouvé pour fileId "${id}".`);
                     resultatsParFileId[id] = { fileId: id, error: `Document introuvable pour fileId "${id}" (a-t-il disparu depuis le précédent appel ?).` };
                 } else if (attachment.images?.length) {
+                    console.log(`[lireDocumentsJoints] Attachment pour fileId "${id}" contient des images:`, attachment.images);
                     resultatsParFileId[id] = { fileId: id, name: attachment.name, images: attachment.images };
                 } else if (!attachment.pdfText) {
+                    console.log(`[lireDocumentsJoints] Attachment pour fileId "${id}" ne contient pas de texte PDF.`);
                     resultatsParFileId[id] = { fileId: id, name: attachment.name, error: `Impossible de récupérer le contenu du document "${attachment.name}" (fileId "${id}") : la résolution de son URL a échoué (voir la console du navigateur pour le détail).` };
                 } else {
+                    console.log(`[lireDocumentsJoints] Attachment pour fileId "${id}" contient du texte PDF.`);
                     resultatsParFileId[id] = { fileId: id, name: attachment.name, pdfText: attachment.pdfText };
                 }
             }
@@ -357,6 +372,7 @@ async function lireDocumentsJoints({ fileId } = {}, patientId = null) {
     }
 
     const resultats = fileIdsAChercher.map(id => resultatsParFileId[id]);
+    console.log(`[lireDocumentsJoints] Résultats finaux pour les fileIds recherchés:`, resultats);
     return resultats.length === 1 ? resultats[0] : resultats;
 }
 
@@ -445,11 +461,8 @@ const availableFunctions = {
                     type: "object",
                     properties: {
                         fileId: {
-                            description: "fileId (chaîne) ou liste de fileId (tableau de chaînes) des pièces jointes à lire, ex. '893222115' ou ['893222115', '893222126'].",
-                            oneOf: [
-                                { type: "string" },
-                                { type: "array", items: { type: "string" } }
-                            ]
+                            description: "A single fileId (string) or multiple fileId separated by commas in a string, e.g., '893222115' or '893222115,893222126,893222140'.",
+                            type: "string"
                         }
                     },
                     required: ["fileId"]
