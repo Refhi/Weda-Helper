@@ -407,7 +407,7 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "lireDocumentJoint",
-                description: "Lit le contenu d'une ou plusieurs pièces jointes (pdf) du dossier patient, repérées par leur fileId (champ attachment.fileId renvoyé par un appel précédent à recoverPatientData). Ne fournir QUE le/les fileId : ils sont retrouvés automatiquement dans l'historique du patient. Renvoie {fileId, name, pdfText} si le texte du pdf est lisible, ou {fileId, name, images} (pages du document transmises séparément au chat sous forme d'images, pour un pdf scanné/illisible) sinon (ou {fileId, error} si le fileId est introuvable, appeler recoverPatientData avant), groupé dans un tableau si plusieurs fileId demandés.",
+                description: "Read a document, pdf, or other attached files in the patient's record. You MUST Call recoverPatientData first to retrieve the fileId(s).",
                 parameters: {
                     type: "object",
                     properties: {
