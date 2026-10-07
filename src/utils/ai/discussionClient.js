@@ -632,7 +632,7 @@ async function addAIChatClient() {
         <div id="wedaHelper-chat-shortcuts"></div>
         <div id="wedaHelper-chat-window">
             <div id="wedaHelper-chat-header">
-                <span>Assistant Local</span>
+                <span>Assistant Local (Beta)</span>
                 <div id="wedaHelper-header-actions">
                     <span id="wedaHelper-external-warning">!<span class="wedaHelper-external-warning-text">⚠️ Les données échangées avec l'assistant (dont d'éventuelles données de patients) sont envoyées à un serveur externe. Il relève de votre responsabilité de vous assurer que ce serveur est agréé pour l'hébergement de données de santé (HDS).</span></span>
                     <button id="wedaHelper-reset-chat" type="button" title="Réinitialiser la conversation">↺</button>
