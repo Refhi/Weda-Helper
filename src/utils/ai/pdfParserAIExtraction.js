@@ -68,9 +68,11 @@ function resolvePendingPdfParserFields(fields) {
  * @param {string[]|null} [possibleDocumentTypes] - Valeurs de classification réellement disponibles dans
  * Weda (@see features/pdfParser.js initDocumentTypes), récupérées par l'appelant au moment de l'appel.
  * Utilisée uniquement en mode complet (PdfParserAutoAIFullMode), pour contraindre le champ documentType.
+ * @param {{pdfText?: string|null, messageBody?: string|null}} [aiSources] - Texte du PDF et corps du message
+ * (échanges sécurisés) séparés : la lisibilité du PDF est évaluée indépendamment du corps du message.
  * @returns {Promise<object>} Les champs complétés par l'IA, objet vide si rien n'a pu être complété.
  */
-async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = null, possibleDocumentTypes = null) {
+async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = null, possibleDocumentTypes = null, aiSources = {}) {
     const aiExtractionEnabled = await getOptionPromise('PdfParserAutoAIExtraction');
     if (!aiExtractionEnabled) return {};
 
@@ -135,12 +137,16 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
     // Texte extrait absent/illisible (PDF scanné, police non standard...) : on envoie le PDF
     // complet en pièce jointe (@see isPdfTextReadable, discussionClient.js) plutôt que le texte,
     // pour laisser le modèle l'analyser lui-même (OCR via image si nécessaire).
-    const textReadable = isPdfTextReadable(fullText);
+    const { pdfText = fullText, messageBody = null } = aiSources;
+    const textReadable = isPdfTextReadable(pdfText);
     let sendToChatApi;
     if (!textReadable && urlPDF) {
         console.log('[pdfParserAIExtraction] Texte du PDF absent ou illisible, envoi du PDF complet en pièce jointe.');
+        const bodyContext = messageBody
+            ? `\n\n--- Corps du message accompagnant le PDF ---\n${messageBody}\n--- Fin du corps du message ---`
+            : '';
         const pdfFile = new File([await pdfBlob(urlPDF)], 'document.pdf', { type: 'application/pdf' });
-        sendToChatApi = () => chatApi.sendPromptWithFile(instructions, pdfFile);
+        sendToChatApi = () => chatApi.sendPromptWithFile(instructions + bodyContext, pdfFile);
     } else {
         const prompt = `${instructions}\n\n--- Texte du document ---\n${fullText}\n--- Fin du texte du document ---`;
         sendToChatApi = () => chatApi.sendPrompt(prompt);

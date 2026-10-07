@@ -229,7 +229,7 @@ async function processFoundPdfIframeImport(PDFIframeElements) {
     const baseData = await extractBasePdfData(PDFIframeElements);
     if (!baseData) return;
 
-    const { urlPDF, fullText, hashId } = baseData;
+    const { urlPDF, fullText, hashId, pdfText, messageBody } = baseData;
 
     // Ajout d'un bouton de reset du sessionStorage correspondant
     addResetButton(hashId);
@@ -248,7 +248,7 @@ async function processFoundPdfIframeImport(PDFIframeElements) {
     }
     
     // Sinon, on extrait les données
-    extractedData = await handleDataExtraction(fullText, urlPDF, hashId);
+    extractedData = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody });
 
     // ===========================================
     // ÉTAPE 2 : Recherche et sélection du patient
@@ -302,8 +302,8 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     const baseData = await extractBasePdfData(iframesElements); // s’occupe également de vérifier les données déjà extraites
     if (!baseData) return;
 
-    const { urlPDF, fullText, hashId } = baseData;
-    let extractedData = await handleDataExtraction(fullText, urlPDF, hashId);
+    const { urlPDF, fullText, hashId, pdfText, messageBody } = baseData;
+    let extractedData = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody });
 
     // Surveillance des clics sur les patients (pour affichage du nom sélectionné)
     waitForElement({
@@ -696,7 +696,7 @@ async function extractBasePdfData(iframesElements) {
         urlPDF = null;
         fullText = returnMessageBodyES();
         hashId = await customHash(fullText, urlPDF);
-        const toReturn = { urlPDF, fullText, hashId };
+        const toReturn = { urlPDF, fullText, hashId, pdfText: null, messageBody: fullText };
         console.log("[pdfParser] toReturn", toReturn);
         return toReturn;
     }
@@ -704,6 +704,7 @@ async function extractBasePdfData(iframesElements) {
 
     // 2. Extraire le texte du PDF
     fullText = await extractTextFromPDF(urlPDF);
+    const pdfText = fullText;
 
     // 3. Ajouter le corps du message à la fin du texte du PDF si disponible et si le PDF contient moins de 3 lignes
     const messageBody = returnMessageBodyES();
@@ -723,17 +724,18 @@ async function extractBasePdfData(iframesElements) {
     hashId = await customHash(fullText, urlPDF);
 
 
-    return { urlPDF, fullText, hashId };
+    return { urlPDF, fullText, hashId, pdfText, messageBody };
 }
 /**
  * Gère l'extraction des données à partir du PDF (texte ou datamatrix).
  * @param {string} fullText - Le texte extrait du PDF.
  * @param {string} urlPDF - L'URL du PDF.
  * @param {string} hashId - L'identifiant unique du PDF.
+ * @param {{pdfText: string|null, messageBody: string|null}} [aiSources] - Texte du PDF et corps du message séparés, pour l'IA.
  * @param {boolean} isEchanges - Si true, contexte des échanges sécurisés, sinon import standard.
  * @returns {Promise<Object>} - Les données extraites du PDF.
  */
-async function handleDataExtraction(fullText, urlPDF, hashId) {
+async function handleDataExtraction(fullText, urlPDF, hashId, aiSources = {}) {
     let dataMatrixReturn = null;
     // Vérification des données déjà extraites pour ce PDF
     let extractedData = getPdfData(hashId);
@@ -767,7 +769,7 @@ async function handleDataExtraction(fullText, urlPDF, hashId) {
         const pdfParserAutoAIExtraction = await getOptionPromise('PdfParserAutoAIExtraction'); // normalement completeExtractedDataWithAI échoue de façon précoce si cette option est désactivée, mais ajouté ici également pour plus de sécurité.
         if (pdfParserAutoAIExtraction) {
             const possibleDocumentTypes = initDocumentTypes();
-            const aiCompletedFields = await completeExtractedDataWithAI(extractedData, fullText, urlPDF, possibleDocumentTypes);
+            const aiCompletedFields = await completeExtractedDataWithAI(extractedData, fullText, urlPDF, possibleDocumentTypes, aiSources);
             Object.assign(extractedData, aiCompletedFields);
             console.log("[pdfParser] Données après complétion IA.", extractedData);
         }
