@@ -1265,18 +1265,27 @@ async function addAIChatClient() {
     // avant d'envoyer un prompt, pour éviter qu'il ne soit effacé par un stateSync arrivant après coup.
     let onNextStateSyncRendered = null;
 
+    /** Ramène « pas de patient » (null, undefined, '', 0, '0') à null, sinon l'id en chaîne. */
+    function normalizePatientId(patientId) {
+        const asString = String(patientId ?? '').trim();
+        return (!asString || /^0+$/.test(asString)) ? null : asString;
+    }
+
     /**
      * Change le patient associé à la conversation courante (commande /patient, ou appelé
      * directement via l'API publiée par publishChatApi) : la conversation offpage étant indexée
      * par patientId, changer d'id revient à basculer sur une conversation différente (nouvelle ou
      * déjà existante si un autre onglet discute déjà avec ce patient).
-     * @param {string} newPatientId
+     * Un id vide (null, undefined, '', 0 ou '0') désigne le « patient 0 » : retour sur la
+     * conversation non nominative de base (clé 'default' côté offpage).
+     * @param {string|number|null} newPatientId
      * @param {() => void} [onSynced] - Rappelé une fois le prochain stateSync pour ce patient appliqué.
-     * @returns {boolean} false si l'id est vide ou déjà celui en cours (onSynced n'est alors jamais appelé).
+     * @returns {boolean} false si c'est déjà le patient en cours (onSynced n'est alors jamais appelé).
      */
     function switchToPatient(newPatientId, onSynced) {
-        if (!newPatientId || newPatientId === chatPatientId) return false;
-        chatPatientId = newPatientId;
+        const targetPatientId = normalizePatientId(newPatientId);
+        if (targetPatientId === chatPatientId) return false;
+        chatPatientId = targetPatientId;
         pendingAttachments = [];
         renderAttachmentsPreview();
         chatMessages.innerHTML = '';
@@ -2018,12 +2027,12 @@ async function addAIChatClient() {
         showSystemNotice,
         showHelp: showHelpMessage,
         switchPatient: (arg) => {
-            if (!arg) { showSystemNotice('Usage : /patient <identifiant patient>' + ` (patient courant : ${chatPatientId})`); return; }
-            showSystemNotice(`Commande /patient reçue (argument : "${arg}", patient courant : ${chatPatientId}).`);
+            if (!arg) { showSystemNotice('Usage : /patient <identifiant patient> (0 pour la conversation non nominative)' + ` (patient courant : ${chatPatientId ?? 0})`); return; }
+            showSystemNotice(`Commande /patient reçue (argument : "${arg}", patient courant : ${chatPatientId ?? 0}).`);
             const switched = switchToPatient(arg);
             showSystemNotice(switched
-                ? `Conversation associée au patient ${arg}.`
-                : `Aucun changement : déjà sur le patient ${arg} ou identifiant invalide.`);
+                ? (normalizePatientId(arg) ? `Conversation associée au patient ${arg}.` : 'Retour à la conversation non nominative.')
+                : `Aucun changement : déjà sur le patient ${arg}.`);
         },
         // Enregistre un raccourci de prompt : /set <index> [texte]. Sans texte, reprend le dernier
         // message envoyé (promptHistory) — pratique pour transformer à la volée un message qu'on vient

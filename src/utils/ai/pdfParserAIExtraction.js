@@ -102,30 +102,25 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
     // pouvait rester bloqué indéfiniment (son submitPdfParserFields n'arrivant jamais après le reset).
     chatApi.stop();
 
+    // Rattache la conversation au patient déjà identifié à ce stade, sinon au patient 0 (conversation
+    // non nominative) : l'analyse du PDF se fait avant que le patient soit choisi, et un éventuel
+    // patient précédent (@see followPatientInChat) ne doit pas être pollué ni réinitialisé.
+    // getCurrentPatientId() se base sur l'URL de la page, absente sur la page d'import
+    // (UpLoaderForm.aspx) : on se rabat alors sur le patient sélectionné dans la grille d'import.
+    const currentPatientId = getImportGridPatientId() || null;
+    console.log('[pdfParserAIExtraction] Association de la conversation au patient :', currentPatientId ?? 0);
+    // Attend la resynchronisation (stateSync) avant d'envoyer le prompt : sans ça, sur le tout
+    // premier switch (port offpage venant d'être créé), le prompt pouvait être affiché puis
+    // effacé par un stateSync arrivant après coup (@see discussionClient.js switchToPatient).
+    // Filet de sécurité si le stateSync ne revient jamais (onglet/offpage indisponible).
+    await Promise.race([
+        chatApi.switchToPatient(currentPatientId),
+        new Promise(resolve => setTimeout(resolve, 5000))
+    ]);
+
     // Repart d'une conversation vierge à chaque PDF : sans cela, l'historique (et les pièces
     // jointes) des documents précédents restait dans le contexte envoyé au modèle.
     chatApi.resetConversation();
-
-    // Rattache la conversation au patient déjà identifié à ce stade, s'il y en a un (le PDF Parser
-    // peut appeler cette fonction avant même qu'un patient n'ait été trouvé pour ce document).
-    // getCurrentPatientId() se base sur l'URL de la page, absente sur la page d'import
-    // (UpLoaderForm.aspx) : on se rabat alors sur le patient sélectionné dans la grille d'import.
-    const currentPatientId = getImportGridPatientId();
-    if (currentPatientId) {
-        console.log('[pdfParserAIExtraction] Association de la conversation au patient :', currentPatientId);
-        // Attend la resynchronisation (stateSync) avant d'envoyer le prompt : sans ça, sur le tout
-        // premier switch (port offpage venant d'être créé), le prompt pouvait être affiché puis
-        // effacé par un stateSync arrivant après coup (@see discussionClient.js switchToPatient).
-        // Filet de sécurité si le stateSync ne revient jamais (onglet/offpage indisponible).
-        await Promise.race([
-            chatApi.switchToPatient(currentPatientId),
-            new Promise(resolve => setTimeout(resolve, 5000))
-        ]);
-    } else {
-        console.log('[pdfParserAIExtraction] Aucun patient associé à la conversation.');
-    }
-
-
 
     const basePrompt = await getOptionPromise('PdfParserAutoAIExtractionPrompt');
     const fieldsDescription = fieldsToAsk.map(field => `- "${field.key}" : ${field.description}`).join('\n');
