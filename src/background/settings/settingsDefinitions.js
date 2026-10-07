@@ -912,22 +912,16 @@ var advancedDefaultSettings = [
             "description": "Activer ou désactiver l'assistant IA local.",
             "default": false,
             "subOptions": [{
-                "name": "IAassistantHost",
+                "name": "IAassistantBaseUrl",
                 "type": TYPE_SMALLTEXT,
-                "description": "Hôte du serveur d'IA (laisser \"localhost\" sauf serveur distant/réseau local).",
-                "longDescription": "Par défaut \"localhost\" (le serveur d'IA tourne sur cet ordinateur). Peut être remplacé par une adresse IP ou un nom d'hôte d'un serveur sur le réseau local (ex: 192.168.1.50). Un hôte autre que \"localhost\" nécessite d'accorder une permission supplémentaire, demandée automatiquement.",
-                "default": "localhost"
-            }, {
-                "name": "IAassistantPort",
-                "type": TYPE_SMALLTEXT,
-                "description": "Port du modèle d'IA local (laisser en auto sauf port inhabituel).",
-                "longDescription": "1234 pour LM Studio (recommandé car + simple), 11434 pour Ollama (plus technique). Laissé sur \"auto\", tous les ports courants sont testés à chaque démarrage ; si un port précis est indiqué, seul celui-ci est testé.",
-                "default": "auto"
+                "description": "URL de base de l'API d'IA (laisser \"http://localhost:1234/v1\" pour LM Studio en local).",
+                "longDescription": "URL de base d'une API compatible OpenAI, sans \"/chat/completions\" ni \"/models\" (ajoutés automatiquement). Exemples : \"http://localhost:1234/v1\" (défaut, LM Studio local), \"http://localhost:11434/v1\" (Ollama), \"http://192.168.1.50:1234/v1\" (réseau local), \"https://ma-ressource.openai.azure.com/openai/v1\" (Azure : le nom du modèle est alors le nom du déploiement, et la clé API est envoyée en Bearer). Une URL autre que locale nécessite d'accorder une permission supplémentaire.",
+                "default": "http://localhost:1234/v1"
             }, {
                 "name": "IAassistantModelName",
                 "type": TYPE_SMALLTEXT,
                 "description": "Nom du modèle d'IA local préféré.",
-                "longDescription": " La liste des modèles disponibles est téléchargée à chaque démarrage pour chaque port actif ; si le modèle préféré n'y figure pas, le premier modèle disponible est utilisé à la place. Le modèle utilisé peut aussi être changé depuis le menu déroulant du Chat.",
+                "longDescription": " La liste des modèles disponibles est téléchargée à chaque démarrage depuis l'URL de base ; si le modèle préféré n'y figure pas, le premier modèle disponible est utilisé à la place. Le modèle utilisé peut aussi être changé depuis le menu déroulant du Chat.",
                 "default": "auto"
             }, {
                 "name": "AIAssistantToolCalling",

@@ -961,7 +961,13 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
   document.getElementById('save').addEventListener('click', function () {
     collectCurrentValues(defaultSettings, defaultShortcuts)
       .then(valuesToSave => {
-        const host = valuesToSave['IAassistantHost']?.trim();
+        let host = null;
+        try {
+          const rawUrl = valuesToSave['IAassistantBaseUrl']?.trim();
+          if (rawUrl) host = new URL(rawUrl).hostname;
+        } catch (error) {
+          host = null;
+        }
         if (host && host !== 'localhost' && host !== '127.0.0.1') {
           const confirmed = confirm(
             "⚠️ ATTENTION DONNÉES DE SANTÉ ⚠️\n\n" +

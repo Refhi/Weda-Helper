@@ -215,6 +215,43 @@ async function addAIChatClient() {
         }
         #wedaHelper-reset-chat:hover { background: #c23f3f; }
         #wedaHelper-header-actions { display: flex; align-items: center; }
+        #wedaHelper-external-warning {
+            display: none;
+            position: relative;
+            background: #f5c518;
+            color: #333;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            min-width: 22px;
+            font-size: 14px;
+            font-weight: bold;
+            line-height: 22px;
+            text-align: center;
+            cursor: help;
+            margin-right: 8px;
+            user-select: none;
+        }
+        #wedaHelper-external-warning.visible { display: block; }
+        #wedaHelper-external-warning .wedaHelper-external-warning-text {
+            display: none;
+            position: absolute;
+            top: 30px;
+            right: -60px;
+            width: 280px;
+            background: #fff8e1;
+            color: #333;
+            border: 1px solid #f5c518;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            padding: 10px 12px;
+            font-size: 12px;
+            font-weight: normal;
+            line-height: 1.4;
+            text-align: left;
+            z-index: 10001;
+        }
+        #wedaHelper-external-warning:hover .wedaHelper-external-warning-text { display: block; }
         #wedaHelper-info-popover {
             display: none;
             position: absolute;
@@ -597,6 +634,7 @@ async function addAIChatClient() {
             <div id="wedaHelper-chat-header">
                 <span>Assistant Local</span>
                 <div id="wedaHelper-header-actions">
+                    <span id="wedaHelper-external-warning">!<span class="wedaHelper-external-warning-text">⚠️ Les données échangées avec l'assistant (dont d'éventuelles données de patients) sont envoyées à un serveur externe. Il relève de votre responsabilité de vous assurer que ce serveur est agréé pour l'hébergement de données de santé (HDS).</span></span>
                     <button id="wedaHelper-reset-chat" type="button" title="Réinitialiser la conversation">↺</button>
                     <button id="wedaHelper-info-chat" type="button" title="Paramètres">⚙️</button>
                     <button id="wedaHelper-close-chat" type="button">&times;</button>
@@ -673,6 +711,7 @@ async function addAIChatClient() {
     const infoButton = widget.querySelector('#wedaHelper-info-chat');
     const infoPopover = widget.querySelector('#wedaHelper-info-popover');
     const resetButton = widget.querySelector('#wedaHelper-reset-chat');
+    const externalWarning = widget.querySelector('#wedaHelper-external-warning');
     const inputResizeHandle = widget.querySelector('#wedaHelper-input-resize-handle');
 
     // Ancrage automatique en bas de la conversation : désactivé si l'utilisateur remonte
@@ -1176,12 +1215,9 @@ async function addAIChatClient() {
         }).join('');
 
         const hasMultipleModels = (aiParams.availableModels?.length || 0) > 1;
-        // Si plusieurs ports sont actifs, on précise entre parenthèses le port de chaque modèle (utile pour
-        // distinguer d'éventuels modèles de même nom exposés sur des ports différents).
-        const showPort = (aiParams.activePorts?.length || 0) > 1;
         const modelOptions = (aiParams.availableModels || [])
-            .filter((m, idx, arr) => arr.findIndex(other => other.model === m.model && other.port === m.port) === idx) // dédoublonnage
-            .map(m => `<option value="${m.model}" ${m.model === selectedModel ? 'selected' : ''}>${m.model}${showPort ? ` (port ${m.port})` : ''}</option>`)
+            .filter((m, idx, arr) => arr.findIndex(other => other.model === m.model) === idx) // dédoublonnage
+            .map(m => `<option value="${m.model}" ${m.model === selectedModel ? 'selected' : ''}>${m.model}</option>`)
             .join('');
 
         return `
@@ -1189,7 +1225,7 @@ async function addAIChatClient() {
             <h4>Modèle utilisé</h4>
             ${hasMultipleModels
                 ? `<select id="wedaHelper-model-select">${modelOptions}</select>`
-                : `<pre>${getCurrentModel()} (hôte : ${aiParams.host || 'localhost'})</pre>`}
+                : `<pre>${getCurrentModel()} (${aiParams.baseUrl})</pre>`}
             <h4>Tool Calling</h4>
             <pre>Max. Tool Calling = ${aiParams.MAX_TOOL_CALL_DEPTH}, cf. options Weda-Helper</pre>
             <h4>Prompt système</h4>
@@ -1200,6 +1236,19 @@ async function addAIChatClient() {
     }
 
     resetButton.addEventListener('click', resetConversation);
+
+    /** Affiche le "!" jaune d'avertissement RGPD/HDS uniquement si l'URL configurée n'est pas locale. */
+    async function updateExternalWarning() {
+        let isExternal = false;
+        try {
+            const { hostname } = new URL((await getAiParams()).baseUrl);
+            isExternal = !['localhost', '127.0.0.1', '[::1]'].includes(hostname);
+        } catch (error) {
+            isExternal = false;
+        }
+        externalWarning.classList.toggle('visible', isExternal);
+    }
+    updateExternalWarning();
 
     /** Réinitialise la conversation en cours (utilisé par le bouton ↺ et la commande /clear). */
     function resetConversation() {
@@ -1444,6 +1493,7 @@ async function addAIChatClient() {
         isOpen = !isOpen;
         if (isOpen) {
             chatWindow.classList.add('open');
+            updateExternalWarning(); // l'URL a pu être modifiée dans les options depuis le dernier affichage
             chatToggle.style.display = 'none';
             chatInput.focus();
             shortcutsPanel.classList.add('open');
@@ -1651,17 +1701,12 @@ async function addAIChatClient() {
         const isAvailable = await testAiApiConnection();
         if (isAvailable) return;
 
-        // Si le port était sur "auto", précise les ports testés (utile pour comprendre pourquoi
-        // aucun serveur n'a été détecté : ports courants LM Studio/Ollama non concordants, etc.)
-        const { autoPortTestedPorts, port } = await getAiParams();
-        const portInfo = autoPortTestedPorts?.length
-            ? `les ports testés automatiquement (${autoPortTestedPorts.join(', ')})`
-            : `le port ${port}`;
+        const { baseUrl } = await getAiParams();
 
         const warningBubble = appendMessage('bot', '');
         warningBubble.classList.remove('bot');
         warningBubble.classList.add('tool-call', 'error');
-        warningBubble.innerHTML = `⚠️ Aucune IA locale détectée sur ${portInfo}. Consultez le <a href="https://github.com/Refhi/Weda-Helper/wiki/Installation-d'une-IA-sur-votre-poste,-pour-que-Weda%E2%80%90Helper-s'en-saisisse" target="_blank" rel="noopener noreferrer">wiki d'installation d'une IA locale</a> pour configurer l'assistant. Cliquez sur le ? bleu pour le désactiver.`;
+        warningBubble.innerHTML = `⚠️ Aucune IA détectée à l'adresse ${baseUrl}. Consultez le <a href="https://github.com/Refhi/Weda-Helper/wiki/Installation-d'une-IA-sur-votre-poste,-pour-que-Weda%E2%80%90Helper-s'en-saisisse" target="_blank" rel="noopener noreferrer">wiki d'installation d'une IA locale</a> pour configurer l'assistant. Cliquez sur le ? bleu pour le désactiver.`;
     }
     checkAiApiAvailability();
 
