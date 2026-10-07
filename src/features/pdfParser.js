@@ -464,6 +464,12 @@ function addPatientNameDisplay(patientName, patientElement = null) {
     patientNameSpan.style.cursor = 'pointer';
     patientNameSpan.style.textDecoration = 'underline';
     patientNameSpan.id = 'pdfParserPatientName';
+    // Par facilité, l'id du patient sélectionné est porté par l'élément (posé sur le lien patient
+    // par patientLink.js, le title d'origine étant écrasé par un texte d'aide).
+    const selectedPatientId = patientElement?.dataset?.patientId;
+    if (/^[1-9]\d*$/.test(selectedPatientId || '')) {
+        patientNameSpan.dataset.patientId = selectedPatientId;
+    }
     
     // Si on a l'élément patient avec les UrlParams, on ajoute les raccourcis d'accès
     if (patientElement && patientElement.UrlParams) {

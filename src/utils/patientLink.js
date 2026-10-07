@@ -224,6 +224,7 @@ addTweak(urls, '*addATCDShortcut', function () {
                 return;
             }
             // console.log('patientFileNumber', patientFileNumber);
+            element.dataset.patientId = patientFileNumber; // le title est écrasé par addHintOverlay
             addPatientUrlParams(element, patientFileNumber);
             addATCDShortcut(element);
         });
