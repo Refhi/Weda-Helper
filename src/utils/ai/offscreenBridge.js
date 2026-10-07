@@ -92,6 +92,15 @@ function onOffscreenReconnect(callback) {
 // TOOL_CALL_TIMEOUT_MS côté offscreenChatEngine pour éviter tout risque d'expiration entre deux pings).
 const KEEPALIVE_INTERVAL_MS = 10000;
 
+/**
+ * Sur le patient 0 (conversation non nominative), les outils nécessitant un patient utilisent celui
+ * choisi dans le PDF Parser (@see features/pdfParser.js addPatientNameDisplay), sinon 0.
+ * @returns {string|number}
+ */
+function getPdfParserPatientId() {
+    return document.querySelector('#pdfParserPatientName')?.dataset.patientId || 0;
+}
+
 async function executeRequestedToolCall({ callId, name, args, patientId }) {
     // Signale régulièrement à l'engine que l'exécution est toujours en cours, afin qu'il remette
     // son timer à zéro (@see offscreenChatEngine.js keepaliveToolCall). Permet aux fonctions
@@ -102,7 +111,7 @@ async function executeRequestedToolCall({ callId, name, args, patientId }) {
     );
     try {
         if (!availableFunctions[name]) throw new Error(`fonction inconnue "${name}"`);
-        const result = await availableFunctions[name].execute(args, patientId);
+        const result = await availableFunctions[name].execute(args, Number(patientId) ? patientId : getPdfParserPatientId());
         sendOffscreenMessage({ type: 'toolCallResult', callId, result });
     } catch (error) {
         sendOffscreenMessage({ type: 'toolCallResult', callId, error: error.message || String(error) });
