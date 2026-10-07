@@ -3,6 +3,7 @@
  * @description Automatisation des Arrêts de Travail (AATI).
  * Gère l'automatisation complète du processus AATI :
  * - Bouton "AT sans CV" pour shunter la lecture CV
+ * - Bouton "TPT" : désactive la coche auto des sorties autorisées
  * - Sélection automatique du patient depuis la CV
  * - Remplissage automatique des dates
  * - Auto-consentement
@@ -28,12 +29,14 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoAATI', function () {
 
         // Renommer et identifier le bouton original
         boutonAvecCV.id = 'aati-lien-avec-cv';
-        boutonAvecCV.textContent = 'AT avec CV';
+        boutonAvecCV.textContent = 'AT-CV';
+        boutonAvecCV.title = 'Weda-Helper : Arrêt de travail avec Carte VItale';
 
         // Créer le lien "AT sans CV" avec le même style que le lien original
         const boutonSansCV = document.createElement('a');
         boutonSansCV.id = 'aati-lien-sans-cv';
-        boutonSansCV.textContent = 'AT sans CV';
+        boutonSansCV.textContent = 'noCV';
+        boutonSansCV.title = 'Weda-Helper : Arrêt de travail sans Carte Vitale';
         boutonSansCV.className = boutonAvecCV.className;
         boutonSansCV.href = '#';
 
@@ -47,12 +50,29 @@ addTweak('/FolderMedical/PatientViewForm.aspx', 'autoAATI', function () {
             clicCSPLockedElement('#aati-lien-avec-cv');
         });
 
-        // Envelopper les deux liens dans un conteneur flex pour les afficher côte à côte
+        // Créer le lien "TPT" : AT avec CV, sans coche automatique des sorties autorisées (contourne un bug)
+        const boutonTPT = document.createElement('a');
+        boutonTPT.id = 'aati-lien-tpt';
+        boutonTPT.textContent = 'TPT';
+        boutonTPT.title = 'Weda-Helper : Arrêt de travail avec TPT - shunte les sorties autorisées automatiquement (contourne un bug)';
+        boutonTPT.className = boutonAvecCV.className;
+        boutonTPT.href = '#';
+
+        boutonTPT.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('[autoAATI] Clic sur TPT détecté au timestamp', Date.now());
+            chrome.storage.local.set({ timestampAATItpt: Date.now() });
+            clicCSPLockedElement('#aati-lien-avec-cv');
+        });
+
+        // Envelopper les liens dans un conteneur flex pour les afficher côte à côte
         const wrapper = document.createElement('span');
         wrapper.style.cssText = 'display: inline-flex; gap: 4px; align-items: center;';
         boutonAvecCV.replaceWith(wrapper);
         wrapper.appendChild(boutonAvecCV);
         wrapper.appendChild(boutonSansCV);
+        wrapper.appendChild(boutonTPT);
     }
 
     waitForElement({ selector: selecteurBoutonAT, justOnce: false, callback: processButton });
@@ -810,7 +830,13 @@ addTweak('/FolderMedical/Aati.aspx', '*autoSortieSansRestriction', async functio
 /**
  * Coche automatiquement les sorties autorisées simples
  */
-addTweak('/FolderMedical/Aati.aspx', 'sortiesAutoriseesAutoSelect', function () {
+addTweak('/FolderMedical/Aati.aspx', 'sortiesAutoriseesAutoSelect', async function () {
+    // Si on vient du bouton "TPT", on ne coche pas automatiquement (contourne un bug)
+    const { timestampAATItpt } = await chrome.storage.local.get(['timestampAATItpt']);
+    if (Date.now() - timestampAATItpt < 60000) {
+        console.log('[sortiesAutoriseesAutoSelect] Désactivé car AT lancé via "TPT".');
+        return;
+    }
     // élément à viser <input type="radio" name="aatiLeaveAllowed" class="ng-valid ng-dirty ng-touched">
     const selecteurSortiesAutorisees = 'input[type="radio"][name="aatiLeaveAllowed"]';
     const elementsSortiesAutorisees = document.querySelectorAll(selecteurSortiesAutorisees);
