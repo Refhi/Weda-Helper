@@ -15,6 +15,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - le client IA peut désormais modifier les antécédents, créer des consultations, prescriptions d'examens, courrier et certificat. Il peut également aider l'importation des documents dans l'onglet d'importation.
 - [#686](https://github.com/Refhi/Weda-Helper/issues/686) - l'historique de facturation peut désormais également être affiché dans la page des règlements manuels
 - [#671](https://github.com/Refhi/Weda-Helper/issues/671) - le client IA peut désormais lire les documents joints à une consultation ou le pdf actuellement affiché à l'écran, ou certains éléments actuellement affichés à l'écran.
+- [#690](https://github.com/Refhi/Weda-Helper/issues/690) - Shunte les sorties autorisées automatiquement lors de la création d'un arrêt de travail avec TPT pour contourner un bug côté Weda.
 
 ## Fix :
 - [#637](https://github.com/Refhi/Weda-Helper/issues/637) - il est désormais possible d’exclure certains paterns de dates de l’analyse automatique des pdf. Utile si votre addresse contiens des dates qui ne doivent pas être prises en compte.
