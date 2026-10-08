@@ -296,6 +296,22 @@ async function openAiClient({
     if (maxTokens === undefined) maxTokens = (await getAiParams()).maxTokensOutput;
     if (reasoningEffort === undefined) reasoningEffort = (await getAiParams()).reasoningEffort;
 
+    const effectiveStream = stream || !!onChunk;
+    const modelArgs = {
+        temperature,
+        top_p: topP,
+        frequency_penalty: frequencyPenalty,
+        presence_penalty: presencePenalty,
+    };
+    const normalizedMaxTokens = toPositiveIntegerOrFallback(maxTokens, null);
+    if (normalizedMaxTokens !== null) modelArgs.max_tokens = normalizedMaxTokens;
+    if (stop) modelArgs.stop = stop;
+    if (effectiveStream) modelArgs.stream = true;
+    if (responseFormat) modelArgs.response_format = responseFormat;
+    if (seed !== null) modelArgs.seed = seed;
+    if (reasoningEffort && reasoningEffort !== 'auto') modelArgs.reasoning_effort = reasoningEffort;
+    applyModelSpecificArgChanges(model, modelArgs);
+
     const apiUrl = (await getAiParams()).baseUrl;
 
     // Permet de faire un appel simple sans avoir à construire un tableau de messages
@@ -336,22 +352,10 @@ async function openAiClient({
     const effectiveUseTools = useTools && (await getAiParams()).toolCalling;
     const resolvedTools = tools || (effectiveUseTools ? Object.values(availableFunctions).map(f => f.definition) : null);
 
-    // Si un callback de streaming est fourni, on force le mode stream côté requête
-    const effectiveStream = stream || !!onChunk;
-
     const requestBody = buildRequestBody({
         messages: filteredMessages,
         model,
-        maxTokens,
-        temperature,
-        topP,
-        frequencyPenalty,
-        presencePenalty,
-        stop,
-        stream: effectiveStream,
-        responseFormat,
-        seed,
-        reasoningEffort,
+        modelArgs,
         resolvedTools,
         toolChoice
     });
@@ -592,36 +596,15 @@ async function consumeStream(stream, onChunk) {
 function buildRequestBody({
     messages,
     model,
-    maxTokens,
-    temperature,
-    topP,
-    frequencyPenalty,
-    presencePenalty,
-    stop,
-    stream,
-    responseFormat,
-    seed,
-    reasoningEffort,
+    modelArgs,
     resolvedTools,
     toolChoice
 }) {
-    const normalizedMaxTokens = toPositiveIntegerOrFallback(maxTokens, null);
     const requestBody = {
         model,
         messages,
-        temperature,
-        top_p: topP,
-        frequency_penalty: frequencyPenalty,
-        presence_penalty: presencePenalty,
+        ...modelArgs,
     };
-
-    // Ajouter les paramètres optionnels seulement s'ils sont définis
-    if (normalizedMaxTokens !== null) requestBody.max_tokens = normalizedMaxTokens;
-    if (stop) requestBody.stop = stop;
-    if (stream) requestBody.stream = stream;
-    if (responseFormat) requestBody.response_format = responseFormat;
-    if (seed !== null) requestBody.seed = seed;
-    if (reasoningEffort && reasoningEffort !== 'auto') requestBody.reasoning_effort = reasoningEffort;
 
     if (resolvedTools && resolvedTools.length > 0) {
         requestBody.tools = resolvedTools;
