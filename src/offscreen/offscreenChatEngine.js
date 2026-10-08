@@ -187,11 +187,9 @@ async function processUserMessage({ tabId, patientId, content, model }) {
         return;
     }
 
-    // Si le serveur n'était pas disponible au démarrage, relancer une recherche
-    if ((await getAiParams()).serverStatus === 'unavailable') {
-        console.log('[offscreenChatEngine] Serveur LLM indisponible — relance de la recherche');
-        await recheckServerAvailability();
-    }
+    // Le sondage réseau (coûteux) n'est désormais déclenché que depuis la popover d'info du chat
+    // (ouverture de la "roue dentée", @see recheckServerAvailability dans discussionClient.js) :
+    // aucun sondage automatique ici, même si le serveur n'a jamais encore été vérifié.
 
     conversation.chatHistory.push({ role: 'user', content });
     conversation.generationController = new AbortController();

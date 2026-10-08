@@ -1214,18 +1214,21 @@ async function addAIChatClient() {
             return `<li><strong>${name}</strong>${description ? ' — ' + description : ''}</li>`;
         }).join('');
 
-        const hasMultipleModels = (aiParams.availableModels?.length || 0) > 1;
+        const hasModelsList = (aiParams.availableModels?.length || 0) > 0;
         const modelOptions = (aiParams.availableModels || [])
             .filter((m, idx, arr) => arr.findIndex(other => other.model === m.model) === idx) // dédoublonnage
             .map(m => `<option value="${m.model}" ${m.model === selectedModel ? 'selected' : ''}>${m.model}</option>`)
             .join('');
 
+        // Toujours une liste déroulante éditable (saisie libre) : certains serveurs (ex: Azure
+        // OpenAI) renvoient sur `/models` le catalogue complet plutôt que les seuls déploiements
+        // configurés, dont le nom (ex: nom de déploiement) peut donc ne pas y figurer.
         return `
             <button id="wedaHelper-disable-connector" type="button">Désactiver l'Assistant Local</button>
             <h4>Modèle utilisé</h4>
-            ${hasMultipleModels
-                ? `<select id="wedaHelper-model-select">${modelOptions}</select>`
-                : `<pre>${getCurrentModel()} (${aiParams.baseUrl})</pre>`}
+            <input id="wedaHelper-model-select" list="wedaHelper-model-options" value="${selectedModel || ''}" placeholder="Nom du modèle / déploiement" />
+            ${hasModelsList ? `<datalist id="wedaHelper-model-options">${modelOptions}</datalist>` : ''}
+            <pre>${aiParams.baseUrl}</pre>
             <h4>Tool Calling</h4>
             <pre>Max. Tool Calling = ${aiParams.MAX_TOOL_CALL_DEPTH}, cf. options Weda-Helper</pre>
             <h4>Prompt système</h4>

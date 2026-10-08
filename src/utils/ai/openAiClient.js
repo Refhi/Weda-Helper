@@ -109,20 +109,21 @@ async function fetchAvailableModels(baseUrl, apiKey) {
 /**
  * (Re)calcule le modèle par défaut à partir du modèle préféré configuré et des modèles
  * effectivement détectés lors du dernier sondage réseau.
+ *
+ * Si un modèle préféré est explicitement configuré (différent de "auto"), on lui fait confiance
+ * tel quel, même s'il n'apparaît pas dans la liste des modèles détectés : certains serveurs (ex:
+ * Azure OpenAI) exposent sur `/models` le catalogue complet des modèles disponibles sur la
+ * ressource plutôt que les seuls déploiements configurés, dont le nom (ex: nom de déploiement,
+ * potentiellement arbitraire) ne figure donc jamais dans cette liste.
  * @param {object} params - Objet aiParams en cours de construction (preferredModel, availableModels déjà renseignés).
  */
 function resolveDefaultModel(params) {
-    const modelNames = params.availableModels.map(m => m.model);
-    if (params.preferredModel && params.preferredModel !== 'auto' && modelNames.includes(params.preferredModel)) {
+    if (params.preferredModel && params.preferredModel !== 'auto') {
         params.defaultModel = params.preferredModel;
-    } else if (modelNames.length > 0) {
-        if (params.preferredModel && params.preferredModel !== 'auto') {
-            console.warn(`[openAiClient] Modèle préféré "${params.preferredModel}" introuvable parmi les modèles disponibles, sélection du premier modèle disponible : ${modelNames[0]}.`);
-        }
-        params.defaultModel = modelNames[0];
-    } else {
-        params.defaultModel = params.preferredModel; // Aucun serveur/modèle détecté : on garde la valeur configurée telle quelle
+        return;
     }
+    const modelNames = params.availableModels.map(m => m.model);
+    params.defaultModel = modelNames.length > 0 ? modelNames[0] : params.preferredModel;
 }
 
 // Noms des options simples (lues via un seul appel groupé à getOptionPromise) et raccourcis de
@@ -177,37 +178,28 @@ async function probeServer(baseUrl, apiKey) {
 }
 
 // Résultat du dernier sondage réseau (coûteux) : seul état conservé d'un appel à l'autre,
-// volontairement séparé des options (relues à chaque appel par getAiParams). Rempli au premier appel
-// à getAiParams(), puis uniquement mis à jour via recheckServerAvailability().
+// volontairement séparé des options (relues à chaque appel par getAiParams). Jamais rempli
+// automatiquement : le sondage (coûteux, et inutile tant qu'un modèle explicite est configuré)
+// n'est déclenché qu'à la demande, via recheckServerAvailability() (ouverture de la popover
+// d'info du chat, cf. infoButton dans discussionClient.js).
 let lastProbeResult = null;
 
 /**
  * Renvoie l'ensemble des paramètres nécessaires à un appel API : les options utilisateur (relues à
- * chaque appel) fusionnées avec le résultat du dernier sondage réseau. C'est le seul point
- * d'accès aux paramètres de l'assistant : ni discussionClient.js ni offscreenChatEngine.js ne
- * doivent maintenir leur propre copie de ces valeurs.
+ * chaque appel) fusionnées avec le résultat du dernier sondage réseau (absent tant qu'aucun sondage
+ * n'a encore été demandé, @see recheckServerAvailability). C'est le seul point d'accès aux
+ * paramètres de l'assistant : ni discussionClient.js ni offscreenChatEngine.js ne doivent
+ * maintenir leur propre copie de ces valeurs.
  * @returns {Promise<object>}
  */
 async function getAiParams() {
     const options = await loadAiOptions();
-    if (!lastProbeResult) {
-        // Premier appel : tentative (best effort, non bloquante) d'obtention de la permission
-        // optionnelle pour un hôte distant (voir ensureHostPermission), puis sondage.
-        await ensureHostPermission(options.baseUrl);
-        lastProbeResult = await probeServer(options.baseUrl, options.apiKey);
-        if (lastProbeResult.serverStatus === 'unavailable') {
-            console.warn("[openAiClient] Serveur LLM indisponible — relance de la recherche à la prochaine requête");
-        }
-    }
+    const probeResult = lastProbeResult || { availableModels: [], serverStatus: 'unknown' };
 
-    const params = { ...options, ...lastProbeResult };
+    const params = { ...options, ...probeResult };
     resolveDefaultModel(params);
     return params;
 }
-
-// Promesse résolue après le tout premier appel à getAiParams() (sondage réseau initial effectué),
-// pour que le sondage démarre dès le chargement du script plutôt que d'attendre le premier appel réel.
-getAiParams();
 
 /**
  * Relance la recherche des modèles disponibles (utile si le serveur n'était pas disponible au
@@ -216,7 +208,8 @@ getAiParams();
  */
 async function recheckServerAvailability() {
     const { baseUrl, apiKey } = await getAiParams();
-    const wasUnavailable = lastProbeResult?.serverStatus === 'unavailable';
+    const wasUnavailable = lastProbeResult?.serverStatus !== 'available';
+    await ensureHostPermission(baseUrl); // best effort, non bloquant (voir ensureHostPermission)
     lastProbeResult = await probeServer(baseUrl, apiKey);
 
     if (wasUnavailable && lastProbeResult.serverStatus === 'available') {
