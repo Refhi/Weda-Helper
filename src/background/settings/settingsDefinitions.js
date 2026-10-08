@@ -921,7 +921,7 @@ var advancedDefaultSettings = [
                 "name": "IAassistantModelName",
                 "type": TYPE_SMALLTEXT,
                 "description": "Nom du modèle d'IA local préféré.",
-                "longDescription": " La liste des modèles disponibles est téléchargée à chaque démarrage depuis l'URL de base ; si le modèle préféré n'y figure pas, le premier modèle disponible est utilisé à la place. Le modèle utilisé peut aussi être changé depuis le menu déroulant du Chat.",
+                "longDescription": " La liste des modèles disponibles est téléchargée à chaque démarrage depuis l'URL de base ; si le modèle préféré n'y figure pas, le premier modèle disponible est utilisé à la place. Le modèle utilisé peut aussi être changé depuis le menu déroulant du Chat.\n<a href='ai-model-settings.html' target='_blank'>Configurer les paramètres spécifiques aux modèles</a>",
                 "default": "auto"
             }, {
                 "name": "AIAssistantToolCalling",

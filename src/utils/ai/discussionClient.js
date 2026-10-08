@@ -1225,7 +1225,7 @@ async function addAIChatClient() {
         // configurés, dont le nom (ex: nom de déploiement) peut donc ne pas y figurer.
         return `
             <button id="wedaHelper-disable-connector" type="button">Désactiver l'Assistant Local</button>
-            <h4>Modèle utilisé</h4>
+            <h4>Modèle utilisé <span title="La liste suggérée peut ne pas correspondre aux modèles réellement déployés (ex: Azure OpenAI expose tout son catalogue, pas vos déploiements). En cas d'échec, tapez manuellement le nom exact du modèle/déploiement.">⚠️</span></h4>
             <input id="wedaHelper-model-select" list="wedaHelper-model-options" value="${selectedModel || ''}" placeholder="Nom du modèle / déploiement" />
             ${hasModelsList ? `<datalist id="wedaHelper-model-options">${modelOptions}</datalist>` : ''}
             <pre>${aiParams.baseUrl}</pre>
