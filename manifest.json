@@ -65,6 +65,7 @@
         "src/utils/ai/pdfAttachmentHelper.js",
         "src/utils/ai/offscreenBridge.js",
         "src/utils/ai/pdfParserAIExtraction.js",
+        "src/utils/ai/attachmentAIRename.js",
         "src/utils/ai/chatSlashCommands.js",
         "src/utils/ai/discussionClient.js",
         "src/ui/tooltip.js",

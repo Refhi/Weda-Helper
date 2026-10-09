@@ -28,7 +28,9 @@ const DATA_SCRAPPER_ATTACHMENT_PENDING_KEY = 'dataScrapperFileHandlerPendingFile
  * Résout l'URL réelle du pdf (BinaryData.aspx) pour chaque fileId demandé, en rejouant le clic
  * sur le lien correspondant dans l'iframe de scraping (qui doit encore contenir les journées
  * concernées, avec leurs pièces jointes visibles).
- * @param {HTMLIFrameElement} iframe - iframe de scraping encore chargée sur l'historique patient
+ * @param {HTMLIFrameElement|{contentWindow: Window, contentDocument: Document}} iframe - iframe de scraping
+ * encore chargée sur l'historique patient, ou `{contentWindow: window, contentDocument: document}` pour
+ * rejouer le clic directement dans la page courante (@see attachmentAIRename.js)
  * @param {Array<string>} fileIds - Liste des attachment.fileId dont on veut résoudre l'URL
  * @returns {Promise<Object<string, string|null>>} Map fileId -> url (ou null si non résolu)
  */

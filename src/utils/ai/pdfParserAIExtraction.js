@@ -24,7 +24,7 @@ const PDF_PARSER_AI_FIELDS = [
 const PDF_PARSER_AI_FULL_MODE_FIELDS = [
     { key: 'documentTitle', description: "Titre complet du document, tel qu'il doit apparaître dans le dossier patient" },
     { key: 'destinationClass', description: "Destination du classement : '1' pour Consultation, '2' pour Résultats d'examens, '3' pour Courrier" },
-    { key: 'documentType', description: "Classification du document, parmi les valeurs listées ci-dessous" }
+    { key: 'documentType', description: "Classification du document, parmi les valeurs listées ci-dessous le cas échéant" }
 ];
 
 // Délai maximum d'attente de l'appel de fonction submitPdfParserFields avant d'abandonner (le
@@ -70,10 +70,17 @@ function resolvePendingPdfParserFields(fields) {
  * Utilisée uniquement en mode complet (PdfParserAutoAIFullMode), pour contraindre le champ documentType.
  * @param {{pdfText?: string|null, messageBody?: string|null}} [aiSources] - Texte du PDF et corps du message
  * (échanges sécurisés) séparés : la lisibilité du PDF est évaluée indépendamment du corps du message.
+ * @param {{externalTool?: {name: string, extraInstructions?: string}|null, patientId?: string|null}} [options] -
+ * Pour un usage explicitement demandé par l'utilisateur hors PDF Parser (@see attachmentAIRename.js) :
+ * `externalTool` demande au modèle d'appeler cette fonction (avec `extraInstructions` ajoutées au prompt,
+ * ex: un identifiant à lui transmettre) au lieu de submitPdfParserFields ; l'option PdfParserAutoAIExtraction
+ * est alors ignorée (PdfParserAutoAIFullMode reste respectée) et on n'attend pas la réponse (objet vide renvoyé,
+ * la fonction appelée se charge elle-même du résultat). `patientId` rattache la conversation à ce patient
+ * (sinon celui de la grille d'import).
  * @returns {Promise<object>} Les champs complétés par l'IA, objet vide si rien n'a pu être complété.
  */
-async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = null, possibleDocumentTypes = null, aiSources = {}) {
-    const aiExtractionEnabled = await getOptionPromise('PdfParserAutoAIExtraction');
+async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = null, possibleDocumentTypes = null, aiSources = {}, { externalTool = null, patientId = null } = {}) {
+    const aiExtractionEnabled = externalTool || await getOptionPromise('PdfParserAutoAIExtraction');
     if (!aiExtractionEnabled) return {};
 
     const fullModeEnabled = await getOptionPromise('PdfParserAutoAIFullMode');
@@ -107,7 +114,7 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
     // patient précédent (@see followPatientInChat) ne doit pas être pollué ni réinitialisé.
     // getCurrentPatientId() se base sur l'URL de la page, absente sur la page d'import
     // (UpLoaderForm.aspx) : on se rabat alors sur le patient sélectionné dans la grille d'import.
-    const currentPatientId = getImportGridPatientId() || null;
+    const currentPatientId = patientId || getImportGridPatientId() || null;
     console.log('[pdfParserAIExtraction] Association de la conversation au patient :', currentPatientId ?? 0);
     // Attend la resynchronisation (stateSync) avant d'envoyer le prompt : sans ça, sur le tout
     // premier switch (port offpage venant d'être créé), le prompt pouvait être affiché puis
@@ -127,7 +134,9 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
     const categorizationContext = (fullModeEnabled && possibleDocumentTypes?.length)
         ? `\n\nValeurs autorisées pour "documentType" : ${possibleDocumentTypes.join(', ')}.`
         : '';
-    const instructions = `${basePrompt}${categorizationContext}\n\nPour répondre, appelle OBLIGATOIREMENT la fonction submitPdfParserFields. Les dates DOIVENT être au format JJ/MM/AAAA. Voici les champs à compléter :\n${fieldsDescription}`;
+    const toolName = externalTool?.name || 'submitPdfParserFields';
+    const extraInstructions = externalTool?.extraInstructions ? `\n\n${externalTool.extraInstructions}` : '';
+    const instructions = `${basePrompt}${categorizationContext}${extraInstructions}\n\nPour répondre, appelle OBLIGATOIREMENT la fonction ${toolName}. Les dates DOIVENT être au format JJ/MM/AAAA. Voici les champs à compléter :\n${fieldsDescription}`;
 
     // Texte extrait absent/illisible (PDF scanné, police non standard...) : on envoie le PDF
     // complet en pièce jointe (@see isPdfTextReadable, discussionClient.js) plutôt que le texte,
@@ -148,6 +157,11 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
     }
 
     console.log('[pdfParserAIExtraction] Champs manquants, tentative de complétion IA :', fieldsToAsk.map(f => f.key));
+
+    if (externalTool) {
+        sendToChatApi();
+        return {};
+    }
 
     let parsedFields;
     try {

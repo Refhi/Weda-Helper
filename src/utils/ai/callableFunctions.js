@@ -556,6 +556,29 @@ const availableFunctions = {
         // Référence indirecte : insertData n'existe que côté content script (dataInserter.js).
         execute: ({ target, title, subtitle, content } = {}) => insertData(target, { title, subtitle, content })
     },
+    renameJoinedDocumentInHistory: {
+        definition: {
+            type: "function",
+            function: {
+                name: "renameJoinedDocumentInHistory",
+                description: "Enregistre sur un document joint de l'historique du patient actuellement ouvert (fileId issu de recoverPatientData) les données fournies : documentTitle, documentDate, destinationClass, documentType et/ou documentCommentaire (résumé). Ne renseigner que les champs à modifier. documentTitle, destinationClass et documentType ne sont enregistrés que si l'utilisateur a activé le mode complet de l'IA dans les options (sinon seuls documentDate et documentCommentaire le sont, et les autres sont listés dans ignoredFields). À utiliser après avoir lu le document (lireDocumentJoint).",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        fileId: { type: "string", description: "Identifiant de la pièce jointe, ex: '893222115'." },
+                        documentTitle: { type: "string", description: "Titre du document, tel qu'il doit apparaître dans le dossier patient." },
+                        documentDate: { type: "string", description: "Date du document, au format JJ/MM/AAAA." },
+                        destinationClass: { type: "string", enum: ["1", "2", "3"], description: "Emplacement du document : '1' pour Consultation, '2' pour Résultats d'examens, '3' pour Courrier." },
+                        documentType: { type: "string", description: "Classification du document dans Weda (ex: 'Biologie', 'Courrier'), telle qu'elle existe dans la liste des classifications de Weda." },
+                        documentCommentaire: { type: "string", description: "Bref commentaire (1 à 2 phrases) résumant le contenu du document." }
+                    },
+                    required: ["fileId"]
+                }
+            }
+        },
+        // Référence indirecte : renameJoinedDocumentInHistoryTool n'existe que côté content script (attachmentAIRename.js).
+        execute: (args) => renameJoinedDocumentInHistoryTool(args)
+    },
     submitPdfParserFields: {
         definition: {
             type: "function",
