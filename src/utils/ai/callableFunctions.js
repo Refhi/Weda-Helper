@@ -561,7 +561,7 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "renameJoinedDocumentInHistory",
-                description: "Enregistre sur un document joint de l'historique du patient actuellement ouvert les éléments suivants : documentTitle, documentDate, destinationClass, documentType et/ou documentCommentaire (résumé). Le fileId et les données du PDF peuvent entre autre être récupérés après avoir lu le document (lireDocumentJoint). Ex. : renameJoinedDocumentInHistory({ fileId: '893222115', documentTitle: 'Compte rendu', documentDate: '01/01/2024', destinationClass: '1', documentType: 'Biologie', documentCommentaire: 'Résumé du document' })",
+                description: "Enregistre sur un document joint de l'historique du patient actuellement ouvert les éléments suivants : documentTitle, documentDate, destinationClass, documentType et/ou documentCommentaire (résumé). Le fileId et les données du PDF peuvent entre autre être récupérés après avoir lu le document (lireDocumentJoint). Ex. : renameJoinedDocumentInHistory({ fileId: '893222115', documentTitle: 'Compte rendu', documentDate: '01/01/2024', destinationClass: '1', documentType: 'Biologie', documentCommentaire: 'Résumé du document' }). Doit TOUJOURS être appelé avec un fileId valide.",
                 parameters: {
                     type: "object",
                     properties: {

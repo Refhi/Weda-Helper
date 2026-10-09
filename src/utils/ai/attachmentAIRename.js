@@ -129,7 +129,10 @@ async function renameJoinedDocumentInHistoryTool({ fileId, documentTitle, docume
     const ignoredFields = fullMode ? [] : Object.keys(fullModeFields);
 
     if (!fileId || Object.keys(fields).length === 0) {
-        return { error: "fileId et au moins un champ à enregistrer requis.", ...(ignoredFields.length ? { ignoredFields } : {}) };
+        return {
+            error: "Appel incomplet : fileId (obligatoire) et au moins un champ parmi documentTitle, documentDate, destinationClass, documentType, documentCommentaire sont requis. Refais l'appel en renseignant ces arguments.",
+            ...(ignoredFields.length ? { ignoredFields } : {})
+        };
     }
     const { error, notApplied = [] } = await renameJoinedDocumentInHistory(fileId, fields);
     if (error) return { error, notApplied };

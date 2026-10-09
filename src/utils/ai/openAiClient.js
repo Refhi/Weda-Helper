@@ -723,16 +723,6 @@ function buildToolResultContent(fnResult) {
 }
 
 /**
- * Normalise les arguments JSON en remplaçant les apostrophes simples et les marqueurs spéciaux par des guillemets doubles.
- * @param {string} jsonStr - La chaîne JSON potentiellement malformée
- * @returns {string} La chaîne JSON normalisée
- */
-function normalizeJsonArguments(jsonStr) {
-    if (!jsonStr) return '{}';
-    return jsonStr.replace(/'/g, '"').replace(/<\|\"\|>/g, '"');
-}
-
-/**
  * Exécute les function calls demandés par le modèle et construit la liste de messages
  * mise à jour (historique + message assistant contenant les tool_calls + résultats des fonctions).
  * @param {object} responseMessage - Le message renvoyé par le modèle, contenant `tool_calls`.
@@ -753,19 +743,23 @@ async function handleToolCalls(responseMessage, messages, onToolCall, executeToo
     for (const toolCall of responseMessage.tool_calls) {
         const fnName = toolCall.function?.name;
         let fnArgs = {};
+        let argumentsParseError = null;
         try {
             const rawArguments = toolCall.function?.arguments;
-            const normalizedArguments = normalizeJsonArguments(rawArguments);
-            fnArgs = normalizedArguments ? JSON.parse(normalizedArguments) : {};
+            fnArgs = rawArguments ? JSON.parse(rawArguments) : {};
             console.log(`[handleToolCalls] Parsing arguments pour ${fnName}:`, fnArgs);
         } catch (e) {
             console.error("[handleToolCalls] Impossible de parser les arguments de la fonction :", toolCall.function?.arguments, e);
+            argumentsParseError = e;
         }
 
         onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'start' });
 
         let fnResult;
         try {
+            // Ne pas exécuter la fonction avec des arguments vides à la place de ceux, illisibles, du modèle :
+            // l'erreur lui est renvoyée pour qu'il refasse l'appel avec un JSON valide.
+            if (argumentsParseError) throw new Error(`arguments JSON invalides (${argumentsParseError.message}), refais l'appel avec un JSON valide`);
             console.log(`[handleToolCalls] Exécution de ${fnName}...`);
             fnResult = await runTool(fnName, fnArgs);
             console.log(`[handleToolCalls] Résultat de ${fnName}:`, fnResult);
