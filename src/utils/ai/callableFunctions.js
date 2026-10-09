@@ -371,8 +371,8 @@ const availableFunctions = {
                         },
                         dateRange: {
                             type: "array",
-                            description: "Date range filter for relative or absolute dates. For relative ranges, use [number, unit] like [7, \"days\"], [1, \"month\"], or [1, \"year\"] to get the last N days/months/years. For absolute dates, use [\"dd/mm/yyyy\", \"dd/mm/yyyy\"] format. A range of one month or less loads only recent entries (fast); longer ranges load entire history (slower). Prefer short ranges when possible.",
-                            items: { type: ["string", "number"] }
+                            description: "Date range filter for relative or absolute dates. For relative ranges, use [number, unit] (all elements as strings) like [\"7\", \"days\"], [\"1\", \"month\"], or [\"1\", \"year\"] to get the last N days/months/years. For absolute dates, use [\"dd/mm/yyyy\", \"dd/mm/yyyy\"] format. A range of one month or less loads only recent entries (fast); longer ranges load entire history (slower). Prefer short ranges when possible.",
+                            items: { type: "string" }
                         },
                         lireDocuments: {
                             type: "boolean",
