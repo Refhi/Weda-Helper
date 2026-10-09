@@ -11,13 +11,56 @@
  */
 
 /**
- * TODO : renseigner les données du document (fileId) à partir des champs produits par l'IA.
+ * Renseigne les données d'un document de l'historique (fileId) via le panneau "Renommer" de Weda :
+ * ouverture du panneau (clic sur le bouton Renommer), remplissage des champs fournis, puis validation.
  * @param {string} fileId - Identifiant de la pièce jointe (attachment.fileId)
  * @param {{documentTitle?: string, documentDate?: string, destinationClass?: string, documentType?: string, documentCommentaire?: string}} fields -
  * Champs issus de l'IA, avec les clés du PDF Parser (le commentaire est préfixé par "[IA] ")
+ * @returns {Promise<{error?: string, notApplied?: string[]}>} `notApplied` liste les champs qui n'ont pas pu être renseignés
  */
 async function renameJoinedDocumentInHistory(fileId, fields) {
-    console.log('[attachmentAIRename] TODO renameJoinedDocumentInHistory', { fileId, fields });
+    const prefix = '#ContentPlaceHolder1_HistoriqueUCForm1_';
+    const panelSelector = `${prefix}PanelRenommerFileStream`;
+    const renameButtonSelector = `#UPJ${fileId}`;
+    if (!document.querySelector(renameButtonSelector)) return { error: `Document introuvable sur la page actuelle pour fileId "${fileId}".` };
+
+    // Un panneau resté ouvert pour un autre document serait remplacé par le postback déclenché par le clic
+    const stalePanel = document.querySelector(panelSelector);
+    clicCSPLockedElement(renameButtonSelector);
+    const opened = await waitUntil(() => {
+        const panel = document.querySelector(panelSelector);
+        return panel && panel !== stalePanel;
+    }, { label: 'ouverture du panneau Renommer' });
+    if (!opened) return { error: "Le panneau de renommage n'est pas apparu." };
+
+    const notApplied = [];
+    const setValue = (selector, value) => {
+        const element = document.querySelector(selector);
+        element.value = value;
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+        element.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    // Sélectionne une option de liste déroulante par sa valeur ou, à défaut, par son libellé (insensible à la casse)
+    const selectOption = (selector, wanted) => {
+        const normalize = text => text.trim().toLowerCase();
+        const option = [...document.querySelector(selector).options].find(o => o.value === wanted || normalize(o.text) === normalize(wanted));
+        if (!option) return false;
+        setValue(selector, option.value);
+        return true;
+    };
+
+    const { documentTitle, documentDate, destinationClass, documentType, documentCommentaire } = fields;
+    if (documentDate) setValue(`${prefix}TextBoxFileStreamDate`, documentDate);
+    if (destinationClass && !selectOption(`${prefix}DropDownListDeplacement`, destinationClass)) notApplied.push('destinationClass');
+    if (documentType && !selectOption(`${prefix}DropDownListClassification`, documentType)) notApplied.push('documentType');
+    if (documentTitle) setValue('#TextBoxFileStreamTitre', documentTitle);
+    if (documentCommentaire) setValue(`${prefix}TextBoxFileStreamCommentaire`, documentCommentaire);
+
+    const panel = document.querySelector(panelSelector);
+    clicCSPLockedElement(`${prefix}ButtonValidFileStreamTitre`);
+    const closed = await waitUntil(() => !panel.isConnected || getComputedStyle(panel).display === 'none', { label: 'validation du panneau Renommer' });
+    if (!closed) return { error: "Le panneau de renommage est resté ouvert après validation (champ invalide ?).", notApplied };
+    return { notApplied };
 }
 
 /**
@@ -88,12 +131,13 @@ async function renameJoinedDocumentInHistoryTool({ fileId, documentTitle, docume
     if (!fileId || Object.keys(fields).length === 0) {
         return { error: "fileId et au moins un champ à enregistrer requis.", ...(ignoredFields.length ? { ignoredFields } : {}) };
     }
-    await renameJoinedDocumentInHistory(fileId, fields);
-    return {
-        status: "success",
-        fileId,
-        ...(ignoredFields.length ? { ignoredFields, note: "Ces champs n'ont pas été enregistrés : leur modification par l'IA est désactivée dans les options de Weda-Helper (mode complet du PDF Parser)." } : {})
-    };
+    const { error, notApplied = [] } = await renameJoinedDocumentInHistory(fileId, fields);
+    if (error) return { error, notApplied };
+    const notes = [
+        ...(notApplied.length ? [`${notApplied.join(', ')} : valeur inconnue dans les listes de Weda, non enregistré.`] : []),
+        ...(ignoredFields.length ? [`${ignoredFields.join(', ')} : modification par l'IA désactivée dans les options de Weda-Helper (mode complet du PDF Parser), non enregistré.`] : [])
+    ];
+    return { status: "success", fileId, ...(notes.length ? { notes } : {}) };
 }
 
 /**
