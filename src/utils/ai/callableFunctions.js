@@ -561,7 +561,7 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "renameJoinedDocumentInHistory",
-                description: "Enregistre sur un document joint de l'historique du patient actuellement ouvert (fileId issu de recoverPatientData) les données fournies : documentTitle, documentDate, destinationClass, documentType et/ou documentCommentaire (résumé). Ne renseigner que les champs à modifier. documentTitle, destinationClass et documentType ne sont enregistrés que si l'utilisateur a activé le mode complet de l'IA dans les options (sinon seuls documentDate et documentCommentaire le sont, et les autres sont listés dans ignoredFields). À utiliser après avoir lu le document (lireDocumentJoint).",
+                description: "Enregistre sur un document joint de l'historique du patient actuellement ouvert les éléments suivants : documentTitle, documentDate, destinationClass, documentType et/ou documentCommentaire (résumé). Le fileId et les données du PDF peuvent entre autre être récupérés après avoir lu le document (lireDocumentJoint). Ex. : renameJoinedDocumentInHistory({ fileId: '893222115', documentTitle: 'Compte rendu', documentDate: '01/01/2024', destinationClass: '1', documentType: 'Biologie', documentCommentaire: 'Résumé du document' })",
                 parameters: {
                     type: "object",
                     properties: {
@@ -584,18 +584,18 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "submitPdfParserFields",
-                description: "Renvoie les champs demandés par une complétion automatique du PDF Parser, déduits du texte du document fourni dans le message. À n'appeler QUE en réponse à une telle demande explicite, jamais spontanément. Les champs documentTitle, destinationClass et documentType ne sont demandés que si le mode complet est activé, et doivent alors respecter les valeurs autorisées indiquées dans le message.",
+                description: "Permet de caractériser le document à partir des informations déduites du texte du document fourni dans le message. Exemple : submitPdfParserFields({ documentDate: '01/01/2024', dateOfBirth: '01/01/1980', nameMatches: ['John Doe'], documentCommentaire: 'Résumé du document', documentTitle: 'Compte rendu', destinationClass: '1', documentType: 'Biologie' }).",
                 parameters: {
                     type: "object",
                     properties: {
-                        documentDate: { type: "string", description: "Date du document, au format JJ/MM/AAAA. Laisser vide si introuvable." },
-                        dateOfBirth: { type: "string", description: "Date de naissance du patient, au format JJ/MM/AAAA. Laisser vide si introuvable." },
+                        documentDate: { type: "string", description: "Date du document, au format JJ/MM/AAAA." },
+                        dateOfBirth: { type: "string", description: "Date de naissance du patient, au format JJ/MM/AAAA." },
                         nameMatches: {
                             type: "array",
                             items: { type: "string" },
-                            description: "Nom complet (nom et prénom) du patient. Tableau vide si introuvable."
+                            description: "Nom complet (nom et prénom) du patient."
                         },
-                        documentCommentaire: { type: "string", description: "Bref commentaire (1 à 2 phrases) résumant le contenu du document. Laisser vide si non pertinent." },
+                        documentCommentaire: { type: "string", description: "Brève description (1 à 2 phrases) résumant le contenu du document." },
                         documentTitle: { type: "string", description: "Titre complet du document, tel qu'il doit apparaître dans le dossier patient." },
                         destinationClass: { type: "string", enum: ["1", "2", "3"], description: "Destination du classement : '1' pour Consultation, '2' pour Résultats d'examens, '3' pour Courrier." },
                         documentType: { type: "string", description: "Classification du document, parmi les valeurs autorisées indiquées dans le message." }
