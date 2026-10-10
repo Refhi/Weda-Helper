@@ -276,7 +276,7 @@ async function _insertAntecedent(data = {}) {
  * Modifie un antécédent déjà existant, retrouvé par son nom (comme pour l'ajout d'une allergie).
  * Demande une confirmation à l'utilisateur en détaillant les champs qui vont changer avant d'appliquer les modifications.
  * Peut être appelée depuis n'importe quelle page (voir withAntecedentContext).
- * @param {string} nomCible nom (ou début du nom) de l'antécédent à modifier
+ * @param {string} nomCible nom (de préférence exact, casse ignorée) de l'antécédent à modifier
  * @param {object} data mêmes champs que insertAntecedent, uniquement ceux fournis seront modifiés
  * @param {{debug?: boolean}} [options]
  */
@@ -306,7 +306,7 @@ async function _modifierAntecedent(nomCible, data = {}) {
  * Supprime un antécédent déjà existant, retrouvé par son nom.
  * Demande une confirmation à l'utilisateur en précisant l'antécédent ciblé avant suppression.
  * Peut être appelée depuis n'importe quelle page (voir withAntecedentContext).
- * @param {string} nomCible nom (ou début du nom) de l'antécédent à supprimer
+ * @param {string} nomCible nom (de préférence exact, casse ignorée) de l'antécédent à supprimer
  * @param {{debug?: boolean}} [options]
  */
 async function supprimerAntecedent(nomCible, options = {}) {
@@ -441,26 +441,37 @@ function construireMessageConfirmationModification(avant, apres) {
 // Fonctions support
 //----------------------------------------------------------------------------------------
 /**
- * Clique sur l'antécédent/allergie de la liste dont le texte contient celui fourni, pour ouvrir son panneau de modification.
- * La comparaison se fait sur le premier mot du texte recherché (nom du médicament/pathologie), insensible à la casse,
- * car le texte affiché dans la liste peut être tronqué ou écrit différemment (ex. "gel transderm" vs "Gel transdermique Récip").
+ * Clique sur l'antécédent/allergie de la liste correspondant au texte fourni, pour ouvrir son panneau de modification.
+ * On cherche d'abord une correspondance stricte (égalité, en ignorant la casse et les espaces superflus) :
+ * "pneumonie" vise donc l'antécédent "Pneumonie" plutôt que "Pneumonie due à xxx".
+ * Si rien n'est trouvé, on retombe sur une correspondance souple sur le premier mot du texte recherché,
+ * car le texte affiché peut être tronqué ou écrit différemment (ex. "gel transderm" vs "Gel transdermique Récip").
  */
 async function ouvrirPanneauAntecedent(titre) {
     // On commence par vérifier que le titre est valide.
     if (!titre) return;
-    const premierMot = titre.trim().split(/\s+/)[0]?.toLowerCase();
-    if (!premierMot) return;
+    const normaliser = t => (t || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    const cible = normaliser(titre);
+    if (!cible) return;
+    const premierMot = cible.split(' ')[0];
 
+    const correspondanceStricte = el =>
+        normaliser(el.textContent) === cible ||
+        Array.from(el.querySelectorAll('*')).some(sub => normaliser(sub.textContent) === cible);
+    const correspondanceSouple = el => normaliser(el.textContent).includes(premierMot);
+    const chercher = critere => Array.from(_atcdDoc.querySelectorAll(AntecedentFormSelectors.antecedentList.atcdItem)).find(critere);
+
+    // La liste peut ne pas être encore à jour : on laisse sa chance à la correspondance stricte avant de relâcher le critère.
     let counter = 0;
     let item = null;
     while (!item && counter < 50) {
-        const items = _atcdDoc.querySelectorAll(AntecedentFormSelectors.antecedentList.atcdItem);
-        item = Array.from(items).find(el => el.textContent.toLowerCase().includes(premierMot));
+        item = chercher(correspondanceStricte);
         if (!item) {
             await sleep(10);
             counter++;
         }
     }
+    if (!item) item = chercher(correspondanceSouple);
 
     console.log("[dataInserterATCD] Item trouvé pour ouverture du panneau :", item);
     if (item) item.click();
