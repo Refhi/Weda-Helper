@@ -907,6 +907,12 @@ var advancedDefaultSettings = [
         "description": "Tout ce qui concerne l'assistant IA local",
         "type": TYPE_TITLE,
         "options": [{
+            "name": "ignoreAIGeneratedData",
+            "type": TYPE_BOOL,
+            "description": "Ignorer les données générées par IA lors de la lecture du dossier patient.",
+            "longDescription": "Les champs contenant \"[IA]\" (ex: commentaires de pièces jointes générés par l'IA) sont ignorés par le Data Scrapper (assistant IA, score2prompter, historique FSE...) afin d'éviter la dégradation des données par la relecture de contenus eux-mêmes générés par une IA. Le reste de l'entrée (document, date, identifiant...) est conservé.",
+            "default": true
+        }, {
             "name": "enableIAassistant",
             "type": TYPE_BOOL,
             "description": "Activer ou désactiver l'assistant IA local.",

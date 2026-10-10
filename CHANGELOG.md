@@ -16,6 +16,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#686](https://github.com/Refhi/Weda-Helper/issues/686) - l'historique de facturation peut désormais également être affiché dans la page des règlements manuels
 - [#671](https://github.com/Refhi/Weda-Helper/issues/671) - le client IA peut désormais lire les documents joints à une consultation ou le pdf actuellement affiché à l'écran, ou certains éléments actuellement affichés à l'écran.
 - [#690](https://github.com/Refhi/Weda-Helper/issues/690) - Shunte les sorties autorisées automatiquement lors de la création d'un arrêt de travail avec TPT pour contourner un bug côté Weda.
+- [#702](https://github.com/Refhi/Weda-Helper/issues/702) - Nouvelle option "Ignorer les données générées par IA" (activée par défaut) : le Data Scrapper ignore les champs contenant "[IA]" (ex: commentaires générés par IA) pour éviter de dégrader les données en relisant du contenu généré par IA.
 - Historique patient - un bouton "Résumé IA" est ajouté à côté de "Renommer" sur chaque pièce jointe : il ouvre le document et demande à l'IA locale d'en faire un résumé. Le client IA peut également enregistrer un commentaire sur un document joint (fonction renameJoinedDocumentInHistory).
 
 ## Fix :

@@ -301,8 +301,16 @@ Installez et laisser tourner ce logiciel sur votre ordinateur pour avoir des fon
 => Procédures d'installation et de paramétrage sur [le readme du Companion](https://github.com/Refhi/Weda-Helper-Companion)
 - pensez à vérifier votre firewall s'il ne fonctionne pas ou si des messages type "Impossible de joindre Weda-Helper-Companion : est-il bien paramétré et démarré ?" apparaissent. Cf. [Guide de dépannage sur le firewall windows](https://github.com/Refhi/Weda-Helper/issues/377#issuecomment-2716796999)
 
-## Connecteur IA
-- Permet d'utiliser un modèle d'IA local pour questionner le dossier médical et générer des textes (ex. synthèse, courrier, compte rendu, etc.) à partir de ce dossier. **beta**.
+## Connecteur IA - Beta
+**La philosophie de ces fonctions est claire : Aucune destruction/modification sans validation utilisateur explicite. Vos données restent sur le modèle que VOUS avez choisi : de préférence un local sur LLM studio ou en ligne sur un modèle agréé "Hebergement de Données de Santé".**
+Vous permet de connecter un modèle d'IA pour diverses actions :
+- Questionner le dossier médical en langage courant (ex. "Synthétise tout le suivi prostatique du patient", "vérifie que le suivi du diabète soit à jour en tenant compte des recommandations suivantes xxxxx")
+- Améliorer l'importation semi-automatique des documents en repérant mieux les dates, nom, et/ou en générant une synthèse.
+- Permettre d'évaluer automatiquement si les antécédents sont à jour suite à la réception d'un courrier (ex. "Vérifie que les antécédents cardiovasculaires du patient sont à jour, met à jour si nécessaire")
+- Créer des documents (ex. "Fait un courrier pour l'urologue à partir du dossier du patient et de ma consultation du jour")
+- Avoir un **deuxième** regard circonstancié sur un résultat d'examen (biologique ou autre)
+- plus de précisions et tuto sur le wiki [ici](https://github.com/Refhi/Weda-Helper/wiki)
+
 
 ## Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):
 *C'est là où vos pull requests sont les bienvenus*

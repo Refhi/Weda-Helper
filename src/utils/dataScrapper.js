@@ -357,6 +357,38 @@ function mergeAndCacheCategoryData(cache, category, freshData, plan) {
 }
 
 
+/**
+ * Si l'option ignoreAIGeneratedData est active, retire récursivement les champs texte contenant "[IA]"
+ * (ex: commentaire d'une pièce jointe) afin que des données générées par une IA ne soient pas relues comme
+ * fiables. Le reste de l'entrée (fileId, date...) est conservé. Dans une liste de textes, seules les lignes
+ * concernées sont retirées (le champ disparaît s'il ne reste rien). Ne mute pas l'entrée (le cache n'est
+ * donc pas altéré, et l'option reste effective malgré lui).
+ * @param {*} data - Données retournées par recoverData
+ * @returns {Promise<*>} Données épurées (ou inchangées si l'option est désactivée)
+ */
+async function excludeAIGeneratedFields(data) {
+    if (!await getOptionPromise('ignoreAIGeneratedData')) return data;
+
+    const isAIText = item => typeof item === 'string' && item.includes('[IA]');
+    const clean = value => {
+        if (Array.isArray(value)) {
+            return value.filter(item => !isAIText(item)).map(clean);
+        }
+        if (value && typeof value === 'object') {
+            const result = {};
+            for (const [key, item] of Object.entries(value)) {
+                if (isAIText(item)) continue;
+                const cleaned = clean(item);
+                if (Array.isArray(item) && item.length > 0 && cleaned.length === 0 && item.every(isAIText)) continue;
+                result[key] = cleaned;
+            }
+            return result;
+        }
+        return value;
+    };
+    return clean(data);
+}
+
 // ───────────────────────────────────────────────────────────────────────────────
 /**
  * Récupère les données d'historique patient depuis Weda, par catégories.
@@ -395,6 +427,9 @@ function mergeAndCacheCategoryData(cache, category, freshData, plan) {
  *   et de la catégorie "documents" demandées, dans la plage dateRange (équivalent d'un resolveAttachmentFileIds contenant tous leurs fileId, sans
  *   avoir à les connaître à l'avance). Force le re-fetch de ces catégories (avec le fullPage demandé, sans réutiliser
  *   la partie "extra" du cache) car les liens doivent être présents dans l'iframe.
+ *
+ * Si l'option ignoreAIGeneratedData est active (défaut), les champs contenant "[IA]" (données générées par IA,
+ * ex: commentaires de pièces jointes) sont retirés du résultat ; le reste de l'entrée est conservé.
  *
  * Le nombre de pièces jointes résolues par appel est limité par l'option IAassistantMaxFileIds (lue ici, 10 par défaut) :
  * au-delà, les pièces jointes ne sont plus résolues et le résultat contient un champ `avertissement` (message texte).
@@ -596,7 +631,7 @@ async function recoverData({
 
     console.log('[dataScrapper] Données récupérées pour les catégories :', Object.keys(data), data);
 
-    return data;
+    return await excludeAIGeneratedFields(data);
 }
 
 /**
