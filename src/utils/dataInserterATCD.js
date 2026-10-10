@@ -177,7 +177,12 @@ async function insertAntecedent(data = {}, options = {}) {
     return withAntecedentContext(() => _insertAntecedent(data), options);
 }
 
-async function _insertAntecedent(data = {}) {
+/**
+ * @param {*} data
+ * @param {{avantRemplissage?: (data: object) => void}} [hooks] avantRemplissage est appelé une fois le panneau ouvert,
+ *   avant son remplissage, et peut ajuster data en fonction de l'état du panneau.
+ */
+async function _insertAntecedent(data = {}, hooks = {}) {
     // Exemple d'objet data attendu :
     // {
     //     searchType: "CIM10" | "allergieMolecule" | "allergiePrinceps",
@@ -259,6 +264,7 @@ async function _insertAntecedent(data = {}) {
     await waitForElementInDocument(() => _atcdDoc, AntecedentFormSelectors.pannelAntecedents.panel, 3000) // Sur les connexions lentes, 3 sec n'est pas de trop
     .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente du panneau des antécédents :", err));
 
+    hooks.avantRemplissage?.(data);
     remplirPaneauAntecedent(data);
 
     // Validation de l'antécédent
@@ -278,14 +284,15 @@ async function _insertAntecedent(data = {}) {
  * Peut être appelée depuis n'importe quelle page (voir withAntecedentContext).
  * @param {string} nomCible nom (de préférence exact, casse ignorée) de l'antécédent à modifier
  * @param {object} data mêmes champs que insertAntecedent, uniquement ceux fournis seront modifiés
- * @param {{debug?: boolean}} [options]
+ * @param {{debug?: boolean, codifie?: boolean}} [options] codifie : true/false pour ne cibler que les antécédents codifiés (CIM-10)/libres
  */
 async function modifierAntecedent(nomCible, data = {}, options = {}) {
-    return withAntecedentContext(() => _modifierAntecedent(nomCible, data), options);
+    return withAntecedentContext(() => _modifierAntecedent(nomCible, data, options), options);
 }
 
-async function _modifierAntecedent(nomCible, data = {}) {
-    await ouvrirPanneauAntecedent(nomCible);
+async function _modifierAntecedent(nomCible, data = {}, { codifie } = {}) {
+    const item = await ouvrirPanneauAntecedent(nomCible, { codifie });
+    if (!item && codifie !== undefined) return { success: false, message: messageAntecedentIntrouvable(nomCible, codifie) };
     await waitForElementInDocument(() => _atcdDoc, AntecedentFormSelectors.pannelAntecedents.panel, 3000)
     .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente du panneau des antécédents :", err));
 
@@ -307,14 +314,15 @@ async function _modifierAntecedent(nomCible, data = {}) {
  * Demande une confirmation à l'utilisateur en précisant l'antécédent ciblé avant suppression.
  * Peut être appelée depuis n'importe quelle page (voir withAntecedentContext).
  * @param {string} nomCible nom (de préférence exact, casse ignorée) de l'antécédent à supprimer
- * @param {{debug?: boolean}} [options]
+ * @param {{debug?: boolean, codifie?: boolean}} [options] codifie : true/false pour ne cibler que les antécédents codifiés (CIM-10)/libres
  */
 async function supprimerAntecedent(nomCible, options = {}) {
-    return withAntecedentContext(() => _supprimerAntecedent(nomCible), options);
+    return withAntecedentContext(() => _supprimerAntecedent(nomCible, options), options);
 }
 
-async function _supprimerAntecedent(nomCible) {
-    await ouvrirPanneauAntecedent(nomCible);
+async function _supprimerAntecedent(nomCible, { codifie } = {}) {
+    const item = await ouvrirPanneauAntecedent(nomCible, { codifie });
+    if (!item && codifie !== undefined) return { success: false, message: messageAntecedentIntrouvable(nomCible, codifie) };
     await waitForElementInDocument(() => _atcdDoc, AntecedentFormSelectors.pannelAntecedents.panel, 3000)
     .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente du panneau des antécédents :", err));
 
@@ -343,7 +351,7 @@ async function _supprimerAntecedent(nomCible) {
  * Exécute une liste d'opérations (ajout/modification/suppression) sur les antécédents en réutilisant le
  * même contexte (même iframe cachée le cas échéant), au lieu d'en rouvrir une par opération.
  * Peut être appelée depuis n'importe quelle page (voir withAntecedentContext).
- * @param {Array<{action: 'ajouter'|'modifier'|'supprimer', nomCible?: string, data?: object}>} operations
+ * @param {Array<{action: 'ajouter'|'modifier'|'supprimer'|'convertirCim10', nomCible?: string, codifie?: boolean, data?: object}>} operations
  * @param {{debug?: boolean}} [options]
  * @returns {Promise<Array<object>>} un résultat par opération, dans le même ordre
  */
@@ -354,7 +362,7 @@ async function traiterAntecedentsBatch(operations = [], options = {}) {
 async function _traiterAntecedentsBatch(operations = []) {
     const resultats = [];
     for (const operation of operations) {
-        const { action, nomCible, data = {} } = operation || {};
+        const { action, nomCible, codifie, data = {} } = operation || {};
         try {
             let resultat;
             switch (action) {
@@ -362,13 +370,16 @@ async function _traiterAntecedentsBatch(operations = []) {
                     resultat = await _insertAntecedent({ ...data });
                     break;
                 case 'modifier':
-                    resultat = await _modifierAntecedent(nomCible, { ...data });
+                    resultat = await _modifierAntecedent(nomCible, { ...data }, { codifie });
                     break;
                 case 'supprimer':
-                    resultat = await _supprimerAntecedent(nomCible);
+                    resultat = await _supprimerAntecedent(nomCible, { codifie });
+                    break;
+                case 'convertirCim10':
+                    resultat = await _convertirAntecedentEnCim10(nomCible, { ...data });
                     break;
                 default:
-                    resultat = { success: false, message: `Action inconnue : "${action}" (attendu 'ajouter', 'modifier' ou 'supprimer').` };
+                    resultat = { success: false, message: `Action inconnue : "${action}" (attendu 'ajouter', 'modifier', 'supprimer' ou 'convertirCim10').` };
             }
             resultats.push({ action, nomCible, ...resultat });
         } catch (e) {
@@ -447,19 +458,22 @@ function construireMessageConfirmationModification(avant, apres) {
  * Si rien n'est trouvé, on retombe sur une correspondance souple sur le premier mot du texte recherché,
  * car le texte affiché peut être tronqué ou écrit différemment (ex. "gel transderm" vs "Gel transdermique Récip").
  */
-async function ouvrirPanneauAntecedent(titre) {
+async function ouvrirPanneauAntecedent(titre, { codifie } = {}) {
     // On commence par vérifier que le titre est valide.
-    if (!titre) return;
+    if (!titre) return null;
     const normaliser = t => (t || '').trim().replace(/\s+/g, ' ').toLowerCase();
     const cible = normaliser(titre);
-    if (!cible) return;
+    if (!cible) return null;
     const premierMot = cible.split(' ')[0];
 
     const correspondanceStricte = el =>
         normaliser(el.textContent) === cible ||
         Array.from(el.querySelectorAll('*')).some(sub => normaliser(sub.textContent) === cible);
     const correspondanceSouple = el => normaliser(el.textContent).includes(premierMot);
-    const chercher = critere => Array.from(_atcdDoc.querySelectorAll(AntecedentFormSelectors.antecedentList.atcdItem)).find(critere);
+    // codifie (true/false) restreint la recherche aux antécédents codifiés (CIM-10) ou libres ; undefined = tous.
+    const chercher = critere => Array.from(_atcdDoc.querySelectorAll(AntecedentFormSelectors.antecedentList.atcdItem))
+        .filter(el => codifie === undefined || estAntecedentCodifie(el) === codifie)
+        .find(critere);
 
     // La liste peut ne pas être encore à jour : on laisse sa chance à la correspondance stricte avant de relâcher le critère.
     let counter = 0;
@@ -475,6 +489,20 @@ async function ouvrirPanneauAntecedent(titre) {
 
     console.log("[dataInserterATCD] Item trouvé pour ouverture du panneau :", item);
     if (item) item.click();
+    return item;
+}
+
+/**
+ * Indique si un antécédent de la liste est codifié (CIM-10) : comme dans dataScrapper (parseAntecedentItem),
+ * le code est affiché entre crochets sur la première ligne de l'antécédent.
+ */
+function estAntecedentCodifie(item) {
+    const premiereLigne = extractRawBlockText(item).split('\n')[0];
+    return /\[[^\]]+\]/.test(premiereLigne);
+}
+
+function messageAntecedentIntrouvable(nomCible, codifie) {
+    return `Aucun antécédent ${codifie ? 'codifié (CIM-10)' : 'libre (non codifié)'} trouvé pour "${nomCible}".`;
 }
 
 /**

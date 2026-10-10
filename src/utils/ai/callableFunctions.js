@@ -468,7 +468,7 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "traiterAntecedents",
-                description: "Ajoute, modifie et/ou supprime un ou plusieurs antécédents du dossier du patient actuellement ouvert dans Weda, en une seule instruction. Chaque opération est traitée séquentiellement, dans l'ordre fourni. IMPORTANT : appeler au préalable recoverPatientData avec categories=['antecedents'] pour connaître les onglets/noms exacts existants et éviter les doublons ; pour action='ajouter' avec searchType='CIM10', appeler d'abord rechercherCim10 et fournir dans 'nom' le CODE exact choisi parmi ses résultats (pas un libellé libre). Les opérations 'modifier'/'supprimer' déclenchent chacune leur propre confirmation utilisateur avant application. Renvoie un tableau de résultats {action, nomCible, success, message}, dans le même ordre que les opérations fournies. Doit OBLIGATOIREMENT être appelé pour toute action sur des antécédents.",
+                description: "Ajoute, modifie, supprime ou convertit séquentiellement un ou plusieurs antécédents du dossier du patient actuel. IMPORTANT : appeler au préalable recoverPatientData avec categories=['antecedents'] pour connaître les onglets/noms exacts existants et éviter les doublons ; pour action='ajouter' avec searchType='CIM10' et 'convertirCim10', appeler d'abord rechercherCim10 et fournir dans 'nom' le CODE exact choisi parmi ses résultats (pas un libellé libre). Les opérations 'modifier'/'supprimer' déclenchent chacune leur propre confirmation utilisateur avant application. Renvoie un tableau de résultats {action, nomCible, success, message}, dans le même ordre que les opérations fournies. Doit OBLIGATOIREMENT être appelé pour toute action sur des antécédents.",
                 parameters: {
                     type: "object",
                     properties: {
@@ -480,16 +480,20 @@ const availableFunctions = {
                                 properties: {
                                     action: {
                                         type: "string",
-                                        enum: ["ajouter", "modifier", "supprimer"],
+                                        enum: ["ajouter", "modifier", "supprimer", "convertirCim10"],
                                         description: "Type d'opération à effectuer."
                                     },
                                     nomCible: {
                                         type: "string",
-                                        description: "Requis pour 'modifier'/'supprimer' : nom (ou début du nom) de l'antécédent existant ciblé."
+                                        description: "Requis pour 'modifier'/'supprimer'/'convertirCim10' : nom (ou début du nom) de l'antécédent existant ciblé."
+                                    },
+                                    codifie: {
+                                        type: "boolean",
+                                        description: "Optionnel pour 'modifier'/'supprimer' : true pour ne cibler que l'antécédent codifié (CIM-10, code entre crochets dans recoverPatientData), false pour ne cibler que l'antécédent libre. Utile quand deux antécédents portent le même nom. Absent = indifférent. Ignoré pour 'convertirCim10' (cible toujours l'antécédent libre)."
                                     },
                                     data: {
                                         type: "object",
-                                        description: "Requis pour 'ajouter'/'modifier' (ignoré pour 'supprimer'). Pour 'ajouter' : searchType ('CIM10'/'allergieMolecule'/'allergiePrinceps', absent = antécédent libre), nom (saisie libre, terme de recherche, ou code CIM-10 exact selon searchType). Pour 'modifier' : seuls les champs fournis sont modifiés. Propriétés communes : onglet (libellé exact de l'onglet cible, ex. 'ANTÉCÉDENTS GYNECOLOGIQUES'), commentaire, dateDebut/dateFin/datePonctuelle/dateAlerte (jj/mm/aaaa), couleur (hexadécimal), validation ('1'=Confirmé,'2'=Hypothétique,'3'=Non confirmé,'4'=Exclu,'5'=Désactivé), lateralite ('0'=non spécifié,'1'=Droite,'2'=Gauche,'3'=D + G), tri (ordre numérique), isImportant, isHeritage, isPrive, isExclureVsm (booléens).",
+                                        description: "Requis pour 'ajouter'/'modifier'/'convertirCim10' (ignoré pour 'supprimer'). Pour 'convertirCim10' : seul nom (code CIM-10 exact) est utilisé. Pour 'ajouter' : searchType ('CIM10'/'allergieMolecule'/'allergiePrinceps', absent = antécédent libre), nom (saisie libre, terme de recherche, ou code CIM-10 exact selon searchType). Pour 'modifier' : seuls les champs fournis sont modifiés. Propriétés communes : onglet (libellé exact de l'onglet cible, ex. 'ANTÉCÉDENTS GYNECOLOGIQUES'), commentaire, dateDebut/dateFin/datePonctuelle/dateAlerte (jj/mm/aaaa), couleur (hexadécimal), validation ('1'=Confirmé,'2'=Hypothétique,'3'=Non confirmé,'4'=Exclu,'5'=Désactivé), lateralite ('0'=non spécifié,'1'=Droite,'2'=Gauche,'3'=D + G), tri (ordre numérique), isImportant, isHeritage, isPrive, isExclureVsm (booléens). Le commentaire est la description de l'antécédent, ne le fournis pas sauf si explicitement nécessaire.",
                                         properties: {
                                             searchType: { type: "string", enum: ["CIM10", "allergieMolecule", "allergiePrinceps"] },
                                             nom: { type: "string" },

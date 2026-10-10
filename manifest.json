@@ -59,6 +59,7 @@
         "src/utils/dataScrapperFileHandler.js",
         "src/utils/dataInserter.js",
         "src/utils/dataInserterATCD.js",
+        "src/utils/dataInserterATCDConversion.js",
         "src/utils/ai/callableFunctions.js",
         "src/utils/ai/modelSpecificArgs.js",
         "src/utils/ai/openAiClient.js",
