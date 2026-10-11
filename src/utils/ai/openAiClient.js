@@ -723,6 +723,28 @@ function buildToolResultContent(fnResult) {
     ];
 }
 
+/** Texte placé en tête du retour d'un appel refusé faute de prérequis ; sert aussi à retrouver ce prérequis dans l'historique. */
+function marqueurPrerequis(prerequis) {
+    return `[prérequis ${prerequis.outil} fourni]`;
+}
+
+/**
+ * Indique si le prérequis figure déjà dans l'historique : soit appelé par le modèle (arguments et résultat acceptés
+ * par `verifie`), soit fourni automatiquement lors d'un appel précédent refusé (son résultat est alors dans le retour refusé).
+ */
+function prerequisPresentDansHistorique(messages, prerequis) {
+    const argsParId = {};
+    messages.forEach(m => (m.tool_calls || []).forEach(tc => {
+        try { argsParId[tc.id] = JSON.parse(tc.function?.arguments || '{}'); } catch { /* arguments illisibles : ignorés */ }
+    }));
+    return messages.some(m => {
+        if (m.role !== 'tool') return false;
+        const texte = typeof m.content === 'string' ? m.content : JSON.stringify(m.content);
+        if (texte.startsWith(marqueurPrerequis(prerequis))) return prerequis.verifie(prerequis.args, texte);
+        return m.name === prerequis.outil && prerequis.verifie(argsParId[m.tool_call_id], texte);
+    });
+}
+
 /**
  * Exécute les function calls demandés par le modèle et construit la liste de messages
  * mise à jour (historique + message assistant contenant les tool_calls + résultats des fonctions).
@@ -761,6 +783,18 @@ async function handleToolCalls(responseMessage, messages, onToolCall, executeToo
             // Ne pas exécuter la fonction avec des arguments vides à la place de ceux, illisibles, du modèle :
             // l'erreur lui est renvoyée pour qu'il refasse l'appel avec un JSON valide.
             if (argumentsParseError) throw new Error(`arguments JSON invalides (${argumentsParseError.message}), refais l'appel avec un JSON valide`);
+            const prerequis = availableFunctions[fnName]?.prerequis?.(fnArgs)
+                .find(req => !prerequisPresentDansHistorique(updatedMessages, req));
+            if (prerequis) {
+                // Appel non exécuté : on fournit au modèle les données manquantes et on lui demande de refaire son appel.
+                const donnees = await runTool(prerequis.outil, prerequis.args);
+                fnResult = `${marqueurPrerequis(prerequis)} ${fnName} n'a PAS été exécuté : il nécessite d'abord ${prerequis.outil}(${JSON.stringify(prerequis.args)}). `
+                    + `Voici son résultat, appelé automatiquement :\n${JSON.stringify(omitImagesFromToolResult(donnees))}\n`
+                    + `Refais maintenant ton appel à ${fnName} en tenant compte de ces données.`;
+                onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'success', result: fnResult });
+                updatedMessages.push({ role: "tool", tool_call_id: toolCall.id, name: fnName, content: fnResult });
+                continue;
+            }
             console.log(`[handleToolCalls] Exécution de ${fnName}...`);
             fnResult = await runTool(fnName, fnArgs);
             console.log(`[handleToolCalls] Résultat de ${fnName}:`, fnResult);
