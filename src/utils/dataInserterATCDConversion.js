@@ -32,7 +32,7 @@ function lireDonneesPanneauPourConversion() {
 
 /**
  * Crée un antécédent CIM-10 portant les mêmes valeurs que l'antécédent libre existant `nomCible`, puis supprime ce dernier
- * (avec la confirmation utilisateur de _supprimerAntecedent).
+ * (chacune des deux étapes étant validée par l'utilisateur sur le panneau affiché ; si la création est annulée, l'original est conservé).
  * Si le libellé de l'antécédent d'origine n'est pas strictement identique à celui du nouvel antécédent, il est
  * inséré en première ligne du commentaire.
  * À appeler dans le contexte de withAntecedentContext.

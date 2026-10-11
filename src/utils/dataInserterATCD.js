@@ -135,6 +135,97 @@ const titreRecherche = {
 // Document courant utilisé par toutes les fonctions internes : soit le document de la page
 // (si on est déjà sur AntecedentForm.aspx), soit celui d'une iframe cachée naviguant dessus.
 let _atcdDoc = document;
+// Iframe cachée en cours d'utilisation (null si on travaille directement sur la page).
+let _atcdIframe = null;
+
+/**
+ * Met en évidence le bouton attendu et affiche à côté un encart d'explication dans le document des antécédents.
+ * @returns {() => void} fonction retirant l'encart et la mise en évidence
+ */
+function afficherConsigneValidation(attendu, consigne) {
+    const sel = AntecedentFormSelectors.pannelAntecedents;
+    const bouton = _atcdDoc.querySelector(attendu === 'supprimer' ? sel.boutonSupprimer : sel.boutonValider);
+    if (!bouton || !consigne) return () => {};
+
+    const ancienOutline = bouton.style.outline;
+    const ancienOffset = bouton.style.outlineOffset;
+    bouton.style.outline = '3px solid #e67e00';
+    bouton.style.outlineOffset = '2px';
+
+    const encart = _atcdDoc.createElement('div');
+    encart.id = 'WedaHelperConsigneValidation';
+    encart.textContent = consigne;
+    Object.assign(encart.style, {
+        position: 'absolute', zIndex: '100000', maxWidth: '280px', padding: '8px 10px',
+        background: '#fff3cd', color: '#333', border: '2px solid #e67e00', borderRadius: '6px',
+        font: '13px/1.35 sans-serif', boxShadow: '0 2px 8px rgba(0,0,0,0.3)', whiteSpace: 'pre-line'
+    });
+    _atcdDoc.body.appendChild(encart);
+
+    const win = _atcdDoc.defaultView;
+    const positionner = () => {
+        const r = bouton.getBoundingClientRect();
+        const largeur = encart.offsetWidth;
+        // Sous le bouton, aligné sur son bord droit sans dépasser de la fenêtre.
+        const gauche = Math.min(Math.max(4, r.right - largeur), Math.max(4, win.innerWidth - largeur - 4));
+        encart.style.left = `${gauche + win.scrollX}px`;
+        encart.style.top = `${r.bottom + win.scrollY + 8}px`;
+    };
+    positionner();
+    bouton.scrollIntoView?.({ block: 'center' });
+    const timer = win.setInterval(positionner, 300);
+
+    return () => {
+        win.clearInterval(timer);
+        encart.remove();
+        bouton.style.outline = ancienOutline;
+        bouton.style.outlineOffset = ancienOffset;
+    };
+}
+
+/**
+ * Laisse l'utilisateur valider lui-même le panneau d'antécédent ouvert : l'iframe est affichée à l'écran,
+ * puis on attend la disparition du panneau en notant le dernier bouton cliqué (valider/supprimer/annuler).
+ * @param {{attendu: 'valider'|'supprimer', consigne: string, timeoutMs?: number}} options
+ *   attendu : bouton que l'utilisateur doit cliquer ; il est mis en évidence et accompagné d'un encart contenant la consigne.
+ *   timeoutMs : au-delà, le panneau est annulé
+ * @returns {Promise<'valider'|'supprimer'|'annuler'>}
+ */
+async function attendreValidationUtilisateur({ attendu, consigne, timeoutMs = 10 * 60 * 1000 } = {}) {
+    const sel = AntecedentFormSelectors.pannelAntecedents;
+    let action = null;
+    [[sel.boutonValider, 'valider'], [sel.boutonSupprimer, 'supprimer'], [sel.boutonAnnuler, 'annuler']]
+        .forEach(([selecteur, nom]) => {
+            _atcdDoc.querySelector(selecteur)?.addEventListener('click', () => { action = nom; }, { capture: true });
+        });
+
+    const styleInitial = _atcdIframe?.style.cssText;
+    if (_atcdIframe) {
+        Object.assign(_atcdIframe.style, {
+            display: 'block', position: 'fixed', top: '5vh', left: '10vw', width: '80vw', height: '90vh',
+            zIndex: '999999', border: '3px solid #2a7', background: '#fff', boxShadow: '0 0 0 100vmax rgba(0,0,0,0.5)'
+        });
+    }
+    const retirerConsigne = afficherConsigneValidation(attendu, consigne);
+    try {
+        const panneauOuvert = () => {
+            const el = _atcdDoc.querySelector(sel.panel);
+            return !!el && getComputedStyle(el).display !== 'none';
+        };
+        const debut = Date.now();
+        while (panneauOuvert()) {
+            if (Date.now() - debut > timeoutMs) {
+                _atcdDoc.querySelector(sel.boutonAnnuler)?.click();
+                return 'annuler';
+            }
+            await sleep(200);
+        }
+        return action || 'annuler';
+    } finally {
+        retirerConsigne();
+        if (_atcdIframe) _atcdIframe.style.cssText = styleInitial;
+    }
+}
 
 /**
  * Exécute fn() dans le contexte du formulaire antécédents : si la page courante n'est pas
@@ -147,6 +238,7 @@ async function withAntecedentContext(fn, { debug = false } = {}) {
     const onAntecedentPage = window.location.pathname.includes('/FolderMedical/AntecedentForm.aspx');
     if (onAntecedentPage) {
         _atcdDoc = document;
+        _atcdIframe = null;
         return await fn();
     }
 
@@ -157,9 +249,11 @@ async function withAntecedentContext(fn, { debug = false } = {}) {
         const getDoc = () => iframe.contentDocument || iframe.contentWindow?.document;
         await waitForElementInDocument(getDoc, AntecedentFormSelectors.antecedentList.panel, 12000, 100);
         _atcdDoc = getDoc();
+        _atcdIframe = iframe;
         return await fn();
     } finally {
         _atcdDoc = document;
+        _atcdIframe = null;
         if (iframe && !debug) {
             iframe.remove();
         }
@@ -267,14 +361,12 @@ async function _insertAntecedent(data = {}, hooks = {}) {
     hooks.avantRemplissage?.(data);
     remplirPaneauAntecedent(data);
 
-    // Validation de l'antécédent
-    const boutonValider = _atcdDoc.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonValider);
-    if (boutonValider) {
-        console.log("[dataInserterATCD] Bouton de validation trouvé, clic en cours.");
-        boutonValider.click();
-    } else {
-        console.warn("[dataInserterATCD] Bouton de validation introuvable.");
-    }
+    // Validation par l'utilisateur lui-même : le panneau est affiché et on attend son choix.
+    const choix = await attendreValidationUtilisateur({
+        attendu: 'valider',
+        consigne: "Weda-Helper a préparé ou modifié cet d'antécédent demandé.\nVérifiez-le, puis cliquez sur « Valider » pour l'enregistrer.\nPour abandonner, cliquez sur « Annuler »."
+    });
+    if (choix !== 'valider') return { success: false, message: "Ajout annulé par l'utilisateur." };
     return { success: true };
 }
 
@@ -311,7 +403,7 @@ async function _modifierAntecedent(nomCible, data = {}, { codifie } = {}) {
 
 /**
  * Supprime un antécédent déjà existant, retrouvé par son nom.
- * Demande une confirmation à l'utilisateur en précisant l'antécédent ciblé avant suppression.
+ * Affiche le panneau de l'antécédent : l'utilisateur doit lui-même cliquer sur Supprimer.
  * Peut être appelée depuis n'importe quelle page (voir withAntecedentContext).
  * @param {string} nomCible nom (de préférence exact, casse ignorée) de l'antécédent à supprimer
  * @param {{debug?: boolean, codifie?: boolean}} [options] codifie : true/false pour ne cibler que les antécédents codifiés (CIM-10)/libres
@@ -331,19 +423,12 @@ async function _supprimerAntecedent(nomCible, { codifie } = {}) {
         return { success: false, message: `Aucun antécédent trouvé pour "${nomCible}".` };
     }
 
-    if (!confirm(`Supprimer définitivement l'antécédent "${avant.nom}" ?\n${avant.commentaire ? `Commentaire : ${avant.commentaire}` : ''}`)) {
-        _atcdDoc.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonAnnuler)?.click();
-        return { success: false, message: "Suppression annulée par l'utilisateur." };
-    }
-
-    // Le bouton de suppression déclenche lui-même un confirm() natif ; on l'autorise puisque l'utilisateur vient de valider le nôtre.
-    const originalConfirm = window.confirm;
-    window.confirm = () => true;
-    try {
-        _atcdDoc.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonSupprimer)?.click();
-    } finally {
-        window.confirm = originalConfirm;
-    }
+    // Le panneau est affiché : c'est l'utilisateur qui clique sur Supprimer (et confirme) ou Annuler.
+    const choix = await attendreValidationUtilisateur({
+        attendu: 'supprimer',
+        consigne: `Weda-Helper a préparé la suppression de l'antécédent demandé.\nCliquez sur « Supprimer » puis confirmez pour le supprimer définitivement.\nPour conserver l'antécédent, cliquez sur « Annuler ».`
+    });
+    if (choix !== 'supprimer') return { success: false, message: "Suppression annulée par l'utilisateur." };
     return { success: true };
 }
 
