@@ -579,56 +579,43 @@ const availableFunctions = {
         // Référence indirecte : insertData n'existe que côté content script (dataInserter.js).
         execute: ({ target, title, subtitle, content } = {}) => insertData(target, { title, subtitle, content })
     },
-    renameJoinedDocumentInHistory: {
+    renseignerDocument: {
         definition: {
             type: "function",
             function: {
-                name: "renameJoinedDocumentInHistory",
-                description: "Enregistre sur un document joint de l'historique du patient actuellement ouvert les éléments suivants : documentTitle, documentDate, destinationClass, documentType et/ou documentCommentaire (résumé). Le fileId et les données du PDF peuvent entre autre être récupérés après avoir lu le document (lireDocumentJoint). Ex. : renameJoinedDocumentInHistory({ fileId: '893222115', documentTitle: 'Compte rendu', documentDate: '01/01/2024', destinationClass: '1', documentType: 'Biologie', documentCommentaire: 'Résumé du document' }). Doit TOUJOURS être appelé avec un fileId valide.",
+                name: "renseignerDocument",
+                description: "Renseigne le document en cours de traitement (PDF Parser, ou document joint de l'historique du patient) avec les informations déduites de son contenu. Unique fonction à appeler pour cela. Si le message de la demande fournit un fileId, le transmettre. Ex. : renseignerDocument({ fileId: '893222115', documentTitle: 'Compte rendu', documentDate: '01/01/2024', destinationClass: '1', documentType: 'Biologie', documentCommentaire: 'Résumé du document' }).",
                 parameters: {
                     type: "object",
                     properties: {
-                        fileId: { type: "string", description: "Identifiant de la pièce jointe, ex: '893222115'." },
-                        documentTitle: { type: "string", description: "Titre du document, tel qu'il doit apparaître dans le dossier patient." },
+                        fileId: { type: "string", description: "Identifiant de la pièce jointe, ex: '893222115'. Requis pour un document joint de l'historique (le fournir dès que la demande ou lireDocumentJoint le donne), inutile pour le PDF Parser." },
                         documentDate: { type: "string", description: "Date du document, au format JJ/MM/AAAA." },
-                        destinationClass: { type: "string", enum: ["1", "2", "3"], description: "Emplacement du document : '1' pour Consultation, '2' pour Résultats d'examens, '3' pour Courrier." },
-                        documentType: { type: "string", description: "Classification du document dans Weda (ex: 'Biologie', 'Courrier'), telle qu'elle existe dans la liste des classifications de Weda." },
-                        documentCommentaire: { type: "string", description: "Bref commentaire (1 à 2 phrases) résumant le contenu du document." }
-                    },
-                    required: ["fileId"]
-                }
-            }
-        },
-        // Référence indirecte : renameJoinedDocumentInHistoryTool n'existe que côté content script (attachmentAIRename.js).
-        execute: (args) => renameJoinedDocumentInHistoryTool(args)
-    },
-    submitPdfParserFields: {
-        definition: {
-            type: "function",
-            function: {
-                name: "submitPdfParserFields",
-                description: "Permet de caractériser le document à partir des informations déduites du texte du document fourni dans le message. Exemple : submitPdfParserFields({ documentDate: '01/01/2024', dateOfBirth: '01/01/1980', nameMatches: ['John Doe'], documentCommentaire: 'Résumé du document', documentTitle: 'Compte rendu', destinationClass: '1', documentType: 'Biologie' }).",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        documentDate: { type: "string", description: "Date du document, au format JJ/MM/AAAA." },
-                        dateOfBirth: { type: "string", description: "Date de naissance du patient, au format JJ/MM/AAAA." },
+                        dateOfBirth: { type: "string", description: "PDF Parser uniquement : date de naissance du patient, au format JJ/MM/AAAA." },
                         nameMatches: {
                             type: "array",
                             items: { type: "string" },
-                            description: "Nom complet (nom et prénom) du patient."
+                            description: "PDF Parser uniquement : nom complet (nom et prénom) du patient."
                         },
-                        documentCommentaire: { type: "string", description: "Brève description (1 à 2 phrases) résumant le contenu du document." },
+                        documentCommentaire: { type: "string", description: "Bref commentaire (1 à 2 phrases) résumant le contenu du document." },
                         documentTitle: { type: "string", description: "Titre complet du document, tel qu'il doit apparaître dans le dossier patient." },
-                        destinationClass: { type: "string", enum: ["1", "2", "3"], description: "Destination du classement : '1' pour Consultation, '2' pour Résultats d'examens, '3' pour Courrier." },
-                        documentType: { type: "string", description: "Classification du document, parmi les valeurs autorisées indiquées dans le message." }
+                        destinationClass: { type: "string", enum: ["1", "2", "3"], description: "Emplacement du document : '1' pour Consultation, '2' pour Résultats d'examens, '3' pour Courrier." },
+                        documentType: { type: "string", description: "Classification du document dans Weda (ex: 'Biologie', 'Courrier'), parmi les valeurs autorisées indiquées dans le message." }
                     },
                     required: []
                 }
             }
         },
-        // Référence indirecte : resolvePendingPdfParserFields n'existe que côté content script (pdfParserAIExtraction.js).
-        execute: (args) => resolvePendingPdfParserFields(args)
+        // Références indirectes : ces fonctions n'existent que côté content script (pdfParserAIExtraction.js, attachmentAIRename.js).
+        // Une complétion du PDF Parser en attente est servie en priorité ; sinon il s'agit d'un document joint.
+        execute: async (args = {}) => {
+            const resultat = hasPendingPdfParserFields()
+                ? resolvePendingPdfParserFields(args)
+                : await renameJoinedDocumentInHistoryTool(args);
+            if (resultat?.error || !await getOptionPromise('verifierEtMettreAJourAntecedents')) return resultat;
+            // Envoyée comme message utilisateur dès la fin de la réponse en cours, plutôt que glissée dans le résultat de l'outil.
+            (await whenChatApiReady()).sendPromptWhenIdle("Maintenant récupère les antécédents du patient et vérifie qu'ils soient à jour. Ajoute et mets à jour le nécessaire.");
+            return resultat;
+        }
     }
 };
 

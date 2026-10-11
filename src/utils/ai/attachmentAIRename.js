@@ -4,7 +4,7 @@
  * l'historique patient, un bouton qui : ouvre le document (clic natif sur le lien, comme le fait
  * dataScrapperFileHandler.js pour récupérer l'URL du pdf dans la popup PopUpViewBinaryForm),
  * l'envoie à l'assistant IA (même prompt et même flux que le PDF Parser, @see pdfParserAIExtraction.js)
- * en lui demandant d'appeler l'outil renameJoinedDocumentInHistory, qui enregistre le résultat.
+ * en lui demandant d'appeler l'outil renseignerDocument, qui enregistre le résultat.
  *
  * Cet outil est exposé au modèle en tool calling (@see callableFunctions.js), aussi pour un usage libre :
  * il ne sert qu'à insérer des données, la lecture du document passe par ses autres outils.
@@ -123,8 +123,7 @@ async function getAttachmentPdfUrl(fileId) {
 
 /**
  * Flux du bouton : ouverture du document, puis envoi au chat IA avec la même demande que le PDF Parser,
- * mais en lui faisant appeler renameJoinedDocumentInHistory (@see renameJoinedDocumentInHistoryTool)
- * plutôt que submitPdfParserFields : on n'attend donc pas de résultat ici.
+ * mais avec un fileId (@see renameJoinedDocumentInHistoryTool, via renseignerDocument) : on n'attend donc pas de résultat ici.
  * @param {string} fileId
  * @returns {Promise<{error?: string}>}
  */
@@ -141,7 +140,7 @@ async function summarizeAttachment(fileId) {
         const possibleDocumentTypes = fullMode ? await getConfiguredDocumentTypes() : null;
         await completeExtractedDataWithAI(knownData, pdfText, url, possibleDocumentTypes, { pdfText }, {
             externalTool: {
-                name: 'renameJoinedDocumentInHistory',
+                name: 'renseignerDocument',
                 extraInstructions: `Le fileId du document à renseigner est "${fileId}" : transmets-le à la fonction.`
             },
             patientId: getCurrentPatientId()
@@ -153,7 +152,7 @@ async function summarizeAttachment(fileId) {
 }
 
 /**
- * Outil appelable par le modèle (@see callableFunctions.js renameJoinedDocumentInHistory), aussi
+ * Outil appelable par le modèle (@see callableFunctions.js renseignerDocument), aussi
  * utilisé par le bouton "Résumé IA" : les champs portent les mêmes clés que ceux du PDF Parser
  * (@see pdfParserAIExtraction.js) et seuls ceux fournis par le modèle sont transmis à
  * renameJoinedDocumentInHistory. Comme pour le PDF Parser, le titre, l'emplacement et la classification

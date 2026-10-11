@@ -1074,6 +1074,11 @@ var advancedDefaultSettings = [
                     "description": "Laisse l'IA déterminer elle-même le titre, la destination (Consultation/Résultats d'examens/Courrier) et la classification du document, au lieu de s'appuyer uniquement sur l'analyse par mots-clés.",
                     "longDescription": "La liste des classifications réellement disponibles dans Weda est transmise à l'IA pour qu'elle choisisse parmi celles-ci. Voir aussi les options 'Catégorie de classement' et 'Règles de classification : destination' pour n'activer l'IA que sur l'une de ces deux thématiques.",
                     "default": false
+                }, {
+                    "name": "verifierEtMettreAJourAntecedents",
+                    "type": TYPE_BOOL,
+                    "description": "Après avoir renseigné un document, demande à l'IA de vérifier et mettre à jour les antécédents du patient.",
+                    "default": false
                 }]
             }]
         }]

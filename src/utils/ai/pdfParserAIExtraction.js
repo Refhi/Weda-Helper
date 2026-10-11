@@ -4,7 +4,7 @@
  * restés vides après l'analyse regex. L'appel se fait via le chat IA visible (@see discussionClient.js
  * whenChatApiReady/publishChatApi) : un prompt est envoyé "comme si l'utilisateur l'avait tapé",
  * donnant à l'utilisateur la visibilité sur la requête et la réponse, et la réponse attendue est un
- * appel de fonction dédié (submitPdfParserFields, @see callableFunctions.js) plutôt qu'un texte JSON
+ * appel de fonction dédié (renseignerDocument, @see callableFunctions.js) plutôt qu'un texte JSON
  * à parser nous-mêmes.
  */
 
@@ -27,7 +27,7 @@ const PDF_PARSER_AI_FULL_MODE_FIELDS = [
     { key: 'documentType', description: "Classification du document, parmi les valeurs listées ci-dessous le cas échéant" }
 ];
 
-// Délai maximum d'attente de l'appel de fonction submitPdfParserFields avant d'abandonner (le
+// Délai maximum d'attente de l'appel de fonction renseignerDocument avant d'abandonner (le
 // client de chat peut être indisponible, désactivé, ou le modèle peut ne jamais appeler la fonction).
 const PDF_PARSER_AI_TIMEOUT_MS = 60000;
 // Timeout court utilisé quand le mode complet (PdfParserAutoAIFullMode) est activé :
@@ -35,11 +35,16 @@ const PDF_PARSER_AI_TIMEOUT_MS = 60000;
 const PDF_PARSER_AI_QUICK_TIMEOUT_MS = 1000;
 
 // Résolveur de la complétion IA en cours (un seul PDF traité à la fois), appelé par le tool call
-// "submitPdfParserFields" une fois le modèle exécuté (@see callableFunctions.js).
+// "renseignerDocument" une fois le modèle exécuté (@see callableFunctions.js).
 let pendingPdfParserResolve = null;
 
+/** Indique si une complétion du PDF Parser attend l'appel du tool "renseignerDocument". */
+function hasPendingPdfParserFields() {
+    return !!pendingPdfParserResolve;
+}
+
 /**
- * Appelée par le tool call "submitPdfParserFields" : transmet les champs renvoyés par le modèle à
+ * Appelée par le tool call "renseignerDocument" : transmet les champs renvoyés par le modèle à
  * la complétion IA en attente, le cas échéant.
  * @param {object} fields
  */
@@ -73,7 +78,7 @@ function resolvePendingPdfParserFields(fields) {
  * @param {{externalTool?: {name: string, extraInstructions?: string}|null, patientId?: string|null}} [options] -
  * Pour un usage explicitement demandé par l'utilisateur hors PDF Parser (@see attachmentAIRename.js) :
  * `externalTool` demande au modèle d'appeler cette fonction (avec `extraInstructions` ajoutées au prompt,
- * ex: un identifiant à lui transmettre) au lieu de submitPdfParserFields ; l'option PdfParserAutoAIExtraction
+ * ex: un identifiant à lui transmettre) au lieu de renseignerDocument ; l'option PdfParserAutoAIExtraction
  * est alors ignorée (PdfParserAutoAIFullMode reste respectée) et on n'attend pas la réponse (objet vide renvoyé,
  * la fonction appelée se charge elle-même du résultat). `patientId` rattache la conversation à ce patient
  * (sinon celui de la grille d'import).
@@ -106,7 +111,7 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
 
     // Arrête d'abord toute réflexion/génération en cours pour ce patient (ex: PDF précédent encore
     // en attente de tool call) avant de repartir d'une conversation vierge : sans ça, l'ancien appel
-    // pouvait rester bloqué indéfiniment (son submitPdfParserFields n'arrivant jamais après le reset).
+    // pouvait rester bloqué indéfiniment (son renseignerDocument n'arrivant jamais après le reset).
     chatApi.stop();
 
     // Rattache la conversation au patient déjà identifié à ce stade, sinon au patient 0 (conversation
@@ -134,7 +139,7 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
     const categorizationContext = (fullModeEnabled && possibleDocumentTypes?.length)
         ? `\n\nValeurs autorisées pour "documentType" : ${possibleDocumentTypes.join(', ')}.`
         : '';
-    const toolName = externalTool?.name || 'submitPdfParserFields';
+    const toolName = externalTool?.name || 'renseignerDocument';
     const extraInstructions = externalTool?.extraInstructions ? `\n\n${externalTool.extraInstructions}` : '';
     const instructions = `${basePrompt}${categorizationContext}${extraInstructions}\n\nPour répondre, appelle OBLIGATOIREMENT la fonction ${toolName}. Les dates DOIVENT être au format JJ/MM/AAAA. Voici les champs à compléter :\n${fieldsDescription}`;
 
@@ -172,7 +177,7 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
             setTimeout(() => {
                 if (pendingPdfParserResolve !== resolve) return; // déjà résolu entre-temps
                 pendingPdfParserResolve = null;
-                reject(new Error("Délai dépassé en attendant l'appel de submitPdfParserFields"));
+                reject(new Error("Délai dépassé en attendant l'appel de renseignerDocument"));
             }, PDF_PARSER_AI_TIMEOUT_MS);
             sendToChatApi();
         });
