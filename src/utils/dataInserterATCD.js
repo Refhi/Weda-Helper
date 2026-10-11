@@ -139,6 +139,25 @@ let _atcdDoc = document;
 let _atcdIframe = null;
 
 /**
+ * Masque tout le document des antécédents sauf le panneau de modification (et ses ancêtres).
+ * Les éléments sont seulement masqués (display:none), donc le formulaire ASP.NET reste fonctionnel.
+ * @returns {() => void} fonction restaurant l'affichage
+ */
+function isolerPanneauAntecedent() {
+    const panneau = _atcdDoc.querySelector(AntecedentFormSelectors.pannelAntecedents.panel);
+    const masques = [];
+    for (let el = panneau; el && el !== _atcdDoc.body; el = el.parentElement) {
+        [...el.parentElement.children].forEach(frere => {
+            if (frere !== el && !['SCRIPT', 'STYLE', 'LINK'].includes(frere.tagName)) {
+                masques.push([frere, frere.style.display]);
+                frere.style.setProperty('display', 'none', 'important');
+            }
+        });
+    }
+    return () => masques.forEach(([el, display]) => { el.style.display = display; });
+}
+
+/**
  * Met en évidence le bouton attendu et affiche à côté un encart d'explication dans le document des antécédents.
  * @returns {() => void} fonction retirant l'encart et la mise en évidence
  */
@@ -184,6 +203,20 @@ function afficherConsigneValidation(attendu, consigne) {
 }
 
 /**
+ * Redimensionne l'iframe pour qu'elle englobe exactement le panneau et l'encart de consigne visibles.
+ */
+function ajusterIframeAuContenu(selecteurPanneau) {
+    const panneau = _atcdDoc.querySelector(selecteurPanneau);
+    if (!panneau) return;
+    const win = _atcdDoc.defaultView;
+    const rects = [panneau, _atcdDoc.getElementById('WedaHelperConsigneValidation')]
+        .filter(Boolean).map(el => el.getBoundingClientRect());
+    const marge = 12;
+    _atcdIframe.style.width = `${Math.ceil(Math.max(...rects.map(r => r.right + win.scrollX)) + marge)}px`;
+    _atcdIframe.style.height = `${Math.ceil(Math.max(...rects.map(r => r.bottom + win.scrollY)) + marge)}px`;
+}
+
+/**
  * Laisse l'utilisateur valider lui-même le panneau d'antécédent ouvert : l'iframe est affichée à l'écran,
  * puis on attend la disparition du panneau en notant le dernier bouton cliqué (valider/supprimer/annuler).
  * @param {{attendu: 'valider'|'supprimer', consigne: string, timeoutMs?: number}} options
@@ -201,12 +234,19 @@ async function attendreValidationUtilisateur({ attendu, consigne, timeoutMs = 10
 
     const styleInitial = _atcdIframe?.style.cssText;
     if (_atcdIframe) {
+        // Iframe transparente, centrée à l'écran sur un fond assombri ; sa taille est ajustée plus bas au contenu.
         Object.assign(_atcdIframe.style, {
-            display: 'block', position: 'fixed', top: '5vh', left: '10vw', width: '80vw', height: '90vh',
-            zIndex: '999999', border: '3px solid #2a7', background: '#fff', boxShadow: '0 0 0 100vmax rgba(0,0,0,0.5)'
+            display: 'block', position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            width: '700px', height: '500px', maxWidth: '98vw', maxHeight: '98vh',
+            zIndex: '999999', border: 'none', background: 'transparent', boxShadow: '0 0 0 100vmax rgba(0,0,0,0.55)'
         });
+        _atcdDoc.documentElement.style.background = 'transparent';
+        _atcdDoc.body.style.background = 'transparent';
+        _atcdDoc.body.style.overflow = 'hidden';
     }
+    const restaurerAffichage = _atcdIframe ? isolerPanneauAntecedent() : () => {};
     const retirerConsigne = afficherConsigneValidation(attendu, consigne);
+    if (_atcdIframe) ajusterIframeAuContenu(sel.panel);
     try {
         const panneauOuvert = () => {
             const el = _atcdDoc.querySelector(sel.panel);
@@ -223,6 +263,7 @@ async function attendreValidationUtilisateur({ attendu, consigne, timeoutMs = 10
         return action || 'annuler';
     } finally {
         retirerConsigne();
+        restaurerAffichage();
         if (_atcdIframe) _atcdIframe.style.cssText = styleInitial;
     }
 }
@@ -364,7 +405,7 @@ async function _insertAntecedent(data = {}, hooks = {}) {
     // Validation par l'utilisateur lui-même : le panneau est affiché et on attend son choix.
     const choix = await attendreValidationUtilisateur({
         attendu: 'valider',
-        consigne: "Weda-Helper a préparé ou modifié cet d'antécédent demandé.\nVérifiez-le, puis cliquez sur « Valider » pour l'enregistrer.\nPour abandonner, cliquez sur « Annuler »."
+        consigne: "Weda-Helper a préparé ou modifié cet d'antécédent demandé.\nVérifiez-le, puis cliquez sur « Valider » pour l'enregistrer.\nPour abandonner, cliquez sur « Annuler » (ou « Supprimer » si indisponible)."
     });
     if (choix !== 'valider') return { success: false, message: "Ajout annulé par l'utilisateur." };
     return { success: true };
