@@ -323,7 +323,8 @@ async function openAiClient({
     // pour ne jamais supprimer un message assistant qui ne contient que des tool_calls (content: null).
     // Le contenu peut aussi être un tableau de parts (format "vision" OpenAI, ex: pièces jointes
     // images) : { type: 'text'|'image_url', ... } — voir buildUserMessageContent dans discussionClient.js.
-    const filteredMessages = messages.filter(msg =>
+    const modelMessages = replaceUnsupportedModelImages(model, messages);
+    const filteredMessages = modelMessages.filter(msg =>
         msg && (
             (typeof msg.content === 'string' && msg.content.trim()) ||
             (Array.isArray(msg.content) && msg.content.length > 0) ||

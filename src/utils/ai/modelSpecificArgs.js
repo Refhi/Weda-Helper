@@ -1,6 +1,6 @@
 /**
- * Modifications des arguments API requises par certains modèles ou familles de modèles.
- * Les clés correspondent aux noms transmis dans l'objet JSON de Chat Completions.
+ * Adaptations requises par certains modèles ou familles de modèles.
+ * Les clés correspondent au nom exact du modèle ou au préfixe de sa famille.
  */
 const MODEL_SPECIFIC_ARG_CHANGE_RULES = {
     'gpt-5-mini': {
@@ -8,7 +8,17 @@ const MODEL_SPECIFIC_ARG_CHANGE_RULES = {
         argRemoval: ['top_p'],
         valueChange: ['temperature', 1],
     },
+    // Pour un modèle sans vision, ajouter `supportsVision: false` à sa règle :
+    // ses parts d'image seront remplacées par un message explicatif avant l'appel API.
 };
+
+function getModelSpecificArgChangeRule(model) {
+    if (!model) return null;
+    const ruleName = Object.keys(MODEL_SPECIFIC_ARG_CHANGE_RULES)
+        .filter(name => model === name || model.startsWith(`${name}-`))
+        .sort((a, b) => b.length - a.length)[0];
+    return ruleName ? MODEL_SPECIFIC_ARG_CHANGE_RULES[ruleName] : null;
+}
 
 /**
  * Applique les adaptations configurées pour le modèle (correspondance exacte ou préfixe daté).
@@ -18,12 +28,8 @@ const MODEL_SPECIFIC_ARG_CHANGE_RULES = {
 function applyModelSpecificArgChanges(model, args) {
     if (!model || !args || typeof args !== 'object') return args;
 
-    const ruleName = Object.keys(MODEL_SPECIFIC_ARG_CHANGE_RULES)
-        .filter(name => model === name || model.startsWith(`${name}-`))
-        .sort((a, b) => b.length - a.length)[0];
-    if (!ruleName) return args;
-
-    const rule = MODEL_SPECIFIC_ARG_CHANGE_RULES[ruleName];
+    const rule = getModelSpecificArgChangeRule(model);
+    if (!rule) return args;
     if (Array.isArray(rule.argRenaming)) {
         const renames = Array.isArray(rule.argRenaming[0]) ? rule.argRenaming : [rule.argRenaming];
         for (const [oldName, newName] of renames) {
@@ -46,4 +52,30 @@ function applyModelSpecificArgChanges(model, args) {
     }
 
     return args;
+}
+
+/**
+ * Remplace les parts d'image dans une copie des messages pour les modèles sans vision.
+ * L'historique de conversation reste ainsi intact pour un changement ultérieur de modèle.
+ * @param {string} model
+ * @param {Array<object>} messages
+ * @returns {Array<object>}
+ */
+function replaceUnsupportedModelImages(model, messages) {
+    if (!model || !Array.isArray(messages) || getModelSpecificArgChangeRule(model)?.supportsVision !== false) {
+        return messages;
+    }
+
+    const explanation = `[Image non analysée : le modèle "${model}" ne prend pas en charge l’analyse d’images (vision).]`;
+    return messages.map(message => {
+        if (!Array.isArray(message?.content)) return message;
+        return {
+            ...message,
+            content: message.content.map(part =>
+                ['image_url', 'image', 'input_image'].includes(part?.type)
+                    ? { type: 'text', text: explanation }
+                    : part
+            )
+        };
+    });
 }
