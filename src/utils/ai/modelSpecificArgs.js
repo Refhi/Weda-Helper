@@ -10,6 +10,9 @@ const MODEL_SPECIFIC_ARG_CHANGE_RULES = {
     },
     // Pour un modèle sans vision, ajouter `supportsVision: false` à sa règle :
     // ses parts d'image seront remplacées par un message explicatif avant l'appel API.
+    'qwen3.5-9b-medreasoning-dt-i1': {
+        supportsVision: false,
+    },
 };
 
 function getModelSpecificArgChangeRule(model) {
