@@ -43,24 +43,73 @@ async function renameJoinedDocumentInHistory(fileId, fields) {
     // Sélectionne une option de liste déroulante par sa valeur ou, à défaut, par son libellé (insensible à la casse)
     const selectOption = (selector, wanted) => {
         const normalize = text => text.trim().toLowerCase();
-        const option = [...document.querySelector(selector).options].find(o => o.value === wanted || normalize(o.text) === normalize(wanted));
+        const select = document.querySelector(selector);
+        if (!select) return false;
+        const option = [...select.options].find(o => o.value === wanted || normalize(o.text) === normalize(wanted));
         if (!option) return false;
         setValue(selector, option.value);
         return true;
     };
 
     const { documentTitle, documentDate, destinationClass, documentType, documentCommentaire } = fields;
+    let classificationListMismatch = false;
     if (documentDate) setValue(`${prefix}TextBoxFileStreamDate`, documentDate);
     if (destinationClass && !selectOption(`${prefix}DropDownListDeplacement`, destinationClass)) notApplied.push('destinationClass');
-    if (documentType && !selectOption(`${prefix}DropDownListClassification`, documentType)) notApplied.push('documentType');
+    if (documentType) {
+        const classificationSelect = document.querySelector(`${prefix}DropDownListClassification`);
+        const configuredTypes = await getConfiguredDocumentTypes();
+        const availableTypes = classificationSelect
+            ? [...classificationSelect.options].filter(option => option.value !== '0').map(option => option.text.trim())
+            : [];
+        if (availableTypes.length) {
+            const normalize = value => value.trim().toLowerCase();
+            const configuredSet = new Set(configuredTypes.map(normalize));
+            const availableSet = new Set(availableTypes.map(normalize));
+            classificationListMismatch = configuredSet.size !== availableSet.size
+                || [...configuredSet].some(type => !availableSet.has(type));
+        }
+        const classificationApplied = selectOption(`${prefix}DropDownListClassification`, documentType);
+        if (!classificationApplied) notApplied.push('documentType');
+        if (classificationListMismatch || !classificationApplied) {
+            sendWedaNotif({
+                message: classificationListMismatch
+                    ? `Les catégories de PdfParserAutoCategoryDict ne correspondent plus à celles du menu Weda${classificationApplied ? '' : ` ; « ${documentType} » n'existe pas dans la liste actuelle`}. Réinitialisez les catégories depuis le PDF Parser.`
+                    : `La classification « ${documentType} » proposée par l'IA n'existe pas dans le menu Weda et n'a pas été appliquée.`,
+                icon: 'warning',
+                duration: 10000
+            });
+        }
+    }
     if (documentTitle) setValue('#TextBoxFileStreamTitre', documentTitle);
     if (documentCommentaire) setValue(`${prefix}TextBoxFileStreamCommentaire`, documentCommentaire);
 
     const panel = document.querySelector(panelSelector);
     clicCSPLockedElement(`${prefix}ButtonValidFileStreamTitre`);
     const closed = await waitUntil(() => !panel.isConnected || getComputedStyle(panel).display === 'none', { label: 'validation du panneau Renommer' });
-    if (!closed) return { error: "Le panneau de renommage est resté ouvert après validation (champ invalide ?).", notApplied };
-    return { notApplied };
+    if (!closed) return { error: "Le panneau de renommage est resté ouvert après validation (champ invalide ?).", notApplied, classificationListMismatch };
+    return { notApplied, classificationListMismatch };
+}
+
+/**
+ * Récupère les noms des catégories configurées pour le PDF Parser.
+ * @returns {Promise<string[]>}
+ */
+async function getConfiguredDocumentTypes() {
+    const rawRules = await getOptionPromise('PdfParserAutoCategoryDict');
+    let rules = rawRules;
+    if (typeof rawRules === 'string') {
+        try {
+            rules = JSON.parse(rawRules);
+        } catch (error) {
+            throw new Error(`Option PdfParserAutoCategoryDict invalide : ${error.message}`);
+        }
+    }
+    if (!Array.isArray(rules)) {
+        throw new Error('Option PdfParserAutoCategoryDict invalide : un tableau de règles était attendu.');
+    }
+    return [...new Set(rules
+        .filter(rule => Array.isArray(rule) && typeof rule[0] === 'string' && rule[0].trim())
+        .map(rule => rule[0].trim()))];
 }
 
 /**
@@ -91,7 +140,9 @@ async function summarizeAttachment(fileId) {
     // pour que l'IA ne les demande pas. Les autres champs demandés dépendent de PdfParserAutoAIFullMode.
     const knownData = { dateOfBirth: 'non requis', nameMatches: ['non requis'] };
     try {
-        await completeExtractedDataWithAI(knownData, pdfText, url, null, { pdfText }, {
+        const fullMode = await getOptionPromise('PdfParserAutoAIFullMode');
+        const possibleDocumentTypes = fullMode ? await getConfiguredDocumentTypes() : null;
+        await completeExtractedDataWithAI(knownData, pdfText, url, possibleDocumentTypes, { pdfText }, {
             externalTool: {
                 name: 'renameJoinedDocumentInHistory',
                 extraInstructions: `Le fileId du document à renseigner est "${fileId}" : transmets-le à la fonction.`
@@ -109,7 +160,8 @@ async function summarizeAttachment(fileId) {
  * utilisé par le bouton "Résumé IA" : les champs portent les mêmes clés que ceux du PDF Parser
  * (@see pdfParserAIExtraction.js) et seuls ceux fournis par le modèle sont transmis à
  * renameJoinedDocumentInHistory. Comme pour le PDF Parser, le titre, l'emplacement et la classification
- * ne sont acceptés que si l'option PdfParserAutoAIFullMode est activée.
+ * ne sont acceptés que si l'option PdfParserAutoAIFullMode est activée. Les catégories configurées sont
+ * fournies au modèle et comparées aux catégories actuelles de Weda lors de la sélection.
  * @param {{fileId?: string, documentTitle?: string, documentDate?: string, destinationClass?: string, documentType?: string, documentCommentaire?: string}} args
  * @returns {Promise<object>}
  */
@@ -134,10 +186,11 @@ async function renameJoinedDocumentInHistoryTool({ fileId, documentTitle, docume
             ...(ignoredFields.length ? { ignoredFields } : {})
         };
     }
-    const { error, notApplied = [] } = await renameJoinedDocumentInHistory(fileId, fields);
-    if (error) return { error, notApplied };
+    const { error, notApplied = [], classificationListMismatch = false } = await renameJoinedDocumentInHistory(fileId, fields);
+    if (error) return { error, notApplied, classificationListMismatch };
     const notes = [
         ...(notApplied.length ? [`${notApplied.join(', ')} : valeur inconnue dans les listes de Weda, non enregistré.`] : []),
+        ...(classificationListMismatch ? ["La liste PdfParserAutoCategoryDict diffère des catégories actuelles de Weda ; réinitialisez les catégories depuis le PDF Parser."] : []),
         ...(ignoredFields.length ? [`${ignoredFields.join(', ')} : modification par l'IA désactivée dans les options de Weda-Helper (mode complet du PDF Parser), non enregistré.`] : [])
     ];
     return { status: "success", fileId, ...(notes.length ? { notes } : {}) };
