@@ -118,8 +118,9 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
     // non nominative) : l'analyse du PDF se fait avant que le patient soit choisi, et un éventuel
     // patient précédent (@see followPatientInChat) ne doit pas être pollué ni réinitialisé.
     // getCurrentPatientId() se base sur l'URL de la page, absente sur la page d'import
-    // (UpLoaderForm.aspx) : on se rabat alors sur le patient sélectionné dans la grille d'import.
-    const currentPatientId = patientId || getImportGridPatientId() || null;
+    // (UpLoaderForm.aspx) : on se rabat alors sur le patient sélectionné dans la grille d'import, ou sur celui
+    // affiché par le PDF Parser (#pdfParserPatientName, ex: FolderMedical/WedaEchanges).
+    const currentPatientId = patientId || getImportGridPatientId() || getPdfParserPatientId() || null;
     console.log('[pdfParserAIExtraction] Association de la conversation au patient :', currentPatientId ?? 0);
     // Attend la resynchronisation (stateSync) avant d'envoyer le prompt : sans ça, sur le tout
     // premier switch (port offpage venant d'être créé), le prompt pouvait être affiché puis
