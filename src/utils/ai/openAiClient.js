@@ -746,6 +746,27 @@ function prerequisPresentDansHistorique(messages, prerequis) {
 }
 
 /**
+ * Compte les échecs dans le résultat d'un outil : objet ou éléments de tableau portant `success: false` ou un champ `error`.
+ */
+function compterEchecs(resultat) {
+    const elements = Array.isArray(resultat) ? resultat : [resultat];
+    return elements.filter(r => r && typeof r === 'object' && (r.success === false || r.error)).length;
+}
+
+/**
+ * Un échec noyé dans un JSON est trop discret : le modèle annonce parfois un succès malgré tout.
+ * On l'encadre donc d'un avertissement explicite, pour tous les outils.
+ */
+function signalerEchecs(fnName, resultat) {
+    const echecs = compterEchecs(resultat);
+    if (!echecs) return resultat;
+    return {
+        AVERTISSEMENT: `ÉCHEC de ${fnName} (${echecs} erreur(s) dans le résultat ci-dessous). Ne dis PAS à l'utilisateur que l'action est réussie ; informe-le de l'échec et de sa cause. Ne relance pas sans qu'il le demande, sauf si la cause est une erreur de ta part (ex. argument invalide).`,
+        resultat
+    };
+}
+
+/**
  * Exécute les function calls demandés par le modèle et construit la liste de messages
  * mise à jour (historique + message assistant contenant les tool_calls + résultats des fonctions).
  * @param {object} responseMessage - Le message renvoyé par le modèle, contenant `tool_calls`.
@@ -809,7 +830,7 @@ async function handleToolCalls(responseMessage, messages, onToolCall, executeToo
             role: "tool",
             tool_call_id: toolCall.id,
             name: fnName,
-            content: buildToolResultContent(fnResult)
+            content: buildToolResultContent(signalerEchecs(fnName, fnResult))
         });
     }
 
