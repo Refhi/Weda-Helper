@@ -11,12 +11,13 @@
  */
 
 /**
- * Renseigne les données d'un document de l'historique (fileId) via le panneau "Renommer" de Weda :
- * ouverture du panneau (clic sur le bouton Renommer), remplissage des champs fournis, puis validation.
+ * Préremplit les données d'un document de l'historique via le panneau "Renommer" de Weda.
+ * La validation finale reste toujours à la charge de l'utilisateur.
  * @param {string} fileId - Identifiant de la pièce jointe (attachment.fileId)
  * @param {{documentTitle?: string, documentDate?: string, destinationClass?: string, documentType?: string, documentCommentaire?: string}} fields -
  * Champs issus de l'IA, avec les clés du PDF Parser (le commentaire est préfixé par "[IA] ")
- * @returns {Promise<{error?: string, notApplied?: string[]}>} `notApplied` liste les champs qui n'ont pas pu être renseignés
+ * @returns {Promise<{error?: string, notApplied?: string[], classificationListMismatch?: boolean}>}
+ * `notApplied` liste les champs qui n'ont pas pu être renseignés
  */
 async function renameJoinedDocumentInHistory(fileId, fields) {
     const prefix = '#ContentPlaceHolder1_HistoriqueUCForm1_';
@@ -83,10 +84,6 @@ async function renameJoinedDocumentInHistory(fileId, fields) {
     if (documentTitle) setValue('#TextBoxFileStreamTitre', documentTitle);
     if (documentCommentaire) setValue(`${prefix}TextBoxFileStreamCommentaire`, documentCommentaire);
 
-    const panel = document.querySelector(panelSelector);
-    clicCSPLockedElement(`${prefix}ButtonValidFileStreamTitre`);
-    const closed = await waitUntil(() => !panel.isConnected || getComputedStyle(panel).display === 'none', { label: 'validation du panneau Renommer' });
-    if (!closed) return { error: "Le panneau de renommage est resté ouvert après validation (champ invalide ?).", notApplied, classificationListMismatch };
     return { notApplied, classificationListMismatch };
 }
 
@@ -188,12 +185,18 @@ async function renameJoinedDocumentInHistoryTool({ fileId, documentTitle, docume
     }
     const { error, notApplied = [], classificationListMismatch = false } = await renameJoinedDocumentInHistory(fileId, fields);
     if (error) return { error, notApplied, classificationListMismatch };
+    sendWedaNotif({
+        message: "Les champs ont été préremplis. Vérifiez-les puis validez manuellement dans le panneau Renommer.",
+        icon: 'info',
+        duration: 10000
+    });
     const notes = [
+        "Les champs ont été préremplis dans Weda, mais ne sont pas encore enregistrés. Vérifiez-les puis validez manuellement dans le panneau Renommer.",
         ...(notApplied.length ? [`${notApplied.join(', ')} : valeur inconnue dans les listes de Weda, non enregistré.`] : []),
         ...(classificationListMismatch ? ["La liste PdfParserAutoCategoryDict diffère des catégories actuelles de Weda ; réinitialisez les catégories depuis le PDF Parser."] : []),
         ...(ignoredFields.length ? [`${ignoredFields.join(', ')} : modification par l'IA désactivée dans les options de Weda-Helper (mode complet du PDF Parser), non enregistré.`] : [])
     ];
-    return { status: "success", fileId, ...(notes.length ? { notes } : {}) };
+    return { status: "awaiting_user_confirmation", awaitingUserConfirmation: true, fileId, notes };
 }
 
 /**
