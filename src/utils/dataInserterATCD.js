@@ -370,6 +370,17 @@ async function _insertAntecedent(data = {}, hooks = {}) {
             return { success: false, message: `Aucun résultat pertinent (favoris/recherche) trouvé pour le code CIM-10 "${toSearch}".` };
         }
 
+        // Allergie introuvable dans la base : repli sur un antécédent libre (même nom, même onglet demandé).
+        const estAllergie = data.searchType === "allergieMolecule" || data.searchType === "allergiePrinceps";
+        if (estAllergie && !resultatSelectionne) {
+            console.warn(`[dataInserterATCD] Aucun résultat pour l'allergie "${toSearch}" : repli sur un antécédent libre.`);
+            const { searchType, ...donneesLibres } = data;
+            const resultatLibre = await _insertAntecedent(donneesLibres, hooks);
+            return resultatLibre.success
+                ? { ...resultatLibre, message: `"${toSearch}" introuvable dans la base des allergies : ajouté comme antécédent libre.` }
+                : resultatLibre;
+        }
+
         // Dans le cas où une recherche de medicament a été effectuée, et que le princeps contiens
         // plusieurs molécules, il faut pouvoir valider le panneau.
         waitForElementInDocument(() => _atcdDoc, AntecedentFormSelectors.searchPanel.resultats.allergiePrincepsValidationButton, 300)
