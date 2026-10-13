@@ -1664,8 +1664,7 @@ function recoverMainViewData(doc, categorySelectors, includeLegacy = false, cate
 
     // Chaque .sc = une journée avec potentiellement plusieurs documents
     const dayContainers = mainContainer.querySelectorAll(categorySelectors.subContainer);
-    const results = Array.from(dayContainers).map(container => parseDayContainer(container, categorySelectors));
-
+    const results = Array.from(dayContainers).map(container =>     parseDayContainer(container, categorySelectors)).filter(r => r !== null);
     // Certaines catégories peuvent contenir en plus des journées importées d'un ancien
     // logiciel, situées hors du panneau habituel. On ne les récupère que si demandé.
     if (includeLegacy && categorySelectors.legacy) {
@@ -1674,7 +1673,7 @@ function recoverMainViewData(doc, categorySelectors, includeLegacy = false, cate
             const legacyDayContainers = legacyContainer.querySelectorAll(categorySelectors.legacy.subContainer);
             const legacyResults = Array.from(legacyDayContainers).map(container =>
                 parseDayContainer(container, categorySelectors.legacy)
-            );
+                            ).filter(r => r !== null);
             console.log(`[dataScrapper] ${legacyResults.length} journée(s) importée(s) d'un ancien logiciel détectée(s)`);
             results.push(...legacyResults.map(result => ({ ...result, imported: true })));
         }
@@ -1694,6 +1693,10 @@ function parseDayContainer(container, categorySelectors) {
     const dateElement = container.querySelector(categorySelectors.date);
     const lieuElement = container.querySelector(categorySelectors.lieu);
     const lieu = lieuElement?.textContent || '';
+    if (!dateElement) {
+        console.warn('[dataScrapper] Conteneur sans date ignoré', container);
+        return null;
+    }
     const date = dateElement.textContent.replace(lieu,'').trim(); // Si il y'a un lieu spécifié, on le retire de du texte de la date
 
     const initials = textOf(container, SELECTORS.dayContainer.initials);
