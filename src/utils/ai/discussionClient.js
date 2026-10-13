@@ -2042,8 +2042,8 @@ async function addAIChatClient() {
         showSystemNotice,
         showHelp: showHelpMessage,
         switchPatient: (arg) => {
-            if (!arg) { showSystemNotice('Usage : /patient <identifiant patient> (0 pour la conversation non nominative)' + ` (patient courant : ${chatPatientId ?? 0})`); return; }
-            showSystemNotice(`Commande /patient reçue (argument : "${arg}", patient courant : ${chatPatientId ?? 0}).`);
+            if (!arg) { showSystemNotice('Usage : /patient <identifiant patient> (0 pour la conversation non nominative)' +                         ` (conversation attachée à : ${chatPatientId ?? 0} ; patientId utilisé par les tool calls : ${resolveCurrentPatientId()})`); return; }
+                        showSystemNotice(`Commande /patient reçue (argument : "${arg}", conversation attachée à : ${chatPatientId ?? 0} ; patientId utilisé par les tool calls : ${resolveCurrentPatientId()}).`);
             const switched = switchToPatient(arg);
             showSystemNotice(switched
                 ? (normalizePatientId(arg) ? `Conversation associée au patient ${arg}.` : 'Retour à la conversation non nominative.')

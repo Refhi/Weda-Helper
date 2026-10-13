@@ -101,6 +101,15 @@ function getPdfParserPatientId() {
     return document.querySelector('#pdfParserPatientName')?.dataset.patientId || 0;
 }
 
+/**
+ * Détermine à chaque besoin le patient concerné, dans l'ordre : barre d'adresse, patient en
+ * surbrillance dans la grille d'import, patient sélectionné dans le PDF Parser, sinon 0.
+ * @returns {string|number}
+ */
+function resolveCurrentPatientId() {
+    return getCurrentPatientId() || getImportGridPatientId() || getPdfParserPatientId() || 0;
+}
+
 async function executeRequestedToolCall({ callId, name, args, patientId }) {
     // Signale régulièrement à l'engine que l'exécution est toujours en cours, afin qu'il remette
     // son timer à zéro (@see offscreenChatEngine.js keepaliveToolCall). Permet aux fonctions
@@ -111,7 +120,7 @@ async function executeRequestedToolCall({ callId, name, args, patientId }) {
     );
     try {
         if (!availableFunctions[name]) throw new Error(`fonction inconnue "${name}"`);
-        const result = await availableFunctions[name].execute(args, Number(patientId) ? patientId : getPdfParserPatientId());
+        const result = await availableFunctions[name].execute(args, resolveCurrentPatientId());
         sendOffscreenMessage({ type: 'toolCallResult', callId, result });
     } catch (error) {
         sendOffscreenMessage({ type: 'toolCallResult', callId, error: error.message || String(error) });
