@@ -1,12 +1,12 @@
 // Définition de substitutions NOEMIE par défaut
 
 const NoemieSubstitutionTableDefaut = JSON.stringify([
-["Toulouse",[ "CPAM TOULOUSE","1"]],
-["Bordeaux",[ "CPAM BORDEAUX","1"]],
-["Albi",[ "CPAM ALBI","1"]],
+[["Toulouse",["CPAM TOULOUSE","1"]],
+["Bordeaux",["CPAM BORDEAUX","1"]],
+["Albi",["CPAM ALBI","1"]],
 ["Mont de Marsan",["CPAM MONT DE MARSAN","1"]],
 ["CPAM de Rouen-Elbeuf-Dieppe-Seine-Maritime",["CPAM R.E.D.76","1"]],
-["CPAM du Bas-Rhin", ["CPAM DU BAS-RHIN - STRAS", "1"]],
+["CPAM du Bas-Rhin",["CPAM DU BAS-RHIN - STRAS","1"]],
 ["Pau",["CPAM PAU","1"]],
 ["Paris",["CPAM 75 PRESTATIONS","1"]],
 ["Agen",["CPAM AGEN","1"]],
@@ -25,16 +25,17 @@ const NoemieSubstitutionTableDefaut = JSON.stringify([
 ["Mutuelle Interiale",["INTERIALE - GESTION RO","1"]],
 ["Caisse de Ret.et Prev. Clercs et Emp. Notaires",["CRPCEN","1"]],
 ["CNMSS Affilies",["C.N.M.S.S. AGENCE COMPTABLE","3"]],
-["Organisme 91919000" ,[ "MGEN","3"]],
+["Organisme 91919000",["MGEN","3"]],
 ["MGP Bourg en Bresse",["SECURITE SOCIALE MGP","1"]],
-["Organisme 004110000",["CAISSE PREVOYANCE ET RETRAIT","1"]],
+["Organisme 004110000",["CAISSE PREVOYANCE ET RETRAIT","5"]],
 ["Organisme SO0010000",["CETIP CETIP","0"]],
-["Organisme SP0080000" ,[ "CETIP CETIP","0"]],
-["Organisme AL0010000",[ "ALMERYS","1"]],
+["Organisme SP0080000",["CETIP CETIP","0"]],
+["Organisme AL0010000",["ALMERYS","1"]],
 ["Organisme VM0030000",["HARMONIE MUTUELLES","1"]],
-["Organisme VM0010000",["VIAMEDIS","1"]],
+["Organisme VM0010000",["VIAMEDIS","4"]],
 ["Organisme AC0010000",["ACTIL SAS","3"]],
-["Organisme 01908000",["CPRPF RG","1"]],
+["Organisme 01908000",["CPRPF RG","3"]],
 ["Organisme CB1010000",["SWISSLIFE PREVOYANCE ET SANT","1"]],
-["Organisme NR0010000",["MNT SANTE PRESTATION RC BRED", "1"]]
+["Organisme NR0010000",["MNT SANTE PRESTATION RC BRED","1"]],
+["Organisme 00758091450010",["KORELIO PRESTATIONS","1"]]]
 ]);
