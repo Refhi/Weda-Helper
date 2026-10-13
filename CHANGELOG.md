@@ -6,7 +6,8 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 
 # [3.3] -
 ## A l'attention des Beta-Testeurs
-- /!\ La façon de désigner l'endpoint IA a été modifiée, merci de vérifier vos paramètres.
+- /!\ Ceci est une RC, qui sera poussée à tout le monde dans une semaine si vous ne constatez rien de problématique :)
+- merci pour vos retours !
 
 ## Ajouts :
 - [#665](https://github.com/Refhi/Weda-Helper/issues/665) - Ajout d'une fonction d'automatisation de la gestion des NOEMIE. Cette fonction vous permet d'associer un organisme de tiers payant tel qu'il apprait dans les retour NOEMIE à son nom tel qu'il apparait sur vos relevés bancaires (ex: Organisme 91919000 correspond à la MGEN). Elle permet également de définir un délai de paiement pour chaque organisme ce qui ajuste automatiquement la date de la recette lors du pointage des NOEMIE (ex: 3 jours pour la MGEN, 1 jour pour les CPAM). Des valeurs par défaut sont déjà présentes pour les caisses que @Abelvlpr rencontre dans sa pratique mais vous pouvez ajouter vos caisses et les partager avec le reste des utilisateurs directement dans les options de Weda-Helper !
