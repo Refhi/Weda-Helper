@@ -424,7 +424,7 @@ async function _insertAntecedent(data = {}, hooks = {}) {
 
 /**
  * Modifie un antécédent déjà existant, retrouvé par son nom (comme pour l'ajout d'une allergie).
- * Demande une confirmation à l'utilisateur en détaillant les champs qui vont changer avant d'appliquer les modifications.
+ * Prépare les modifications puis attend le choix de l'utilisateur sur le panneau affiché.
  * Peut être appelée depuis n'importe quelle page (voir withAntecedentContext).
  * @param {string} nomCible nom (de préférence exact, casse ignorée) de l'antécédent à modifier
  * @param {object} data mêmes champs que insertAntecedent, uniquement ceux fournis seront modifiés
@@ -440,16 +440,13 @@ async function _modifierAntecedent(nomCible, data = {}, { codifie } = {}) {
     await waitForElementInDocument(() => _atcdDoc, AntecedentFormSelectors.pannelAntecedents.panel, 3000)
     .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente du panneau des antécédents :", err));
 
-    const avant = lireEtatPanneauAntecedent();
-    const message = construireMessageConfirmationModification(avant, data);
-
-    if (!confirm(message)) {
-        _atcdDoc.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonAnnuler)?.click();
-        return { success: false, message: "Modification annulée par l'utilisateur." };
-    }
-
     remplirPaneauAntecedent(data);
-    _atcdDoc.querySelector(AntecedentFormSelectors.pannelAntecedents.boutonValider)?.click();
+
+    const choix = await attendreValidationUtilisateur({
+        attendu: 'valider',
+        consigne: "Weda-Helper a préparé les modifications de cet antécédent.\nVérifiez-les, puis cliquez sur « Valider » pour les enregistrer.\nPour abandonner, cliquez sur « Annuler » (ou « Supprimer » si indisponible)."
+    });
+    if (choix !== 'valider') return { success: false, message: "Modification annulée par l'utilisateur." };
     return { success: true };
 }
 
@@ -571,18 +568,6 @@ function lireEtatPanneauAntecedent() {
     });
 
     return etat;
-}
-
-/**
- * Construit le message de confirmation listant les champs qui changeraient (avant -> après).
- */
-function construireMessageConfirmationModification(avant, apres) {
-    const lignes = Object.keys(apres)
-        .filter(champ => champ !== 'onglet' && String(avant[champ]) !== String(apres[champ]))
-        .map(champ => `${champ} : "${avant[champ] ?? ''}" → "${apres[champ]}"`);
-
-    const intro = `Modifier l'antécédent "${avant.nom ?? ''}" ?`;
-    return lignes.length ? `${intro}\n\n${lignes.join('\n')}` : intro;
 }
 
 //----------------------------------------------------------------------------------------
@@ -1054,4 +1039,3 @@ function ajouterBoutonTest() {
 addTweak("/FolderMedical/AntecedentForm.aspx", "boutonTestAtcd", function() {
     ajouterBoutonTest();
 });
-
