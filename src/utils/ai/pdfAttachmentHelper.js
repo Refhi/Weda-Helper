@@ -10,6 +10,8 @@
 
 /** Nombre minimum de caractères "normaux" (lettres/chiffres) requis pour considérer un texte extrait de PDF comme lisible. */
 const MIN_READABLE_PDF_CHAR_COUNT = 20;
+/** Nombre minimum de caractères "normaux" pour qu'une page d'un PDF multipage soit envoyée en texte : en dessous, la page (scan avec simple en-tête/pied de page, page quasi vide...) est envoyée en image. */
+const MIN_READABLE_PDF_PAGE_CHAR_COUNT = 150;
 /** Proportion minimale de caractères "normaux" dans le texte extrait, en dessous de laquelle on considère le texte comme du charabia (police non standard/CID mal mappée, etc.). */
 const MIN_READABLE_PDF_CHAR_RATIO = 0.5;
 /** Nombre maximum de pages converties en images pour un PDF scanné (sans texte lisible), afin d'éviter d'envoyer un nombre excessif d'images au modèle. */
@@ -22,7 +24,7 @@ const MAX_SCANNED_PDF_PAGES_AS_IMAGES = 50;
  * @param {string} text
  * @returns {boolean}
  */
-function isPdfTextReadable(text) {
+function isPdfTextReadable(text, minCharCount = MIN_READABLE_PDF_CHAR_COUNT) {
     if (!text) return false;
     // On retire tout ce qui est entre crochets [WedaAutoParse...] et qui a été rajouté par Weda-Helper
     const cleanedText = text.replace(/\[WedaAutoParse.*?\]/g, '');
@@ -31,7 +33,7 @@ function isPdfTextReadable(text) {
     if (!trimmed) return false;
     // Lettres (avec accents) et chiffres : un texte "normal" en est majoritairement composé.
     const normalChars = trimmed.match(/[a-zA-Z0-9À-ÿ]/g) || [];
-    if (normalChars.length < MIN_READABLE_PDF_CHAR_COUNT) return false;
+    if (normalChars.length < minCharCount) return false;
     const isReadable = (normalChars.length / trimmed.length) >= MIN_READABLE_PDF_CHAR_RATIO;
     console.log('[pdfAttachmentHelper] Texte PDF lisible :', isReadable, '(', normalChars.length, '/', trimmed.length, ')', 'Texte :', trimmed);
     return isReadable;
@@ -41,14 +43,14 @@ function isPdfTextReadable(text) {
  * Convertit les pages d'un PDF (typiquement un document scanné, sans texte extractible) en
  * images PNG encodées en data URL, une par page (dans la limite de MAX_SCANNED_PDF_PAGES_AS_IMAGES).
  * Réutilise pdfjsLib et renderPagesToCanvases (@see pdfParser.js).
- * @param {string} pdfUrl
+ * @param {object} pdf - Document PDF.js déjà chargé (@see loadPdfDocument, pdfParser.js).
+ * @param {number[]|null} [pageNumbers] - Pages (numérotées à partir de 1) à rendre ; toutes par défaut.
  * @returns {Promise<string[]>}
  */
-async function renderPdfPagesAsImageDataUrls(pdfUrl) {
-    const pdf = await pdfjsLib.getDocument(pdfUrl).promise;
-    const pageCount = Math.min(pdf.numPages, MAX_SCANNED_PDF_PAGES_AS_IMAGES);
+async function renderPdfPagesAsImageDataUrls(pdf, pageNumbers = null) {    const numbers = (pageNumbers || Array.from({ length: pdf.numPages }, (_, i) => i + 1))
+        .slice(0, MAX_SCANNED_PDF_PAGES_AS_IMAGES);
     const pages = [];
-    for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
+    for (const pageNum of numbers) {
         pages.push(await pdf.getPage(pageNum));
     }
     const canvases = await renderPagesToCanvases(pages);
@@ -56,19 +58,49 @@ async function renderPdfPagesAsImageDataUrls(pdfUrl) {
 }
 
 /**
- * Point d'entrée unique pour lire un pdf destiné à l'IA : extrait son texte, et si celui-ci est
- * absent/illisible (scan), se rabat sur un rendu de ses pages en images. Utilisé aussi bien pour
- * les pdf uploadés manuellement par l'utilisateur (discussionClient.js) que pour les pdf du dossier
- * patient lus via function calling (callableFunctions.js).
- * @param {string} pdfUrl - URL ou object URL du pdf.
- * @returns {Promise<{kind: 'text', text: string} | {kind: 'images', images: string[]}>}
+ * Point d'entrée unique pour lire un pdf destiné à l'IA : extrait son texte page par page ; les pages
+ * au texte lisible sont envoyées en texte, les autres (scan, police non standard...) en images.
+ * Utilisé aussi bien pour les pdf uploadés manuellement par l'utilisateur (discussionClient.js) que
+ * pour les pdf du dossier patient lus via function calling (callableFunctions.js).
+ * @param {string} pdfSource - URL (ou object URL) du pdf.
+ * @returns {Promise<{text: string|null, images: string[], imagePages: number[]}>}
+ * `text` : texte des pages lisibles (préfixées par leur numéro si certaines pages sont en images) ;
+ * `images` / `imagePages` : rendu et numéros (à partir de 1) des pages illisibles.
  */
-async function resolvePdfAttachment(pdfUrl) {
-    const text = await extractTextFromPDF(pdfUrl);
-    if (isPdfTextReadable(text)) {
-        return { kind: 'text', text };
+async function resolvePdfAttachment(pdfSource) {
+    const pdf = await loadPdfDocument(pdfSource);
+    const pageTexts = await extractPageTextsFromPdfDocument(pdf);
+    const minChars = pageTexts.length > 1 ? MIN_READABLE_PDF_PAGE_CHAR_COUNT : undefined;
+    const readablePages = [];
+    const imagePages = [];
+    pageTexts.forEach((pageText, index) => {
+        (isPdfTextReadable(pageText, minChars) ? readablePages : imagePages).push(index + 1);
+    });
+    console.log('[pdfAttachmentHelper] Pages en texte :', readablePages, '; pages en images :', imagePages);
+
+    if (imagePages.length === 0) {
+        return { text: pageTexts.join('\n'), images: [], imagePages };
     }
-    console.warn('[pdfAttachmentHelper] Texte extrait absent ou illisible, rendu des pages en images.');
-    const images = await renderPdfPagesAsImageDataUrls(pdfUrl);
-    return { kind: 'images', images };
+
+    const images = await renderPdfPagesAsImageDataUrls(pdf, imagePages);
+    const text = readablePages.length === 0
+        ? null
+        : readablePages.map(pageNum => `--- Page ${pageNum} ---\n${pageTexts[pageNum - 1]}`).join('\n');
+    return { text, images, imagePages };
+}
+
+/**
+ * Convertit le résultat de resolvePdfAttachment en pièces jointes de chat (@see discussionClient.js
+ * buildUserMessageContent) : une pièce texte, et une image par page illisible.
+ * @param {{text: string|null, images: string[], imagePages: number[]}} resolved
+ * @param {string} fileName
+ * @returns {Array<{kind: 'text'|'image', name: string, extractedText?: string, dataUrl?: string}>}
+ */
+function pdfAttachmentsFromResolved(resolved, fileName) {
+    const attachments = [];
+    if (resolved.text) attachments.push({ kind: 'text', name: fileName, extractedText: resolved.text });
+    resolved.images.forEach((dataUrl, index) => {
+        attachments.push({ kind: 'image', name: `${fileName} (page ${resolved.imagePages[index]})`, dataUrl });
+    });
+    return attachments;
 }

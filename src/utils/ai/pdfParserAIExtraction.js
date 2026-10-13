@@ -67,9 +67,9 @@ function resolvePendingPdfParserFields(fields) {
  * seules données regex.
  * @param {object} extractedData - Données déjà extraites, utilisées pour déterminer les champs manquants (non modifié).
  * @param {string} fullText - Texte complet du PDF, envoyé au modèle si suffisamment lisible.
- * @param {string|null} urlPDF - URL du PDF (@see extractBasePdfData), utilisée pour envoyer le PDF
- * complet en pièce jointe (@see discussionClient.js sendPromptWithFile) quand le texte extrait est
- * absent ou illisible (PDF scanné, police non standard...).
+ * @param {string|null} urlPDF - URL du PDF (@see extractBasePdfData), relue page par page pour envoyer
+ * en images (@see discussionClient.js sendPromptWithAttachments) les pages dont le texte est absent
+ * ou illisible (PDF scanné, police non standard...).
  * @param {string[]|null} [possibleDocumentTypes] - Valeurs de classification réellement disponibles dans
  * Weda (@see features/pdfParser.js initDocumentTypes), récupérées par l'appelant au moment de l'appel.
  * Utilisée uniquement en mode complet (PdfParserAutoAIFullMode), pour contraindre le champ documentType.
@@ -130,19 +130,24 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
     const extraInstructions = externalTool?.extraInstructions ? `\n\n${externalTool.extraInstructions}` : '';
     const instructions = `${basePrompt}${categorizationContext}${extraInstructions}\n\nPour répondre, appelle OBLIGATOIREMENT la fonction ${toolName}. Les dates DOIVENT être au format JJ/MM/AAAA. Voici les champs à compléter :\n${fieldsDescription}`;
 
-    // Texte extrait absent/illisible (PDF scanné, police non standard...) : on envoie le PDF
-    // complet en pièce jointe (@see isPdfTextReadable, discussionClient.js) plutôt que le texte,
-    // pour laisser le modèle l'analyser lui-même (OCR via image si nécessaire).
-    const { pdfText = fullText, messageBody = null } = aiSources;
-    const textReadable = isPdfTextReadable(pdfText);
+    // Pages sans texte lisible (PDF scanné, police non standard...) : elles partent en images avec les
+    // pages lisibles en texte (@see resolvePdfAttachment), pour laisser le modèle les analyser lui-même.
+    const { messageBody = null } = aiSources;
+    let resolvedPdf = null;
+    if (urlPDF) {
+        try {
+            resolvedPdf = await resolvePdfAttachment(urlPDF);
+        } catch (error) {
+            console.warn('[pdfParserAIExtraction] Lecture page par page du PDF impossible, envoi du texte extrait seul :', error);
+        }
+    }
     let sendToChatApi;
-    if (!textReadable && urlPDF) {
-        console.log('[pdfParserAIExtraction] Texte du PDF absent ou illisible, envoi du PDF complet en pièce jointe.');
+    if (resolvedPdf?.images.length > 0) {
         const bodyContext = messageBody
             ? `\n\n--- Corps du message accompagnant le PDF ---\n${messageBody}\n--- Fin du corps du message ---`
             : '';
-        const pdfFile = new File([await pdfBlob(urlPDF)], 'document.pdf', { type: 'application/pdf' });
-        sendToChatApi = () => chatApi.sendPromptWithFile(instructions + bodyContext, pdfFile);
+        const attachments = pdfAttachmentsFromResolved(resolvedPdf, 'document.pdf');
+        sendToChatApi = () => chatApi.sendPromptWithAttachments(instructions + bodyContext, attachments);
     } else {
         const prompt = `${instructions}\n\n--- Texte du document ---\n${fullText}\n--- Fin du texte du document ---`;
         sendToChatApi = () => chatApi.sendPrompt(prompt);

@@ -108,8 +108,8 @@ async function lirePiecesJointesPdf(data) {
         if (!attachment.url) continue;
         try {
             const resolved = await resolvePdfAttachment(attachment.url);
-            if (resolved.kind === 'text') attachment.pdfText = resolved.text;
-            else attachment.images = resolved.images;
+            if (resolved.text) attachment.pdfText = resolved.text;
+            if (resolved.images.length > 0) attachment.images = resolved.images;
         } catch (e) {
             console.error(`[recoverPatientData] Erreur lors de la lecture du pdf (fileId=${attachment.fileId}) :`, e);
             attachment.pdfText = null;
@@ -212,7 +212,10 @@ async function lirePdfDepuisIframesPage() {
     for (const url of urls) {
         try {
             const resolved = await resolvePdfAttachment(url);
-            resultats.push(resolved.kind === 'text' ? { url, pdfText: resolved.text } : { url, images: resolved.images });
+            const entry = { url };
+            if (resolved.text) entry.pdfText = resolved.text;
+            if (resolved.images.length > 0) entry.images = resolved.images;
+            resultats.push(entry);
         } catch (e) {
             console.error(`[pageContext] Erreur lors de la lecture du pdf (url=${url}) :`, e);
             resultats.push({ url, error: `Erreur lors de la lecture du document : ${e.message || e}` });

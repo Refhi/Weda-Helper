@@ -1383,25 +1383,38 @@ async function findPdfUrl(iframesElements) {
     });
 }
 
-// Extraction du texte du PDF en 2 parties
+// Extraction du texte du PDF (toutes pages concaténées)
 async function extractTextFromPDF(pdfUrl) {
     console.log('[pdfParser] Début de l\'extraction du texte du PDF depuis', pdfUrl);
-    
-    let pdf;
+    const pdf = await loadPdfDocument(pdfUrl);
+    return (await extractPageTextsFromPdfDocument(pdf)).join('\n');
+}
+
+/**
+ * Charge un document PDF.js depuis une URL (y compris downloadAttachment, qui nécessite les cookies).
+ * @param {string} pdfUrl
+ */
+async function loadPdfDocument(pdfUrl) {
     if (pdfUrl.includes('base64')) { // Pas certain que cette partie soit encore utile, mais je laisse dans le doute
         pdfUrl = pdfUrl.replace('data:application/pdf;base64,', '');
         pdfUrl = atob(pdfUrl);
-        pdf = await pdfjsLib.getDocument({ data: pdfUrl }).promise;
+        return pdfjsLib.getDocument({ data: pdfUrl }).promise;
     } else if (pdfUrl.includes('downloadAttachment')) { // Pour les échanges sécurisés dans certains cas
         console.log('[pdfParser] pdfUrl downloadAttachment détecté');
-        pdf = await pdfjsLib.getDocument({
+        return pdfjsLib.getDocument({
             url: pdfUrl,
             withCredentials: true, // Indispensable pour les échanges sécurisés
         }).promise;
-
-    } else {
-        pdf = await pdfjsLib.getDocument(pdfUrl).promise;
     }
+    return pdfjsLib.getDocument(pdfUrl).promise;
+}
+
+/**
+ * Extrait le texte de chaque page d'un document PDF.js (une chaîne par page, vide si la page n'a pas de texte).
+ * @param {object} pdf
+ * @returns {Promise<string[]>}
+ */
+async function extractPageTextsFromPdfDocument(pdf) {
     const maxPages = pdf.numPages;
     const pagePromises = [];
     for (var i = 1; i <= maxPages; i++) {
@@ -1481,10 +1494,9 @@ async function extractTextFromPDF(pdfUrl) {
     }
 
     const allPageTexts = await Promise.all(pagePromises);
-    const fullText = allPageTexts.join('\n');
     console.log(`[pdfParser] a extrait ${allPageTexts.length} pages`);
 
-    return fullText;
+    return allPageTexts;
 }
 
 

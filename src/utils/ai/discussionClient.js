@@ -1113,16 +1113,7 @@ async function addAIChatClient() {
         if (lowerName.endsWith('.pdf') || file.type === 'application/pdf') {
             const objectUrl = URL.createObjectURL(file);
             try {
-                const resolved = await resolvePdfAttachment(objectUrl);
-                if (resolved.kind === 'text') {
-                    return [{ kind: 'text', name: file.name, extractedText: resolved.text }];
-                }
-                console.warn(`[discussionClient] Texte extrait de "${file.name}" absent ou illisible, envoi des pages sous forme d'images.`);
-                return resolved.images.map((dataUrl, index) => ({
-                    kind: 'image',
-                    name: resolved.images.length > 1 ? `${file.name} (page ${index + 1}/${resolved.images.length})` : file.name,
-                    dataUrl
-                }));
+                return pdfAttachmentsFromResolved(await resolvePdfAttachment(objectUrl), file.name);
             } finally {
                 URL.revokeObjectURL(objectUrl);
             }
@@ -2130,24 +2121,13 @@ async function addAIChatClient() {
         submitUserMessage(userText, attachmentsForThisMessage);
     });
 
-    /**
-     * Envoie un prompt accompagné d'un fichier à analyser (ex: PDF), pour les scripts externes
-     * utilisant l'API publiée par publishChatApi (@see readAttachmentFile pour les formats
-     * supportés). Réutilise le même traitement des pièces jointes que l'envoi manuel via le trombone.
-     * @param {string} text
-     * @param {File} file
-     */
-    async function submitPromptWithFile(text, file) {
-        const attachments = await readAttachmentFile(file);
-        submitUserMessage(text, attachments);
-    }
-
     // Publie le pont utilisable par d'autres scripts (ex: pdfParserAIExtraction.js) pour envoyer un
     // prompt "comme si l'utilisateur l'avait tapé" (visible dans le chat, réponse via tool call) et
     // rattacher la conversation au bon patient une fois celui-ci identifié.
     publishChatApi({
         sendPrompt: (text) => submitUserMessage(text, []),
-        sendPromptWithFile: submitPromptWithFile,
+        // Prompt accompagné de pièces jointes déjà prêtes (@see pdfAttachmentsFromResolved).
+        sendPromptWithAttachments: (text, attachments) => submitUserMessage(text, attachments),
         sendPromptWhenIdle,
         // Renvoie une Promise résolue une fois le prochain stateSync appliqué (ou immédiatement si
         // aucun changement n'était nécessaire) : permet à l'appelant (ex: pdfParserAIExtraction.js)
