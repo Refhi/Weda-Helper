@@ -34,6 +34,7 @@ const toolChains = (() => {
     /** Mémorise dans ctx.codesValides tous les codes d'un résultat de rechercherCim10 (liste simple ou groupée). */
     function enregistrerCodes(ctx, res) {
         ctx.codesValides ??= new Set();
+        ctx.rechercheCim10Faite = true;
         const lignes = Array.isArray(res) ? res.flatMap(r => r.resultats ?? r) : [];
         lignes.forEach(ligne => ligne.code && ctx.codesValides.add(ligne.code));
     }
@@ -64,9 +65,10 @@ const toolChains = (() => {
         }
     };
 
-    const REGLES_ANTECEDENTS = "Règles : n'ajoute pas ce qui existe déjà ; pour un diagnostic, préfère searchType 'CIM10' avec un code issu des résultats "
-        + "de recherche, le moins spécifique que nécessaire (sinon antécédent libre, sans searchType) ; pour une allergie, searchType 'allergieMolecule' "
-        + "(nom de molécule) ou 'allergiePrinceps' (nom commercial) ; pour 'modifier'/'supprimer', nomCible est le titre exact d'un antécédent existant.";
+    const REGLES_ANTECEDENTS = "Règles : n'ajoute pas ce qui existe déjà ; tout antécédent s'ajoute par défaut en CIM-10 (searchType 'CIM10') avec un code issu "
+        + "d'une recherche, le moins spécifique que nécessaire ; l'antécédent libre (sans searchType) n'est permis qu'après une recherche CIM-10 dont aucun "
+        + "résultat ne convient ; pour une allergie, searchType 'allergieMolecule' (nom de molécule) ou 'allergiePrinceps' (nom commercial) ; "
+        + "pour 'modifier'/'supprimer', nomCible est le titre exact d'un antécédent existant.";
 
     /** Contrôle les opérations de traiterAntecedents : codes CIM-10 issus d'une recherche, cibles existantes, actions permises. */
     function verifierOperationsAntecedents(args, ctx, nomOutil) {
@@ -76,7 +78,9 @@ const toolChains = (() => {
         const invalides = args.operations.flatMap(operation => {
             const { action, nomCible, data } = operation || {};
             if (action === 'ajouter') {
-                return data?.searchType === 'CIM10' && !ctx.codesValides?.has(data.nom) ? [{ operation, motif: "code CIM-10 absent des résultats de recherche" }] : [];
+                if (data?.searchType === 'CIM10') return ctx.codesValides?.has(data.nom) ? [] : [{ operation, motif: "code CIM-10 absent des résultats de recherche" }];
+                if (!data?.searchType && !ctx.rechercheCim10Faite) return [{ operation, motif: "antécédent libre refusé : l'ajout se fait par défaut en CIM-10, cherche d'abord un code avec rechercherCim10" }];
+                return [];
             }
             if (action === 'modifier' || action === 'supprimer') {
                 return nomCible && titres.some(titre => titre.startsWith(nomCible.toLowerCase())) ? [] : [{ operation, motif: "nomCible ne correspond à aucun antécédent existant" }];
@@ -85,6 +89,17 @@ const toolChains = (() => {
         });
         return invalides.length ? `Opérations refusées : ${JSON.stringify(invalides)}. Refais l'appel.` : null;
     }
+
+    /** Étape finale des chaînes d'antécédents : recherche CIM-10 possible tant que traiterAntecedents n'est pas appelé. */
+    const etapeAppliquerAntecedents = {
+        type: 'jugement',
+        outils: ['rechercherCim10', 'traiterAntecedents'],
+        termine: ['traiterAntecedents'],
+        toolChoice: 'required',
+        verifier: verifierOperationsAntecedents,
+        apresAppel: (nomOutil, _args, resultat, ctx) => { if (nomOutil === 'rechercherCim10') enregistrerCodes(ctx, resultat); },
+        maxEssais: 2
+    };
 
     return {
         convertirAntecedentsCim10: {
@@ -161,11 +176,11 @@ const toolChains = (() => {
                 type: "function",
                 function: {
                     name: "modifierAntecedents",
-                    description: "Ajoute, modifie ou supprime des antécédents ou allergies du patient actuel, d'après la demande de l'utilisateur. Un appel suffit : la lecture des antécédents existants et la vérification des codes CIM-10 sont automatiques. Pour convertir des antécédents libres en CIM-10, utiliser convertirAntecedentsCim10.",
+                    description: "Ajoute, modifie ou supprime des antécédents ou allergies du patient actuel, d'après la demande de l'utilisateur. Un appel suffit : la lecture des antécédents existants et la vérification des codes CIM-10 sont automatiques. Les antécédents sont ajoutés en CIM-10 par défaut. Pour convertir des antécédents libres en CIM-10, utiliser convertirAntecedentsCim10.",
                     parameters: {
                         type: "object",
                         properties: {
-                            termesCim10: { type: "array", items: { type: "string" }, description: "Optionnel : diagnostics à ajouter, dont les codes CIM-10 candidats seront recherchés d'avance." }
+                            termesCim10: { type: "array", items: { type: "string" }, description: "Diagnostics à ajouter (codés en CIM-10 par défaut) : les codes candidats sont recherchés d'avance. À renseigner dès qu'un ajout est demandé." }
                         }
                     }
                 }
@@ -175,18 +190,12 @@ const toolChains = (() => {
                 etapeLireAntecedents,
                 etapeChercherCodes,
                 {
+                    ...etapeAppliquerAntecedents,
                     id: 'appliquer',
-                    type: 'jugement',
-                    outils: ['rechercherCim10', 'traiterAntecedents'],
-                    termine: ['traiterAntecedents'],
-                    toolChoice: 'required',
                     consigne: ctx => `Antécédents actuels du patient : ${JSON.stringify(compacterAntecedents(ctx.antecedents))}\n`
                         + (ctx.candidats ? `Codes CIM-10 candidats : ${JSON.stringify(ctx.candidats)}\n` : '')
                         + `Réalise maintenant la demande de l'utilisateur en appelant traiterAntecedents UNE seule fois (opérations dans l'ordre). `
-                        + `Si tu as besoin d'un code CIM-10 qui n'a pas été recherché, appelle d'abord rechercherCim10. ${REGLES_ANTECEDENTS}`,
-                    verifier: verifierOperationsAntecedents,
-                    apresAppel: (nomOutil, _args, resultat, ctx) => { if (nomOutil === 'rechercherCim10') enregistrerCodes(ctx, resultat); },
-                    maxEssais: 2
+                        + `Si tu as besoin d'un code CIM-10 qui n'a pas été recherché, appelle d'abord rechercherCim10. ${REGLES_ANTECEDENTS}`
                 }
             ]
         },
@@ -248,16 +257,12 @@ const toolChains = (() => {
                 },
                 etapeChercherCodes,
                 {
+                    ...etapeAppliquerAntecedents,
                     id: 'appliquer',
-                    type: 'jugement',
                     si: ctx => ctx.elements?.length > 0,
-                    outils: ['traiterAntecedents'],
-                    toolChoice: 'traiterAntecedents',
                     consigne: ctx => `Éléments retenus : ${JSON.stringify(ctx.elements)}\n`
                         + (ctx.candidats ? `Codes CIM-10 candidats : ${JSON.stringify(ctx.candidats)}\n` : '')
-                        + `Applique-les en appelant traiterAntecedents UNE seule fois (opérations dans l'ordre). ${REGLES_ANTECEDENTS}`,
-                    verifier: verifierOperationsAntecedents,
-                    maxEssais: 2
+                        + `Applique-les en appelant traiterAntecedents UNE seule fois (opérations dans l'ordre). ${REGLES_ANTECEDENTS}`
                 }
             ]
         },
