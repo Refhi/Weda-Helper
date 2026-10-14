@@ -829,7 +829,8 @@ async function handleToolCalls(responseMessage, messages, onToolCall, executeToo
                 updatedMessages.push({ role: "tool", tool_call_id: toolCall.id, name: fnName, content: fnResult });
                 continue;
             }
-            const prerequis = availableFunctions[fnName]?.prerequis?.(fnArgs)
+            // Les étapes mécaniques d'une chaîne ont déjà fourni les données requises : pas de prérequis pour son étape de jugement.
+            const prerequis = !etapeCourante(chaine)?.tools.includes(fnName) && availableFunctions[fnName]?.prerequis?.(fnArgs)
                 .find(req => !prerequisPresentDansHistorique(updatedMessages, req));
             if (prerequis) {
                 // Appel non exécuté : on fournit au modèle les données manquantes et on lui demande de refaire son appel.

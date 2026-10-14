@@ -57,20 +57,21 @@ const toolChains = {
             {
                 id: 'choisirCodes',
                 type: 'jugement',
-                tools: ['appliquerConversionsCim10'],
-                toolChoice: 'appliquerConversionsCim10', // forcé pour cette étape seulement
+                tools: ['traiterAntecedents'],
+                toolChoice: 'traiterAntecedents', // forcé pour cette étape seulement
                 consigne: ctx => `Étapes préparatoires terminées : ${ctx.libres.length} antécédent(s) libre(s) lu(s) et codes CIM-10 candidats recherchés.\n`
                     + `Pour chaque antécédent, choisis le code le plus pertinent et le moins spécifique que nécessaire parmi SES candidats `
-                    + `(ne pas préciser un germe ou un détail non mentionné), puis appelle appliquerConversionsCim10 UNE seule fois. `
-                    + `Ignore les antécédents dont aucun candidat ne convient réellement (liste vide si aucun).\n`
+                    + `(ne pas préciser un germe ou un détail non mentionné), puis appelle traiterAntecedents UNE seule fois, avec une opération `
+                    + `{action:'convertirCim10', nomCible: <titre exact de l'antécédent>, data:{nom: <code choisi>}} par antécédent. `
+                    + `Ignore les antécédents dont aucun candidat ne convient réellement (operations vide si aucun).\n`
                     + JSON.stringify(ctx.candidats),
                 // Erreur renvoyée au modèle dans l'étape elle-même, sans tour perdu : le code doit provenir des candidats de cet antécédent.
                 verifier: (args, ctx) => {
-                    const conversions = Array.isArray(args?.conversions) ? args.conversions : null;
-                    if (!conversions) return "'conversions' doit être un tableau. Refais l'appel.";
-                    const invalides = conversions.filter(c => !ctx.codesParTitre[c?.nomCible]?.has(c?.code));
+                    const operations = Array.isArray(args?.operations) ? args.operations : null;
+                    if (!operations) return "'operations' doit être un tableau. Refais l'appel.";
+                    const invalides = operations.filter(o => o?.action !== 'convertirCim10' || !ctx.codesParTitre[o.nomCible]?.has(o.data?.nom));
                     return invalides.length
-                        ? `Conversions refusées (nomCible absent de la liste ou code absent des candidats de cet antécédent) : ${JSON.stringify(invalides)}. Refais l'appel.`
+                        ? `Opérations refusées (seule l'action 'convertirCim10' est permise ici, avec un nomCible de la liste et un code parmi les candidats de cet antécédent) : ${JSON.stringify(invalides)}. Refais l'appel.`
                         : null;
                 },
                 maxEssais: 2
@@ -82,12 +83,11 @@ const toolChains = {
 const TOOL_CHOICES_RESERVES = ['auto', 'none', 'required'];
 
 /**
- * Définitions envoyées par défaut au modèle : les outils du registre (hors étapes internes de chaîne) et les points
- * d'entrée des chaînes.
+ * Définitions envoyées par défaut au modèle : les outils du registre et les points d'entrée des chaînes.
  */
 function listerDefinitionsOutils() {
     return [
-        ...Object.values(availableFunctions).filter(f => !f.interne).map(f => f.definition),
+        ...Object.values(availableFunctions).map(f => f.definition),
         ...Object.values(toolChains).map(c => c.definition)
     ];
 }

@@ -471,7 +471,7 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "traiterAntecedents",
-                description: "Ajoute, modifie ou supprime séquentiellement un ou plusieurs antécédents du dossier du patient actuel (pour convertir des antécédents libres en CIM-10, utiliser convertirAntecedentsCim10). Les opérations 'modifier'/'supprimer' déclenchent chacune leur propre confirmation utilisateur avant application. Renvoie un tableau de résultats {action, nomCible, success, message}, dans le même ordre que les opérations fournies. Doit OBLIGATOIREMENT être appelé pour toute action sur des antécédents.",
+                description: "Ajoute, modifie, supprime ou convertit séquentiellement un ou plusieurs antécédents du dossier du patient actuel (pour convertir des antécédents libres en CIM-10, appeler convertirAntecedentsCim10 plutôt que l'action 'convertirCim10' directement). Les opérations 'modifier'/'supprimer' déclenchent chacune leur propre confirmation utilisateur avant application. Renvoie un tableau de résultats {action, nomCible, success, message}, dans le même ordre que les opérations fournies. Doit OBLIGATOIREMENT être appelé pour toute action sur des antécédents.",
                 parameters: {
                     type: "object",
                     properties: {
@@ -483,20 +483,20 @@ const availableFunctions = {
                                 properties: {
                                     action: {
                                         type: "string",
-                                        enum: ["ajouter", "modifier", "supprimer"],
+                                        enum: ["ajouter", "modifier", "supprimer", "convertirCim10"],
                                         description: "Type d'opération à effectuer."
                                     },
                                     nomCible: {
                                         type: "string",
-                                        description: "Requis pour 'modifier'/'supprimer' : nom (ou début du nom) de l'antécédent existant ciblé."
+                                        description: "Requis pour 'modifier'/'supprimer'/'convertirCim10' : nom (ou début du nom) de l'antécédent existant ciblé."
                                     },
                                     codifie: {
                                         type: "boolean",
-                                        description: "Optionnel pour 'modifier'/'supprimer' : true pour ne cibler que l'antécédent codifié (CIM-10, code entre crochets dans recoverPatientData), false pour ne cibler que l'antécédent libre. Utile quand deux antécédents portent le même nom. Absent = indifférent."
+                                        description: "Optionnel pour 'modifier'/'supprimer' : true pour ne cibler que l'antécédent codifié (CIM-10, code entre crochets dans recoverPatientData), false pour ne cibler que l'antécédent libre. Utile quand deux antécédents portent le même nom. Absent = indifférent. Ignoré pour 'convertirCim10' (cible toujours l'antécédent libre)."
                                     },
                                     data: {
                                         type: "object",
-                                        description: "Requis pour 'ajouter'/'modifier' (ignoré pour 'supprimer'). Pour 'ajouter' : searchType ('CIM10' (à privilégier)/'allergieMolecule'(à privilégier si le nom d'allergie à rechercher semble être un nom de molécule)/'allergiePrinceps' (à privilégier si le nom d'allergie à rechercher semble être un nom commercial), absent = antécédent libre), nom (saisie libre, terme de recherche, ou code CIM-10 exact selon searchType). Pour 'modifier' : seuls les champs fournis sont modifiés. Propriétés communes : onglet (libellé exact de l'onglet cible, ex. 'ANTÉCÉDENTS GYNECOLOGIQUES'), commentaire, dateDebut/dateFin/datePonctuelle/dateAlerte (jj/mm/aaaa), couleur (hexadécimal), validation ('1'=Confirmé,'2'=Hypothétique,'3'=Non confirmé,'4'=Exclu,'5'=Désactivé), lateralite ('0'=non spécifié,'1'=Droite,'2'=Gauche,'3'=D + G), tri (ordre numérique), isImportant, isHeritage, isPrive, isExclureVsm (booléens). Le commentaire est la description de l'antécédent ou de l'allergie, etc.'.",
+                                        description: "Requis pour 'ajouter'/'modifier'/'convertirCim10' (ignoré pour 'supprimer'). Pour 'convertirCim10' : seul nom (code CIM-10 exact) est utilisé. Pour 'ajouter' : searchType ('CIM10' (à privilégier)/'allergieMolecule'(à privilégier si le nom d'allergie à rechercher semble être un nom de molécule)/'allergiePrinceps' (à privilégier si le nom d'allergie à rechercher semble être un nom commercial), absent = antécédent libre), nom (saisie libre, terme de recherche, ou code CIM-10 exact selon searchType). Pour 'modifier' : seuls les champs fournis sont modifiés. Propriétés communes : onglet (libellé exact de l'onglet cible, ex. 'ANTÉCÉDENTS GYNECOLOGIQUES'), commentaire, dateDebut/dateFin/datePonctuelle/dateAlerte (jj/mm/aaaa), couleur (hexadécimal), validation ('1'=Confirmé,'2'=Hypothétique,'3'=Non confirmé,'4'=Exclu,'5'=Désactivé), lateralite ('0'=non spécifié,'1'=Droite,'2'=Gauche,'3'=D + G), tri (ordre numérique), isImportant, isHeritage, isPrive, isExclureVsm (booléens). Le commentaire est la description de l'antécédent ou de l'allergie, etc.'.",
                                         properties: {
                                             searchType: { type: "string", enum: ["CIM10", "allergieMolecule", "allergiePrinceps"] },
                                             nom: { type: "string", description: "Texte saisi tel quel dans la recherche Weda : pour 'allergieMolecule'/'allergiePrinceps', UNIQUEMENT le nom de la molécule ou du médicament (ex. 'fluoxétine'), sans mot ajouté (pas de 'allergie', ni parenthèses ni précision) ; pour 'CIM10', le code exact ; sinon le libellé de l'antécédent libre." },
@@ -527,7 +527,7 @@ const availableFunctions = {
         },
         // Référence indirecte : traiterAntecedentsBatch n'existe que côté content script (dataInserterATCD.js),
         // pas dans la page offscreen qui ne fait que lire les `definition` de ce registre.
-        execute: ({ operations = [] } = {}) => traiterAntecedentsBatch(operations),
+        execute: ({ operations = [] } = {}) => operations.length ? traiterAntecedentsBatch(operations) : [],
         // Appels préalables imposés par handleToolCalls : fonction (args de l'appel) => liste de { outil, args, verifie }.
         // `args` sert à forcer le prérequis s'il manque ; `verifie(argsDeLAppel, resultat)` valide un appel déjà présent dans l'historique.
         prerequis: ({ operations = [] } = {}) => {
@@ -547,38 +547,6 @@ const availableFunctions = {
             }
             return requis;
         }
-    },
-    // Étape interne de la chaîne convertirAntecedentsCim10 (@see toolChains.js) : jamais proposée au modèle hors chaîne.
-    appliquerConversionsCim10: {
-        interne: true,
-        definition: {
-            type: "function",
-            function: {
-                name: "appliquerConversionsCim10",
-                description: "Convertit en antécédents codés CIM-10 des antécédents libres existants. Une entrée par antécédent à convertir ; tableau vide si aucun candidat ne convient.",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        conversions: {
-                            type: "array",
-                            items: {
-                                type: "object",
-                                properties: {
-                                    nomCible: { type: "string", description: "Titre de l'antécédent libre, tel que fourni dans la liste des candidats." },
-                                    code: { type: "string", description: "Code CIM-10 choisi parmi les candidats de cet antécédent." }
-                                },
-                                required: ["nomCible", "code"]
-                            }
-                        }
-                    },
-                    required: ["conversions"]
-                }
-            }
-        },
-        // Référence indirecte : traiterAntecedentsBatch n'existe que côté content script (dataInserterATCD.js).
-        execute: ({ conversions = [] } = {}) => conversions.length
-            ? traiterAntecedentsBatch(conversions.map(({ nomCible, code }) => ({ action: 'convertirCim10', nomCible, data: { nom: code } })))
-            : { success: true, message: "Aucune conversion à effectuer." }
     },
     insertWedaDocument: {
         definition: {
