@@ -101,6 +101,11 @@ function etapeCourante(chaine) {
     return chaine ? toolChains[chaine.nom].etapes[chaine.index] : undefined;
 }
 
+/** Indique si l'outil appelé est celui de l'étape de jugement en cours de la chaîne. */
+function viseEtapeCourante(chaine, nomOutil) {
+    return !!etapeCourante(chaine)?.tools.includes(nomOutil);
+}
+
 /**
  * Exécute les étapes mécaniques à partir de chaine.index jusqu'à la prochaine étape de jugement, la fin ou un arrêt.
  * Chaque étape est signalée via onToolCall, comme un appel d'outil ordinaire.
@@ -166,8 +171,8 @@ function politiqueEtape(chaine) {
  * au modèle et la chaîne à poursuivre (null si le nombre d'essais est épuisé).
  */
 function verifierAppelChaine(chaine, nomOutil, args) {
+    if (!viseEtapeCourante(chaine, nomOutil)) return null;
     const etape = etapeCourante(chaine);
-    if (!etape?.tools.includes(nomOutil)) return null;
     const refus = etape.verifier?.(args, chaine.ctx);
     if (!refus) return null;
     chaine.essais++;
