@@ -14,6 +14,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#661](https://github.com/Refhi/Weda-Helper/issues/661) - ajout d'un convertisseur d'unités pour les analyses biologiques (ex. mmol/L <-> g/L) dans les page de résultats. Désactivé par défaut, il peut être activé dans les options de Weda-Helper.
 - Imports - la zone de commentaire est présente dans la navigation par tabulation.
 - le client IA peut désormais modifier les antécédents, créer des consultations, prescriptions d'examens, courrier et certificat. Il peut également aider l'importation des documents dans l'onglet d'importation.
+- le client IA enchaîne désormais ses étapes de façon guidée ("chaînes d'outils") pour la conversion CIM-10, la modification des antécédents, la mise à jour des antécédents depuis un document, la lecture de documents du dossier et la rédaction de documents : la lecture préalable du dossier et la vérification des codes CIM-10 ne dépendent plus du bon vouloir du modèle.
 - [#686](https://github.com/Refhi/Weda-Helper/issues/686) - l'historique de facturation peut désormais également être affiché dans la page des règlements manuels
 - [#671](https://github.com/Refhi/Weda-Helper/issues/671) - le client IA peut désormais lire les documents joints à une consultation ou le pdf actuellement affiché à l'écran, ou certains éléments actuellement affichés à l'écran.
 - [#690](https://github.com/Refhi/Weda-Helper/issues/690) - Shunte les sorties autorisées automatiquement lors de la création d'un arrêt de travail avec TPT pour contourner un bug côté Weda.

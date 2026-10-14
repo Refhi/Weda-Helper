@@ -285,6 +285,9 @@ async function openAiClient({
                              // (cas du content script). Le document offpage fournit ici un exécuteur qui délègue
                              // l'appel au content script de l'onglet concerné (DOM de Weda requis, ex: recoverPatientData).
 
+    // --- 7quater. Chaîne d'outils lancée depuis le code (@see toolChains.js) ---
+    chaineInitiale = null, // { nom, entree } : démarrée avant la première requête, comme si le modèle avait appelé son outil d'entrée
+
     // --- 8. Interne : suivi de la profondeur de récursion (ne pas fournir manuellement) ---
     _toolCallDepth = 0,
     _chaine = null,        // État de la chaîne d'outils en cours (@see toolChains.js)
@@ -318,6 +321,10 @@ async function openAiClient({
     // Permet de faire un appel simple sans avoir à construire un tableau de messages
     if (typeof messages === 'string') {
         messages = [{ role: "user", content: messages }];
+    }
+
+    if (chaineInitiale) {
+        ({ messages, chaine: _chaine } = await handleToolCalls(messageAppelChaine(chaineInitiale), messages, onToolCall, executeToolCall, null, signal));
     }
 
     // Filtrer uniquement les messages réellement vides (sans contenu ET sans tool_calls),
@@ -402,7 +409,7 @@ async function openAiClient({
                 return responseMessage.content || "Désolé, je n'ai pas pu terminer cette action après plusieurs tentatives d'appel de fonctions.";
             }
 
-            const { messages: updatedMessages, chaine } = await handleToolCalls(responseMessage, filteredMessages, onToolCall, executeToolCall, _chaine, signal);
+            const { messages: updatedMessages, chaine, progres } = await handleToolCalls(responseMessage, filteredMessages, onToolCall, executeToolCall, _chaine, signal);
 
             // On relance un appel avec les résultats des fonctions pour obtenir la réponse finale du modèle
             console.log(`[openAiClient] Re-envoi du contexte avec résultats des fonctions...`);
@@ -426,7 +433,8 @@ async function openAiClient({
                 onToolCall,
                 onWarning,
                 executeToolCall,
-                _toolCallDepth: _toolCallDepth + 1,
+                // Une étape de chaîne menée à terme ne compte pas : seules les tentatives refusées ou hors chaîne consomment la profondeur.
+                _toolCallDepth: _toolCallDepth + (progres ? 0 : 1),
                 _chaine: chaine,
                 signal
             });
@@ -728,28 +736,6 @@ function buildToolResultContent(fnResult) {
     ];
 }
 
-/** Texte placé en tête du retour d'un appel refusé faute de prérequis ; sert aussi à retrouver ce prérequis dans l'historique. */
-function marqueurPrerequis(prerequis) {
-    return `[prérequis ${prerequis.outil} fourni]`;
-}
-
-/**
- * Indique si le prérequis figure déjà dans l'historique : soit appelé par le modèle (arguments et résultat acceptés
- * par `verifie`), soit fourni automatiquement lors d'un appel précédent refusé (son résultat est alors dans le retour refusé).
- */
-function prerequisPresentDansHistorique(messages, prerequis) {
-    const argsParId = {};
-    messages.forEach(m => (m.tool_calls || []).forEach(tc => {
-        try { argsParId[tc.id] = JSON.parse(tc.function?.arguments || '{}'); } catch { /* arguments illisibles : ignorés */ }
-    }));
-    return messages.some(m => {
-        if (m.role !== 'tool') return false;
-        const texte = typeof m.content === 'string' ? m.content : JSON.stringify(m.content);
-        if (texte.startsWith(marqueurPrerequis(prerequis))) return prerequis.verifie(prerequis.args, texte);
-        return m.name === prerequis.outil && prerequis.verifie(argsParId[m.tool_call_id], texte);
-    });
-}
-
 /**
  * Compte les échecs dans le résultat d'un outil : objet ou éléments de tableau portant `success: false` ou un champ `error`.
  */
@@ -781,7 +767,8 @@ function signalerEchecs(fnName, resultat) {
  * défaut, exécute localement via availableFunctions (voir callableFunctions.js).
  * @param {object|null} [chaineEnCours] - État de la chaîne d'outils en cours (@see toolChains.js).
  * @param {AbortSignal} [signal] - Interrompt l'enchaînement des étapes mécaniques d'une chaîne.
- * @returns {Promise<{messages: Array, chaine: object|null}>} Les messages mis à jour, prêts à être renvoyés au modèle, et l'état de la chaîne.
+ * @returns {Promise<{messages: Array, chaine: object|null, progres: boolean}>} Les messages mis à jour, prêts à être
+ * renvoyés au modèle, l'état de la chaîne, et si une chaîne a démarré ou avancé d'une étape.
  */
 async function handleToolCalls(responseMessage, messages, onToolCall, executeToolCall, chaineEnCours = null, signal = null) {
     const runTool = executeToolCall || ((name, args) => {
@@ -791,12 +778,13 @@ async function handleToolCalls(responseMessage, messages, onToolCall, executeToo
 
     const updatedMessages = [...messages, responseMessage];
     let chaine = chaineEnCours;
+    let progres = false;
 
-    // Réponse renvoyée telle quelle au modèle, sans exécuter l'appel (démarrage de chaîne, refus, prérequis manquant).
+    // Réponse renvoyée telle quelle au modèle, sans exécuter l'appel (démarrage de chaîne, refus).
     const repondreSansExecuter = (toolCall, fnArgs, contenu, status = 'success') => {
         const fnName = toolCall.function?.name;
         onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status, [status === 'error' ? 'error' : 'result']: contenu });
-        updatedMessages.push({ role: "tool", tool_call_id: toolCall.id, name: fnName, content: contenu });
+        updatedMessages.push({ role: "tool", tool_call_id: toolCall.id, name: fnName, content: buildToolResultContent(contenu) });
     };
 
     for (const toolCall of responseMessage.tool_calls) {
@@ -816,7 +804,6 @@ async function handleToolCalls(responseMessage, messages, onToolCall, executeToo
 
         let fnResult;
         let suiteChaine = null; // consigne de l'étape suivante d'une chaîne, ajoutée au résultat de l'outil
-        const appelDeChaine = viseEtapeCourante(chaine, fnName);
         try {
             // Ne pas exécuter la fonction avec des arguments vides à la place de ceux, illisibles, du modèle :
             // l'erreur lui est renvoyée pour qu'il refasse l'appel avec un JSON valide.
@@ -824,34 +811,34 @@ async function handleToolCalls(responseMessage, messages, onToolCall, executeToo
             if (estChaine(fnName)) {
                 const demarrage = await demarrerChaine(fnName, fnArgs, runTool, onToolCall, signal);
                 chaine = demarrage.chaine;
+                progres = true;
                 repondreSansExecuter(toolCall, fnArgs, demarrage.contenu);
                 continue;
             }
-            const refusChaine = verifierAppelChaine(chaine, fnName, fnArgs);
-            if (refusChaine) {
-                chaine = refusChaine.chaine;
-                repondreSansExecuter(toolCall, fnArgs, refusChaine.refus, 'error');
-                continue;
+
+            if (viseEtapeCourante(chaine, fnName)) {
+                const appel = await traiterAppelEtape(chaine, fnName, fnArgs, runTool, onToolCall, signal);
+                chaine = appel.chaine;
+                if (appel.refus) {
+                    repondreSansExecuter(toolCall, fnArgs, appel.refus, 'error');
+                    continue;
+                }
+                fnResult = appel.resultat;
+                suiteChaine = appel.suite;
+                progres ||= appel.progres;
+            } else {
+                console.log(`[handleToolCalls] Exécution de ${fnName}...`);
+                fnResult = await runTool(fnName, fnArgs);
             }
-            // Les étapes mécaniques d'une chaîne ont déjà fourni les données requises : pas de prérequis pour son étape de jugement.
-            const prerequis = !appelDeChaine && availableFunctions[fnName]?.prerequis?.(fnArgs)
-                .find(req => !prerequisPresentDansHistorique(updatedMessages, req));
-            if (prerequis) {
-                // Appel non exécuté : on fournit au modèle les données manquantes et on lui demande de refaire son appel.
-                const donnees = await runTool(prerequis.outil, prerequis.args);
-                const contenu = `${marqueurPrerequis(prerequis)} ${fnName} n'a PAS été exécuté : il nécessite d'abord ${prerequis.outil}(${JSON.stringify(prerequis.args)}). `
-                    + `Voici son résultat, appelé automatiquement :\n${JSON.stringify(omitImagesFromToolResult(donnees))}\n`
-                    + `Refais maintenant ton appel à ${fnName} en tenant compte de ces données.`;
-                repondreSansExecuter(toolCall, fnArgs, contenu);
-                continue;
-            }
-            console.log(`[handleToolCalls] Exécution de ${fnName}...`);
-            fnResult = await runTool(fnName, fnArgs);
             console.log(`[handleToolCalls] Résultat de ${fnName}:`, fnResult);
-            if (appelDeChaine) {
-                const suite = await avancerChaine(chaine, runTool, onToolCall, signal);
-                chaine = suite.chaine;
-                suiteChaine = suite.contenu;
+
+            // Un outil peut déclencher une chaîne une fois exécuté (hors chaîne en cours).
+            const suivante = !chaine && !suiteChaine && await availableFunctions[fnName]?.ensuite?.(fnArgs, fnResult);
+            if (suivante) {
+                const demarrage = await demarrerChaine(suivante.chaine, suivante.entree || {}, runTool, onToolCall, signal);
+                chaine = demarrage.chaine;
+                suiteChaine = demarrage.contenu;
+                progres = true;
             }
             onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'success', result: fnResult });
         } catch (e) {
@@ -869,5 +856,5 @@ async function handleToolCalls(responseMessage, messages, onToolCall, executeToo
         });
     }
 
-    return { messages: updatedMessages, chaine };
+    return { messages: updatedMessages, chaine, progres };
 }

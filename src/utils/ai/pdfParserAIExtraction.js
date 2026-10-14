@@ -68,7 +68,7 @@ function resolvePendingPdfParserFields(fields) {
  * @param {object} extractedData - Données déjà extraites, utilisées pour déterminer les champs manquants (non modifié).
  * @param {string} fullText - Texte complet du PDF, envoyé au modèle si suffisamment lisible.
  * @param {string|null} urlPDF - URL du PDF (@see extractBasePdfData), relue page par page pour envoyer
- * en images (@see discussionClient.js sendPromptWithAttachments) les pages dont le texte est absent
+ * en images (@see discussionClient.js lancerChaine) les pages dont le texte est absent
  * ou illisible (PDF scanné, police non standard...).
  * @param {string[]|null} [possibleDocumentTypes] - Valeurs de classification réellement disponibles dans
  * Weda (@see features/pdfParser.js initDocumentTypes), récupérées par l'appelant au moment de l'appel.
@@ -147,10 +147,10 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
             ? `\n\n--- Corps du message accompagnant le PDF ---\n${messageBody}\n--- Fin du corps du message ---`
             : '';
         const attachments = pdfAttachmentsFromResolved(resolvedPdf, 'document.pdf');
-        sendToChatApi = () => chatApi.sendPromptWithAttachments(instructions + bodyContext, attachments);
+        sendToChatApi = () => chatApi.lancerChaine('completerDocument', {}, instructions + bodyContext, attachments);
     } else {
         const prompt = `${instructions}\n\n--- Texte du document ---\n${fullText}\n--- Fin du texte du document ---`;
-        sendToChatApi = () => chatApi.sendPrompt(prompt);
+        sendToChatApi = () => chatApi.lancerChaine('completerDocument', {}, prompt);
     }
 
     console.log('[pdfParserAIExtraction] Champs manquants, tentative de complétion IA :', fieldsToAsk.map(f => f.key));

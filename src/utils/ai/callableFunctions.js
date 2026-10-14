@@ -404,6 +404,7 @@ const availableFunctions = {
         execute: (args, patientId) => recoverPatientData(args, patientId)
     },
     lireDocumentJoint: {
+        interne: true,
         definition: {
             type: "function",
             function: {
@@ -466,12 +467,14 @@ const availableFunctions = {
         },
         execute: ({ terme, termes, limite } = {}) => rechercherCim10({ terme, termes, limite })
     },
+    // `interne` : outil réservé aux chaînes d'outils (@see toolChains.js), non proposé directement au modèle.
     traiterAntecedents: {
+        interne: true,
         definition: {
             type: "function",
             function: {
                 name: "traiterAntecedents",
-                description: "Ajoute, modifie, supprime ou convertit séquentiellement un ou plusieurs antécédents du dossier du patient actuel (pour convertir des antécédents libres en CIM-10, appeler convertirAntecedentsCim10 plutôt que l'action 'convertirCim10' directement). Les opérations 'modifier'/'supprimer' déclenchent chacune leur propre confirmation utilisateur avant application. Renvoie un tableau de résultats {action, nomCible, success, message}, dans le même ordre que les opérations fournies. Doit OBLIGATOIREMENT être appelé pour toute action sur des antécédents.",
+                description: "Ajoute, modifie, supprime ou convertit séquentiellement un ou plusieurs antécédents du dossier du patient actuel. Les opérations 'modifier'/'supprimer' déclenchent chacune leur propre confirmation utilisateur avant application. Renvoie un tableau de résultats {action, nomCible, success, message}, dans le même ordre que les opérations fournies.",
                 parameters: {
                     type: "object",
                     properties: {
@@ -527,28 +530,10 @@ const availableFunctions = {
         },
         // Référence indirecte : traiterAntecedentsBatch n'existe que côté content script (dataInserterATCD.js),
         // pas dans la page offscreen qui ne fait que lire les `definition` de ce registre.
-        execute: ({ operations = [] } = {}) => operations.length ? traiterAntecedentsBatch(operations) : [],
-        // Appels préalables imposés par handleToolCalls : fonction (args de l'appel) => liste de { outil, args, verifie }.
-        // `args` sert à forcer le prérequis s'il manque ; `verifie(argsDeLAppel, resultat)` valide un appel déjà présent dans l'historique.
-        prerequis: ({ operations = [] } = {}) => {
-            const requis = [{
-                outil: 'recoverPatientData',
-                args: { categories: ['antecedents'] },
-                verifie: args => Array.isArray(args?.categories) && args.categories.includes('antecedents')
-            }];
-            const codes = operations.filter(o => o.action === 'ajouter' && o.data?.searchType === 'CIM10').map(o => o.data.nom).filter(Boolean);
-            if (codes.length) {
-                // Le code fourni doit provenir des résultats de rechercherCim10 (si ce n'est pas un code, la recherche porte sur le texte fourni).
-                requis.push({
-                    outil: 'rechercherCim10',
-                    args: { termes: codes },
-                    verifie: (_args, resultat) => codes.every(code => resultat.includes(`"${code}"`))
-                });
-            }
-            return requis;
-        }
+        execute: ({ operations = [] } = {}) => operations.length ? traiterAntecedentsBatch(operations) : []
     },
     insertWedaDocument: {
+        interne: true,
         definition: {
             type: "function",
             function: {
@@ -610,15 +595,13 @@ const availableFunctions = {
         },
         // Références indirectes : ces fonctions n'existent que côté content script (pdfParserAIExtraction.js, attachmentAIRename.js).
         // Une complétion du PDF Parser en attente est servie en priorité ; sinon il s'agit d'un document joint.
-        execute: async (args = {}) => {
-            const resultat = hasPendingPdfParserFields()
-                ? resolvePendingPdfParserFields(args)
-                : await renameJoinedDocumentInHistoryTool(args);
-            if (resultat?.error || !await getOptionPromise('verifierEtMettreAJourAntecedents')) return resultat;
-            // Envoyée comme message utilisateur dès la fin de la réponse en cours, plutôt que glissée dans le résultat de l'outil.
-            (await whenChatApiReady()).sendPromptWhenIdle("Maintenant récupère les antécédents du patient et vérifie qu'ils soient à jour. Ajoute et mets à jour le nécessaire.");
-            return resultat;
-        }
+        execute: async (args = {}) => hasPendingPdfParserFields()
+            ? resolvePendingPdfParserFields(args)
+            : await renameJoinedDocumentInHistoryTool(args),
+        // Appelé par handleToolCalls (côté offpage, donc sans accès au DOM) une fois l'outil exécuté : chaîne à lancer ensuite, ou null.
+        ensuite: async (_args, resultat) => !resultat?.error && await getOptionPromise('verifierEtMettreAJourAntecedents')
+            ? { chaine: 'mettreAJourAntecedentsDepuisDocument' }
+            : null
     }
 };
 

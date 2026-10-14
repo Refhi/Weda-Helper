@@ -174,9 +174,10 @@ function rejectPendingToolCallsForTab(tabId) {
  * Traite un nouveau message utilisateur : l'ajoute à l'historique, interroge le modèle (avec
  * streaming et function calling délégué à l'onglet), et notifie l'onglet d'origine au fur et à
  * mesure via des messages relayés par le background.
- * @param {{tabId: number, patientId: string|null, content: string|Array, model?: string}} message
+ * @param {{tabId: number, patientId: string|null, content: string|Array, model?: string, chaine?: {nom: string, entree?: object}}} message
+ * `chaine` : chaîne d'outils à démarrer depuis le code avant la première requête (@see toolChains.js).
  */
-async function processUserMessage({ tabId, patientId, content, model }) {
+async function processUserMessage({ tabId, patientId, content, model, chaine }) {
     const conversation = await getOrCreateConversation(patientId);
     if (model) conversation.selectedModel = model;
 
@@ -203,6 +204,7 @@ async function processUserMessage({ tabId, patientId, content, model }) {
             messages: conversation.chatHistory,
             model: conversation.selectedModel,
             tools: listerDefinitionsOutils(),
+            chaineInitiale: chaine,
             signal: conversation.generationController.signal,
             executeToolCall: (name, args) => executeToolCallOnTab(tabId, name, args, patientId),
             onChunk: (chunk) => {

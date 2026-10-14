@@ -1246,7 +1246,6 @@ async function addAIChatClient() {
 
     /** Réinitialise la conversation en cours (utilisé par le bouton ↺ et la commande /clear). */
     function resetConversation() {
-        promptSuivant = null;
         sendOffscreenMessage({ type: 'resetChat', patientId: chatPatientId });
         pendingAttachments = [];
         renderAttachmentsPreview();
@@ -1739,17 +1738,8 @@ async function addAIChatClient() {
     }
 
     /** Termine l'état de génération courant : réactive le bouton d'envoi, masque le bouton Stop. */
-    // Prompt à envoyer à la fin normale de la génération en cours (@see sendPromptWhenIdle), pour le patient
-    // courant : l'offpage refuse un message tant qu'une génération est active. Abandonné si elle se termine autrement.
-    let promptSuivant = null;
-    function sendPromptWhenIdle(text) {
-        if (activeGeneration) promptSuivant = { text, patientId: chatPatientId };
-        else submitUserMessage(text, []);
-    }
-
     function endActiveGeneration() {
         activeGeneration = null;
-        promptSuivant = null;
         chatStopButton.classList.remove('visible');
         chatSubmitButton.style.display = '';
     }
@@ -1958,9 +1948,7 @@ async function addAIChatClient() {
                     truncatedNotice.classList.add('tool-call', 'error');
                     console.warn("[discussionClient] Réponse tronquée : limite de tokens atteinte.", { finishReason: message.finishReason });
                 }
-                const suivant = promptSuivant;
                 endActiveGeneration();
-                if (suivant?.patientId === chatPatientId) submitUserMessage(suivant.text, []);
                 break;
             }
 
@@ -2082,8 +2070,9 @@ async function addAIChatClient() {
      * aussi bien depuis la soumission normale du formulaire que depuis une commande / (ex: /poisson).
      * @param {string} userText
      * @param {Array} attachmentsForThisMessage
+     * @param {{chaine?: {nom: string, entree?: object}}} [options] chaîne d'outils à démarrer avant la première requête (@see toolChains.js)
      */
-    function submitUserMessage(userText, attachmentsForThisMessage = []) {
+    function submitUserMessage(userText, attachmentsForThisMessage = [], { chaine } = {}) {
         promptHistory.push(userText);
         promptHistoryIndex = null;
         const attachmentsLabel = attachmentsForThisMessage.length
@@ -2097,7 +2086,8 @@ async function addAIChatClient() {
             type: 'userMessage',
             patientId: chatPatientId,
             model: getCurrentModel(),
-            content: buildUserMessageContent(userText, attachmentsForThisMessage)
+            content: buildUserMessageContent(userText, attachmentsForThisMessage),
+            chaine
         });
     }
 
@@ -2121,14 +2111,13 @@ async function addAIChatClient() {
         submitUserMessage(userText, attachmentsForThisMessage);
     });
 
-    // Publie le pont utilisable par d'autres scripts (ex: pdfParserAIExtraction.js) pour envoyer un
-    // prompt "comme si l'utilisateur l'avait tapé" (visible dans le chat, réponse via tool call) et
+    // Publie le pont utilisable par d'autres scripts (ex: pdfParserAIExtraction.js) pour lancer une chaîne d'outils
+    // avec un prompt "comme si l'utilisateur l'avait tapé" (visible dans le chat, réponse via tool call) et
     // rattacher la conversation au bon patient une fois celui-ci identifié.
     publishChatApi({
-        sendPrompt: (text) => submitUserMessage(text, []),
-        // Prompt accompagné de pièces jointes déjà prêtes (@see pdfAttachmentsFromResolved).
-        sendPromptWithAttachments: (text, attachments) => submitUserMessage(text, attachments),
-        sendPromptWhenIdle,
+        // Lance une chaîne d'outils (@see toolChains.js) avec ce prompt (et d'éventuelles pièces jointes déjà prêtes,
+        // @see pdfAttachmentsFromResolved), comme si le modèle en avait appelé le point d'entrée.
+        lancerChaine: (nom, entree, text, attachments = []) => submitUserMessage(text, attachments, { chaine: { nom, entree } }),
         // Renvoie une Promise résolue une fois le prochain stateSync appliqué (ou immédiatement si
         // aucun changement n'était nécessaire) : permet à l'appelant (ex: pdfParserAIExtraction.js)
         // d'attendre la resynchronisation avant d'envoyer un prompt, pour éviter qu'il ne soit
