@@ -62,6 +62,7 @@
         "src/utils/dataInserterATCDConversion.js",
         "src/utils/ai/callableFunctions.js",
         "src/utils/ai/modelSpecificArgs.js",
+        "src/utils/ai/toolChains.js",
         "src/utils/ai/openAiClient.js",
         "src/utils/ai/pdfAttachmentHelper.js",
         "src/utils/ai/offscreenBridge.js",

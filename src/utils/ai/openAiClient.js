@@ -287,6 +287,7 @@ async function openAiClient({
 
     // --- 8. Interne : suivi de la profondeur de récursion (ne pas fournir manuellement) ---
     _toolCallDepth = 0,
+    _chaine = null,        // État de la chaîne d'outils en cours (@see toolChains.js)
 
     // --- 9. Annulation ---
     signal = null,         // AbortSignal permettant d'interrompre la requête (et le streaming) en cours
@@ -351,14 +352,17 @@ async function openAiClient({
     // Gestion des tools (function calling)
     // seulement si option activée et useTools = true
     const effectiveUseTools = useTools && (await getAiParams()).toolCalling;
-    const resolvedTools = tools || (effectiveUseTools ? Object.values(availableFunctions).map(f => f.definition) : null);
+    const resolvedTools = tools || (effectiveUseTools ? listerDefinitionsOutils() : null);
+
+    // Une chaîne d'outils en cours (@see toolChains.js) restreint les outils de cette requête uniquement.
+    const politiqueChaine = politiqueEtape(_chaine);
 
     const requestBody = buildRequestBody({
         messages: filteredMessages,
         model,
         modelArgs,
-        resolvedTools,
-        toolChoice
+        resolvedTools: politiqueChaine?.tools ?? resolvedTools,
+        toolChoice: politiqueChaine?.toolChoice ?? toolChoice
     });
 
     console.log("[openAiClient] Requête construite :", requestBody);
@@ -398,7 +402,7 @@ async function openAiClient({
                 return responseMessage.content || "Désolé, je n'ai pas pu terminer cette action après plusieurs tentatives d'appel de fonctions.";
             }
 
-            const updatedMessages = await handleToolCalls(responseMessage, filteredMessages, onToolCall, executeToolCall);
+            const { messages: updatedMessages, chaine } = await handleToolCalls(responseMessage, filteredMessages, onToolCall, executeToolCall, _chaine, signal);
 
             // On relance un appel avec les résultats des fonctions pour obtenir la réponse finale du modèle
             console.log(`[openAiClient] Re-envoi du contexte avec résultats des fonctions...`);
@@ -423,6 +427,7 @@ async function openAiClient({
                 onWarning,
                 executeToolCall,
                 _toolCallDepth: _toolCallDepth + 1,
+                _chaine: chaine,
                 signal
             });
         }
@@ -774,15 +779,18 @@ function signalerEchecs(fnName, resultat) {
  * @param {(event: object) => void} [onToolCall] - Callback de feedback appelé à chaque étape (start/success/error).
  * @param {(name: string, args: object) => Promise<*>} [executeToolCall] - Exécuteur des fonctions. Par
  * défaut, exécute localement via availableFunctions (voir callableFunctions.js).
- * @returns {Promise<Array>} La liste de messages mise à jour, prête à être renvoyée au modèle.
+ * @param {object|null} [chaineEnCours] - État de la chaîne d'outils en cours (@see toolChains.js).
+ * @param {AbortSignal} [signal] - Interrompt l'enchaînement des étapes mécaniques d'une chaîne.
+ * @returns {Promise<{messages: Array, chaine: object|null}>} Les messages mis à jour, prêts à être renvoyés au modèle, et l'état de la chaîne.
  */
-async function handleToolCalls(responseMessage, messages, onToolCall, executeToolCall) {
+async function handleToolCalls(responseMessage, messages, onToolCall, executeToolCall, chaineEnCours = null, signal = null) {
     const runTool = executeToolCall || ((name, args) => {
         if (!availableFunctions[name]) throw new Error(`fonction inconnue "${name}"`);
         return availableFunctions[name].execute(args);
     });
 
     const updatedMessages = [...messages, responseMessage];
+    let chaine = chaineEnCours;
 
     for (const toolCall of responseMessage.tool_calls) {
         const fnName = toolCall.function?.name;
@@ -800,10 +808,27 @@ async function handleToolCalls(responseMessage, messages, onToolCall, executeToo
         onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'start' });
 
         let fnResult;
+        let suiteChaine = null; // consigne de l'étape suivante d'une chaîne, ajoutée au résultat de l'outil
         try {
             // Ne pas exécuter la fonction avec des arguments vides à la place de ceux, illisibles, du modèle :
             // l'erreur lui est renvoyée pour qu'il refasse l'appel avec un JSON valide.
             if (argumentsParseError) throw new Error(`arguments JSON invalides (${argumentsParseError.message}), refais l'appel avec un JSON valide`);
+            if (estChaine(fnName)) {
+                const demarrage = await demarrerChaine(fnName, fnArgs, runTool, onToolCall, signal);
+                chaine = demarrage.chaine;
+                fnResult = demarrage.contenu;
+                onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'success', result: fnResult });
+                updatedMessages.push({ role: "tool", tool_call_id: toolCall.id, name: fnName, content: fnResult });
+                continue;
+            }
+            const refusChaine = verifierAppelChaine(chaine, fnName, fnArgs);
+            if (refusChaine) {
+                chaine = refusChaine.chaine;
+                fnResult = refusChaine.refus;
+                onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'error', error: fnResult });
+                updatedMessages.push({ role: "tool", tool_call_id: toolCall.id, name: fnName, content: fnResult });
+                continue;
+            }
             const prerequis = availableFunctions[fnName]?.prerequis?.(fnArgs)
                 .find(req => !prerequisPresentDansHistorique(updatedMessages, req));
             if (prerequis) {
@@ -819,6 +844,11 @@ async function handleToolCalls(responseMessage, messages, onToolCall, executeToo
             console.log(`[handleToolCalls] Exécution de ${fnName}...`);
             fnResult = await runTool(fnName, fnArgs);
             console.log(`[handleToolCalls] Résultat de ${fnName}:`, fnResult);
+            if (etapeCourante(chaine)?.tools.includes(fnName)) {
+                const suite = await avancerChaine(chaine, runTool, onToolCall, signal);
+                chaine = suite.chaine;
+                suiteChaine = suite.contenu;
+            }
             onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'success', result: fnResult });
         } catch (e) {
             fnResult = `Erreur lors de l'exécution de la fonction ${fnName} : ${e.message || e}`;
@@ -826,13 +856,14 @@ async function handleToolCalls(responseMessage, messages, onToolCall, executeToo
             onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'error', error: fnResult });
         }
 
+        const resultatSignale = signalerEchecs(fnName, fnResult);
         updatedMessages.push({
             role: "tool",
             tool_call_id: toolCall.id,
             name: fnName,
-            content: buildToolResultContent(signalerEchecs(fnName, fnResult))
+            content: buildToolResultContent(suiteChaine ? { resultat: resultatSignale, suiteDeLaChaine: suiteChaine } : resultatSignale)
         });
     }
 
-    return updatedMessages;
+    return { messages: updatedMessages, chaine };
 }

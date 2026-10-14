@@ -4,7 +4,7 @@
  * déroule les étapes dans l'ordre. Deux types d'étapes :
  *  - 'mecanique' : exécutée par le moteur via runTool, sans passer par le modèle ;
  *  - 'jugement'  : le modèle décide, mais seuls les outils de l'étape sont exposés (tool_choice forcé).
- * Chargé dans l'offpage (avec openAiClient.js), car il pilote la boucle ; les outils, eux, s'exécutent
+ * Chargé avec openAiClient.js, qui pilote la boucle (@see handleToolCalls) ; dans l'offpage, les outils s'exécutent
  * dans l'onglet via runTool (@see executeToolCallOnTab).
  */
 
@@ -31,12 +31,13 @@ const toolChains = {
                 type: 'mecanique',
                 outil: 'recoverPatientData',
                 args: () => ({ categories: ['antecedents'], antecedentsType: 'libre' }),
-                // ctx = { entree, resultats }. Renvoie un message d'arrêt, ou null pour continuer.
+                // ctx = { entree, ... } partagé entre les étapes. Renvoie un message d'arrêt, ou null pour continuer.
                 sortie: (res, ctx) => {
                     const cibles = ctx.entree.nomsCibles;
-                    ctx.libres = (res.antecedents || [])
-                        .flatMap(s => s.items.map(i => ({ titre: i.titre, onglet: s.titre })))
-                        .filter(a => !cibles?.length || cibles.some(n => a.titre.toLowerCase().startsWith(n.toLowerCase())));
+                    const titres = (res.antecedents || [])
+                        .flatMap(section => section.items.map(item => item.titre))
+                        .filter(titre => !cibles?.length || cibles.some(nom => titre.toLowerCase().startsWith(nom.toLowerCase())));
+                    ctx.libres = [...new Set(titres)];
                     return ctx.libres.length ? null : "Aucun antécédent libre à convertir.";
                 }
             },
@@ -44,51 +45,142 @@ const toolChains = {
                 id: 'chercherCodes',
                 type: 'mecanique',
                 outil: 'rechercherCim10',
-                args: ctx => ({ termes: ctx.libres.map(a => a.titre), limite: 8 }),
-                // Compacte pour ne pas gonfler le contexte : { titre, candidats:[{code,label}] }.
+                args: ctx => ({ termes: ctx.libres, limite: 8 }),
+                // rechercherCim10 renvoie une simple liste (sans groupes par terme) quand un seul terme est demandé.
                 sortie: (res, ctx) => {
-                    const groupes = Array.isArray(res) && res[0]?.terme ? res : [{ terme: ctx.libres[0].titre, resultats: res }];
+                    const groupes = ctx.libres.length === 1 ? [{ terme: ctx.libres[0], resultats: res }] : res;
                     ctx.candidats = groupes.map(g => ({ titre: g.terme, candidats: g.resultats.map(({ code, label }) => ({ code, label })) }));
-                    ctx.codesValides = new Set(groupes.flatMap(g => g.resultats.map(r => r.code)));
+                    ctx.codesParTitre = Object.fromEntries(groupes.map(g => [g.terme, new Set(g.resultats.map(r => r.code))]));
                     return null;
                 }
             },
             {
                 id: 'choisirCodes',
                 type: 'jugement',
-                tools: ['traiterAntecedents'],
-                toolChoice: 'traiterAntecedents', // forcé pour cette étape seulement, puis retour à "auto"
-                consigne: ctx => `Pour chaque antécédent libre ci-dessous, choisis le code CIM-10 le plus pertinent et le moins spécifique `
-                    + `que nécessaire parmi ses candidats, puis appelle traiterAntecedents UNE fois, avec une opération `
-                    + `'convertirCim10' par antécédent ({nomCible, data:{nom: code}}). Ignore ceux sans candidat réellement adapté.\n`
+                tools: ['appliquerConversionsCim10'],
+                toolChoice: 'appliquerConversionsCim10', // forcé pour cette étape seulement
+                consigne: ctx => `Étapes préparatoires terminées : ${ctx.libres.length} antécédent(s) libre(s) lu(s) et codes CIM-10 candidats recherchés.\n`
+                    + `Pour chaque antécédent, choisis le code le plus pertinent et le moins spécifique que nécessaire parmi SES candidats `
+                    + `(ne pas préciser un germe ou un détail non mentionné), puis appelle appliquerConversionsCim10 UNE seule fois. `
+                    + `Ignore les antécédents dont aucun candidat ne convient réellement (liste vide si aucun).\n`
                     + JSON.stringify(ctx.candidats),
-                // Remplace l'ancien prérequis par une vérification dans l'étape : erreur renvoyée au modèle, sans tour perdu.
+                // Erreur renvoyée au modèle dans l'étape elle-même, sans tour perdu : le code doit provenir des candidats de cet antécédent.
                 verifier: (args, ctx) => {
-                    const hors = (args.operations || []).filter(o => o.action !== 'convertirCim10' || !ctx.codesValides.has(o.data?.nom));
-                    return hors.length ? `Opérations refusées (code absent des candidats ou action invalide) : ${JSON.stringify(hors)}. Refais l'appel.` : null;
+                    const conversions = Array.isArray(args?.conversions) ? args.conversions : null;
+                    if (!conversions) return "'conversions' doit être un tableau. Refais l'appel.";
+                    const invalides = conversions.filter(c => !ctx.codesParTitre[c?.nomCible]?.has(c?.code));
+                    return invalides.length
+                        ? `Conversions refusées (nomCible absent de la liste ou code absent des candidats de cet antécédent) : ${JSON.stringify(invalides)}. Refais l'appel.`
+                        : null;
                 },
-                // Étape terminée dès qu'un appel passe `verifier` ; on peut alors laisser le modèle conclure.
                 maxEssais: 2
             }
         ]
     }
 };
 
+const TOOL_CHOICES_RESERVES = ['auto', 'none', 'required'];
+
+/**
+ * Définitions envoyées par défaut au modèle : les outils du registre (hors étapes internes de chaîne) et les points
+ * d'entrée des chaînes.
+ */
+function listerDefinitionsOutils() {
+    return [
+        ...Object.values(availableFunctions).filter(f => !f.interne).map(f => f.definition),
+        ...Object.values(toolChains).map(c => c.definition)
+    ];
+}
+
+function estChaine(nom) {
+    return Object.hasOwn(toolChains, nom);
+}
+
+/** Étape de jugement en attente du modèle, ou undefined si la chaîne est nulle ou terminée. */
+function etapeCourante(chaine) {
+    return chaine ? toolChains[chaine.nom].etapes[chaine.index] : undefined;
+}
+
+/**
+ * Exécute les étapes mécaniques à partir de chaine.index jusqu'à la prochaine étape de jugement, la fin ou un arrêt.
+ * Chaque étape est signalée via onToolCall, comme un appel d'outil ordinaire.
+ * @returns {Promise<string|null>} message d'arrêt (échec ou sortie() non nulle), sinon null
+ */
+async function executerEtapesMecaniques(chaine, runTool, onToolCall, signal) {
+    const { etapes } = toolChains[chaine.nom];
+    while (etapes[chaine.index]?.type === 'mecanique') {
+        const etape = etapes[chaine.index];
+        if (signal?.aborted) throw new DOMException('Chaîne interrompue', 'AbortError');
+        const args = etape.args(chaine.ctx);
+        const id = `chaine-${chaine.nom}-${etape.id}-${crypto.randomUUID()}`;
+        onToolCall?.({ id, name: etape.outil, args, status: 'start' });
+        const resultat = await runTool(etape.outil, args).catch(e => ({ error: e.message || String(e) }));
+        if (resultat?.error) {
+            const message = `Chaîne ${chaine.nom} interrompue à l'étape ${etape.id} (${etape.outil}) : ${resultat.error}`;
+            onToolCall?.({ id, name: etape.outil, args, status: 'error', error: message });
+            return message;
+        }
+        onToolCall?.({ id, name: etape.outil, args, status: 'success', result: resultat });
+        chaine.index++;
+        const arret = etape.sortie?.(resultat, chaine.ctx);
+        if (arret) return arret;
+    }
+    return null;
+}
+
+async function poursuivreChaine(chaine, runTool, onToolCall, signal) {
+    const arret = await executerEtapesMecaniques(chaine, runTool, onToolCall, signal);
+    if (arret) return { chaine: null, contenu: arret };
+    const etape = etapeCourante(chaine);
+    return etape ? { chaine, contenu: etape.consigne(chaine.ctx) } : { chaine: null, contenu: null };
+}
+
 /**
  * Démarre la chaîne : exécute les étapes mécaniques consécutives, puis renvoie
- *  - `contenu` : texte du tool message à placer en réponse au tool_call d'entrée (résumé des étapes faites) ;
+ *  - `contenu` : texte du tool message répondant au tool_call d'entrée (consigne de l'étape de jugement, ou message d'arrêt) ;
  *  - `chaine`  : état { nom, index, ctx, essais } à porter dans la récursion d'openAiClient, ou null si terminée.
  */
-async function demarrerChaine(nom, entree, runTool, onToolCall) { /* boucle sur etapes mécaniques */ }
+async function demarrerChaine(nom, entree, runTool, onToolCall, signal) {
+    const resultat = await poursuivreChaine({ nom, index: 0, essais: 0, ctx: { entree } }, runTool, onToolCall, signal);
+    return { ...resultat, contenu: resultat.contenu ?? "Chaîne terminée." };
+}
 
 /**
- * Politique de la prochaine requête au modèle pour une chaîne en cours.
- * @returns {{ tools: object[], toolChoice: object|string, consigne: string }} — { tools: tous, toolChoice: 'auto' } si pas de chaîne
+ * Politique de la prochaine requête au modèle pour une chaîne en cours : seuls les outils de l'étape sont exposés,
+ * éventuellement avec tool_choice forcé. Renvoie null si aucune chaîne n'est en cours (requête ordinaire).
+ * @returns {{ tools: object[], toolChoice: object|string }|null}
  */
-function politiqueEtape(chaine) { /* filtre availableFunctions sur etape.tools + tool_choice function forcé */ }
+function politiqueEtape(chaine) {
+    const etape = etapeCourante(chaine);
+    if (!etape) return null;
+    const choix = etape.toolChoice || 'auto';
+    return {
+        tools: etape.tools.map(nom => availableFunctions[nom].definition),
+        toolChoice: TOOL_CHOICES_RESERVES.includes(choix) ? choix : { type: "function", function: { name: choix } }
+    };
+}
 
 /**
- * Après l'exécution des tool calls d'une étape de jugement : vérifie (`verifier`), avance ou fait réessayer,
- * puis enchaîne les éventuelles étapes mécaniques suivantes. Renvoie la chaîne mise à jour (ou null).
+ * Contrôle un appel du modèle avant exécution quand il vise l'étape de jugement courante.
+ * @returns {{ refus: string, chaine: object|null }|null} null si l'appel peut être exécuté ; sinon le refus à renvoyer
+ * au modèle et la chaîne à poursuivre (null si le nombre d'essais est épuisé).
  */
-async function avancerChaine(chaine, appels, runTool, onToolCall) { /* … */ }
+function verifierAppelChaine(chaine, nomOutil, args) {
+    const etape = etapeCourante(chaine);
+    if (!etape?.tools.includes(nomOutil)) return null;
+    const refus = etape.verifier?.(args, chaine.ctx);
+    if (!refus) return null;
+    chaine.essais++;
+    if (chaine.essais < (etape.maxEssais ?? 1)) return { refus, chaine };
+    return { refus: `${refus} Nombre d'essais épuisé : chaîne abandonnée, informe l'utilisateur de l'échec.`, chaine: null };
+}
+
+/**
+ * Après l'exécution réussie d'un appel de l'étape de jugement : passe à l'étape suivante et enchaîne les éventuelles
+ * étapes mécaniques. Renvoie { chaine, contenu } (contenu : suite à transmettre au modèle, ou null si la chaîne est terminée).
+ */
+async function avancerChaine(chaine, runTool, onToolCall, signal) {
+    chaine.index++;
+    chaine.essais = 0;
+    return poursuivreChaine(chaine, runTool, onToolCall, signal);
+}
