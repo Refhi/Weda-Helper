@@ -89,6 +89,12 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
     const aiExtractionEnabled = externalTool || await getOptionPromise('PdfParserAutoAIExtraction');
     if (!aiExtractionEnabled) return {};
 
+    // Assistant IA désactivé : le client de chat n'est jamais publié, inutile d'attendre son timeout.
+    if (!await getOptionPromise('enableIAassistant')) {
+        console.warn('[pdfParserAIExtraction] Assistant IA désactivé, poursuite sans complétion IA.');
+        return {};
+    }
+
     const fullModeEnabled = await getOptionPromise('PdfParserAutoAIFullMode');
     const missingFields = PDF_PARSER_AI_FIELDS.filter(field => field.missing(extractedData[field.key]));
     const fieldsToAsk = fullModeEnabled ? missingFields.concat(PDF_PARSER_AI_FULL_MODE_FIELDS) : missingFields;
