@@ -244,7 +244,7 @@ const toolChains = (() => {
                                                     action: { type: "string", enum: ["ajouter", "modifier", "supprimer"] },
                                                     libelle: { type: "string", description: "Intitulé de l'antécédent concerné." },
                                                     nomCible: { type: "string", description: "Pour modifier/supprimer : titre exact de l'antécédent existant." },
-                                                    termeCim10: { type: "string", description: "Pour tout antécédent/diagnostic à ajouter (y compris chirurgie, facteur de risque, antécédent familial) : terme médical à rechercher en CIM-10, à privilégier systématiquement. Absent uniquement pour une allergie." },
+                                                    termeCim10: { type: "string", description: "Pour tout antécédent/diagnostic à ajouter (y compris chirurgie, facteur de risque, antécédent familial) : terme médical en français courant (ex. 'polypose naso-sinusienne'), JAMAIS un code CIM-10 : les codes sont trouvés automatiquement par la recherche, ne les devine pas. À privilégier systématiquement. Absent uniquement pour une allergie." },
                                                     allergie: { type: "string", enum: ["allergieMolecule", "allergiePrinceps"], description: "Pour une allergie à ajouter : allergieMolecule (nom de molécule) ou allergiePrinceps (si ça ressemble à un nom commercial). Ne pas renseigner termeCim10 dans ce cas." },
                                                     commentaire: { type: "string" }
                                                 },
@@ -269,7 +269,13 @@ const toolChains = (() => {
                         + `ainsi que toute évolution d'un antécédent déjà connu (guérison, aggravation, nouvelle date). Compare avec les antécédents actuels, puis `
                         + `appelle proposerElementsAntecedents UNE fois avec ce qui doit être ajouté, modifié ou supprimé (pas ce qui est déjà à jour). `
                         + `Cet appel est obligatoire : si rien n'est à changer, appelle-le avec une liste vide.`,
-                    verifier: args => Array.isArray(args?.elements) ? null : "'elements' doit être un tableau. Refais l'appel.",
+                    verifier: args => {
+                        if (!Array.isArray(args?.elements)) return "'elements' doit être un tableau. Refais l'appel.";
+                        const codes = args.elements.map(e => e?.termeCim10).filter(terme => /^[A-Z]\d{2}(\.\d+)?$/i.test(String(terme ?? '').trim()));
+                        return codes.length
+                            ? `termeCim10 doit être un terme médical en toutes lettres, pas un code (${codes.join(', ')}) : les codes sont recherchés automatiquement ensuite. Refais l'appel.`
+                            : null;
+                    },
                     maxEssais: 2
                 },
                 etapeChercherCodes,
