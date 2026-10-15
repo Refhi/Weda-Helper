@@ -31,10 +31,16 @@ const toolChains = (() => {
         return termes.length === 1 ? [{ terme: termes[0], resultats: res }] : res;
     }
 
+    function normaliserTerme(terme) {
+        return String(terme ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+    }
+
     /** Mémorise dans ctx.codesValides tous les codes d'un résultat de rechercherCim10 (liste simple ou groupée). */
-    function enregistrerCodes(ctx, res) {
+    function enregistrerCodes(ctx, res, termes = []) {
         ctx.codesValides ??= new Set();
+        ctx.termesRecherches ??= new Set();
         ctx.rechercheCim10Faite = true;
+        termes.forEach(terme => ctx.termesRecherches.add(normaliserTerme(terme)));
         const lignes = Array.isArray(res) ? res.flatMap(r => r.resultats ?? r) : [];
         lignes.forEach(ligne => ligne.code && ctx.codesValides.add(ligne.code));
     }
@@ -60,14 +66,15 @@ const toolChains = (() => {
         sortie: (res, ctx) => {
             ctx.candidats = grouperResultatsCim10(res, ctx.termesCim10)
                 .map(g => ({ terme: g.terme, candidats: g.resultats.map(({ code, label }) => ({ code, label })) }));
-            enregistrerCodes(ctx, res);
+            enregistrerCodes(ctx, res, ctx.termesCim10);
             return null;
         }
     };
 
     const REGLES_ANTECEDENTS = "Règles : n'ajoute pas ce qui existe déjà ; tout antécédent s'ajoute par défaut en CIM-10 (searchType 'CIM10') avec un code issu "
         + "d'une recherche, le moins spécifique que nécessaire ; l'antécédent libre (sans searchType) n'est permis qu'après une recherche CIM-10 dont aucun "
-        + "résultat ne convient ; pour une allergie, searchType 'allergieMolecule' (nom de molécule) ou 'allergiePrinceps' (nom commercial) ; "
+        + "résultat ne convient (et dans ce cas nom = exactement le terme recherché) ; une allergie n'est JAMAIS un antécédent libre ni CIM-10 : searchType "
+        + "'allergieMolecule' (nom de molécule) ou 'allergiePrinceps' (si ça ressemble à un nom commercial), nom = uniquement le nom du médicament ; "
         + "pour 'modifier'/'supprimer', nomCible est le titre exact d'un antécédent existant.";
 
     /** Contrôle les opérations de traiterAntecedents : codes CIM-10 issus d'une recherche, cibles existantes, actions permises. */
@@ -79,7 +86,10 @@ const toolChains = (() => {
             const { action, nomCible, data } = operation || {};
             if (action === 'ajouter') {
                 if (data?.searchType === 'CIM10') return ctx.codesValides?.has(data.nom) ? [] : [{ operation, motif: "code CIM-10 absent des résultats de recherche" }];
-                if (!data?.searchType && !ctx.rechercheCim10Faite) return [{ operation, motif: "antécédent libre refusé : l'ajout se fait par défaut en CIM-10, cherche d'abord un code avec rechercherCim10" }];
+                if (!data?.searchType) {
+                    if (!ctx.rechercheCim10Faite) return [{ operation, motif: "antécédent libre refusé : l'ajout se fait par défaut en CIM-10, cherche d'abord un code avec rechercherCim10" }];
+                    if (!ctx.termesRecherches?.has(normaliserTerme(data?.nom))) return [{ operation, motif: "antécédent libre refusé : aucune recherche CIM-10 n'a été faite pour ce libellé (nom doit être exactement le terme recherché). Une allergie s'ajoute avec searchType 'allergieMolecule' ou 'allergiePrinceps', jamais en libre" }];
+                }
                 return [];
             }
             if (action === 'modifier' || action === 'supprimer') {
@@ -97,7 +107,7 @@ const toolChains = (() => {
         termine: ['traiterAntecedents'],
         toolChoice: 'required',
         verifier: verifierOperationsAntecedents,
-        apresAppel: (nomOutil, _args, resultat, ctx) => { if (nomOutil === 'rechercherCim10') enregistrerCodes(ctx, resultat); },
+        apresAppel: (nomOutil, _args, resultat, ctx) => { if (nomOutil === 'rechercherCim10') enregistrerCodes(ctx, resultat, [...(_args?.termes || []), _args?.terme].filter(Boolean)); },
         maxEssais: 2
     };
 
@@ -231,7 +241,8 @@ const toolChains = (() => {
                                                     action: { type: "string", enum: ["ajouter", "modifier", "supprimer"] },
                                                     libelle: { type: "string", description: "Intitulé de l'antécédent concerné." },
                                                     nomCible: { type: "string", description: "Pour modifier/supprimer : titre exact de l'antécédent existant." },
-                                                    termeCim10: { type: "string", description: "Pour un diagnostic à ajouter : terme médical à rechercher en CIM-10 (absent pour une allergie ou un élément non diagnostique)." },
+                                                    termeCim10: { type: "string", description: "Pour tout antécédent/diagnostic à ajouter (y compris chirurgie, facteur de risque, antécédent familial) : terme médical à rechercher en CIM-10, à privilégier systématiquement. Absent uniquement pour une allergie." },
+                                                    allergie: { type: "string", enum: ["allergieMolecule", "allergiePrinceps"], description: "Pour une allergie à ajouter : allergieMolecule (nom de molécule) ou allergiePrinceps (si ça ressemble à un nom commercial). Ne pas renseigner termeCim10 dans ce cas." },
                                                     commentaire: { type: "string" }
                                                 },
                                                 required: ["action", "libelle"]
