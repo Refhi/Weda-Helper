@@ -98,14 +98,10 @@ async function poursuivreChaine(chaine, runTool, onToolCall, signal) {
     const contenu = composerContenu(texte, transmis);
     if (etape) return { chaine, contenu };
 
-    // Chaîne terminée : suite(ctx) peut en enchaîner une autre ({ chaine, entree }), dont la consigne prolonge la réponse.
-    const suivante = await toolChains[chaine.nom].suite?.(chaine.ctx);
-    if (!suivante) return { chaine: null, contenu };
-    const demarrage = await demarrerChaine(suivante.chaine, suivante.entree || {}, runTool, onToolCall, signal);
-    const contenuSuite = typeof contenu === 'string' && typeof demarrage.contenu === 'string'
-        ? `${contenu}\n\n${demarrage.contenu}`
-        : demarrage.contenu;
-    return { chaine: demarrage.chaine, contenu: contenuSuite };
+    // Chaîne terminée : suite(ctx) peut en désigner une autre ({ chaine, entree }). Elle n'est pas démarrée ici mais renvoyée
+    // en attente : le modèle rédige d'abord sa réponse à la chaîne qui vient de finir, puis la suivante démarre (@see openAiClient.js).
+    const suiteEnAttente = await toolChains[chaine.nom].suite?.(chaine.ctx) || null;
+    return { chaine: null, contenu, suiteEnAttente };
 }
 
 /**
@@ -162,5 +158,5 @@ async function traiterAppelEtape(chaine, nomOutil, args, runTool, onToolCall, si
     chaine.index++;
     chaine.essais = 0;
     const suite = await poursuivreChaine(chaine, runTool, onToolCall, signal);
-    return { resultat, chaine: suite.chaine, suite: suite.contenu, progres: true };
+    return { resultat, chaine: suite.chaine, suite: suite.contenu, suiteEnAttente: suite.suiteEnAttente, progres: true };
 }

@@ -1813,6 +1813,14 @@ async function addAIChatClient() {
         gen.reasoningMsg = null;
 
         if (status === 'start') {
+            // Le texte déjà écrit par le modèle avant cet appel reste dans sa bulle, figée à sa place : la suite
+            // (outils, puis réponse suivante) s'affiche en dessous au lieu de l'écraser ou de s'y accumuler.
+            if (gen.contentStarted) {
+                gen.loadingMsg = appendMessage('bot', '');
+                gen.loadingMsg.classList.add('loading');
+                gen.contentStarted = false;
+                gen.accumulatedContent = '';
+            }
             const bubble = appendMessage('bot', `🔧 Appel de la fonction "${name}"...`);
             bubble.classList.remove('bot');
             bubble.classList.add('tool-call', 'pending');

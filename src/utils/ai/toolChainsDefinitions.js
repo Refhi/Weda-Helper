@@ -5,6 +5,7 @@
  *
  * Champs d'une chaîne : definition (null = lancement depuis le code uniquement), init(ctx), etapes, conclusion,
  * suite(ctx) (async, appelée à la fin normale de la chaîne : renvoie { chaine, entree } pour en enchaîner une autre, ou null).
+ * La chaîne suivante ne démarre qu'après la réponse en texte du modèle à la chaîne terminée (@see openAiClient.js).
  * Champs communs à toutes les étapes : id, type, si(ctx) (étape ignorée si faux).
  * Étape mécanique : outil, args(ctx), sortie(resultat, ctx) (renvoie un message d'arrêt, ou null), transmettre
  * (le résultat est joint tel quel à la réponse faite au modèle).
@@ -212,6 +213,7 @@ const toolChains = (() => {
         },
 
         mettreAJourAntecedentsDepuisDocument: {
+            conclusion: "Mise à jour des antécédents terminée. Indique brièvement ce qui a été ajouté, modifié ou supprimé dans les antécédents (ou qu'aucun changement n'était nécessaire).",
             definition: {
                 type: "function",
                 function: {
@@ -262,8 +264,11 @@ const toolChains = (() => {
                     }],
                     toolChoice: 'proposerElementsAntecedents',
                     consigne: ctx => `Antécédents actuels du patient : ${JSON.stringify(compacterAntecedents(ctx.antecedents))}\n`
-                        + `Compare-les au document fourni par l'utilisateur dans la conversation, puis appelle proposerElementsAntecedents UNE fois avec `
-                        + `uniquement ce qui doit être ajouté, modifié ou supprimé (pas ce qui est déjà à jour).`,
+                        + `Relis attentivement le document fourni par l'utilisateur dans la conversation et repère tout ce qui relève des antécédents : `
+                        + `diagnostics, pathologies chroniques, interventions chirurgicales, facteurs de risque, antécédents familiaux, allergies et intolérances, `
+                        + `ainsi que toute évolution d'un antécédent déjà connu (guérison, aggravation, nouvelle date). Compare avec les antécédents actuels, puis `
+                        + `appelle proposerElementsAntecedents UNE fois avec ce qui doit être ajouté, modifié ou supprimé (pas ce qui est déjà à jour). `
+                        + `Cet appel est obligatoire : si rien n'est à changer, appelle-le avec une liste vide.`,
                     verifier: args => Array.isArray(args?.elements) ? null : "'elements' doit être un tableau. Refais l'appel.",
                     maxEssais: 2
                 },
@@ -399,6 +404,7 @@ const toolChains = (() => {
         // Lancement depuis le code uniquement (PDF Parser, bouton "Résumé IA") : impose l'appel de renseignerDocument.
         completerDocument: {
             definition: null,
+            conclusion: "Document renseigné. Résume en quelques lignes au praticien ce que tu as retenu du document (titre, date, classification, commentaire).",
             etapes: [
                 {
                     id: 'renseigner',

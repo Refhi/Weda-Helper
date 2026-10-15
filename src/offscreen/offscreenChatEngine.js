@@ -217,7 +217,12 @@ async function processUserMessage({ tabId, patientId, content, model, chaine }) 
                 broadcastToPatient(patientId, { type: 'assistantChunk', ...chunk });
             },
             onToolCall: (event) => {
-                if (event.status === 'start') conversation.liveGeneration.reasoning = ''; // une nouvelle bulle de raisonnement pourra suivre
+                if (event.status === 'start') {
+                    conversation.liveGeneration.reasoning = ''; // une nouvelle bulle de raisonnement pourra suivre
+                    // Le texte précédant l'appel est figé côté client : la bulle suivante repart de zéro.
+                    conversation.liveGeneration.content = '';
+                    accumulatedContent = '';
+                }
                 const toolCalls = conversation.liveGeneration.toolCalls;
                 const index = toolCalls.findIndex(t => t.id === event.id);
                 if (index === -1) toolCalls.push({ ...event });

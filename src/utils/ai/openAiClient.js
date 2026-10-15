@@ -291,6 +291,7 @@ async function openAiClient({
     // --- 8. Interne : suivi de la profondeur de récursion (ne pas fournir manuellement) ---
     _toolCallDepth = 0,
     _chaine = null,        // État de la chaîne d'outils en cours (@see toolChains.js)
+    _suite = null,         // { chaine, entree } : chaîne à démarrer quand le modèle aura fini de répondre à la précédente
 
     // --- 9. Annulation ---
     signal = null,         // AbortSignal permettant d'interrompre la requête (et le streaming) en cours
@@ -324,7 +325,7 @@ async function openAiClient({
     }
 
     if (chaineInitiale) {
-        ({ messages, chaine: _chaine } = await handleToolCalls(messageAppelChaine(chaineInitiale), messages, onToolCall, executeToolCall, null, signal));
+        ({ messages, chaine: _chaine, suiteEnAttente: _suite } = await handleToolCalls(messageAppelChaine(chaineInitiale), messages, onToolCall, executeToolCall, null, signal));
     }
 
     // Filtrer uniquement les messages réellement vides (sans contenu ET sans tool_calls),
@@ -409,7 +410,7 @@ async function openAiClient({
                 return responseMessage.content || "Désolé, je n'ai pas pu terminer cette action après plusieurs tentatives d'appel de fonctions.";
             }
 
-            const { messages: updatedMessages, chaine, progres } = await handleToolCalls(responseMessage, filteredMessages, onToolCall, executeToolCall, _chaine, signal);
+            const { messages: updatedMessages, chaine, progres, suiteEnAttente } = await handleToolCalls(responseMessage, filteredMessages, onToolCall, executeToolCall, _chaine, signal);
 
             // On relance un appel avec les résultats des fonctions pour obtenir la réponse finale du modèle
             console.log(`[openAiClient] Re-envoi du contexte avec résultats des fonctions...`);
@@ -436,6 +437,47 @@ async function openAiClient({
                 // Une étape de chaîne menée à terme ne compte pas : seules les tentatives refusées ou hors chaîne consomment la profondeur.
                 _toolCallDepth: _toolCallDepth + (progres ? 0 : 1),
                 _chaine: chaine,
+                _suite: suiteEnAttente || _suite,
+                signal
+            });
+        }
+
+        // Le modèle a fini de répondre à la chaîne précédente (sa synthèse est dans le contexte) : la chaîne en attente démarre.
+        if (_suite && !_chaine) {
+            console.log(`[openAiClient] Démarrage de la chaîne suivante : ${_suite.chaine}`);
+            const { messages: messagesSuite, chaine, suiteEnAttente } = await handleToolCalls(
+                messageAppelChaine({ nom: _suite.chaine, entree: _suite.entree }),
+                [...filteredMessages, ...(responseMessage.content ? [{ role: 'assistant', content: responseMessage.content }] : [])],
+                onToolCall, executeToolCall, null, signal
+            );
+            return await openAiClient({
+                messages: messagesSuite,
+                model, maxTokens, temperature, topP, frequencyPenalty, presencePenalty, stop, stream, responseFormat, seed,
+                tools: resolvedTools, toolChoice, useTools, reasoningEffort, onChunk, onToolCall, onWarning, executeToolCall,
+                _toolCallDepth,
+                _chaine: chaine,
+                _suite: suiteEnAttente,
+                signal
+            });
+        }
+
+        // Chaîne en cours mais réponse sans tool call (tool_choice ignoré par certains serveurs) : on relance
+        // le modèle en lui rappelant l'outil attendu, au lieu de laisser la chaîne s'arrêter en silence.
+        const etapeAttendue = etapeCourante(_chaine);
+        if (etapeAttendue && (_chaine.relances ?? 0) < 2) {
+            _chaine.relances = (_chaine.relances ?? 0) + 1;
+            const attendus = etapeAttendue.outils.map(nomOutilEtape).join(', ');
+            console.warn(`[openAiClient] Réponse sans tool call pendant la chaîne ${_chaine.nom} : relance (${_chaine.relances}/2), outil attendu : ${attendus}.`);
+            return await openAiClient({
+                messages: [
+                    ...filteredMessages,
+                    ...(responseMessage.content ? [{ role: 'assistant', content: responseMessage.content }] : []),
+                    { role: 'user', content: `Tu dois appeler maintenant ${attendus} (obligatoire, aucune réponse en texte).` }
+                ],
+                model, maxTokens, temperature, topP, frequencyPenalty, presencePenalty, stop, stream, responseFormat, seed,
+                tools: resolvedTools, toolChoice, useTools, reasoningEffort, onChunk, onToolCall, onWarning, executeToolCall,
+                _toolCallDepth: _toolCallDepth + 1,
+                _chaine,
                 signal
             });
         }
@@ -779,6 +821,7 @@ async function handleToolCalls(responseMessage, messages, onToolCall, executeToo
     const updatedMessages = [...messages, responseMessage];
     let chaine = chaineEnCours;
     let progres = false;
+    let suiteEnAttente = null; // chaîne à démarrer une fois la réponse du modèle à la chaîne terminée (@see toolChains.js poursuivreChaine)
 
     // Réponse renvoyée telle quelle au modèle, sans exécuter l'appel (démarrage de chaîne, refus).
     const repondreSansExecuter = (toolCall, fnArgs, contenu, status = 'success') => {
@@ -811,6 +854,7 @@ async function handleToolCalls(responseMessage, messages, onToolCall, executeToo
             if (estChaine(fnName)) {
                 const demarrage = await demarrerChaine(fnName, fnArgs, runTool, onToolCall, signal);
                 chaine = demarrage.chaine;
+                suiteEnAttente = demarrage.suiteEnAttente || suiteEnAttente;
                 progres = true;
                 repondreSansExecuter(toolCall, fnArgs, demarrage.contenu);
                 continue;
@@ -820,11 +864,13 @@ async function handleToolCalls(responseMessage, messages, onToolCall, executeToo
                 const appel = await traiterAppelEtape(chaine, fnName, fnArgs, runTool, onToolCall, signal);
                 chaine = appel.chaine;
                 if (appel.refus) {
+                    console.warn(`[handleToolCalls] Appel de ${fnName} refusé :`, appel.refus);
                     repondreSansExecuter(toolCall, fnArgs, appel.refus, 'error');
                     continue;
                 }
                 fnResult = appel.resultat;
                 suiteChaine = appel.suite;
+                suiteEnAttente = appel.suiteEnAttente || suiteEnAttente;
                 progres ||= appel.progres;
             } else {
                 console.log(`[handleToolCalls] Exécution de ${fnName}...`);
@@ -848,5 +894,5 @@ async function handleToolCalls(responseMessage, messages, onToolCall, executeToo
         });
     }
 
-    return { messages: updatedMessages, chaine, progres };
+    return { messages: updatedMessages, chaine, progres, suiteEnAttente };
 }
