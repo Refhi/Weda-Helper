@@ -597,11 +597,7 @@ const availableFunctions = {
         // Une complétion du PDF Parser en attente est servie en priorité ; sinon il s'agit d'un document joint.
         execute: async (args = {}) => hasPendingPdfParserFields()
             ? resolvePendingPdfParserFields(args)
-            : await renameJoinedDocumentInHistoryTool(args),
-        // Appelé par handleToolCalls (côté offpage, donc sans accès au DOM) une fois l'outil exécuté : chaîne à lancer ensuite, ou null.
-        ensuite: async (_args, resultat) => !resultat?.error && await getOptionPromise('verifierEtMettreAJourAntecedents')
-            ? { chaine: 'mettreAJourAntecedentsDepuisDocument' }
-            : null
+            : await renameJoinedDocumentInHistoryTool(args)
     }
 };
 

@@ -832,14 +832,6 @@ async function handleToolCalls(responseMessage, messages, onToolCall, executeToo
             }
             console.log(`[handleToolCalls] Résultat de ${fnName}:`, fnResult);
 
-            // Un outil peut déclencher une chaîne une fois exécuté (hors chaîne en cours).
-            const suivante = !chaine && !suiteChaine && await availableFunctions[fnName]?.ensuite?.(fnArgs, fnResult);
-            if (suivante) {
-                const demarrage = await demarrerChaine(suivante.chaine, suivante.entree || {}, runTool, onToolCall, signal);
-                chaine = demarrage.chaine;
-                suiteChaine = demarrage.contenu;
-                progres = true;
-            }
             onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'success', result: fnResult });
         } catch (e) {
             fnResult = `Erreur lors de l'exécution de la fonction ${fnName} : ${e.message || e}`;

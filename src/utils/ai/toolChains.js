@@ -95,7 +95,17 @@ async function poursuivreChaine(chaine, runTool, onToolCall, signal) {
     if (arret) return { chaine: null, contenu: arret };
     const etape = etapeCourante(chaine);
     const texte = etape ? etape.consigne(chaine.ctx) : toolChains[chaine.nom].conclusion ?? null;
-    return { chaine: etape ? chaine : null, contenu: composerContenu(texte, transmis) };
+    const contenu = composerContenu(texte, transmis);
+    if (etape) return { chaine, contenu };
+
+    // Chaîne terminée : suite(ctx) peut en enchaîner une autre ({ chaine, entree }), dont la consigne prolonge la réponse.
+    const suivante = await toolChains[chaine.nom].suite?.(chaine.ctx);
+    if (!suivante) return { chaine: null, contenu };
+    const demarrage = await demarrerChaine(suivante.chaine, suivante.entree || {}, runTool, onToolCall, signal);
+    const contenuSuite = typeof contenu === 'string' && typeof demarrage.contenu === 'string'
+        ? `${contenu}\n\n${demarrage.contenu}`
+        : demarrage.contenu;
+    return { chaine: demarrage.chaine, contenu: contenuSuite };
 }
 
 /**
@@ -144,8 +154,8 @@ async function traiterAppelEtape(chaine, nomOutil, args, runTool, onToolCall, si
 
     const outil = etape.outils.find(o => nomOutilEtape(o) === nomOutil);
     const resultat = typeof outil === 'string' ? await runTool(nomOutil, args) : outil.executer(args, chaine.ctx);
+    etape.apresAppel?.(nomOutil, args, resultat, chaine.ctx);
     if (etape.termine && !etape.termine.includes(nomOutil)) {
-        etape.apresAppel?.(nomOutil, args, resultat, chaine.ctx);
         return { resultat, chaine, suite: null, progres: false };
     }
 

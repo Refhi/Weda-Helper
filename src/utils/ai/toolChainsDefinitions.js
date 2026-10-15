@@ -3,13 +3,14 @@
  * @description Définitions des chaînes d'outils (@see toolChains.js pour le moteur qui les déroule). Seule `toolChains`
  * est exposée : les constantes et helpers propres aux chaînes restent locaux à cette fonction.
  *
- * Champs d'une chaîne : definition (null = lancement depuis le code uniquement), init(ctx), etapes, conclusion.
+ * Champs d'une chaîne : definition (null = lancement depuis le code uniquement), init(ctx), etapes, conclusion,
+ * suite(ctx) (async, appelée à la fin normale de la chaîne : renvoie { chaine, entree } pour en enchaîner une autre, ou null).
  * Champs communs à toutes les étapes : id, type, si(ctx) (étape ignorée si faux).
  * Étape mécanique : outil, args(ctx), sortie(resultat, ctx) (renvoie un message d'arrêt, ou null), transmettre
  * (le résultat est joint tel quel à la réponse faite au modèle).
  * Étape de jugement : outils, toolChoice, consigne(ctx), verifier(args, ctx, nomOutil) (renvoie un refus, ou null),
  * maxEssais, termine (outils dont l'appel clôt l'étape, défaut : tous), apresAppel(nomOutil, args, resultat, ctx)
- * (appelé pour les autres outils).
+  * (appelé après chaque appel d'outil accepté, y compris celui qui clôt l'étape).
  */
 
 const toolChains = (() => {
@@ -404,9 +405,13 @@ const toolChains = (() => {
                     type: 'jugement',
                     outils: ['renseignerDocument'],
                     toolChoice: 'renseignerDocument',
-                    consigne: () => "Appelle maintenant renseignerDocument avec les informations demandées."
+                    consigne: () => "Appelle maintenant renseignerDocument avec les informations demandées.",
+                    apresAppel: (_nomOutil, _args, resultat, ctx) => { ctx.resultat = resultat; }
                 }
-            ]
+            ],
+            suite: async ctx => !ctx.resultat?.error && await getOptionPromise('verifierEtMettreAJourAntecedents')
+                ? { chaine: 'mettreAJourAntecedentsDepuisDocument' }
+                : null
         }
     };
 
