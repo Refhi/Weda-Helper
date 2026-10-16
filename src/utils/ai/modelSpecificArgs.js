@@ -1,13 +1,19 @@
 /**
  * Adaptations requises par certains modèles ou familles de modèles.
  * Les clés correspondent au nom exact du modèle ou au préfixe de sa famille.
+ * Une clé peut contenir des jokers : `*` (n'importe quelle suite de caractères) et `[a-z]` (un caractère d'une classe).
  */
+const REASONING_MODEL_RULE = {
+    argRenaming: ['max_tokens', 'max_completion_tokens'],
+    argRemoval: ['top_p'],
+    valueChange: ['temperature', 1],
+};
+
 const MODEL_SPECIFIC_ARG_CHANGE_RULES = {
-    'gpt-5-mini': {
-        argRenaming: ['max_tokens', 'max_completion_tokens'],
-        argRemoval: ['top_p'],
-        valueChange: ['temperature', 1],
-    },
+    // gpt-5 et suivants, et série o (o1, o3, o4-mini…). Les gpt-4.x/4o acceptent encore max_tokens et temperature.
+    'gpt-[5-9]*': REASONING_MODEL_RULE,
+    'gpt-[1-9][0-9]*': REASONING_MODEL_RULE,
+    'o[1-9]*': REASONING_MODEL_RULE,
     // Pour un modèle sans vision, ajouter `supportsVision: false` à sa règle :
     // ses parts d'image seront remplacées par un message explicatif avant l'appel API.
     'qwen3.5-9b-medreasoning-dt-i1': {
@@ -15,10 +21,18 @@ const MODEL_SPECIFIC_ARG_CHANGE_RULES = {
     },
 };
 
+function ruleNameMatchesModel(name, model) {
+    if (!/[*[]/.test(name)) return model === name || model.startsWith(`${name}-`);
+    const source = name
+        .replace(/[.+?^${}()|\\]/g, '\\$&')
+        .replace(/\*/g, '.*');
+    return new RegExp(`^${source}$`).test(model);
+}
+
 function getModelSpecificArgChangeRule(model) {
     if (!model) return null;
     const ruleName = Object.keys(MODEL_SPECIFIC_ARG_CHANGE_RULES)
-        .filter(name => model === name || model.startsWith(`${name}-`))
+        .filter(name => ruleNameMatchesModel(name, model))
         .sort((a, b) => b.length - a.length)[0];
     return ruleName ? MODEL_SPECIFIC_ARG_CHANGE_RULES[ruleName] : null;
 }
