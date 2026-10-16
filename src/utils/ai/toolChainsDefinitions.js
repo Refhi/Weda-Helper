@@ -77,7 +77,8 @@ const toolChains = (() => {
         + "d'une recherche, le moins spécifique que nécessaire ; l'antécédent libre (sans searchType) n'est permis qu'après une recherche CIM-10 dont aucun "
         + "résultat ne convient (et dans ce cas nom = exactement le terme recherché) ; une allergie n'est JAMAIS un antécédent libre ni CIM-10 : searchType "
         + "'allergieMolecule' (nom de molécule) ou 'allergiePrinceps' (si ça ressemble à un nom commercial), nom = uniquement le nom du médicament ; "
-        + "pour 'modifier'/'supprimer', nomCible est le titre exact d'un antécédent existant.";
+        + "pour 'modifier'/'supprimer', nomCible est le titre exact d'un antécédent existant ; pour transformer un antécédent libre existant en antécédent codé, "
+        + "utilise {action:'convertirCim10', nomCible: <titre exact>, data:{nom: <code issu d'une recherche>}} (jamais 'ajouter' + 'supprimer').";
 
     /** Contrôle les opérations de traiterAntecedents : codes CIM-10 issus d'une recherche, cibles existantes, actions permises. */
     function verifierOperationsAntecedents(args, ctx, nomOutil) {
@@ -97,7 +98,11 @@ const toolChains = (() => {
             if (action === 'modifier' || action === 'supprimer') {
                 return nomCible && titres.some(titre => titre.startsWith(nomCible.toLowerCase())) ? [] : [{ operation, motif: "nomCible ne correspond à aucun antécédent existant" }];
             }
-            return [{ operation, motif: "action non permise ici (seulement ajouter, modifier ou supprimer)" }];
+            if (action === 'convertirCim10') {
+                if (!nomCible || !titres.some(titre => titre.startsWith(nomCible.toLowerCase()))) return [{ operation, motif: "nomCible ne correspond à aucun antécédent existant" }];
+                return ctx.codesValides?.has(data?.nom) ? [] : [{ operation, motif: "code CIM-10 absent des résultats de recherche" }];
+            }
+            return [{ operation, motif: "action non permise ici (seulement ajouter, modifier, supprimer ou convertirCim10)" }];
         });
         return invalides.length ? `Opérations refusées : ${JSON.stringify(invalides)}. Refais l'appel.` : null;
     }
