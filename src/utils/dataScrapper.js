@@ -1204,6 +1204,15 @@ function parseAntecedentItem(text) {
 }
 
 /**
+ * Méthode centrale : un antécédent est libre s'il est signalé "Non pris en compte dans la sécurisation".
+ * @param {Element} element bloc ou table d'un antécédent
+ * @returns {boolean}
+ */
+function estAntecedentLibre(element) {
+    return !!element?.querySelector('[title^="Non pris en compte dans la sécurisation"]');
+}
+
+/**
  * Parse le bloc "Antécédents" du patient, organisé en sections (Médicaux, Chirurgicaux, Gynécologiques, etc.)
  * Chaque section commence par un div.st > .sm contenant le titre de la section.
  * @param {HTMLElement} container - Le mainContainer de la catégorie antecedents
@@ -1235,7 +1244,10 @@ function parseAntecedents(container) {
             }
             const text = extractRawBlockText(child);
             if (text) {
-                currentSection.items.push(parseAntecedentItem(text));
+                const item = parseAntecedentItem(text);
+                // Un antécédent libre est signalé par l'icône "Non pris en compte dans la sécurisation"
+                item.libre = estAntecedentLibre(child);
+                currentSection.items.push(item);
             }
         }
     }
@@ -1264,8 +1276,8 @@ function filtrerAntecedents(sections, { type, champDate, dateRange } = {}) {
         .map(section => ({
             titre: section.titre,
             items: section.items.filter(item => {
-                if (type === 'libre' && item.cim10Code) return false;
-                if (type === 'codifie' && !item.cim10Code) return false;
+                if (type === 'libre' && !item.libre) return false;
+                if (type === 'codifie' && item.libre) return false;
                 if (champDate && !isDateStringInRange(item.dates?.[champDate], range)) return false;
                 return true;
             })

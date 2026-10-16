@@ -614,13 +614,9 @@ async function ouvrirPanneauAntecedent(titre, { codifie } = {}) {
     return item;
 }
 
-/**
- * Indique si un antécédent de la liste est codifié (CIM-10) : comme dans dataScrapper (parseAntecedentItem),
- * le code est affiché entre crochets sur la première ligne de l'antécédent.
- */
+/** Indique si un antécédent de la liste est codifié, via la méthode centrale estAntecedentLibre (dataScrapper). */
 function estAntecedentCodifie(item) {
-    const premiereLigne = extractRawBlockText(item).split('\n')[0];
-    return /\[[^\]]+\]/.test(premiereLigne);
+    return !estAntecedentLibre(item);
 }
 
 function messageAntecedentIntrouvable(nomCible, codifie) {
