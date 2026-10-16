@@ -952,6 +952,28 @@ var advancedDefaultSettings = [
                 "description": "Clé API pour l'assistant IA local (si nécessaire).",
                 "default": null
             }, {
+                "name": "IAassistantUseSecondProfile",
+                "type": TYPE_BOOL,
+                "description": "Utiliser le second serveur/modèle d'IA (bascule également possible depuis l'en-tête du chat).",
+                "longDescription": "Permet de passer rapidement d'un serveur/modèle à un autre (ex: local ↔ distant, rapide ↔ puissant). Décoché = premier profil (URL, modèle et clé API ci-dessus) ; coché = second profil (ci-dessous).",
+                "default": false
+            }, {
+                "name": "IAassistantBaseUrl2",
+                "type": TYPE_SMALLTEXT,
+                "description": "Second profil : URL de base de l'API d'IA.",
+                "longDescription": "Même format que l'URL du premier profil (API compatible OpenAI, sans \"/chat/completions\").",
+                "default": "http://localhost:1234/v1"
+            }, {
+                "name": "IAassistantModelName2",
+                "type": TYPE_SMALLTEXT,
+                "description": "Second profil : nom du modèle d'IA préféré.",
+                "default": "auto"
+            }, {
+                "name": "IAassistantApiKey2",
+                "type": TYPE_SMALLTEXT,
+                "description": "Second profil : clé API (si nécessaire).",
+                "default": null
+            }, {
                 "name": "IAassistantMainSystemPrompt",
                 "type": TYPE_LARGETEXT,
                 "description": "Prompt système principal pour l'assistant IA local. Appelé systématiquement à chaque requête.",

@@ -132,8 +132,26 @@ const AI_OPTION_KEYS = [
     'IAassistantBaseUrl', 'IAassistantApiKey', 'IAassistantModelName',
     'AIAssistantToolCalling', 'IAassistantMaxToolCalls', 'IAassistantMainSystemPrompt',
     'IAassistantContextLimit', 'IAassistantMaxTokensOutput', 'IAassistantReasoningEffort',
+    'IAassistantUseSecondProfile', 'IAassistantBaseUrl2', 'IAassistantApiKey2', 'IAassistantModelName2',
 ];
 const AI_PROMPT_SHORTCUT_KEYS = Array.from({ length: 10 }, (_, index) => `IAassistantPromptShortcut${index}`);
+
+/**
+ * Nom de l'option stockant le modèle préféré du profil actif (profil 1 ou 2).
+ * @returns {Promise<string>}
+ */
+async function getActiveModelNameKey() {
+    return (await getOptionPromise('IAassistantUseSecondProfile')) ? 'IAassistantModelName2' : 'IAassistantModelName';
+}
+
+/**
+ * Bascule entre le profil 1 et le profil 2 (serveur/modèle) et invalide le sondage réseau précédent.
+ * @param {boolean} useSecond
+ */
+function setActiveAiProfile(useSecond) {
+    lastProbeResult = null;
+    return chrome.storage.local.set({ IAassistantUseSecondProfile: !!useSecond });
+}
 
 /**
  * Lit (à chaque appel, via un unique appel groupé à getOptionPromise) les options simples de
@@ -142,9 +160,14 @@ const AI_PROMPT_SHORTCUT_KEYS = Array.from({ length: 10 }, (_, index) => `IAassi
  */
 async function loadAiOptions() {
     const [
-        baseUrlOption, apiKey, preferredModel, toolCalling, maxToolCalls, basicSystemPrompt,
-        contextTokenLimit, maxTokensOutput, reasoningEffort, ...promptShortcuts
+        baseUrl1, apiKey1, preferredModel1, toolCalling, maxToolCalls, basicSystemPrompt,
+        contextTokenLimit, maxTokensOutput, reasoningEffort,
+        useSecondProfile, baseUrl2, apiKey2, preferredModel2, ...promptShortcuts
     ] = await getOptionPromise([...AI_OPTION_KEYS, ...AI_PROMPT_SHORTCUT_KEYS]);
+
+    const baseUrlOption = useSecondProfile ? baseUrl2 : baseUrl1;
+    const apiKey = useSecondProfile ? apiKey2 : apiKey1;
+    const preferredModel = useSecondProfile ? preferredModel2 : preferredModel1;
 
     const baseUrl = (baseUrlOption || '').trim().replace(/\/+$/, ''); // URL complète avec protocole, ex: "http://localhost:1234/v1"
 

@@ -962,11 +962,17 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
     collectCurrentValues(defaultSettings, defaultShortcuts)
       .then(valuesToSave => {
         let host = null;
-        try {
-          const rawUrl = valuesToSave['IAassistantBaseUrl']?.trim();
-          if (rawUrl) host = new URL(rawUrl).hostname;
-        } catch (error) {
-          host = null;
+        for (const key of ['IAassistantBaseUrl', 'IAassistantBaseUrl2']) {
+          try {
+            const rawUrl = valuesToSave[key]?.trim();
+            const candidate = rawUrl ? new URL(rawUrl).hostname : null;
+            if (candidate && candidate !== 'localhost' && candidate !== '127.0.0.1') {
+              host = candidate;
+              break;
+            }
+          } catch (error) {
+            // URL invalide : ignorée ici
+          }
         }
         if (host && host !== 'localhost' && host !== '127.0.0.1') {
           const confirmed = confirm(

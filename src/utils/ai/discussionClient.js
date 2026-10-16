@@ -214,6 +214,36 @@ async function addAIChatClient() {
             margin-right: 8px;
         }
         #wedaHelper-reset-chat:hover { background: #c23f3f; }
+        #wedaHelper-profile-toggle {
+            position: relative;
+            width: 44px;
+            height: 22px;
+            margin-left: 10px;
+            border: none;
+            border-radius: 11px;
+            background: #5a8dee;
+            cursor: pointer;
+            padding: 0;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        #wedaHelper-profile-toggle.second { background: #e0932f; }
+        #wedaHelper-profile-toggle .knob {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: white;
+            color: #343541;
+            line-height: 18px;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        #wedaHelper-profile-toggle.second .knob { transform: translateX(22px); }
         #wedaHelper-header-actions { display: flex; align-items: center; }
         #wedaHelper-external-warning {
             display: none;
@@ -282,7 +312,7 @@ async function addAIChatClient() {
             font-family: inherit;
         }
         #wedaHelper-info-popover ul { margin: 4px 0; padding-left: 18px; }
-        #wedaHelper-model-select {
+        #wedaHelper-model-select, .wedaHelper-model-other {
             display: block;
             width: 100%;
             box-sizing: border-box;
@@ -294,6 +324,8 @@ async function addAIChatClient() {
             border-radius: 6px;
             font-size: 12px;
         }
+        .wedaHelper-server-section { border-left: 3px solid #ccc; padding-left: 8px; margin: 6px 0; opacity: 0.75; }
+        .wedaHelper-server-section.active { border-left-color: #10a37f; opacity: 1; }
         #wedaHelper-disable-connector {
             display: block;
             margin: 0 0 10px;
@@ -632,7 +664,8 @@ async function addAIChatClient() {
         <div id="wedaHelper-chat-shortcuts"></div>
         <div id="wedaHelper-chat-window">
             <div id="wedaHelper-chat-header">
-                <span>Assistant Local (Beta)</span>
+                <div style="display:flex;align-items:center;"><span>Assistant Local (Beta)</span>
+                <button id="wedaHelper-profile-toggle" type="button" role="switch" title="Basculer entre le serveur/modèle 1 et 2"><span class="knob">1</span></button></div>
                 <div id="wedaHelper-header-actions">
                     <span id="wedaHelper-external-warning">!<span class="wedaHelper-external-warning-text">⚠️ Les données échangées avec l'assistant (dont d'éventuelles données de patients) sont envoyées à un serveur externe. Il relève de votre responsabilité de vous assurer que ce serveur est agréé pour l'hébergement de données de santé (HDS).</span></span>
                     <button id="wedaHelper-reset-chat" type="button" title="Réinitialiser la conversation">↺</button>
@@ -1211,15 +1244,28 @@ async function addAIChatClient() {
             .map(m => `<option value="${m.model}" ${m.model === selectedModel ? 'selected' : ''}>${m.model}</option>`)
             .join('');
 
+        const useSecond = !!(await getOptionPromise('IAassistantUseSecondProfile'));
+        const [url1, url2, model2Pref] = await getOptionPromise(['IAassistantBaseUrl', 'IAassistantBaseUrl2', 'IAassistantModelName2']);
+        const [model1Pref] = await getOptionPromise(['IAassistantModelName']);
+        const profiles = [
+            { num: 1, active: !useSecond, url: url1, model: !useSecond ? selectedModel : model1Pref, key: 'IAassistantModelName' },
+            { num: 2, active: useSecond, url: url2, model: useSecond ? selectedModel : model2Pref, key: 'IAassistantModelName2' },
+        ];
+        const serverSections = profiles.map(p => `
+            <div class="wedaHelper-server-section${p.active ? ' active' : ''}">
+                <h4>Serveur ${p.num}${p.active ? ' (actif)' : ''}</h4>
+                <input ${p.active ? 'id="wedaHelper-model-select" list="wedaHelper-model-options"' : `class="wedaHelper-model-other" data-key="${p.key}"`} value="${p.model || ''}" placeholder="Nom du modèle / déploiement" />
+                ${p.active && hasModelsList ? `<datalist id="wedaHelper-model-options">${modelOptions}</datalist>` : ''}
+                <pre>${(p.url || '').trim()}</pre>
+            </div>`).join('');
+
         // Toujours une liste déroulante éditable (saisie libre) : certains serveurs (ex: Azure
         // OpenAI) renvoient sur `/models` le catalogue complet plutôt que les seuls déploiements
         // configurés, dont le nom (ex: nom de déploiement) peut donc ne pas y figurer.
         return `
             <button id="wedaHelper-disable-connector" type="button">Désactiver l'Assistant Local</button>
-            <h4>Modèle utilisé <span title="La liste suggérée peut ne pas correspondre aux modèles réellement déployés (ex: Azure OpenAI expose tout son catalogue, pas vos déploiements). En cas d'échec, tapez manuellement le nom exact du modèle/déploiement.">⚠️</span></h4>
-            <input id="wedaHelper-model-select" list="wedaHelper-model-options" value="${selectedModel || ''}" placeholder="Nom du modèle / déploiement" />
-            ${hasModelsList ? `<datalist id="wedaHelper-model-options">${modelOptions}</datalist>` : ''}
-            <pre>${aiParams.baseUrl}</pre>
+            <h4>Modèle <span title="La liste suggérée peut ne pas correspondre aux modèles réellement déployés (ex: Azure OpenAI expose tout son catalogue, pas vos déploiements). En cas d'échec, tapez manuellement le nom exact du modèle/déploiement.">⚠️</span></h4>
+            ${serverSections}
             <h4>Tool Calling</h4>
             <pre>Max. Tool Calling = ${aiParams.MAX_TOOL_CALL_DEPTH}, cf. options Weda-Helper</pre>
             <h4>Prompt système</h4>
@@ -1230,6 +1276,25 @@ async function addAIChatClient() {
     }
 
     resetButton.addEventListener('click', resetConversation);
+
+    // Bascule entre les deux profils serveur/modèle (options IAassistant*2).
+    const profileToggle = widget.querySelector('#wedaHelper-profile-toggle');
+    async function refreshProfileToggle() {
+        const useSecond = await getOptionPromise('IAassistantUseSecondProfile');
+        profileToggle.querySelector('.knob').textContent = useSecond ? '2' : '1';
+        profileToggle.setAttribute('aria-checked', String(!!useSecond));
+        profileToggle.classList.toggle('second', !!useSecond);
+    }
+    profileToggle.addEventListener('click', async () => {
+        const useSecond = await getOptionPromise('IAassistantUseSecondProfile');
+        await setActiveAiProfile(!useSecond);
+        selectedModel = (await getAiParams()).defaultModel;
+        sendOffscreenMessage({ type: 'setModel', patientId: chatPatientId, model: selectedModel });
+        infoPopover.classList.remove('open');
+        await refreshProfileToggle();
+        await updateExternalWarning();
+    });
+    refreshProfileToggle();
 
     /** Affiche le "!" jaune d'avertissement RGPD/HDS uniquement si l'URL configurée n'est pas locale. */
     async function updateExternalWarning() {
@@ -1381,12 +1446,18 @@ async function addAIChatClient() {
         if (modelSelect) {
             modelSelect.addEventListener('change', async () => {
                 selectedModel = modelSelect.value;
-                chrome.storage.local.set({ IAassistantModelName: selectedModel }); // enregistre le choix comme modèle préféré
+                chrome.storage.local.set({ [await getActiveModelNameKey()]: selectedModel }); // enregistre le choix comme modèle préféré du profil actif
                 sendOffscreenMessage({ type: 'setModel', patientId: chatPatientId, model: selectedModel });
                 infoPopover.innerHTML = await buildInfoContent();
                 bindInfoPopoverActions();
             });
         }
+
+        infoPopover.querySelectorAll('.wedaHelper-model-other').forEach(input => {
+            input.addEventListener('change', () => {
+                chrome.storage.local.set({ [input.dataset.key]: input.value.trim() || 'auto' });
+            });
+        });
 
         const disableConnectorButton = infoPopover.querySelector('#wedaHelper-disable-connector');
         if (disableConnectorButton) {
