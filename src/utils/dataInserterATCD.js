@@ -273,9 +273,9 @@ async function attendreValidationUtilisateur({ attendu, consigne, timeoutMs = 10
  * AntecedentForm.aspx, ouvre une iframe cachée dessus (pour le patient courant) et fait pointer
  * _atcdDoc sur son document le temps de l'exécution, avant de nettoyer.
  * @param {() => Promise<*>} fn
- * @param {{debug?: boolean}} [options]
+ * @param {{debug?: boolean, patientId?: string|number|null}} [options] patientId : patient ciblé si l'URL n'en contient pas
  */
-async function withAntecedentContext(fn, { debug = false } = {}) {
+async function withAntecedentContext(fn, { debug = false, patientId = null } = {}) {
     const onAntecedentPage = window.location.pathname.includes('/FolderMedical/AntecedentForm.aspx');
     if (onAntecedentPage) {
         _atcdDoc = document;
@@ -292,7 +292,7 @@ async function withAntecedentContext(fn, { debug = false } = {}) {
 
     let iframe = null;
     try {
-        const url = await getCurrentPatientPageUrl('/FolderMedical/AntecedentForm.aspx');
+        const url = await getCurrentPatientPageUrl('/FolderMedical/AntecedentForm.aspx', patientId);
         iframe = await createHiddenIframe(url, debug, 'WedaHelperAntecedentIframe');
         const getDoc = () => iframe.contentDocument || iframe.contentWindow?.document;
         await waitForElementInDocument(getDoc, AntecedentFormSelectors.antecedentList.panel, 12000, 100);

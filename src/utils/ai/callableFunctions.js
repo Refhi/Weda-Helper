@@ -531,7 +531,7 @@ const availableFunctions = {
         },
         // Référence indirecte : traiterAntecedentsBatch n'existe que côté content script (dataInserterATCD.js),
         // pas dans la page offscreen qui ne fait que lire les `definition` de ce registre.
-        execute: ({ operations = [] } = {}) => operations.length ? traiterAntecedentsBatch(operations) : []
+        execute: ({ operations = [] } = {}, patientId = null) => operations.length ? traiterAntecedentsBatch(operations, { patientId }) : []
     },
     insertWedaDocument: {
         interne: true,
@@ -566,7 +566,7 @@ const availableFunctions = {
             }
         },
         // Référence indirecte : insertData n'existe que côté content script (dataInserter.js).
-        execute: ({ target, title, subtitle, content } = {}) => insertData(target, { title, subtitle, content })
+        execute: ({ target, title, subtitle, content } = {}, patientId = null) => insertData(target, { title, subtitle, content }, { patientId })
     },
     renseignerDocument: {
         definition: {
