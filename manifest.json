@@ -71,6 +71,8 @@
         "src/utils/ai/pdfParserAIExtraction.js",
         "src/utils/ai/attachmentAIRename.js",
         "src/utils/ai/chatSlashCommands.js",
+        "src/utils/ai/chatWidgetView.js",
+        "src/utils/ai/chatWidgetLayout.js",
         "src/utils/ai/discussionClient.js",
         "src/ui/tooltip.js",
         "src/ui/update.js",
