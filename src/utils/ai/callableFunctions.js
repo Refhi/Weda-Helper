@@ -163,6 +163,7 @@ async function recoverPatientData({
     try {
         const data = await recoverData({ categories, fullPage, dateRange, debug: false, patientId, resolveAllAttachments: lireDocuments });
         if (lireDocuments) await lirePiecesJointesPdf(data);
+        if (data?.antecedents) data.ongletsDisponibles = ((await getOptionPromise('memoriserOngletsAntecedents')) || []).filter(o => o?.titre);
         if (data?.antecedents && (antecedentsType || antecedentsChampDate)) {
             data.antecedents = filtrerAntecedents(data.antecedents, {
                 type: antecedentsType,
@@ -503,7 +504,7 @@ const availableFunctions = {
                                         properties: {
                                             searchType: { type: "string", enum: ["CIM10", "allergieMolecule", "allergiePrinceps"] },
                                             nom: { type: "string", description: "Texte saisi tel quel dans la recherche Weda : pour 'allergieMolecule'/'allergiePrinceps', UNIQUEMENT le nom de la molécule ou du médicament (ex. 'fluoxétine'), sans mot ajouté (pas de 'allergie', ni parenthèses ni précision) ; pour 'CIM10', le code exact ; sinon le libellé de l'antécédent libre." },
-                                            onglet: { type: "string" },
+                                            onglet: { type: "string", description: "Libellé exact d'un onglet existant, le plus adapté au type d'antécédent. Obligatoire pour 'ajouter'." },
                                             commentaire: { type: "string" },
                                             dateDebut: { type: "string" },
                                             dateFin: { type: "string" },

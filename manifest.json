@@ -58,6 +58,7 @@
         "src/utils/dataScrapper.js",
         "src/utils/dataScrapperFileHandler.js",
         "src/utils/dataInserter.js",
+        "src/utils/ongletsAntecedents.js",
         "src/utils/dataInserterATCD.js",
         "src/utils/dataInserterATCDConversion.js",
         "src/utils/ai/callableFunctions.js",

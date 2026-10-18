@@ -280,6 +280,7 @@ async function withAntecedentContext(fn, { debug = false } = {}) {
     if (onAntecedentPage) {
         _atcdDoc = document;
         _atcdIframe = null;
+        memoriserOngletsAntecedents();
         return await fn();
     }
 
@@ -291,6 +292,7 @@ async function withAntecedentContext(fn, { debug = false } = {}) {
         await waitForElementInDocument(getDoc, AntecedentFormSelectors.antecedentList.panel, 12000, 100);
         _atcdDoc = getDoc();
         _atcdIframe = iframe;
+        memoriserOngletsAntecedents();
         return await fn();
     } finally {
         _atcdDoc = document;
@@ -333,7 +335,7 @@ async function _insertAntecedent(data = {}, hooks = {}) {
         // Aucune modalité de recherche n'est spécifiée, on crée donc un antécédent libre.
         
         // Si aucun onglet n'est spécifié dans les données, on prend le premier onglet autorisé.
-        const ongletCible = trouverOnglet(ongletsPossibles(), data.onglet);
+        const ongletCible = trouverOnglet(ongletsPossibles(), data.onglet, data.searchType);
         
         // On cliques sur le bouton d'ajout d'antécédent libre.
         if (ongletCible && ongletCible.freeAtcdButton) {
@@ -360,7 +362,7 @@ async function _insertAntecedent(data = {}, hooks = {}) {
 
         // Ensuite on doit sélectionner le premier résultat de la recherche et
         // l'envoyer vers l'onglet correspondant.
-        const ongletCible = trouverOnglet(ongletsPossibles(), data.onglet);
+        const ongletCible = trouverOnglet(ongletsPossibles(), data.onglet, data.searchType);
         const resultatSelectionne = await selectionnerPremierResultatRecherche(data.searchType, ongletCible);
         console.log("[dataInserterATCD] Résultat sélectionné :", resultatSelectionne);
 
@@ -797,21 +799,20 @@ function remplirPaneauAntecedent(data = {}) {
  * @param {Array} onglets liste retournée par ongletsPossibles()
  * @param {string} ongletSouhaite titre ou type recherché
  */
-function trouverOnglet(ongletsPossibles, ongletSouhaite) {
-    console.log("[dataInserterATCD] ongletsPossibles:", ongletsPossibles, "recherche:", ongletSouhaite);
+function trouverOnglet(ongletsPossibles, ongletSouhaite, searchType) {
+    console.log("[dataInserterATCD] ongletsPossibles:", ongletsPossibles, "recherche:", ongletSouhaite, searchType);
+    // Un onglet incompatible avec la modalité d'ajout (ex. CIM-10 sur une allergie) n'est jamais retenu
+    const candidats = ongletsCompatibles(ongletsPossibles, searchType);
     let toReturn = null;
     if (ongletSouhaite) {
         const cible = ongletSouhaite.trim().toLowerCase();
-        const parTitre = ongletsPossibles.find(o => o.titre.trim().toLowerCase() === cible);
-        if (parTitre)  toReturn = parTitre;
-        const parCategorie = ongletsPossibles.find(o => o.categorie.trim().toLowerCase() === cible);
-        if (parCategorie) toReturn = parCategorie;
+        toReturn = candidats.find(o => o.categorie.trim().toLowerCase() === cible)
+            || candidats.find(o => o.titre.trim().toLowerCase() === cible);
     }
     if (!toReturn) {
-        const premierOngletAutorise = ongletsPossibles.find(o => o.autorise) || ongletsPossibles[0];
-        toReturn = premierOngletAutorise;
+        toReturn = candidats.find(o => o.autorise) || candidats[0];
     }
-    
+
     console.log("[dataInserterATCD] onglet trouvé:", toReturn);
     return toReturn;
 }
@@ -1031,6 +1032,13 @@ function ajouterBoutonTest() {
 
     document.body.appendChild(panneau);
 }
+
+addTweak("/FolderMedical/AntecedentForm.aspx", "*memoriserOngletsAntecedents", function() {
+    _atcdDoc = document;
+    waitForElementInDocument(() => document, AntecedentFormSelectors.antecedentList.panel, 12000, 100)
+        .then(memoriserOngletsAntecedents)
+        .catch(err => console.warn("[dataInserterATCD] Onglets non mémorisés :", err));
+});
 
 addTweak("/FolderMedical/AntecedentForm.aspx", "boutonTestAtcd", function() {
     ajouterBoutonTest();

@@ -54,9 +54,14 @@ const toolChains = (() => {
         args: () => ({ categories: ['antecedents'] }),
         sortie: (res, ctx) => {
             ctx.antecedents = res.antecedents || [];
+            ctx.onglets = res.ongletsDisponibles || [];
             return null;
         }
     };
+
+    function texteOnglets(ctx) {
+        return ctx.onglets?.length ? `Onglets disponibles pour data.onglet (titre, type Weda) : ${JSON.stringify(ctx.onglets)}\n` : '';
+    }
 
     /** Recherche CIM-10 des termes de ctx.termesCim10, ignorée s'il n'y en a pas. */
     const etapeChercherCodes = {
@@ -77,8 +82,20 @@ const toolChains = (() => {
         + "d'une recherche, le moins spécifique que nécessaire ; l'antécédent libre (sans searchType) n'est permis qu'après une recherche CIM-10 dont aucun "
         + "résultat ne convient (et dans ce cas nom = exactement le terme recherché) ; une allergie n'est JAMAIS un antécédent libre ni CIM-10 : searchType "
         + "'allergieMolecule' (nom de molécule) ou 'allergiePrinceps' (si ça ressemble à un nom commercial), nom = uniquement le nom du médicament ; "
+        + "pour tout 'ajouter', data.onglet est OBLIGATOIRE : analyse les onglets existants (liste « Onglets disponibles ») et recopie le libellé exact de celui "
+        + "qui correspond le mieux au type d'antécédent (ex. pathologie, chirurgie, gynéco-obstétrique, familial, facteur de risque, allergie) ; ne laisse jamais le choix par défaut ; "
+        + "compatibilité des onglets selon leur type : CIM-10 → 'Pathologies actives', 'Antécédents', 'Antécédents familiaux' ou 'Prévention et dépistages' ; allergieMolecule → 'Allergies' ; allergiePrinceps → 'Allergies' ou 'Traitement' ; antécédent libre → tout onglet ; "
         + "pour 'modifier'/'supprimer', nomCible est le titre exact d'un antécédent existant ; pour transformer un antécédent libre existant en antécédent codé, "
         + "utilise {action:'convertirCim10', nomCible: <titre exact>, data:{nom: <code issu d'une recherche>}} (jamais 'ajouter' + 'supprimer').";
+
+    /** Retourne le motif de refus si data.onglet est absent ou incompatible avec la modalité d'ajout, sinon null. */
+    function verifierOnglet(data, ctx) {
+        const onglet = (data?.onglet || '').trim().toLowerCase();
+        const compatibles = ongletsCompatibles(ctx.onglets, data?.searchType);
+        if (!compatibles.length) return onglet ? null : "data.onglet obligatoire : libellé exact de l'onglet le plus adapté";
+        if (compatibles.some(o => o.titre.trim().toLowerCase() === onglet)) return null;
+        return `data.onglet obligatoire, libellé exact parmi les onglets compatibles avec ce type d'ajout : ${JSON.stringify(compatibles.map(o => o.titre))}. Choisis le plus adapté`;
+    }
 
     /** Contrôle les opérations de traiterAntecedents : codes CIM-10 issus d'une recherche, cibles existantes, actions permises. */
     function verifierOperationsAntecedents(args, ctx, nomOutil) {
@@ -88,6 +105,8 @@ const toolChains = (() => {
         const invalides = args.operations.flatMap(operation => {
             const { action, nomCible, data } = operation || {};
             if (action === 'ajouter') {
+                const refus = verifierOnglet(data, ctx);
+                if (refus) return [{ operation, motif: refus }];
                 if (data?.searchType === 'CIM10') return ctx.codesValides?.has(data.nom) ? [] : [{ operation, motif: "code CIM-10 absent des résultats de recherche" }];
                 if (!data?.searchType) {
                     if (!ctx.rechercheCim10Faite) return [{ operation, motif: "antécédent libre refusé : l'ajout se fait par défaut en CIM-10, cherche d'abord un code avec rechercherCim10" }];
@@ -210,6 +229,7 @@ const toolChains = (() => {
                     ...etapeAppliquerAntecedents,
                     id: 'appliquer',
                     consigne: ctx => `Antécédents actuels du patient : ${JSON.stringify(compacterAntecedents(ctx.antecedents))}\n`
+                        + texteOnglets(ctx)
                         + (ctx.candidats ? `Codes CIM-10 candidats : ${JSON.stringify(ctx.candidats)}\n` : '')
                         + `Réalise maintenant la demande de l'utilisateur en appelant traiterAntecedents UNE seule fois (opérations dans l'ordre). `
                         + `Si tu as besoin d'un code CIM-10 qui n'a pas été recherché, appelle d'abord rechercherCim10. ${REGLES_ANTECEDENTS}`
@@ -269,6 +289,7 @@ const toolChains = (() => {
                     }],
                     toolChoice: 'proposerElementsAntecedents',
                     consigne: ctx => `Antécédents actuels du patient : ${JSON.stringify(compacterAntecedents(ctx.antecedents))}\n`
+                        + texteOnglets(ctx)
                         + `Relis attentivement le document fourni par l'utilisateur dans la conversation et repère tout ce qui relève des antécédents : `
                         + `diagnostics, pathologies chroniques, interventions chirurgicales, facteurs de risque, antécédents familiaux, allergies et intolérances, `
                         + `ainsi que toute évolution d'un antécédent déjà connu (guérison, aggravation, nouvelle date). Compare avec les antécédents actuels, puis `
