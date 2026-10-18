@@ -36,6 +36,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#688](https://github.com/Refhi/Weda-Helper/issues/688) - Les pdfs et le texte d'accompagnement sont désormais évalués indépendamment par le client IA.
 - [#687](https://github.com/Refhi/Weda-Helper/issues/687) - Le client IA sait désormais gérer le dossier patient, même quand il est dans les échanges sécurisés
 - [#709](https://github.com/Refhi/Weda-Helper/issues/709) - L’historique patient devrait maintenant s’afficher correctement chez tout le monde.
+- [#719](https://github.com/Refhi/Weda-Helper/issues/719) - Messagerie sécurisée : le décochage automatique des pièces jointes (ex. IHE_XDM.zip) est désormais correctement pris en compte par Weda, ces pièces jointes ne sont plus importées dans le dossier alors que la case était décochée.
 
 # [3.2] - Assistant Local IA ! (en beta)
 - [#634](https://github.com/Refhi/Weda-Helper/issues/634) - Ajout d'un Assistant Local (en beta) - vos tests et retours sont les bienvenus ! Pour l’instant ses capacités sont limitées à la recherche d’informations dans le dossier patient, mais va être amené à gérer de + en + de choses. (rédaction de courrier, résumé de pdf, assistant vocal ?, etc.) :
