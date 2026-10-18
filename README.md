@@ -307,6 +307,7 @@ Vous permet de connecter un modèle d'IA pour diverses actions :
 - Questionner le dossier médical en langage courant (ex. "Synthétise tout le suivi prostatique du patient", "vérifie que le suivi du diabète soit à jour en tenant compte des recommandations suivantes xxxxx")
 - Améliorer l'importation semi-automatique des documents en repérant mieux les dates, nom, et/ou en générant une synthèse.
 - Permettre d'évaluer automatiquement si les antécédents sont à jour suite à la réception d'un courrier (ex. "Vérifie que les antécédents cardiovasculaires du patient sont à jour, met à jour si nécessaire")
+- Gérer les antécédents : ajout, modification, suppression, ou conversion d'un antécédent libre en antécédent codé CIM-10 (ex. "Ajoute une HTA et une allergie à la pénicilline")
 - Créer des documents (ex. "Fait un courrier pour l'urologue à partir du dossier du patient et de ma consultation du jour")
 - Avoir un **deuxième** regard circonstancié sur un résultat d'examen (biologique ou autre)
 - plus de précisions et tuto sur le wiki [ici](https://github.com/Refhi/Weda-Helper/wiki)

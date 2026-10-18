@@ -281,7 +281,13 @@ async function withAntecedentContext(fn, { debug = false } = {}) {
         _atcdDoc = document;
         _atcdIframe = null;
         memoriserOngletsAntecedents();
-        return await fn();
+        // Inhibe le Trim/Sort de Weda-Helper (features/antecedent.js) qui modifieraient les résultats de recherche manipulés
+        document.body.dataset.insertionAntecedentEnCours = 'true';
+        try {
+            return await fn();
+        } finally {
+            delete document.body.dataset.insertionAntecedentEnCours;
+        }
     }
 
     let iframe = null;
@@ -815,6 +821,15 @@ function trouverOnglet(ongletsPossibles, ongletSouhaite, searchType) {
 
     console.log("[dataInserterATCD] onglet trouvé:", toReturn);
     return toReturn;
+}
+
+/**
+ * Mémorise dans le storage tous les onglets, avec leur type Weda (leur liste change très rarement).
+ * Les onglets "interdits" ne le sont que pour la modalité de recherche en cours : on les garde donc aussi.
+ */
+function memoriserOngletsAntecedents() {
+    const onglets = ongletsPossibles().map(({ titre, categorie }) => ({ titre, type: categorie }));
+    if (onglets.length) setStorageOption({ memoriserOngletsAntecedents: onglets });
 }
 
 function ongletsPossibles() {

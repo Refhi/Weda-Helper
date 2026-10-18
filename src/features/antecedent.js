@@ -13,6 +13,9 @@
 
 // Ajoute des cases pour trier les atcds CIM-10 par ordre alphabétique et pour masquer les CIM-10 secondaires
 addTweak('/FolderMedical/AntecedentForm.aspx', '*trimCIM10', function () {
+    // Trim et Sort modifieraient l'arbre CIM-10 sur lequel s'appuie l'insertion automatique d'antécédents (voir dataInserterATCD.js)
+    if (window.frameElement?.id === 'WedaHelperAntecedentIframe') return;
+
     function addCheckBox() {
         let checkbox = document.querySelector('#trim');
         if (!checkbox) {
@@ -82,7 +85,13 @@ addTweak('/FolderMedical/AntecedentForm.aspx', '*trimCIM10', function () {
         }
     }
 
+    // Posé par dataInserterATCD.js le temps d'une insertion automatique depuis cette page
+    function insertionEnCours() {
+        return document.body.dataset.insertionAntecedentEnCours === 'true';
+    }
+
     function removeSecondaryCIM10() {
+        if (insertionEnCours()) return;
         getOption('trimCIM10', function (trimCIM10) {
             if (!trimCIM10) {
                 return;
@@ -108,6 +117,7 @@ addTweak('/FolderMedical/AntecedentForm.aspx', '*trimCIM10', function () {
     }
 
     function sortAtcd() {
+        if (insertionEnCours()) return;
         let atcds = document.querySelectorAll('#ContentPlaceHolder1_ArbreCim10UCForm1_TreeViewCim10n1Nodes table');
         getOption('sortCIM10', function (sortCIM10) {
             if (atcds.length > 0 && sortCIM10) {
