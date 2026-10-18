@@ -32,9 +32,11 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeUncheckIHEMessage', asyn
     const titlesString = await getOptionPromise('secureExchangeUncheckSomeTitles');
     const titlesToUncheck = (titlesString || '').split(',').map(s => s.trim()).filter(s => s.length > 0);
 
-    // click() déclenche les vrais événements (bubbling) que Weda écoute pour mettre à jour son état
+    // Comme dans push_valider : change + input avec bubbles pour que Weda prenne bien en compte la modification
     function uncheck(checkbox) {
-        if (checkbox.checked) checkbox.click();
+        checkbox.checked = false;
+        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+        checkbox.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
     waitForElement({
