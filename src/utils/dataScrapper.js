@@ -133,10 +133,11 @@ const SELECTORS = {
 
     // Sélecteurs pour les pièces jointes
     attachments: {
-        item:              '.bufi, .pja',
+        item:              '.bufi, .pja, .nsi',
         titleContainer:    '.buft',
         visualizeLink:     'span[title^="Visualiser"]',
         viewLink:          '[onclick*="OpenViewBinaryForm"]',
+        cdaLink:           'a[onclick*="OpenPopupCdaViewerForm"]',
         description:       '.cfc',
     },
 
@@ -2067,10 +2068,16 @@ function parseAttachments(pjmDiv) {
     const attachmentDivs = pjmDiv.querySelectorAll(SELECTORS.attachments.item);
     
     return Array.from(attachmentDivs).map(div => {
+        // Cas ".nsi" : document ouvert dans la visionneuse CDA (ex. volet de synthèse médicale), dont l'id du lien est le fileId
+        const cdaLink = div.querySelector(SELECTORS.attachments.cdaLink);
         // Cas ".bufi" : pièce jointe déjà "digérée" par Weda (affichage résumé avec icône dédiée)
         const titleElement = div.querySelector(`${SELECTORS.attachments.titleContainer} ${SELECTORS.attachments.visualizeLink}`);
-        let fileType, fileName, category = null, viewLink;
-        if (titleElement) {
+        let fileType, fileName, category = null, viewLink, cdaFileId = null;
+        if (cdaLink) {
+            fileType = 'cda';
+            fileName = cdaLink.textContent.trim() || null;
+            cdaFileId = cdaLink.getAttribute('onclick')?.match(/id=(\d+)/)?.[1] || null;
+        } else if (titleElement) {
             fileType = titleElement.className.replace('img', '').toLowerCase();
             fileName = titleElement.nextSibling?.textContent.trim() || null;
             viewLink = div.querySelector(SELECTORS.attachments.viewLink);
@@ -2091,7 +2098,8 @@ function parseAttachments(pjmDiv) {
         // valide, il faut rejouer OpenViewBinaryForm depuis une page Weda déjà ouverte (cf. window.open
         // utilisé ailleurs dans le code, ex. patientLink.js) plutôt que d'ouvrir l'URL depuis un contexte externe.
         const onclickAttr = viewLink?.getAttribute('onclick') || '';
-        const { eventId, fileId } = extractDocMetaFromOnclick(onclickAttr);
+        const { eventId, fileId: viewerFileId } = extractDocMetaFromOnclick(onclickAttr);
+        const fileId = viewerFileId || cdaFileId;
         
         // Description libre éventuellement ajoutée sur la pièce jointe (uniquement présente sur les ".pja")
         const description = textOf(div, SELECTORS.attachments.description);

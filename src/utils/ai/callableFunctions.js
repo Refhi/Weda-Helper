@@ -107,7 +107,7 @@ async function lirePiecesJointesPdf(data) {
     for (const attachment of iterateAttachments(data)) {
         if (!attachment.url) continue;
         try {
-            const resolved = await resolvePdfAttachment(attachment.url);
+            const resolved = await resolveAttachmentContent(attachment.url);
             if (resolved.text) attachment.pdfText = resolved.text;
             if (resolved.images.length > 0) attachment.images = resolved.images;
         } catch (e) {

@@ -131,14 +131,14 @@ async function summarizeAttachment(fileId) {
     const url = await getAttachmentPdfUrl(fileId);
     if (!url) return { error: "Impossible d'ouvrir le document (lien introuvable ou popup bloquée)." };
 
-    const pdfText = await extractTextFromPDF(url);
+    const pdfText = await extractAttachmentText(url);
     // La date de naissance et le nom du patient ne servent pas à renseigner un document : on les déclare déjà connus
     // pour que l'IA ne les demande pas. Les autres champs demandés dépendent de PdfParserAutoAIFullMode.
     const knownData = { dateOfBirth: 'non requis', nameMatches: ['non requis'] };
     try {
         const fullMode = await getOptionPromise('PdfParserAutoAIFullMode');
         const possibleDocumentTypes = fullMode ? await getConfiguredDocumentTypes() : null;
-        await completeExtractedDataWithAI(knownData, pdfText, url, possibleDocumentTypes, { pdfText }, {
+        await completeExtractedDataWithAI(knownData, pdfText, isTextContentUrl(url) ? null : url, possibleDocumentTypes, { pdfText }, {
             externalTool: {
                 name: 'renseignerDocument',
                 extraInstructions: `Le fileId du document à renseigner est "${fileId}" : transmets-le à la fonction.`
@@ -214,19 +214,26 @@ function addSummaryButton(renameButton) {
     button.id = `AIPJ${fileId}`;
     button.textContent = 'Résumé IA';
     button.title = "Ouvre le document et demande à l'assistant IA d'en faire un résumé";
-    button.addEventListener('click', async () => {
+    button.addEventListener('click', async (event) => {
+        event.stopPropagation();
         sendWedaNotif({ message: "Document envoyé à l'assistant IA, la réponse apparaît dans le chat.", icon: 'summarize' });
         const result = await summarizeAttachment(fileId);
         if (result.error) sendWedaNotif({ message: result.error, type: 'fail', icon: 'error' });
     });
 
-    const newCell = document.createElement('td');
-    newCell.appendChild(button);
-    renameCell.after(newCell);
+    // Vue visionneuse CDA (.nsi) : tous les boutons partagent la même cellule (empilés). Une cellule
+    // dédiée se décalait au survol, et le clic pouvait alors atterrir sur un autre bouton (ex. "We").
+    if (renameCell.querySelector('[id^="DPJ"]')) {
+        renameButton.after(button);
+    } else {
+        const newCell = document.createElement('td');
+        newCell.appendChild(button);
+        renameCell.after(newCell);
+    }
 
     const syncStyle = () => { button.style.cssText = renameButton.style.cssText; };
     syncStyle();
-    const attachmentContainer = renameButton.closest('.pja') || renameCell;
+    const attachmentContainer = renameButton.closest('.pja, .nsi') || renameCell;
     attachmentContainer.addEventListener('mouseover', syncStyle);
     attachmentContainer.addEventListener('mouseout', syncStyle);
 }
