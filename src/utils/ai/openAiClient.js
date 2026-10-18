@@ -716,8 +716,16 @@ async function fetchChatCompletion(requestBody, apiUrl, signal, apiKey) {
     if (!response.ok) {
         let errorMessage = `Erreur API ${response.status}`;
         try {
-            const errorData = await response.json();
-            errorMessage = errorData.error?.message || errorMessage;
+            const rawBody = await response.text();
+            console.error(`[openAiClient] Corps de l'erreur API ${response.status} :`, rawBody);
+            try {
+                const errorData = JSON.parse(rawBody);
+                const err = errorData.error;
+                const detail = (typeof err === 'string' ? err : err?.message) || errorData.message;
+                errorMessage = detail ? `${errorMessage} : ${detail}` : errorMessage;
+            } catch (e) {
+                if (rawBody) errorMessage = `${errorMessage} : ${rawBody.slice(0, 500)}`;
+            }
         } catch (e) {
             // Si la réponse n'est pas du JSON (ex: erreur HTML du serveur), on garde le message par défaut
         }
