@@ -277,7 +277,7 @@ async function addAIChatClient() {
         #wedaHelper-external-warning .wedaHelper-external-warning-text {
             display: none;
             position: absolute;
-            top: 30px;
+            top: 22px;
             right: -60px;
             width: 280px;
             background: #fff8e1;
@@ -292,6 +292,7 @@ async function addAIChatClient() {
             text-align: left;
             z-index: 10001;
         }
+        #wedaHelper-external-warning .wedaHelper-external-warning-text::before { content: ''; position: absolute; top: -10px; left: 0; right: 0; height: 10px; }
         #wedaHelper-external-warning:hover .wedaHelper-external-warning-text { display: block; }
         #wedaHelper-info-popover {
             display: none;
@@ -679,7 +680,7 @@ async function addAIChatClient() {
                 <button id="wedaHelper-profile-toggle" type="button" role="switch" title="Basculer entre le serveur/modèle 1 et 2"><span class="knob">1</span></button>
                 <span id="wedaHelper-header-model"></span></div>
                 <div id="wedaHelper-header-actions">
-                    <span id="wedaHelper-external-warning">!<span class="wedaHelper-external-warning-text">⚠️ Les données échangées avec l'assistant (dont d'éventuelles données de patients) sont envoyées à un serveur externe. Il relève de votre responsabilité de vous assurer que ce serveur est agréé pour l'hébergement de données de santé (HDS).</span></span>
+                    <span id="wedaHelper-external-warning">!<span class="wedaHelper-external-warning-text">⚠️ Les données échangées avec l'assistant (dont d'éventuelles données de patients) sont envoyées à un serveur externe. Il relève de votre responsabilité de vous assurer que ce serveur est agréé pour l'hébergement de données de santé (HDS). <a href="${chrome.runtime.getURL('src/ui/markdownViewer.html?file=docs/IA-distante-wiki.md')}" target="_blank" rel="noopener noreferrer">Obligations légales et mise en place (wiki)</a></span></span>
                     <button id="wedaHelper-reset-chat" type="button" title="Réinitialiser la conversation">↺</button>
                     <button id="wedaHelper-info-chat" type="button" title="Paramètres">⚙️</button>
                     <button id="wedaHelper-close-chat" type="button">&times;</button>

@@ -916,6 +916,7 @@ var advancedDefaultSettings = [
             "name": "enableIAassistant",
             "type": TYPE_BOOL,
             "description": "Activer ou désactiver l'assistant IA local.",
+            "longDescription": "Attention : si vous utilisez un serveur IA distant, des données de santé nominatives lui sont envoyées. Consultez les <a href='" + chrome.runtime.getURL('src/ui/markdownViewer.html?file=docs/IA-distante-wiki.md') + "' target='_blank'>obligations légales (HDS, RGPD, information des patients) et la mise en place sur le wiki</a>.",
             "default": false,
             "subOptions": [{
                 "name": "IAassistantBaseUrl",

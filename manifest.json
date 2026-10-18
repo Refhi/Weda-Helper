@@ -116,6 +116,8 @@
         "src/features/AATI_synonymes_donnees.json",
         "CHANGELOG.md",
         "README.md",
+        "docs/IA-distante-wiki.md",
+        "src/ui/markdownViewer.html",
         "Images/*"
       ],
       "matches": [
