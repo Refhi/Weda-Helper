@@ -687,7 +687,16 @@ function buildRequestBody({
 
     if (resolvedTools && resolvedTools.length > 0) {
         requestBody.tools = resolvedTools;
-        requestBody.tool_choice = toolChoice || "auto";
+        if (toolChoice && typeof toolChoice === 'object') {
+            // Certains serveurs (LM Studio) n'acceptent que none/auto/required : on restreint les outils
+            // à la fonction ciblée et on force un appel d'outil.
+            const nom = toolChoice.function?.name;
+            const cibles = nom ? resolvedTools.filter(t => t.function?.name === nom) : [];
+            if (cibles.length > 0) requestBody.tools = cibles;
+            requestBody.tool_choice = "required";
+        } else {
+            requestBody.tool_choice = toolChoice || "auto";
+        }
     }
 
     return requestBody;
