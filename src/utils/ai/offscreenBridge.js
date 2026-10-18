@@ -110,6 +110,22 @@ function resolveCurrentPatientId() {
     return getCurrentPatientId() || getImportGridPatientId() || getPdfParserPatientId() || 0;
 }
 
+/**
+ * Sur la page WedaEchanges, le patient du PDF Parser est affiché avec un délai : on l'attend
+ * jusqu'à 2 secondes avant de considérer qu'il n'est pas disponible.
+ * @returns {Promise<string|number>}
+ */
+async function resolveCurrentPatientIdWithWait() {
+    const waitMs = 2000, stepMs = 100;
+    let id = resolveCurrentPatientId();
+    if (id || !location.href.startsWith('https://secure.weda.fr/FolderMedical/WedaEchanges/')) return id;
+    for (let t = 0; t < waitMs && !id; t += stepMs) {
+        await new Promise(r => setTimeout(r, stepMs));
+        id = resolveCurrentPatientId();
+    }
+    return id;
+}
+
 async function executeRequestedToolCall({ callId, name, args, patientId }) {
     // Signale régulièrement à l'engine que l'exécution est toujours en cours, afin qu'il remette
     // son timer à zéro (@see offscreenChatEngine.js keepaliveToolCall). Permet aux fonctions
@@ -120,7 +136,7 @@ async function executeRequestedToolCall({ callId, name, args, patientId }) {
     );
     try {
         if (!availableFunctions[name]) throw new Error(`fonction inconnue "${name}"`);
-        const result = await availableFunctions[name].execute(args, resolveCurrentPatientId());
+        const result = await availableFunctions[name].execute(args, await resolveCurrentPatientIdWithWait());
         sendOffscreenMessage({ type: 'toolCallResult', callId, result });
     } catch (error) {
         sendOffscreenMessage({ type: 'toolCallResult', callId, error: error.message || String(error) });
