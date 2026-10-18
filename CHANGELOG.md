@@ -6,7 +6,8 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 
 # [3.3] -
 ## A l'attention des Beta-Testeurs
-- /!\ Ceci est une RC, qui sera poussée à tout le monde dans une semaine si vous ne constatez rien de problématique :)
+- 10e version beta... sérieusement... mais on arrive au bout. Je considère que celle-ci est celle qui devrait être déployée d'ici 1-2 semaines, sauf problème majeur.
+- pour rappel cette version est très solidement orientée vers l'IA, préférentiellement avec un modèle local. N'hésitez pas à regarder le wiki pour plus de détails sur son utilisation. [Wiki](https://github.com/Refhi/Weda-Helper/wiki)
 - merci pour vos retours !
 
 ## Ajouts :
