@@ -1048,7 +1048,7 @@ var advancedDefaultSettings = [
                 "name": "IAassistantPromptShortcut3",
                 "type": TYPE_LARGETEXT,
                 "description": "Raccourci de prompt n°3, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
-                "default": ""
+                "default": "Après avoir récupéré l'ensemble du dossier du patient (appelle recoverPatientData([\"consultations\", \"resultatsExamens\", \"courriers\",    \"documents\", \"antecedents\"]); met à jour tous les antécédents : Reprends les anciens antécédents et complète les informations si nécessaire. Si un des antécédent est libre et que tu trouve un code CIM-10 qui correspond, propose une modification de l'antécédent pour ajouter ce code. Ajoute Les antécédents qui manquent en mentionnant les dates si elles apparaissent dans le dossier. Pour chaque antécédent, choisis la catégorie (Médical, chirurgical, allergie, etc.) appropriée et rédige un court résumé des évènements en lien avec cet antécédent, le spécialiste qui assure le suivi s'il y'en a un et le suivi éventuel prévu pour la suite de la prise en charge. Ne mentionne une prise en charge thérapeutique que si tu en trouves une trace dans le dossier ou dans les courriers. Si le titre de l'antécédent est déjà explicite, ne le mentionne pas à nouveau dans le champ de commentaire. Si il n'y a pas de traitement spécifique ou si un élément de suivi est manquant, ne le mentionne pas dans le champ de commentaire."
             }, {
                 "name": "IAassistantPromptShortcut4",
                 "type": TYPE_LARGETEXT,
