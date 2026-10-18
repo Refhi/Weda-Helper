@@ -244,6 +244,17 @@ async function addAIChatClient() {
             transition: transform 0.2s;
         }
         #wedaHelper-profile-toggle.second .knob { transform: translateX(22px); }
+        #wedaHelper-header-title { white-space: nowrap; }
+        #wedaHelper-header-model {
+            margin-left: 8px;
+            font-size: 11px;
+            font-weight: normal;
+            opacity: 0.85;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
         #wedaHelper-header-actions { display: flex; align-items: center; }
         #wedaHelper-external-warning {
             display: none;
@@ -664,8 +675,9 @@ async function addAIChatClient() {
         <div id="wedaHelper-chat-shortcuts"></div>
         <div id="wedaHelper-chat-window">
             <div id="wedaHelper-chat-header">
-                <div style="display:flex;align-items:center;"><span>Assistant Local (Beta)</span>
-                <button id="wedaHelper-profile-toggle" type="button" role="switch" title="Basculer entre le serveur/modèle 1 et 2"><span class="knob">1</span></button></div>
+                <div style="display:flex;align-items:center;"><span id="wedaHelper-header-title">Assistant Local (Beta)</span>
+                <button id="wedaHelper-profile-toggle" type="button" role="switch" title="Basculer entre le serveur/modèle 1 et 2"><span class="knob">1</span></button>
+                <span id="wedaHelper-header-model"></span></div>
                 <div id="wedaHelper-header-actions">
                     <span id="wedaHelper-external-warning">!<span class="wedaHelper-external-warning-text">⚠️ Les données échangées avec l'assistant (dont d'éventuelles données de patients) sont envoyées à un serveur externe. Il relève de votre responsabilité de vous assurer que ce serveur est agréé pour l'hébergement de données de santé (HDS).</span></span>
                     <button id="wedaHelper-reset-chat" type="button" title="Réinitialiser la conversation">↺</button>
@@ -745,6 +757,8 @@ async function addAIChatClient() {
     const infoPopover = widget.querySelector('#wedaHelper-info-popover');
     const resetButton = widget.querySelector('#wedaHelper-reset-chat');
     const externalWarning = widget.querySelector('#wedaHelper-external-warning');
+    const headerTitle = widget.querySelector('#wedaHelper-header-title');
+    const headerModel = widget.querySelector('#wedaHelper-header-model');
     const inputResizeHandle = widget.querySelector('#wedaHelper-input-resize-handle');
 
     // Ancrage automatique en bas de la conversation : désactivé si l'utilisateur remonte
@@ -1289,6 +1303,7 @@ async function addAIChatClient() {
         const useSecond = await getOptionPromise('IAassistantUseSecondProfile');
         await setActiveAiProfile(!useSecond);
         selectedModel = (await getAiParams()).defaultModel;
+        refreshHeaderModel();
         sendOffscreenMessage({ type: 'setModel', patientId: chatPatientId, model: selectedModel });
         infoPopover.classList.remove('open');
         await refreshProfileToggle();
@@ -1299,15 +1314,28 @@ async function addAIChatClient() {
     /** Affiche le "!" jaune d'avertissement RGPD/HDS uniquement si l'URL configurée n'est pas locale. */
     async function updateExternalWarning() {
         let isExternal = false;
+        let externalProviderName = '';
         try {
             const { hostname } = new URL((await getAiParams()).baseUrl);
             isExternal = !['localhost', '127.0.0.1', '[::1]'].includes(hostname);
+            // Domaine principal (ex: "xxx.openai.azure.com" -> "azure.com"), hôte complet pour une adresse IP
+            const labels = hostname.split('.');
+            externalProviderName = /^[\d.]+$/.test(hostname) || labels.length <= 2 ? hostname : labels.slice(-2).join('.');
         } catch (error) {
             isExternal = false;
         }
         externalWarning.classList.toggle('visible', isExternal);
+        headerTitle.textContent = isExternal ? `Assistant ${externalProviderName} (Beta)` : 'Assistant Local (Beta)';
     }
     updateExternalWarning();
+
+    /** Affiche à droite du toggle le nom du modèle actuellement utilisé. */
+    function refreshHeaderModel() {
+        const model = getCurrentModel() || '';
+        headerModel.textContent = model;
+        headerModel.title = model;
+    }
+    refreshHeaderModel();
 
     /** Réinitialise la conversation en cours (utilisé par le bouton ↺ et la commande /clear). */
     function resetConversation() {
@@ -1446,6 +1474,7 @@ async function addAIChatClient() {
         if (modelSelect) {
             modelSelect.addEventListener('change', async () => {
                 selectedModel = modelSelect.value;
+                refreshHeaderModel();
                 chrome.storage.local.set({ [await getActiveModelNameKey()]: selectedModel }); // enregistre le choix comme modèle préféré du profil actif
                 sendOffscreenMessage({ type: 'setModel', patientId: chatPatientId, model: selectedModel });
                 infoPopover.innerHTML = await buildInfoContent();
@@ -1930,6 +1959,7 @@ async function addAIChatClient() {
         switch (message.type) {
             case 'stateSync':
                 selectedModel = message.selectedModel || selectedModel;
+                refreshHeaderModel();
                 // Ne reconstruit l'affichage qu'une seule fois (premier chargement / changement de
                 // patient) : les resyncs suivants (reconnexion du port) ne doivent pas effacer les
                 // notices système et bulles de réflexion déjà affichées, absentes de l'historique persisté.
