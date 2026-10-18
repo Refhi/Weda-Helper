@@ -811,8 +811,8 @@ var advancedDefaultSettings = [
             "name": "cotationHelper2",
             "type": TYPE_TEXT,
             "description": "Propose des notifications pour suggérer des cotations selon le contexte (SHE, MCG, etc.). Supprimez celles qui ne vous intéressent pas.",
-            "longDescription": "Nous sommes parfois confronté à des cotations modificatrices très faciles à oublier en fonction du contexte.\nCette petite aide vous permettra peut-être d'en rattraper certaines.\nPar exemple s'il détecte que vous êtes en train de faire des consultations aux horaires du SAS, il vous suggerera d'ajouter la cotation SHE.\nSi vous voyez un patient hors résidence, il vous proposera la cotation MCG.\nA chaque fois un clic sur la cotation vous permettra de consulter la source parlant de cette cotation.\nPour l'instant les aides concernent les cotations suivantes :\nMCG, SHE, MHP, RDV, MOP, PAV, APC, APY, APU, MCS",
-            "default": "MCG, SHE, MHP, RDV, MOP, PAV, APC, APY, APU, MCS, GL1, GL2, GL3"
+            "longDescription": "Nous sommes parfois confronté à des cotations modificatrices très faciles à oublier en fonction du contexte.\nCette petite aide vous permettra peut-être d'en rattraper certaines.\nPar exemple s'il détecte que vous êtes en train de faire des consultations aux horaires du SAS, il vous suggerera d'ajouter la cotation SHE.\nSi vous voyez un patient hors résidence, il vous proposera la cotation MCG.\nA chaque fois un clic sur la cotation vous permettra de consulter la source parlant de cette cotation.\nPour l'instant les aides concernent les cotations suivantes :\nMCG, SHE, MHP, RDV, MOP, PAV, APC, APY, APU, MCS, GL1, GL2, GL3, COE",
+            "default": "MCG, SHE, MHP, RDV, MOP, PAV, APC, APY, APU, MCS, GL1, GL2, GL3, COE"
         }]
     }, {
         "name": "Companion",

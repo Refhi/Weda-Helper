@@ -710,6 +710,21 @@ function patientAgeInFSE() {
 }
 
 /**
+ * Âge du patient en jours et en mois révolus, pour les nourrissons.
+ * @returns {{days: number, months: number}}
+ */
+function patientAgeInDaysAndMonthsInFSE() {
+    const title = document.querySelector('#LabelInfoPatientNom > span > span:last-child').getAttribute('title');
+    const [day, month, year] = title.match(/(\d{2}\/\d{2}\/\d{4})/)[0].split('/').map(Number);
+    const birthDate = new Date(year, month - 1, day);
+    const today = new Date();
+    let months = (today.getFullYear() - birthDate.getFullYear()) * 12 + today.getMonth() - birthDate.getMonth();
+    if (today.getDate() < birthDate.getDate()) months--;
+    const days = Math.floor((new Date(today.getFullYear(), today.getMonth(), today.getDate()) - birthDate) / 86400000);
+    return { days, months };
+}
+
+/**
  * Vérifie si l'utilisateur connecté est le médecin traitant déclaré ou le référent.
  * 
  * @param {string} userName - Nom de l'utilisateur connecté

@@ -355,3 +355,16 @@ chrome.storage.local.get(['lastExtensionVersion', 'firstStart'], function (resul
         }
     });
 });
+
+
+// Migration ponctuelle : ajoute COE à la liste d'aide à la cotation déjà personnalisée par l'utilisateur
+// (le défaut ne s'applique qu'aux options jamais modifiées). Le drapeau évite de le réajouter s'il le retire ensuite.
+chrome.storage.local.get(['cotationHelper2', 'migrationCotationCOE'], function (result) {
+    if (result.migrationCotationCOE) return;
+    const migration = { migrationCotationCOE: true };
+    const liste = result.cotationHelper2;
+    if (typeof liste === 'string' && liste.trim() && !liste.split(',').some(c => c.trim() === 'COE')) {
+        migration.cotationHelper2 = `${liste.trim().replace(/,$/, '')}, COE`;
+    }
+    chrome.storage.local.set(migration);
+});

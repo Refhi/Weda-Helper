@@ -21,6 +21,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#702](https://github.com/Refhi/Weda-Helper/issues/702) - Nouvelle option "Ignorer les données générées par IA" (activée par défaut) : le Data Scrapper ignore les champs contenant "[IA]" (ex: commentaires générés par IA) pour éviter de dégrader les données en relisant du contenu généré par IA.
 - Historique patient - un bouton "Résumé IA" est ajouté à côté de "Renommer" sur chaque pièce jointe : il ouvre le document et demande à l'IA locale d'en faire un résumé. Le client IA peut également enregistrer un commentaire sur un document joint (fonction renameJoinedDocumentInHistory).
 - [#706](https://github.com/Refhi/Weda-Helper/issues/706) - Le client IA peut convertir un antécédent libre existant en antécédent codé CIM-10.
+- Aide à la cotation : proposition de la cotation COE (consultations obligatoires de l'enfant) entre 0 et 8 jours, puis à 8, 23 et 24 mois, avec le rappel que les 3 consultations COE donnent lieu à un certificat médical à adresser à la PMI.  COE est ajouté automatiquement à votre liste d'aides à la cotation si vous l'aviez personnalisée (supprimez-le des options si vous ne le souhaitez pas).
 
 ## Fix :
 - [#637](https://github.com/Refhi/Weda-Helper/issues/637) - il est désormais possible d’exclure certains paterns de dates de l’analyse automatique des pdf. Utile si votre addresse contiens des dates qui ne doivent pas être prises en compte.
