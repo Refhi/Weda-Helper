@@ -223,7 +223,7 @@ const toolChains = (() => {
                 type: "function",
                 function: {
                     name: "mettreAJourAntecedentsDepuisDocument",
-                    description: "Reporte dans les antécédents du patient actuel les éléments d'un document ou compte-rendu présent dans la conversation (message de l'utilisateur) : compare avec les antécédents existants, puis ajoute et met à jour le nécessaire. Aucun argument.",
+                    description: "Reporte dans les antécédents du patient actuel les éléments d'un document ou compte-rendu présent dans la conversation (message de l'utilisateur) : compare avec les antécédents existants, puis ajoute et met à jour le nécessaire. À n'appeler QUE si l'utilisateur demande explicitement de mettre à jour / reporter / intégrer les antécédents à partir du document ; ne pas l'appeler de sa propre initiative (ex. pour un simple résumé, une analyse ou une question sur le document). Aucun argument.",
                     parameters: { type: "object", properties: {} }
                 }
             },
