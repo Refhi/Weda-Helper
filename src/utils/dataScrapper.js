@@ -444,6 +444,7 @@ async function recoverData({
     patientId = null, // Patient explicitement ciblé (ex: appel depuis le chat IA via /patient) ; sinon déduit de l'URL courante
     resolveAttachmentFileIds = [], // Liste de fileId dont on veut résoudre l'URL réelle du pdf (voir doc ci-dessus)
     resolveAllAttachments = false, // Résout l'URL de toutes les pièces jointes de la plage dateRange (voir doc ci-dessus)
+    verbosity = "normal", // Verbosité "normal" ou "low"
 } = {}) {
     // Préparation de l'objet de données à retourner
     const data = {};
@@ -583,7 +584,7 @@ async function recoverData({
 
         // Le document peut être remplacé après un postback ASP.NET : on le relit juste avant le parse.
         iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
-        const freshData = recoverMainViewData(iframeDocument, categorySelectors, includeLegacy, category);
+        const freshData = recoverMainViewData(iframeDocument, categorySelectors, includeLegacy, category, verbosity);
 
         // Résolution des fileId demandés présents dans cette catégorie, pendant qu'elle est encore
         // affichée dans l'iframe (voir resolveAttachmentUrls : nécessite que le lien soit dans le DOM).
@@ -1655,7 +1656,7 @@ function parseCharts(container) {
  * @param {Object} categorySelectors - Les sélecteurs de la catégorie (SELECTORS.categories[category])
  * @returns {Array<Object>} Tableau d'objets représentant chaque journée
  */
-function recoverMainViewData(doc, categorySelectors, includeLegacy = false, category = "unknown") {
+function recoverMainViewData(doc, categorySelectors, includeLegacy = false, category = "unknown", verbosity = "normal") {
     // Réinitialisation de la Map de correspondance initiales → nom
     initialsToAuthorMap.clear();
     
@@ -1677,7 +1678,7 @@ function recoverMainViewData(doc, categorySelectors, includeLegacy = false, cate
 
     // Chaque .sc = une journée avec potentiellement plusieurs documents
     const dayContainers = mainContainer.querySelectorAll(categorySelectors.subContainer);
-    const results = Array.from(dayContainers).map(container =>     parseDayContainer(container, categorySelectors)).filter(r => r !== null);
+    const results = Array.from(dayContainers).map(container =>     parseDayContainer(container, categorySelectors, verbosity)).filter(r => r !== null);
     // Certaines catégories peuvent contenir en plus des journées importées d'un ancien
     // logiciel, situées hors du panneau habituel. On ne les récupère que si demandé.
     if (includeLegacy && categorySelectors.legacy) {
@@ -1685,7 +1686,7 @@ function recoverMainViewData(doc, categorySelectors, includeLegacy = false, cate
         if (legacyContainer) {
             const legacyDayContainers = legacyContainer.querySelectorAll(categorySelectors.legacy.subContainer);
             const legacyResults = Array.from(legacyDayContainers).map(container =>
-                parseDayContainer(container, categorySelectors.legacy)
+                parseDayContainer(container, categorySelectors.legacy, verbosity)
                             ).filter(r => r !== null);
             console.log(`[dataScrapper] ${legacyResults.length} journée(s) importée(s) d'un ancien logiciel détectée(s)`);
             results.push(...legacyResults.map(result => ({ ...result, imported: true })));
@@ -1701,7 +1702,7 @@ function recoverMainViewData(doc, categorySelectors, includeLegacy = false, cate
  * @param {Object} categorySelectors - Les sélecteurs de la catégorie (pour le sélecteur de date notamment)
  * @returns {Object} Données structurées de la journée
  */
-function parseDayContainer(container, categorySelectors) {
+function parseDayContainer(container, categorySelectors, verbosity) {
     // Extraction des métadonnées de la journée (header table)
     const dateElement = container.querySelector(categorySelectors.date);
     const lieuElement = container.querySelector(categorySelectors.lieu);
@@ -1719,7 +1720,7 @@ function parseDayContainer(container, categorySelectors) {
     // parseDocument retourne alors un tableau qu'il faut aplatir.
     const documentDivs = container.querySelectorAll(SELECTORS.dayContainer.documents);
     const documents = Array.from(documentDivs)
-        .flatMap(div => parseDocument(div))
+        .flatMap(div => parseDocument(div, verbosity))
         .filter(doc => doc !== null);
     
     // Pièces jointes : div name="dh10"
@@ -2184,6 +2185,12 @@ function showDataScrapperTestPanel() {
                 <option value="noRefresh">noRefresh</option>
             </select>
         </label>
+        <label style="display:block;">verbosity :
+            <select id="dsp-verbosity">
+                <option value="normal" selected>normal</option>
+                <option value="low">low</option>
+            </select>
+        </label>
         <label style="display:block;">fileId à résoudre (pièces jointes, séparés par virgule/espace) :<br><textarea id="dsp-fileIds" rows="2" style="width:200px;"></textarea></label>
         <hr>
     `;
@@ -2237,11 +2244,12 @@ function showDataScrapperTestPanel() {
             .split(/[\s,]+/)
             .map(fileId => fileId.trim())
             .filter(Boolean);
-        runDebugRecoverData(categories, categories.join(', '), { fullPage, debug, dateRange, refreshMode, resolveAttachmentFileIds });
+        const verbosity = panel.querySelector('#dsp-verbosity').value;
+        runDebugRecoverData(categories, categories.join(', '), { fullPage, debug, dateRange, refreshMode, resolveAttachmentFileIds, verbosity });
     });
 }
 
-async function runDebugRecoverData(categories, label, { fullPage = true, debug = true, dateRange = [], refreshMode = "autoRefresh", resolveAttachmentFileIds = [] } = {}) {
+async function runDebugRecoverData(categories, label, { fullPage = true, debug = true, dateRange = [], refreshMode = "autoRefresh", resolveAttachmentFileIds = [], verbosity = "normal" } = {}) {
     const data = await recoverData({
         fullPage,
         categories,
@@ -2249,6 +2257,7 @@ async function runDebugRecoverData(categories, label, { fullPage = true, debug =
         dateRange,
         refreshMode,
         resolveAttachmentFileIds,
+        verbosity,
     });
     console.log(`[dataScrapper] Données récupérées (${label}) :`, data);
     showRecoveredData(data);
