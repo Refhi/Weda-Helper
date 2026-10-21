@@ -1859,21 +1859,19 @@ function parseBiologyResults(documentDiv, verbosity) {
             };
 
             var resultat = analyse
-                if (verbosity === "low") { // Retourne une chaine ex: Cholestérol: 1,21 g/L (N: 1,00 - 1,90)
-                    var normalValues = '';
-                    if (minimum && minimum != "-" && maximum && maximum != "-") {
-                        normalValues = '(N: ' + minimum + ' - ' + maximum + ')';
-                    }
-                    else if (minimum && minimum != "-") {
-                        normalValues = '(N > ' + minimum + ')';
-                    }
-                    else if (maximum && maximum != '-') {
-                        normalValues = '(N < ' + maximum + ')';
-                    }
-                    resultat = (valeur ?? '') + ' ' + (unite ?? '') + ' ' + normalValues;
+            if (verbosity === "low") { // Retourne une chaine ex: Cholestérol: 1,21 g/L (N: 1,00 - 1,90)
+                var normalValues = '';
+                if (minimum && minimum != "-" && maximum && maximum != "-") {
+                    normalValues = '(N: ' + minimum + ' - ' + maximum + ')';
                 }
+                else if (minimum && minimum != "-") {
+                    normalValues = '(N > ' + minimum + ')';
+                }
+                else if (maximum && maximum != '-') {
+                    normalValues = '(N < ' + maximum + ')';
+                }
+                resultat = (valeur ?? '') + ' ' + (unite ?? '') + ' ' + normalValues;
 
-            if (verbosity === "low") {
                 if (!byLibelle[libelle]) {
                     byLibelle[libelle] = '';
                 }
