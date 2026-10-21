@@ -1307,7 +1307,7 @@ function extractDocMetaFromOnclick(onclickAttr) {
 function extractDocActions(actionsTable) {
     if (!actionsTable) return { fileName: null, dmp: null };
     const supprimerDiv = actionsTable.querySelector('[onclick^="Dec("]');
-    const fileName = supprimerDiv?.getAttribute('onclick')?.match(/Dec\([^,]*,\s*'([^']+)'/)?.[1] || null;
+    const fileName = supprimerDiv?.getAttribute('onclick')?.match(/Dec\([^,]*,\s*'le document ([^']+)'/)?.[1] || null;
     const dmpSpan = actionsTable.querySelector('span[id^="DMPPJ"]');
     const dmpLink = actionsTable.querySelector('a[id^="DMPPJ"]');
     const dmp = dmpSpan ? 'present' : (dmpLink ? 'sendable' : null);
