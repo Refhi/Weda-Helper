@@ -161,7 +161,7 @@ async function recoverPatientData({
     const fullPage = !(start && start >= limiteUnMois);
     console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, dateRange, lireDocuments, antecedentsType, antecedentsChampDate, antecedentsDateRange, patientId });
     try {
-        const data = await recoverData({ categories, fullPage, dateRange, debug: false, patientId, resolveAllAttachments: lireDocuments });
+        const data = await recoverData({ categories, fullPage, dateRange, debug: false, patientId, resolveAllAttachments: lireDocuments, verbosity: "low"});
         if (lireDocuments) await lirePiecesJointesPdf(data);
         if (data?.antecedents) data.ongletsDisponibles = ((await getOptionPromise('memoriserOngletsAntecedents')) || []).filter(o => o?.titre);
         if (data?.antecedents && (antecedentsType || antecedentsChampDate)) {
