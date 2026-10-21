@@ -1812,7 +1812,7 @@ function toBioNumber(raw) {
  * @param {HTMLElement} documentDiv - Le bloc document (div[name="dhX"])
  * @returns {Object<string, Array<Object>>|null}
  */
-function parseBiologyResults(documentDiv) {
+function parseBiologyResults(documentDiv, verbosity) {
     const tables = documentDiv.querySelectorAll('table.hprimgrid');
     const byLibelle = {};
     let hasValidHeader = false;
@@ -1858,19 +1858,46 @@ function parseBiologyResults(documentDiv) {
                 horsNormes,
             };
 
-            if (!byLibelle[libelle]) {
-                byLibelle[libelle] = [];
-            }
+            var resultat = analyse
+                if (verbosity === "low") { // Retourne une chaine ex: Cholestérol: 1,21 g/L (N: 1,00 - 1,90)
+                    var normalValues = '';
+                    if (minimum && minimum != "-" && maximum && maximum != "-") {
+                        normalValues = '(N: ' + minimum + ' - ' + maximum + ')';
+                    }
+                    else if (minimum && minimum != "-") {
+                        normalValues = '(N > ' + minimum + ')';
+                    }
+                    else if (maximum && maximum != '-') {
+                        normalValues = '(N < ' + maximum + ')';
+                    }
+                    resultat = (valeur ?? '') + ' ' + (unite ?? '') + ' ' + normalValues;
+                }
 
-            const isDuplicate = byLibelle[libelle].some(existing =>
-                existing.valeur === analyse.valeur &&
-                existing.unite === analyse.unite &&
-                existing.minimum === analyse.minimum &&
-                existing.maximum === analyse.maximum
-            );
-            if (!isDuplicate) {
-                byLibelle[libelle].push(analyse);
+            if (verbosity === "low") {
+                if (!byLibelle[libelle]) {
+                    byLibelle[libelle] = '';
+                }
+                const isDuplicate = byLibelle[libelle] == resultat;
+                if (!isDuplicate) {
+                    byLibelle[libelle] = resultat;
+                }
             }
+            else {
+                if (!byLibelle[libelle]) {
+                    byLibelle[libelle] = [];
+                }
+
+                const isDuplicate = byLibelle[libelle].some(existing =>
+                    existing.valeur === analyse.valeur &&
+                    existing.unite === analyse.unite &&
+                    existing.minimum === analyse.minimum &&
+                    existing.maximum === analyse.maximum
+                );
+                if (!isDuplicate) {
+                    byLibelle[libelle].push(analyse);
+                }
+            }
+        
         });
     });
 
@@ -1924,7 +1951,7 @@ function parseArretTravailFields(lines) {
  * @returns {Array<Object|null>} Tableau de documents (généralement un seul élément, mais un
  *   même div peut contenir plusieurs recettes, ex: double facturation le même jour)
  */
-function parseDocument(div) {
+function parseDocument(div, verbosity) {
     // Détecter les recettes par leur structure spécifique (.pjm avec table.stxrec).
     // Un même div[name="dhX"] peut contenir plusieurs .pjm (plusieurs recettes).
     const pjmDivs = Array.from(div.querySelectorAll(SELECTORS.document.pjm))
@@ -1966,7 +1993,7 @@ function parseDocument(div) {
     }
 
     if (type === 'resultatexamen') {
-        const structuredBioResults = parseBiologyResults(div);
+        const structuredBioResults = parseBiologyResults(div, verbosity);
         if (structuredBioResults) {
             parsedDocument.resultatsBio = structuredBioResults;
         } else {
