@@ -200,8 +200,10 @@ addTweak('/FolderMedical/AntecedentForm.aspx', '*shortcutAntecedentAlert', funct
             shortcutsContainer.style = 'position: absolute; display: none; flex-direction: row; gap: 10px; z-index: 9999; background: white; padding: 2px; border: 1px solid #ccc; border-radius: 4px;';
 
             [
+                { label: '3m', value: 90 },
                 { label: '6m', value: 180 },
                 { label: '1a', value: 365 },
+                { label: '2a', value: 730 },
                 { label: '3a', value: 1095 },
                 { label: '5a', value: 1825 }
             ].forEach(shortcut => {
