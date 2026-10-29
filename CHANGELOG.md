@@ -4,11 +4,12 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
-# [3.3] -
-## A l'attention des Beta-Testeurs
-- 10e version beta... sérieusement... mais on arrive au bout. Je considère que celle-ci est celle qui devrait être déployée d'ici 1-2 semaines, sauf problème majeur.
-- pour rappel cette version est très solidement orientée vers l'IA, préférentiellement avec un modèle local. N'hésitez pas à regarder le wiki pour plus de détails sur son utilisation. [Wiki](https://github.com/Refhi/Weda-Helper/wiki)
-- merci pour vos retours !
+# [3.3] - IA, IA, et encore IA !
+Cette version est surtout orientée IA et apporte d’autres petites améliorations et bug fixes.
+
+Si vous êtes intéressés, je vous encourage à voir le [wiki](https://github.com/Refhi/Weda-Helper/wiki) pour plus de détails sur l'utilisation de l'IA dans Weda-Helper.
+
+La fonctionnalité IA est encore considérée comme étant en Béta, mais assez solide pour un usage quotidien.
 
 ## Ajouts :
 - [#665](https://github.com/Refhi/Weda-Helper/issues/665) - Ajout d'une fonction d'automatisation de la gestion des NOEMIE. Cette fonction vous permet d'associer un organisme de tiers payant tel qu'il apprait dans les retour NOEMIE à son nom tel qu'il apparait sur vos relevés bancaires (ex: Organisme 91919000 correspond à la MGEN). Elle permet également de définir un délai de paiement pour chaque organisme ce qui ajuste automatiquement la date de la recette lors du pointage des NOEMIE (ex: 3 jours pour la MGEN, 1 jour pour les CPAM). Des valeurs par défaut sont déjà présentes pour les caisses que @Abelvlpr rencontre dans sa pratique mais vous pouvez ajouter vos caisses et les partager avec le reste des utilisateurs directement dans les options de Weda-Helper !
