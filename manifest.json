@@ -61,6 +61,7 @@
         "src/utils/ongletsAntecedents.js",
         "src/utils/dataInserterATCD.js",
         "src/utils/dataInserterATCDConversion.js",
+        "src/utils/ai/compactDataForIA.js",
         "src/utils/ai/callableFunctions.js",
         "src/utils/ai/modelSpecificArgs.js",
         "src/utils/ai/toolChainsDefinitions.js",

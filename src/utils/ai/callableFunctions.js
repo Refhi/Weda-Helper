@@ -161,7 +161,7 @@ async function recoverPatientData({
     const fullPage = !(start && start >= limiteUnMois);
     console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, dateRange, lireDocuments, antecedentsType, antecedentsChampDate, antecedentsDateRange, patientId });
     try {
-        const data = await recoverData({ categories, fullPage, dateRange, debug: false, patientId, resolveAllAttachments: lireDocuments, verbosity: "low"});
+        const data = await recoverData({ categories, fullPage, dateRange, debug: false, patientId, resolveAllAttachments: lireDocuments });
         if (lireDocuments) await lirePiecesJointesPdf(data);
         if (data?.antecedents) data.ongletsDisponibles = ((await getOptionPromise('memoriserOngletsAntecedents')) || []).filter(o => o?.titre);
         if (data?.antecedents && (antecedentsType || antecedentsChampDate)) {
@@ -171,12 +171,13 @@ async function recoverPatientData({
                 dateRange: antecedentsDateRange
             });
         }
-        return data;
+        return compactDataForAI(data);
     } catch (e) {
         console.error("[recoverPatientData] Erreur lors de la récupération des données :", e);
         return { error: `Erreur lors de la récupération des données : ${e.message || e}` };
     }
 }
+
 
 /**
  * Parcourt toutes les iframes présentes dans la page actuelle et renvoie les URLs ressemblant à
