@@ -133,10 +133,11 @@ const SELECTORS = {
 
     // Sélecteurs pour les pièces jointes
     attachments: {
-        item:              '.bufi, .pja',
+        item:              '.bufi, .pja, .nsi',
         titleContainer:    '.buft',
         visualizeLink:     'span[title^="Visualiser"]',
-        viewLink:          '[onclick*="OpenViewBinaryFormLC"]',
+        viewLink:          '[onclick*="OpenViewBinaryForm"]',
+        cdaLink:           'a[onclick*="OpenPopupCdaViewerForm"]',
         description:       '.cfc',
     },
 
@@ -305,6 +306,18 @@ function resolveCategoryCachePlan(category, cacheEntry, { fullPage, refreshMode 
 }
 
 /**
+ * Indique, d'après le cache d'une catégorie journalière, si les fileId demandés se trouvent dans
+ * la première page (10 plus récents) et/ou dans la partie "extra" (plus anciens).
+ * @param {Object|undefined} cacheEntry
+ * @param {Array<string>} fileIds
+ * @returns {{inFirstPage: boolean, inExtra: boolean}}
+ */
+function locateFileIdsInCache(cacheEntry, fileIds) {
+    const contains = pageData => collectAttachmentFileIds(pageData).some(id => fileIds.includes(id));
+    return { inFirstPage: contains(cacheEntry?.firstPage?.data), inExtra: contains(cacheEntry?.extra?.data) };
+}
+
+/**
  * Met à jour l'objet de cache (en mémoire) pour une catégorie après une récupération fraîche,
  * et retourne les données à utiliser (fraîches, éventuellement recollées à la partie "extra"
  * conservée du cache).
@@ -345,6 +358,38 @@ function mergeAndCacheCategoryData(cache, category, freshData, plan) {
 }
 
 
+/**
+ * Si l'option ignoreAIGeneratedData est active, retire récursivement les champs texte contenant "[IA]"
+ * (ex: commentaire d'une pièce jointe) afin que des données générées par une IA ne soient pas relues comme
+ * fiables. Le reste de l'entrée (fileId, date...) est conservé. Dans une liste de textes, seules les lignes
+ * concernées sont retirées (le champ disparaît s'il ne reste rien). Ne mute pas l'entrée (le cache n'est
+ * donc pas altéré, et l'option reste effective malgré lui).
+ * @param {*} data - Données retournées par recoverData
+ * @returns {Promise<*>} Données épurées (ou inchangées si l'option est désactivée)
+ */
+async function excludeAIGeneratedFields(data) {
+    if (!await getOptionPromise('ignoreAIGeneratedData')) return data;
+
+    const isAIText = item => typeof item === 'string' && item.includes('[IA]');
+    const clean = value => {
+        if (Array.isArray(value)) {
+            return value.filter(item => !isAIText(item)).map(clean);
+        }
+        if (value && typeof value === 'object') {
+            const result = {};
+            for (const [key, item] of Object.entries(value)) {
+                if (isAIText(item)) continue;
+                const cleaned = clean(item);
+                if (Array.isArray(item) && item.length > 0 && cleaned.length === 0 && item.every(isAIText)) continue;
+                result[key] = cleaned;
+            }
+            return result;
+        }
+        return value;
+    };
+    return clean(data);
+}
+
 // ───────────────────────────────────────────────────────────────────────────────
 /**
  * Récupère les données d'historique patient depuis Weda, par catégories.
@@ -372,6 +417,23 @@ function mergeAndCacheCategoryData(cache, category, freshData, plan) {
  *     "Suite" est inhibé et seule la première page (10 plus récents) est rafraîchie.
  *   - "fullRefresh" : ignore le cache, récupère systématiquement des données fraîches.
  *   - "noRefresh" : utilise le cache tel quel s'il existe, même périmé (récupère uniquement en son absence).
+ * @argument resolveAttachmentFileIds Liste de fileId (voir attachment.fileId dans un résultat précédent) dont on
+ *   veut résoudre l'URL réelle du pdf. Coûteux (rejoue un clic par fileId) : à ne demander explicitement que sur
+ *   un appel ultérieur ciblé, pas systématiquement. Le cache sert à localiser les fileId : seules les catégories
+ *   qui les contiennent sont re-fetchées (l'iframe doit rester chargée avec les pièces jointes visibles pour
+ *   pouvoir cliquer dessus, avec un chargement complet si le fileId est dans la partie ancienne). Les catégories
+ *   avec un fileId en cache sont traitées en premier, et une fois tous les fileId résolus les catégories
+ *   restantes ne sont plus rafraîchies (absentes du résultat si elles n'étaient pas en cache).
+ * @argument resolveAllAttachments Si true, résout l'URL du pdf de toutes les pièces jointes des catégories journalières
+ *   et de la catégorie "documents" demandées, dans la plage dateRange (équivalent d'un resolveAttachmentFileIds contenant tous leurs fileId, sans
+ *   avoir à les connaître à l'avance). Force le re-fetch de ces catégories (avec le fullPage demandé, sans réutiliser
+ *   la partie "extra" du cache) car les liens doivent être présents dans l'iframe.
+ *
+ * Si l'option ignoreAIGeneratedData est active (défaut), les champs contenant "[IA]" (données générées par IA,
+ * ex: commentaires de pièces jointes) sont retirés du résultat ; le reste de l'entrée est conservé.
+ *
+ * Le nombre de pièces jointes résolues par appel est limité par l'option IAassistantMaxFileIds (lue ici, 10 par défaut) :
+ * au-delà, les pièces jointes ne sont plus résolues et le résultat contient un champ `avertissement` (message texte).
  */
 async function recoverData({
     fullPage = false, // De base on ne va vérifier que les 10 derniers subContainers chargés par défaut. N'est probablement pas possible pour charts et vaccins
@@ -379,15 +441,31 @@ async function recoverData({
     dateRange = [], // Filtre les résultats sur une plage de dates : [debut, fin], chaque borne étant facultative
     debug = false, // Affiche l'iframe en plein écran et ne la supprime pas à la fin pour faciliter le debug
     refreshMode = "autoRefresh", // "autoRefresh" | "fullRefresh" | "noRefresh" — voir doc ci-dessus
+    patientId = null, // Patient explicitement ciblé (ex: appel depuis le chat IA via /patient) ; sinon déduit de l'URL courante
+    resolveAttachmentFileIds = [], // Liste de fileId dont on veut résoudre l'URL réelle du pdf (voir doc ci-dessus)
+    resolveAllAttachments = false, // Résout l'URL de toutes les pièces jointes de la plage dateRange (voir doc ci-dessus)
+    verbosity = "normal", // Verbosité "normal" ou "low"
 } = {}) {
     // Préparation de l'objet de données à retourner
     const data = {};
 
+    // Limite du nombre de pièces jointes résolues (les fileId demandés en excès sont ignorés, dans l'ordre fourni)
+    // L'option peut être absente ou invalide : une valeur non numérique donnerait un quota NaN (aucune pièce jointe résolue).
+    const maxFileIds = await getOptionPromise('IAassistantMaxFileIds');
+    const limitMessage = `Limite de ${maxFileIds} pièces jointes lues par appel atteinte : Tu DOIS informer l'utilisateur que certaines pièces jointes n'ont pas été lues car ayant dépassé le nombre prévu dans les options.`;
+    let limitReached = false;
+    if (resolveAttachmentFileIds.length > maxFileIds) {
+        console.warn(`[dataScrapper] ${resolveAttachmentFileIds.length} fileId demandés, limités à ${maxFileIds} : ignorés →`, resolveAttachmentFileIds.slice(maxFileIds));
+        resolveAttachmentFileIds = resolveAttachmentFileIds.slice(0, maxFileIds);
+        limitReached = true;
+    }
+
     // Résolution de la plage de dates demandée (bornes converties en objets Date, ou null si absentes)
     const resolvedDateRange = resolveDateRange(dateRange);
 
-    // Chargement du cache sessionStorage propre à ce patient (une clé par patient)
-    const patientId = getCurrentPatientId();
+    // Chargement du cache sessionStorage propre à ce patient (une clé par patient) : patientId fourni
+    // en priorité (ex: /patient), sinon déduit de la page actuellement affichée.
+    patientId = patientId || getCurrentPatientId();
     if (!patientId) {
         console.warn('[dataScrapper] Impossible de déterminer le patient courant, le cache sera ignoré');
     }
@@ -397,12 +475,37 @@ async function recoverData({
     // Détermination, pour chaque catégorie demandée, du plan de récupération (cache réutilisable
     // ou récupération nécessaire, et avec quel fullPage effectif)
     const plans = {};
+    const categoriesWithRequestedFileIds = new Set();
     for (const category of categories) {
         if (!SELECTORS.categories[category]) {
             console.warn(`[dataScrapper] Catégorie inconnue : ${category}`);
             continue;
         }
         plans[category] = resolveCategoryCachePlan(category, cache[category], { fullPage, refreshMode });
+        // Résoudre des fileId nécessite que la catégorie soit affichée dans l'iframe avec la journée
+        // concernée chargée : on ne force donc le re-fetch que là où le cache contient ces fileId.
+        if (resolveAttachmentFileIds.length > 0 && !plans[category].isDaily && category === 'documents') {
+            // Catégorie non paginée : un simple re-fetch suffit si le cache contient un des fileId demandés.
+            if (collectAttachmentFileIds(cache[category]?.data).some(id => resolveAttachmentFileIds.includes(id))) {
+                plans[category] = { needsFetch: true, effectiveFullPage: fullPage, cachedMergedData: null, isDaily: false };
+                categoriesWithRequestedFileIds.add(category);
+            }
+        }
+        if (resolveAttachmentFileIds.length > 0 && plans[category].isDaily) {
+            const { inFirstPage, inExtra } = locateFileIdsInCache(cache[category], resolveAttachmentFileIds);
+            if (inExtra) {
+                // Journée ancienne : un vrai chargement complet (clic "Suite") est indispensable.
+                plans[category] = { needsFetch: true, effectiveFullPage: true, cachedMergedData: null, isDaily: true };
+            } else if (inFirstPage && !plans[category].needsFetch) {
+                plans[category] = { needsFetch: true, effectiveFullPage: false, cachedMergedData: null, isDaily: true, reuseExtra: cache[category].extra };
+            }
+            if (inFirstPage || inExtra) categoriesWithRequestedFileIds.add(category);
+        }
+        // Toutes les pièces jointes de la plage : la catégorie doit être affichée dans l'iframe, avec le fullPage demandé.
+        // ("documents" n'est pas paginée mais liste aussi des pièces jointes, avec un fileId par entrée.)
+        if (resolveAllAttachments && (plans[category].isDaily || category === 'documents')) {
+            plans[category] = { needsFetch: true, effectiveFullPage: fullPage, cachedMergedData: null, isDaily: plans[category].isDaily };
+        }
     }
 
     const categoriesNeedingFetch = Object.keys(plans).filter(category => plans[category].needsFetch);
@@ -412,14 +515,26 @@ async function recoverData({
     let iframe = null;
     if (categoriesNeedingFetch.length > 0) {
         await loadPersistentInitialsToAuthorMap();
-        const urlToLoad = await constructPatientHistoryUrl();
+        const urlToLoad = await constructPatientHistoryUrl(patientId);
         iframe = await createHiddenIframe(urlToLoad, debug, 'dataScrapperIframe');
     }
 
-    // On traite chaque catégorie demandée, en servant le cache quand c'est possible
-    for (const category of Object.keys(plans)) {
+    // On traite chaque catégorie demandée, en servant le cache quand c'est possible. La résolution
+    // des fileId demandés se fait catégorie par catégorie (voir plus bas) : Weda n'affiche qu'une
+    // seule catégorie à la fois dans l'iframe, il faut donc cliquer sur les pièces jointes pendant
+    // que la bonne catégorie est encore affichée, pas après avoir parcouru toutes les catégories.
+    const attachmentUrlsByFileId = {};
+    let remainingFileIds = [...resolveAttachmentFileIds];
+    // Les catégories dont le cache contient les fileId demandés passent en premier (tri stable).
+    const orderedCategories = Object.keys(plans).sort((a, b) => categoriesWithRequestedFileIds.has(b) - categoriesWithRequestedFileIds.has(a));
+    for (const category of orderedCategories) {
         const plan = plans[category];
         const categorySelectors = SELECTORS.categories[category];
+
+        if (plan.needsFetch && !resolveAllAttachments && resolveAttachmentFileIds.length > 0 && remainingFileIds.length === 0) {
+            console.log(`[dataScrapper] Catégorie "${category}" ignorée : tous les fileId demandés sont déjà résolus`);
+            continue;
+        }
 
         if (!plan.needsFetch) {
             console.log(`[dataScrapper] Catégorie "${category}" servie depuis le cache (${refreshMode})`);
@@ -469,7 +584,25 @@ async function recoverData({
 
         // Le document peut être remplacé après un postback ASP.NET : on le relit juste avant le parse.
         iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
-        const freshData = recoverMainViewData(iframeDocument, categorySelectors, includeLegacy, category);
+        const freshData = recoverMainViewData(iframeDocument, categorySelectors, includeLegacy, category, verbosity);
+
+        // Résolution des fileId demandés présents dans cette catégorie, pendant qu'elle est encore
+        // affichée dans l'iframe (voir resolveAttachmentUrls : nécessite que le lien soit dans le DOM).
+        const fileIdsInFreshData = collectAttachmentFileIds(freshData);
+        const fileIdsInThisCategory = remainingFileIds.filter(id => fileIdsInFreshData.includes(id));
+        if (resolveAllAttachments) {
+            // Pièces jointes de la plage demandée, dans la limite du quota restant (ordre d'affichage de Weda)
+            const quota = Math.max(0, maxFileIds - Object.keys(attachmentUrlsByFileId).length - fileIdsInThisCategory.length);
+            const fileIdsInRange = collectAttachmentFileIds(filterCategoryDataByDateRange(freshData, resolvedDateRange, category))
+                .filter(id => !fileIdsInThisCategory.includes(id));
+            if (fileIdsInRange.length > quota) limitReached = true;
+            console.log(`[dataScrapper] resolveAllAttachments, catégorie "${category}" : ${fileIdsInRange.length} pièce(s) jointe(s) dans la plage, quota restant ${quota}`);
+            fileIdsInThisCategory.push(...fileIdsInRange.slice(0, quota));
+        }
+        if (fileIdsInThisCategory.length > 0) {
+            Object.assign(attachmentUrlsByFileId, await resolveAttachmentUrls(iframe, fileIdsInThisCategory));
+            remainingFileIds = remainingFileIds.filter(id => !fileIdsInThisCategory.includes(id));
+        }
 
         // Mise à jour du cache en mémoire (fusion avec la partie "extra" conservée le cas échéant)
         const mergedData = mergeAndCacheCategoryData(cache, category, freshData, plan);
@@ -479,17 +612,28 @@ async function recoverData({
         data[category] = filterCategoryDataByDateRange(mergedData, resolvedDateRange, category);
     }
 
-    // Nettoyage : supprimer l'iframe si on n'est pas en mode debug
-    if (iframe && !debug) { iframe.remove(); }
-
-    // Persistance du cache sessionStorage si des données ont été rafraîchies
+    // Persistance du cache sessionStorage si des données ont été rafraîchies. Avant l'injection
+    // ci-dessous, car les entrées de `data` sont partagées avec le cache : le champ url
+    // (propre à cet appel) ne doit pas y être persisté.
     if (patientId && cacheChanged) {
         writeDataScrapperCache(patientId, cache);
     }
 
+    // Injection des URLs résolues au fil des catégories (voir plus haut), avant de fermer l'iframe
+    if (resolveAttachmentFileIds.length > 0 || resolveAllAttachments) {
+        injectAttachmentUrls(data, attachmentUrlsByFileId);
+        if (remainingFileIds.length > 0 && !resolveAllAttachments) {
+            console.warn('[dataScrapper] fileId(s) non trouvés dans les catégories/plage de dates demandées :', remainingFileIds);
+        }
+        if (limitReached) data.avertissement = limitMessage;
+    }
+
+    // Nettoyage : supprimer l'iframe si on n'est pas en mode debug
+    if (iframe && !debug) { iframe.remove(); }
+
     console.log('[dataScrapper] Données récupérées pour les catégories :', Object.keys(data), data);
 
-    return data;
+    return await excludeAIGeneratedFields(data);
 }
 
 /**
@@ -528,11 +672,39 @@ function formatFrenchDate(date) {
  * @returns {{start: Date|null, end: Date|null}}
  */
 function resolveDateRange(dateRange) {
-    const [startRaw, endRaw] = Array.isArray(dateRange) ? dateRange : [];
+    console.log("[dataScrapper] Resolving date range from:", dateRange);
+    // Flatten nested arrays (handle error from LLM case where dateRange is [[value1, value2]] instead of [value1, value2])
+    let flatDateRange = Array.isArray(dateRange) ? dateRange : [];
+    if (flatDateRange.length === 1 && Array.isArray(flatDateRange[0])) {
+        flatDateRange = flatDateRange[0];
+    }
+    const [startRaw, endRaw] = flatDateRange;
+    console.log("[dataScrapper] Parsed raw start and end:", startRaw, endRaw);
+
+    // Plage relative [n, unité] (ex. [7,'days'], [1,'month'], [1,'year']) : de il y a n unités jusqu'à aujourd'hui.
+    const amount = Number(startRaw);
+    console.log("[dataScrapper] Parsed amount for relative range:", amount);
+    const unitMatch = typeof endRaw === 'string' ? endRaw.trim().toLowerCase().match(/^(day|jour|week|semaine|month|mois|year|an)/) : null;
+    console.log("[dataScrapper] Parsed unit for relative range:", unitMatch);
+    if (Number.isInteger(amount) && amount >= 0 && unitMatch && !String(startRaw).includes('/')) {
+        const start = new Date();
+        const unit = unitMatch[1];
+        if (unit === 'day' || unit === 'jour') start.setDate(start.getDate() - amount);
+        else if (unit === 'week' || unit === 'semaine') start.setDate(start.getDate() - 7 * amount);
+        else if (unit === 'month' || unit === 'mois') start.setMonth(start.getMonth() - amount);
+        else start.setFullYear(start.getFullYear() - amount);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+        return { start, end };
+    }
+
     const start = parseFrenchDate(startRaw);
     const end = parseFrenchDate(endRaw);
     if (end) end.setHours(23, 59, 59, 999);
-    return { start, end };
+    const result = { start, end };
+    console.log("[dataScrapper] Resolved date range:", result);
+    return result;
 }
 
 /**
@@ -784,9 +956,10 @@ function chartsLoadedCheck(iframe) {
 
 /**
  * Constructeur d'url pour la page d'historique patient (voir getCurrentPatientPageUrl dans patientLink.js)
+ * @param {string} [patientId] - Patient ciblé ; sinon déduit de l'URL de la page courante.
  */
-async function constructPatientHistoryUrl() {
-    const urlToLoad = await getCurrentPatientPageUrl('/FolderMedical/PopUpHistoriqueForm.aspx');
+async function constructPatientHistoryUrl(patientId = null) {
+    const urlToLoad = await getCurrentPatientPageUrl('/FolderMedical/PopUpHistoriqueForm.aspx', patientId);
     console.log(`[dataScrapper] URL de la page d'historique : ${urlToLoad}`);
     return urlToLoad;
 }
@@ -1033,6 +1206,15 @@ function parseAntecedentItem(text) {
 }
 
 /**
+ * Méthode centrale : un antécédent est libre s'il est signalé "Non pris en compte dans la sécurisation".
+ * @param {Element} element bloc ou table d'un antécédent
+ * @returns {boolean}
+ */
+function estAntecedentLibre(element) {
+    return !!element?.querySelector('[title^="Non pris en compte dans la sécurisation"]');
+}
+
+/**
  * Parse le bloc "Antécédents" du patient, organisé en sections (Médicaux, Chirurgicaux, Gynécologiques, etc.)
  * Chaque section commence par un div.st > .sm contenant le titre de la section.
  * @param {HTMLElement} container - Le mainContainer de la catégorie antecedents
@@ -1064,7 +1246,10 @@ function parseAntecedents(container) {
             }
             const text = extractRawBlockText(child);
             if (text) {
-                currentSection.items.push(parseAntecedentItem(text));
+                const item = parseAntecedentItem(text);
+                // Un antécédent libre est signalé par l'icône "Non pris en compte dans la sécurisation"
+                item.libre = estAntecedentLibre(child);
+                currentSection.items.push(item);
             }
         }
     }
@@ -1073,6 +1258,33 @@ function parseAntecedents(container) {
     }
 
     return sections;
+}
+
+/**
+ * Filtre le résultat de parseAntecedents (sections d'antécédents) selon le type (libre/codifié) et/ou
+ * une plage de dates portant sur un seul champ de date à la fois (debut, fin, ponctuelle ou alerte).
+ * Les sections qui n'ont plus aucun item après filtrage sont retirées du résultat.
+ * @param {Array<{titre: string, items: Array<Object>}>} sections résultat de parseAntecedents
+ * @param {{type?: 'libre'|'codifie', champDate?: 'debut'|'fin'|'ponctuelle'|'alerte', dateRange?: Array<string>}} [filtre]
+ * @returns {Array<{titre: string, items: Array<Object>}>} sections filtrées (nouveau tableau, ne mute pas l'entrée)
+ */
+function filtrerAntecedents(sections, { type, champDate, dateRange } = {}) {
+    if (!Array.isArray(sections)) return sections;
+    if (!type && !champDate) return sections;
+
+    const range = champDate ? resolveDateRange(dateRange) : null;
+
+    return sections
+        .map(section => ({
+            titre: section.titre,
+            items: section.items.filter(item => {
+                if (type === 'libre' && !item.libre) return false;
+                if (type === 'codifie' && item.libre) return false;
+                if (champDate && !isDateStringInRange(item.dates?.[champDate], range)) return false;
+                return true;
+            })
+        }))
+        .filter(section => section.items.length > 0);
 }
 
 /**
@@ -1096,7 +1308,7 @@ function extractDocMetaFromOnclick(onclickAttr) {
 function extractDocActions(actionsTable) {
     if (!actionsTable) return { fileName: null, dmp: null };
     const supprimerDiv = actionsTable.querySelector('[onclick^="Dec("]');
-    const fileName = supprimerDiv?.getAttribute('onclick')?.match(/Dec\([^,]*,\s*'([^']+)'/)?.[1] || null;
+    const fileName = supprimerDiv?.getAttribute('onclick')?.match(/Dec\([^,]*,\s*'le document ([^']+)'/)?.[1] || null;
     const dmpSpan = actionsTable.querySelector('span[id^="DMPPJ"]');
     const dmpLink = actionsTable.querySelector('a[id^="DMPPJ"]');
     const dmp = dmpSpan ? 'present' : (dmpLink ? 'sendable' : null);
@@ -1444,7 +1656,7 @@ function parseCharts(container) {
  * @param {Object} categorySelectors - Les sélecteurs de la catégorie (SELECTORS.categories[category])
  * @returns {Array<Object>} Tableau d'objets représentant chaque journée
  */
-function recoverMainViewData(doc, categorySelectors, includeLegacy = false, category = "unknown") {
+function recoverMainViewData(doc, categorySelectors, includeLegacy = false, category = "unknown", verbosity = "normal") {
     // Réinitialisation de la Map de correspondance initiales → nom
     initialsToAuthorMap.clear();
     
@@ -1466,8 +1678,7 @@ function recoverMainViewData(doc, categorySelectors, includeLegacy = false, cate
 
     // Chaque .sc = une journée avec potentiellement plusieurs documents
     const dayContainers = mainContainer.querySelectorAll(categorySelectors.subContainer);
-    const results = Array.from(dayContainers).map(container => parseDayContainer(container, categorySelectors));
-
+    const results = Array.from(dayContainers).map(container =>     parseDayContainer(container, categorySelectors, verbosity)).filter(r => r !== null);
     // Certaines catégories peuvent contenir en plus des journées importées d'un ancien
     // logiciel, situées hors du panneau habituel. On ne les récupère que si demandé.
     if (includeLegacy && categorySelectors.legacy) {
@@ -1475,8 +1686,8 @@ function recoverMainViewData(doc, categorySelectors, includeLegacy = false, cate
         if (legacyContainer) {
             const legacyDayContainers = legacyContainer.querySelectorAll(categorySelectors.legacy.subContainer);
             const legacyResults = Array.from(legacyDayContainers).map(container =>
-                parseDayContainer(container, categorySelectors.legacy)
-            );
+                parseDayContainer(container, categorySelectors.legacy, verbosity)
+                            ).filter(r => r !== null);
             console.log(`[dataScrapper] ${legacyResults.length} journée(s) importée(s) d'un ancien logiciel détectée(s)`);
             results.push(...legacyResults.map(result => ({ ...result, imported: true })));
         }
@@ -1491,11 +1702,15 @@ function recoverMainViewData(doc, categorySelectors, includeLegacy = false, cate
  * @param {Object} categorySelectors - Les sélecteurs de la catégorie (pour le sélecteur de date notamment)
  * @returns {Object} Données structurées de la journée
  */
-function parseDayContainer(container, categorySelectors) {
+function parseDayContainer(container, categorySelectors, verbosity) {
     // Extraction des métadonnées de la journée (header table)
     const dateElement = container.querySelector(categorySelectors.date);
     const lieuElement = container.querySelector(categorySelectors.lieu);
     const lieu = lieuElement?.textContent || '';
+    if (!dateElement) {
+        console.warn('[dataScrapper] Conteneur sans date ignoré', container);
+        return null;
+    }
     const date = dateElement.textContent.replace(lieu,'').trim(); // Si il y'a un lieu spécifié, on le retire de du texte de la date
 
     const initials = textOf(container, SELECTORS.dayContainer.initials);
@@ -1505,7 +1720,7 @@ function parseDayContainer(container, categorySelectors) {
     // parseDocument retourne alors un tableau qu'il faut aplatir.
     const documentDivs = container.querySelectorAll(SELECTORS.dayContainer.documents);
     const documents = Array.from(documentDivs)
-        .flatMap(div => parseDocument(div))
+        .flatMap(div => parseDocument(div, verbosity))
         .filter(doc => doc !== null);
     
     // Pièces jointes : div name="dh10"
@@ -1597,7 +1812,7 @@ function toBioNumber(raw) {
  * @param {HTMLElement} documentDiv - Le bloc document (div[name="dhX"])
  * @returns {Object<string, Array<Object>>|null}
  */
-function parseBiologyResults(documentDiv) {
+function parseBiologyResults(documentDiv, verbosity) {
     const tables = documentDiv.querySelectorAll('table.hprimgrid');
     const byLibelle = {};
     let hasValidHeader = false;
@@ -1643,19 +1858,44 @@ function parseBiologyResults(documentDiv) {
                 horsNormes,
             };
 
-            if (!byLibelle[libelle]) {
-                byLibelle[libelle] = [];
-            }
+            var resultat = analyse
+            if (verbosity === "low") { // Retourne une chaine ex: Cholestérol: 1,21 g/L (N: 1,00 - 1,90)
+                var normalValues = '';
+                if (minimum && minimum != "-" && maximum && maximum != "-") {
+                    normalValues = '(N: ' + minimum + ' - ' + maximum + ')';
+                }
+                else if (minimum && minimum != "-") {
+                    normalValues = '(N > ' + minimum + ')';
+                }
+                else if (maximum && maximum != '-') {
+                    normalValues = '(N < ' + maximum + ')';
+                }
+                resultat = (valeur ?? '') + ' ' + (unite ?? '') + ' ' + normalValues;
 
-            const isDuplicate = byLibelle[libelle].some(existing =>
-                existing.valeur === analyse.valeur &&
-                existing.unite === analyse.unite &&
-                existing.minimum === analyse.minimum &&
-                existing.maximum === analyse.maximum
-            );
-            if (!isDuplicate) {
-                byLibelle[libelle].push(analyse);
+                if (!byLibelle[libelle]) {
+                    byLibelle[libelle] = '';
+                }
+                const isDuplicate = byLibelle[libelle] == resultat;
+                if (!isDuplicate) {
+                    byLibelle[libelle] = resultat;
+                }
             }
+            else {
+                if (!byLibelle[libelle]) {
+                    byLibelle[libelle] = [];
+                }
+
+                const isDuplicate = byLibelle[libelle].some(existing =>
+                    existing.valeur === analyse.valeur &&
+                    existing.unite === analyse.unite &&
+                    existing.minimum === analyse.minimum &&
+                    existing.maximum === analyse.maximum
+                );
+                if (!isDuplicate) {
+                    byLibelle[libelle].push(analyse);
+                }
+            }
+        
         });
     });
 
@@ -1709,7 +1949,7 @@ function parseArretTravailFields(lines) {
  * @returns {Array<Object|null>} Tableau de documents (généralement un seul élément, mais un
  *   même div peut contenir plusieurs recettes, ex: double facturation le même jour)
  */
-function parseDocument(div) {
+function parseDocument(div, verbosity) {
     // Détecter les recettes par leur structure spécifique (.pjm avec table.stxrec).
     // Un même div[name="dhX"] peut contenir plusieurs .pjm (plusieurs recettes).
     const pjmDivs = Array.from(div.querySelectorAll(SELECTORS.document.pjm))
@@ -1751,7 +1991,7 @@ function parseDocument(div) {
     }
 
     if (type === 'resultatexamen') {
-        const structuredBioResults = parseBiologyResults(div);
+        const structuredBioResults = parseBiologyResults(div, verbosity);
         if (structuredBioResults) {
             parsedDocument.resultatsBio = structuredBioResults;
         } else {
@@ -1854,10 +2094,16 @@ function parseAttachments(pjmDiv) {
     const attachmentDivs = pjmDiv.querySelectorAll(SELECTORS.attachments.item);
     
     return Array.from(attachmentDivs).map(div => {
+        // Cas ".nsi" : document ouvert dans la visionneuse CDA (ex. volet de synthèse médicale), dont l'id du lien est le fileId
+        const cdaLink = div.querySelector(SELECTORS.attachments.cdaLink);
         // Cas ".bufi" : pièce jointe déjà "digérée" par Weda (affichage résumé avec icône dédiée)
         const titleElement = div.querySelector(`${SELECTORS.attachments.titleContainer} ${SELECTORS.attachments.visualizeLink}`);
-        let fileType, fileName, category = null, viewLink;
-        if (titleElement) {
+        let fileType, fileName, category = null, viewLink, cdaFileId = null;
+        if (cdaLink) {
+            fileType = 'cda';
+            fileName = cdaLink.textContent.trim() || null;
+            cdaFileId = cdaLink.getAttribute('onclick')?.match(/id=(\d+)/)?.[1] || null;
+        } else if (titleElement) {
             fileType = titleElement.className.replace('img', '').toLowerCase();
             fileName = titleElement.nextSibling?.textContent.trim() || null;
             viewLink = div.querySelector(SELECTORS.attachments.viewLink);
@@ -1873,10 +2119,13 @@ function parseAttachments(pjmDiv) {
             fileType = fileName?.includes('.') ? fileName.split('.').pop().toLowerCase() : 'unknown';
         }
         
-        // ID de fichier depuis le onclick => pour l’instant non utilisé
-        // const onclickAttr = viewLink?.getAttribute('onclick') || '';
-        // const fileIdMatch = onclickAttr.match(/Fil=(\d+)/);
-        // const fileId = fileIdMatch ? fileIdMatch[1] : null;
+        // ID d'événement et de fichier depuis le onclick, pour pouvoir rouvrir le document plus tard.
+        // Ne pas reconstruire l'URL PopUpViewBinaryForm soi-même : Weda exige un Referer/état de session
+        // valide, il faut rejouer OpenViewBinaryForm depuis une page Weda déjà ouverte (cf. window.open
+        // utilisé ailleurs dans le code, ex. patientLink.js) plutôt que d'ouvrir l'URL depuis un contexte externe.
+        const onclickAttr = viewLink?.getAttribute('onclick') || '';
+        const { eventId, fileId: viewerFileId } = extractDocMetaFromOnclick(onclickAttr);
+        const fileId = viewerFileId || cdaFileId;
         
         // Description libre éventuellement ajoutée sur la pièce jointe (uniquement présente sur les ".pja")
         const description = textOf(div, SELECTORS.attachments.description);
@@ -1884,7 +2133,8 @@ function parseAttachments(pjmDiv) {
         return {
             type: fileType,
             name: fileName,
-            // id: fileId,
+            ...(eventId ? { eventId } : {}),
+            ...(fileId ? { fileId } : {}),
             ...(category ? { category } : {}),
             ...(description ? { description } : {})
         };
@@ -1960,6 +2210,13 @@ function showDataScrapperTestPanel() {
                 <option value="noRefresh">noRefresh</option>
             </select>
         </label>
+        <label style="display:block;">verbosity :
+            <select id="dsp-verbosity">
+                <option value="normal" selected>normal</option>
+                <option value="low">low</option>
+            </select>
+        </label>
+        <label style="display:block;">fileId à résoudre (pièces jointes, séparés par virgule/espace) :<br><textarea id="dsp-fileIds" rows="2" style="width:200px;"></textarea></label>
         <hr>
     `;
 
@@ -2008,17 +2265,24 @@ function showDataScrapperTestPanel() {
             panel.querySelector('#dsp-dateStart').value.trim(),
             panel.querySelector('#dsp-dateEnd').value.trim(),
         ];
-        runDebugRecoverData(categories, categories.join(', '), { fullPage, debug, dateRange, refreshMode });
+        const resolveAttachmentFileIds = panel.querySelector('#dsp-fileIds').value
+            .split(/[\s,]+/)
+            .map(fileId => fileId.trim())
+            .filter(Boolean);
+        const verbosity = panel.querySelector('#dsp-verbosity').value;
+        runDebugRecoverData(categories, categories.join(', '), { fullPage, debug, dateRange, refreshMode, resolveAttachmentFileIds, verbosity });
     });
 }
 
-async function runDebugRecoverData(categories, label, { fullPage = true, debug = true, dateRange = [], refreshMode = "autoRefresh" } = {}) {
+async function runDebugRecoverData(categories, label, { fullPage = true, debug = true, dateRange = [], refreshMode = "autoRefresh", resolveAttachmentFileIds = [], verbosity = "normal" } = {}) {
     const data = await recoverData({
         fullPage,
         categories,
         debug,
         dateRange,
         refreshMode,
+        resolveAttachmentFileIds,
+        verbosity,
     });
     console.log(`[dataScrapper] Données récupérées (${label}) :`, data);
     showRecoveredData(data);
@@ -2050,8 +2314,9 @@ function showRecoveredData(data) {
     pre.style.zIndex = 1000; // Assurez-vous que le pré est au-dessus des autres éléments
     document.body.appendChild(pre);
 
-    // si on clique sur le pré, on le supprime
-    pre.addEventListener("click", () => {
+    // si on clique droit sur le pré, on le supprime
+    pre.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
         pre.remove();
     });
 }

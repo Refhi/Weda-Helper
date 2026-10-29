@@ -71,10 +71,16 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
 addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
     console.log('[pdfParser] Chargement de la page d\'échanges');
     waitForElement({
-        // Ici on déclenche la procédure à la détection de la page de sélection du patient
-        selector: "#ContentPlaceHolder1_FindPatientUcForm1_DropDownListRechechePatient",
-        callback: function () {
-            processFoundPdfIframeEchanges(false);
+        // Ici on déclenche la procédure lors du clic sur le bouton "Un patient".
+        selector: ".importPatient",
+        callback: function (elements) {
+            elements.forEach(function (element) { //Ajout d'un listener sur tous les boutons "Un patient".
+                element.addEventListener("click", function () {
+                    console.log("[pdfParser] Importation du message cliqué, je vais traiter le PDF présent dans l'iframe.");
+                    setTimeout(() => processFoundPdfIframeEchanges(false), 500); //Délai pour permettre à la fenetre de recherche de s'afficher
+                    
+                });
+            });
         }
     });
 
@@ -223,7 +229,7 @@ async function processFoundPdfIframeImport(PDFIframeElements) {
     const baseData = await extractBasePdfData(PDFIframeElements);
     if (!baseData) return;
 
-    const { urlPDF, fullText, hashId } = baseData;
+    const { urlPDF, fullText, hashId, pdfText, messageBody } = baseData;
 
     // Ajout d'un bouton de reset du sessionStorage correspondant
     addResetButton(hashId);
@@ -242,7 +248,7 @@ async function processFoundPdfIframeImport(PDFIframeElements) {
     }
     
     // Sinon, on extrait les données
-    extractedData = await handleDataExtraction(fullText, urlPDF, hashId);
+    extractedData = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody });
 
     // ===========================================
     // ÉTAPE 2 : Recherche et sélection du patient
@@ -296,8 +302,8 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     const baseData = await extractBasePdfData(iframesElements); // s’occupe également de vérifier les données déjà extraites
     if (!baseData) return;
 
-    const { urlPDF, fullText, hashId } = baseData;
-    let extractedData = await handleDataExtraction(fullText, urlPDF, hashId);
+    const { urlPDF, fullText, hashId, pdfText, messageBody } = baseData;
+    let extractedData = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody });
 
     // Surveillance des clics sur les patients (pour affichage du nom sélectionné)
     waitForElement({
@@ -337,7 +343,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
             if (searchResult.needsPageRefresh) {
                 // Dans les échanges, on attend le changement DOM au lieu d'un refresh complet
                 console.log("[pdfParser] Echanges - Attente changement DOM :", searchResult.message);
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 continue; // Nouvelle tentative
             }
 
@@ -365,6 +371,8 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     await setTitleIfNeededES(extractedData.documentTitle);
     // 3. Sélectionner la bonne catégorie
     await selectDocumentTypeES(extractedData.documentType);
+    // 4. Mettre le commentaire
+    await setCommentaireIfNeededES(extractedData.documentCommentaire);
     // Marquage des données comme déjà importées
     markDataAsImported(hashId, extractedData);
 
@@ -422,7 +430,7 @@ async function showClickedPatient() {
             patient.addEventListener("click", function () {
                 console.log("[pdfParser] Patient cliqué :", patient.innerText);
                 // La DDN a un id qui commence par "ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatienDateNaissance_"
-                const DDN = patient.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatienDateNaissance_']");
+                const DDN = patient.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatienDateNaissance_']");
                 // Le NOM PRENOM a un id qui commence par "ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonPatientGetNomPrenom_"
                 const NOM_PRENOM = patient.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonPatientGetNomPrenom_']");
 
@@ -456,6 +464,12 @@ function addPatientNameDisplay(patientName, patientElement = null) {
     patientNameSpan.style.cursor = 'pointer';
     patientNameSpan.style.textDecoration = 'underline';
     patientNameSpan.id = 'pdfParserPatientName';
+    // Par facilité, l'id du patient sélectionné est porté par l'élément (posé sur le lien patient
+    // par patientLink.js, le title d'origine étant écrasé par un texte d'aide).
+    const selectedPatientId = patientElement?.dataset?.patientId;
+    if (/^[1-9]\d*$/.test(selectedPatientId || '')) {
+        patientNameSpan.dataset.patientId = selectedPatientId;
+    }
     
     // Si on a l'élément patient avec les UrlParams, on ajoute les raccourcis d'accès
     if (patientElement && patientElement.UrlParams) {
@@ -533,16 +547,46 @@ function returnMessageBodyES() {
 }
 
 /**
+ * Repère la méta-zone d'action (.messageAttachment) sur laquelle il faut agir pour les échanges
+ * sécurisés : celle contenant le visualiseur pdf effectif, ce qui identifie la pièce jointe PDF
+ * concernée par l'extraction (le champ titre n'est plus pré-rempli avec ".pdf" par Weda, il ne peut
+ * donc plus servir à ce ciblage).
+ * Attention : `.view-pdf-document-uc-form` est présent dans TOUTES les pièces jointes (y compris les
+ * .zip ou autres fichiers non-pdf, qui n'affichent qu'un lien de téléchargement statique dans ce même
+ * conteneur). Il faut donc exiger la présence d'un visualiseur pdf réel (iframe/embed/object) à
+ * l'intérieur pour ne pas matcher la mauvaise pièce jointe.
+ * Toutes les fonctions ci-dessous (titre, type, destination, commentaire) doivent scoper leurs
+ * recherches à cette zone pour éviter d'agir sur la mauvaise pièce jointe lorsqu'il y en a plusieurs.
+ *
+ * @returns {Element|null} - Le conteneur `.messageAttachment` ciblé, ou null si aucun ne correspond.
+ */
+function getActiveAttachmentZoneES() {
+    const attachments = document.querySelectorAll(".messageAttachment");
+    const pdfViewerSelector = "#iFrameViewFile, .mssAttachment embed, object[type='application/pdf']";
+    for (const attachment of attachments) {
+        const viewerForm = attachment.querySelector(".view-pdf-document-uc-form");
+        if (viewerForm && viewerForm.querySelector(pdfViewerSelector)) {
+            return attachment;
+        }
+    }
+    console.warn("[pdfParser] Aucune pièce jointe avec un visualiseur pdf effectif trouvée pour cibler la zone d'action.");
+    return null;
+}
+
+/**
  * Sélectionne le bon type de document pour les échanges sécurisés
  */
 async function selectDocumentTypeES(documentType) {
     console.log("[pdfParser] Sélection du type de document :", documentType);
+    const attachmentZone = getActiveAttachmentZoneES();
+    if (!attachmentZone || !documentType) {
+        console.log("[pdfParser] Pas de pièce jointe ciblée ou pas de type de document défini");
+        return;
+    }
     // Le menu déroulant est le select avec le titre "Attribuer une classification au document"
-    const selectElement = document.querySelector("select[title='Attribuer une classification au document']");
-
-    // Vérifier si on a un élément select et un type de document spécifié
-    if (!selectElement || !documentType) {
-        console.log("[pdfParser] Pas de select ou pas de type de document défini");
+    const selectElement = attachmentZone.querySelector("select[title='Attribuer une classification au document']");
+    if (!selectElement) {
+        console.log("[pdfParser] Pas de select trouvé dans la pièce jointe ciblée");
         return;
     }
 
@@ -572,18 +616,18 @@ async function setTitleIfNeededES(Titre) {
         console.log("[pdfParser] Option PdfParserAutoTitle désactivée, pas de titre à mettre");
         return;
     }
+    const attachmentZone = getActiveAttachmentZoneES();
+    if (!attachmentZone) return;
     // Le champ de titre est l'input avec le titre "C'est le titre qu'aura le document dans le dossier patient"
-    let titleInput = document.querySelectorAll("input[title=\"C'est le titre qu'aura le document dans le dossier patient\"]");
-    // On sélectionne le dernier input (le plus bas dans le DOM)
-    titleInput = titleInput[titleInput.length - 1];
-    if (titleInput) {
-        console.log("[pdfParser] Titre trouvé, on le met dans le champ de titre", Titre);
-        titleInput.value = Titre;
-        titleInput.dispatchEvent(new Event('change'));
-        titleInput.dispatchEvent(new Event('input')); // dans certains cas, l'input est écouté via un listener 'input'
+    const titleInput = attachmentZone.querySelector("input[title=\"C'est le titre qu'aura le document dans le dossier patient\"]");
+    if (!titleInput) {
+        console.error("[pdfParser] Titre non trouvé, impossible de le mettre dans le champ de titre");
         return;
     }
-    console.error("[pdfParser] Titre non trouvé, impossible de le mettre dans le champ de titre");
+    console.log("[pdfParser] Titre trouvé, on le met dans le champ de titre", Titre);
+    titleInput.value = Titre;
+    titleInput.dispatchEvent(new Event('change'));
+    titleInput.dispatchEvent(new Event('input')); // dans certains cas, l'input est écouté via un listener 'input'
 }
 
 /**
@@ -594,6 +638,8 @@ async function selectDestinationIfNeededES(destinationNumber) {
     if (!selectionNeeded) {
         return;
     }
+    const attachmentZone = getActiveAttachmentZoneES();
+    if (!attachmentZone) return;
     // Si l'option est activée, on va chercher la bonne destination
     // Les destinations possibles sont sélectionnées via des éléments clickables
     // On reprend la classification de extractDestinationClass, mais les noms sont différents
@@ -603,7 +649,7 @@ async function selectDestinationIfNeededES(destinationNumber) {
         '3': "Ranger dans les courriers"
     };
     // On va cliquer sur l'élément .weImportDocTargets dont le titre est celui de la destination
-    const elementACliquer = document.querySelector(`.weImportDocTargets[title="${destinations[destinationNumber]}"]`);
+    const elementACliquer = attachmentZone.querySelector(`.weImportDocTargets[title="${destinations[destinationNumber]}"]`);
     if (elementACliquer) {
         console.log("[pdfParser] Sélection de la destination d'importation :", destinations[destinationNumber]);
         // On va cliquer sur l'élément
@@ -612,6 +658,25 @@ async function selectDestinationIfNeededES(destinationNumber) {
     }
 
     console.error("[pdfParser] Aucune destination d'importation trouvée pour le numéro :", destinationNumber);
+}
+
+/**
+ * Insère le commentaire dans les échanges sécurisés, dans l'attachment actuellement sélectionné
+ * (celui dont la case à cocher est cochée).
+ */
+async function setCommentaireIfNeededES(commentaire) {
+    if (!commentaire) return;
+    const attachmentZone = getActiveAttachmentZoneES();
+    if (!attachmentZone) return;
+    const commentInput = attachmentZone.querySelector("input[placeholder='Commentaire']");
+    if (!commentInput) {
+        console.warn("[pdfParser] Champ commentaire introuvable dans l'attachment sélectionné");
+        return;
+    }
+    commentInput.value = commentaire;
+    commentInput.dispatchEvent(new Event('change'));
+    commentInput.dispatchEvent(new Event('input'));
+    console.log("[pdfParser] Commentaire inséré :", commentaire);
 }
 
 
@@ -637,7 +702,7 @@ async function extractBasePdfData(iframesElements) {
         urlPDF = null;
         fullText = returnMessageBodyES();
         hashId = await customHash(fullText, urlPDF);
-        const toReturn = { urlPDF, fullText, hashId };
+        const toReturn = { urlPDF, fullText, hashId, pdfText: null, messageBody: fullText };
         console.log("[pdfParser] toReturn", toReturn);
         return toReturn;
     }
@@ -645,6 +710,7 @@ async function extractBasePdfData(iframesElements) {
 
     // 2. Extraire le texte du PDF
     fullText = await extractTextFromPDF(urlPDF);
+    const pdfText = fullText;
 
     // 3. Ajouter le corps du message à la fin du texte du PDF si disponible et si le PDF contient moins de 3 lignes
     const messageBody = returnMessageBodyES();
@@ -664,17 +730,18 @@ async function extractBasePdfData(iframesElements) {
     hashId = await customHash(fullText, urlPDF);
 
 
-    return { urlPDF, fullText, hashId };
+    return { urlPDF, fullText, hashId, pdfText, messageBody };
 }
 /**
  * Gère l'extraction des données à partir du PDF (texte ou datamatrix).
  * @param {string} fullText - Le texte extrait du PDF.
  * @param {string} urlPDF - L'URL du PDF.
  * @param {string} hashId - L'identifiant unique du PDF.
+ * @param {{pdfText: string|null, messageBody: string|null}} [aiSources] - Texte du PDF et corps du message séparés, pour l'IA.
  * @param {boolean} isEchanges - Si true, contexte des échanges sécurisés, sinon import standard.
  * @returns {Promise<Object>} - Les données extraites du PDF.
  */
-async function handleDataExtraction(fullText, urlPDF, hashId) {
+async function handleDataExtraction(fullText, urlPDF, hashId, aiSources = {}) {
     let dataMatrixReturn = null;
     // Vérification des données déjà extraites pour ce PDF
     let extractedData = getPdfData(hashId);
@@ -701,9 +768,23 @@ async function handleDataExtraction(fullText, urlPDF, hashId) {
             }
         }
 
+        // On ajoute les données manquantes par l'ia si nécessaire
+        console.log("[pdfParser] Vérification des données manquantes avant complétion IA.");
+        // En mode complet (PdfParserAutoAIFullMode), l'IA doit choisir la classification parmi les
+        // valeurs réellement disponibles dans le menu déroulant, récupérées ici au moment de l'appel.
+        const pdfParserAutoAIExtraction = await getOptionPromise('PdfParserAutoAIExtraction'); // normalement completeExtractedDataWithAI échoue de façon précoce si cette option est désactivée, mais ajouté ici également pour plus de sécurité.
+        if (pdfParserAutoAIExtraction) {
+            const possibleDocumentTypes = initDocumentTypes();
+            const aiCompletedFields = await completeExtractedDataWithAI(extractedData, fullText, urlPDF, possibleDocumentTypes, aiSources);
+            Object.assign(extractedData, aiCompletedFields);
+            console.log("[pdfParser] Données après complétion IA.", extractedData);
+        }
+
         // Stockage et priorisation des informations pertinentes
         // => le dataMatrix est prioritaire sur les informations extraites du texte
         completeExtractedData(extractedData, dataMatrixReturn);
+
+
         console.log('[pdfParser] extractedData', JSON.stringify(extractedData));
         setPdfData(hashId, extractedData);
 
@@ -947,6 +1028,7 @@ async function setExtractedDataInForm(extractedData, fullText) {
         documentTitle: `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_${ligneAction}`,
         documentAddressedTo: `#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementUser_${ligneAction}`,
         documentDestinationClass: `#ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementEvenementType_${ligneAction}`,
+        documentCommentaire: `#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementCommentaire_${ligneAction}` 
     };
 
     // Récupère les éléments du DOM correspondant aux sélecteurs
@@ -955,7 +1037,8 @@ async function setExtractedDataInForm(extractedData, fullText) {
         documentType: document.querySelector(selectors.documentType),
         documentTitle: document.querySelector(selectors.documentTitle),
         documentAddressedTo: document.querySelector(selectors.documentAddressedTo),
-        documentDestinationClass: document.querySelector(selectors.documentDestinationClass)
+        documentDestinationClass: document.querySelector(selectors.documentDestinationClass),
+        documentCommentaire: document.querySelector(selectors.documentCommentaire)
     };
 
     PdfParserAutoTitle = await getOptionPromise('PdfParserAutoTitle')
@@ -968,7 +1051,8 @@ async function setExtractedDataInForm(extractedData, fullText) {
         documentType: extractedData.documentType,
         documentTitle: PdfParserAutoTitle ? extractedData.documentTitle : null,
         documentAddressedTo: extractedData.addressedTo,
-        documentDestinationClass: PdfParserAutoClassification ? extractedData.destinationClass : null
+        documentDestinationClass: PdfParserAutoClassification ? extractedData.destinationClass : null,
+        documentCommentaire: extractedData.documentCommentaire
     };
 
     console.log('[pdfParser] INtroduction des données dans les champs : ', fields);
@@ -1007,8 +1091,9 @@ function clicPatient(extractedData) {
         const patientList = getPatientsList();
         if (patientList.length === 1) {
             patientToClick = getPatientsList()[0];
-        } else {
+        } else if (patientList.length > 1) {
             patientToClick = null;
+            return { status: 'error', message: "Plusieurs patients trouvés, impossible de déterminer lequel sélectionner" };
         }
     }
     if (!patientToClick) {
@@ -1298,25 +1383,38 @@ async function findPdfUrl(iframesElements) {
     });
 }
 
-// Extraction du texte du PDF en 2 parties
+// Extraction du texte du PDF (toutes pages concaténées)
 async function extractTextFromPDF(pdfUrl) {
     console.log('[pdfParser] Début de l\'extraction du texte du PDF depuis', pdfUrl);
-    
-    let pdf;
+    const pdf = await loadPdfDocument(pdfUrl);
+    return (await extractPageTextsFromPdfDocument(pdf)).join('\n');
+}
+
+/**
+ * Charge un document PDF.js depuis une URL (y compris downloadAttachment, qui nécessite les cookies).
+ * @param {string} pdfUrl
+ */
+async function loadPdfDocument(pdfUrl) {
     if (pdfUrl.includes('base64')) { // Pas certain que cette partie soit encore utile, mais je laisse dans le doute
         pdfUrl = pdfUrl.replace('data:application/pdf;base64,', '');
         pdfUrl = atob(pdfUrl);
-        pdf = await pdfjsLib.getDocument({ data: pdfUrl }).promise;
+        return pdfjsLib.getDocument({ data: pdfUrl }).promise;
     } else if (pdfUrl.includes('downloadAttachment')) { // Pour les échanges sécurisés dans certains cas
         console.log('[pdfParser] pdfUrl downloadAttachment détecté');
-        pdf = await pdfjsLib.getDocument({
+        return pdfjsLib.getDocument({
             url: pdfUrl,
             withCredentials: true, // Indispensable pour les échanges sécurisés
         }).promise;
-
-    } else {
-        pdf = await pdfjsLib.getDocument(pdfUrl).promise;
     }
+    return pdfjsLib.getDocument(pdfUrl).promise;
+}
+
+/**
+ * Extrait le texte de chaque page d'un document PDF.js (une chaîne par page, vide si la page n'a pas de texte).
+ * @param {object} pdf
+ * @returns {Promise<string[]>}
+ */
+async function extractPageTextsFromPdfDocument(pdf) {
     const maxPages = pdf.numPages;
     const pagePromises = [];
     for (var i = 1; i <= maxPages; i++) {
@@ -1396,10 +1494,9 @@ async function extractTextFromPDF(pdfUrl) {
     }
 
     const allPageTexts = await Promise.all(pagePromises);
-    const fullText = allPageTexts.join('\n');
     console.log(`[pdfParser] a extrait ${allPageTexts.length} pages`);
 
-    return fullText;
+    return allPageTexts;
 }
 
 
@@ -1452,10 +1549,16 @@ async function extractLines(textItems) {
  * }
  */
 async function extractRelevantData(fullText) {
+    // Récupérer les patterns d'exclusion de dates depuis les settings
+    const excludeDatePatterns = await getOptionPromise('PdfParserExcludeDatePatterns');
+    const excludePatternList = excludeDatePatterns
+        ? excludeDatePatterns.split('\n').filter(p => p.trim()).map(p => p.trim())
+        : [];
+
     const regexPatterns = {
         dateRegexes: [
-            /(?!(06\/01\/1978)|(17\/12\/2003))[0-9]{2}[\/\-.][0-9]{2}[\/\-.][0-9]{4}/g, // Match dates dd/mm/yyyy ou dd-mm-yyyy sauf 06/01/1978 (date loi informatique et liberté) et 17/12/2003 (circulaire décontamination)
-            /(?!(6 janvier 1978)|(17 décembre 2003))([0-9]{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+([0-9]{4})/gi // Match dates comme "28 novembre 2024"
+            /[0-9]{2}[\/\-.][0-9]{2}[\/\-.][0-9]{4}/g, // Match dates dd/mm/yyyy ou dd-mm-yyyy
+            /([0-9]{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+([0-9]{4})/gi // Match dates comme "28 novembre 2024"
         ],
         dateOfBirthRegexes: [
             /(?:né\(e\) le|date de naissance:|date de naissance :|née le|né le)[\s\S]([0-9]{2}[\/\-.][0-9]{4})/gi // Match la date de naissance
@@ -1501,10 +1604,14 @@ async function extractRelevantData(fullText) {
     };
 
     sessionStorage.setItem('logExtraction', ""); // Pour debug
+    // Masquer les phrases-types à exclure avant toute recherche de date (ex: "Loi du 6 janvier 1940")
+    const textForDateSearch = maskExcludedPatterns(fullText, excludePatternList);
+
     // Dates et NIR : recherche via regex pur et priorisation
-    const dateMatches = await extractDates(fullText, regexPatterns.dateRegexes);
-    const documentDate = await determineDocumentDate(fullText, dateMatches, regexPatterns.documentDateRegexes);
-    const dateOfBirth = determineDateOfBirth(fullText, dateMatches, regexPatterns.dateOfBirthRegexes);
+    let dateMatches = await extractDates(textForDateSearch, regexPatterns.dateRegexes);
+
+    const documentDate = await determineDocumentDate(textForDateSearch, dateMatches, regexPatterns.documentDateRegexes);
+    const dateOfBirth = determineDateOfBirth(textForDateSearch, dateMatches, regexPatterns.dateOfBirthRegexes);
     const nirMatches = extractNIR(fullText, regexPatterns.nirRegexes);
 
     // Noms : recherche via contexte des mots avant/après et place théorique dans le document
@@ -1536,6 +1643,7 @@ async function extractRelevantData(fullText) {
         nameMatches: nameMatches,
         documentType: documentType,
         documentTitle: null,
+        documentCommentaire: null, // Non extrait pour l'instant, sera rempli par l'outil d'IA
         nirMatches: nirMatches,
         addressedTo: addressedTo,
         destinationClass: destinationClass,
@@ -2656,6 +2764,43 @@ function extractDoctorName(fullText) {
 
         return false;
     }
+}
+
+/**
+ * Normalise un texte pour une recherche flexible en supprimant les espaces multiples, 
+ * sauts de ligne, et caractères de contrôle
+ * @param {string} text - Le texte à normaliser
+ * @returns {string} Le texte normalisé
+ */
+function normalizeTextForSearch(text) {
+    return text
+        .replace(/[\n\r\t]+/g, ' ')  // Remplacer sauts de ligne et tabs par un espace
+        .replace(/\s+/g, ' ')         // Remplacer les espaces multiples par un seul espace
+        .trim();                      // Supprimer les espaces de début et fin
+}
+
+/**
+ * Masque les occurrences des phrases-types à exclure dans le texte, pour que les dates qu'elles contiennent
+ * (ex: "Loi du 6 janvier 1940") ne soient jamais extraites, sans affecter les dates situées ailleurs dans le document
+ * @param {string} fullText - Le texte complet du PDF
+ * @param {string[]} excludePatternList - Liste des phrases-types à exclure
+ * @returns {string} Le texte avec les phrases-types remplacées par un marqueur explicite
+ */
+function maskExcludedPatterns(fullText, excludePatternList) {
+    if (!excludePatternList || excludePatternList.length === 0) {
+        return fullText;
+    }
+
+    let maskedText = fullText;
+    for (const pattern of excludePatternList) {
+        if (!pattern || !pattern.trim()) continue;
+        // Tolérer des espaces/sauts de ligne variables entre les mots du pattern
+        const flexiblePattern = escapeRegExp(pattern.trim()).replace(/\s+/g, '\\s+');
+        const regex = new RegExp(flexiblePattern, 'gi');
+        maskedText = maskedText.replace(regex, `[phrase supprimée car exclue par les filtres de WH]`);
+    }
+
+    return maskedText;
 }
 
 // Extraction des dates du texte

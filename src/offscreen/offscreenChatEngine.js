@@ -39,7 +39,7 @@ async function getOrCreateConversation(patientId) {
     const key = getConversationKey(patientId);
     if (conversations.has(key)) return conversations.get(key);
 
-    await aiParamsReady;
+    const aiParams = await getAiParams();
     const conversation = {
         chatHistory: [{ role: 'system', content: aiParams.basicSystemPrompt }],
         selectedModel: aiParams.defaultModel,
@@ -114,7 +114,7 @@ function broadcastToPatient(patientId, message) {
  * `executeToolCall` d'openAiClient.
  * @returns {Promise<*>} Le résultat renvoyé par le content script.
  */
-function executeToolCallOnTab(tabId, name, args) {
+function executeToolCallOnTab(tabId, name, args, patientId) {
     return new Promise((resolve, reject) => {
         const callId = crypto.randomUUID();
         const pending = { tabId, resolve, reject, timeoutId: null };
@@ -130,7 +130,8 @@ function executeToolCallOnTab(tabId, name, args) {
         pending.armTimeout = armTimeout;
         armTimeout();
         pendingToolCalls.set(callId, pending);
-        sendToTab(tabId, { type: 'toolCallRequest', callId, name, args });
+        // patientId transmis pour que le content script vérifie qu'il correspond au dossier réellement ouvert (@see offscreenBridge.js).
+        sendToTab(tabId, { type: 'toolCallRequest', callId, name, args, patientId });
     });
 }
 
@@ -173,9 +174,10 @@ function rejectPendingToolCallsForTab(tabId) {
  * Traite un nouveau message utilisateur : l'ajoute à l'historique, interroge le modèle (avec
  * streaming et function calling délégué à l'onglet), et notifie l'onglet d'origine au fur et à
  * mesure via des messages relayés par le background.
- * @param {{tabId: number, patientId: string|null, content: string|Array, model?: string}} message
+ * @param {{tabId: number, patientId: string|null, content: string|Array, model?: string, chaine?: {nom: string, entree?: object}}} message
+ * `chaine` : chaîne d'outils à démarrer depuis le code avant la première requête (@see toolChains.js).
  */
-async function processUserMessage({ tabId, patientId, content, model }) {
+async function processUserMessage({ tabId, patientId, content, model, chaine }) {
     const conversation = await getOrCreateConversation(patientId);
     if (model) conversation.selectedModel = model;
 
@@ -185,6 +187,10 @@ async function processUserMessage({ tabId, patientId, content, model }) {
         sendToTab(tabId, { type: 'generationBusy', patientId });
         return;
     }
+
+    // Le sondage réseau (coûteux) n'est désormais déclenché que depuis la popover d'info du chat
+    // (ouverture de la "roue dentée", @see recheckServerAvailability dans discussionClient.js) :
+    // aucun sondage automatique ici, même si le serveur n'a jamais encore été vérifié.
 
     conversation.chatHistory.push({ role: 'user', content });
     conversation.generationController = new AbortController();
@@ -197,9 +203,10 @@ async function processUserMessage({ tabId, patientId, content, model }) {
         const finalContent = await openAiClient({
             messages: conversation.chatHistory,
             model: conversation.selectedModel,
-            tools: Object.values(availableFunctions).map(f => f.definition),
+            tools: listerDefinitionsOutils(),
+            chaineInitiale: chaine,
             signal: conversation.generationController.signal,
-            executeToolCall: (name, args) => executeToolCallOnTab(tabId, name, args),
+            executeToolCall: (name, args) => executeToolCallOnTab(tabId, name, args, patientId),
             onChunk: (chunk) => {
                 if (chunk.contentDelta) {
                     accumulatedContent += chunk.contentDelta;
@@ -210,7 +217,12 @@ async function processUserMessage({ tabId, patientId, content, model }) {
                 broadcastToPatient(patientId, { type: 'assistantChunk', ...chunk });
             },
             onToolCall: (event) => {
-                if (event.status === 'start') conversation.liveGeneration.reasoning = ''; // une nouvelle bulle de raisonnement pourra suivre
+                if (event.status === 'start') {
+                    conversation.liveGeneration.reasoning = ''; // une nouvelle bulle de raisonnement pourra suivre
+                    // Le texte précédant l'appel est figé côté client : la bulle suivante repart de zéro.
+                    conversation.liveGeneration.content = '';
+                    accumulatedContent = '';
+                }
                 const toolCalls = conversation.liveGeneration.toolCalls;
                 const index = toolCalls.findIndex(t => t.id === event.id);
                 if (index === -1) toolCalls.push({ ...event });

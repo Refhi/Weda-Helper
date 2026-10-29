@@ -32,6 +32,13 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeUncheckIHEMessage', asyn
     const titlesString = await getOptionPromise('secureExchangeUncheckSomeTitles');
     const titlesToUncheck = (titlesString || '').split(',').map(s => s.trim()).filter(s => s.length > 0);
 
+    // Comme dans push_valider : change + input avec bubbles pour que Weda prenne bien en compte la modification
+    async function uncheck(checkbox) {
+        await sleep(2000)
+        checkbox.checked = false;
+        checkbox.dispatchEvent(new Event('change'));
+    }
+
     waitForElement({
         selector: 'we-doc-import',
         callback: function (elements) {
@@ -39,23 +46,15 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeUncheckIHEMessage', asyn
                 if (!element.className.includes('docImportAttach')) //docImportAttach correspond aux documents joints donc si il n'y a pas cette classe, il s'agit du corps du message
                 {
                     let checkbox = element.querySelector('input[type=checkbox]')
-                    checkbox.checked = false;
-                    checkbox.dispatchEvent(new Event('change'));
+                    uncheck(checkbox);
                     recordMetrics({ clicks: 1, drags: 1 });
                 } else {
                     let docTitle = element.querySelector('input.docTitle');
                     if (docTitle && titlesToUncheck.some(title => docTitle.value.toUpperCase().startsWith(title.toUpperCase()))) {
                         let checkbox = element.querySelector('input[type=checkbox]')
-                        checkbox.checked = false;
-                        checkbox.dispatchEvent(new Event('change'));
+                        uncheck(checkbox);
                         recordMetrics({ clicks: 1, drags: 1 });
                     }
-                    // if (docTitle.value.toUpperCase() == 'IHE_XDM.ZIP') {
-                    //     let checkbox = element.querySelector('input[type=checkbox]')
-                    //     checkbox.checked = false;
-                    //     checkbox.dispatchEvent(new Event('change'));
-                    //     recordMetrics({ clicks: 1, drags: 1 });
-                    // }
                 }
             }
 

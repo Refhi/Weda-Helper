@@ -27,3 +27,9 @@ autoAddToOption({
     valuesToAdd: ['GL1', 'GL2', 'GL3'],
     deadline: '2026-02-28'
 });
+autoAddToOption({
+    updateId: 'cotation-coe-oct-2026',
+    optionName: 'cotationHelper2',
+    valuesToAdd: ['COE'],
+    deadline: '2027-04-01'
+});

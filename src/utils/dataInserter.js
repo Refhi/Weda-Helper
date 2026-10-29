@@ -21,6 +21,9 @@
  */
 const INSERT_TARGETS = {
     toConsultation: insertToConsultation,
+    toCertificat: insertToCertificat,
+    toDemande: insertToDemande,
+    toCourrier: insertToCourrier,
 };
 
 
@@ -85,17 +88,29 @@ function openNewDocumentFromMenu(iframeDocument, menuLabel, blackList = []) {
 
     // Ici on veut explicitement créer un NOUVEAU document.
     level2Element.click();
+    return true;
+}
 
-    // Dans certains contextes, le clic niveau 2 n'est pas pris: fallback sur le premier niveau 3 utile.
-    if (level3Elements.length > 0) {
-        const firstSpan = level3Elements[0].querySelector('span');
-        const isCurrent = !!firstSpan?.title?.includes('Vous êtes actuellement positionné sur ce document');
-        if (!isCurrent) {
-            level3Elements[0].click();
-        }
+/**
+ * Renseigne un champ (input ou body d'iframe) avec une valeur et déclenche les événements
+ * attendus par Weda. Si `target` est un sélecteur, attend son apparition dans `getDoc()`.
+ * N'écrit rien si `value` est vide/absent.
+ * @param {() => Document} getDoc - Document dans lequel chercher le sélecteur
+ * @param {string|Element} target - Sélecteur CSS ou élément déjà résolu
+ * @param {string} value - Valeur à assigner
+ * @param {string} [prop] - Propriété à assigner ('value' pour un input, 'innerText' pour un body)
+ * @returns {Promise<Element|null>} L'élément renseigné, ou null si `value` était vide
+ */
+async function fillField(getDoc, target, value, prop = 'value') {
+    if (!value) {
+        return null;
     }
 
-    return true;
+    const element = typeof target === 'string' ? await waitForElementInDocument(getDoc, target) : target;
+    element[prop] = value;
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+    element.dispatchEvent(new Event('change', { bubbles: true }));
+    return element;
 }
 
 /**
@@ -114,19 +129,23 @@ function buildTimestampedTitle(prefix) {
 // ─── Fonctions dédiées par cible ─────────────────────────────────────────────
 
 /**
- * Enregistre un contenu texte dans une NOUVELLE consultation pour le patient courant, via un
- * iframe caché naviguant sur la page d'accueil patient puis ouvrant une consultation par le menu.
+ * Logique commune à toutes les cibles : ouvre un iframe caché sur la page d'accueil patient,
+ * crée un nouveau document via le menu, renseigne titre / sous-titre / contenu, sauvegarde puis
+ * nettoie l'iframe.
  *
- * @param {{content: string}} data - Données à insérer (content: texte à placer dans la consultation)
- * @param {{debug?: boolean}} [options] - debug: si true, garde l'iframe visible et ne la supprime pas
- * @returns {Promise<{titre: string}>} Détails de l'insertion réalisée
+ * @param {{title?: string, subtitle?: string, content: string}} data - Titre (#TextBoxEvenementTitre),
+ *   sous-titre (#TextBoxDocumentTitre) et contenu à insérer dans l'éditeur de texte de la cible
+ * @param {{debug?: boolean, patientId?: string|null, homeUrl?: string|null}} options
+ * @param {{menuLabel: string, editorSelector: string, iframeName: string}} targetConfig
+ * @returns {Promise<{titre: string|null, sousTitre: string|null}>}
  */
-async function insertToConsultation({ content, titleForConsultation }, { debug = false, patientId = null, homeUrl = null } = {}) {
+async function insertToDocument({ title, subtitle, content }, { debug = false, patientId = null, homeUrl = null } = {}, targetConfig) {
     if (!content) {
         throw new Error('Contenu vide, insertion annulée.');
     }
 
-    const blackListMenuConsultation = [
+    // Libellés de niveau 3 non pertinents pour une création de document, communs à toutes les cibles.
+    const blackListMenu = [
         'Courrier à établir',
         'Demande laboratoire',
         'Demande imagerie',
@@ -134,51 +153,175 @@ async function insertToConsultation({ content, titleForConsultation }, { debug =
         'Renouvellement'
     ];
 
-    let consultationIframe = null;
+    const { menuLabel, editorSelector, iframeName } = targetConfig;
+
+    let workIframe = null;
     try {
         homeUrl = homeUrl ?? await getCurrentPatientPageUrl('/FolderMedical/PatientViewForm.aspx', patientId);
-        consultationIframe = await createHiddenIframe(homeUrl, debug, 'WedaHelperPostItConsultationIframe');
+        workIframe = await createHiddenIframe(homeUrl, debug, iframeName);
 
-        const getConsultationDoc = () => consultationIframe.contentDocument || consultationIframe.contentWindow?.document;
+        const getDoc = () => workIframe.contentDocument || workIframe.contentWindow?.document;
 
-        await waitForElementInDocument(getConsultationDoc, '.level1.static', 12000, 100);
+        await waitForElementInDocument(getDoc, '.level1.static', 12000, 100);
 
-        const openedFromMenu = openNewDocumentFromMenu(getConsultationDoc(), 'Consultation', blackListMenuConsultation);
+        const openedFromMenu = openNewDocumentFromMenu(getDoc(), menuLabel, blackListMenu);
         if (!openedFromMenu) {
-            console.warn('[insertToConsultation] Impossible d\'ouvrir la consultation via menu.');
+            console.warn('[dataInserter] Impossible d\'ouvrir le document via menu.');
         }
 
-        const titleInput = await waitForElementInDocument(getConsultationDoc, '#TextBoxDocumentTitre');
-        titleInput.value = titleForConsultation;
-        titleInput.dispatchEvent(new Event('input', { bubbles: true }));
-        titleInput.dispatchEvent(new Event('change', { bubbles: true }));
+        let titleInput = null;
+        if (title) {
+            titleInput = await fillField(getDoc, '#TextBoxEvenementTitre', title);
+        }
 
-        const editorIframe = await waitForElementInDocument(
-            getConsultationDoc,
-            "iframe[id^='CE_ContentPlaceHolder1_EditorConsultation'][id$='_ID_Frame'], #CE_ContentPlaceHolder1_EvenementInformationFiltreUCForm1_EditorZoneUserTextInEvement_ID_Frame"
-        );
+        let subtitleInput = null;
+        if (subtitle) {
+            subtitleInput = await fillField(getDoc, '#TextBoxDocumentTitre', subtitle);
+        }
+
+        const editorIframe = await waitForElementInDocument(getDoc, editorSelector);
         await waitForElementInDocument(
             () => editorIframe.contentDocument || editorIframe.contentWindow?.document,
             'body'
         );
 
         await sleep(200); // Attendre un peu pour que l'iframe soit bien chargée
-        const editorBody = consultationIframe.contentDocument.querySelector("iframe[id^='CE_ContentPlaceHolder1_EditorConsultation'][id$='_ID_Frame']").contentDocument.body;
+        const editorBody = (editorIframe.contentDocument || editorIframe.contentWindow?.document).body;
 
-        editorBody.innerText = content;
-        editorBody.dispatchEvent(new Event('input', { bubbles: true }));
-        editorBody.dispatchEvent(new Event('change', { bubbles: true }));
+        await fillField(getDoc, editorBody, content, 'innerText');
 
-        const saveButton = await waitForElementInDocument(getConsultationDoc, '#ButtonSave');
+        const saveButton = await waitForElementInDocument(getDoc, '#ButtonSave');
         saveButton.click();
         await sleep(500); // Attendre un peu pour que l'enregistrement se fasse
 
         recordMetrics({ clicks: 4, keyStrokes: 2, drags: 1 });
 
-        return { titre: titleInput.value };
+        return { titre: titleInput?.value ?? null, sousTitre: subtitleInput?.value ?? null };
     } finally {
-        if (consultationIframe && !debug) {
-            consultationIframe.remove();
+        if (workIframe && !debug) {
+            workIframe.remove();
         }
     }
 }
+
+/**
+ * Enregistre un contenu texte dans une NOUVELLE consultation pour le patient courant.
+ * @see insertToDocument
+ */
+async function insertToConsultation(data, options) {
+    return insertToDocument(data, options, {
+        menuLabel: 'Consultation',
+        editorSelector: "iframe[id^='CE_ContentPlaceHolder1_EditorConsultation'][id$='_ID_Frame'], #CE_ContentPlaceHolder1_EvenementInformationFiltreUCForm1_EditorZoneUserTextInEvement_ID_Frame",
+        iframeName: 'WedaHelperConsultationIframe',
+    });
+}
+
+/**
+ * Enregistre un contenu texte dans un NOUVEAU certificat pour le patient courant.
+ * TODO: vérifier le libellé exact du menu niveau 2 ("Certificat").
+ * @see insertToDocument
+ */
+async function insertToCertificat(data, options) {
+    return insertToDocument(data, options, {
+        menuLabel: 'Certificat',
+        editorSelector: '#CE_ContentPlaceHolder1_EditorCertificat_ID_Frame',
+        iframeName: 'WedaHelperCertificatIframe',
+    });
+}
+
+/**
+ * Enregistre un contenu texte dans une NOUVELLE demande pour le patient courant.
+ * TODO: le menu "Demande" propose plusieurs sous-types (laboratoire, imagerie, paramédical...),
+ * il faudra probablement passer le sous-type voulu en paramètre plutôt que de prendre le 1er
+ * élément niveau 3 par défaut (voir openNewDocumentFromMenu).
+ * TODO: gérer le cas ALD, qui utilise un 2e éditeur (#CE_ContentPlaceHolder1_EditorPrescriptionBizone_ID_Frame),
+ * non pris en charge ici pour rester simple.
+ * @see insertToDocument
+ */
+async function insertToDemande(data, options) {
+    return insertToDocument(data, options, {
+        menuLabel: 'Demande',
+        editorSelector: '#CE_ContentPlaceHolder1_EditorPrescription_ID_Frame',
+        iframeName: 'WedaHelperDemandeIframe',
+    });
+}
+
+/**
+ * Enregistre un contenu texte dans un NOUVEAU courrier pour le patient courant.
+ * TODO: vérifier le libellé exact du menu niveau 2 ("Courrier"). Le destinataire n'est pas géré ici.
+ * @see insertToDocument
+ */
+async function insertToCourrier(data, options) {
+    return insertToDocument(data, options, {
+        menuLabel: 'Courrier',
+        editorSelector: '#CE_ContentPlaceHolder1_EditorCourrier_ID_Frame',
+        iframeName: 'WedaHelperCourrierIframe',
+    });
+}
+
+
+// ─── Panneau de test / debug ─────────────────────────────────────────────────
+
+/**
+ * Affiche un panneau permettant de tester rapidement insertData avec n'importe quelle cible,
+ * en gardant l'iframe de travail visible (debug: true).
+ */
+function showDataInserterTestPanel() {
+    const existingPanel = document.getElementById('dataInserterTestPanel');
+    if (existingPanel) {
+        existingPanel.remove();
+        return;
+    }
+
+    const panel = document.createElement('div');
+    panel.id = 'dataInserterTestPanel';
+    panel.style.position = 'fixed';
+    panel.style.bottom = '10px';
+    panel.style.right = '150px';
+    panel.style.zIndex = 1000;
+    panel.style.backgroundColor = 'white';
+    panel.style.border = '1px solid black';
+    panel.style.padding = '10px';
+    panel.style.maxHeight = '90vh';
+    panel.style.overflow = 'auto';
+    panel.style.font = '12px sans-serif';
+
+    panel.innerHTML = `
+        <label style="display:block;">target :
+            <select id="dip-target">
+                <option value="toConsultation">toConsultation</option>
+                <option value="toCertificat">toCertificat</option>
+                <option value="toDemande">toDemande</option>
+                <option value="toCourrier">toCourrier</option>
+            </select>
+        </label>
+        <label style="display:block;">title : <input type="text" id="dip-title" style="width:180px;"></label>
+        <label style="display:block;">subtitle : <input type="text" id="dip-subtitle" style="width:180px;"></label>
+        <label style="display:block;">content : <textarea id="dip-content" style="width:180px;" rows="4"></textarea></label>
+        <label style="display:block;"><input type="checkbox" id="dip-debug" checked> debug (garde l'iframe visible)</label>
+        <hr>
+        <button id="dip-run">Insérer</button>
+        <button id="dip-close">Fermer</button>
+    `;
+
+    document.body.appendChild(panel);
+
+    panel.querySelector('#dip-close').addEventListener('click', () => {
+        panel.remove();
+    });
+
+    panel.querySelector('#dip-run').addEventListener('click', async () => {
+        const target = panel.querySelector('#dip-target').value;
+        const title = panel.querySelector('#dip-title').value.trim();
+        const subtitle = panel.querySelector('#dip-subtitle').value.trim();
+        const content = panel.querySelector('#dip-content').value;
+        const debug = panel.querySelector('#dip-debug').checked;
+
+        const result = await insertData(target, { title, subtitle, content }, { debug });
+        console.log('[dataInserter] Résultat du test :', result);
+    });
+}
+
+addTweak('*', 'boutonTestDataInserter', function () {
+    addTestButton('Test dataInserter', () => showDataInserterTestPanel(), 1);
+});

@@ -4,6 +4,45 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [3.3] - IA, IA, et encore IA !
+Cette version est surtout orientée IA et apporte d’autres petites améliorations et bug fixes.
+
+Si vous êtes intéressés, je vous encourage à voir le [wiki](https://github.com/Refhi/Weda-Helper/wiki) pour plus de détails sur l'utilisation de l'IA dans Weda-Helper.
+
+La fonctionnalité IA est encore considérée comme étant en Béta, mais assez solide pour un usage quotidien.
+
+## Ajouts :
+- [#665](https://github.com/Refhi/Weda-Helper/issues/665) - Ajout d'une fonction d'automatisation de la gestion des NOEMIE. Cette fonction vous permet d'associer un organisme de tiers payant tel qu'il apprait dans les retour NOEMIE à son nom tel qu'il apparait sur vos relevés bancaires (ex: Organisme 91919000 correspond à la MGEN). Elle permet également de définir un délai de paiement pour chaque organisme ce qui ajuste automatiquement la date de la recette lors du pointage des NOEMIE (ex: 3 jours pour la MGEN, 1 jour pour les CPAM). Des valeurs par défaut sont déjà présentes pour les caisses que @Abelvlpr rencontre dans sa pratique mais vous pouvez ajouter vos caisses et les partager avec le reste des utilisateurs directement dans les options de Weda-Helper !
+- [#661](https://github.com/Refhi/Weda-Helper/issues/661) - ajout d'un convertisseur d'unités pour les analyses biologiques (ex. mmol/L <-> g/L) dans les page de résultats. Désactivé par défaut, il peut être activé dans les options de Weda-Helper.
+- Imports - la zone de commentaire est présente dans la navigation par tabulation.
+- le client IA peut désormais modifier les antécédents, créer des consultations, prescriptions d'examens, courrier et certificat. Il peut également aider l'importation des documents dans l'onglet d'importation.
+- le client IA enchaîne désormais ses étapes de façon guidée ("chaînes d'outils") pour la conversion CIM-10, la modification des antécédents, la mise à jour des antécédents depuis un document, la lecture de documents du dossier et la rédaction de documents : la lecture préalable du dossier et la vérification des codes CIM-10 ne dépendent plus du bon vouloir du modèle.
+- [#686](https://github.com/Refhi/Weda-Helper/issues/686) - l'historique de facturation peut désormais également être affiché dans la page des règlements manuels
+- [#671](https://github.com/Refhi/Weda-Helper/issues/671) - le client IA peut désormais lire les documents joints à une consultation ou le pdf actuellement affiché à l'écran, ou certains éléments actuellement affichés à l'écran.
+- [#690](https://github.com/Refhi/Weda-Helper/issues/690) - Shunte les sorties autorisées automatiquement lors de la création d'un arrêt de travail avec TPT pour contourner un bug côté Weda.
+- [#702](https://github.com/Refhi/Weda-Helper/issues/702) - Nouvelle option "Ignorer les données générées par IA" (activée par défaut) : le Data Scrapper ignore les champs contenant "[IA]" (ex: commentaires générés par IA) pour éviter de dégrader les données en relisant du contenu généré par IA.
+- Historique patient - un bouton "Résumé IA" est ajouté à côté de "Renommer" sur chaque pièce jointe : il ouvre le document et demande à l'IA locale d'en faire un résumé. Le client IA peut également enregistrer un commentaire sur un document joint (fonction renameJoinedDocumentInHistory).
+- [#706](https://github.com/Refhi/Weda-Helper/issues/706) - Le client IA peut convertir un antécédent libre existant en antécédent codé CIM-10.
+- Aide à la cotation : proposition de la cotation COE (consultations obligatoires de l'enfant) entre 0 et 8 jours, puis à 8, 23 et 24 mois, avec le rappel que les 3 consultations COE donnent lieu à un certificat médical à adresser à la PMI.  COE est ajouté automatiquement à votre liste d'aides à la cotation si vous l'aviez personnalisée (supprimez-le des options si vous ne le souhaitez pas).
+
+## Fix :
+- [#637](https://github.com/Refhi/Weda-Helper/issues/637) - il est désormais possible d’exclure certains paterns de dates de l’analyse automatique des pdf. Utile si votre addresse contiens des dates qui ne doivent pas être prises en compte.
+- [#655](https://github.com/Refhi/Weda-Helper/issues/655) - la copie des sorties du client IA local garde désormais la mise en forme du texte (gras, italique, souligné, etc.) et les sauts de ligne.
+- [#660](https://github.com/Refhi/Weda-Helper/issues/660) - le titre du document s'applique correctement en cas de pièces jointes multiples dans les Echanges Sécurisés
+- [#664](https://github.com/Refhi/Weda-Helper/issues/664) - les fonctions de clic droit et clic du milieu sur un patient fonctionnent à nouveau
+- [#649](https://github.com/Refhi/Weda-Helper/issues/649) - désactivation de l’IA locale sur certaines pages (ex. PopUpUploader) où elle n'est pas considérée comme pertinente.
+- le raccourcis d'impression des documents PDF dans les "Documents du cabinet" a été restauré.
+- [#666](https://github.com/Refhi/Weda-Helper/issues/666) - le client ia fonctionne correctement même si le serveur de modèles LLM est indisponible au démarrage.
+- [#660](https://github.com/Refhi/Weda-Helper/issues/660) - L'application de la sélection du type de document vise la première pièce jointe en pdf.
+- [#661](https://github.com/Refhi/Weda-Helper/issues/661) - L'aide à la conversion d'unité dans les résultats d'examen : la reconnaissance du titre de la ligne à convertir est désormais plus robuste.
+- [#684](https://github.com/Refhi/Weda-Helper/issues/684) - La taille de la fenêtre ia est désormais sauvegardée
+- [#688](https://github.com/Refhi/Weda-Helper/issues/688) - Les pdfs et le texte d'accompagnement sont désormais évalués indépendamment par le client IA.
+- [#687](https://github.com/Refhi/Weda-Helper/issues/687) - Le client IA sait désormais gérer le dossier patient, même quand il est dans les échanges sécurisés
+- [#709](https://github.com/Refhi/Weda-Helper/issues/709) - L’historique patient devrait maintenant s’afficher correctement chez tout le monde.
+- [#719](https://github.com/Refhi/Weda-Helper/issues/719) - Messagerie sécurisée : le décochage automatique des pièces jointes (ex. IHE_XDM.zip) est désormais correctement pris en compte par Weda, ces pièces jointes ne sont plus importées dans le dossier alors que la case était décochée.
+- [#716](https://github.com/Refhi/Weda-Helper/issues/716) - Le client IA choisit désormais l'onglet le plus adapté lors de l'ajout d'un antécédent, au lieu de les laisser dans "Sans titre".
+- Les options "Trim" et "Sort" de la page des antécédents sont désormais inhibées pendant les insertions automatiques d'antécédents par le client IA, pour ne pas fausser les résultats de recherche.
+
 # [3.2] - Assistant Local IA ! (en beta)
 - [#634](https://github.com/Refhi/Weda-Helper/issues/634) - Ajout d'un Assistant Local (en beta) - vos tests et retours sont les bienvenus ! Pour l’instant ses capacités sont limitées à la recherche d’informations dans le dossier patient, mais va être amené à gérer de + en + de choses. (rédaction de courrier, résumé de pdf, assistant vocal ?, etc.) :
     - analyse du dossier patient (antécédents, traitements, allergies, etc.)

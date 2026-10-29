@@ -23,6 +23,18 @@ const CHAT_SLASH_COMMANDS = {
         description: "Demande une blague à l'IA.",
         run: (context) => context.sendUserPrompt("Raconte-moi une blague, si possible une bonne blague de poisson d'avril.")
     },
+    patient: {
+        description: "Associe la conversation à un autre patient, ex. /patient 65407357 (réinitialise l'affichage sur sa conversation).",
+        run: (context, arg) => context.switchPatient(arg)
+    },
+    set: {
+        description: "Enregistre un raccourci de prompt (/0 à /9), ex. /set 2 fait les courses. Sans texte, reprend le dernier message envoyé : /set 2.",
+        run: (context, arg) => context.setShortcut(arg)
+    },
+    del: {
+        description: "Supprime un raccourci de prompt, ex. /del 2.",
+        run: (context, arg) => context.deleteShortcut(arg)
+    },
     help: {
         description: "Affiche l'aide sur les commandes et raccourcis disponibles.",
         run: (context) => context.showHelp(CHAT_SLASH_COMMANDS)
@@ -39,13 +51,16 @@ const CHAT_SLASH_COMMANDS = {
  *   resetConversation: () => void,
  *   stopGeneration: () => void,
  *   sendUserPrompt: (text: string) => void,
- *   triggerShortcut: (index: number) => boolean,
+ *   triggerShortcut: (index: number) => Promise<boolean>,
  *   showSystemNotice: (text: string) => void,
- *   showHelp: (commands: typeof CHAT_SLASH_COMMANDS) => void
+ *   showHelp: (commands: typeof CHAT_SLASH_COMMANDS) => void,
+ *   switchPatient: (patientId: string) => void,
+ *   setShortcut: (arg: string) => void,
+ *   deleteShortcut: (arg: string) => void
  * }} context
- * @returns {boolean}
+ * @returns {Promise<boolean>}
  */
-function tryHandleChatSlashCommand(rawText, context) {
+async function tryHandleChatSlashCommand(rawText, context) {
     const trimmed = rawText.trim();
     if (!trimmed.startsWith('/')) return false;
 
@@ -55,7 +70,7 @@ function tryHandleChatSlashCommand(rawText, context) {
     // /0 à /9 déclenchent directement le raccourci de prompt configuré au même index.
     if (/^[0-9]$/.test(commandName)) {
         const shortcutIndex = Number(commandName);
-        if (!context.triggerShortcut(shortcutIndex)) {
+        if (!(await context.triggerShortcut(shortcutIndex))) {
             context.showSystemNotice(`Le raccourci /${shortcutIndex} n'est pas configuré (texte vide dans les options).`);
         }
         return true;

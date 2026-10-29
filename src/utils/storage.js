@@ -129,3 +129,12 @@ function getDefaultOption(optionNames, callback) {
         callback(isInputArray ? options : options[0]);
     });
 }
+
+/**
+ * Persiste une ou plusieurs options dans le stockage local de Chrome.
+ * @param {object} values
+ * @returns {Promise<void>}
+ */
+function setStorageOption(values) {
+    return new Promise(resolve => chrome.storage.local.set(values, resolve));
+}

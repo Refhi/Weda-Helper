@@ -42,6 +42,7 @@ const TYPE_TRUE_JSON = "true_json"; // au lieu de fournir une structure assez us
 const TYPE_SMALLTEXT = "smalltext";
 const TYPE_HTML = "html";
 const TYPE_RADIO = "radio";
+const TYPE_SELECT = "select"; // menu déroulant, valeurs fournies via "selectOptions": [{value, description}]
 const TYPE_TITLE = "title";
 
 var advancedDefaultSettings = [
@@ -401,7 +402,7 @@ var advancedDefaultSettings = [
                             "name": "PdfParserAutoCategoryDict",
                             "type": TYPE_JSON,
                             "description": "Catégorie de classement du document importé [category]",
-                            "longDescription": "Parcours la liste et valide la première catégorie qui correspond.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple. Vous devez initialiser la votre depuis la fenêtre des imports avec la petite icone ⚙️.",
+                            "longDescription": "Parcours la liste et valide la première catégorie qui correspond.\nVous pouvez lister plusieurs fois la même catégorie à différents niveaux avec différents mots-clés.\nLa liste par défaut est donnée pour exemple. Vous devez initialiser la votre depuis la fenêtre des imports avec la petite icone ⚙️.\n\nPour laisser l'IA déterminer elle-même la classification : videz ce champ (liste vide) et cochez l'option 'Laisse l'IA déterminer elle-même le titre, la destination et la classification du document' dans la partie IA.",
                             "default": PdfParserAutoCategoryDefaut
                         }, {
                             "name": "PdfParserAutoSpecialiteDict",
@@ -468,7 +469,7 @@ var advancedDefaultSettings = [
                         "name": "PdfParserAutoDestinationClassDict",
                         "type": TYPE_JSON,
                         "description": "Règles de classification : destination du document importé",
-                        "longDescription": "Règles pour déterminer automatiquement si un document doit être classé en :\n1 : Consultation\n2 : Résultats d'examens\n3 : Courrier\n\nL'ordre définit la priorité de détection.",
+                        "longDescription": "Règles pour déterminer automatiquement si un document doit être classé en :\n1 : Consultation\n2 : Résultats d'examens\n3 : Courrier\n\nL'ordre définit la priorité de détection.\n\nPour laisser l'IA déterminer elle-même la destination : videz ce champ (liste vide) et cochez l'option 'Laisse l'IA déterminer elle-même le titre, la destination et la classification du document' dans la partie IA.",
                         "default": PdfParserAutoDestinationClass
                     }]
                 }, {
@@ -477,6 +478,12 @@ var advancedDefaultSettings = [
                     "description": "Recherche également les dates type 15 novembre 2021.",
                     "default": false,
                     "longDescription": "Cette option est utile si vous recevez des courriers avec des dates à ce format, mais peut interférer avec les addresses si elles contiennent une date",
+                }, {
+                    "name": "PdfParserExcludeDatePatterns",
+                    "type": TYPE_LARGETEXT,
+                    "description": "Phrases-types à exclure de la recherche de dates",
+                    "longDescription": "Entrez les phrases-types contenant des dates que vous souhaitez exclure de l'extraction de dates du PDF. Une phrase par ligne. Par exemple :\n06/01/1978\n17/12/2003\n6 janvier 1978\n17 décembre 2003",
+                    "default": "Loi du 6 janvier 1978 Informatique et Libertés\nrue du dix-huit juin"
                 }]
             }]
         }]
@@ -519,6 +526,23 @@ var advancedDefaultSettings = [
             "type": TYPE_BOOL,
             "description": "Affiche un bouton pour calculer le SCORE2 depuis la page de consultation.",
             "default": true
+        }]
+    }, {
+        "name": "Résultats d'examens",
+        "description": "Des options concernant l'affichage des tableaux de résultats d'examens (biologie)",
+        "type": TYPE_TITLE,
+        "options": [{
+            "name": "unitConverter",
+            "type": TYPE_BOOL,
+            "description": "Affiche une conversion d'unité au survol de la souris dans les tableaux de résultats d'examens.",
+            "default": false,
+            "subOptions": [{
+                "name": "unitConverterTable",
+                "type": TYPE_JSON,
+                "description": "Table des conversions d'unités",
+                "longDescription": "Chaque ligne définit une conversion : libellé (correspond au code du résultat, ex. CHOLESTEROL) suivi de : unité source, facteur de conversion, unité cible, nombre de décimales (optionnel, défaut 2).\nLa conversion est appliquée si le libellé du résultat contient le libellé indiqué et que son unité correspond à l'unité source.",
+                "default": unitConverterDefaultTable
+            }]
         }]
     }, {
         "name": "Prescription",
@@ -705,6 +729,22 @@ var advancedDefaultSettings = [
             "default": false
         }]
     }, {
+        "name": "Gestion des Noémie",
+        "description": "Des options spécifiques à la gestion des NOEMIE",
+        "type": TYPE_TITLE,
+        "options": [{
+            "name": "autoNoemie",
+            "type": TYPE_BOOL,
+            "description": "Ajuste automatiquement le nom et la date lors du pointage des NOEMIE.",
+            "longDescription": "Cette option permet le remplacement du nom de l'organisme remonté dans le NOEMIE par WEDA par son nom tel qu'il apparait sur le relevé bancaire. Il ajuste également la date comptable selon le délai habituel de paiement des caisses (ex: 1 jour pour les CPAM, 3 jours pour la MGEN).", 
+            "default": false
+        },{
+            "name": "autoNoemieSubstitutionTable",
+            "type": TYPE_JSON,
+            "description": "Tableau de correspondance entre le nom du retour Noémie et le nom du virement en banque asocié au délai de paiement. Le format doit être NomDansWeda : NomEnBanque , DelaiDePaiementEnJours",
+            "default": NoemieSubstitutionTableDefaut
+        }]
+    }, {
         "name": "FSE",
         "description": "Des options spécifiques aux FSE",
         "type": TYPE_TITLE,
@@ -771,8 +811,8 @@ var advancedDefaultSettings = [
             "name": "cotationHelper2",
             "type": TYPE_TEXT,
             "description": "Propose des notifications pour suggérer des cotations selon le contexte (SHE, MCG, etc.). Supprimez celles qui ne vous intéressent pas.",
-            "longDescription": "Nous sommes parfois confronté à des cotations modificatrices très faciles à oublier en fonction du contexte.\nCette petite aide vous permettra peut-être d'en rattraper certaines.\nPar exemple s'il détecte que vous êtes en train de faire des consultations aux horaires du SAS, il vous suggerera d'ajouter la cotation SHE.\nSi vous voyez un patient hors résidence, il vous proposera la cotation MCG.\nA chaque fois un clic sur la cotation vous permettra de consulter la source parlant de cette cotation.\nPour l'instant les aides concernent les cotations suivantes :\nMCG, SHE, MHP, RDV, MOP, PAV, APC, APY, APU, MCS",
-            "default": "MCG, SHE, MHP, RDV, MOP, PAV, APC, APY, APU, MCS, GL1, GL2, GL3"
+            "longDescription": "Nous sommes parfois confronté à des cotations modificatrices très faciles à oublier en fonction du contexte.\nCette petite aide vous permettra peut-être d'en rattraper certaines.\nPar exemple s'il détecte que vous êtes en train de faire des consultations aux horaires du SAS, il vous suggerera d'ajouter la cotation SHE.\nSi vous voyez un patient hors résidence, il vous proposera la cotation MCG.\nA chaque fois un clic sur la cotation vous permettra de consulter la source parlant de cette cotation.\nPour l'instant les aides concernent les cotations suivantes :\nMCG, SHE, MHP, RDV, MOP, PAV, APC, APY, APU, MCS, GL1, GL2, GL3, COE",
+            "default": "MCG, SHE, MHP, RDV, MOP, PAV, APC, APY, APU, MCS, GL1, GL2, GL3, COE"
         }]
     }, {
         "name": "Companion",
@@ -867,27 +907,28 @@ var advancedDefaultSettings = [
         "description": "Tout ce qui concerne l'assistant IA local",
         "type": TYPE_TITLE,
         "options": [{
+            "name": "ignoreAIGeneratedData",
+            "type": TYPE_BOOL,
+            "description": "Ignorer les données générées par IA lors de la lecture du dossier patient.",
+            "longDescription": "Les champs contenant \"[IA]\" (ex: commentaires de pièces jointes générés par l'IA) sont ignorés par le Data Scrapper (assistant IA, score2prompter, historique FSE...) afin d'éviter la dégradation des données par la relecture de contenus eux-mêmes générés par une IA. Le reste de l'entrée (document, date, identifiant...) est conservé.",
+            "default": true
+        }, {
             "name": "enableIAassistant",
             "type": TYPE_BOOL,
             "description": "Activer ou désactiver l'assistant IA local.",
+            "longDescription": "Attention : si vous utilisez un serveur IA distant, des données de santé nominatives lui sont envoyées. Consultez les <a href='" + chrome.runtime.getURL('src/ui/markdownViewer.html?file=docs/IA-distante-wiki.md') + "' target='_blank'>obligations légales (HDS, RGPD, information des patients) et la mise en place sur le wiki</a>.",
             "default": false,
             "subOptions": [{
-                "name": "IAassistantHost",
+                "name": "IAassistantBaseUrl",
                 "type": TYPE_SMALLTEXT,
-                "description": "Hôte du serveur d'IA (laisser \"localhost\" sauf serveur distant/réseau local).",
-                "longDescription": "Par défaut \"localhost\" (le serveur d'IA tourne sur cet ordinateur). Peut être remplacé par une adresse IP ou un nom d'hôte d'un serveur sur le réseau local (ex: 192.168.1.50). Un hôte autre que \"localhost\" nécessite d'accorder une permission supplémentaire, demandée automatiquement.",
-                "default": "localhost"
-            }, {
-                "name": "IAassistantPort",
-                "type": TYPE_SMALLTEXT,
-                "description": "Port du modèle d'IA local (laisser en auto sauf port inhabituel).",
-                "longDescription": "1234 pour LM Studio (recommandé car + simple), 11434 pour Ollama (plus technique). Laissé sur \"auto\", tous les ports courants sont testés à chaque démarrage ; si un port précis est indiqué, seul celui-ci est testé.",
-                "default": "auto"
+                "description": "URL de base de l'API d'IA (laisser \"http://localhost:1234/v1\" pour LM Studio en local).",
+                "longDescription": "URL de base d'une API compatible OpenAI, sans \"/chat/completions\" ni \"/models\" (ajoutés automatiquement). Exemples : \"http://localhost:1234/v1\" (défaut, LM Studio local), \"http://localhost:11434/v1\" (Ollama), \"http://192.168.1.50:1234/v1\" (réseau local), \"https://ma-ressource.openai.azure.com/openai/v1\" (Azure : le nom du modèle est alors le nom du déploiement, et la clé API est envoyée en Bearer). Une URL autre que locale nécessite d'accorder une permission supplémentaire.",
+                "default": "http://localhost:1234/v1"
             }, {
                 "name": "IAassistantModelName",
                 "type": TYPE_SMALLTEXT,
                 "description": "Nom du modèle d'IA local préféré.",
-                "longDescription": " La liste des modèles disponibles est téléchargée à chaque démarrage pour chaque port actif ; si le modèle préféré n'y figure pas, le premier modèle disponible est utilisé à la place. Le modèle utilisé peut aussi être changé depuis le menu déroulant du Chat.",
+                "longDescription": " La liste des modèles disponibles est téléchargée à chaque démarrage depuis l'URL de base ; si le modèle préféré n'y figure pas, le premier modèle disponible est utilisé à la place. Le modèle utilisé peut aussi être changé depuis le menu déroulant du Chat.\n<a href='ai-model-settings.html' target='_blank'>Configurer les paramètres spécifiques aux modèles</a>",
                 "default": "auto"
             }, {
                 "name": "AIAssistantToolCalling",
@@ -895,9 +936,43 @@ var advancedDefaultSettings = [
                 "description": "Activer les appels aux outils de l'assistant IA local. (Hautement recommandé, privilégiez un modèle compatible).",
                 "default": true
             }, {
+                "name": "IAassistantMaxToolCalls",
+                "type": TYPE_SMALLTEXT,
+                "description": "Nombre max. d'allers-retours de function calling par réponse.",
+                "longDescription": "Nombre maximum d'allers-retours (appels d'outils successifs) que l'assistant peut effectuer avant d'être forcé de répondre. Évite les boucles infinies si le modèle enchaîne les appels d'outils sans jamais conclure. Augmentez si vos tâches nécessitent beaucoup d'étapes.",
+                "default": "10"
+            }, {
+                "name": "IAassistantMaxFileIds",
+                "type": TYPE_SMALLTEXT,
+                "description": "Nombre max. de pièces jointes lues par l'assistant en un seul appel.",
+                "longDescription": "Limite le nombre de documents (pdf, etc.) dont l'assistant peut lire le contenu en une fois, que ce soit via la lecture directe des documents de recoverPatientData ou via lireDocumentJoint. Chaque document lu augmente fortement la taille du contexte et le temps de traitement. Les premiers documents dans l'ordre d'affichage de Weda (les plus récents) sont lus, les autres sont signalés comme non lus.",
+                "default": "10"
+            }, {
                 "name": "IAassistantApiKey",
                 "type": TYPE_SMALLTEXT,
                 "description": "Clé API pour l'assistant IA local (si nécessaire).",
+                "default": null
+            }, {
+                "name": "IAassistantUseSecondProfile",
+                "type": TYPE_BOOL,
+                "description": "Utiliser le second serveur/modèle d'IA (bascule également possible depuis l'en-tête du chat).",
+                "longDescription": "Permet de passer rapidement d'un serveur/modèle à un autre (ex: local ↔ distant, rapide ↔ puissant). Décoché = premier profil (URL, modèle et clé API ci-dessus) ; coché = second profil (ci-dessous).",
+                "default": false
+            }, {
+                "name": "IAassistantBaseUrl2",
+                "type": TYPE_SMALLTEXT,
+                "description": "Second profil : URL de base de l'API d'IA.",
+                "longDescription": "Même format que l'URL du premier profil (API compatible OpenAI, sans \"/chat/completions\").",
+                "default": "http://localhost:1234/v1"
+            }, {
+                "name": "IAassistantModelName2",
+                "type": TYPE_SMALLTEXT,
+                "description": "Second profil : nom du modèle d'IA préféré.",
+                "default": "auto"
+            }, {
+                "name": "IAassistantApiKey2",
+                "type": TYPE_SMALLTEXT,
+                "description": "Second profil : clé API (si nécessaire).",
                 "default": null
             }, {
                 "name": "IAassistantMainSystemPrompt",
@@ -919,13 +994,47 @@ var advancedDefaultSettings = [
                 "name": "IAassistantMaxTokensOutput",
                 "type": TYPE_SMALLTEXT,
                 "description": "Nombre max. de tokens de sorties autorisés.",
-                "default": "2048",
+                "default": "4096",
                 "longDescription": "Permet d’empêcher le modèle de générer des réponses trop longues. A augmenter si vous êtes trop souvent confronté à \"limite de tokens (maxTokens) a été atteinte\"."
+            }, {
+                "name": "IAassistantReasoningEffort",
+                "type": TYPE_SELECT,
+                "description": "Niveau de raisonnement (\"thinking\") demandé au modèle.",
+                "longDescription": "Envoyé via le paramètre \"reasoning_effort\" de l'API. Uniquement pris en compte par les modèles compatibles \"reasoning\"/\"thinking\" (ex: gpt-oss, qwen3) ; ignoré silencieusement par les autres. \"Auto\" ne transmet pas le paramètre et laisse le modèle/serveur décider. Valeurs alignées sur la doc officielle Ollama (some sont des alias de compatibilité résolus par le serveur selon le modèle : \"minimal\"→\"low\", \"xhigh\"/\"ultra\"→\"max\" ou \"high\" selon le modèle). Peut aussi être changé depuis le menu déroulant du Chat.",
+                "default": "none",
+                "selectOptions": [{
+                    "value": "auto",
+                    "description": "Auto (ne pas envoyer le paramètre)"
+                }, {
+                    "value": "none",
+                    "description": "Aucun (désactive le raisonnement)"
+                }, {
+                    "value": "minimal",
+                    "description": "Minimal"
+                }, {
+                    "value": "low",
+                    "description": "Bas"
+                }, {
+                    "value": "medium",
+                    "description": "Moyen"
+                }, {
+                    "value": "high",
+                    "description": "Haut"
+                }, {
+                    "value": "xhigh",
+                    "description": "Très haut (xhigh)"
+                }, {
+                    "value": "ultra",
+                    "description": "Ultra"
+                }, {
+                    "value": "max",
+                    "description": "Maximum"
+                }]
             }, {
                 "name": "IAassistantPromptShortcut0",
                 "type": TYPE_LARGETEXT,
                 "description": "Raccourci de prompt n°0, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
-                "default": "Au vu du dossier récent sans fullpage, avec les antécédents et l'état civil, dis-moi si le suivi prévu du patient est à jour."
+                "default": "Au vu du dossier du dernier mois (dateRange limité à un mois), avec les antécédents et l'état civil, dis-moi si le suivi prévu du patient est à jour."
             }, {
                 "name": "IAassistantPromptShortcut1",
                 "type": TYPE_LARGETEXT,
@@ -935,12 +1044,12 @@ var advancedDefaultSettings = [
                 "name": "IAassistantPromptShortcut2",
                 "type": TYPE_LARGETEXT,
                 "description": "Raccourci de prompt n°2, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
-                "default": ""
+                "default": "au vu de ce document, vérifie que les antécédents soient à jour, et met à jour ou ajoute le nécessaire."
             }, {
                 "name": "IAassistantPromptShortcut3",
                 "type": TYPE_LARGETEXT,
                 "description": "Raccourci de prompt n°3, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
-                "default": ""
+                "default": "Après avoir récupéré l'ensemble du dossier du patient (appelle recoverPatientData([\"consultations\", \"resultatsExamens\", \"courriers\",    \"documents\", \"antecedents\"]); met à jour tous les antécédents : Reprends les anciens antécédents et complète les informations si nécessaire. Si un des antécédent est libre et que tu trouve un code CIM-10 qui correspond, propose une modification de l'antécédent pour ajouter ce code. Ajoute Les antécédents qui manquent en mentionnant les dates si elles apparaissent dans le dossier. Pour chaque antécédent, choisis la catégorie (Médical, chirurgical, allergie, etc.) appropriée et rédige un court résumé des évènements en lien avec cet antécédent, le spécialiste qui assure le suivi s'il y'en a un et le suivi éventuel prévu pour la suite de la prise en charge. Ne mentionne une prise en charge thérapeutique que si tu en trouves une trace dans le dossier ou dans les courriers. Si le titre de l'antécédent est déjà explicite, ne le mentionne pas à nouveau dans le champ de commentaire. Si il n'y a pas de traitement spécifique ou si un élément de suivi est manquant, ne le mentionne pas dans le champ de commentaire."
             }, {
                 "name": "IAassistantPromptShortcut4",
                 "type": TYPE_LARGETEXT,
@@ -971,6 +1080,29 @@ var advancedDefaultSettings = [
                 "type": TYPE_LARGETEXT,
                 "description": "Raccourci de prompt n°9, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
                 "default": ""
+            }, {
+                "name": "PdfParserAutoAIExtraction",
+                "type": TYPE_BOOL,
+                "description": "Complète via l'assistant IA local les champs du PDF Parser non trouvés par l'analyse automatique (date, nom du patient, commentaire...).",
+                "longDescription": "N'est tenté que pour les champs restés vides après l'analyse par mots-clés/regex, et n'écrase jamais une valeur déjà trouvée. En cas d'échec (serveur IA indisponible, réponse invalide...), l'extraction se poursuit normalement sans ces champs.",
+                "default": false,
+                "subOptions": [{
+                    "name": "PdfParserAutoAIExtractionPrompt",
+                    "type": TYPE_LARGETEXT,
+                    "description": "Prompt système envoyé à l'IA pour compléter les champs manquants du PDF Parser.",
+                    "default": "Tu es un extracteur de données médicales. On te fournit le texte brut d'un document PDF importé dans un dossier patient. On va te demander de compléter certains champs à partir de ce texte. Pour le commentaire, tu dois décrire en une petite phrase la nature du document et sa conclusion si possible, sans y mettre nom du patient, nom du correspondant, date du document ou date de naissance."
+                }, {
+                    "name": "PdfParserAutoAIFullMode",
+                    "type": TYPE_BOOL,
+                    "description": "Laisse l'IA déterminer elle-même le titre, la destination (Consultation/Résultats d'examens/Courrier) et la classification du document, au lieu de s'appuyer uniquement sur l'analyse par mots-clés.",
+                    "longDescription": "La liste des classifications réellement disponibles dans Weda est transmise à l'IA pour qu'elle choisisse parmi celles-ci. Voir aussi les options 'Catégorie de classement' et 'Règles de classification : destination' pour n'activer l'IA que sur l'une de ces deux thématiques.",
+                    "default": false
+                }, {
+                    "name": "verifierEtMettreAJourAntecedents",
+                    "type": TYPE_BOOL,
+                    "description": "Après avoir renseigné un document, demande à l'IA de vérifier et mettre à jour les antécédents du patient.",
+                    "default": false
+                }]
             }]
         }]
     }, {
@@ -1005,5 +1137,17 @@ var advancedDefaultSettings = [
             "description": "Active le mode debug du Data Scrapper.",
             "default": false,
             "longDescription": "Affiche un bouton pour tester rapidement le scrapper de données. Utile pour les développeurs.",
+        }, {
+            "name": "boutonTestAtcd",
+            "type": TYPE_BOOL,
+            "description": "Active le panneau de test d'insertion d'antécédents.",
+            "longDescription": "Affiche un panneau pour tester rapidement l'insertion des antécédents. Utile pour les développeurs.",
+            "default": false
+        }, {
+            "name": "boutonTestDataInserter",
+            "type": TYPE_BOOL,
+            "description": "Active le panneau de test de dataInserter.",
+            "longDescription": "Affiche un panneau pour tester rapidement l'insertion de documents (consultation, certificat, demande, courrier). Utile pour les développeurs.",
+            "default": false
         }],
     }];

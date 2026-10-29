@@ -6,80 +6,15 @@
  * conserve donc aucun état de conversation lui-même : il envoie les messages utilisateur via
  * offscreenBridge.js et affiche les événements reçus en retour (chunks, appels de fonction...).
  */
-const AI_CHAT_WIDGET_POSITION_STORAGE_KEY = 'wedaHelperChatWidgetPosition';
-const AI_CHAT_WINDOW_POSITION_STORAGE_KEY = 'wedaHelperChatWindowPosition';
-
-/**
- * Charge la position persistée du widget de chat si disponible.
- * Stockée en distance depuis le bas/droite de l'écran (cohérente quand la fenêtre change de taille).
- * @returns {{right: number, bottom: number}|null}
- */
-function loadWidgetPositionFromStorage() {
-    try {
-        const raw = localStorage.getItem(AI_CHAT_WIDGET_POSITION_STORAGE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (typeof parsed?.right === 'number' && typeof parsed?.bottom === 'number') {
-            return parsed;
-        }
-    } catch (error) {
-        console.warn('[discussionClient] Position du widget IA illisible, position par défaut conservée', error);
-    }
-    return null;
+let publishedChatApi = null;
+const chatApiWaiters = [];
+function whenChatApiReady() {
+    if (publishedChatApi) return Promise.resolve(publishedChatApi);
+    return new Promise(resolve => chatApiWaiters.push(resolve));
 }
-
-/**
- * Persiste la position du widget de chat.
- * @param {{right: number, bottom: number}} position
- */
-function saveWidgetPositionToStorage(position) {
-    try {
-        localStorage.setItem(AI_CHAT_WIDGET_POSITION_STORAGE_KEY, JSON.stringify(position));
-    } catch (error) {
-        console.warn('[discussionClient] Impossible de sauvegarder la position du widget IA', error);
-    }
-}
-
-/**
- * Charge la position persistée de la fenêtre de chat si disponible.
- * Stockée en distance depuis le bas/droite de l'écran (cohérente quand la fenêtre change de taille).
- * @returns {{right: number, bottom: number}|null}
- */
-function loadChatWindowPositionFromStorage() {
-    try {
-        const raw = localStorage.getItem(AI_CHAT_WINDOW_POSITION_STORAGE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (typeof parsed?.right === 'number' && typeof parsed?.bottom === 'number') {
-            return parsed;
-        }
-    } catch (error) {
-        console.warn('[discussionClient] Position de la fenetre de chat illisible, position par defaut conservee', error);
-    }
-    return null;
-}
-
-/**
- * Persiste la position de la fenêtre de chat.
- * @param {{right: number, bottom: number}} position
- */
-function saveChatWindowPositionToStorage(position) {
-    try {
-        localStorage.setItem(AI_CHAT_WINDOW_POSITION_STORAGE_KEY, JSON.stringify(position));
-    } catch (error) {
-        console.warn('[discussionClient] Impossible de sauvegarder la position de la fenetre de chat', error);
-    }
-}
-
-/**
- * Convertit un rect DOM en distances depuis le bas/droite du viewport.
- * @returns {{right: number, bottom: number}}
- */
-function rectToBottomRightOffset(rect) {
-    return {
-        right: Math.round(window.innerWidth - rect.right),
-        bottom: Math.round(window.innerHeight - rect.bottom)
-    };
+function publishChatApi(api) {
+    publishedChatApi = api;
+    chatApiWaiters.splice(0).forEach(resolve => resolve(api));
 }
 
 /**
@@ -89,551 +24,30 @@ async function addAIChatClient() {
     // Éviter les doublons si déjà injecté
     if (document.getElementById('wedaHelper-chat-widget')) return;
 
-    /** 
-     *  Attente de la disponibilité des paramètres de l'IA
-     * @see openAiClient.js
-     */ 
-    await aiParamsReady;
-
     /**
      * Identifiant du patient courant, déterminé une seule fois à l'initialisation du chat (le
      * patient affiché ne change pas une fois la page chargée). Sert de clé de conversation côté
      * offpage (@see offscreen/offscreenChatEngine.js), partagée entre tous les onglets ouverts sur
-     * ce même patient.
+     * ce même patient. `let` plutôt que `const` : modifiable via switchToPatient (@see plus bas et
+     * la commande /patient), utilisé notamment par le PDF Parser pour rattacher la complétion IA
+     * au bon dossier patient une fois celui-ci identifié.
      */
-    const chatPatientId = getCurrentPatientId();
+    let chatPatientId = getCurrentPatientId();
 
-    // --- Styles ---
-    const style = document.createElement('style');
-    style.textContent = `
-        #wedaHelper-chat-widget {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 9999;
-            font-family: system-ui, -apple-system, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-        }
-        #wedaHelper-chat-toggle {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background-color: #10a37f;
-            color: white;
-            border: none;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.2s;
-            position: relative;
-            touch-action: none;
-        }
-        #wedaHelper-chat-toggle:hover { transform: scale(1.05); }
-        #wedaHelper-chat-toggle .wedaHelper-chat-toggle-main {
-            position: absolute;
-            font-size: 28px;
-            line-height: 1;
-            transform: translate(-1px, 2px);
-        }
-        #wedaHelper-chat-toggle .wedaHelper-chat-toggle-badge {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(2px, -14px);
-            font-size: 16px;
-            line-height: 1;
-            filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25));
-        }
-        #wedaHelper-chat-toggle .wedaHelper-chat-toggle-main,
-        #wedaHelper-chat-toggle .wedaHelper-chat-toggle-badge {
-            pointer-events: none;
-        }
-        #wedaHelper-chat-toggle .wedaHelper-visually-hidden {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
-        }
-        #wedaHelper-chat-window {
-            position: fixed;
-            width: 380px;
-            height: 500px;
-            min-width: 260px;
-            min-height: 200px;
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
-            bottom: 90px;
-            right: 20px;
-            overflow: hidden;
-            display: none;
-            flex-direction: column;
-            transform: scale(0);
-            transform-origin: bottom right;
-            transition: transform 0.3s cubic-bezier(0.176, 0.085, 0.432, 1.275);
-        }
-        #wedaHelper-chat-window.open {
-            display: flex;
-            transform: scale(1);
-        }
-        #wedaHelper-chat-header {
-            background: #343541;
-            color: white;
-            padding: 15px;
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            user-select: none;
-            touch-action: none;
-        }
-        #wedaHelper-close-chat { background: none; border: none; color: white; cursor: pointer; font-size: 20px; }
-        #wedaHelper-info-chat {
-            background: #2f80ed;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 22px;
-            height: 22px;
-            min-width: 22px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: bold;
-            line-height: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 8px;
-        }
-        #wedaHelper-info-chat:hover { background: #1c66c9; }
-        #wedaHelper-reset-chat {
-            background: #e05252;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 22px;
-            height: 22px;
-            min-width: 22px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: bold;
-            line-height: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 8px;
-        }
-        #wedaHelper-reset-chat:hover { background: #c23f3f; }
-        #wedaHelper-header-actions { display: flex; align-items: center; }
-        #wedaHelper-info-popover {
-            display: none;
-            position: absolute;
-            top: 55px;
-            right: 15px;
-            width: 320px;
-            max-height: 380px;
-            overflow-y: auto;
-            background: #ffffff;
-            color: #333;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            padding: 12px 15px;
-            font-size: 13px;
-            z-index: 10000;
-        }
-        #wedaHelper-info-popover.open { display: block; }
-        #wedaHelper-info-popover h4 { margin: 8px 0 4px; font-size: 13px; color: #10a37f; }
-        #wedaHelper-info-popover h4:first-child { margin-top: 0; }
-        #wedaHelper-info-popover pre {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            background: #f7f7f8;
-            padding: 6px 8px;
-            border-radius: 6px;
-            margin: 0;
-            font-family: inherit;
-        }
-        #wedaHelper-info-popover ul { margin: 4px 0; padding-left: 18px; }
-        #wedaHelper-model-select {
-            display: block;
-            width: 100%;
-            box-sizing: border-box;
-            margin: 6px 0 10px;
-            background: #ffffff;
-            color: #333;
-            border: 1px solid #ccc;
-            padding: 5px 8px;
-            border-radius: 6px;
-            font-size: 12px;
-        }
-        #wedaHelper-disable-connector {
-            display: block;
-            margin: 0 0 10px;
-            background: #e05252;
-            color: white;
-            border: none;
-            padding: 6px 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-        #wedaHelper-disable-connector:hover { background: #c23f3f; }
-        #wedaHelper-chat-messages {
-            flex-grow: 1;
-            padding: 15px;
-            overflow-y: auto;
-            background: #f7f7f8;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        #wedaHelper-chat-messages .message {
-            max-width: 80%;
-            padding: 10px 15px;
-            border-radius: 15px;
-            line-height: 1.4;
-            font-size: 14px;
-            word-wrap: break-word;
-            white-space: pre-wrap;
-        }
-        #wedaHelper-copy-message-btn {
-            display: none;
-            position: fixed;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #ffffff;
-            border: 1px solid #ccc;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-            cursor: pointer;
-            font-size: 12px;
-            line-height: 1;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-            z-index: 10001;
-        }
-        #wedaHelper-copy-message-btn:hover { background: #f0f0f0; }
-        #wedaHelper-chat-messages .message.user {
-            background: #10a37f;
-            color: white;
-            align-self: flex-end;
-            border-bottom-right-radius: 5px;
-        }
-        #wedaHelper-chat-messages .message.bot {
-            background: #ffffff;
-            color: #333;
-            align-self: flex-start;
-            border-bottom-left-radius: 5px;
-            border: 1px solid #e5e5e5;
-        }
-        #wedaHelper-chat-messages .message.bot.markdown-rendered {
-            white-space: normal;
-        }
-        #wedaHelper-chat-messages .message.bot.markdown-rendered > :first-child { margin-top: 0; }
-        #wedaHelper-chat-messages .message.bot.markdown-rendered > :last-child { margin-bottom: 0; }
-        #wedaHelper-chat-messages .message.bot.markdown-rendered p,
-        #wedaHelper-chat-messages .message.bot.markdown-rendered ul,
-        #wedaHelper-chat-messages .message.bot.markdown-rendered ol,
-        #wedaHelper-chat-messages .message.bot.markdown-rendered blockquote,
-        #wedaHelper-chat-messages .message.bot.markdown-rendered pre,
-        #wedaHelper-chat-messages .message.bot.markdown-rendered table {
-            margin: 0.5em 0;
-        }
-        #wedaHelper-chat-messages .message.bot.markdown-rendered code {
-            background: #f1f3f5;
-            padding: 0.1em 0.35em;
-            border-radius: 4px;
-            font-size: 0.92em;
-        }
-        #wedaHelper-chat-messages .message.bot.markdown-rendered pre {
-            background: #f7f7f8;
-            padding: 8px 10px;
-            border-radius: 8px;
-            overflow-x: auto;
-        }
-        #wedaHelper-chat-messages .message.bot.markdown-rendered pre code {
-            background: transparent;
-            padding: 0;
-            border-radius: 0;
-            font-size: 0.9em;
-        }
-        #wedaHelper-chat-messages .message.bot.markdown-rendered a {
-            color: #0d6abf;
-            text-decoration: underline;
-        }
-        #wedaHelper-chat-messages .message.bot.markdown-rendered table {
-            display: block;
-            max-width: 100%;
-            overflow-x: auto;
-            border-collapse: collapse;
-            border: 1px solid #d9d9d9;
-            font-size: 13px;
-        }
-        #wedaHelper-chat-messages .message.bot.markdown-rendered th,
-        #wedaHelper-chat-messages .message.bot.markdown-rendered td {
-            border: 1px solid #d9d9d9;
-            padding: 6px 8px;
-            text-align: left;
-            vertical-align: top;
-        }
-        #wedaHelper-chat-messages .message.bot.markdown-rendered th {
-            background: #f3f5f7;
-            font-weight: 600;
-        }
-        #wedaHelper-chat-messages .message.loading { color: #888; font-style: italic; }
-        #wedaHelper-chat-messages .message.reasoning {
-            background: #f0f0f0;
-            color: #666;
-            font-size: 12px;
-            font-style: italic;
-            border: 1px dashed #ccc;
-        }
-        #wedaHelper-chat-messages .message.tool-call {
-            background: #eef6ff;
-            color: #2f6f9e;
-            font-size: 12px;
-            border: 1px solid #cfe4f7;
-            align-self: flex-start;
-            cursor: default;
-        }
-        #wedaHelper-chat-messages .message.tool-call.pending {
-            color: #a8790c;
-            background: #fff8e6;
-            border-color: #f0dca0;
-        }
-        #wedaHelper-chat-messages .message.tool-call.error {
-            color: #b3261e;
-            background: #fdecea;
-            border-color: #f5c2be;
-        }
-        #wedaHelper-chat-messages .message.tool-call.error a {
-            color: #b3261e;
-            font-weight: bold;
-            text-decoration: underline;
-        }
-        #wedaHelper-chat-form {
-            display: flex;
-            flex-direction: column;
-            padding: 15px;
-            background: #ffffff;
-            border-top: 1px solid #e5e5e5;
-        }
-        #wedaHelper-attachments-preview {
-            display: none;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-bottom: 8px;
-        }
-        #wedaHelper-attachments-preview.visible { display: flex; }
-        .wedaHelper-attachment-chip {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            background: #eef6ff;
-            color: #2f6f9e;
-            border: 1px solid #cfe4f7;
-            border-radius: 12px;
-            padding: 3px 8px;
-            font-size: 12px;
-            max-width: 200px;
-        }
-        .wedaHelper-attachment-chip span {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .wedaHelper-attachment-chip button {
-            background: none;
-            border: none;
-            color: #2f6f9e;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 13px;
-            line-height: 1;
-            padding: 0;
-        }
-        .wedaHelper-attachment-chip button:hover { color: #b3261e; }
-        #wedaHelper-chat-input-row {
-            display: flex;
-        }
-        #wedaHelper-attach-file {
-            background: #f0f0f0;
-            color: #555;
-            border: 1px solid #ccc;
-            border-radius: 20px;
-            width: 36px;
-            min-width: 36px;
-            margin-right: 8px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        #wedaHelper-attach-file:hover { background: #e5e5e5; }
-        #wedaHelper-input-wrapper {
-            position: relative;
-            flex-grow: 1;
-        }
-        #wedaHelper-input-resize-handle {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 14px;
-            height: 14px;
-            cursor: ns-resize;
-            z-index: 1;
-        }
-        #wedaHelper-input-resize-handle::before {
-            content: '';
-            position: absolute;
-            top: 3px;
-            left: 3px;
-            width: 7px;
-            height: 7px;
-            border-top: 2px solid #999;
-            border-left: 2px solid #999;
-        }
-        #wedaHelper-chat-input {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 10px 15px;
-            border: 1px solid #ccc;
-            border-radius: 12px;
-            outline: none;
-            font-size: 14px;
-            min-height: 36px;
-            max-height: 160px;
-            resize: none;
-        }
-        #wedaHelper-chat-input:focus { border-color: #10a37f; }
-        #wedaHelper-chat-submit {
-            background: #10a37f;
-            color: white;
-            border: none;
-            padding: 0 15px;
-            border-radius: 20px;
-            margin-left: 10px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        #wedaHelper-chat-submit:hover { background: #0d8c6d; }
-        #wedaHelper-chat-stop {
-            display: none;
-            background: #e05252;
-            color: white;
-            border: none;
-            padding: 0 15px;
-            border-radius: 20px;
-            margin-left: 10px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        #wedaHelper-chat-stop:hover { background: #c23f3f; }
-        #wedaHelper-chat-stop.visible { display: block; }
-        #wedaHelper-chat-shortcuts {
-            position: fixed;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            z-index: 9998;
-            pointer-events: none;
-        }
-        #wedaHelper-chat-shortcuts.open { display: flex; }
-        #wedaHelper-chat-shortcuts button {
-            pointer-events: auto;
-            width: 32px;
-            height: 32px;
-            min-width: 32px;
-            border-radius: 50%;
-            background: #10a37f;
-            color: white;
-            border: 2px solid #ffffff;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-            font-size: 13px;
-            font-weight: bold;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-        }
-        #wedaHelper-chat-shortcuts button:hover { background: #0d8c6d; }
-        #wedaHelper-chat-shortcuts button:disabled { cursor: not-allowed; opacity: 0.6; background: #aaa; }
-        #wedaHelper-shortcut-tooltip {
-            display: none;
-            position: fixed;
-            max-width: 260px;
-            background: #343541;
-            color: white;
-            padding: 8px 10px;
-            border-radius: 8px;
-            font-size: 12px;
-            line-height: 1.4;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.25);
-            z-index: 10002;
-            pointer-events: none;
-        }
-    `;
-    document.head.appendChild(style);
+    injectChatWidgetStyles();
 
-    // --- Structure HTML ---
-    const widget = document.createElement('div');
-    widget.id = 'wedaHelper-chat-widget';
-    widget.innerHTML = `
-        <div id="wedaHelper-chat-shortcuts"></div>
-        <div id="wedaHelper-chat-window">
-            <div id="wedaHelper-chat-header">
-                <span>Assistant Local</span>
-                <div id="wedaHelper-header-actions">
-                    <button id="wedaHelper-reset-chat" type="button" title="Réinitialiser la conversation">↺</button>
-                    <button id="wedaHelper-info-chat" type="button" title="Informations">?</button>
-                    <button id="wedaHelper-close-chat" type="button">&times;</button>
-                </div>
-            </div>
-            <div id="wedaHelper-info-popover"></div>
-            <div id="wedaHelper-chat-messages"></div>
-            <form id="wedaHelper-chat-form">
-                <div id="wedaHelper-attachments-preview"></div>
-                <div id="wedaHelper-chat-input-row">
-                    <input type="file" id="wedaHelper-file-input" accept=".pdf,.txt,.md,.csv,.log,.json,image/*" multiple style="display:none;">
-                    <button type="button" id="wedaHelper-attach-file" title="Joindre un ou plusieurs fichiers (PDF, texte, image)">📎</button>
-                    <div id="wedaHelper-input-wrapper">
-                        <div id="wedaHelper-input-resize-handle" title="Redimensionner"></div>
-                        <textarea id="wedaHelper-chat-input" placeholder="Écrivez un message..." autocomplete="off" required rows="2"></textarea>
-                    </div>
-                    <button type="submit" id="wedaHelper-chat-submit">Envoyer</button>
-                    <button type="button" id="wedaHelper-chat-stop" title="Arrêter la génération">Stop</button>
-                </div>
-            </form>
-        </div>
-        <button id="wedaHelper-chat-toggle" type="button" title="Assistant IA ✨" aria-label="Ouvrir l'assistant IA">
-            <span class="wedaHelper-chat-toggle-main" aria-hidden="true">💬</span>
-            <span class="wedaHelper-chat-toggle-badge" aria-hidden="true">✨</span>
-            <span class="wedaHelper-visually-hidden">Assistant IA</span>
-        </button>
-        <button id="wedaHelper-copy-message-btn" type="button" title="Copier le message">📋</button>
-        <div id="wedaHelper-shortcut-tooltip"></div>
-    `;
+    const widget = createChatWidgetElement();
     document.body.appendChild(widget);
 
     // --- Logique du chat ---
-    // Modèle actuellement sélectionné pour les appels, parmi tous les modèles détectés (aiParams.availableModels,
+    // Modèle actuellement sélectionné pour les appels, parmi tous les modèles détectés (getAiParams().availableModels,
     // tous ports actifs confondus). Initialisé au modèle résolu au démarrage (préféré si trouvé, sinon premier disponible),
     // puis mis à jour par l'état de l'offpage (voir handleOffscreenMessage, cas 'stateSync') s'il diffère.
-    let selectedModel = aiParams.defaultModel;
+    let selectedModel = (await getAiParams()).defaultModel;
     function getCurrentModel() {
         return selectedModel;
     }
+
 
     /**
      * État de la génération en cours (bulles DOM à mettre à jour au fil des événements reçus de
@@ -641,6 +55,19 @@ async function addAIChatClient() {
      * consommé par handleOffscreenMessage.
      */
     let activeGeneration = null;
+
+    // Passe à true après le premier rendu complet de l'historique (stateSync) : évite qu'un resync
+    // ultérieur (déclenché à chaque reconnexion du port, ex: réveil du service worker toutes les
+    // ~30s) n'efface les notices système et bulles de réflexion, absentes de l'historique persisté.
+    let hasRenderedInitialState = false;
+
+    // Historique des messages tapés par l'utilisateur (repris de l'historique offpage au chargement,
+    // puis complété à chaque envoi) : sert à la navigation ↑/↓ dans le champ de saisie et à /set
+    // sans texte explicite (reprend alors le dernier message).
+    let promptHistory = [];
+    // Index courant de navigation dans promptHistory (null = pas en cours de navigation).
+    let promptHistoryIndex = null;
+    let promptHistoryDraft = ''; // texte en cours de saisie, sauvegardé avant de naviguer dans l'historique
 
 
     const chatWindow = widget.querySelector('#wedaHelper-chat-window');
@@ -655,12 +82,34 @@ async function addAIChatClient() {
     const infoButton = widget.querySelector('#wedaHelper-info-chat');
     const infoPopover = widget.querySelector('#wedaHelper-info-popover');
     const resetButton = widget.querySelector('#wedaHelper-reset-chat');
+    const externalWarning = widget.querySelector('#wedaHelper-external-warning');
+    const headerTitle = widget.querySelector('#wedaHelper-header-title');
+    const headerModel = widget.querySelector('#wedaHelper-header-model');
     const inputResizeHandle = widget.querySelector('#wedaHelper-input-resize-handle');
+
+    // Ancrage automatique en bas de la conversation : désactivé si l'utilisateur remonte
+    // manuellement pour relire un échange, réactivé dès qu'il revient près du bas.
+    let stickToBottom = true;
+    const STICK_TO_BOTTOM_THRESHOLD = 40; // px de tolérance pour considérer qu'on est "en bas"
+    function isNearBottom() {
+        return chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight <= STICK_TO_BOTTOM_THRESHOLD;
+    }
+    chatMessages.addEventListener('scroll', () => {
+        stickToBottom = isNearBottom();
+    });
+    function scrollChatToBottom(force = false) {
+        if (force || stickToBottom) {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            stickToBottom = true;
+        }
+    }
     const fileInput = widget.querySelector('#wedaHelper-file-input');
     const attachFileButton = widget.querySelector('#wedaHelper-attach-file');
     const attachmentsPreview = widget.querySelector('#wedaHelper-attachments-preview');
     const shortcutsPanel = widget.querySelector('#wedaHelper-chat-shortcuts');
     const copyMessageButton = widget.querySelector('#wedaHelper-copy-message-btn');
+    const toolResultButton = widget.querySelector('#wedaHelper-tool-result-btn');
+    const toolResultPopover = widget.querySelector('#wedaHelper-tool-result-popover');
     const shortcutTooltip = widget.querySelector('#wedaHelper-shortcut-tooltip');
     const markdownRenderer = typeof markdownit === 'function'
         ? markdownit({ html: false, linkify: true, breaks: true })
@@ -669,319 +118,12 @@ async function addAIChatClient() {
         ? DOMPurify
         : null;
 
-    // Le positionnement (persistance, clamp, drag) se fait en distance depuis le bas/droite du
-    // viewport plutôt qu'en left/top : ça évite que le widget "saute" quand la taille de l'écran
-    // change régulièrement (l'ancrage visuel par défaut du widget est déjà bas/droite en CSS).
-    function clampWidgetPosition(right, bottom) {
-        const maxRight = Math.max(0, window.innerWidth - widget.offsetWidth);
-        const maxBottom = Math.max(0, window.innerHeight - widget.offsetHeight);
-        return {
-            right: Math.min(Math.max(0, right), maxRight),
-            bottom: Math.min(Math.max(0, bottom), maxBottom)
-        };
-    }
-
-    function clampChatWindowPosition(right, bottom) {
-        const windowRect = chatWindow.getBoundingClientRect();
-        const windowWidth = windowRect.width || chatWindow.offsetWidth || 380;
-        const windowHeight = windowRect.height || chatWindow.offsetHeight || 500;
-        const maxRight = Math.max(0, window.innerWidth - windowWidth);
-        const maxBottom = Math.max(0, window.innerHeight - windowHeight);
-        return {
-            right: Math.min(Math.max(0, right), maxRight),
-            bottom: Math.min(Math.max(0, bottom), maxBottom)
-        };
-    }
-
-    function applyWidgetPosition(right, bottom) {
-        const clamped = clampWidgetPosition(right, bottom);
-        widget.style.right = `${clamped.right}px`;
-        widget.style.bottom = `${clamped.bottom}px`;
-        widget.style.left = 'auto';
-        widget.style.top = 'auto';
-        return clamped;
-    }
-
-    function applyChatWindowPosition(right, bottom, { clamp = true } = {}) {
-        const nextPosition = clamp ? clampChatWindowPosition(right, bottom) : { right, bottom };
-        chatWindow.style.right = `${nextPosition.right}px`;
-        chatWindow.style.bottom = `${nextPosition.bottom}px`;
-        chatWindow.style.left = 'auto';
-        chatWindow.style.top = 'auto';
-        return nextPosition;
-    }
-
-    function bindDragHandle(handleEl, {
-        getStartRect,
-        applyPosition,
-        savePosition,
-        suppressClickOnDrag = false,
-        canStartDrag = () => true
-    } = {}) {
-        if (!handleEl) return;
-
-        let isDragging = false;
-        let pointerStartX = 0;
-        let pointerStartY = 0;
-        let widgetStartRight = 0;
-        let widgetStartBottom = 0;
-        let suppressClick = false;
-
-        function onPointerMove(event) {
-            const deltaX = event.clientX - pointerStartX;
-            const deltaY = event.clientY - pointerStartY;
-
-            if (!isDragging && (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4)) {
-                isDragging = true;
-                if (suppressClickOnDrag) suppressClick = true;
-            }
-            if (!isDragging) return;
-
-            // Déplacer le pointeur vers la droite/le bas réduit la distance au bord droit/bas.
-            applyPosition(widgetStartRight - deltaX, widgetStartBottom - deltaY);
-        }
-
-        function onPointerUp() {
-            document.removeEventListener('pointermove', onPointerMove);
-            document.removeEventListener('pointerup', onPointerUp);
-
-            if (isDragging) {
-                const currentOffset = getStartRect();
-                const applied = applyPosition(currentOffset.right, currentOffset.bottom);
-                savePosition(applied);
-            }
-            isDragging = false;
-        }
-
-        handleEl.addEventListener('pointerdown', (event) => {
-            if (event.button !== 0 || !canStartDrag(event)) return;
-            pointerStartX = event.clientX;
-            pointerStartY = event.clientY;
-            const offset = getStartRect();
-            widgetStartRight = offset.right;
-            widgetStartBottom = offset.bottom;
-            suppressClick = false;
-
-            document.addEventListener('pointermove', onPointerMove);
-            document.addEventListener('pointerup', onPointerUp);
-        });
-
-        if (suppressClickOnDrag) {
-            handleEl.addEventListener('click', (event) => {
-                if (!suppressClick) return;
-                event.preventDefault();
-                event.stopImmediatePropagation();
-                suppressClick = false;
-            }, true);
-        }
-    }
-
-    function initializeDraggableChatWidget() {
-        const savedPosition = loadWidgetPositionFromStorage();
-        if (savedPosition) {
-            const applied = applyWidgetPosition(savedPosition.right, savedPosition.bottom);
-            saveWidgetPositionToStorage(applied);
-        }
-
-        bindDragHandle(chatToggle, {
-            getStartRect: () => rectToBottomRightOffset(widget.getBoundingClientRect()),
-            applyPosition: (right, bottom) => applyWidgetPosition(right, bottom),
-            savePosition: (position) => saveWidgetPositionToStorage(position),
-            suppressClickOnDrag: true
-        });
-
-        // L'ancrage bas/droite (CSS) suit déjà les changements de taille d'écran automatiquement ;
-        // on ne fait que reclamper/persister au cas où le widget déborderait après un rétrécissement.
-        window.addEventListener('resize', () => {
-            if (widget.style.right && widget.style.bottom) {
-                const currentRight = parseFloat(widget.style.right) || 0;
-                const currentBottom = parseFloat(widget.style.bottom) || 0;
-                const clamped = applyWidgetPosition(currentRight, currentBottom);
-                saveWidgetPositionToStorage(clamped);
-            }
-        });
-    }
-
-    function initializeDraggableChatWindow() {
-        const savedPosition = loadChatWindowPositionFromStorage();
-        if (savedPosition) {
-            applyChatWindowPosition(savedPosition.right, savedPosition.bottom, { clamp: false });
-        }
-
-        bindDragHandle(chatHeader, {
-            getStartRect: () => rectToBottomRightOffset(chatWindow.getBoundingClientRect()),
-            applyPosition: (right, bottom) => applyChatWindowPosition(right, bottom),
-            savePosition: (position) => saveChatWindowPositionToStorage(position),
-            canStartDrag: (event) => !event.target.closest('button') && !getChatWindowResizeDirection(event)
-        });
-
-        window.addEventListener('resize', () => {
-            if (chatWindow.style.right && chatWindow.style.bottom) {
-                const currentRight = parseFloat(chatWindow.style.right) || 0;
-                const currentBottom = parseFloat(chatWindow.style.bottom) || 0;
-                const clamped = applyChatWindowPosition(currentRight, currentBottom);
-                saveChatWindowPositionToStorage(clamped);
-            }
-        });
-    }
-
-    initializeDraggableChatWidget();
-    initializeDraggableChatWindow();
     console.info('[discussionClient] Markdown pipeline init', {
         markdownitAvailable: !!markdownRenderer,
         domPurifyAvailable: !!domPurifyApi
     });
 
-    function getChatWindowResizeDirection(event, threshold = 8) {
-        const rect = chatWindow.getBoundingClientRect();
-        const nearLeft = event.clientX <= rect.left + threshold;
-        const nearRight = event.clientX >= rect.right - threshold;
-        const nearTop = event.clientY <= rect.top + threshold;
-        const nearBottom = event.clientY >= rect.bottom - threshold;
-
-        if (nearTop && nearLeft) return 'nw';
-        if (nearTop && nearRight) return 'ne';
-        if (nearBottom && nearLeft) return 'sw';
-        if (nearBottom && nearRight) return 'se';
-        if (nearLeft) return 'w';
-        if (nearRight) return 'e';
-        if (nearTop) return 'n';
-        if (nearBottom) return 's';
-        return '';
-    }
-
-    function updateChatWindowResizeCursor(direction) {
-        const cursorMap = {
-            n: 'ns-resize',
-            s: 'ns-resize',
-            e: 'ew-resize',
-            w: 'ew-resize',
-            ne: 'nesw-resize',
-            sw: 'nesw-resize',
-            nw: 'nwse-resize',
-            se: 'nwse-resize'
-        };
-        chatWindow.style.cursor = cursorMap[direction] || '';
-    }
-
-    function makeChatWindowResizableByEdges() {
-        const minWidth = 260;
-        const minHeight = 200;
-        let activeResizeDirection = '';
-        let isResizing = false;
-        let startX = 0;
-        let startY = 0;
-        let startRect = null;
-        let previousBodyUserSelect = '';
-
-        function onResizeMove(event) {
-            if (!isResizing || !startRect) return;
-            const deltaX = event.clientX - startX;
-            const deltaY = event.clientY - startY;
-
-            let nextLeft = startRect.left;
-            let nextTop = startRect.top;
-            let nextWidth = startRect.width;
-            let nextHeight = startRect.height;
-
-            if (activeResizeDirection.includes('e')) {
-                nextWidth = Math.max(minWidth, startRect.width + deltaX);
-                nextWidth = Math.min(nextWidth, window.innerWidth - startRect.left);
-            }
-            if (activeResizeDirection.includes('s')) {
-                nextHeight = Math.max(minHeight, startRect.height + deltaY);
-                nextHeight = Math.min(nextHeight, window.innerHeight - startRect.top);
-            }
-            if (activeResizeDirection.includes('w')) {
-                const maxLeft = startRect.left + startRect.width - minWidth;
-                nextLeft = Math.max(0, Math.min(startRect.left + deltaX, maxLeft));
-                nextWidth = Math.max(minWidth, startRect.width - (nextLeft - startRect.left));
-            }
-            if (activeResizeDirection.includes('n')) {
-                const maxTop = startRect.top + startRect.height - minHeight;
-                nextTop = Math.max(0, Math.min(startRect.top + deltaY, maxTop));
-                nextHeight = Math.max(minHeight, startRect.height - (nextTop - startRect.top));
-            }
-
-            // Clamp left/top ici en coordonnées écran classiques (calcul transitoire du resize) ;
-            // la position persistée bas/droite n'est recalculée qu'au relâchement (onResizeUp).
-            const clampedLeft = Math.min(Math.max(0, nextLeft), window.innerWidth - minWidth);
-            const clampedTop = Math.min(Math.max(0, nextTop), window.innerHeight - minHeight);
-            chatWindow.style.left = `${clampedLeft}px`;
-            chatWindow.style.top = `${clampedTop}px`;
-            chatWindow.style.right = 'auto';
-            chatWindow.style.bottom = 'auto';
-            chatWindow.style.width = `${Math.min(nextWidth, window.innerWidth - clampedLeft)}px`;
-            chatWindow.style.height = `${Math.min(nextHeight, window.innerHeight - clampedTop)}px`;
-        }
-
-        function onResizeUp() {
-            if (isResizing) {
-                const offset = rectToBottomRightOffset(chatWindow.getBoundingClientRect());
-                const clamped = applyChatWindowPosition(offset.right, offset.bottom, { clamp: false });
-                saveChatWindowPositionToStorage(clamped);
-            }
-            isResizing = false;
-            activeResizeDirection = '';
-            startRect = null;
-            chatWindow.classList.remove('wedaHelper-resizing');
-            document.body.style.userSelect = previousBodyUserSelect;
-            document.removeEventListener('pointermove', onResizeMove);
-            document.removeEventListener('pointerup', onResizeUp);
-            updateChatWindowResizeCursor('');
-        }
-
-        chatWindow.addEventListener('pointermove', (event) => {
-            if (isResizing) return;
-            updateChatWindowResizeCursor(getChatWindowResizeDirection(event));
-        });
-
-        chatWindow.addEventListener('pointerleave', () => {
-            if (!isResizing) updateChatWindowResizeCursor('');
-        });
-
-        chatWindow.addEventListener('pointerdown', (event) => {
-            if (event.button !== 0) return;
-            const direction = getChatWindowResizeDirection(event);
-            if (!direction) return;
-
-            event.preventDefault();
-            event.stopPropagation();
-            activeResizeDirection = direction;
-            isResizing = true;
-            startX = event.clientX;
-            startY = event.clientY;
-            startRect = chatWindow.getBoundingClientRect();
-            chatWindow.classList.add('wedaHelper-resizing');
-            previousBodyUserSelect = document.body.style.userSelect;
-            document.body.style.userSelect = 'none';
-            document.addEventListener('pointermove', onResizeMove);
-            document.addEventListener('pointerup', onResizeUp);
-            updateChatWindowResizeCursor(direction);
-        }, true);
-    }
-
-    function makeTopLeftResizable(handleEl, targetEl, { minHeight, maxHeight = Infinity }) {
-        handleEl.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            const startY = e.clientY;
-            const startHeight = targetEl.offsetHeight;
-
-            function onMouseMove(moveEvent) {
-                const deltaY = startY - moveEvent.clientY;
-                targetEl.style.height = `${Math.min(maxHeight, Math.max(minHeight, startHeight + deltaY))}px`;
-            }
-            function onMouseUp() {
-                document.removeEventListener('mousemove', onMouseMove);
-                document.removeEventListener('mouseup', onMouseUp);
-            }
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
-        });
-    }
-
-    makeChatWindowResizableByEdges();
-    makeTopLeftResizable(inputResizeHandle, chatInput, { minHeight: 36, maxHeight: 160 });
+    setupChatWidgetLayout({ widget, chatWindow, chatHeader, chatToggle, chatInput, inputResizeHandle });
 
     // --- Gestion des pièces jointes (documents/images envoyés au modèle) ---
     // Extensions/types traités comme du texte brut (extrait puis injecté dans le message,
@@ -991,55 +133,11 @@ async function addAIChatClient() {
     /** Pièces jointes en attente d'envoi avec le prochain message utilisateur. */
     let pendingAttachments = [];
 
-    /** Nombre maximum de pages converties en images pour un PDF scanné (sans texte lisible), afin d'éviter d'envoyer un nombre excessif d'images au modèle. */
-    const MAX_SCANNED_PDF_PAGES_AS_IMAGES = 50;
-
-    /** Nombre minimum de caractères "normaux" (lettres/chiffres) requis pour considérer un texte extrait de PDF comme lisible. */
-    const MIN_READABLE_PDF_CHAR_COUNT = 20;
-    /** Proportion minimale de caractères "normaux" dans le texte extrait, en dessous de laquelle on considère le texte comme du charabia (police non standard/CID mal mappée, etc.). */
-    const MIN_READABLE_PDF_CHAR_RATIO = 0.5;
-
-    /**
-     * Détermine si le texte extrait d'un PDF est réellement lisible : certains PDF scannés ou avec
-     * un encodage de police non standard renvoient un texte non vide mais illisible (charabia,
-     * caractères de contrôle/privés…), qu'il vaut mieux traiter comme si aucun texte n'avait été trouvé.
-     * @param {string} text
-     * @returns {boolean}
-     */
-    function isPdfTextReadable(text) {
-        if (!text) return false;
-        const trimmed = text.trim();
-        if (!trimmed) return false;
-        // Lettres (avec accents) et chiffres : un texte "normal" en est majoritairement composé.
-        const normalChars = trimmed.match(/[a-zA-Z0-9À-ÿ]/g) || [];
-        if (normalChars.length < MIN_READABLE_PDF_CHAR_COUNT) return false;
-        return (normalChars.length / trimmed.length) >= MIN_READABLE_PDF_CHAR_RATIO;
-    }
-
-    /**
-     * Convertit les pages d'un PDF (typiquement un document scanné, sans texte extractible) en
-     * images PNG encodées en data URL, une par page (dans la limite de MAX_SCANNED_PDF_PAGES_AS_IMAGES).
-     * Réutilise pdfjsLib et renderPagesToCanvases (@see pdfParser.js).
-     * @param {string} pdfObjectUrl
-     * @returns {Promise<string[]>}
-     */
-    async function renderPdfPagesAsImageDataUrls(pdfObjectUrl) {
-        const pdf = await pdfjsLib.getDocument(pdfObjectUrl).promise;
-        const pageCount = Math.min(pdf.numPages, MAX_SCANNED_PDF_PAGES_AS_IMAGES);
-        const pages = [];
-        for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
-            pages.push(await pdf.getPage(pageNum));
-        }
-        const canvases = await renderPagesToCanvases(pages);
-        return canvases.map(canvas => canvas.toDataURL('image/png'));
-    }
-
     /**
      * Lit un fichier joint et renvoie la ou les pièces jointes utilisables dans le contenu du
      * message (un fichier peut produire plusieurs pièces jointes, ex: PDF scanné → une image par page) :
      * - image : encodée en data URL (format 'image_url' de l'API, nécessite un modèle vision côté serveur)
-     * - PDF avec texte : texte extrait via extractTextFromPDF (@see pdfParser.js)
-     * - PDF sans texte lisible (scan) : chaque page est rendue en image et envoyée telle quelle
+     * - PDF : texte extrait, ou pages rendues en images si non lisible (@see resolvePdfAttachment, pdfAttachmentHelper.js)
      * - texte brut (.txt, .md, .csv, .log, .json) : lu tel quel
      * @param {File} file
      * @returns {Promise<Array<{kind: 'image'|'text', name: string, dataUrl?: string, extractedText?: string}>>}
@@ -1060,19 +158,7 @@ async function addAIChatClient() {
         if (lowerName.endsWith('.pdf') || file.type === 'application/pdf') {
             const objectUrl = URL.createObjectURL(file);
             try {
-                const extractedText = await extractTextFromPDF(objectUrl);
-                if (isPdfTextReadable(extractedText)) {
-                    return [{ kind: 'text', name: file.name, extractedText }];
-                }
-                // Aucun texte lisible trouvé (PDF scanné/image, ou texte extrait illisible/charabia) : on
-                // envoie les pages telles quelles, en images.
-                console.warn(`[discussionClient] Texte extrait de "${file.name}" absent ou illisible, envoi des pages sous forme d'images.`);
-                const pageImages = await renderPdfPagesAsImageDataUrls(objectUrl);
-                return pageImages.map((dataUrl, index) => ({
-                    kind: 'image',
-                    name: pageImages.length > 1 ? `${file.name} (page ${index + 1}/${pageImages.length})` : file.name,
-                    dataUrl
-                }));
+                return pdfAttachmentsFromResolved(await resolvePdfAttachment(objectUrl), file.name);
             } finally {
                 URL.revokeObjectURL(objectUrl);
             }
@@ -1154,29 +240,46 @@ async function addAIChatClient() {
 
 
     /**
-     * Fonction utilitaire pour construire le contenu HTML de la popover d'informations sur l'état du chat
-     * 
+     * Fonction utilitaire pour construire le contenu HTML de la popover d'informations sur l'état du chat.
+     * Relit systématiquement getAiParams() pour refléter les derniers réglages (aucune valeur mise en cache ici).
      */
-    function buildInfoContent() {
+    async function buildInfoContent() {
+        const aiParams = await getAiParams();
         const functionsList = Object.entries(availableFunctions).map(([name, fn]) => {
             const description = fn.definition?.function?.description || '';
             return `<li><strong>${name}</strong>${description ? ' — ' + description : ''}</li>`;
         }).join('');
 
-        const hasMultipleModels = (aiParams.availableModels?.length || 0) > 1;
-        // Si plusieurs ports sont actifs, on précise entre parenthèses le port de chaque modèle (utile pour
-        // distinguer d'éventuels modèles de même nom exposés sur des ports différents).
-        const showPort = (aiParams.activePorts?.length || 0) > 1;
+        const hasModelsList = (aiParams.availableModels?.length || 0) > 0;
         const modelOptions = (aiParams.availableModels || [])
-            .filter((m, idx, arr) => arr.findIndex(other => other.model === m.model && other.port === m.port) === idx) // dédoublonnage
-            .map(m => `<option value="${m.model}" ${m.model === selectedModel ? 'selected' : ''}>${m.model}${showPort ? ` (port ${m.port})` : ''}</option>`)
+            .filter((m, idx, arr) => arr.findIndex(other => other.model === m.model) === idx) // dédoublonnage
+            .map(m => `<option value="${m.model}" ${m.model === selectedModel ? 'selected' : ''}>${m.model}</option>`)
             .join('');
 
+        const useSecond = !!(await getOptionPromise('IAassistantUseSecondProfile'));
+        const [url1, url2, model2Pref] = await getOptionPromise(['IAassistantBaseUrl', 'IAassistantBaseUrl2', 'IAassistantModelName2']);
+        const [model1Pref] = await getOptionPromise(['IAassistantModelName']);
+        const profiles = [
+            { num: 1, active: !useSecond, url: url1, model: !useSecond ? selectedModel : model1Pref, key: 'IAassistantModelName' },
+            { num: 2, active: useSecond, url: url2, model: useSecond ? selectedModel : model2Pref, key: 'IAassistantModelName2' },
+        ];
+        const serverSections = profiles.map(p => `
+            <div class="wedaHelper-server-section${p.active ? ' active' : ''}">
+                <h4>Serveur ${p.num}${p.active ? ' (actif)' : ''}</h4>
+                <input ${p.active ? 'id="wedaHelper-model-select" list="wedaHelper-model-options"' : `class="wedaHelper-model-other" data-key="${p.key}"`} value="${p.model || ''}" placeholder="Nom du modèle / déploiement" />
+                ${p.active && hasModelsList ? `<datalist id="wedaHelper-model-options">${modelOptions}</datalist>` : ''}
+                <pre>${(p.url || '').trim()}</pre>
+            </div>`).join('');
+
+        // Toujours une liste déroulante éditable (saisie libre) : certains serveurs (ex: Azure
+        // OpenAI) renvoient sur `/models` le catalogue complet plutôt que les seuls déploiements
+        // configurés, dont le nom (ex: nom de déploiement) peut donc ne pas y figurer.
         return `
             <button id="wedaHelper-disable-connector" type="button">Désactiver l'Assistant Local</button>
-            <h4>Modèle utilisé</h4>
-            <pre>${getCurrentModel()} (hôte : ${aiParams.host || 'localhost'})</pre>
-            ${hasMultipleModels ? `<select id="wedaHelper-model-select">${modelOptions}</select>` : ''}
+            <h4>Modèle <span title="La liste suggérée peut ne pas correspondre aux modèles réellement déployés (ex: Azure OpenAI expose tout son catalogue, pas vos déploiements). En cas d'échec, tapez manuellement le nom exact du modèle/déploiement.">⚠️</span></h4>
+            ${serverSections}
+            <h4>Tool Calling</h4>
+            <pre>Max. Tool Calling = ${aiParams.MAX_TOOL_CALL_DEPTH}, cf. options Weda-Helper</pre>
             <h4>Prompt système</h4>
             <pre>${aiParams.basicSystemPrompt || '(aucun)'}</pre>
             <h4>Fonctions appelables</h4>
@@ -1185,6 +288,52 @@ async function addAIChatClient() {
     }
 
     resetButton.addEventListener('click', resetConversation);
+
+    // Bascule entre les deux profils serveur/modèle (options IAassistant*2).
+    const profileToggle = widget.querySelector('#wedaHelper-profile-toggle');
+    async function refreshProfileToggle() {
+        const useSecond = await getOptionPromise('IAassistantUseSecondProfile');
+        profileToggle.querySelector('.knob').textContent = useSecond ? '2' : '1';
+        profileToggle.setAttribute('aria-checked', String(!!useSecond));
+        profileToggle.classList.toggle('second', !!useSecond);
+    }
+    profileToggle.addEventListener('click', async () => {
+        const useSecond = await getOptionPromise('IAassistantUseSecondProfile');
+        await setActiveAiProfile(!useSecond);
+        selectedModel = (await getAiParams()).defaultModel;
+        refreshHeaderModel();
+        sendOffscreenMessage({ type: 'setModel', patientId: chatPatientId, model: selectedModel });
+        infoPopover.classList.remove('open');
+        await refreshProfileToggle();
+        await updateExternalWarning();
+    });
+    refreshProfileToggle();
+
+    /** Affiche le "!" jaune d'avertissement RGPD/HDS uniquement si l'URL configurée n'est pas locale. */
+    async function updateExternalWarning() {
+        let isExternal = false;
+        let externalProviderName = '';
+        try {
+            const { hostname } = new URL((await getAiParams()).baseUrl);
+            isExternal = !['localhost', '127.0.0.1', '[::1]'].includes(hostname);
+            // Domaine principal (ex: "xxx.openai.azure.com" -> "azure.com"), hôte complet pour une adresse IP
+            const labels = hostname.split('.');
+            externalProviderName = /^[\d.]+$/.test(hostname) || labels.length <= 2 ? hostname : labels.slice(-2).join('.');
+        } catch (error) {
+            isExternal = false;
+        }
+        externalWarning.classList.toggle('visible', isExternal);
+        headerTitle.textContent = isExternal ? `Assistant ${externalProviderName} (Beta)` : 'Assistant Local (Beta)';
+    }
+    updateExternalWarning();
+
+    /** Affiche à droite du toggle le nom du modèle actuellement utilisé. */
+    function refreshHeaderModel() {
+        const model = getCurrentModel() || '';
+        headerModel.textContent = model;
+        headerModel.title = model;
+    }
+    refreshHeaderModel();
 
     /** Réinitialise la conversation en cours (utilisé par le bouton ↺ et la commande /clear). */
     function resetConversation() {
@@ -1195,6 +344,44 @@ async function addAIChatClient() {
         infoPopover.classList.remove('open');
     }
 
+    // Callback appelé une seule fois, après que le prochain 'stateSync' pour le patient ciblé par
+    // switchToPatient ait été appliqué (@see handleOffscreenMessage 'stateSync') : permet à un
+    // appelant externe (ex: pdfParserAIExtraction.js) d'attendre la fin de la resynchronisation
+    // avant d'envoyer un prompt, pour éviter qu'il ne soit effacé par un stateSync arrivant après coup.
+    let onNextStateSyncRendered = null;
+
+    /** Ramène « pas de patient » (null, undefined, '', 0, '0') à null, sinon l'id en chaîne. */
+    function normalizePatientId(patientId) {
+        const asString = String(patientId ?? '').trim();
+        return (!asString || /^0+$/.test(asString)) ? null : asString;
+    }
+
+    /**
+     * Change le patient associé à la conversation courante (commande /patient, ou appelé
+     * directement via l'API publiée par publishChatApi) : la conversation offpage étant indexée
+     * par patientId, changer d'id revient à basculer sur une conversation différente (nouvelle ou
+     * déjà existante si un autre onglet discute déjà avec ce patient).
+     * Un id vide (null, undefined, '', 0 ou '0') désigne le « patient 0 » : retour sur la
+     * conversation non nominative de base (clé 'default' côté offpage).
+     * @param {string|number|null} newPatientId
+     * @param {() => void} [onSynced] - Rappelé une fois le prochain stateSync pour ce patient appliqué.
+     * @returns {boolean} false si c'est déjà le patient en cours (onSynced n'est alors jamais appelé).
+     */
+    function switchToPatient(newPatientId, onSynced) {
+        const targetPatientId = normalizePatientId(newPatientId);
+        if (targetPatientId === chatPatientId) return false;
+        chatPatientId = targetPatientId;
+        pendingAttachments = [];
+        renderAttachmentsPreview();
+        chatMessages.innerHTML = '';
+        infoPopover.classList.remove('open');
+        hasRenderedInitialState = false;
+        onNextStateSyncRendered = onSynced || null;
+        sendOffscreenMessage({ type: 'subscribe', patientId: chatPatientId });
+        sendOffscreenMessage({ type: 'requestState', patientId: chatPatientId });
+        return true;
+    }
+
     /**
      * Reconstruit l'affichage à partir de l'historique conversationnel renvoyé par l'offpage (voir
      * 'stateSync'), suite à un rechargement de page : seuls les tours user/assistant sont rejoués
@@ -1203,6 +390,7 @@ async function addAIChatClient() {
      */
     function renderHistoryFromState(history) {
         chatMessages.innerHTML = '';
+        promptHistory = [];
         history.forEach(entry => {
             const textParts = Array.isArray(entry.content)
                 ? entry.content.filter(part => part.type === 'text').map(part => part.text).join('\n')
@@ -1210,6 +398,7 @@ async function addAIChatClient() {
             if (!textParts) return;
             const msgDiv = appendMessage(entry.role === 'user' ? 'user' : 'bot', textParts);
             if (entry.role !== 'user') renderMarkdownInBubble(msgDiv, textParts);
+            else promptHistory.push(textParts);
         });
     }
 
@@ -1225,7 +414,7 @@ async function addAIChatClient() {
         sendOffscreenMessage({ type: 'subscribe', patientId: chatPatientId });
         sendOffscreenMessage({ type: 'requestState', patientId: chatPatientId });
     });
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    scrollChatToBottom(true); // ouverture du chat : toujours ancré en bas
 
     // Le textarea insère un saut de ligne par défaut sur Entrée : on force la soumission,
     // sauf si Shift est maintenu (pour permettre les messages multi-lignes).
@@ -1233,16 +422,46 @@ async function addAIChatClient() {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             chatForm.requestSubmit();
+            return;
+        }
+        // Navigation ↑/↓ dans l'historique des prompts envoyés, uniquement quand le curseur est en
+        // tout début (↑) ou toute fin (↓) du texte, pour ne pas gêner l'édition multi-lignes.
+        const atStart = chatInput.selectionStart === 0 && chatInput.selectionEnd === 0;
+        const atEnd = chatInput.selectionStart === chatInput.value.length && chatInput.selectionEnd === chatInput.value.length;
+        if (e.key === 'ArrowUp' && atStart && promptHistory.length) {
+            e.preventDefault();
+            if (promptHistoryIndex === null) {
+                promptHistoryDraft = chatInput.value;
+                promptHistoryIndex = promptHistory.length;
+            }
+            if (promptHistoryIndex > 0) {
+                promptHistoryIndex--;
+                chatInput.value = promptHistory[promptHistoryIndex];
+                chatInput.setSelectionRange(0, 0);
+            }
+        } else if (e.key === 'ArrowDown' && atEnd && promptHistoryIndex !== null) {
+            e.preventDefault();
+            if (promptHistoryIndex < promptHistory.length - 1) {
+                promptHistoryIndex++;
+                chatInput.value = promptHistory[promptHistoryIndex];
+            } else {
+                promptHistoryIndex = null;
+                chatInput.value = promptHistoryDraft;
+            }
+            chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
         }
     });
 
     // gestion de l'affichage de la popover d'informations sur l'état du chat
-    infoButton.addEventListener('click', () => {
+    infoButton.addEventListener('click', async () => {
         const isPopoverOpen = infoPopover.classList.contains('open');
         if (isPopoverOpen) {
             infoPopover.classList.remove('open');
         } else {
-            infoPopover.innerHTML = buildInfoContent();
+            // Relance la recherche des modèles disponibles quand on ouvre la popover
+            await recheckServerAvailability().catch(e => console.warn('[discussionClient] Erreur lors du re-check serveur :', e));
+
+            infoPopover.innerHTML = await buildInfoContent();
             infoPopover.classList.add('open');
             bindInfoPopoverActions();
         }
@@ -1251,14 +470,21 @@ async function addAIChatClient() {
     function bindInfoPopoverActions() {
         const modelSelect = infoPopover.querySelector('#wedaHelper-model-select');
         if (modelSelect) {
-            modelSelect.addEventListener('change', () => {
+            modelSelect.addEventListener('change', async () => {
                 selectedModel = modelSelect.value;
-                chrome.storage.local.set({ IAassistantModelName: selectedModel }); // enregistre le choix comme modèle préféré
+                refreshHeaderModel();
+                chrome.storage.local.set({ [await getActiveModelNameKey()]: selectedModel }); // enregistre le choix comme modèle préféré du profil actif
                 sendOffscreenMessage({ type: 'setModel', patientId: chatPatientId, model: selectedModel });
-                infoPopover.innerHTML = buildInfoContent();
+                infoPopover.innerHTML = await buildInfoContent();
                 bindInfoPopoverActions();
             });
         }
+
+        infoPopover.querySelectorAll('.wedaHelper-model-other').forEach(input => {
+            input.addEventListener('change', () => {
+                chrome.storage.local.set({ [input.dataset.key]: input.value.trim() || 'auto' });
+            });
+        });
 
         const disableConnectorButton = infoPopover.querySelector('#wedaHelper-disable-connector');
         if (disableConnectorButton) {
@@ -1310,15 +536,19 @@ async function addAIChatClient() {
      * juste son numéro au repos, le texte complet du prompt en tooltip ; les emplacements vides ne
      * sont pas affichés.
      */
-    function renderShortcutButtons() {
+    async function renderShortcutButtons() {
+        const { promptShortcuts } = await getAiParams();
         shortcutsPanel.innerHTML = '';
-        (aiParams.promptShortcuts || []).forEach((promptText, index) => {
+        (promptShortcuts || []).forEach((promptText, index) => {
             if (!promptText?.trim()) return;
             const button = document.createElement('button');
             button.type = 'button';
             button.textContent = String(index);
-            button.addEventListener('mouseenter', () => {
-                shortcutTooltip.textContent = promptText;
+            // Recharge le texte au survol plutôt que de fermer sur la valeur capturée au rendu,
+            // pour refléter un raccourci modifié entre-temps depuis un autre onglet/les options.
+            button.addEventListener('mouseenter', async () => {
+                const { promptShortcuts: freshShortcuts } = await getAiParams();
+                shortcutTooltip.textContent = freshShortcuts?.[index] ?? promptText;
                 const buttonRect = button.getBoundingClientRect();
                 shortcutTooltip.style.top = `${buttonRect.top}px`;
                 shortcutTooltip.style.left = `${buttonRect.right + 8}px`;
@@ -1333,6 +563,11 @@ async function addAIChatClient() {
     }
     renderShortcutButtons();
 
+    // La tooltip peut rester affichée à tort (ex. mouseleave manqué) ; un clic dessus la masque.
+    shortcutTooltip.addEventListener('click', () => {
+        shortcutTooltip.style.display = 'none';
+    });
+
     /**
      * Envoie le prompt configuré pour le raccourci d'index donné (utilisé par les boutons ronds et
      * les commandes /0 à /9). Renvoie false si l'emplacement est vide ou une génération est en cours.
@@ -1340,10 +575,11 @@ async function addAIChatClient() {
      * échoue silencieusement quand il est appelé alors qu'un submit est déjà en cours de traitement
      * (cas de la commande /1, déclenchée depuis le handler 'submit' du formulaire).
      * @param {number} index
-     * @returns {boolean}
+     * @returns {Promise<boolean>}
      */
-    function runPromptShortcut(index) {
-        const promptText = aiParams.promptShortcuts?.[index];
+    async function runPromptShortcut(index) {
+        const { promptShortcuts } = await getAiParams();
+        const promptText = promptShortcuts?.[index];
         if (!promptText?.trim() || activeGeneration) return false;
         const attachmentsForThisMessage = pendingAttachments;
         pendingAttachments = [];
@@ -1352,11 +588,13 @@ async function addAIChatClient() {
         return true;
     }
 
+
     let isOpen = false;
     function toggleChat() {
         isOpen = !isOpen;
         if (isOpen) {
             chatWindow.classList.add('open');
+            updateExternalWarning(); // l'URL a pu être modifiée dans les options depuis le dernier affichage
             chatToggle.style.display = 'none';
             chatInput.focus();
             shortcutsPanel.classList.add('open');
@@ -1390,21 +628,58 @@ async function addAIChatClient() {
         // Ancré en bas à droite de la bulle : reste toujours cliquable même si la bulle dépasse en haut de la fenêtre.
         copyMessageButton.style.top = `${rect.bottom - 24}px`;
         copyMessageButton.style.left = `${rect.right - 24}px`;
+        toolResultButton.style.top = copyMessageButton.style.top;
+        toolResultButton.style.left = `${rect.right - 48}px`;
     }
     function showCopyButtonForBubble(bubble) {
         clearTimeout(hideCopyButtonTimeoutId);
         hoveredBubbleForCopy = bubble;
         positionCopyButtonOverBubble(bubble);
         copyMessageButton.style.display = 'flex';
+        // Le "?" n'existe que pour les bulles d'appel de fonction dont le résultat est connu.
+        toolResultButton.style.display = bubble.toolResultText !== undefined ? 'flex' : 'none';
     }
     function scheduleHideCopyButton() {
         clearTimeout(hideCopyButtonTimeoutId);
         // Léger délai pour laisser le temps au pointeur d'atteindre le bouton sans qu'il disparaisse.
         hideCopyButtonTimeoutId = setTimeout(() => {
             copyMessageButton.style.display = 'none';
+            toolResultButton.style.display = 'none';
+            toolResultPopover.style.display = 'none';
             hoveredBubbleForCopy = null;
         }, 200);
     }
+
+    // Popover du résultat d'un appel de fonction, affiché au survol du "?".
+    let hideToolResultPopoverTimeoutId = null;
+    function scheduleHideToolResultPopover() {
+        clearTimeout(hideToolResultPopoverTimeoutId);
+        hideToolResultPopoverTimeoutId = setTimeout(() => { toolResultPopover.style.display = 'none'; }, 200);
+    }
+    toolResultButton.addEventListener('mouseenter', () => {
+        clearTimeout(hideCopyButtonTimeoutId);
+        clearTimeout(hideToolResultPopoverTimeoutId);
+        if (!hoveredBubbleForCopy || hoveredBubbleForCopy.toolResultText === undefined) return;
+        toolResultPopover.textContent = hoveredBubbleForCopy.toolResultText;
+        toolResultPopover.style.display = 'block';
+        const buttonRect = toolResultButton.getBoundingClientRect();
+        const popoverRect = toolResultPopover.getBoundingClientRect();
+        const top = buttonRect.top - popoverRect.height - 4;
+        toolResultPopover.style.top = `${top >= 8 ? top : buttonRect.bottom + 4}px`;
+        toolResultPopover.style.left = `${Math.max(8, buttonRect.right - popoverRect.width)}px`;
+    });
+    toolResultButton.addEventListener('mouseleave', () => {
+        scheduleHideCopyButton();
+        scheduleHideToolResultPopover();
+    });
+    toolResultPopover.addEventListener('mouseenter', () => {
+        clearTimeout(hideCopyButtonTimeoutId);
+        clearTimeout(hideToolResultPopoverTimeoutId);
+    });
+    toolResultPopover.addEventListener('mouseleave', () => {
+        scheduleHideCopyButton();
+        scheduleHideToolResultPopover();
+    });
     chatMessages.addEventListener('mouseover', (event) => {
         const bubble = event.target.closest('.message');
         if (!bubble) return;
@@ -1415,18 +690,44 @@ async function addAIChatClient() {
         const leavingBubble = event.target.closest('.message');
         if (!leavingBubble) return;
         // Ne masque pas si on se dirige vers un autre élément de la même bulle ou vers le bouton lui-même.
-        if (event.relatedTarget && (leavingBubble.contains(event.relatedTarget) || event.relatedTarget === copyMessageButton)) return;
+        if (event.relatedTarget && (leavingBubble.contains(event.relatedTarget) || event.relatedTarget === copyMessageButton || event.relatedTarget === toolResultButton)) return;
         scheduleHideCopyButton();
     });
     copyMessageButton.addEventListener('mouseenter', () => clearTimeout(hideCopyButtonTimeoutId));
     copyMessageButton.addEventListener('mouseleave', scheduleHideCopyButton);
     copyMessageButton.addEventListener('click', () => {
         if (!hoveredBubbleForCopy) return;
-        const textToCopy = hoveredBubbleForCopy.dataset.markdownSource ?? hoveredBubbleForCopy.textContent;
-        navigator.clipboard.writeText(textToCopy).then(() => {
-            copyMessageButton.textContent = '✅';
-            setTimeout(() => { copyMessageButton.textContent = '📋'; }, 1000);
-        }).catch(error => console.warn('[discussionClient] Copie du message impossible', error));
+        
+        // Copie avec mise en forme (HTML) si le markdown a été rendu, sinon copie du texte brut
+        const isMarkdownRendered = hoveredBubbleForCopy.classList.contains('markdown-rendered');
+        
+        if (isMarkdownRendered) {
+            // Copie l'HTML rendu avec mise en forme
+            const htmlToCopy = hoveredBubbleForCopy.innerHTML;
+            const plainTextToCopy = hoveredBubbleForCopy.textContent;
+            
+            const blob = new Blob([htmlToCopy], { type: 'text/html' });
+            const data = [new ClipboardItem({ 'text/html': blob, 'text/plain': new Blob([plainTextToCopy], { type: 'text/plain' }) })];
+            
+            navigator.clipboard.write(data).then(() => {
+                copyMessageButton.textContent = '✅';
+                setTimeout(() => { copyMessageButton.textContent = '📋'; }, 1000);
+            }).catch(error => {
+                console.warn('[discussionClient] Copie formatée du message impossible, fallback sur texte brut', error);
+                // Fallback sur copie texte brut
+                navigator.clipboard.writeText(plainTextToCopy).then(() => {
+                    copyMessageButton.textContent = '✅';
+                    setTimeout(() => { copyMessageButton.textContent = '📋'; }, 1000);
+                }).catch(err => console.warn('[discussionClient] Copie du message impossible', err));
+            });
+        } else {
+            // Copie du texte brut si pas de mise en forme
+            const textToCopy = hoveredBubbleForCopy.textContent;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                copyMessageButton.textContent = '✅';
+                setTimeout(() => { copyMessageButton.textContent = '📋'; }, 1000);
+            }).catch(error => console.warn('[discussionClient] Copie du message impossible', error));
+        }
     });
 
     function appendMessage(role, text) {
@@ -1434,7 +735,8 @@ async function addAIChatClient() {
         msgDiv.classList.add('message', role === 'user' ? 'user' : 'bot');
         msgDiv.textContent = text;
         chatMessages.appendChild(msgDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        // Un message de l'utilisateur force le réancrage en bas ; un message du bot respecte le décollage manuel.
+        scrollChatToBottom(role === 'user');
         return msgDiv;
     }
 
@@ -1457,17 +759,17 @@ async function addAIChatClient() {
 
         try {
             const rawHtml = markdownRenderer.render(markdownText);
-            console.info('[discussionClient] Markdown converti en HTML', {
-                markdownLength: markdownText.length,
-                htmlLength: rawHtml.length,
-                containsTable: /<table[\s>]/i.test(rawHtml)
-            });
+            // console.info('[discussionClient] Markdown converti en HTML', {
+            //     markdownLength: markdownText.length,
+            //     htmlLength: rawHtml.length,
+            //     containsTable: /<table[\s>]/i.test(rawHtml)
+            // });
             const sanitizedHtml = domPurifyApi.sanitize(rawHtml, { USE_PROFILES: { html: true } });
-            console.info('[discussionClient] HTML sanitise via DOMPurify', {
-                htmlBeforeSanitizeLength: rawHtml.length,
-                htmlAfterSanitizeLength: sanitizedHtml.length,
-                removedCharacters: rawHtml.length - sanitizedHtml.length
-            });
+            // console.info('[discussionClient] HTML sanitise via DOMPurify', {
+            //     htmlBeforeSanitizeLength: rawHtml.length,
+            //     htmlAfterSanitizeLength: sanitizedHtml.length,
+            //     removedCharacters: rawHtml.length - sanitizedHtml.length
+            // });
             const tempContainer = document.createElement('div');
             tempContainer.innerHTML = sanitizedHtml;
 
@@ -1480,10 +782,10 @@ async function addAIChatClient() {
             bubble.classList.add('markdown-rendered');
             bubble.dataset.messageFormat = 'markdown';
             bubble.dataset.markdownSource = markdownText;
-            console.info('[discussionClient] Bulle assistant rendue en markdown sanitise', {
-                linksCount: tempContainer.querySelectorAll('a').length,
-                tablesCount: tempContainer.querySelectorAll('table').length
-            });
+            // console.info('[discussionClient] Bulle assistant rendue en markdown sanitise', {
+            //     linksCount: tempContainer.querySelectorAll('a').length,
+            //     tablesCount: tempContainer.querySelectorAll('table').length
+            // });
             return true;
         } catch (error) {
             console.warn('[discussionClient] Échec du rendu markdown, retour en texte brut.', error);
@@ -1500,16 +802,12 @@ async function addAIChatClient() {
         const isAvailable = await testAiApiConnection();
         if (isAvailable) return;
 
-        // Si le port était sur "auto", précise les ports testés (utile pour comprendre pourquoi
-        // aucun serveur n'a été détecté : ports courants LM Studio/Ollama non concordants, etc.)
-        const portInfo = aiParams.autoPortTestedPorts?.length
-            ? `les ports testés automatiquement (${aiParams.autoPortTestedPorts.join(', ')})`
-            : `le port ${aiParams.port}`;
+        const { baseUrl } = await getAiParams();
 
         const warningBubble = appendMessage('bot', '');
         warningBubble.classList.remove('bot');
         warningBubble.classList.add('tool-call', 'error');
-        warningBubble.innerHTML = `⚠️ Aucune IA locale détectée sur ${portInfo}. Consultez le <a href="https://github.com/Refhi/Weda-Helper/wiki/Installation-d'une-IA-sur-votre-poste,-pour-que-Weda%E2%80%90Helper-s'en-saisisse" target="_blank" rel="noopener noreferrer">wiki d'installation d'une IA locale</a> pour configurer l'assistant. Cliquez sur le ? bleu pour le désactiver.`;
+        warningBubble.innerHTML = `⚠️ Aucune IA détectée à l'adresse ${baseUrl}. Consultez le <a href="https://github.com/Refhi/Weda-Helper/wiki/Installation-d'une-IA-sur-votre-poste,-pour-que-Weda%E2%80%90Helper-s'en-saisisse" target="_blank" rel="noopener noreferrer">wiki d'installation d'une IA locale</a> pour configurer l'assistant. Cliquez sur le ? bleu pour le désactiver.`;
     }
     checkAiApiAvailability();
 
@@ -1569,7 +867,7 @@ async function addAIChatClient() {
                 chatMessages.insertBefore(gen.reasoningMsg, gen.loadingMsg);
             }
             gen.reasoningMsg.textContent += reasoningDelta;
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            scrollChatToBottom();
         }
         if (contentDelta) {
             if (!gen.contentStarted) {
@@ -1582,8 +880,24 @@ async function addAIChatClient() {
             if (!renderMarkdownInBubble(gen.loadingMsg, gen.accumulatedContent)) {
                 gen.loadingMsg.textContent = gen.accumulatedContent;
             }
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            scrollChatToBottom();
         }
+    }
+
+    /**
+     * Compte récursivement les data URL trouvées dans les tableaux `images` d'un résultat de tool
+     * call (@see resolvePdfAttachment, pdfAttachmentHelper.js), pour afficher une puce 🖼️ par image
+     * sur la bulle de résultat, comme pour une pièce jointe envoyée par l'utilisateur.
+     * @param {*} value
+     * @returns {number}
+     */
+    function countImagesInResult(value) {
+        if (Array.isArray(value)) return value.reduce((total, item) => total + countImagesInResult(item), 0);
+        if (value && typeof value === 'object') {
+            if (Array.isArray(value.images)) return value.images.length;
+            return Object.values(value).reduce((total, item) => total + countImagesInResult(item), 0);
+        }
+        return 0;
     }
 
     /**
@@ -1597,10 +911,18 @@ async function addAIChatClient() {
         gen.reasoningMsg = null;
 
         if (status === 'start') {
+            // Le texte déjà écrit par le modèle avant cet appel reste dans sa bulle, figée à sa place : la suite
+            // (outils, puis réponse suivante) s'affiche en dessous au lieu de l'écraser ou de s'y accumuler.
+            if (gen.contentStarted) {
+                gen.loadingMsg = appendMessage('bot', '');
+                gen.loadingMsg.classList.add('loading');
+                gen.contentStarted = false;
+                gen.accumulatedContent = '';
+            }
             const bubble = appendMessage('bot', `🔧 Appel de la fonction "${name}"...`);
             bubble.classList.remove('bot');
             bubble.classList.add('tool-call', 'pending');
-            bubble.title = `Arguments :\n${JSON.stringify(args, null, 2)}`;
+            bubble.title = `${name}(${JSON.stringify(args ?? {}, null, 2)})`;
             chatMessages.insertBefore(bubble, gen.loadingMsg);
             gen.toolCallBubbles.set(id, bubble);
             return;
@@ -1611,15 +933,22 @@ async function addAIChatClient() {
 
         bubble.classList.remove('pending');
         if (status === 'success') {
-            bubble.textContent = `✅ Résultat reçu de "${name}"`;
-            const resultText = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
-            bubble.title = `Résultat :\n${resultText}`;
+            // Affiche une puce 🖼️ par image trouvée dans le résultat (ex: pages de pdf scanné rendues
+            // en images par resolvePdfAttachment), comme pour une pièce jointe envoyée par l'utilisateur.
+            const imageCount = countImagesInResult(result);
+            const imageLabel = imageCount ? ` ${'🖼️'.repeat(Math.min(imageCount, 5))}${imageCount > 5 ? ` (+${imageCount - 5})` : ''}` : '';
+            bubble.textContent = `✅ Résultat reçu de "${name}"${imageLabel}`;
+            // Les data URL d'images sont remplacées par une simple icône pour garder un aperçu lisible.
+            bubble.toolResultText = typeof result === 'string'
+                ? result
+                : JSON.stringify(result, (key, value) => (typeof value === 'string' && value.startsWith('data:image/') ? '🖼️' : value), 2);
         } else if (status === 'error') {
             bubble.classList.add('error');
             bubble.textContent = `❌ Échec de l'appel à "${name}"`;
-            bubble.title = `Erreur :\n${error}`;
+            bubble.toolResultText = String(error);
         }
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        if (hoveredBubbleForCopy === bubble) showCopyButtonForBubble(bubble);
+        scrollChatToBottom();
     }
 
     function handleOffscreenMessage(message) {
@@ -1628,7 +957,19 @@ async function addAIChatClient() {
         switch (message.type) {
             case 'stateSync':
                 selectedModel = message.selectedModel || selectedModel;
-                renderHistoryFromState(message.history || []);
+                refreshHeaderModel();
+                // Ne reconstruit l'affichage qu'une seule fois (premier chargement / changement de
+                // patient) : les resyncs suivants (reconnexion du port) ne doivent pas effacer les
+                // notices système et bulles de réflexion déjà affichées, absentes de l'historique persisté.
+                if (!hasRenderedInitialState) {
+                    hasRenderedInitialState = true;
+                    renderHistoryFromState(message.history || []);
+                }
+                if (onNextStateSyncRendered) {
+                    const callback = onNextStateSyncRendered;
+                    onNextStateSyncRendered = null;
+                    callback();
+                }
                 if (message.liveGeneration) {
                     // Une génération est déjà en cours (lancée depuis un autre onglet) : on rejoue son
                     // instantané pour rattraper immédiatement l'affichage, sans attendre le prochain événement.
@@ -1657,7 +998,7 @@ async function addAIChatClient() {
                 warningBubble.classList.remove('bot');
                 warningBubble.classList.add('tool-call', 'error');
                 chatMessages.insertBefore(warningBubble, gen.loadingMsg);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+                scrollChatToBottom();
                 break;
             }
 
@@ -1764,11 +1105,12 @@ async function addAIChatClient() {
     }
 
     /** Affiche la liste des commandes / disponibles ainsi que les raccourcis de prompts configurés. */
-    function showHelpMessage(commands) {
+    async function showHelpMessage(commands) {
+        const { promptShortcuts } = await getAiParams();
         const commandsList = Object.entries(commands)
             .map(([name, cmd]) => `• /${name} — ${cmd.description}`)
             .join('\n');
-        const configuredShortcuts = (aiParams.promptShortcuts || [])
+        const configuredShortcuts = (promptShortcuts || [])
             .map((text, index) => (text?.trim() ? `• /${index} — ${text.slice(0, 60)}${text.length > 60 ? '…' : ''}` : null))
             .filter(Boolean)
             .join('\n');
@@ -1784,7 +1126,50 @@ async function addAIChatClient() {
         sendUserPrompt: (text) => submitUserMessage(text, []),
         triggerShortcut: (index) => runPromptShortcut(index),
         showSystemNotice,
-        showHelp: showHelpMessage
+        showHelp: showHelpMessage,
+        switchPatient: (arg) => {
+            if (!arg) { showSystemNotice('Usage : /patient <identifiant patient> (0 pour la conversation non nominative)' +                         ` (conversation attachée à : ${chatPatientId ?? 0} ; patientId utilisé par les tool calls : ${resolveCurrentPatientId()})`); return; }
+                        showSystemNotice(`Commande /patient reçue (argument : "${arg}", conversation attachée à : ${chatPatientId ?? 0} ; patientId utilisé par les tool calls : ${resolveCurrentPatientId()}).`);
+            const switched = switchToPatient(arg);
+            showSystemNotice(switched
+                ? (normalizePatientId(arg) ? `Conversation associée au patient ${arg}.` : 'Retour à la conversation non nominative.')
+                : `Aucun changement : déjà sur le patient ${arg}.`);
+        },
+        // Enregistre un raccourci de prompt : /set <index> [texte]. Sans texte, reprend le dernier
+        // message envoyé (promptHistory) — pratique pour transformer à la volée un message qu'on vient
+        // d'envoyer en raccourci permanent.
+        setShortcut: async (arg) => {
+            const [indexText, ...rest] = arg.trim().split(/\s+/).filter(Boolean);
+            const index = Number(indexText);
+            if (!Number.isInteger(index) || index < 0 || index > 9) {
+                showSystemNotice('Usage : /set <index 0-9> [texte du prompt] (sans texte, reprend le dernier message envoyé).');
+                return;
+            }
+            const promptText = rest.length ? rest.join(' ') : promptHistory[promptHistory.length - 1];
+            if (!promptText?.trim()) {
+                showSystemNotice('Aucun texte fourni et aucun dernier message envoyé à utiliser.');
+                return;
+            }
+            await setStorageOption({ [`IAassistantPromptShortcut${index}`]: promptText });
+            renderShortcutButtons();
+            showSystemNotice(`Raccourci /${index} enregistré : ${promptText.slice(0, 60)}${promptText.length > 60 ? '…' : ''}`);
+        },
+        // Supprime un raccourci de prompt : /del <index>.
+        deleteShortcut: async (arg) => {
+            const index = Number(arg.trim());
+            if (!Number.isInteger(index) || index < 0 || index > 9) {
+                showSystemNotice('Usage : /del <index 0-9>.');
+                return;
+            }
+            const { promptShortcuts } = await getAiParams();
+            if (!promptShortcuts?.[index]?.trim()) {
+                showSystemNotice(`Le raccourci /${index} est déjà vide.`);
+                return;
+            }
+            await setStorageOption({ [`IAassistantPromptShortcut${index}`]: '' });
+            renderShortcutButtons();
+            showSystemNotice(`Raccourci /${index} supprimé.`);
+        }
     };
 
     /**
@@ -1792,8 +1177,11 @@ async function addAIChatClient() {
      * aussi bien depuis la soumission normale du formulaire que depuis une commande / (ex: /poisson).
      * @param {string} userText
      * @param {Array} attachmentsForThisMessage
+     * @param {{chaine?: {nom: string, entree?: object}}} [options] chaîne d'outils à démarrer avant la première requête (@see toolChains.js)
      */
-    function submitUserMessage(userText, attachmentsForThisMessage = []) {
+    function submitUserMessage(userText, attachmentsForThisMessage = [], { chaine } = {}) {
+        promptHistory.push(userText);
+        promptHistoryIndex = null;
         const attachmentsLabel = attachmentsForThisMessage.length
             ? '\n\n' + attachmentsForThisMessage.map(att => `${att.kind === 'image' ? '🖼️' : '📄'} ${att.name}`).join('\n')
             : '';
@@ -1805,17 +1193,18 @@ async function addAIChatClient() {
             type: 'userMessage',
             patientId: chatPatientId,
             model: getCurrentModel(),
-            content: buildUserMessageContent(userText, attachmentsForThisMessage)
+            content: buildUserMessageContent(userText, attachmentsForThisMessage),
+            chaine
         });
     }
 
-    chatForm.addEventListener('submit', (e) => {
+    chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const userText = chatInput.value.trim();
         if (!userText) return;
 
-        if (tryHandleChatSlashCommand(userText, slashCommandContext)) {
+        if (await tryHandleChatSlashCommand(userText, slashCommandContext)) {
             chatInput.value = '';
             return;
         }
@@ -1828,10 +1217,37 @@ async function addAIChatClient() {
         renderAttachmentsPreview();
         submitUserMessage(userText, attachmentsForThisMessage);
     });
+
+    // Publie le pont utilisable par d'autres scripts (ex: pdfParserAIExtraction.js) pour lancer une chaîne d'outils
+    // avec un prompt "comme si l'utilisateur l'avait tapé" (visible dans le chat, réponse via tool call) et
+    // rattacher la conversation au bon patient une fois celui-ci identifié.
+    publishChatApi({
+        // Lance une chaîne d'outils (@see toolChains.js) avec ce prompt (et d'éventuelles pièces jointes déjà prêtes,
+        // @see pdfAttachmentsFromResolved), comme si le modèle en avait appelé le point d'entrée.
+        lancerChaine: (nom, entree, text, attachments = []) => submitUserMessage(text, attachments, { chaine: { nom, entree } }),
+        // Renvoie une Promise résolue une fois le prochain stateSync appliqué (ou immédiatement si
+        // aucun changement n'était nécessaire) : permet à l'appelant (ex: pdfParserAIExtraction.js)
+        // d'attendre la resynchronisation avant d'envoyer un prompt, pour éviter qu'il ne soit
+        // effacé par un stateSync arrivant après coup (@see switchToPatient).
+        switchToPatient: (newPatientId) => new Promise((resolve) => {
+            const switched = switchToPatient(newPatientId, () => resolve(true));
+            if (!switched) resolve(false);
+        }),
+        resetConversation,
+        stop: stopGeneration,
+        open: () => { if (!isOpen) toggleChat(); }
+    });
 }
 
 
 addTweak('*', 'enableIAassistant', function () {
+    const urlBlacklist = [
+        '/FolderMedical/PopUpUploader.aspx',
+    ];
+    if (urlBlacklist.some(urlPart => window.location.href.includes(urlPart))) {
+        // On considère que l'IA n'est pas pertinente sur ces pages
+        return;
+    }
     // On attend que Weda soit prêt avant d'injecter le chat, pour éviter les conflits avec le chargement de la page.
     waitForWeda({ logWait: 'enableIAassistant' }).then(() => {
         addAIChatClient();

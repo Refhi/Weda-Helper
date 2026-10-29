@@ -47,7 +47,7 @@ function validateSettings(settings) {
         if (!option.name || typeof option.name !== 'string') {
             errors.push(`Erreur dans l'option: 'name' est manquant ou n'est pas une chaîne de caractères.`);
         }
-        if (!option.type || ![TYPE_BOOL, TYPE_TEXT, TYPE_HTML, TYPE_RADIO, TYPE_SMALLTEXT, TYPE_JSON, TYPE_TITLE].includes(option.type)) {
+        if (!option.type || ![TYPE_BOOL, TYPE_TEXT, TYPE_HTML, TYPE_RADIO, TYPE_SELECT, TYPE_SMALLTEXT, TYPE_JSON, TYPE_TITLE].includes(option.type)) {
             errors.push(`Erreur dans l'option '${option.name}': 'type' est manquant ou invalide.`);
         }
         if (!option.description || typeof option.description !== 'string') {

@@ -29,6 +29,115 @@ const DATA_SCRAPPER_CATEGORIES = [
     "contacts"
 ];
 
+// Cache partagé (promesse unique) de l'index de recherche CIM-10 (voir rechercherCim10 ci-dessous).
+let _cim10IndexPromise = null;
+
+/**
+ * ressources/cim10.parquet : base CIM-10 FR PMSI (~19 075 lignes, dont ~18 778 codes exploitables de type "category" ;
+ * les ~297 lignes restantes sont des regroupements "chapter"/"block" non assignables à un patient).
+ * Colonnes disponibles (seules "code", "label", "type" et "synonymes" sont chargées ici) :
+ *   - code (string)              ex. "A00.0"
+ *   - label (string)             libellé officiel du diagnostic, ex. "À Vibrio cholerae 01, biovar cholerae"
+ *   - type (string)              "chapter" | "block" | "category" (seul "category" est un diagnostic assignable)
+ *   - synonymes (liste de string) variantes/termes courants associés au code, également indexés pour la recherche
+ *   - depth, lft, rgt, path, inclusion_note, exclusion_note, exclusion_codes, keywords (non chargées ici)
+ * Charge et met en cache (une seule fois par content script) un index de recherche floue Fuse.js sur label+synonymes.
+ */
+async function chargerIndexCim10() {
+    if (!_cim10IndexPromise) {
+        _cim10IndexPromise = (async () => {
+            const { parquetReadObjects } = await import(chrome.runtime.getURL('lib/hyparquet/index.js'));
+            const file = await fetch(chrome.runtime.getURL('ressources/cim10.parquet')).then(r => r.arrayBuffer());
+            const rows = await parquetReadObjects({ file, columns: ['code', 'label', 'type', 'synonymes'] });
+            // Seuls les codes "category" sont de véritables diagnostics assignables (chapter/block sont des regroupements).
+            const codes = rows.filter(r => r.type === 'category');
+            const fuse = new Fuse(codes, {
+                keys: [
+                    { name: 'label', weight: 0.7 },
+                    { name: 'synonymes', weight: 0.3 }
+                ],
+                threshold: 0.4,
+                ignoreLocation: true,
+                includeScore: true
+            });
+            console.log(`[callableFunctions] Base CIM-10 chargée : ${codes.length} codes indexés.`);
+            return fuse;
+        })();
+    }
+    return _cim10IndexPromise;
+}
+
+/**
+ * Fonction appelable par le modèle pour rechercher des codes CIM-10 correspondant à un ou plusieurs termes
+ * (recherche floue sur le libellé officiel et les synonymes). Accepte `terme` (unique, rétrocompat) et/ou `termes`
+ * (lot) afin d'éviter un aller-retour tool-call par diagnostic quand plusieurs codes sont à chercher d'un coup.
+ * Ne modifie rien dans Weda : c'est à l'IA d'examiner les résultats retournés et de choisir le code le plus
+ * pertinent avant d'appeler traiterAntecedents (action='ajouter'), ou de se rabattre sur un antécédent libre si aucun résultat ne
+ * correspond réellement au diagnostic voulu (éviter la sur-précision, ex. ne pas choisir un germe précis non
+ * mentionné par l'utilisateur).
+ */
+async function rechercherCim10({ terme, termes, limite = 20 } = {}) {
+    const termesAChercher = [...new Set([...(Array.isArray(termes) ? termes : []), terme].filter(Boolean))];
+    console.log(`[rechercherCim10] Appelée avec:`, { termesAChercher, limite });
+    if (!termesAChercher.length) return { error: "Aucun terme de recherche fourni (utiliser 'terme' ou 'termes')." };
+    try {
+        const fuse = await chargerIndexCim10();
+        const resultatsParTerme = termesAChercher.map(t => ({
+            terme: t,
+            resultats: fuse.search(t, { limit: limite }).map(r => ({ code: r.item.code, label: r.item.label, score: r.score }))
+        }));
+        // Un seul terme demandé : renvoie directement la liste des résultats (rétrocompat avec l'ancien format).
+        return termesAChercher.length === 1 ? resultatsParTerme[0].resultats : resultatsParTerme;
+    } catch (e) {
+        console.error("[rechercherCim10] Erreur lors de la recherche :", e);
+        return { error: `Erreur lors de la recherche CIM-10 : ${e.message || e}` };
+    }
+}
+
+/**
+ * Parcourt le résultat de recoverData et remplace, pour chaque pièce jointe dont l'URL a été
+ * résolue (attachment.url, voir resolveAttachmentFileIds), le champ url par le texte extrait du
+ * pdf (attachment.pdfText), ou par des images de ses pages (attachment.images) si le pdf est un
+ * scan sans texte lisible (@see resolvePdfAttachment, pdfAttachmentHelper.js) : le modèle reçoit
+ * directement le contenu du document, comme si l'utilisateur le lui avait fourni et confirmé,
+ * plutôt qu'un simple lien à rappeler.
+ * @param {Object} data - Résultat de recoverData, potentiellement enrichi d'attachment.url
+ */
+async function lirePiecesJointesPdf(data) {
+    for (const attachment of iterateAttachments(data)) {
+        if (!attachment.url) continue;
+        try {
+            const resolved = await resolveAttachmentContent(attachment.url);
+            if (resolved.text) attachment.pdfText = resolved.text;
+            if (resolved.images.length > 0) attachment.images = resolved.images;
+        } catch (e) {
+            console.error(`[recoverPatientData] Erreur lors de la lecture du pdf (fileId=${attachment.fileId}) :`, e);
+            attachment.pdfText = null;
+        } finally {
+            delete attachment.url;
+        }
+    }
+}
+
+/**
+ * Retrouve, dans un résultat de recoverData, la pièce jointe portant le fileId donné.
+ * @param {Object} data
+ * @param {string} fileId
+ * @returns {Object|null}
+ */
+function trouverAttachmentParFileId(data, fileId) {
+    for (const attachment of iterateAttachments(data)) {
+        if (attachment.fileId === fileId) return attachment;
+    }
+    return null;
+}
+
+/**
+ * Catégories journalières de Weda dont les journées peuvent contenir des pièces jointes
+ * (attachment.fileId), dans lesquelles lireDocumentsJoints retrouve les fileId demandés.
+ */
+const CATEGORIES_AVEC_PIECES_JOINTES = ["consultations", "resultatsExamens", "courriers", "arretsTravail", "documents"];
+
 /**
  * Fonction appelable par le modèle pour récupérer les données de l'historique du patient
  * actuellement ouvert dans Weda (consultations, résultats d'examens, antécédents, etc.).
@@ -38,17 +147,183 @@ const DATA_SCRAPPER_CATEGORIES = [
  */
 async function recoverPatientData({
     categories = ["consultations"],
-    fullPage = false,
-    dateRange = []
-} = {}) {
-    console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, dateRange });
+    dateRange = [],
+    lireDocuments = false,
+    antecedentsType,
+    antecedentsChampDate,
+    antecedentsDateRange = []
+} = {}, patientId = null) {
+    // Une plage d'au plus un mois tient dans les 10 dernières entrées chargées par défaut ; au-delà (ou sans plage), tout l'historique est chargé.
+    const { start, end } = resolveDateRange(dateRange);
+    const limiteUnMois = new Date(end || Date.now());
+    limiteUnMois.setHours(0, 0, 0, 0);
+    limiteUnMois.setMonth(limiteUnMois.getMonth() - 1);
+    const fullPage = !(start && start >= limiteUnMois);
+    console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, dateRange, lireDocuments, antecedentsType, antecedentsChampDate, antecedentsDateRange, patientId });
     try {
-        const data = await recoverData({ categories, fullPage, dateRange, debug: false });
-        return data;
+        const data = await recoverData({ categories, fullPage, dateRange, debug: false, patientId, resolveAllAttachments: lireDocuments });
+        if (lireDocuments) await lirePiecesJointesPdf(data);
+        if (data?.antecedents) data.ongletsDisponibles = ((await getOptionPromise('memoriserOngletsAntecedents')) || []).filter(o => o?.titre);
+        if (data?.antecedents && (antecedentsType || antecedentsChampDate)) {
+            data.antecedents = filtrerAntecedents(data.antecedents, {
+                type: antecedentsType,
+                champDate: antecedentsChampDate,
+                dateRange: antecedentsDateRange
+            });
+        }
+        return compactDataForAI(data);
     } catch (e) {
         console.error("[recoverPatientData] Erreur lors de la récupération des données :", e);
         return { error: `Erreur lors de la récupération des données : ${e.message || e}` };
     }
+}
+
+
+/**
+ * Parcourt toutes les iframes présentes dans la page actuelle et renvoie les URLs ressemblant à
+ * un pdf (src ou, si accessible, l'URL réellement chargée dans l'iframe une fois le pdf ouvert).
+ */
+function trouverUrlsPdfDansIframes() {
+    const urls = new Set();
+    for (const iframe of document.querySelectorAll('iframe')) {
+        let url = null;
+        try {
+            url = iframe.contentWindow?.location?.href;
+        } catch (e) { /* iframe cross-origin, inaccessible */ }
+        if (!url || url === 'about:blank') url = iframe.src;
+        // Le src ne contient pas toujours "pdf" (ex. BinaryData.aspx?id=...) : on se base aussi
+        // sur l'id/nom de l'iframe, utilisé par Weda pour ses viewers de pdf.
+        const ressembleAUnPdf = /pdf|binarydata|downloadattachment/i.test(url || '')
+            || /viewpdfdocumentucform|iframeviewfile/i.test(iframe.id || '');
+        if (url && url !== 'about:blank' && ressembleAUnPdf) urls.add(url);
+    }
+    return [...urls];
+}
+
+/**
+ * Recherche et lit le contenu de tous les pdf trouvés dans les iframes de la page actuelle
+ * (PopUpViewBinaryForm.aspx, ouverte manuellement par l'utilisateur pour visualiser une pièce
+ * jointe hors du scraping habituel de recoverPatientData).
+ */
+async function lirePdfDepuisIframesPage() {
+    const urls = trouverUrlsPdfDansIframes();
+    console.log(`[pageContext] Recherche de pdf dans les iframes de la page :`, urls);
+    if (!urls.length) return { error: "Aucune iframe contenant un pdf n'a été trouvée sur la page actuelle." };
+
+    const resultats = [];
+    for (const url of urls) {
+        try {
+            const resolved = await resolvePdfAttachment(url);
+            const entry = { url };
+            if (resolved.text) entry.pdfText = resolved.text;
+            if (resolved.images.length > 0) entry.images = resolved.images;
+            resultats.push(entry);
+        } catch (e) {
+            console.error(`[pageContext] Erreur lors de la lecture du pdf (url=${url}) :`, e);
+            resultats.push({ url, error: `Erreur lors de la lecture du document : ${e.message || e}` });
+        }
+    }
+    return resultats.length === 1 ? resultats[0] : resultats;
+}
+
+/**
+ * Extrait, depuis la page HprimForm.aspx (résultat de biologie importé), le tableau structuré des
+ * valeurs (#ContentPlaceHolder1_LabelHprimDataStructure) sous forme de lignes {libelle, valeur,
+ * unite, min, max}. Se rabat sur le texte brut du compte-rendu (#ContentPlaceHolder1_DivDataHprim)
+ * si le tableau est absent ou vide.
+ */
+function lireResultatsHprim() {
+    const table = document.querySelector('#ContentPlaceHolder1_LabelHprimDataStructure table');
+    if (table) {
+        const lignes = [...table.querySelectorAll('tr')]
+            .slice(1) // première ligne = en-têtes (Libellé, Valeur, Unité, Mininum, Maximum)
+            .map(tr => {
+                const tds = tr.querySelectorAll('td');
+                return {
+                    libelle: tds[1]?.innerText.trim(),
+                    valeur: tds[2]?.innerText.trim(),
+                    unite: tds[3]?.innerText.trim(),
+                    min: tds[4]?.innerText.trim(),
+                    max: tds[5]?.innerText.trim()
+                };
+            })
+            .filter(ligne => ligne.libelle);
+        if (lignes.length) return { resultats: lignes };
+    }
+
+    const texteBrut = document.querySelector('#ContentPlaceHolder1_DivDataHprim')?.innerText?.trim();
+    if (texteBrut) return { compteRendu: texteBrut };
+
+    return { error: "Aucun résultat d'analyse (tableau ou compte-rendu) n'a été trouvé sur la page actuelle." };
+}
+
+/**
+ * Fonction appelable par le modèle pour récupérer des informations contextuelles propres à la
+ * page Weda actuellement affichée (en dehors du dossier patient classique consultable via
+ * recoverPatientData), lorsque son contenu dépend de l'URL en cours :
+ * - PopUpViewBinaryForm.aspx (visualisation manuelle d'une pièce jointe) : lecture des pdf trouvés
+ *   dans les iframes de la page.
+ * - HprimForm.aspx (résultat de biologie importé) : tableau structuré des valeurs ou, à défaut,
+ *   texte brut du compte-rendu.
+ */
+async function pageContext() {
+    const url = window.location.href;
+    console.log(`[pageContext] Appelée, url actuelle :`, url);
+    if (url.includes('/FolderMedical/PopUpViewBinaryForm.aspx')) return await lirePdfDepuisIframesPage();
+    if (url.includes('/FolderMedical/HprimForm.aspx')) return lireResultatsHprim();
+    return { error: "Aucune information contextuelle disponible pour la page actuelle." };
+}
+
+/**
+ * Fonction appelable par le modèle pour lire le contenu (texte) d'une ou plusieurs pièces jointes
+ * pdf déjà repérées via un appel précédent à recoverPatientData (champ attachment.fileId).
+ * `fileId` accepte indifféremment une chaîne unique (éventuellement séparée par des virgules) ou un
+ * tableau, pour lire plusieurs documents en un seul appel. Les fileId sont localisés par recoverData
+ * lui-même grâce à son cache sessionStorage (voir resolveAttachmentFileIds dans dataScrapper.js).
+ */
+async function lireDocumentsJoints({ fileId } = {}, patientId = null) {
+    let fileIds = fileId;
+    if (typeof fileId === 'string') {
+        fileIds = fileId.split(',').map(id => id.trim()).filter(Boolean);
+    }
+    const fileIdsAChercher = [...new Set((Array.isArray(fileIds) ? fileIds : [fileIds]).filter(Boolean))];
+    console.log(`[lireDocumentsJoints] Appelée avec:`, { fileIdsAChercher, patientId });
+    if (!fileIdsAChercher.length) return { error: "fileId requis." };
+
+    const resultatsParFileId = {};
+    try {
+        const data = await recoverData({
+            categories: CATEGORIES_AVEC_PIECES_JOINTES,
+            fullPage: true,
+            debug: false,
+            patientId,
+            resolveAttachmentFileIds: fileIdsAChercher,
+        });
+        await lirePiecesJointesPdf(data);
+
+        for (const id of fileIdsAChercher) {
+            const attachment = trouverAttachmentParFileId(data, id);
+            const nom = attachment?.name || attachment?.fileName; // les entrées de la catégorie documents ont fileName et non name
+            if (!attachment) {
+                console.warn(`[lireDocumentsJoints] Aucun attachment trouvé pour fileId "${id}".`);
+                resultatsParFileId[id] = { fileId: id, error: `Document introuvable pour fileId "${id}" : vérifiez qu'il provient bien d'un appel à recoverPatientData sur le patient actuellement ouvert.` };
+            } else if (attachment.images?.length) {
+                resultatsParFileId[id] = { fileId: id, name: nom, images: attachment.images };
+            } else if (!attachment.pdfText) {
+                resultatsParFileId[id] = { fileId: id, name: nom, error: `Impossible de récupérer le contenu du document "${nom}" (fileId "${id}") : la résolution de son URL a échoué (voir la console du navigateur pour le détail).${data.avertissement ? ` ${data.avertissement}` : ''}` };
+            } else {
+                resultatsParFileId[id] = { fileId: id, name: nom, pdfText: attachment.pdfText };
+            }
+        }
+    } catch (e) {
+        console.error("[lireDocumentsJoints] Erreur lors de la lecture des documents :", e);
+        for (const id of fileIdsAChercher) {
+            resultatsParFileId[id] = { fileId: id, error: `Erreur lors de la lecture du document : ${e.message || e}` };
+        }
+    }
+
+    const resultats = fileIdsAChercher.map(id => resultatsParFileId[id]);
+    return resultats.length === 1 ? resultats[0] : resultats;
 }
 
 /**
@@ -87,25 +362,40 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "recoverPatientData",
-                description: "Récupère les données de l'historique du patient actuellement ouvert dans Weda (consultations, résultats d'examens, courriers, arrêts de travail, vaccins, courbes de suivi, documents, grossesse, état civil, antécédents, contacts). Utile pour répondre à des questions sur le dossier du patient en cours.",
+                description: "Récupère les données de l'historique du patient actuellement ouvert dans Weda (consultations, résultats d'examens, courriers, arrêts de travail, vaccins, courbes de suivi, documents, grossesse, état civil, antécédents, contacts). Utile pour répondre à des questions sur le dossier du patient en cours. Pour la catégorie 'antecedents', antecedentsType/antecedentsChampDate/antecedentsDateRange permettent de filtrer par type (libre/codifié) et/ou par plage de dates sur un champ précis (début, fin, ponctuelle, alerte).",
                 parameters: {
                     type: "object",
                     properties: {
                         categories: {
                             type: "array",
-                            description: "Catégories de données à récupérer. Le nom est dans etatCivil",
+                            description: "Categories of data to retrieve. The name is in etatCivil",
                             items: {
                                 type: "string",
                                 enum: DATA_SCRAPPER_CATEGORIES
                             }
                         },
-                        fullPage: {
-                            type: "boolean",
-                            description: "Si true, charge l'intégralité de l'historique au lieu des 10 dernières entrées par défaut, et inclut alors automatiquement les journées importées d'un ancien logiciel."
-                        },
                         dateRange: {
                             type: "array",
-                            description: "Filtre optionnel sur une plage de dates : [dateDebut, dateFin] au format 'jj/mm/aaaa'. Chaque borne est facultative.",
+                            description: "Date range filter for relative or absolute dates. For relative ranges, use [number, unit] (all elements as strings) like [\"7\", \"days\"], [\"1\", \"month\"], or [\"1\", \"year\"] to get the last N days/months/years. For absolute dates, use [\"dd/mm/yyyy\", \"dd/mm/yyyy\"] format. A range of one month or less loads only recent entries (fast); longer ranges load entire history (slower). Prefer short ranges when possible.",
+                            items: { type: "string" }
+                        },
+                        lireDocuments: {
+                            type: "boolean",
+                            description: "If true, also reads the content (pdfText, or images for scanned pdf) of the attachments found within the requested categories and dateRange (consultations, resultatsExamens, courriers, arretsTravail, documents), instead of requiring a separate lireDocumentJoint call. Only a limited number of attachments are read, in display order (limit set in the user options); the result then carries an 'avertissement' message, and the remaining ones can still be read with lireDocumentJoint. Use only when the document contents are really needed, with a short dateRange: it is slow and fills the context.",
+                        },
+                        antecedentsType: {
+                            type: "string",
+                            enum: ["libre", "codifie"],
+                            description: "Optional filter on antecedents (categories must include 'antecedents') based on their type: 'libre' (free entry, without CIM-10 code) or 'codifie' (with a CIM-10 code). If absent, all types are returned."
+                        },
+                        antecedentsChampDate: {
+                            type: "string",
+                            enum: ["debut", "fin", "ponctuelle", "alerte"],
+                            description: "Specify which date field of the antecedents to apply antecedentsDateRange to (Début, Fin, date Ponctuelle ou date d'Alerte). Required for antecedentsDateRange to take effect."
+                        },
+                        antecedentsDateRange: {
+                            type: "array",
+                            description: "Specify an optional date range filter for antecedents, applied to the field designated by antecedentsChampDate: [startDate, endDate] in the format 'dd/mm/yyyy'. Each bound is optional.",
                             items: { type: "string" }
                         }
                     },
@@ -113,8 +403,206 @@ const availableFunctions = {
                 }
             }
         },
-        execute: recoverPatientData
+        execute: (args, patientId) => recoverPatientData(args, patientId)
+    },
+    lireDocumentJoint: {
+        interne: true,
+        definition: {
+            type: "function",
+            function: {
+                name: "lireDocumentJoint",
+                description: "Read a document, pdf, or other attached files in the patient's record. You MUST Call recoverPatientData first to retrieve the fileId(s).",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        fileId: {
+                            description: "A single fileId (string) or multiple fileId separated by commas in a string, e.g., '893222115' or '893222115,893222126,893222140'.",
+                            type: "string"
+                        }
+                    },
+                    required: ["fileId"]
+                }
+            }
+        },
+        execute: ({ fileId } = {}, patientId) => lireDocumentsJoints({ fileId }, patientId)
+    },
+    pageContext: {
+        definition: {
+            type: "function",
+            function: {
+                name: "pageContext",
+                description: "Récupère des informations contextuelles propres à la page Weda actuellement affichée, en dehors du dossier patient classique consultable via recoverPatientData. Le contenu renvoyé dépend de l'URL en cours : sur une page de visualisation manuelle d'une pièce jointe (PopUpViewBinaryForm.aspx), lit le(s) pdf trouvé(s) dans les iframes de la page et renvoie {url, pdfText} (ou un tableau si plusieurs) ; sur une page de résultat de biologie importé (HprimForm.aspx), renvoie soit {resultats: [{libelle, valeur, unite, min, max}, ...]} si un tableau structuré est disponible, soit {compteRendu} (texte brut) sinon. Renvoie {error} si l'URL actuelle n'est pas prise en charge.",
+                parameters: {
+                    type: "object",
+                    properties: {},
+                    required: []
+                }
+            }
+        },
+        execute: () => pageContext()
+    },
+    rechercherCim10: {
+        definition: {
+            type: "function",
+            function: {
+                name: "rechercherCim10",
+                description: "Recherche des codes CIM-10 (diagnostics) correspondant à un ou plusieurs termes, par recherche floue sur le libellé officiel et les synonymes. Utiliser 'termes' (tableau) pour chercher plusieurs diagnostics en un seul appel plutôt que d'enchaîner plusieurs appels successifs. Renvoie jusqu'à 'limite' résultats {code, label, score} par terme (résultats groupés par terme si 'termes' contient plusieurs entrées).; examiner les résultats et choisir le code le plus pertinent et le moins spécifique que nécessaire (ex. préférer un code 'sans précision' si l'utilisateur n'a donné aucun détail complémentaire). Si aucun résultat ne correspond réellement au diagnostic voulu, se rabattre sur un antécédent libre (action='ajouter' sans searchType).",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        terme: {
+                            type: "string",
+                            description: "Terme médical unique à rechercher, ex. 'pneumonie'. Préférer 'termes' si plusieurs diagnostics sont à chercher."
+                        },
+                        termes: {
+                            type: "array",
+                            items: { type: "string" },
+                            description: "Liste de termes médicaux à rechercher en un seul appel, ex. ['pneumonie', 'diabète type 2']."
+                        },
+                        limite: {
+                            type: "integer",
+                            description: "Nombre maximal de résultats à renvoyer par terme (défaut 20)."
+                        }
+                    }
+                }
+            }
+        },
+        execute: ({ terme, termes, limite } = {}) => rechercherCim10({ terme, termes, limite })
+    },
+    // `interne` : outil réservé aux chaînes d'outils (@see toolChains.js), non proposé directement au modèle.
+    traiterAntecedents: {
+        interne: true,
+        definition: {
+            type: "function",
+            function: {
+                name: "traiterAntecedents",
+                description: "Ajoute, modifie, supprime ou convertit séquentiellement un ou plusieurs antécédents du dossier du patient actuel. Les opérations 'modifier'/'supprimer' déclenchent chacune leur propre confirmation utilisateur avant application. Renvoie un tableau de résultats {action, nomCible, success, message}, dans le même ordre que les opérations fournies.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        operations: {
+                            type: "array",
+                            description: "Liste ordonnée d'une ou plusieurs opérations à exécuter séquentiellement.",
+                            items: {
+                                type: "object",
+                                properties: {
+                                    action: {
+                                        type: "string",
+                                        enum: ["ajouter", "modifier", "supprimer", "convertirCim10"],
+                                        description: "Type d'opération à effectuer."
+                                    },
+                                    nomCible: {
+                                        type: "string",
+                                        description: "Requis pour 'modifier'/'supprimer'/'convertirCim10' : nom (ou début du nom) de l'antécédent existant ciblé."
+                                    },
+                                    codifie: {
+                                        type: "boolean",
+                                        description: "Optionnel pour 'modifier'/'supprimer' : true pour ne cibler que l'antécédent codifié (CIM-10, code entre crochets dans recoverPatientData), false pour ne cibler que l'antécédent libre. Utile quand deux antécédents portent le même nom. Absent = indifférent. Ignoré pour 'convertirCim10' (cible toujours l'antécédent libre)."
+                                    },
+                                    data: {
+                                        type: "object",
+                                        description: "Requis pour 'ajouter'/'modifier'/'convertirCim10' (ignoré pour 'supprimer'). Pour 'convertirCim10' : seul nom (code CIM-10 exact) est utilisé. Pour 'ajouter' : searchType ('CIM10' (à privilégier)/'allergieMolecule'(à privilégier si le nom d'allergie à rechercher semble être un nom de molécule)/'allergiePrinceps' (à privilégier si le nom d'allergie à rechercher semble être un nom commercial), absent = antécédent libre), nom (saisie libre, terme de recherche, ou code CIM-10 exact selon searchType). Pour 'modifier' : seuls les champs fournis sont modifiés. Propriétés communes : onglet (libellé exact de l'onglet cible, ex. 'ANTÉCÉDENTS GYNECOLOGIQUES'), commentaire, dateDebut/dateFin/datePonctuelle/dateAlerte (jj/mm/aaaa), couleur (hexadécimal), validation ('1'=Confirmé,'2'=Hypothétique,'3'=Non confirmé,'4'=Exclu,'5'=Désactivé), lateralite ('0'=non spécifié,'1'=Droite,'2'=Gauche,'3'=D + G), tri (ordre numérique), isImportant, isHeritage, isPrive, isExclureVsm (booléens). Le commentaire est la description de l'antécédent ou de l'allergie, etc.'.",
+                                        properties: {
+                                            searchType: { type: "string", enum: ["CIM10", "allergieMolecule", "allergiePrinceps"] },
+                                            nom: { type: "string", description: "Texte saisi tel quel dans la recherche Weda : pour 'allergieMolecule'/'allergiePrinceps', UNIQUEMENT le nom de la molécule ou du médicament (ex. 'fluoxétine'), sans mot ajouté (pas de 'allergie', ni parenthèses ni précision) ; pour 'CIM10', le code exact ; sinon le libellé de l'antécédent libre." },
+                                            onglet: { type: "string", description: "Libellé exact d'un onglet existant, le plus adapté au type d'antécédent. Obligatoire pour 'ajouter'." },
+                                            commentaire: { type: "string" },
+                                            dateDebut: { type: "string" },
+                                            dateFin: { type: "string" },
+                                            datePonctuelle: { type: "string" },
+                                            dateAlerte: { type: "string" },
+                                            couleur: { type: "string" },
+                                            validation: { type: "string", enum: ["1", "2", "3", "4", "5"] },
+                                            lateralite: { type: "string", enum: ["0", "1", "2", "3"] },
+                                            tri: { type: "string" },
+                                            isImportant: { type: "boolean" },
+                                            isHeritage: { type: "boolean" },
+                                            isPrive: { type: "boolean" },
+                                            isExclureVsm: { type: "boolean" }
+                                        }
+                                    }
+                                },
+                                required: ["action"]
+                            }
+                        }
+                    },
+                    required: ["operations"]
+                }
+            }
+        },
+        // Référence indirecte : traiterAntecedentsBatch n'existe que côté content script (dataInserterATCD.js),
+        // pas dans la page offscreen qui ne fait que lire les `definition` de ce registre.
+        execute: ({ operations = [] } = {}, patientId = null) => operations.length ? traiterAntecedentsBatch(operations, { patientId }) : []
+    },
+    insertWedaDocument: {
+        interne: true,
+        definition: {
+            type: "function",
+            function: {
+                name: "insertWedaDocument",
+                description: "Crée un nouveau document (consultation, certificat, demande ou courrier) pour le patient actuellement ouvert dans Weda, via un iframe caché, puis l'enregistre. Utile pour rédiger rapidement un document à partir d'un contenu fourni par l'utilisateur.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        target: {
+                            type: "string",
+                            enum: ["toConsultation", "toCertificat", "toDemande", "toCourrier"],
+                            description: "Type de document à créer."
+                        },
+                        title: {
+                            type: "string",
+                            description: "Titre du document (champ 'Titre'). Optionnel."
+                        },
+                        subtitle: {
+                            type: "string",
+                            description: "Sous-titre du document (champ 'Titre du document'). Optionnel."
+                        },
+                        content: {
+                            type: "string",
+                            description: "Contenu texte principal qui sera inséré dans le corps du document. Doit impérativement être fourni."
+                        }
+                    },
+                    required: ["target", "content"]
+                }
+            }
+        },
+        // Référence indirecte : insertData n'existe que côté content script (dataInserter.js).
+        execute: ({ target, title, subtitle, content } = {}, patientId = null) => insertData(target, { title, subtitle, content }, { patientId })
+    },
+    renseignerDocument: {
+        definition: {
+            type: "function",
+            function: {
+                name: "renseignerDocument",
+                description: "Renseigne le document en cours de traitement (PDF Parser, ou document joint de l'historique du patient) avec les informations déduites de son contenu. Unique fonction à appeler pour cela. Si le message de la demande fournit un fileId, le transmettre. Ex. : renseignerDocument({ fileId: '893222115', documentTitle: 'Compte rendu', documentDate: '01/01/2024', destinationClass: '1', documentType: 'Biologie', documentCommentaire: 'Résumé du document' }).",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        fileId: { type: "string", description: "Identifiant de la pièce jointe, ex: '893222115'. Requis pour un document joint de l'historique (le fournir dès que la demande ou lireDocumentJoint le donne), inutile pour le PDF Parser." },
+                        documentDate: { type: "string", description: "Date du document, au format JJ/MM/AAAA." },
+                        dateOfBirth: { type: "string", description: "PDF Parser uniquement : date de naissance du patient, au format JJ/MM/AAAA." },
+                        nameMatches: {
+                            type: "array",
+                            items: { type: "string" },
+                            description: "PDF Parser uniquement : nom complet (nom et prénom) du patient."
+                        },
+                        documentCommentaire: { type: "string", description: "Bref commentaire (1 à 2 phrases) résumant le contenu du document." },
+                        documentTitle: { type: "string", description: "Titre complet du document, tel qu'il doit apparaître dans le dossier patient." },
+                        destinationClass: { type: "string", enum: ["1", "2", "3"], description: "Emplacement du document : '1' pour Consultation, '2' pour Résultats d'examens, '3' pour Courrier." },
+                        documentType: { type: "string", description: "Classification du document dans Weda (ex: 'Biologie', 'Courrier'), parmi les valeurs autorisées indiquées dans le message." }
+                    },
+                    required: []
+                }
+            }
+        },
+        // Références indirectes : ces fonctions n'existent que côté content script (pdfParserAIExtraction.js, attachmentAIRename.js).
+        // Une complétion du PDF Parser en attente est servie en priorité ; sinon il s'agit d'un document joint.
+        execute: async (args = {}) => hasPendingPdfParserFields()
+            ? resolvePendingPdfParserFields(args)
+            : await renameJoinedDocumentInHistoryTool(args)
     }
 };
+
+
 
 

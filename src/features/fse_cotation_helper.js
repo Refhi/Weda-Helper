@@ -7,8 +7,9 @@
  * @requires tweaks.js (addTweak)
  * @requires storage.js (getOptionPromise)
  * @requires notifications.js (sendWedaNotif)
- * @requires fse.js (patientAgeInFSE, estMTdeclareOuReferent, loggedInUser)
+ * @requires fse.js (patientAgeInFSE, patientAgeInDaysAndMonthsInFSE, estMTdeclareOuReferent)
  * @requires fse_history.js (getHiddenBillingData)
+ * @requires dom-helpers.js (getConnectedDoctorName)
  */
 
 addTweak('/vitalzen/fse.aspx', 'cotationHelper2', function () {
@@ -149,7 +150,7 @@ const cotationHelper = [
         cotation: ['MOP'],
         test: function (context) {
             let ageOK = patientAgeInFSE() >= 80;
-            let isMT = estMTdeclareOuReferent(loggedInUser());
+            let isMT = estMTdeclareOuReferent(getConnectedDoctorName());
             let noMopSelected = !context.cotation.includes('MOP');
             return ageOK && !isMT && noMopSelected;
         },
@@ -231,12 +232,23 @@ const cotationHelper = [
         cotation: ['GL1', 'GL2', 'GL3'],
         test: function (context) { // dès que l’âge est >= 80 ans et que c’est le médecin traitant
             let ageOK = patientAgeInFSE() >= 80;
-            let isMT = estMTdeclareOuReferent(loggedInUser());
+            let isMT = estMTdeclareOuReferent(getConnectedDoctorName());
             let hasGL = context.cotation.some(cot => cot.includes('GL1') || cot.includes('GL2') || cot.includes('GL3'));
             return ageOK && isMT && !hasGL;
         },
         conseil: "Le patient a plus de 80 ans et vous êtes le médecin traitant. Vous pouvez côter GL1 (sortie d’hospit < 45 jours), GL2 (déprescription suite cs. Pharma), ou GL3 (dossier APA). 1/an chaque, maximum.",
         link: "https://www.fmfpro.org/les-nouveautes-conventionnelles-tarifaires-du-1er-janvier-2026/"
+    }, {
+        titre: 'cotation COE',
+        cotation: 'COE',
+        test: function (context) {
+            // Consultations obligatoires de l'enfant : entre 0 et 8 jours, puis à 8 mois, 23 ou 24 mois
+            const { days, months } = patientAgeInDaysAndMonthsInFSE();
+            const isProperAge = (days >= 0 && days <= 8) || [8, 23, 24].includes(months);
+            return isProperAge && !context.cotation.some(cot => cot.includes('COE'));
+        },
+        conseil: "Le patient est à un âge de consultation obligatoire de l'enfant (0-8 jours, 8 mois, 23 ou 24 mois) : pensez à la cotation COE. Les 3 consultations COE donnent lieu à la rédaction d’un certificat médical à adresser à la PMI.",
+        link: "https://www.ameli.fr/medecin/exercice-liberal/facturation-remuneration/consultations-actes/tarifs/tarifs-conventionnels-medecins-generalistes-specialistes"
     }
 ];
 

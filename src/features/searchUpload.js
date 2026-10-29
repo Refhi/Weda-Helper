@@ -183,7 +183,8 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'TweakImports', async function () {
             'ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementDate_',
             'ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_',
             'ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementLabelClassification_',
-            'ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementUser_' // Nom médecin
+            'ContentPlaceHolder1_FileStreamClassementsGrid_DropDownListGridFileStreamClassementUser_', // Nom médecin
+            'ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementCommentaire_' // Commentaire
         ];
 
         // On récupère d'abord la valeur de l'option

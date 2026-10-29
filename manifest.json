@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper",
-  "version": "3.2.0.5",
+  "version": "3.3.0.10",
   "options_page": "src/ui/options.html",
   "permissions": [
     "storage",
@@ -14,7 +14,8 @@
     "http://localhost/"
   ],
   "optional_host_permissions": [
-    "http://*/*"
+    "http://*/*",
+    "https://*/*"
   ],
   "action": {
     "default_popup": "src/ui/popup.html"
@@ -55,11 +56,24 @@
         "src/utils/score2handler.js",
         "src/utils/iframeHelpers.js",
         "src/utils/dataScrapper.js",
+        "src/utils/dataScrapperFileHandler.js",
         "src/utils/dataInserter.js",
+        "src/utils/ongletsAntecedents.js",
+        "src/utils/dataInserterATCD.js",
+        "src/utils/dataInserterATCDConversion.js",
+        "src/utils/ai/compactDataForIA.js",
         "src/utils/ai/callableFunctions.js",
+        "src/utils/ai/modelSpecificArgs.js",
+        "src/utils/ai/toolChainsDefinitions.js",
+        "src/utils/ai/toolChains.js",
         "src/utils/ai/openAiClient.js",
+        "src/utils/ai/pdfAttachmentHelper.js",
         "src/utils/ai/offscreenBridge.js",
+        "src/utils/ai/pdfParserAIExtraction.js",
+        "src/utils/ai/attachmentAIRename.js",
         "src/utils/ai/chatSlashCommands.js",
+        "src/utils/ai/chatWidgetView.js",
+        "src/utils/ai/chatWidgetLayout.js",
         "src/utils/ai/discussionClient.js",
         "src/ui/tooltip.js",
         "src/ui/update.js",
@@ -87,10 +101,12 @@
         "src/features/pdfParser.js",
         "src/features/headlessSetup.js",
         "src/features/instantVaccine.js",
+        "src/features/noemie.js",
         "src/features/accoladesHandling.js",
         "src/features/VSM.js",
         "src/features/vueTraitements.js",
-        "src/features/score2prompter.js"
+        "src/features/score2prompter.js",
+        "src/features/unitConverter.js"
       ]
     }
   ],
@@ -99,9 +115,12 @@
       "resources": [
         "FW_scripts/*",
         "lib/*",
+        "ressources/*",
         "src/features/AATI_synonymes_donnees.json",
         "CHANGELOG.md",
         "README.md",
+        "docs/IA-distante-wiki.md",
+        "src/ui/markdownViewer.html",
         "Images/*"
       ],
       "matches": [

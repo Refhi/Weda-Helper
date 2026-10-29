@@ -143,6 +143,8 @@ function createInput(option) { // gestion des différents types d'input
   let inputType = 'input';
   if (['html', 'radio'].includes(option.type)) {
     inputType = 'div';
+  } else if (option.type === 'select') {
+    inputType = 'select';
   } else if (['json', 'true_json', 'largetext'].includes(option.type)) {
     inputType = 'textarea'; // Utiliser un textarea pour les options de type json / largetext
   }
@@ -241,6 +243,15 @@ function createInput(option) { // gestion des différents types d'input
           input.appendChild(document.createElement('br')); // Ajoute une nouvelle ligne après chaque option
         });
         break;
+      case 'select':
+        option.selectOptions.forEach(selectOption => {
+          const optionElement = document.createElement('option');
+          optionElement.value = selectOption.value;
+          optionElement.textContent = selectOption.description;
+          optionElement.selected = selectOption.value === optionValue;
+          input.appendChild(optionElement);
+        });
+        break;
       case 'html':
         // c'est createLabel qui s'occupe de l'ajout de l'html
         break;
@@ -291,7 +302,7 @@ function displayCategories(jsonStr) {
 // Récupérer les données affichées et les convertir en JSON
 function getCategoriesFromJsonInput(input, optionName = 'cette option') {
   const categories = [];
-  const lines = input.value.split('\n');
+  const lines = input.split('\n');
   let hasError = false; // Flag pour détecter les erreurs
 
   lines.forEach((line, lineIndex) => {
@@ -300,7 +311,12 @@ function getCategoriesFromJsonInput(input, optionName = 'cette option') {
       const lastColonIndex = line.lastIndexOf(':');
       if (lastColonIndex === -1) {
         console.warn(`[${optionName}] Ligne ${lineIndex + 1}: Pas de ':' trouvé, ligne ignorée`);
-        alert(`❌ Erreur dans l'option "${optionName}"\n\nLigne ${lineIndex + 1}: Pas de ':' trouvé.\n\nFormat attendu: "nom : mot1, mot2"`);
+        if (optionName == "autoNoemieSubstitutionTable") {
+          alert(`❌ Erreur dans l'option "${optionName}"\n\nLigne ${lineIndex + 1}: Pas de ':' trouvé.\n\nFormat attendu: "NomDansWeda : NomEnBanque , DelaiDePaiementEnJours"`);
+        }
+        else {
+          alert(`❌ Erreur dans l'option "${optionName}"\n\nLigne ${lineIndex + 1}: Pas de ':' trouvé.\n\nFormat attendu: "nom : mot1, mot2"`);
+        }
         hasError = true;
         return; // Pas de ':', ligne invalide
       }
@@ -309,6 +325,14 @@ function getCategoriesFromJsonInput(input, optionName = 'cette option') {
       const afterColon = line.substring(lastColonIndex + 1).trim();
 
       const keywords = afterColon ? afterColon.split(',').map(keyword => keyword.trim()) : [];
+      if (optionName == "autoNoemieSubstitutionTable") {
+        if (keywords.length != 2 || isNaN(keywords[1]) || keywords[0] == '' || keywords[1] == '') {
+          console.warn(`[${optionName}] Ligne ${lineIndex + 1}: Format incorrect`);
+          alert(`❌ Erreur dans l'option "${optionName}"\n\nLigne ${lineIndex + 1}: Format attendu: "NomDansWeda : NomEnBanque , DelaiDePaiementEnJours"`);
+          hasError = true;
+          return;
+        }
+      }
       if (beforeColon) {
         categories.push([beforeColon, keywords]);
       }
@@ -565,7 +589,65 @@ ${cabinetId}: ${jsonContent}
     
     label.appendChild(poleBtn);
   }
+  if(option.name == "autoNoemieSubstitutionTable") {
 
+    const noemieBtn = document.createElement('button');
+    noemieBtn.textContent = '🌐 Partager avec les autres utilisateurs';
+    noemieBtn.title = 'Partager cette liste de correspondance des Noémie avec les autres utilsiateurs de Weda-Helper via GitHub';
+    noemieBtn.className = 'default-value-btn';
+    noemieBtn.style.background = '#007bff';
+    noemieBtn.style.color = 'white';
+    noemieBtn.type = 'button';
+    
+    noemieBtn.addEventListener('click', async function(e) {
+      e.preventDefault();
+      
+      const confirmMessage = `📋 Diffusion de la liste de correspondance des Noémie\n\n` +
+        `Avant de continuer, assurez-vous que :\n\n` +
+        `✅ Vous avez un compte GitHub (gratuit)\n` +
+        `✅ Vots correspondances et délais sont bien configurées et testées\n` +
+        `Une demande GitHub s'ouvrira avec le template pré-rempli.\n` +
+        `Délai de diffusion : environ 2 semaines.\n\n` +
+        `Voulez-vous continuer ?`;
+      
+      if (!confirm(confirmMessage)) {
+        return;
+      }
+      
+      // Récupérer le JSON au moment du clic
+      const textarea = document.getElementById(option.name);
+      const input = textarea ? textarea.value : '';
+      const json = JSON.stringify(getCategoriesFromJsonInput(input));
+      const prettyJSON = json.replace(/],\[/g,"],\n[");
+      
+      const issueBody = `Bonjour @Refhi,
+
+Je souhaite diffuser ma liste de correspondance des Noémie
+
+\`\`\`javascript
+${prettyJSON}
+\`\`\`
+
+`;
+      
+      // Construire l'URL avec les paramètres correctement encodés
+      const params = new URLSearchParams({
+        template: 'demande-de-diffusion-d-alertes-au-pole-cabinet-groupement.md',
+        title: 'Demande de diffusion de ma liste de correspondance des Noémie',
+        labels: 'Noémie à diffuser',
+        body: issueBody
+      });
+      
+      const issueUrl = `https://github.com/Refhi/Weda-Helper/issues/new?${params.toString()}`;
+      
+      // Ouvrir l'URL
+      window.open(issueUrl, '_blank');
+    });
+    
+    label.appendChild(noemieBtn);
+
+
+  }
   return label;
 }
 function createOptionElement(option) { // Création des éléments de l'option
@@ -801,7 +883,7 @@ function collectCurrentValues(defaultSettings, defaultShortcuts) {
         if (element && element.classList.contains('radio-group')) {
           valuesToSave[option] = getSelectedRadioValue(option);
         } else if (element && element.classList.contains('json-input')) {
-          const jsonData = getCategoriesFromJsonInput(element, option);
+          const jsonData = getCategoriesFromJsonInput(element.value, option);
           // Si la conversion retourne null, il y a eu une erreur
           if (jsonData === null) {
             console.error('❌ Erreur lors de la validation pour l\'option', option);
@@ -879,7 +961,19 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
   document.getElementById('save').addEventListener('click', function () {
     collectCurrentValues(defaultSettings, defaultShortcuts)
       .then(valuesToSave => {
-        const host = valuesToSave['IAassistantHost']?.trim();
+        let host = null;
+        for (const key of ['IAassistantBaseUrl', 'IAassistantBaseUrl2']) {
+          try {
+            const rawUrl = valuesToSave[key]?.trim();
+            const candidate = rawUrl ? new URL(rawUrl).hostname : null;
+            if (candidate && candidate !== 'localhost' && candidate !== '127.0.0.1') {
+              host = candidate;
+              break;
+            }
+          } catch (error) {
+            // URL invalide : ignorée ici
+          }
+        }
         if (host && host !== 'localhost' && host !== '127.0.0.1') {
           const confirmed = confirm(
             "⚠️ ATTENTION DONNÉES DE SANTÉ ⚠️\n\n" +

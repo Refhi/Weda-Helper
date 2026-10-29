@@ -3,18 +3,8 @@
  * @description Contiens le nécessaire pour interagir avec l'API OpenAI.
  */
 
-// Récupération des paramètres de l'appel
-let aiParams = {};
-
-// Ports les plus courants pour un serveur d'IA local, testés dans cet ordre lorsque
-// l'option IAassistantPort est laissée sur "auto" : 1234 (LM Studio, le plus simple à installer),
-// 11434 (Ollama).
-const COMMON_LOCAL_AI_PORTS = [1234, 11434];
-
-// Délai (ms) au-delà duquel une tentative de connexion à un port local est considérée comme un
-// échec : un serveur qui écoute répond quasi instantanément, inutile d'attendre le timeout TCP
-// par défaut du navigateur (plusieurs secondes) lorsqu'aucun serveur n'écoute sur ce port.
-const LOCAL_AI_PROBE_TIMEOUT_MS = 800;
+// Délai (ms) au-delà duquel la vérification de disponibilité du serveur est considérée comme échouée.
+const AI_PROBE_TIMEOUT_MS = 5000;
 
 /**
  * Convertit une valeur en entier strictement positif, sinon renvoie la valeur de repli.
@@ -29,16 +19,7 @@ function toPositiveIntegerOrFallback(value, fallback = null) {
 }
 
 /**
- * Construit un motif d'origine (host permission) à partir d'un hôte, ex: "http://192.168.1.50/*".
- * @param {string} host
- * @returns {string}
- */
-function buildOriginPattern(host) {
-    return `http://${host}/*`;
-}
-
-/**
- * Si l'hôte configuré n'est pas "localhost"/"127.0.0.1" (déclaré en dur dans le manifest), tente
+ * Si l'URL configurée ne pointe pas sur "localhost"/"127.0.0.1" (déclaré en dur dans le manifest), tente
  * d'obtenir la permission optionnelle correspondante (déclarée via optional_host_permissions).
  *
  * Remarque : cette tentative est "best effort" et non bloquante pour le fonctionnement de
@@ -49,12 +30,20 @@ function buildOriginPattern(host) {
  * bloquées par l'absence de host_permissions tant que le serveur cible répond avec des en-têtes
  * CORS permissifs (cas habituel de LM Studio/Ollama) : l'assistant peut donc fonctionner même sans
  * cette permission accordée.
- * @param {string} host
+ * @param {string} baseUrl - URL de base complète (avec protocole).
  * @returns {Promise<boolean>} true si l'hôte est localhost, ou si la permission est accordée
  */
-async function ensureHostPermission(host) {
-    if (!host || host === 'localhost' || host === '127.0.0.1') return true;
-    const origin = buildOriginPattern(host);
+async function ensureHostPermission(baseUrl) {
+    let url;
+    try {
+        url = new URL(baseUrl);
+    } catch (error) {
+        console.warn(`[openAiClient] URL de base invalide "${baseUrl}".`);
+        return false;
+    }
+    const host = url.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') return true;
+    const origin = `${url.protocol}//${host}/*`; // motif d'origine, ex: "https://xxx.openai.azure.com/*"
     // chrome.permissions n'est disponible que dans certaines pages d'extension (ex: options), pas dans
     // les content scripts ni les documents offscreen : dans ces cas, on relaie via le script background
     // (message 'optionalPermissionHandler'), sans dépendre de optionalPermissions.js qui n'est pas
@@ -87,143 +76,188 @@ async function ensureHostPermission(host) {
 }
 
 /**
- * Interroge `/v1/models` sur un hôte/port donné et renvoie la liste des identifiants de modèles
- * disponibles, ou null si le serveur ne répond pas correctement (ou pas assez vite) sur ce port.
- * @param {string} host
- * @param {number|string} port
+ * Interroge `/models` sur l'URL de base configurée et renvoie la liste des modèles disponibles
+ * (ex: [{model: "qwen3.5:9b"}]), ou null si le serveur ne répond pas correctement.
+ * @param {string} baseUrl - URL de base de l'API (ex: "http://localhost:1234/v1").
  * @param {string} [apiKey]
- * @returns {Promise<string[]|null>}
+ * @returns {Promise<Array<{model: string}>|null>}
  */
-async function fetchModelsListOnPort(host, port, apiKey) {
+async function fetchAvailableModels(baseUrl, apiKey) {
+    const modelsUrl = `${baseUrl}/models`;
     try {
-        const response = await fetch(`http://${host}:${port}/v1/models`, {
+        const response = await fetch(modelsUrl, {
             method: 'GET',
             headers: {
-                ...(apiKey && { 'Authorization': `Bearer ${apiKey}` }),
+                ...(apiKey && { 'Authorization': 'Bearer ' + apiKey }),
             },
-            signal: AbortSignal.timeout(LOCAL_AI_PROBE_TIMEOUT_MS)
+            signal: AbortSignal.timeout(AI_PROBE_TIMEOUT_MS)
         });
         if (!response.ok) {
-            console.warn(`[openAiClient] Port ${port} : réponse HTTP ${response.status} (${response.statusText}) sur /v1/models.`);
+            console.warn(`[openAiClient] Réponse HTTP ${response.status} (${response.statusText}) sur ${modelsUrl}.`);
             return null;
         }
         const data = await response.json();
         const models = Array.isArray(data?.data) ? data.data.map(m => m.id).filter(Boolean) : [];
-        return models;
+        console.log(`[openAiClient] Serveur IA détecté sur ${modelsUrl} (${models.length} modèle(s) : ${models.join(', ') || 'aucun'}).`);
+        return models.map(model => ({ model }));
     } catch (error) {
-        console.warn(`[openAiClient] Port ${port} : échec de la requête /v1/models —`, error.name === 'TimeoutError' ? `délai de ${LOCAL_AI_PROBE_TIMEOUT_MS}ms dépassé` : (error.message || error));
+        console.warn(`[openAiClient] Échec de la requête ${modelsUrl} —`, error.name === 'TimeoutError' ? `délai de ${AI_PROBE_TIMEOUT_MS}ms dépassé` : (error.message || error));
         return null;
     }
 }
 
 /**
- * Teste une liste de ports en parallèle et agrège les modèles trouvés sur chacun des ports ayant
- * répondu. Ce test est refait à chaque démarrage : rien n'est enregistré dans les options.
- * @param {string} host - Hôte à contacter (par défaut "localhost").
- * @param {Array<number|string>} ports - Ports à tester (un seul port si l'option IAassistantPort n'est pas "auto", sinon COMMON_LOCAL_AI_PORTS).
- * @param {string} apiKey
- * @returns {Promise<{activePorts: Array<number|string>, availableModels: Array<{model: string, port: number|string}>, testedPorts: Array<number|string>}>}
+ * (Re)calcule le modèle par défaut à partir du modèle préféré configuré et des modèles
+ * effectivement détectés lors du dernier sondage réseau.
+ *
+ * Si un modèle préféré est explicitement configuré (différent de "auto"), on lui fait confiance
+ * tel quel, même s'il n'apparaît pas dans la liste des modèles détectés : certains serveurs (ex:
+ * Azure OpenAI) exposent sur `/models` le catalogue complet des modèles disponibles sur la
+ * ressource plutôt que les seuls déploiements configurés, dont le nom (ex: nom de déploiement,
+ * potentiellement arbitraire) ne figure donc jamais dans cette liste.
+ * @param {object} params - Objet aiParams en cours de construction (preferredModel, availableModels déjà renseignés).
  */
-async function probePortsForModels(host, ports, apiKey) {
-    const results = await Promise.all(ports.map(async (port) => ({ port, models: await fetchModelsListOnPort(host, port, apiKey) })));
-    const activePorts = [];
-    const availableModels = [];
-    for (const { port, models } of results) {
-        if (models !== null) {
-            activePorts.push(port);
-            for (const model of models) availableModels.push({ model, port });
-            console.log(`[openAiClient] Serveur IA local détecté sur le port ${port} (${models.length} modèle(s) : ${models.join(', ') || 'aucun'}).`);
-        }
+function resolveDefaultModel(params) {
+    if (params.preferredModel && params.preferredModel !== 'auto') {
+        params.defaultModel = params.preferredModel;
+        return;
     }
-    if (activePorts.length === 0) {
-        console.warn("[openAiClient] Aucun serveur IA local détecté sur les ports testés", ports);
-    }
-    return { activePorts, availableModels, testedPorts: ports };
+    const modelNames = params.availableModels.map(m => m.model);
+    params.defaultModel = modelNames.length > 0 ? modelNames[0] : params.preferredModel;
+}
+
+// Noms des options simples (lues via un seul appel groupé à getOptionPromise) et raccourcis de
+// prompts affichés dans le chat : 10 réglages texte indépendants (IAassistantPromptShortcut0..9).
+const AI_OPTION_KEYS = [
+    'IAassistantBaseUrl', 'IAassistantApiKey', 'IAassistantModelName',
+    'AIAssistantToolCalling', 'IAassistantMaxToolCalls', 'IAassistantMainSystemPrompt',
+    'IAassistantContextLimit', 'IAassistantMaxTokensOutput', 'IAassistantReasoningEffort',
+    'IAassistantUseSecondProfile', 'IAassistantBaseUrl2', 'IAassistantApiKey2', 'IAassistantModelName2',
+];
+const AI_PROMPT_SHORTCUT_KEYS = Array.from({ length: 10 }, (_, index) => `IAassistantPromptShortcut${index}`);
+
+/**
+ * Nom de l'option stockant le modèle préféré du profil actif (profil 1 ou 2).
+ * @returns {Promise<string>}
+ */
+async function getActiveModelNameKey() {
+    return (await getOptionPromise('IAassistantUseSecondProfile')) ? 'IAassistantModelName2' : 'IAassistantModelName';
 }
 
 /**
- * Retrouve le port sur lequel un modèle donné est disponible (cf. aiParams.availableModels). Si le
- * modèle n'est pas trouvé (ex: valeur non résolue), on retombe sur le premier port actif connu, ou
- * à défaut sur le port configuré.
- * @param {string} modelName
- * @returns {number|string}
+ * Bascule entre le profil 1 et le profil 2 (serveur/modèle) et invalide le sondage réseau précédent.
+ * @param {boolean} useSecond
  */
-function getPortForModel(modelName) {
-    const entry = aiParams.availableModels?.find(m => m.model === modelName);
-    if (entry) return entry.port;
-    return aiParams.activePorts?.[0] ?? aiParams.port;
+function setActiveAiProfile(useSecond) {
+    lastProbeResult = null;
+    return chrome.storage.local.set({ IAassistantUseSecondProfile: !!useSecond });
 }
 
-// Initialisation asynchrone des paramètres. On garde la promesse pour pouvoir
-// l'attendre depuis openAiClient et éviter toute race condition au premier appel.
-const aiParamsReady = (async () => {
-    aiParams.host = (await getOptionPromise('IAassistantHost'))?.trim() || 'localhost' // Hôte du serveur d'IA local (par défaut "localhost", peut être une IP/nom d'hôte distant)
-    aiParams.port = await getOptionPromise('IAassistantPort') // "auto" ou numéro de port spécifique choisi par l'utilisateur
-    aiParams.apiKey = await getOptionPromise('IAassistantApiKey') // Normalement non utilisé, mais bon, autant être propre.
-    aiParams.preferredModel = await getOptionPromise('IAassistantModelName') // Nom du modèle préféré (juste le nom, indépendant du port), ex: "qwen3.5:9b", ou "auto"
-    aiParams.toolCalling = await getOptionPromise('AIAssistantToolCalling') // true/false pour activer le function calling
-    aiParams.MAX_TOOL_CALL_DEPTH =  5 // Nombre maximum d'allers-retours de function calling avant d'abandonner (évite les boucles infinies)
-    aiParams.basicSystemPrompt = await getOptionPromise('IAassistantMainSystemPrompt') // Prompt de base pour le modèle
-    aiParams.contextTokenLimit = toPositiveIntegerOrFallback(await getOptionPromise('IAassistantContextLimit'), 0)
-    aiParams.maxTokensOutput = toPositiveIntegerOrFallback(await getOptionPromise('IAassistantMaxTokensOutput'), null)
+/**
+ * Lit (à chaque appel, via un unique appel groupé à getOptionPromise) les options simples de
+ * l'assistant, hors sondage réseau.
+ * @returns {Promise<object>} Un objet aiParams partiel (sans availableModels/defaultModel/serverStatus).
+ */
+async function loadAiOptions() {
+    const [
+        baseUrl1, apiKey1, preferredModel1, toolCalling, maxToolCalls, basicSystemPrompt,
+        contextTokenLimit, maxTokensOutput, reasoningEffort,
+        useSecondProfile, baseUrl2, apiKey2, preferredModel2, ...promptShortcuts
+    ] = await getOptionPromise([...AI_OPTION_KEYS, ...AI_PROMPT_SHORTCUT_KEYS]);
 
-    // Raccourcis de prompts affichés dans le chat : 10 réglages texte indépendants (IAassistantPromptShortcut0..9).
-    aiParams.promptShortcuts = await Promise.all(
-        Array.from({ length: 10 }, (_, index) => getOptionPromise(`IAassistantPromptShortcut${index}`))
-    );
+    const baseUrlOption = useSecondProfile ? baseUrl2 : baseUrl1;
+    const apiKey = useSecondProfile ? apiKey2 : apiKey1;
+    const preferredModel = useSecondProfile ? preferredModel2 : preferredModel1;
 
-    // Ajout de la date du jour dans le prompt système de base, pour que le modèle sache quelle est la date actuelle.
-    const currentDateTime = new Date().toISOString();
-    aiParams.basicSystemPrompt += `\n\nDate du jour : ${currentDateTime}`;
+    const baseUrl = (baseUrlOption || '').trim().replace(/\/+$/, ''); // URL complète avec protocole, ex: "http://localhost:1234/v1"
 
-    // Tentative (best effort, non bloquante) d'obtention de la permission optionnelle pour un hôte
-    // distant : voir la documentation de ensureHostPermission pour le détail des limitations (pas de
-    // prompt possible sans geste utilisateur, fetch fonctionnant déjà sans cette permission dans la
-    // plupart des cas). Le sondage des ports est donc toujours effectué, que la permission soit
-    // accordée ou non.
-    await ensureHostPermission(aiParams.host);
+    return {
+        baseUrl, // URL de base de l'API compatible OpenAI
+        apiKey, // Normalement non utilisé, mais bon, autant être propre.
+        preferredModel, // Nom du modèle préféré (juste le nom), ex: "qwen3.5:9b", ou "auto"
+        toolCalling, // true/false pour activer le function calling
+        MAX_TOOL_CALL_DEPTH: toPositiveIntegerOrFallback(maxToolCalls, 5), // Nombre maximum d'allers-retours de function calling avant d'abandonner (évite les boucles infinies)
+        contextTokenLimit: toPositiveIntegerOrFallback(contextTokenLimit, 0),
+        maxTokensOutput: toPositiveIntegerOrFallback(maxTokensOutput, null),
+        reasoningEffort, // "auto"/"minimal"/"low"/"medium"/"high", "auto" = ne pas envoyer le paramètre
+        promptShortcuts,
+        // Ajout de la date du jour, pour que le modèle sache quelle est la date actuelle.
+        basicSystemPrompt: `${basicSystemPrompt}\n\nDate du jour : ${new Date().toISOString()}`,
+    };
+}
 
-    // Ports à tester : si un port spécifique est configuré, on ne teste que celui-ci ; sinon ("auto"),
-    // on teste systématiquement tous les ports courants à chaque démarrage (pas de mise en cache du port trouvé).
-    const portsToTest = (aiParams.port && aiParams.port !== 'auto') ? [aiParams.port] : COMMON_LOCAL_AI_PORTS;
-    const { activePorts, availableModels, testedPorts } = await probePortsForModels(aiParams.host, portsToTest, aiParams.apiKey);
+/**
+ * Interroge le serveur d'IA et renvoie le résultat (availableModels, serverStatus).
+ * @param {string} baseUrl
+ * @param {string} apiKey
+ * @returns {Promise<object>}
+ */
+async function probeServer(baseUrl, apiKey) {
+    const availableModels = await fetchAvailableModels(baseUrl, apiKey) || [];
+    return {
+        availableModels, // Liste [{model}] des modèles disponibles
+        serverStatus: availableModels.length > 0 ? 'available' : 'unavailable',
+    };
+}
 
-    aiParams.activePorts = activePorts; // Ports ayant effectivement répondu
-    aiParams.availableModels = availableModels; // Liste [{model, port}] de tous les modèles disponibles, tous ports actifs confondus
-    aiParams.autoPortTestedPorts = testedPorts; // Ports testés (utile pour informer l'utilisateur dans le chat si aucun serveur n'a été trouvé)
+// Résultat du dernier sondage réseau (coûteux) : seul état conservé d'un appel à l'autre,
+// volontairement séparé des options (relues à chaque appel par getAiParams). Jamais rempli
+// automatiquement : le sondage (coûteux, et inutile tant qu'un modèle explicite est configuré)
+// n'est déclenché qu'à la demande, via recheckServerAvailability() (ouverture de la popover
+// d'info du chat, cf. infoButton dans discussionClient.js).
+let lastProbeResult = null;
 
-    // Résolution du modèle par défaut : le modèle préféré s'il est disponible parmi les modèles détectés,
-    // sinon le premier modèle disponible (peu importe son port).
-    const modelNames = availableModels.map(m => m.model);
-    if (aiParams.preferredModel && aiParams.preferredModel !== 'auto' && modelNames.includes(aiParams.preferredModel)) {
-        aiParams.defaultModel = aiParams.preferredModel;
-    } else if (modelNames.length > 0) {
-        if (aiParams.preferredModel && aiParams.preferredModel !== 'auto') {
-            console.warn(`[openAiClient] Modèle préféré "${aiParams.preferredModel}" introuvable parmi les modèles disponibles, sélection du premier modèle disponible : ${modelNames[0]}.`);
-        }
-        aiParams.defaultModel = modelNames[0];
-    } else {
-        aiParams.defaultModel = aiParams.preferredModel; // Aucun serveur/modèle détecté : on garde la valeur configurée telle quelle
+/**
+ * Renvoie l'ensemble des paramètres nécessaires à un appel API : les options utilisateur (relues à
+ * chaque appel) fusionnées avec le résultat du dernier sondage réseau (absent tant qu'aucun sondage
+ * n'a encore été demandé, @see recheckServerAvailability). C'est le seul point d'accès aux
+ * paramètres de l'assistant : ni discussionClient.js ni offscreenChatEngine.js ne doivent
+ * maintenir leur propre copie de ces valeurs.
+ * @returns {Promise<object>}
+ */
+async function getAiParams() {
+    const options = await loadAiOptions();
+    const probeResult = lastProbeResult || { availableModels: [], serverStatus: 'unknown' };
+
+    const params = { ...options, ...probeResult };
+    resolveDefaultModel(params);
+    return params;
+}
+
+/**
+ * Relance la recherche des modèles disponibles (utile si le serveur n'était pas disponible au
+ * démarrage mais est maintenant accessible). Retourne true si au moins un serveur a répondu.
+ * @returns {Promise<boolean>} true si le serveur est maintenant disponible
+ */
+async function recheckServerAvailability() {
+    const { baseUrl, apiKey } = await getAiParams();
+    const wasUnavailable = lastProbeResult?.serverStatus !== 'available';
+    await ensureHostPermission(baseUrl); // best effort, non bloquant (voir ensureHostPermission)
+    lastProbeResult = await probeServer(baseUrl, apiKey);
+
+    if (wasUnavailable && lastProbeResult.serverStatus === 'available') {
+        console.log("[openAiClient] Serveur LLM détecté après une indisponibilité antérieure");
+    } else if (wasUnavailable) {
+        console.warn("[openAiClient] Serveur LLM toujours indisponible");
     }
 
-    console.log("[openAiClient] Paramètres récupérés :", aiParams);
-})();
+    return lastProbeResult.serverStatus === 'available';
+}
 
 /**
  * Teste la disponibilité de l'API du modèle d'IA local (utile pour avertir l'utilisateur si
- * aucun serveur n'est détecté sur le port configuré, ex: LM Studio/Ollama non démarré).
+ * aucun serveur n'est détecté à l'URL configurée, ex: LM Studio/Ollama non démarré).
  * @returns {Promise<boolean>} true si l'API répond, false sinon.
  */
-async function testAiApiConnection(modelName = aiParams.defaultModel) {
-    await aiParamsReady;
-    const port = getPortForModel(modelName);
+async function testAiApiConnection(modelName) {
+    if (modelName === undefined) modelName = (await getAiParams()).defaultModel;
     try {
-        const response = await fetch(`http://${aiParams.host}:${port}/v1/models`, {
+        const response = await fetch(`${(await getAiParams()).baseUrl}/models`, {
             method: 'GET',
             headers: {
-                ...(aiParams.apiKey && { 'Authorization': `Bearer ${aiParams.apiKey}` }),
+                ...((await getAiParams()).apiKey && { 'Authorization': `Bearer ${(await getAiParams()).apiKey}` }),
             },
-            signal: AbortSignal.timeout(LOCAL_AI_PROBE_TIMEOUT_MS)
+            signal: AbortSignal.timeout(AI_PROBE_TIMEOUT_MS)
         });
         return response.ok;
     } catch (error) {
@@ -237,10 +271,11 @@ async function openAiClient({
     messages = [],         // Liste des messages de la conversation (system, user, assistant, tool)
     
     // --- 2. Paramètres de base ---
-    model = aiParams.defaultModel, // modèle à utiliser (ex: "gpt-4o", "mistral-nemo:12b-instruct-2407-q5_K_M", etc.)
+    model = undefined, // modèle à utiliser (ex: "gpt-4o", "mistral-nemo:12b-instruct-2407-q5_K_M", etc.), par défaut aiParams.defaultModel
     
     // --- 3. Paramètres de Sampling (Ce que vous aviez déjà) ---
-    maxTokens = aiParams.maxTokensOutput,      // le nombre maximum de tokens à générer dans la réponse. A ajuster à terme, et discuter de mettre un appel de l'API en amont pour requêter le nombre de tokens restants pour ne pas dépasser la limite du modèle.
+    maxTokens = undefined,      // le nombre maximum de tokens à générer dans la réponse (par défaut aiParams.maxTokensOutput, réactualisé à chaque appel). A ajuster à terme, et discuter de mettre un appel de l'API en amont pour requêter le nombre de tokens restants pour ne pas dépasser la limite du modèle.
+    reasoningEffort = undefined, // "low"/"medium"/"high" (modèles "reasoning"), ou "auto"/falsy pour ne pas envoyer le paramètre (par défaut aiParams.reasoningEffort, réactualisé à chaque appel)
     temperature = 0.7,     // le degré de créativité (0.0 = très conservateur, 1.0 = très créatif)
     topP = 0.9,            // le pourcentage de probabilité cumulative pour le filtrage des tokens (0.0 à 1.0)
     frequencyPenalty = 0.0,// pénalité pour la fréquence des tokens (0.0 à 2.0, plus élevé = moins de répétition)
@@ -273,29 +308,55 @@ async function openAiClient({
                              // (cas du content script). Le document offpage fournit ici un exécuteur qui délègue
                              // l'appel au content script de l'onglet concerné (DOM de Weda requis, ex: recoverPatientData).
 
+    // --- 7quater. Chaîne d'outils lancée depuis le code (@see toolChains.js) ---
+    chaineInitiale = null, // { nom, entree } : démarrée avant la première requête, comme si le modèle avait appelé son outil d'entrée
+
     // --- 8. Interne : suivi de la profondeur de récursion (ne pas fournir manuellement) ---
     _toolCallDepth = 0,
+    _chaine = null,        // État de la chaîne d'outils en cours (@see toolChains.js)
+    _suite = null,         // { chaine, entree } : chaîne à démarrer quand le modèle aura fini de répondre à la précédente
 
     // --- 9. Annulation ---
     signal = null,         // AbortSignal permettant d'interrompre la requête (et le streaming) en cours
 }) {
-    // S'assurer que les paramètres (defaultModel, availableModels, etc.) sont chargés avant le premier appel
-    await aiParamsReady;
-    if (model === undefined) model = aiParams.defaultModel;
+    // Paramètres réactualisés à chaque appel (options utilisateur susceptibles d'avoir changé depuis le dernier appel).
+    if (model === undefined) model = (await getAiParams()).defaultModel;
+    if (maxTokens === undefined) maxTokens = (await getAiParams()).maxTokensOutput;
+    if (reasoningEffort === undefined) reasoningEffort = (await getAiParams()).reasoningEffort;
 
-    // Le port à utiliser dépend du modèle sélectionné (plusieurs ports peuvent être actifs simultanément)
-    const apiUrl = `http://${aiParams.host}:${getPortForModel(model)}`;
+    const effectiveStream = stream || !!onChunk;
+    const modelArgs = {
+        temperature,
+        top_p: topP,
+        frequency_penalty: frequencyPenalty,
+        presence_penalty: presencePenalty,
+    };
+    const normalizedMaxTokens = toPositiveIntegerOrFallback(maxTokens, null);
+    if (normalizedMaxTokens !== null) modelArgs.max_tokens = normalizedMaxTokens;
+    if (stop) modelArgs.stop = stop;
+    if (effectiveStream) modelArgs.stream = true;
+    if (responseFormat) modelArgs.response_format = responseFormat;
+    if (seed !== null) modelArgs.seed = seed;
+    if (reasoningEffort && reasoningEffort !== 'auto') modelArgs.reasoning_effort = reasoningEffort;
+    applyModelSpecificArgChanges(model, modelArgs);
+
+    const apiUrl = (await getAiParams()).baseUrl;
 
     // Permet de faire un appel simple sans avoir à construire un tableau de messages
     if (typeof messages === 'string') {
         messages = [{ role: "user", content: messages }];
     }
 
+    if (chaineInitiale) {
+        ({ messages, chaine: _chaine, suiteEnAttente: _suite } = await handleToolCalls(messageAppelChaine(chaineInitiale), messages, onToolCall, executeToolCall, null, signal));
+    }
+
     // Filtrer uniquement les messages réellement vides (sans contenu ET sans tool_calls),
     // pour ne jamais supprimer un message assistant qui ne contient que des tool_calls (content: null).
     // Le contenu peut aussi être un tableau de parts (format "vision" OpenAI, ex: pièces jointes
     // images) : { type: 'text'|'image_url', ... } — voir buildUserMessageContent dans discussionClient.js.
-    const filteredMessages = messages.filter(msg =>
+    const modelMessages = replaceUnsupportedModelImages(model, messages);
+    const filteredMessages = modelMessages.filter(msg =>
         msg && (
             (typeof msg.content === 'string' && msg.content.trim()) ||
             (Array.isArray(msg.content) && msg.content.length > 0) ||
@@ -309,7 +370,7 @@ async function openAiClient({
 
     // Avertir si le contexte estimé approche/dépasse la limite configurée (IAassistantContextLimit).
     // Utile notamment quand le function calling s'enchaîne et gonfle l'historique (résultats d'outils volumineux).
-    const contextLimit = Number(aiParams.contextTokenLimit) || 0;
+    const contextLimit = Number((await getAiParams()).contextTokenLimit) || 0;
     if (contextLimit > 0) {
         const estimatedTokens = estimateTokens(filteredMessages);
         const ratio = estimatedTokens / contextLimit;
@@ -321,32 +382,24 @@ async function openAiClient({
 
     // Gestion des tools (function calling)
     // seulement si option activée et useTools = true
-    const effectiveUseTools = useTools && aiParams.toolCalling;
-    const resolvedTools = tools || (effectiveUseTools ? Object.values(availableFunctions).map(f => f.definition) : null);
+    const effectiveUseTools = useTools && (await getAiParams()).toolCalling;
+    const resolvedTools = tools || (effectiveUseTools ? listerDefinitionsOutils() : null);
 
-    // Si un callback de streaming est fourni, on force le mode stream côté requête
-    const effectiveStream = stream || !!onChunk;
+    // Une chaîne d'outils en cours (@see toolChains.js) restreint les outils de cette requête uniquement.
+    const politiqueChaine = politiqueEtape(_chaine);
 
     const requestBody = buildRequestBody({
         messages: filteredMessages,
         model,
-        maxTokens,
-        temperature,
-        topP,
-        frequencyPenalty,
-        presencePenalty,
-        stop,
-        stream: effectiveStream,
-        responseFormat,
-        seed,
-        resolvedTools,
-        toolChoice
+        modelArgs,
+        resolvedTools: politiqueChaine?.tools ?? resolvedTools,
+        toolChoice: politiqueChaine?.toolChoice ?? toolChoice
     });
 
     console.log("[openAiClient] Requête construite :", requestBody);
 
     try { // Appel réseau vers l'API OpenAI/Ollama
-        const data = await fetchChatCompletion(requestBody, apiUrl, signal);
+        const data = await fetchChatCompletion(requestBody, apiUrl, signal, (await getAiParams()).apiKey);
 
         let responseMessage;
 
@@ -375,12 +428,12 @@ async function openAiClient({
         if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
             console.log(`[openAiClient] Function calls reçus:`, responseMessage.tool_calls.map(tc => ({ name: tc.function?.name, args: tc.function?.arguments })));
 
-            if (_toolCallDepth >= aiParams.MAX_TOOL_CALL_DEPTH) {
-                console.warn(`[openAiClient] Profondeur maximale de function calling atteinte (${aiParams.MAX_TOOL_CALL_DEPTH}), arrêt de la boucle.`);
+            if (_toolCallDepth >= (await getAiParams()).MAX_TOOL_CALL_DEPTH) {
+                console.warn(`[openAiClient] Profondeur maximale de function calling atteinte (${(await getAiParams()).MAX_TOOL_CALL_DEPTH}), arrêt de la boucle.`);
                 return responseMessage.content || "Désolé, je n'ai pas pu terminer cette action après plusieurs tentatives d'appel de fonctions.";
             }
 
-            const updatedMessages = await handleToolCalls(responseMessage, filteredMessages, onToolCall, executeToolCall);
+            const { messages: updatedMessages, chaine, progres, suiteEnAttente } = await handleToolCalls(responseMessage, filteredMessages, onToolCall, executeToolCall, _chaine, signal);
 
             // On relance un appel avec les résultats des fonctions pour obtenir la réponse finale du modèle
             console.log(`[openAiClient] Re-envoi du contexte avec résultats des fonctions...`);
@@ -399,11 +452,55 @@ async function openAiClient({
                 tools: resolvedTools,
                 toolChoice,
                 useTools,
+                reasoningEffort,
                 onChunk,
                 onToolCall,
                 onWarning,
                 executeToolCall,
+                // Une étape de chaîne menée à terme ne compte pas : seules les tentatives refusées ou hors chaîne consomment la profondeur.
+                _toolCallDepth: _toolCallDepth + (progres ? 0 : 1),
+                _chaine: chaine,
+                _suite: suiteEnAttente || _suite,
+                signal
+            });
+        }
+
+        // Le modèle a fini de répondre à la chaîne précédente (sa synthèse est dans le contexte) : la chaîne en attente démarre.
+        if (_suite && !_chaine) {
+            console.log(`[openAiClient] Démarrage de la chaîne suivante : ${_suite.chaine}`);
+            const { messages: messagesSuite, chaine, suiteEnAttente } = await handleToolCalls(
+                messageAppelChaine({ nom: _suite.chaine, entree: _suite.entree }),
+                [...filteredMessages, ...(responseMessage.content ? [{ role: 'assistant', content: responseMessage.content }] : [])],
+                onToolCall, executeToolCall, null, signal
+            );
+            return await openAiClient({
+                messages: messagesSuite,
+                model, maxTokens, temperature, topP, frequencyPenalty, presencePenalty, stop, stream, responseFormat, seed,
+                tools: resolvedTools, toolChoice, useTools, reasoningEffort, onChunk, onToolCall, onWarning, executeToolCall,
+                _toolCallDepth,
+                _chaine: chaine,
+                _suite: suiteEnAttente,
+                signal
+            });
+        }
+
+        // Chaîne en cours mais réponse sans tool call (tool_choice ignoré par certains serveurs) : on relance
+        // le modèle en lui rappelant l'outil attendu, au lieu de laisser la chaîne s'arrêter en silence.
+        const etapeAttendue = etapeCourante(_chaine);
+        if (etapeAttendue && (_chaine.relances ?? 0) < 2) {
+            _chaine.relances = (_chaine.relances ?? 0) + 1;
+            const attendus = etapeAttendue.outils.map(nomOutilEtape).join(', ');
+            console.warn(`[openAiClient] Réponse sans tool call pendant la chaîne ${_chaine.nom} : relance (${_chaine.relances}/2), outil attendu : ${attendus}.`);
+            return await openAiClient({
+                messages: [
+                    ...filteredMessages,
+                    ...(responseMessage.content ? [{ role: 'assistant', content: responseMessage.content }] : []),
+                    { role: 'user', content: `Tu dois appeler maintenant ${attendus} (obligatoire, aucune réponse en texte).` }
+                ],
+                model, maxTokens, temperature, topP, frequencyPenalty, presencePenalty, stop, stream, responseFormat, seed,
+                tools: resolvedTools, toolChoice, useTools, reasoningEffort, onChunk, onToolCall, onWarning, executeToolCall,
                 _toolCallDepth: _toolCallDepth + 1,
+                _chaine,
                 signal
             });
         }
@@ -578,38 +675,28 @@ async function consumeStream(stream, onChunk) {
 function buildRequestBody({
     messages,
     model,
-    maxTokens,
-    temperature,
-    topP,
-    frequencyPenalty,
-    presencePenalty,
-    stop,
-    stream,
-    responseFormat,
-    seed,
+    modelArgs,
     resolvedTools,
     toolChoice
 }) {
-    const normalizedMaxTokens = toPositiveIntegerOrFallback(maxTokens, null);
     const requestBody = {
         model,
         messages,
-        temperature,
-        top_p: topP,
-        frequency_penalty: frequencyPenalty,
-        presence_penalty: presencePenalty,
+        ...modelArgs,
     };
-
-    // Ajouter les paramètres optionnels seulement s'ils sont définis
-    if (normalizedMaxTokens !== null) requestBody.max_tokens = normalizedMaxTokens;
-    if (stop) requestBody.stop = stop;
-    if (stream) requestBody.stream = stream;
-    if (responseFormat) requestBody.response_format = responseFormat;
-    if (seed !== null) requestBody.seed = seed;
 
     if (resolvedTools && resolvedTools.length > 0) {
         requestBody.tools = resolvedTools;
-        requestBody.tool_choice = toolChoice || "auto";
+        if (toolChoice && typeof toolChoice === 'object') {
+            // Certains serveurs (LM Studio) n'acceptent que none/auto/required : on restreint les outils
+            // à la fonction ciblée et on force un appel d'outil.
+            const nom = toolChoice.function?.name;
+            const cibles = nom ? resolvedTools.filter(t => t.function?.name === nom) : [];
+            if (cibles.length > 0) requestBody.tools = cibles;
+            requestBody.tool_choice = "required";
+        } else {
+            requestBody.tool_choice = toolChoice || "auto";
+        }
     }
 
     return requestBody;
@@ -619,27 +706,35 @@ function buildRequestBody({
  * Effectue l'appel réseau vers l'API de chat completions et gère les erreurs HTTP.
  * Renvoie soit le ReadableStream (si `requestBody.stream` est vrai), soit le JSON parsé de la réponse.
  */
-async function fetchChatCompletion(requestBody, apiUrl, signal) {
-    console.log("[openAiClient] Tentative de connexion à :", `${apiUrl}/v1/chat/completions`);
+async function fetchChatCompletion(requestBody, apiUrl, signal, apiKey) {
+    console.log("[openAiClient] Tentative de connexion à :", `${apiUrl}/chat/completions`);
 
     const fetchOptions = {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             // Ajouter l'API key seulement si elle existe (certains serveurs locaux n'en ont besoin)
-            ...(aiParams.apiKey && { 'Authorization': `Bearer ${aiParams.apiKey}` }),
+            ...(apiKey && { 'Authorization': `Bearer ${apiKey}` }),
         },
         body: JSON.stringify(requestBody),
         ...(signal && { signal })
     };
 
-    const response = await fetch(`${apiUrl}/v1/chat/completions`, fetchOptions);
+    const response = await fetch(`${apiUrl}/chat/completions`, fetchOptions);
 
     if (!response.ok) {
         let errorMessage = `Erreur API ${response.status}`;
         try {
-            const errorData = await response.json();
-            errorMessage = errorData.error?.message || errorMessage;
+            const rawBody = await response.text();
+            console.error(`[openAiClient] Corps de l'erreur API ${response.status} :`, rawBody);
+            try {
+                const errorData = JSON.parse(rawBody);
+                const err = errorData.error;
+                const detail = (typeof err === 'string' ? err : err?.message) || errorData.message;
+                errorMessage = detail ? `${errorMessage} : ${detail}` : errorMessage;
+            } catch (e) {
+                if (rawBody) errorMessage = `${errorMessage} : ${rawBody.slice(0, 500)}`;
+            }
         } catch (e) {
             // Si la réponse n'est pas du JSON (ex: erreur HTML du serveur), on garde le message par défaut
         }
@@ -655,6 +750,96 @@ async function fetchChatCompletion(requestBody, apiUrl, signal) {
 
 
 /**
+ * Remplace récursivement tout tableau `images` (data URL, @see resolvePdfAttachment dans
+ * pdfAttachmentHelper.js) par un simple décompte dans le texte JSON du résultat : les data URL
+ * elles-mêmes sont de toute façon rejointes séparément en parts `image_url` (@see buildToolResultContent),
+ * inutile de les dupliquer en texte brut (coûteux en tokens).
+ * @param {*} value
+ * @returns {*}
+ */
+function omitImagesFromToolResult(value) {
+    if (Array.isArray(value)) return value.map(omitImagesFromToolResult);
+    if (value && typeof value === 'object') {
+        const clone = {};
+        for (const [key, val] of Object.entries(value)) {
+            clone[key] = (key === 'images' && Array.isArray(val))
+                ? `[${val.length} page(s) illisible(s) rendue(s) en image(s), jointe(s) ci-dessous]`
+                : omitImagesFromToolResult(val);
+        }
+        return clone;
+    }
+    return value;
+}
+
+/**
+ * Parcourt récursivement un résultat de tool call et regroupe chaque tableau `images` (data URL,
+ * @see resolvePdfAttachment dans pdfAttachmentHelper.js) rencontré avec un libellé (nom du
+ * document si disponible).
+ * @param {*} value
+ * @param {Array<{label: string, images: string[]}>} [groups]
+ * @returns {Array<{label: string, images: string[]}>}
+ */
+function collectImageGroupsFromToolResult(value, groups = []) {
+    if (Array.isArray(value)) {
+        value.forEach(item => collectImageGroupsFromToolResult(item, groups));
+        return groups;
+    }
+    if (value && typeof value === 'object') {
+        if (Array.isArray(value.images) && value.images.length > 0) {
+            groups.push({ label: value.name || value.fileId || value.url || 'document', images: value.images });
+        }
+        for (const [key, val] of Object.entries(value)) {
+            if (key !== 'images') collectImageGroupsFromToolResult(val, groups);
+        }
+    }
+    return groups;
+}
+
+/**
+ * Construit le contenu d'un message "tool" : une simple chaîne JSON si le résultat ne contient
+ * aucune image, ou un tableau de parts au même format "vision" qu'une pièce jointe utilisateur
+ * (@see buildUserMessageContent dans discussionClient.js) sinon, pour que le modèle reçoive les
+ * images (pages de pdf illisibles rendues en image) directement dans la réponse de l'outil plutôt
+ * que via un message séparé.
+ * @param {*} fnResult
+ * @returns {string|Array}
+ */
+function buildToolResultContent(fnResult) {
+    const textContent = typeof fnResult === 'string' ? fnResult : JSON.stringify(omitImagesFromToolResult(fnResult));
+    const imageGroups = typeof fnResult === 'string' ? [] : collectImageGroupsFromToolResult(fnResult);
+    if (imageGroups.length === 0) return textContent;
+
+    return [
+        { type: 'text', text: textContent },
+        ...imageGroups.flatMap(group => [
+            { type: 'text', text: `— ${group.label} —` },
+            ...group.images.map(dataUrl => ({ type: 'image_url', image_url: { url: dataUrl } }))
+        ])
+    ];
+}
+
+/**
+ * Compte les échecs dans le résultat d'un outil : objet ou éléments de tableau portant `success: false` ou un champ `error`.
+ */
+function compterEchecs(resultat) {
+    const elements = Array.isArray(resultat) ? resultat : [resultat];
+    return elements.filter(r => r && typeof r === 'object' && (r.success === false || r.error)).length;
+}
+
+/**
+ * Un échec noyé dans un JSON est trop discret : le modèle annonce parfois un succès malgré tout.
+ * On l'encadre donc d'un avertissement explicite, pour tous les outils.
+ */
+function signalerEchecs(fnName, resultat) {
+    const echecs = compterEchecs(resultat);
+    if (!echecs) return resultat;
+    return {
+        AVERTISSEMENT: `ÉCHEC de ${fnName} (${echecs} erreur(s) dans le résultat ci-dessous). Ne dis PAS à l'utilisateur que l'action est réussie ; informe-le de l'échec et de sa cause. Ne relance pas sans qu'il le demande, sauf si la cause est une erreur de ta part (ex. argument invalide).`,
+        resultat
+    };
+}
+
+/**
  * Exécute les function calls demandés par le modèle et construit la liste de messages
  * mise à jour (historique + message assistant contenant les tool_calls + résultats des fonctions).
  * @param {object} responseMessage - Le message renvoyé par le modèle, contenant `tool_calls`.
@@ -662,33 +847,77 @@ async function fetchChatCompletion(requestBody, apiUrl, signal) {
  * @param {(event: object) => void} [onToolCall] - Callback de feedback appelé à chaque étape (start/success/error).
  * @param {(name: string, args: object) => Promise<*>} [executeToolCall] - Exécuteur des fonctions. Par
  * défaut, exécute localement via availableFunctions (voir callableFunctions.js).
- * @returns {Promise<Array>} La liste de messages mise à jour, prête à être renvoyée au modèle.
+ * @param {object|null} [chaineEnCours] - État de la chaîne d'outils en cours (@see toolChains.js).
+ * @param {AbortSignal} [signal] - Interrompt l'enchaînement des étapes mécaniques d'une chaîne.
+ * @returns {Promise<{messages: Array, chaine: object|null, progres: boolean}>} Les messages mis à jour, prêts à être
+ * renvoyés au modèle, l'état de la chaîne, et si une chaîne a démarré ou avancé d'une étape.
  */
-async function handleToolCalls(responseMessage, messages, onToolCall, executeToolCall) {
+async function handleToolCalls(responseMessage, messages, onToolCall, executeToolCall, chaineEnCours = null, signal = null) {
     const runTool = executeToolCall || ((name, args) => {
         if (!availableFunctions[name]) throw new Error(`fonction inconnue "${name}"`);
         return availableFunctions[name].execute(args);
     });
 
     const updatedMessages = [...messages, responseMessage];
+    let chaine = chaineEnCours;
+    let progres = false;
+    let suiteEnAttente = null; // chaîne à démarrer une fois la réponse du modèle à la chaîne terminée (@see toolChains.js poursuivreChaine)
+
+    // Réponse renvoyée telle quelle au modèle, sans exécuter l'appel (démarrage de chaîne, refus).
+    const repondreSansExecuter = (toolCall, fnArgs, contenu, status = 'success') => {
+        const fnName = toolCall.function?.name;
+        onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status, [status === 'error' ? 'error' : 'result']: contenu });
+        updatedMessages.push({ role: "tool", tool_call_id: toolCall.id, name: fnName, content: buildToolResultContent(contenu) });
+    };
 
     for (const toolCall of responseMessage.tool_calls) {
         const fnName = toolCall.function?.name;
         let fnArgs = {};
+        let argumentsParseError = null;
         try {
-            fnArgs = toolCall.function?.arguments ? JSON.parse(toolCall.function.arguments) : {};
+            const rawArguments = toolCall.function?.arguments;
+            fnArgs = rawArguments ? JSON.parse(rawArguments) : {};
             console.log(`[handleToolCalls] Parsing arguments pour ${fnName}:`, fnArgs);
         } catch (e) {
             console.error("[handleToolCalls] Impossible de parser les arguments de la fonction :", toolCall.function?.arguments, e);
+            argumentsParseError = e;
         }
 
         onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'start' });
 
         let fnResult;
+        let suiteChaine = null; // consigne de l'étape suivante d'une chaîne, ajoutée au résultat de l'outil
         try {
-            console.log(`[handleToolCalls] Exécution de ${fnName}...`);
-            fnResult = await runTool(fnName, fnArgs);
+            // Ne pas exécuter la fonction avec des arguments vides à la place de ceux, illisibles, du modèle :
+            // l'erreur lui est renvoyée pour qu'il refasse l'appel avec un JSON valide.
+            if (argumentsParseError) throw new Error(`arguments JSON invalides (${argumentsParseError.message}), refais l'appel avec un JSON valide`);
+            if (estChaine(fnName)) {
+                const demarrage = await demarrerChaine(fnName, fnArgs, runTool, onToolCall, signal);
+                chaine = demarrage.chaine;
+                suiteEnAttente = demarrage.suiteEnAttente || suiteEnAttente;
+                progres = true;
+                repondreSansExecuter(toolCall, fnArgs, demarrage.contenu);
+                continue;
+            }
+
+            if (viseEtapeCourante(chaine, fnName)) {
+                const appel = await traiterAppelEtape(chaine, fnName, fnArgs, runTool, onToolCall, signal);
+                chaine = appel.chaine;
+                if (appel.refus) {
+                    console.warn(`[handleToolCalls] Appel de ${fnName} refusé :`, appel.refus);
+                    repondreSansExecuter(toolCall, fnArgs, appel.refus, 'error');
+                    continue;
+                }
+                fnResult = appel.resultat;
+                suiteChaine = appel.suite;
+                suiteEnAttente = appel.suiteEnAttente || suiteEnAttente;
+                progres ||= appel.progres;
+            } else {
+                console.log(`[handleToolCalls] Exécution de ${fnName}...`);
+                fnResult = await runTool(fnName, fnArgs);
+            }
             console.log(`[handleToolCalls] Résultat de ${fnName}:`, fnResult);
+
             onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'success', result: fnResult });
         } catch (e) {
             fnResult = `Erreur lors de l'exécution de la fonction ${fnName} : ${e.message || e}`;
@@ -696,13 +925,14 @@ async function handleToolCalls(responseMessage, messages, onToolCall, executeToo
             onToolCall?.({ id: toolCall.id, name: fnName, args: fnArgs, status: 'error', error: fnResult });
         }
 
+        const resultatSignale = signalerEchecs(fnName, fnResult);
         updatedMessages.push({
             role: "tool",
             tool_call_id: toolCall.id,
             name: fnName,
-            content: typeof fnResult === 'string' ? fnResult : JSON.stringify(fnResult)
+            content: buildToolResultContent(suiteChaine ? { resultat: resultatSignale, suiteDeLaChaine: suiteChaine } : resultatSignale)
         });
     }
 
-    return updatedMessages;
+    return { messages: updatedMessages, chaine, progres, suiteEnAttente };
 }

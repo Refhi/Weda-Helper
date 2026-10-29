@@ -1,0 +1,204 @@
+/**
+ * @file pdfParserAIExtraction.js
+ * @description Complète via l'assistant IA local les champs du PDF Parser (@see features/pdfParser.js)
+ * restés vides après l'analyse regex. L'appel se fait via le chat IA visible (@see discussionClient.js
+ * whenChatApiReady/publishChatApi) : un prompt est envoyé "comme si l'utilisateur l'avait tapé",
+ * donnant à l'utilisateur la visibilité sur la requête et la réponse, et la réponse attendue est un
+ * appel de fonction dédié (renseignerDocument, @see callableFunctions.js) plutôt qu'un texte JSON
+ * à parser nous-mêmes.
+ */
+
+// Champs du PDF Parser éligibles à un complément IA : clé dans extractedData, description utilisée
+// dans le prompt, et test de "valeur manquante" déclenchant la tentative.
+const PDF_PARSER_AI_FIELDS = [
+    { key: 'documentDate', description: "Date du document, au format JJ/MM/AAAA", missing: v => !v },
+    { key: 'dateOfBirth', description: "Date de naissance du patient, au format JJ/MM/AAAA", missing: v => !v },
+    { key: 'nameMatches', description: "Nom complet (nom et prénom) du patient", missing: v => !v || v.length === 0 },
+    { key: 'documentCommentaire', description: "Bref commentaire (1 à 2 phrases) résumant le contenu du document", missing: v => !v }
+];
+
+// Champs supplémentaires confiés à l'IA lorsque l'option PdfParserAutoAIFullMode est activée : dans ce
+// mode, ils sont systématiquement redemandés au modèle (et remplacent le résultat de l'analyse par
+// mots-clés/gabarit de titre), avec pour seule aide la liste des classifications réellement
+// disponibles dans Weda (@see features/pdfParser.js initDocumentTypes, passée en paramètre par l'appelant).
+const PDF_PARSER_AI_FULL_MODE_FIELDS = [
+    { key: 'documentTitle', description: "Titre complet du document, tel qu'il doit apparaître dans le dossier patient" },
+    { key: 'destinationClass', description: "Destination du classement : '1' pour Consultation, '2' pour Résultats d'examens, '3' pour Courrier" },
+    { key: 'documentType', description: "Classification du document, parmi les valeurs listées ci-dessous le cas échéant" }
+];
+
+// Délai maximum d'attente de l'appel de fonction renseignerDocument avant d'abandonner (le
+// client de chat peut être indisponible, désactivé, ou le modèle peut ne jamais appeler la fonction).
+const PDF_PARSER_AI_TIMEOUT_MS = 60000;
+// Timeout court utilisé quand le mode complet (PdfParserAutoAIFullMode) est activé :
+// on souhaite échouer rapidement si l'IA n'est pas disponible.
+const PDF_PARSER_AI_QUICK_TIMEOUT_MS = 1000;
+
+// Résolveur de la complétion IA en cours (un seul PDF traité à la fois), appelé par le tool call
+// "renseignerDocument" une fois le modèle exécuté (@see callableFunctions.js).
+let pendingPdfParserResolve = null;
+
+/** Indique si une complétion du PDF Parser attend l'appel du tool "renseignerDocument". */
+function hasPendingPdfParserFields() {
+    return !!pendingPdfParserResolve;
+}
+
+/**
+ * Appelée par le tool call "renseignerDocument" : transmet les champs renvoyés par le modèle à
+ * la complétion IA en attente, le cas échéant.
+ * @param {object} fields
+ */
+function resolvePendingPdfParserFields(fields) {
+    if (!pendingPdfParserResolve) {
+        // Lève une erreur (plutôt que de la renvoyer comme résultat) pour que le tool call soit
+        // marqué en échec côté chat (bulle ❌) et que le modèle en informe explicitement l'utilisateur,
+        // au lieu d'un résultat "réussi" contenant silencieusement un champ error ignoré.
+        throw new Error("Aucune complétion du PDF Parser en attente (délai déjà dépassé, ou fonction appelée deux fois pour la même demande).");
+    }
+    pendingPdfParserResolve(fields);
+    pendingPdfParserResolve = null;
+    return { status: "success" };
+}
+
+/**
+ * Tente de compléter, via l'assistant IA local, les champs non trouvés par l'analyse regex dans
+ * `extractedData`. Échoue silencieusement (log uniquement) si l'option est désactivée, le chat IA
+ * indisponible, ou la fonction jamais appelée : le PDF Parser continue alors normalement avec les
+ * seules données regex.
+ * @param {object} extractedData - Données déjà extraites, utilisées pour déterminer les champs manquants (non modifié).
+ * @param {string} fullText - Texte complet du PDF, envoyé au modèle si suffisamment lisible.
+ * @param {string|null} urlPDF - URL du PDF (@see extractBasePdfData), relue page par page pour envoyer
+ * en images (@see discussionClient.js lancerChaine) les pages dont le texte est absent
+ * ou illisible (PDF scanné, police non standard...).
+ * @param {string[]|null} [possibleDocumentTypes] - Valeurs de classification réellement disponibles dans
+ * Weda (@see features/pdfParser.js initDocumentTypes), récupérées par l'appelant au moment de l'appel.
+ * Utilisée uniquement en mode complet (PdfParserAutoAIFullMode), pour contraindre le champ documentType.
+ * @param {{pdfText?: string|null, messageBody?: string|null}} [aiSources] - Texte du PDF et corps du message
+ * (échanges sécurisés) séparés : la lisibilité du PDF est évaluée indépendamment du corps du message.
+ * @param {{externalTool?: {name: string, extraInstructions?: string}|null, patientId?: string|null}} [options] -
+ * Pour un usage explicitement demandé par l'utilisateur hors PDF Parser (@see attachmentAIRename.js) :
+ * `externalTool` demande au modèle d'appeler cette fonction (avec `extraInstructions` ajoutées au prompt,
+ * ex: un identifiant à lui transmettre) au lieu de renseignerDocument ; l'option PdfParserAutoAIExtraction
+ * est alors ignorée (PdfParserAutoAIFullMode reste respectée) et on n'attend pas la réponse (objet vide renvoyé,
+ * la fonction appelée se charge elle-même du résultat). `patientId` n'est plus utilisé (le patient est désormais
+ * redéterminé par les tool calls, @see offscreenBridge.js resolveCurrentPatientId) mais l'option est laissée en place.
+ * La méthode switchToPatient de l'API du chat est elle aussi laissée en place, bien que non appelée ici.
+ * @returns {Promise<object>} Les champs complétés par l'IA, objet vide si rien n'a pu être complété.
+ */
+async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = null, possibleDocumentTypes = null, aiSources = {}, { externalTool = null, patientId = null } = {}) {
+    const aiExtractionEnabled = externalTool || await getOptionPromise('PdfParserAutoAIExtraction');
+    if (!aiExtractionEnabled) return {};
+
+    // Assistant IA désactivé : le client de chat n'est jamais publié, inutile d'attendre son timeout.
+    if (!await getOptionPromise('enableIAassistant')) {
+        console.warn('[pdfParserAIExtraction] Assistant IA désactivé, poursuite sans complétion IA.');
+        return {};
+    }
+
+    const fullModeEnabled = await getOptionPromise('PdfParserAutoAIFullMode');
+    const missingFields = PDF_PARSER_AI_FIELDS.filter(field => field.missing(extractedData[field.key]));
+    const fieldsToAsk = fullModeEnabled ? missingFields.concat(PDF_PARSER_AI_FULL_MODE_FIELDS) : missingFields;
+    if (fieldsToAsk.length === 0) return {};
+
+    const waitTimeout = fullModeEnabled ? PDF_PARSER_AI_QUICK_TIMEOUT_MS : PDF_PARSER_AI_TIMEOUT_MS;
+    const chatApi = await Promise.race([
+        whenChatApiReady(),
+        new Promise(resolve => setTimeout(() => resolve(null), waitTimeout))
+    ]);
+    if (!chatApi) {
+        const msg = fullModeEnabled
+            ? '[pdfParserAIExtraction] Mode complet activé mais client de chat IA indisponible : arrêt rapide de la complétion IA.'
+            : '[pdfParserAIExtraction] Client de chat IA indisponible (désactivé ou non chargé), poursuite sans complétion IA.';
+        console.warn(msg);
+        // En mode complet, échouer rapidement en rejetant pour que l'appelant puisse gérer l'échec
+        // explicitement (par ex. annuler la procédure ou avertir l'utilisateur).
+        if (fullModeEnabled) throw new Error('Client IA indisponible en mode complet');
+        return {};
+    }
+
+    // Arrête d'abord toute réflexion/génération en cours pour ce patient (ex: PDF précédent encore
+    // en attente de tool call) avant de repartir d'une conversation vierge : sans ça, l'ancien appel
+    // pouvait rester bloqué indéfiniment (son renseignerDocument n'arrivant jamais après le reset).
+    chatApi.stop();
+
+    // Plus de bascule de conversation : le patient est redéterminé au moment où un outil en a
+    // besoin (@see offscreenBridge.js resolveCurrentPatientId).
+    // Repart d'une conversation vierge à chaque PDF : sans cela, l'historique (et les pièces
+    // jointes) des documents précédents restait dans le contexte envoyé au modèle.
+    chatApi.resetConversation();
+
+    const basePrompt = await getOptionPromise('PdfParserAutoAIExtractionPrompt');
+    const fieldsDescription = fieldsToAsk.map(field => `- "${field.key}" : ${field.description}`).join('\n');
+    const categorizationContext = (fullModeEnabled && possibleDocumentTypes?.length)
+        ? `\n\nValeurs autorisées pour "documentType" : ${possibleDocumentTypes.join(', ')}.`
+        : '';
+    const toolName = externalTool?.name || 'renseignerDocument';
+    const extraInstructions = externalTool?.extraInstructions ? `\n\n${externalTool.extraInstructions}` : '';
+    const instructions = `${basePrompt}${categorizationContext}${extraInstructions}\n\nPour répondre, appelle OBLIGATOIREMENT la fonction ${toolName}. Les dates DOIVENT être au format JJ/MM/AAAA. Voici les champs à compléter :\n${fieldsDescription}`;
+
+    // Pages sans texte lisible (PDF scanné, police non standard...) : elles partent en images avec les
+    // pages lisibles en texte (@see resolvePdfAttachment), pour laisser le modèle les analyser lui-même.
+    const { messageBody = null } = aiSources;
+    let resolvedPdf = null;
+    if (urlPDF) {
+        try {
+            resolvedPdf = await resolvePdfAttachment(urlPDF);
+        } catch (error) {
+            console.warn('[pdfParserAIExtraction] Lecture page par page du PDF impossible, envoi du texte extrait seul :', error);
+        }
+    }
+    let sendToChatApi;
+    if (resolvedPdf?.images.length > 0) {
+        const bodyContext = messageBody
+            ? `\n\n--- Corps du message accompagnant le PDF ---\n${messageBody}\n--- Fin du corps du message ---`
+            : '';
+        const attachments = pdfAttachmentsFromResolved(resolvedPdf, 'document.pdf');
+        sendToChatApi = () => chatApi.lancerChaine('completerDocument', {}, instructions + bodyContext, attachments);
+    } else {
+        const prompt = `${instructions}\n\n--- Texte du document ---\n${fullText}\n--- Fin du texte du document ---`;
+        sendToChatApi = () => chatApi.lancerChaine('completerDocument', {}, prompt);
+    }
+
+    console.log('[pdfParserAIExtraction] Champs manquants, tentative de complétion IA :', fieldsToAsk.map(f => f.key));
+
+    if (externalTool) {
+        sendToChatApi();
+        return {};
+    }
+
+    let parsedFields;
+    try {
+        parsedFields = await new Promise((resolve, reject) => {
+            pendingPdfParserResolve = resolve;
+            // Le timeout court (mode complet) ne sert qu'à vérifier la disponibilité du client plus
+            // haut : l'attente de la réponse du modèle doit toujours utiliser le délai complet.
+            setTimeout(() => {
+                if (pendingPdfParserResolve !== resolve) return; // déjà résolu entre-temps
+                pendingPdfParserResolve = null;
+                reject(new Error("Délai dépassé en attendant l'appel de renseignerDocument"));
+            }, PDF_PARSER_AI_TIMEOUT_MS);
+            sendToChatApi();
+        });
+    } catch (error) {
+        console.warn('[pdfParserAIExtraction] Échec de la complétion IA, poursuite sans ces champs :', error.message || error);
+        return {};
+    }
+
+    const completedFields = {};
+    for (const field of fieldsToAsk) {
+        const value = parsedFields?.[field.key];
+        if (value === undefined || value === null || value === '') continue;
+        if (field.key === 'nameMatches') {
+            completedFields[field.key] = [value].flat();
+        } else if (field.key === 'documentCommentaire') {
+            // Marque le commentaire comme généré par l'IA, pour distinction visuelle dans le formulaire
+            completedFields[field.key] = `[IA] ${value}`;
+        } else {
+            completedFields[field.key] = value;
+        }
+    }
+
+    console.log('[pdfParserAIExtraction] Champs complétés par l\'IA :', completedFields);
+    return completedFields;
+}
+

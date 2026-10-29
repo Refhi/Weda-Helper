@@ -867,7 +867,6 @@ addTweak('*', 'WarpButtons', async function () {
         '#WHButtonValidAndDelete',
         '#ButtonValidFileStream',
         '#ContentPlaceHolder1_PatientsGrid_ButtonHistoriqueResultat_0', // Pour les biologies
-        '.btnImport.importPatient'
     ];
 
     selectors.forEach(selector => {
