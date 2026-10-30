@@ -1098,6 +1098,41 @@ var advancedDefaultSettings = [
                     "longDescription": "La liste des classifications réellement disponibles dans Weda est transmise à l'IA pour qu'elle choisisse parmi celles-ci. Voir aussi les options 'Catégorie de classement' et 'Règles de classification : destination' pour n'activer l'IA que sur l'une de ces deux thématiques.",
                     "default": false
                 }, {
+                    "name": "PdfParserAIDesc_documentDate",
+                    "type": TYPE_LARGETEXT,
+                    "description": "Consigne IA pour documentDate (date du document)..",
+                    "default": "Date du document, au format JJ/MM/AAAA"
+                }, {
+                    "name": "PdfParserAIDesc_dateOfBirth",
+                    "type": TYPE_LARGETEXT,
+                    "description": "Consigne IA pour dateOfBirth (date de naissance)..",
+                    "default": "Date de naissance du patient, au format JJ/MM/AAAA"
+                }, {
+                    "name": "PdfParserAIDesc_nameMatches",
+                    "type": TYPE_LARGETEXT,
+                    "description": "Consigne IA pour nameMatches (nom du patient)..",
+                    "default": "Nom complet (nom et prénom) du patient"
+                }, {
+                    "name": "PdfParserAIDesc_documentCommentaire",
+                    "type": TYPE_LARGETEXT,
+                    "description": "Consigne IA pour documentCommentaire (commentaire)..",
+                    "default": "Bref commentaire (1 à 2 phrases) résumant le contenu du document"
+                }, {
+                    "name": "PdfParserAIDesc_documentTitle",
+                    "type": TYPE_LARGETEXT,
+                    "description": "Consigne IA pour documentTitle (titre, mode complet)..",
+                    "default": "Titre complet du document, tel qu'il doit apparaître dans le dossier patient"
+                }, {
+                    "name": "PdfParserAIDesc_destinationClass",
+                    "type": TYPE_LARGETEXT,
+                    "description": "Consigne IA pour destinationClass (destination '1', '2' ou '3', mode complet)..",
+                    "default": "Destination du classement : '1' pour Consultation, '2' pour Résultats d'examens, '3' pour Courrier"
+                }, {
+                    "name": "PdfParserAIDesc_documentType",
+                    "type": TYPE_LARGETEXT,
+                    "description": "Consigne IA pour documentType (classification, mode complet)..",
+                    "default": "Classification du document, parmi les valeurs listées ci-dessous le cas échéant"
+                }, {
                     "name": "verifierEtMettreAJourAntecedents",
                     "type": TYPE_BOOL,
                     "description": "Après avoir renseigné un document, demande à l'IA de vérifier et mettre à jour les antécédents du patient.",

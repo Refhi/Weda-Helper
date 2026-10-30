@@ -4,6 +4,11 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [3.4]
+## Ajouts :
+- [#728](https://github.com/Refhi/Weda-Helper/issues/728) - le prompt pour l’import PDF via IA est désormais personnalisable dans les options.
+
+
 # [3.3] - IA, IA, et encore IA !
 Cette version est surtout orientée IA et apporte d’autres petites améliorations et bug fixes.
 

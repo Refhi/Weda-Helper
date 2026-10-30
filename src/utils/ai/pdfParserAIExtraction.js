@@ -11,10 +11,10 @@
 // Champs du PDF Parser éligibles à un complément IA : clé dans extractedData, description utilisée
 // dans le prompt, et test de "valeur manquante" déclenchant la tentative.
 const PDF_PARSER_AI_FIELDS = [
-    { key: 'documentDate', description: "Date du document, au format JJ/MM/AAAA", missing: v => !v },
-    { key: 'dateOfBirth', description: "Date de naissance du patient, au format JJ/MM/AAAA", missing: v => !v },
-    { key: 'nameMatches', description: "Nom complet (nom et prénom) du patient", missing: v => !v || v.length === 0 },
-    { key: 'documentCommentaire', description: "Bref commentaire (1 à 2 phrases) résumant le contenu du document", missing: v => !v }
+    { key: 'documentDate', missing: v => !v },
+    { key: 'dateOfBirth', missing: v => !v },
+    { key: 'nameMatches', missing: v => !v || v.length === 0 },
+    { key: 'documentCommentaire', missing: v => !v }
 ];
 
 // Champs supplémentaires confiés à l'IA lorsque l'option PdfParserAutoAIFullMode est activée : dans ce
@@ -22,9 +22,9 @@ const PDF_PARSER_AI_FIELDS = [
 // mots-clés/gabarit de titre), avec pour seule aide la liste des classifications réellement
 // disponibles dans Weda (@see features/pdfParser.js initDocumentTypes, passée en paramètre par l'appelant).
 const PDF_PARSER_AI_FULL_MODE_FIELDS = [
-    { key: 'documentTitle', description: "Titre complet du document, tel qu'il doit apparaître dans le dossier patient" },
-    { key: 'destinationClass', description: "Destination du classement : '1' pour Consultation, '2' pour Résultats d'examens, '3' pour Courrier" },
-    { key: 'documentType', description: "Classification du document, parmi les valeurs listées ci-dessous le cas échéant" }
+    { key: 'documentTitle' },
+    { key: 'destinationClass' },
+    { key: 'documentType' }
 ];
 
 // Délai maximum d'attente de l'appel de fonction renseignerDocument avant d'abandonner (le
@@ -128,7 +128,8 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
     chatApi.resetConversation();
 
     const basePrompt = await getOptionPromise('PdfParserAutoAIExtractionPrompt');
-    const fieldsDescription = fieldsToAsk.map(field => `- "${field.key}" : ${field.description}`).join('\n');
+    const fieldDescriptions = await getOptionPromise(fieldsToAsk.map(field => `PdfParserAIDesc_${field.key}`));
+    const fieldsDescription = fieldsToAsk.map((field, i) => `- "${field.key}" : ${fieldDescriptions[i]}`).join('\n');
     const categorizationContext = (fullModeEnabled && possibleDocumentTypes?.length)
         ? `\n\nValeurs autorisées pour "documentType" : ${possibleDocumentTypes.join(', ')}.`
         : '';
