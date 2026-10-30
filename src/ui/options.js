@@ -959,6 +959,25 @@ function collectCurrentValues(defaultSettings, defaultShortcuts) {
   });
 }
 
+// Retire de valuesToSave (en place) les options égales à leur valeur par défaut et renvoie leurs noms.
+// Utilisé à l'enregistrement et à l'export : une valeur par défaut n'a pas à être figée, l'utilisateur
+// suit ainsi les évolutions de la valeur par défaut du développeur.
+function removeDefaultValues(valuesToSave, defaultSettings) {
+  const removedKeys = [];
+  for (const key of Object.keys(valuesToSave)) {
+    if (key === 'shortcuts' || !(key in defaultSettings)) continue;
+    const def = defaultSettings[key];
+    const same = ['string', 'boolean', 'number'].includes(typeof def)
+      ? valuesToSave[key] === def
+      : valuesToSave[key] === JSON.stringify(def);
+    if (same) {
+      removedKeys.push(key);
+      delete valuesToSave[key];
+    }
+  }
+  return removedKeys;
+}
+
 // 3 - Enregistrement des valeurs dans le stockage local lors du click sur id=save
 chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (result) {
   var defaultSettings = result.defaultSettings;
@@ -996,6 +1015,10 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
             return;
           }
         }
+        // Une valeur identique à la valeur par défaut n'est pas stockée : l'utilisateur suit ainsi
+        // automatiquement les évolutions de la valeur par défaut du développeur.
+        const keysToRemove = removeDefaultValues(valuesToSave, defaultSettings);
+        chrome.storage.local.remove(keysToRemove);
         chrome.storage.local.set(valuesToSave, function () {
           console.log('✅ Sauvegardé avec succès');
           alert('✅ Les options ont été sauvegardées avec succès');
@@ -1115,6 +1138,7 @@ copySettingsButton.addEventListener('click', function () {
   chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (result) {
     collectCurrentValues(result.defaultSettings, result.defaultShortcuts)
       .then(valuesToSave => {
+        removeDefaultValues(valuesToSave, result.defaultSettings);
         const settingsStr = JSON.stringify(valuesToSave, null, 2);
         
         // Copie dans le presse-papier
