@@ -373,8 +373,8 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     await selectDocumentTypeES(extractedData.documentType);
     // 4. Mettre le commentaire
     await setCommentaireIfNeededES(extractedData.documentCommentaire);
-    // Marquage des données comme déjà importées
-    markDataAsImported(hashId, extractedData);
+    // Pas de marquage "déjà importé" : dans la messagerie sécurisée, le formulaire
+    // n'est pas conservé par Weda si l'on change de patient entre deux.
 
     // ===========================================
     // ÉTAPE 4 : Focus sur l'élément de validation
