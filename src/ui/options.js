@@ -218,7 +218,7 @@ function createInput(option) { // gestion des différents types d'input
         input.classList.add('large-text-input');
         input.value = optionValue;
         input.style.width = '100%';
-        input.style.height = '40px'; // Réduit par défaut, déployé au focus (comme json)
+          input.style.height = '40px'; // Réduit par défaut, déployé au focus (comme json)
         input.style.resize = 'vertical';
         input.style.fontFamily = 'inherit';
         input.style.fontSize = '14px';
@@ -959,6 +959,20 @@ function collectCurrentValues(defaultSettings, defaultShortcuts) {
   });
 }
 
+// Normalise une valeur pour comparaison : un texte JSON valide est re-sérialisé (indépendamment de la
+// mise en forme), un objet est sérialisé ; les autres valeurs sont comparées telles quelles.
+function normalizeForCompare(value) {
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return typeof parsed === 'object' && parsed !== null ? JSON.stringify(parsed) : value;
+    } catch (e) {
+      return value;
+    }
+  }
+  return typeof value === 'object' && value !== null ? JSON.stringify(value) : value;
+}
+
 // Retire de valuesToSave (en place) les options égales à leur valeur par défaut et renvoie leurs noms.
 // Utilisé à l'enregistrement et à l'export : une valeur par défaut n'a pas à être figée, l'utilisateur
 // suit ainsi les évolutions de la valeur par défaut du développeur.
@@ -967,9 +981,7 @@ function removeDefaultValues(valuesToSave, defaultSettings) {
   for (const key of Object.keys(valuesToSave)) {
     if (key === 'shortcuts' || !(key in defaultSettings)) continue;
     const def = defaultSettings[key];
-    const same = ['string', 'boolean', 'number'].includes(typeof def)
-      ? valuesToSave[key] === def
-      : valuesToSave[key] === JSON.stringify(def);
+    const same = normalizeForCompare(valuesToSave[key]) === normalizeForCompare(def);
     if (same) {
       removedKeys.push(key);
       delete valuesToSave[key];

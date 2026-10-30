@@ -1,7 +1,7 @@
 // Définition de substitutions NOEMIE par défaut
 
 const NoemieSubstitutionTableDefaut = JSON.stringify([
-[["Toulouse",["CPAM TOULOUSE","1"]],
+["Toulouse",["CPAM TOULOUSE","1"]],
 ["Bordeaux",["CPAM BORDEAUX","1"]],
 ["Albi",["CPAM ALBI","1"]],
 ["Mont de Marsan",["CPAM MONT DE MARSAN","1"]],
@@ -37,5 +37,5 @@ const NoemieSubstitutionTableDefaut = JSON.stringify([
 ["Organisme 01908000",["CPRPF RG","3"]],
 ["Organisme CB1010000",["SWISSLIFE PREVOYANCE ET SANT","1"]],
 ["Organisme NR0010000",["MNT SANTE PRESTATION RC BRED","1"]],
-["Organisme 00758091450010",["KORELIO PRESTATIONS","1"]]]
+["Organisme 00758091450010",["KORELIO PRESTATIONS","1"]]
 ]);
