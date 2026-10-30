@@ -218,11 +218,17 @@ function createInput(option) { // gestion des différents types d'input
         input.classList.add('large-text-input');
         input.value = optionValue;
         input.style.width = '100%';
-        input.style.minHeight = '150px';
+        input.style.height = '40px'; // Réduit par défaut, déployé au focus (comme json)
         input.style.resize = 'vertical';
         input.style.fontFamily = 'inherit';
         input.style.fontSize = '14px';
         input.style.boxSizing = 'border-box';
+        input.addEventListener('focus', function () {
+          this.style.height = '300px';
+        });
+        input.addEventListener('blur', function () {
+          this.style.height = '40px';
+        });
         break;
       case 'radio':
         input.classList.add('radio-group');
