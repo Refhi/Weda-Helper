@@ -102,3 +102,21 @@ addTweak('/FolderMedical/WedaEchanges/', 'autoClickUnPatient', function () {
     });
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
 });
+
+
+/**
+ * Parcours successivement les messages de la messagerie sécurisée : TODO
+ *
+ */
+
+// Liste les messages à parcourir dans la messagerie sécurisée
+// scénarios possibles :
+// - les messages dont la case a été cochée (déclenchement manuel sur bouton à rajouter)
+// - tous les messages non lus (déclenchement automatique, peut-être toutes les X minutes ?)
+
+
+
+// Boucle principale
+// Clic sur le message pertinent
+// Attend que l'analyse auto (simple +/- IA) soit terminée
+// pour savoir si analyse terminée : vérification d'un indicateur à créer (visuel ? simple élément DOM ?)
