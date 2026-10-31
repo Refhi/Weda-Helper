@@ -364,6 +364,11 @@ var advancedDefaultSettings = [
                 "type": TYPE_BOOL,
                 "description": "Permuter le titre du corps du message et de la pièce jointe dans la messagerie sécurisée.",
                 "default": false
+            }, {
+                "name": "autoClickUnPatient",
+                "type": TYPE_BOOL,
+                "description": "Clique automatiquement sur 'Un patient' dès qu'un message est sélectionné dans la messagerie sécurisée.",
+                "default": true
             }]
         }, {
             "name": "Importation",

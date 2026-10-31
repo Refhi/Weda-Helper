@@ -6,7 +6,11 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 
 # [3.4]
 ## Ajouts :
-- [#728](https://github.com/Refhi/Weda-Helper/issues/728) - le prompt pour l’import PDF via IA est désormais personnalisable dans les options.
+- [#728](https://github.com/Refhi/Weda-Helper/issues/728) - les prompts pour l’import PDF via IA sont désormais personnalisables dans les options.
+
+## Messagerie sécurisée :
+- [#723](https://github.com/Refhi/Weda-Helper/issues/723) - Les données extraites dans la messagerie sécurisée sont désormais enregistrées même si le message n'est pas importé (jusqu'à la fermeture de l'onglet). Cela évite de faire les analyses plusieurs fois si on parcours les messages avant import.
+- [#723](https://github.com/Refhi/Weda-Helper/issues/723) - Le bouton "Un patient" est automatiquement cliqué dès qu'un message est sélectionné dans la messagerie sécurisée. (désactivable dans les options)
 
 
 # [3.3] - IA, IA, et encore IA !
