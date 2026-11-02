@@ -8,7 +8,8 @@
     "offscreen"
   ],
   "optional_permissions": [
-    "tabs"
+    "tabs",
+    "scripting"
   ],
   "host_permissions": [
     "http://localhost/"

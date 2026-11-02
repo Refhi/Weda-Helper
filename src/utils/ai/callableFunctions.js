@@ -265,12 +265,26 @@ function lireResultatsHprim() {
  *   dans les iframes de la page.
  * - HprimForm.aspx (résultat de biologie importé) : tableau structuré des valeurs ou, à défaut,
  *   texte brut du compte-rendu.
+ * - Sinon : transcription de la session Heidi ouverte (accès facultatif à activer dans les options).
+ *   source="heidi" permet aussi de la lire depuis une page PDF ou Hprim.
  */
-async function pageContext() {
+async function pageContext({ source = "auto", tabId } = {}) {
     const url = window.location.href;
     console.log(`[pageContext] Appelée, url actuelle :`, url);
-    if (url.includes('/FolderMedical/PopUpViewBinaryForm.aspx')) return await lirePdfDepuisIframesPage();
-    if (url.includes('/FolderMedical/HprimForm.aspx')) return lireResultatsHprim();
+    if (!["auto", "weda", "heidi"].includes(source)) return { error: "Source de contexte inconnue." };
+    if (source !== "heidi") {
+        if (url.includes('/FolderMedical/PopUpViewBinaryForm.aspx')) return await lirePdfDepuisIframesPage();
+        if (url.includes('/FolderMedical/HprimForm.aspx')) return lireResultatsHprim();
+    }
+    if (source !== "weda") {
+        try {
+            const result = await chrome.runtime.sendMessage({ action: "heidiPageContext", tabId });
+            if (window.location.href !== url) return { error: "La page Weda a changé pendant la lecture. Réessayez." };
+            return result || { error: "Aucune réponse lors de la lecture de Heidi." };
+        } catch (e) {
+            return { error: "Impossible de joindre la passerelle Heidi. Rechargez l'extension et la page Weda." };
+        }
+    }
     return { error: "Aucune information contextuelle disponible pour la page actuelle." };
 }
 
@@ -431,15 +445,25 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "pageContext",
-                description: "Récupère des informations contextuelles propres à la page Weda actuellement affichée, en dehors du dossier patient classique consultable via recoverPatientData. Le contenu renvoyé dépend de l'URL en cours : sur une page de visualisation manuelle d'une pièce jointe (PopUpViewBinaryForm.aspx), lit le(s) pdf trouvé(s) dans les iframes de la page et renvoie {url, pdfText} (ou un tableau si plusieurs) ; sur une page de résultat de biologie importé (HprimForm.aspx), renvoie soit {resultats: [{libelle, valeur, unite, min, max}, ...]} si un tableau structuré est disponible, soit {compteRendu} (texte brut) sinon. Renvoie {error} si l'URL actuelle n'est pas prise en charge.",
+                description: "Lit le contexte utile à la consultation, hors dossier patient (recoverPatientData). En mode auto : sur PopUpViewBinaryForm.aspx, lit les PDF des iframes et renvoie {url, pdfText} (ou plusieurs résultats) ; sur HprimForm.aspx, renvoie {resultats: [{libelle, valeur, unite, min, max}]} ou {compteRendu} ; sinon, lit la session Heidi ouverte. Utiliser source='heidi' pour obtenir la transcription même depuis un PDF ou une biologie. Heidi renvoie {source, sessionId, url, transcript, note, avertissement} : transcription brute et note si elle était affichée. L'accès Heidi doit être activé dans les options. Utiliser cet outil pour les demandes fondées sur ce qui a été dit en consultation (courrier, kiné, radiographie, etc.), puis recoverPatientData si le dossier est nécessaire. La concordance session Heidi/patient Weda n'est pas vérifiée automatiquement : faire vérifier toute ambiguïté. Si plusieurs onglets sont ouverts, demander à l'utilisateur lequel utiliser avant de rappeler avec tabId. Une note ne remplace pas une transcription absente ; les champs *Truncated signalent un contenu incomplet. Renvoie {error} en cas d'indisponibilité.",
                 parameters: {
                     type: "object",
-                    properties: {},
+                    properties: {
+                        source: {
+                            type: "string",
+                            enum: ["auto", "weda", "heidi"],
+                            description: "auto (défaut) : contexte Weda si pris en charge, sinon session Heidi ouverte. heidi : lire Heidi même depuis un PDF ou une biologie Weda. weda : contexte de la page Weda uniquement."
+                        },
+                        tabId: {
+                            type: "integer",
+                            description: "Identifiant d'onglet Heidi renvoyé lors d'un appel précédent. S'il y a plusieurs onglets, demander à l'utilisateur lequel utiliser ; ne jamais choisir au hasard."
+                        }
+                    },
                     required: []
                 }
             }
         },
-        execute: () => pageContext()
+        execute: (args = {}) => pageContext(args)
     },
     rechercherCim10: {
         definition: {

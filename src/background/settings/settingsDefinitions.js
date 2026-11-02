@@ -907,6 +907,10 @@ var advancedDefaultSettings = [
         "description": "Tout ce qui concerne l'assistant IA local",
         "type": TYPE_TITLE,
         "options": [{
+            "name": "heidiContextAccess",
+            "type": TYPE_HTML,
+            "description": "<strong>Accès à Heidi</strong> — Autoriser l'assistant à lire la transcription de la session Heidi ouverte lors d'un appel à pageContext. Le contenu rejoint la conversation avec le serveur IA configuré. Désactivé par défaut.<br><button type='button' id='heidi-context-enable'>Activer l'accès à Heidi</button> <button type='button' id='heidi-context-disable'>Désactiver l'accès à Heidi</button> <span id='heidi-context-status' role='status'></span>"
+        }, {
             "name": "ignoreAIGeneratedData",
             "type": TYPE_BOOL,
             "description": "Ignorer les données générées par IA lors de la lecture du dossier patient.",

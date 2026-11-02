@@ -712,6 +712,53 @@ function generateOptionsHTML(settings) {
     const optionElement = createOptionElement(option);
     container.appendChild(optionElement);
   });
+  initHeidiContextPermissions();
+}
+
+/** Les permissions sont demandées directement depuis un clic, jamais depuis un appel de l'IA. */
+function initHeidiContextPermissions() {
+  const enable = document.getElementById("heidi-context-enable");
+  const disable = document.getElementById("heidi-context-disable");
+  const status = document.getElementById("heidi-context-status");
+  if (!enable || !disable || !status) return;
+  const origins = ["https://scribe.heidihealth.com/*"];
+  const permissions = { permissions: ["scripting"], origins };
+  async function refresh() {
+    const { heidiContextEnabled } = await chrome.storage.local.get("heidiContextEnabled");
+    const granted = await chrome.permissions.contains(permissions);
+    status.textContent = heidiContextEnabled && granted ? "Accès activé." : "Accès désactivé.";
+  }
+  enable.addEventListener("click", async () => {
+    enable.disabled = disable.disabled = true;
+    try {
+      // Garder cet appel avant tout await : Chrome exige un geste utilisateur.
+      const granted = await chrome.permissions.request(permissions);
+      if (granted) {
+        await chrome.storage.local.set({ heidiContextEnabled: true });
+        await refresh();
+      } else {
+        status.textContent = "Autorisation refusée ; l'accès à Heidi reste désactivé.";
+      }
+    } catch (error) {
+      status.textContent = "Impossible d'activer l'accès à Heidi. Réessayez.";
+    } finally {
+      enable.disabled = disable.disabled = false;
+    }
+  });
+  disable.addEventListener("click", async () => {
+    enable.disabled = disable.disabled = true;
+    try {
+      await chrome.storage.local.set({ heidiContextEnabled: false });
+      // Ne pas retirer scripting : cette permission peut servir à d'autres fonctionnalités.
+      await chrome.permissions.remove({ origins });
+      await refresh();
+    } catch (error) {
+      status.textContent = "Vérifiez les autorisations de l'extension pour retirer l'accès à Heidi.";
+    } finally {
+      enable.disabled = disable.disabled = false;
+    }
+  });
+  refresh().catch(() => { status.textContent = "Impossible de vérifier l'autorisation Heidi."; });
 }
 
 
