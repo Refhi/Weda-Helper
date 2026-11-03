@@ -97,9 +97,8 @@ async function readHeidiPageContext({ tabId } = {}) {
     if (tabId !== undefined && (!Number.isInteger(tabId) || tabId < 0)) {
         return { error: "tabId Heidi invalide." };
     }
-    const { heidiContextEnabled } = await chrome.storage.local.get("heidiContextEnabled");
     const permissions = { permissions: ["scripting"], origins: [HEIDI_CONTEXT_ORIGIN] };
-    if (!heidiContextEnabled || !await chrome.permissions.contains(permissions)) {
+    if (!await chrome.permissions.contains(permissions)) {
         return { error: "Activez « Accès à Heidi » dans les options de Weda-Helper > Assistant IA, puis autorisez l'accès à Heidi." };
     }
     const tabs = await chrome.tabs.query({ url: [HEIDI_CONTEXT_ORIGIN] });

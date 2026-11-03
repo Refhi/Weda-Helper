@@ -908,8 +908,9 @@ var advancedDefaultSettings = [
         "type": TYPE_TITLE,
         "options": [{
             "name": "heidiContextAccess",
-            "type": TYPE_HTML,
-            "description": "<strong>Accès à Heidi</strong> — Autoriser l'assistant à lire la transcription de la session Heidi ouverte lors d'un appel à pageContext. Le contenu rejoint la conversation avec le serveur IA configuré. Désactivé par défaut.<br><button type='button' id='heidi-context-enable'>Activer l'accès à Heidi</button> <button type='button' id='heidi-context-disable'>Désactiver l'accès à Heidi</button> <span id='heidi-context-status' role='status'></span>"
+            "type": TYPE_BOOL,
+            "description": "Accès à Heidi pour l'assistant IA local",
+            "default": false
         }, {
             "name": "ignoreAIGeneratedData",
             "type": TYPE_BOOL,
