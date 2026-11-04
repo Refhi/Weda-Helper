@@ -265,27 +265,29 @@ function lireResultatsHprim() {
  *   dans les iframes de la page.
  * - HprimForm.aspx (résultat de biologie importé) : tableau structuré des valeurs ou, à défaut,
  *   texte brut du compte-rendu.
- * - Sinon : transcription de la session Heidi ouverte (accès facultatif à activer dans les options).
- *   source="heidi" permet aussi de la lire depuis une page PDF ou Hprim.
  */
-async function pageContext({ source = "auto", tabId } = {}) {
+async function pageContext() {
     const url = window.location.href;
     console.log(`[pageContext] Appelée, url actuelle :`, url);
-    if (!["auto", "weda", "heidi"].includes(source)) return { error: "Source de contexte inconnue." };
-    if (source !== "heidi") {
-        if (url.includes('/FolderMedical/PopUpViewBinaryForm.aspx')) return await lirePdfDepuisIframesPage();
-        if (url.includes('/FolderMedical/HprimForm.aspx')) return lireResultatsHprim();
-    }
-    if (source !== "weda") {
-        try {
-            const result = await chrome.runtime.sendMessage({ action: "heidiPageContext", tabId });
-            if (window.location.href !== url) return { error: "La page Weda a changé pendant la lecture. Réessayez." };
-            return result || { error: "Aucune réponse lors de la lecture de Heidi." };
-        } catch (e) {
-            return { error: "Impossible de joindre la passerelle Heidi. Rechargez l'extension et la page Weda." };
-        }
-    }
+    if (url.includes('/FolderMedical/PopUpViewBinaryForm.aspx')) return await lirePdfDepuisIframesPage();
+    if (url.includes('/FolderMedical/HprimForm.aspx')) return lireResultatsHprim();
     return { error: "Aucune information contextuelle disponible pour la page actuelle." };
+}
+
+/**
+ * Fonction appelable par le modèle pour lire la transcription de la session Heidi ouverte.
+ * Outil exposé uniquement si l'option heidiContextAccess est activée (@see availableFunctions.heidiContext).
+ */
+async function heidiContext({ tabId } = {}) {
+    const url = window.location.href;
+    console.log(`[heidiContext] Appelée, url actuelle :`, url);
+    try {
+        const result = await chrome.runtime.sendMessage({ action: "heidiPageContext", tabId });
+        if (window.location.href !== url) return { error: "La page Weda a changé pendant la lecture. Réessayez." };
+        return result || { error: "Aucune réponse lors de la lecture de Heidi." };
+    } catch (e) {
+        return { error: "Impossible de joindre la passerelle Heidi. Rechargez l'extension et la page Weda." };
+    }
 }
 
 /**
@@ -445,15 +447,23 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "pageContext",
-                description: "Lit le contexte utile à la consultation, hors dossier patient (recoverPatientData). En mode auto : sur PopUpViewBinaryForm.aspx, lit les PDF des iframes et renvoie {url, pdfText} (ou plusieurs résultats) ; sur HprimForm.aspx, renvoie {resultats: [{libelle, valeur, unite, min, max}]} ou {compteRendu} ; sinon, lit la session Heidi ouverte. Utiliser source='heidi' pour obtenir la transcription même depuis un PDF ou une biologie. Heidi renvoie {source, sessionId, url, transcript, note, avertissement} : transcription brute et note si elle était affichée. L'accès Heidi doit être activé dans les options. Utiliser cet outil pour les demandes fondées sur ce qui a été dit en consultation (courrier, kiné, radiographie, etc.), puis recoverPatientData si le dossier est nécessaire. La concordance session Heidi/patient Weda n'est pas vérifiée automatiquement : faire vérifier toute ambiguïté. Si plusieurs onglets sont ouverts, demander à l'utilisateur lequel utiliser avant de rappeler avec tabId. Une note ne remplace pas une transcription absente ; les champs *Truncated signalent un contenu incomplet. Renvoie {error} en cas d'indisponibilité.",
+                description: "Lit le contenu de la page Weda actuellement affichée, hors dossier patient (recoverPatientData). Sur PopUpViewBinaryForm.aspx, lit les PDF des iframes et renvoie {url, pdfText} (ou plusieurs résultats) ; sur HprimForm.aspx, renvoie {resultats: [{libelle, valeur, unite, min, max}]} ou {compteRendu}. Renvoie {error} si la page n'est pas prise en charge.",
+                parameters: { type: "object", properties: {}, required: [] }
+            }
+        },
+        execute: () => pageContext()
+    },
+    // `condition` : l'outil n'est proposé au modèle que si elle renvoie true (@see listerDefinitionsOutils).
+    heidiContext: {
+        condition: async () => !!(await getOptionPromise('heidiContextAccess')),
+        definition: {
+            type: "function",
+            function: {
+                name: "heidiContext",
+                description: "Lit la transcription de la session Heidi ouverte et renvoie {source, sessionId, url, transcript, note, avertissement} : transcription brute et note si elle était affichée. Utiliser cet outil pour les demandes fondées sur ce qui a été dit en consultation (courrier, kiné, radiographie, etc.), puis recoverPatientData si le dossier est nécessaire. La concordance session Heidi/patient Weda n'est pas vérifiée automatiquement : faire vérifier toute ambiguïté. Si plusieurs onglets sont ouverts, demander à l'utilisateur lequel utiliser avant de rappeler avec tabId. Une note ne remplace pas une transcription absente ; les champs *Truncated signalent un contenu incomplet. Renvoie {error} en cas d'indisponibilité.",
                 parameters: {
                     type: "object",
                     properties: {
-                        source: {
-                            type: "string",
-                            enum: ["auto", "weda", "heidi"],
-                            description: "auto (défaut) : contexte Weda si pris en charge, sinon session Heidi ouverte. heidi : lire Heidi même depuis un PDF ou une biologie Weda. weda : contexte de la page Weda uniquement."
-                        },
                         tabId: {
                             type: "integer",
                             description: "Identifiant d'onglet Heidi renvoyé lors d'un appel précédent. S'il y a plusieurs onglets, demander à l'utilisateur lequel utiliser ; ne jamais choisir au hasard."
@@ -463,7 +473,7 @@ const availableFunctions = {
                 }
             }
         },
-        execute: (args = {}) => pageContext(args)
+        execute: (args = {}) => heidiContext(args)
     },
     rechercherCim10: {
         definition: {

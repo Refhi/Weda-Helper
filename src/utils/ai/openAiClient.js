@@ -383,7 +383,7 @@ async function openAiClient({
     // Gestion des tools (function calling)
     // seulement si option activée et useTools = true
     const effectiveUseTools = useTools && (await getAiParams()).toolCalling;
-    const resolvedTools = tools || (effectiveUseTools ? listerDefinitionsOutils() : null);
+    const resolvedTools = tools || (effectiveUseTools ? await listerDefinitionsOutils() : null);
 
     // Une chaîne d'outils en cours (@see toolChains.js) restreint les outils de cette requête uniquement.
     const politiqueChaine = politiqueEtape(_chaine);

@@ -111,7 +111,7 @@ async function readHeidiPageContext({ tabId } = {}) {
         if (!candidates.length) return { error: "Aucun onglet Heidi ouvert. Ouvrez la consultation dans Heidi." };
         if (candidates.length > 1) {
             return {
-                error: "Plusieurs onglets Heidi sont ouverts. Demander à l'utilisateur lequel utiliser, puis rappeler pageContext avec source='heidi' et son tabId.",
+                error: "Plusieurs onglets Heidi sont ouverts. Demander à l'utilisateur lequel utiliser, puis rappeler heidiContext avec son tabId.",
                 tabs: candidates.map(({ id, title }) => ({ tabId: id, title: title || "Heidi" }))
             };
         }
