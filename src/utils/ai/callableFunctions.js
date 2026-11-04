@@ -275,6 +275,22 @@ async function pageContext() {
 }
 
 /**
+ * Fonction appelable par le modèle pour lire la transcription de la session Heidi ouverte.
+ * Outil exposé uniquement si l'option heidiContextAccess est activée (@see availableFunctions.heidiContext).
+ */
+async function heidiContext({ tabId } = {}) {
+    const url = window.location.href;
+    console.log(`[heidiContext] Appelée, url actuelle :`, url);
+    try {
+        const result = await chrome.runtime.sendMessage({ action: "heidiPageContext", tabId });
+        if (window.location.href !== url) return { error: "La page Weda a changé pendant la lecture. Réessayez." };
+        return result || { error: "Aucune réponse lors de la lecture de Heidi." };
+    } catch (e) {
+        return { error: "Impossible de joindre la passerelle Heidi. Rechargez l'extension et la page Weda." };
+    }
+}
+
+/**
  * Fonction appelable par le modèle pour lire le contenu (texte) d'une ou plusieurs pièces jointes
  * pdf déjà repérées via un appel précédent à recoverPatientData (champ attachment.fileId).
  * `fileId` accepte indifféremment une chaîne unique (éventuellement séparée par des virgules) ou un
@@ -431,15 +447,33 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "pageContext",
-                description: "Récupère des informations contextuelles propres à la page Weda actuellement affichée, en dehors du dossier patient classique consultable via recoverPatientData. Le contenu renvoyé dépend de l'URL en cours : sur une page de visualisation manuelle d'une pièce jointe (PopUpViewBinaryForm.aspx), lit le(s) pdf trouvé(s) dans les iframes de la page et renvoie {url, pdfText} (ou un tableau si plusieurs) ; sur une page de résultat de biologie importé (HprimForm.aspx), renvoie soit {resultats: [{libelle, valeur, unite, min, max}, ...]} si un tableau structuré est disponible, soit {compteRendu} (texte brut) sinon. Renvoie {error} si l'URL actuelle n'est pas prise en charge.",
+                description: "Lit le contenu de la page Weda actuellement affichée, hors dossier patient (recoverPatientData). Sur PopUpViewBinaryForm.aspx, lit les PDF des iframes et renvoie {url, pdfText} (ou plusieurs résultats) ; sur HprimForm.aspx, renvoie {resultats: [{libelle, valeur, unite, min, max}]} ou {compteRendu}. Renvoie {error} si la page n'est pas prise en charge.",
+                parameters: { type: "object", properties: {}, required: [] }
+            }
+        },
+        execute: () => pageContext()
+    },
+    // `condition` : l'outil n'est proposé au modèle que si elle renvoie true (@see listerDefinitionsOutils).
+    heidiContext: {
+        condition: async () => !!(await getOptionPromise('heidiContextAccess')),
+        definition: {
+            type: "function",
+            function: {
+                name: "heidiContext",
+                description: "Lit la transcription de la session Heidi ouverte et renvoie {source, sessionId, url, transcript, note, avertissement} : transcription brute et note si elle était affichée. Utiliser cet outil pour les demandes fondées sur ce qui a été dit en consultation (courrier, kiné, radiographie, etc.), puis recoverPatientData si le dossier est nécessaire. La concordance session Heidi/patient Weda n'est pas vérifiée automatiquement : faire vérifier toute ambiguïté. Si plusieurs onglets sont ouverts, demander à l'utilisateur lequel utiliser avant de rappeler avec tabId. Une note ne remplace pas une transcription absente ; les champs *Truncated signalent un contenu incomplet. Renvoie {error} en cas d'indisponibilité.",
                 parameters: {
                     type: "object",
-                    properties: {},
+                    properties: {
+                        tabId: {
+                            type: "integer",
+                            description: "Identifiant d'onglet Heidi renvoyé lors d'un appel précédent. S'il y a plusieurs onglets, demander à l'utilisateur lequel utiliser ; ne jamais choisir au hasard."
+                        }
+                    },
                     required: []
                 }
             }
         },
-        execute: () => pageContext()
+        execute: (args = {}) => heidiContext(args)
     },
     rechercherCim10: {
         definition: {

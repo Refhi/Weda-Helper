@@ -912,6 +912,11 @@ var advancedDefaultSettings = [
         "description": "Tout ce qui concerne l'assistant IA local",
         "type": TYPE_TITLE,
         "options": [{
+            "name": "heidiContextAccess",
+            "type": TYPE_BOOL,
+            "description": "Accès à Heidi pour l'assistant IA local",
+            "default": false
+        }, {
             "name": "ignoreAIGeneratedData",
             "type": TYPE_BOOL,
             "description": "Ignorer les données générées par IA lors de la lecture du dossier patient.",

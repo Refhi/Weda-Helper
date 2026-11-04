@@ -13,12 +13,14 @@
  */
 
 /**
- * Définitions envoyées par défaut au modèle : les outils du registre (hors outils `interne`, réservés aux chaînes)
+ * Définitions envoyées par défaut au modèle : les outils du registre (hors outils `interne`, réservés aux chaînes, et outils dont la `condition` n'est pas remplie)
  * et les points d'entrée des chaînes.
  */
-function listerDefinitionsOutils() {
+async function listerDefinitionsOutils() {
+    const outils = Object.values(availableFunctions).filter(f => !f.interne);
+    const actifs = await Promise.all(outils.map(async f => !f.condition || await f.condition()));
     return [
-        ...Object.values(availableFunctions).filter(f => !f.interne).map(f => f.definition),
+        ...outils.filter((_, i) => actifs[i]).map(f => f.definition),
         ...Object.values(toolChains).map(c => c.definition).filter(Boolean)
     ];
 }

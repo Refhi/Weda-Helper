@@ -135,6 +135,7 @@ if (isTestVersion) {
 chrome.storage.local.get('advancedDefaultSettings', function (data) {
   if (data.advancedDefaultSettings) {
     generateOptionsHTML(data.advancedDefaultSettings);
+    initHeidiContextPermissions(); // après la génération : la case est créée par les options
   }
 });
 
@@ -720,6 +721,25 @@ function generateOptionsHTML(settings) {
   });
 }
 
+/** Permission demandée depuis le clic sur la case, jamais depuis un appel de l'IA. */
+function initHeidiContextPermissions() {
+  const permissions = { permissions: ["scripting"], origins: ["https://scribe.heidihealth.com/*"] };
+  const checkbox = document.getElementById("heidiContextAccess");
+  if (!checkbox) return;
+  checkbox.addEventListener("change", async () => {
+    try {
+      if (checkbox.checked) {
+        // Premier appel asynchrone : Chrome exige un geste utilisateur.
+        checkbox.checked = await chrome.permissions.request(permissions);
+      } else {
+        // Ne pas retirer scripting : cette permission peut servir à d'autres fonctionnalités.
+        await chrome.permissions.remove({ origins: permissions.origins });
+      }
+    } catch (error) {
+      checkbox.checked = false;
+    }
+  });
+}
 
 // 2 - Récupérer les valeurs par défaut des raccourcis + gestion des modifications des raccourcis
 chrome.storage.local.get('defaultShortcuts', function (result) {

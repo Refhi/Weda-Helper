@@ -203,7 +203,7 @@ async function processUserMessage({ tabId, patientId, content, model, chaine }) 
         const finalContent = await openAiClient({
             messages: conversation.chatHistory,
             model: conversation.selectedModel,
-            tools: listerDefinitionsOutils(),
+            tools: await listerDefinitionsOutils(),
             chaineInitiale: chaine,
             signal: conversation.generationController.signal,
             executeToolCall: (name, args) => executeToolCallOnTab(tabId, name, args, patientId),
