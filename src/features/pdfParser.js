@@ -374,7 +374,9 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
         }
 
         if (!patientSearchSucceeded) {
-            console.warn("[pdfParser] Echanges - Impossible de trouver le patient automatiquement.");
+            console.warn("[pdfParser] Echanges - Impossible de trouver le patient automatiquement, passage au message suivant.");
+            notifyEchangesProcessingDone(hashId);
+            return;
         }
     }
 

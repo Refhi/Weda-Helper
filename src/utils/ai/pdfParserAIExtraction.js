@@ -27,9 +27,11 @@ const PDF_PARSER_AI_FULL_MODE_FIELDS = [
     { key: 'documentType' }
 ];
 
-// Délai maximum d'attente de l'appel de fonction renseignerChampsPdfParser avant d'abandonner (le
-// client de chat peut être indisponible, désactivé, ou le modèle peut ne jamais appeler la fonction).
-const PDF_PARSER_AI_TIMEOUT_MS = 60000;
+// Délai maximum d'attente d'une réponse de l'IA (complétion des champs via renseignerChampsPdfParser, ou vérification
+// des antécédents via renseignerAntecedentsDiscordances) avant d'abandonner : le client de chat peut être
+// indisponible, désactivé, ou le modèle peut ne jamais appeler la fonction. Le garde-fou par message de la file
+// des échanges (wedaEchanges.js) doit rester supérieur à la somme de deux de ces délais.
+const PDF_PARSER_AI_TIMEOUT_MS = 120000;
 // Timeout court utilisé quand le mode complet (PdfParserAutoAIFullMode) est activé :
 // on souhaite échouer rapidement si l'IA n'est pas disponible.
 const PDF_PARSER_AI_QUICK_TIMEOUT_MS = 1000;
@@ -38,8 +40,6 @@ const PDF_PARSER_AI_QUICK_TIMEOUT_MS = 1000;
 // "renseignerChampsPdfParser" une fois le modèle exécuté (@see callableFunctions.js).
 let pendingPdfParserResolve = null;
 
-// Délai maximum d'attente de la vérification des antécédents (plusieurs échanges avec le modèle).
-const ANTECEDENTS_CHECK_TIMEOUT_MS = 120000;
 // Résolveur de la vérification des antécédents en cours, appelé par le tool call "renseignerAntecedentsDiscordances".
 let pendingAntecedentsResolve = null;
 
@@ -164,7 +164,7 @@ async function checkAntecedentsAgainstDocument(fullText, urlPDF = null, { messag
                 if (pendingAntecedentsResolve !== resolve) return;
                 pendingAntecedentsResolve = null;
                 reject(new Error("Délai dépassé en attendant l'appel de renseignerAntecedentsDiscordances"));
-            }, ANTECEDENTS_CHECK_TIMEOUT_MS);
+            }, PDF_PARSER_AI_TIMEOUT_MS);
             sendToChatApi();
         });
         if (operations === 'erreur') console.warn('[pdfParserAIExtraction] Analyse des antécédents abandonnée (essais épuisés).');

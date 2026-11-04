@@ -158,12 +158,19 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
                 settled = true;
                 document.removeEventListener(ANALYSIS_DONE_EVENT, finish);
                 clearInterval(stopPollId);
+                clearInterval(countdownId);
                 clearTimeout(timeoutId);
+                updateProgressLabel();
                 resolve();
             };
             const stopPollId = setInterval(() => {
                 if (queueShouldStop) finish();
             }, 200);
+            const deadline = Date.now() + ANALYSIS_TIMEOUT;
+            const countdownId = setInterval(() => {
+                const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+                updateProgressLabel(undefined, undefined, `⏳ ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`);
+            }, 1000);
             const timeoutId = setTimeout(() => {
                 console.warn('[secureExchangeMessageQueue] Timeout en attendant la fin de l\'analyse, passage au message suivant.');
                 finish();
@@ -261,9 +268,11 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
     // --- Boîte à outils (▶️ cochés / 🔁 auto non lus / ⏹️ stop) ---
     let playButton, autoButton, stopButton, progressLabel;
 
-    function updateProgressLabel(current, total) {
+    let progressText = '';
+    function updateProgressLabel(current, total, countdown = '') {
+        if (current !== undefined) progressText = `${current}/${total}`;
         if (progressLabel) {
-            progressLabel.textContent = `${current}/${total}`;
+            progressLabel.textContent = countdown ? `${progressText} ${countdown}` : progressText;
         }
     }
 
@@ -275,6 +284,7 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
         autoButton.style.color = autoModeEnabled ? 'white' : '';
         stopButton.disabled = !queueRunning;
         if (!queueRunning) {
+            progressText = '';
             progressLabel.textContent = '';
         }
     }
@@ -285,7 +295,8 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
         const toolbox = document.createElement('div');
         toolbox.id = 'whMessageQueueToolbox';
         toolbox.style.display = 'flex';
-        toolbox.style.alignItems = 'center';
+        toolbox.style.flexDirection = 'column';
+        toolbox.style.alignItems = 'flex-start';
         toolbox.style.gap = '6px';
         toolbox.style.padding = '4px 8px';
         toolbox.style.marginBottom = '4px';
@@ -311,6 +322,12 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
 
         progressLabel = document.createElement('span');
         progressLabel.style.fontSize = '0.85em';
+        progressLabel.style.cursor = 'pointer';
+        // Clic : termine immédiatement l'attente du message en cours (même effet que l'évènement de fin d'analyse).
+        progressLabel.addEventListener('click', () => {
+            if (queueRunning) document.dispatchEvent(new CustomEvent(ANALYSIS_DONE_EVENT));
+        });
+        progressLabel.title = "Weda-Helper : numéro du message en cours / nombre de messages à traiter. ⏳ = temps restant avant l'abandon de l'analyse de CE message (timeout individuel, pas un total) : passé ce délai, on passe au message suivant. Cliquer ici passe immédiatement au message suivant.";
 
         toolbox.append(playButton, autoButton, stopButton, progressLabel);
 
