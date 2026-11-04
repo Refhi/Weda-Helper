@@ -279,6 +279,17 @@ async function processFoundPdfIframeImport(PDFIframeElements) {
 }
 
 /**
+ * Signale la fin du traitement d'un message dans les échanges sécurisés (succès, échec ou déjà importé).
+ * Permet à wedaEchanges.js d'enchaîner automatiquement sur le message suivant d'une file d'attente
+ * (voir le tweak secureExchangeMessageQueue).
+ * @param {string|null} hashId - Identifiant du PDF traité (null si aucun PDF n'a pu être extrait).
+ */
+function notifyEchangesProcessingDone(hashId) {
+    console.log("[secureExchangeMessageQueue] Traitement terminé pour hashId =", hashId);
+    document.dispatchEvent(new CustomEvent('pdfParserEchangesDone', { detail: { hashId } }));
+}
+
+/**
  * Traite le PDF dans la page des échanges sécurisés.
  * Contrairement à processFoundPdfIframeImport, cette fonction gère les changements DOM
  * en interne via une boucle (pas de rechargement de page complet).
@@ -300,7 +311,10 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     // Setup de la procédure
     // Extraction des données de base
     const baseData = await extractBasePdfData(iframesElements); // s’occupe également de vérifier les données déjà extraites
-    if (!baseData) return;
+    if (!baseData) {
+        notifyEchangesProcessingDone(null);
+        return;
+    }
 
     const { urlPDF, fullText, hashId, pdfText, messageBody } = baseData;
     let extractedData = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody });
@@ -316,6 +330,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     if (extractedData.alreadyImported) {
         console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction. Renvoi vers le champ de recherche ou le 1er patient de la liste si présent");
         selectFirstPatientOrSearchField();
+        notifyEchangesProcessingDone(hashId);
         return;
     }
 
@@ -420,6 +435,8 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     } else {
         console.error("[pdfParser] Bouton de validation introuvable");
     }
+
+    notifyEchangesProcessingDone(hashId);
 }
 
 async function showClickedPatient() {

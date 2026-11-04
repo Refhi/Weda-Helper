@@ -20,6 +20,8 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeAutoRefresh', function (
         if (element) {
             element.click();
             recordMetrics({ clicks: 1, drags: 1 });
+            // Signale le rafraîchissement aux autres tweaks (ex: secureExchangeMessageQueue, mode "auto")
+            document.dispatchEvent(new CustomEvent('wedaEchangesInboxRefreshed'));
         }
     }
     setTimeout(function () {
@@ -105,18 +107,220 @@ addTweak('/FolderMedical/WedaEchanges/', 'autoClickUnPatient', function () {
 
 
 /**
- * Parcours successivement les messages de la messagerie sécurisée : TODO
+ * Parcourt successivement les messages de la messagerie sécurisée pour déclencher
+ * l'analyse automatique du PDF (simple +/- IA) sur chacun d'entre eux à la suite.
  *
+ * Deux scénarios de sélection des messages à parcourir :
+ * - les messages dont la case a été cochée (bouton ▶️, déclenchement manuel)
+ * - les messages non lus (bouton 🔁, déclenchement à l'activation puis à chaque rafraîchissement
+ *   de la boîte de réception, cf. secureExchangeAutoRefresh)
+ *
+ * Il n'y a pas de pause entre deux messages : la boucle ne s'arrête que si le bouton ⏹️ est
+ * utilisé. Le remplissage du formulaire (sélection du patient, titre, catégorie...) reste géré
+ * par processFoundPdfIframeEchanges ; l'utilisateur garde la main pour valider manuellement
+ * chaque message, y compris après coup en revenant dessus dans la liste.
  */
+addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function () {
+    // Émis par pdfParser.js (processFoundPdfIframeEchanges) à la fin du traitement d'un message,
+    // qu'il ait réussi, échoué, ou que le PDF ait déjà été importé auparavant.
+    const ANALYSIS_DONE_EVENT = 'pdfParserEchangesDone';
+    // Garde-fou si l'évènement de fin n'arrive jamais (ex : message sans PDF ni corps de texte exploitable)
+    const ANALYSIS_TIMEOUT = 45000;
+    // Délai après le clic sur le rafraîchissement automatique avant de vérifier les messages non lus
+    // (le temps que Weda recharge la liste depuis le serveur)
+    const REFRESH_CHECK_DELAY = 3000;
 
-// Liste les messages à parcourir dans la messagerie sécurisée
-// scénarios possibles :
-// - les messages dont la case a été cochée (déclenchement manuel sur bouton à rajouter)
-// - tous les messages non lus (déclenchement automatique, peut-être toutes les X minutes ?)
+    let queueRunning = false;
+    let queueShouldStop = false;
+    let autoModeEnabled = false;
 
+    // --- Sélection des messages selon le scénario ---
+    function getAllMessages() {
+        return Array.from(document.querySelectorAll('.messageListItem'));
+    }
 
+    function getCheckedMessages() {
+        return getAllMessages().filter(item => item.querySelector('input[type=checkbox]')?.checked);
+    }
 
-// Boucle principale
-// Clic sur le message pertinent
-// Attend que l'analyse auto (simple +/- IA) soit terminée
-// pour savoir si analyse terminée : vérification d'un indicateur à créer (visuel ? simple élément DOM ?)
+    function getUnreadMessages() {
+        return getAllMessages().filter(item => item.querySelector('.sender.unread'));
+    }
+
+    // Attend la fin de l'analyse (évènement), avec un timeout de secours et une sortie rapide si
+    // l'utilisateur a cliqué sur Stop entre-temps.
+    function waitForAnalysisDone() {
+        return new Promise(resolve => {
+            let settled = false;
+            const finish = () => {
+                if (settled) return;
+                settled = true;
+                document.removeEventListener(ANALYSIS_DONE_EVENT, finish);
+                clearInterval(stopPollId);
+                clearTimeout(timeoutId);
+                resolve();
+            };
+            const stopPollId = setInterval(() => {
+                if (queueShouldStop) finish();
+            }, 200);
+            const timeoutId = setTimeout(() => {
+                console.warn('[secureExchangeMessageQueue] Timeout en attendant la fin de l\'analyse, passage au message suivant.');
+                finish();
+            }, ANALYSIS_TIMEOUT);
+            document.addEventListener(ANALYSIS_DONE_EVENT, finish);
+        });
+    }
+
+    async function processQueue(selectorFn) {
+        if (queueRunning) {
+            console.warn('[secureExchangeMessageQueue] Une file est déjà en cours de traitement.');
+            return;
+        }
+        // La liste Angular n'est pas rechargée à l'ouverture d'un message : les nœuds restent valides
+        const itemsToProcess = selectorFn();
+        if (itemsToProcess.length === 0) {
+            console.log('[secureExchangeMessageQueue] Aucun message à traiter.');
+            sendWedaNotif({
+                message: "Aucun message à traiter, cochez au moins un message.",
+                type: 'info',
+                icon: 'info'
+            });
+            return;
+        }
+
+        queueRunning = true;
+        queueShouldStop = false;
+        updateToolboxState();
+        console.log('[secureExchangeMessageQueue] Démarrage, messages à traiter :', itemsToProcess.length);
+
+        try {
+            for (let i = 0; i < itemsToProcess.length; i++) {
+                if (queueShouldStop) {
+                    console.log('[messageQueue] Arrêt demandé par l\'utilisateur.');
+                    break;
+                }
+
+                const item = itemsToProcess[i];
+                if (!item.isConnected) {
+                    console.warn('[messageQueue] Message disparu de la liste (liste rafraîchie ?), ignoré.');
+                    continue;
+                }
+
+                updateProgressLabel(i + 1, itemsToProcess.length);
+                console.log(`[secureExchangeMessageQueue] (${i + 1}/${itemsToProcess.length}) Clic sur le message :`, item);
+                // Le clic doit viser .messageLineItem (le listener Angular n'est pas sur le conteneur)
+                const lineItem = item.querySelector('.messageLineItem');
+                if (!lineItem) {
+                    console.warn('[secureExchangeMessageQueue] .messageLineItem introuvable, message ignoré :', item);
+                    continue;
+                }
+                lineItem.click();
+                recordMetrics({ clicks: 1, drags: 0 });
+
+                await waitForAnalysisDone();
+                await sleep(300); // laisse le DOM se stabiliser avant de passer au message suivant
+            }
+        } finally {
+            queueRunning = false;
+            queueShouldStop = false;
+            updateToolboxState();
+            console.log('[secureExchangeMessageQueue] File terminée.');
+        }
+    }
+
+    function stopQueue() {
+        queueShouldStop = true;
+    }
+
+    function startCheckedQueue() {
+        processQueue(getCheckedMessages);
+    }
+
+    function startAutoQueueIfUnread() {
+        if (!autoModeEnabled || queueRunning) return;
+        const unread = getUnreadMessages();
+        if (unread.length > 0) {
+            processQueue(getUnreadMessages);
+        }
+    }
+
+    function toggleAutoMode() {
+        autoModeEnabled = !autoModeEnabled;
+        updateToolboxState();
+        if (autoModeEnabled) {
+            startAutoQueueIfUnread();
+        }
+    }
+
+    // --- Rafraîchissement automatique toutes les 15 min (cf. secureExchangeAutoRefresh) ---
+    document.addEventListener('wedaEchangesInboxRefreshed', () => {
+        setTimeout(startAutoQueueIfUnread, REFRESH_CHECK_DELAY);
+    });
+
+    // --- Boîte à outils (▶️ cochés / 🔁 auto non lus / ⏹️ stop) ---
+    let playButton, autoButton, stopButton, progressLabel;
+
+    function updateProgressLabel(current, total) {
+        if (progressLabel) {
+            progressLabel.textContent = `${current}/${total}`;
+        }
+    }
+
+    function updateToolboxState() {
+        if (!playButton) return;
+        playButton.disabled = queueRunning;
+        autoButton.classList.toggle('whQueueAutoActive', autoModeEnabled);
+        autoButton.style.backgroundColor = autoModeEnabled ? '#4CAF50' : '';
+        autoButton.style.color = autoModeEnabled ? 'white' : '';
+        stopButton.disabled = !queueRunning;
+        if (!queueRunning) {
+            progressLabel.textContent = '';
+        }
+    }
+
+    function createToolbox() {
+        if (document.querySelector('#whMessageQueueToolbox')) return;
+
+        const toolbox = document.createElement('div');
+        toolbox.id = 'whMessageQueueToolbox';
+        toolbox.style.display = 'flex';
+        toolbox.style.alignItems = 'center';
+        toolbox.style.gap = '6px';
+        toolbox.style.padding = '4px 8px';
+        toolbox.style.marginBottom = '4px';
+
+        playButton = document.createElement('button');
+        playButton.type = 'button';
+        playButton.innerText = '▶️';
+        playButton.title = "Weda-Helper : parcourir et analyser successivement les messages cochés.";
+        playButton.onclick = startCheckedQueue;
+
+        autoButton = document.createElement('button');
+        autoButton.type = 'button';
+        autoButton.innerText = '🔁';
+        autoButton.title = "Weda-Helper : analyser automatiquement les messages non lus dès qu'il y en a (à l'activation puis à chaque rafraîchissement de la boîte de réception).";
+        autoButton.onclick = toggleAutoMode;
+
+        stopButton = document.createElement('button');
+        stopButton.type = 'button';
+        stopButton.innerText = '⏹️';
+        stopButton.title = "Weda-Helper : arrêter le parcours automatique des messages en cours.";
+        stopButton.onclick = stopQueue;
+        stopButton.disabled = true;
+
+        progressLabel = document.createElement('span');
+        progressLabel.style.fontSize = '0.85em';
+
+        toolbox.append(playButton, autoButton, stopButton, progressLabel);
+
+        const inboxContainer = document.querySelector('#weInboxContainer');
+        inboxContainer.insertAdjacentElement('afterend', toolbox);
+    }
+
+    waitForElement({
+        selector: '#weInboxContainer',
+        justOnce: true,
+        triggerOnInit: true,
+        callback: createToolbox
+    });
+});

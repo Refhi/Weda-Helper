@@ -369,6 +369,11 @@ var advancedDefaultSettings = [
                 "type": TYPE_BOOL,
                 "description": "Clique automatiquement sur 'Un patient' dès qu'un message est sélectionné dans la messagerie sécurisée.",
                 "default": true
+            }, {
+                "name": "secureExchangeMessageQueue",
+                "type": TYPE_BOOL,
+                "description": "Ajoute une boîte à outils dans la messagerie sécurisée pour analyser successivement plusieurs messages : ▶️ parcourt les messages cochés, 🔁 analyse automatiquement les messages non lus (à l'activation puis à chaque rafraîchissement de la boîte de réception), ⏹️ arrête le parcours en cours.",
+                "default": true
             }]
         }, {
             "name": "Importation",
