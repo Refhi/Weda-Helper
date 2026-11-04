@@ -95,6 +95,21 @@ async function rechercherCim10({ terme, termes, limite = 20 } = {}) {
 }
 
 /**
+ * Libellé officiel d'un code CIM-10 exact (ex. "E66.9" → libellé), ou null si le code est inconnu.
+ * @param {string} code
+ * @returns {Promise<string|null>}
+ */
+async function libelleCim10(code) {
+    try {
+        const fuse = await chargerIndexCim10();
+        return fuse.getIndex().docs.find(doc => doc.code === String(code).trim().toUpperCase())?.label ?? null;
+    } catch (e) {
+        console.warn('[libelleCim10] Erreur lors de la recherche du libellé :', e);
+        return null;
+    }
+}
+
+/**
  * Parcourt le résultat de recoverData et remplace, pour chaque pièce jointe dont l'URL a été
  * résolue (attachment.url, voir resolveAttachmentFileIds), le champ url par le texte extrait du
  * pdf (attachment.pdfText), ou par des images de ses pages (attachment.images) si le pdf est un
@@ -658,6 +673,50 @@ const availableFunctions = {
     }
 };
 
+// Variante de traiterAntecedents qui n'applique rien : la chaîne verifierAntecedentsDepuisDocument (@see toolChainsDefinitions.js)
+// y consigne les opérations proposées, que le PDF Parser applique ensuite sur demande de l'utilisateur.
+// Schéma "à plat" (champs de `data` au même niveau que `action`) : les petits modèles locaux (ex. gemma4) produisent
+// souvent des accolades en trop dans les objets imbriqués, ce qui fait échouer l'analyse de l'appel d'outil.
+const itemTraiterAntecedents = availableFunctions.traiterAntecedents.definition.function.parameters.properties.operations.items;
+availableFunctions.renseignerAntecedentsDiscordances = {
+    interne: true,
+    definition: {
+        type: "function",
+        function: {
+            name: "renseignerAntecedentsDiscordances",
+            description: "Enregistre, sans les appliquer, les opérations qui mettraient à jour les antécédents du patient actuel d'après le document (liste vide s'il n'y a aucune différence).",
+            parameters: {
+                type: "object",
+                properties: {
+                    operations: {
+                        type: "array",
+                        description: "Liste ordonnée d'opérations. Les champs de l'antécédent (searchType, nom, onglet, commentaire...) sont directement dans l'opération.",
+                        items: {
+                            type: "object",
+                            properties: {
+                                action: itemTraiterAntecedents.properties.action,
+                                nomCible: itemTraiterAntecedents.properties.nomCible,
+                                codifie: itemTraiterAntecedents.properties.codifie,
+                                ...itemTraiterAntecedents.properties.data.properties
+                            },
+                            required: ["action"]
+                        }
+                    }
+                },
+                required: ["operations"]
+            }
+        }
+    },
+    // Référence indirecte : n'existe que côté content script (pdfParserAIExtraction.js).
+    execute: ({ operations = [] } = {}) => resolvePendingAntecedentsDiscordances(operationsAPlatVersBatch(operations))
+};
 
-
-
+/** Convertit les opérations à plat de renseignerAntecedentsDiscordances au format de traiterAntecedents / traiterAntecedentsBatch. */
+function operationsAPlatVersBatch(operations = []) {
+    const champsOperation = ['action', 'nomCible', 'codifie'];
+    return operations.map(operation => {
+        const { action, nomCible, codifie } = operation || {};
+        const data = Object.fromEntries(Object.entries(operation || {}).filter(([cle]) => !champsOperation.includes(cle)));
+        return { action, ...(nomCible !== undefined ? { nomCible } : {}), ...(codifie !== undefined ? { codifie } : {}), ...(Object.keys(data).length ? { data } : {}) };
+    });
+}

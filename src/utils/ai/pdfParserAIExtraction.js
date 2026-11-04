@@ -38,6 +38,21 @@ const PDF_PARSER_AI_QUICK_TIMEOUT_MS = 1000;
 // "renseignerChampsPdfParser" une fois le modèle exécuté (@see callableFunctions.js).
 let pendingPdfParserResolve = null;
 
+// Délai maximum d'attente de la vérification des antécédents (plusieurs échanges avec le modèle).
+const ANTECEDENTS_CHECK_TIMEOUT_MS = 120000;
+// Résolveur de la vérification des antécédents en cours, appelé par le tool call "renseignerAntecedentsDiscordances".
+let pendingAntecedentsResolve = null;
+
+/** Appelée par le tool call "renseignerAntecedentsDiscordances" : transmet les opérations proposées par le modèle. */
+function resolvePendingAntecedentsDiscordances(operations) {
+    if (!pendingAntecedentsResolve) {
+        throw new Error("Aucune vérification des antécédents en attente (délai déjà dépassé, ou fonction appelée deux fois).");
+    }
+    pendingAntecedentsResolve(operations);
+    pendingAntecedentsResolve = null;
+    return { status: "success" };
+}
+
 /**
  * Appelée par le tool call "renseignerChampsPdfParser" : transmet les champs renvoyés par le modèle à
  * la complétion IA en attente, le cas échéant.
@@ -123,6 +138,44 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
 }
 
 /**
+ * Compare le document aux antécédents du patient actuellement sélectionné (chaîne verifierAntecedentsDepuisDocument),
+ * sans rien modifier : les opérations proposées (format de traiterAntecedentsBatch) sont renvoyées pour être appliquées
+ * sur demande de l'utilisateur. À appeler une fois la complétion des champs terminée et le patient sélectionné,
+ * car la conversation est réinitialisée.
+ * @returns {Promise<Array<object>|null>} opérations proposées (vide : aucune différence), null si la vérification n'a pas eu lieu.
+ */
+async function checkAntecedentsAgainstDocument(fullText, urlPDF = null, { messageBody = null } = {}) {
+    if (!await getOptionPromise('verifierEtMettreAJourAntecedents')) return null;
+    if (!await resolveCurrentPatientIdWithWait()) {
+        console.warn('[pdfParserAIExtraction] Aucun patient sélectionné, vérification des antécédents ignorée.');
+        return null;
+    }
+    const chatApi = await prepareChatApi(false);
+    if (!chatApi) return null;
+
+    const sendToChatApi = await buildChainLauncher(chatApi, 'verifierAntecedentsDepuisDocument', {
+        fieldsToAsk: [], fullText, urlPDF, messageBody,
+        instructions: "Compare le document ci-dessous avec les antécédents du patient actuel, sans rien modifier. Suis les consignes de chaque étape : les outils à appeler te seront indiqués au fur et à mesure."
+    });
+    try {
+        const operations = await new Promise((resolve, reject) => {
+            pendingAntecedentsResolve = resolve;
+            setTimeout(() => {
+                if (pendingAntecedentsResolve !== resolve) return;
+                pendingAntecedentsResolve = null;
+                reject(new Error("Délai dépassé en attendant l'appel de renseignerAntecedentsDiscordances"));
+            }, ANTECEDENTS_CHECK_TIMEOUT_MS);
+            sendToChatApi();
+        });
+        console.log('[pdfParserAIExtraction] Opérations proposées sur les antécédents :', operations);
+        return operations;
+    } catch (error) {
+        console.warn('[pdfParserAIExtraction] Échec de la vérification des antécédents :', error.message || error);
+        return null;
+    }
+}
+
+/**
  * Bouton "Résumé IA" d'une pièce jointe (@see attachmentAIRename.js) : envoie le document à l'assistant IA avec la
  * même demande que le PDF Parser, mais via la chaîne renommerPieceJointe qui transmet le fileId à renseignerDocument.
  * L'option PdfParserAutoAIExtraction est ignorée (demande explicite de l'utilisateur), PdfParserAutoAIFullMode respectée.
@@ -202,7 +255,13 @@ async function prepareChatApi(fullModeEnabled) {
  * (@see toolChainsDefinitions.js). `entree` est transmise à la chaîne ; `toolName` est l'outil que le modèle doit appeler.
  * @returns {Promise<function(): void>}
  */
-async function buildChainLauncher(chatApi, chainName, { toolName, fieldsToAsk, fullModeEnabled, fullText, urlPDF, possibleDocumentTypes, messageBody = null, extraInstructions = '', entree = {} }) {
+async function buildChainLauncher(chatApi, chainName, { toolName, fieldsToAsk, fullModeEnabled, fullText, urlPDF, possibleDocumentTypes, messageBody = null, extraInstructions = '', entree = {}, instructions: customInstructions = null }) {
+    const instructions = customInstructions ?? await buildFieldInstructions({ toolName, fieldsToAsk, fullModeEnabled, possibleDocumentTypes, extraInstructions });
+    return buildLauncherWithDocument(chatApi, chainName, { instructions, fieldsToAsk, fullText, urlPDF, messageBody, entree });
+}
+
+/** Prompt demandant au modèle de renseigner les champs de `fieldsToAsk` via l'outil `toolName`. */
+async function buildFieldInstructions({ toolName, fieldsToAsk, fullModeEnabled, possibleDocumentTypes, extraInstructions }) {
     const basePrompt = await getOptionPromise('PdfParserAutoAIExtractionPrompt');
     const fieldDescriptions = await getOptionPromise(fieldsToAsk.map(field => `PdfParserAIDesc_${field.key}`));
     const fieldsDescription = fieldsToAsk.map((field, i) => `- "${field.key}" : ${fieldDescriptions[i]}`).join('\n');
@@ -210,8 +269,11 @@ async function buildChainLauncher(chatApi, chainName, { toolName, fieldsToAsk, f
         ? `\n\nValeurs autorisées pour "documentType" : ${possibleDocumentTypes.join(', ')}.`
         : '';
     const extraContext = extraInstructions ? `\n\n${extraInstructions}` : '';
-    const instructions = `${basePrompt}${categorizationContext}${extraContext}\n\nPour répondre, appelle OBLIGATOIREMENT la fonction ${toolName}. Les dates DOIVENT être au format JJ/MM/AAAA. Voici les champs à compléter :\n${fieldsDescription}`;
+    return `${basePrompt}${categorizationContext}${extraContext}\n\nPour répondre, appelle OBLIGATOIREMENT la fonction ${toolName}. Les dates DOIVENT être au format JJ/MM/AAAA. Voici les champs à compléter :\n${fieldsDescription}`;
+}
 
+/** Joint le document (texte, ou pages en images s'il n'est pas lisible) aux consignes et renvoie la fonction qui lance la chaîne. */
+async function buildLauncherWithDocument(chatApi, chainName, { instructions, fieldsToAsk, fullText, urlPDF, messageBody, entree }) {
     // Pages sans texte lisible (PDF scanné, police non standard...) : elles partent en images avec les
     // pages lisibles en texte (@see resolvePdfAttachment), pour laisser le modèle les analyser lui-même.
     let resolvedPdf = null;
@@ -234,7 +296,7 @@ async function buildChainLauncher(chatApi, chainName, { toolName, fieldsToAsk, f
         sendToChatApi = () => chatApi.lancerChaine(chainName, entree, prompt);
     }
 
-    console.log('[pdfParserAIExtraction] Champs à compléter par l\'IA :', fieldsToAsk.map(f => f.key));
+    console.log('[pdfParserAIExtraction] Demande à l\'IA, champs :', fieldsToAsk.map(f => f.key));
     return sendToChatApi;
 }
 

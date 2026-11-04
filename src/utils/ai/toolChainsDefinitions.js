@@ -33,8 +33,11 @@ const toolChains = (() => {
         return termes.length === 1 ? [{ terme: termes[0], resultats: res }] : res;
     }
 
-    /** Chaîne en une étape de jugement imposant l'outil qui renseigne le document, puis mise à jour éventuelle des antécédents. */
-    function chaineRenseignerDocument(outil) {
+    /**
+     * Chaîne en une étape de jugement imposant l'outil qui renseigne le document, puis mise à jour éventuelle des antécédents
+     * (`enchainerAntecedents`). Le PDF Parser ne l'enchaîne pas : il lance la vérification séparément, une fois le patient sélectionné.
+     */
+    function chaineRenseignerDocument(outil, { enchainerAntecedents = false } = {}) {
         return {
             definition: null,
             conclusion: "Document renseigné. Résume en quelques lignes au praticien ce que tu as retenu du document (titre, date, classification, commentaire).",
@@ -48,7 +51,7 @@ const toolChains = (() => {
                     apresAppel: (_nomOutil, _args, resultat, ctx) => { ctx.resultat = resultat; }
                 }
             ],
-            suite: async ctx => !ctx.resultat?.error && await getOptionPromise('verifierEtMettreAJourAntecedents')
+            suite: async ctx => enchainerAntecedents && !ctx.resultat?.error && await getOptionPromise('verifierEtMettreAJourAntecedents')
                 ? { chaine: 'mettreAJourAntecedentsDepuisDocument' }
                 : null
         };
@@ -120,7 +123,8 @@ const toolChains = (() => {
 
     /** Contrôle les opérations de traiterAntecedents : codes CIM-10 issus d'une recherche, cibles existantes, actions permises. */
     function verifierOperationsAntecedents(args, ctx, nomOutil) {
-        if (nomOutil !== 'traiterAntecedents') return null;
+        if (nomOutil !== 'traiterAntecedents' && nomOutil !== 'renseignerAntecedentsDiscordances') return null;
+        if (nomOutil === 'renseignerAntecedentsDiscordances' && Array.isArray(args?.operations)) args = { operations: operationsAPlatVersBatch(args.operations) };
         if (!Array.isArray(args?.operations)) return "'operations' doit être un tableau. Refais l'appel.";
         const titres = (ctx.antecedents || []).flatMap(section => section.items.map(item => item.titre.toLowerCase()));
         const invalides = args.operations.flatMap(operation => {
@@ -144,7 +148,12 @@ const toolChains = (() => {
             }
             return [{ operation, motif: "action non permise ici (seulement ajouter, modifier, supprimer ou convertirCim10)" }];
         });
-        return invalides.length ? `Opérations refusées : ${JSON.stringify(invalides)}. Refais l'appel.` : null;
+        if (!invalides.length) return null;
+        // Rappelle les codes candidats : un petit modèle recopie souvent le libellé au lieu du code.
+        const rappelCodes = invalides.some(({ motif }) => motif.startsWith("code CIM-10 absent")) && ctx.candidats?.length
+            ? ` Pour data.nom, recopie EXACTEMENT un code (et non le libellé) parmi ces candidats : ${JSON.stringify(ctx.candidats)}.`
+            : '';
+        return `Opérations refusées : ${JSON.stringify(invalides)}.${rappelCodes} Refais l'appel.`;
     }
 
     /** Étape finale des chaînes d'antécédents : recherche CIM-10 possible tant que traiterAntecedents n'est pas appelé. */
@@ -158,7 +167,7 @@ const toolChains = (() => {
         maxEssais: 2
     };
 
-    return {
+    const chaines = {
         convertirAntecedentsCim10: {
             // Seul élément exposé au modèle : il ne voit que ce point d'entrée, pas la mécanique.
             definition: {
@@ -458,7 +467,41 @@ const toolChains = (() => {
         // dont le résultat est lu par pdfParserAIExtraction.js.
         completerDocument: chaineRenseignerDocument('renseignerChampsPdfParser'),
         // Lancement depuis le code uniquement (bouton "Résumé IA" d'une pièce jointe) : impose l'appel de renseignerDocument.
-        renommerPieceJointe: chaineRenseignerDocument('renseignerDocument')
+        renommerPieceJointe: chaineRenseignerDocument('renseignerDocument', { enchainerAntecedents: true })
     };
+
+    // Même analyse que mettreAJourAntecedentsDepuisDocument (étape 'extraire' partagée), mais les opérations sont seulement
+    // consignées (@see pdfParserAIExtraction.js checkAntecedentsAgainstDocument), pas appliquées. Lancement depuis le code uniquement.
+    chaines.verifierAntecedentsDepuisDocument = {
+        definition: null,
+        conclusion: "Vérification terminée. Indique en une phrase si le document diffère des antécédents du patient, sans rien avoir modifié.",
+        etapes: [
+            etapeLireAntecedents,
+            chaines.mettreAJourAntecedentsDepuisDocument.etapes.find(etape => etape.id === 'extraire'),
+            etapeChercherCodes,
+            // La proposition d'opérations (ou une liste vide, sans appel du modèle) est consignée sans rien appliquer.
+            {
+                ...etapeAppliquerAntecedents,
+                id: 'proposer',
+                maxEssais: 3,
+                outils: ['rechercherCim10', 'renseignerAntecedentsDiscordances'],
+                termine: ['renseignerAntecedentsDiscordances'],
+                si: ctx => ctx.elements?.length > 0,
+                consigne: ctx => `Éléments retenus : ${JSON.stringify(ctx.elements)}\n`
+                    + (ctx.candidats ? `Codes CIM-10 candidats : ${JSON.stringify(ctx.candidats)}\n` : '')
+                    + `Enregistre les opérations correspondantes en appelant renseignerAntecedentsDiscordances UNE seule fois (opérations dans l'ordre, champs de l'antécédent à plat : searchType, nom, onglet, commentaire... directement dans l'opération, sans objet data) : elles ne sont PAS appliquées, `
+                    + `l'utilisateur les validera. ${REGLES_ANTECEDENTS}`
+            },
+            {
+                id: 'aucuneDifference',
+                type: 'mecanique',
+                outil: 'renseignerAntecedentsDiscordances',
+                si: ctx => !(ctx.elements?.length > 0),
+                args: () => ({ operations: [] })
+            }
+        ]
+    };
+
+    return chaines;
 
 })();

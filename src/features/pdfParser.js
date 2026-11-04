@@ -381,10 +381,15 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     // ===========================================
     // ÉTAPE 2.A : Vérification de la concordance des antécédents
     // ===========================================
-    // TODO : vérifier la concordance des antécédents avec le document PDF
-    // stocker les discordances dans extractedData.antecedentsDiscordances
-    // à un format qui sera directement donné à traiterAntecedentsBatch suite à un
-    // déclenchement utilisateur
+    // Sans rien modifier : les opérations proposées (format de traiterAntecedentsBatch) sont stockées dans
+    // extractedData.antecedentsDiscordances et appliquées seulement au clic de l'utilisateur (@see addAntecedentsButton).
+    // Déjà vérifié pour ce PDF (données en cache, @see getPdfData) : pas de nouvelle demande à l'IA.
+    if (!Array.isArray(extractedData.antecedentsDiscordances)) {
+        extractedData.antecedentsDiscordances = await checkAntecedentsAgainstDocument(fullText, urlPDF, { messageBody });
+        if (Array.isArray(extractedData.antecedentsDiscordances)) {
+            setPdfData(hashId, { antecedentsDiscordances: extractedData.antecedentsDiscordances });
+        }
+    }
 
     // ===========================================
     // ÉTAPE 3 : Remplissage du formulaire d'import
@@ -444,7 +449,60 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
         console.error("[pdfParser] Bouton de validation introuvable");
     }
 
+    addAntecedentsButton(extractedData.antecedentsDiscordances, validationButton, hashId);
     notifyEchangesProcessingDone(hashId);
+}
+
+/**
+ * Affiche, à côté du bouton de validation, le résultat de la vérification des antécédents : « ✅ » si le document
+ * concorde avec le dossier, « ⚠️ » sinon (un clic applique alors les opérations proposées).
+ * @param {Array<object>|null} operations - Opérations proposées (@see checkAntecedentsAgainstDocument), null si non vérifié.
+ * @param {HTMLElement|null} validationButton
+ * @param {string} hashId - PDF concerné : une fois appliquées, les opérations sont retirées du cache.
+ */
+function addAntecedentsButton(operations, validationButton, hashId) {
+    document.querySelector('#pdfParserAntecedentsButton')?.remove();
+    if (!Array.isArray(operations) || !validationButton) return;
+
+    const button = document.createElement('button');
+    button.id = 'pdfParserAntecedentsButton';
+    button.type = 'button';
+    button.style.marginLeft = '10px';
+    // tabindex -1 : ne perturbe pas le focus (Espace valide, Maj+Tab corrige) de l'import.
+    button.tabIndex = -1;
+    if (operations.length === 0) {
+        button.textContent = 'Antécédents ✅';
+        button.title = '[Weda-Helper] Le document concorde avec les antécédents du patient.';
+        button.disabled = true;
+    } else {
+        button.textContent = `Antécédents ⚠️ (${operations.length})`;
+        const describeOperations = async () => {
+            const lines = await Promise.all(operations.map(async op => {
+                const name = op.nomCible || op.data?.nom || '';
+                // Un code CIM-10 seul est peu parlant : on ajoute son libellé.
+                const label = /^[A-Z]\d{2}(\.\d+)?$/i.test(name) ? await libelleCim10(name) : null;
+                return `- ${op.action} ${name}${label ? ` (${label})` : ''}`.trim();
+            }));
+            return `[Weda-Helper] Clic pour appliquer :\n${lines.join('\n')}`;
+        };
+        button.title = `[Weda-Helper] Clic pour appliquer ${operations.length} opération(s)`;
+        describeOperations().then(title => { button.title = title; });
+        button.addEventListener('click', async () => {
+            button.disabled = true;
+            try {
+                const results = await traiterAntecedentsBatch(operations, { patientId: await resolveCurrentPatientIdWithWait() });
+                const failures = results.filter(result => result?.error);
+                button.textContent = failures.length ? 'Antécédents ❌' : 'Antécédents ✅';
+                if (failures.length) button.title = failures.map(result => result.error).join('\n');
+                else setPdfData(hashId, { antecedentsDiscordances: [] });
+            } catch (error) {
+                console.warn('[pdfParser] Mise à jour des antécédents échouée :', error);
+                button.textContent = 'Antécédents ❌';
+                button.title = error.message || String(error);
+            }
+        }, { once: true });
+    }
+    validationButton.after(button);
 }
 
 async function showClickedPatient() {
