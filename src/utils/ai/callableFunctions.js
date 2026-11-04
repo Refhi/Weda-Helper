@@ -608,17 +608,41 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "renseignerDocument",
-                description: "Renseigne le document en cours de traitement (PDF Parser, ou document joint de l'historique du patient) avec les informations déduites de son contenu. Unique fonction à appeler pour cela. Si le message de la demande fournit un fileId, le transmettre. Ex. : renseignerDocument({ fileId: '893222115', documentTitle: 'Compte rendu', documentDate: '01/01/2024', destinationClass: '1', documentType: 'Biologie', documentCommentaire: 'Résumé du document' }).",
+                description: "Renseigne un document joint de l'historique du patient avec les informations déduites de son contenu. Unique fonction à appeler pour cela. Si le message de la demande fournit un fileId, le transmettre. Ex. : renseignerDocument({ fileId: '893222115', documentTitle: 'Compte rendu', documentDate: '01/01/2024', destinationClass: '1', documentType: 'Biologie', documentCommentaire: 'Résumé du document' }).",
                 parameters: {
                     type: "object",
                     properties: {
-                        fileId: { type: "string", description: "Identifiant de la pièce jointe, ex: '893222115'. Requis pour un document joint de l'historique (le fournir dès que la demande ou lireDocumentJoint le donne), inutile pour le PDF Parser." },
+                        fileId: { type: "string", description: "Identifiant de la pièce jointe, ex: '893222115'. Obligatoire (le fournir dès que la demande ou lireDocumentJoint le donne)." },
                         documentDate: { type: "string", description: "Date du document, au format JJ/MM/AAAA." },
-                        dateOfBirth: { type: "string", description: "PDF Parser uniquement : date de naissance du patient, au format JJ/MM/AAAA." },
+                        documentCommentaire: { type: "string", description: "Bref commentaire (1 à 2 phrases) résumant le contenu du document." },
+                        documentTitle: { type: "string", description: "Titre complet du document, tel qu'il doit apparaître dans le dossier patient." },
+                        destinationClass: { type: "string", enum: ["1", "2", "3"], description: "Emplacement du document : '1' pour Consultation, '2' pour Résultats d'examens, '3' pour Courrier." },
+                        documentType: { type: "string", description: "Classification du document dans Weda (ex: 'Biologie', 'Courrier'), parmi les valeurs autorisées indiquées dans le message." }
+                    },
+                    required: []
+                }
+            }
+        },
+        // Référence indirecte : cette fonction n'existe que côté content script (attachmentAIRename.js).
+        execute: (args = {}) => renameJoinedDocumentInHistoryTool(args)
+    },
+    // `interne` : réservé à la chaîne completerDocument (@see toolChainsDefinitions.js), qui l'impose au modèle.
+    renseignerChampsPdfParser: {
+        interne: true,
+        definition: {
+            type: "function",
+            function: {
+                name: "renseignerChampsPdfParser",
+                description: "Renseigne les champs du PDF Parser avec les informations déduites du document en cours de traitement.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        documentDate: { type: "string", description: "Date du document, au format JJ/MM/AAAA." },
+                        dateOfBirth: { type: "string", description: "Date de naissance du patient, au format JJ/MM/AAAA." },
                         nameMatches: {
                             type: "array",
                             items: { type: "string" },
-                            description: "PDF Parser uniquement : nom complet (nom et prénom) du patient."
+                            description: "Nom complet (nom et prénom) du patient."
                         },
                         documentCommentaire: { type: "string", description: "Bref commentaire (1 à 2 phrases) résumant le contenu du document." },
                         documentTitle: { type: "string", description: "Titre complet du document, tel qu'il doit apparaître dans le dossier patient." },
@@ -629,11 +653,8 @@ const availableFunctions = {
                 }
             }
         },
-        // Références indirectes : ces fonctions n'existent que côté content script (pdfParserAIExtraction.js, attachmentAIRename.js).
-        // Une complétion du PDF Parser en attente est servie en priorité ; sinon il s'agit d'un document joint.
-        execute: async (args = {}) => hasPendingPdfParserFields()
-            ? resolvePendingPdfParserFields(args)
-            : await renameJoinedDocumentInHistoryTool(args)
+        // Référence indirecte : n'existe que côté content script (pdfParserAIExtraction.js).
+        execute: (args = {}) => resolvePendingPdfParserFields(args)
     }
 };
 

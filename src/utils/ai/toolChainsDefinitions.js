@@ -33,6 +33,27 @@ const toolChains = (() => {
         return termes.length === 1 ? [{ terme: termes[0], resultats: res }] : res;
     }
 
+    /** Chaîne en une étape de jugement imposant l'outil qui renseigne le document, puis mise à jour éventuelle des antécédents. */
+    function chaineRenseignerDocument(outil) {
+        return {
+            definition: null,
+            conclusion: "Document renseigné. Résume en quelques lignes au praticien ce que tu as retenu du document (titre, date, classification, commentaire).",
+            etapes: [
+                {
+                    id: 'renseigner',
+                    type: 'jugement',
+                    outils: [outil],
+                    toolChoice: outil,
+                    consigne: () => `Appelle maintenant ${outil} avec les informations demandées.`,
+                    apresAppel: (_nomOutil, _args, resultat, ctx) => { ctx.resultat = resultat; }
+                }
+            ],
+            suite: async ctx => !ctx.resultat?.error && await getOptionPromise('verifierEtMettreAJourAntecedents')
+                ? { chaine: 'mettreAJourAntecedentsDepuisDocument' }
+                : null
+        };
+    }
+
     function normaliserTerme(terme) {
         return String(terme ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
     }
@@ -433,24 +454,11 @@ const toolChains = (() => {
             ]
         },
 
-        // Lancement depuis le code uniquement (PDF Parser, bouton "Résumé IA") : impose l'appel de renseignerDocument.
-        completerDocument: {
-            definition: null,
-            conclusion: "Document renseigné. Résume en quelques lignes au praticien ce que tu as retenu du document (titre, date, classification, commentaire).",
-            etapes: [
-                {
-                    id: 'renseigner',
-                    type: 'jugement',
-                    outils: ['renseignerDocument'],
-                    toolChoice: 'renseignerDocument',
-                    consigne: () => "Appelle maintenant renseignerDocument avec les informations demandées.",
-                    apresAppel: (_nomOutil, _args, resultat, ctx) => { ctx.resultat = resultat; }
-                }
-            ],
-            suite: async ctx => !ctx.resultat?.error && await getOptionPromise('verifierEtMettreAJourAntecedents')
-                ? { chaine: 'mettreAJourAntecedentsDepuisDocument' }
-                : null
-        }
+        // Lancement depuis le code uniquement (PDF Parser) : impose l'appel de renseignerChampsPdfParser,
+        // dont le résultat est lu par pdfParserAIExtraction.js.
+        completerDocument: chaineRenseignerDocument('renseignerChampsPdfParser'),
+        // Lancement depuis le code uniquement (bouton "Résumé IA" d'une pièce jointe) : impose l'appel de renseignerDocument.
+        renommerPieceJointe: chaineRenseignerDocument('renseignerDocument')
     };
 
 })();

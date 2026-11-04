@@ -1150,7 +1150,7 @@ var advancedDefaultSettings = [
                 }, {
                     "name": "verifierEtMettreAJourAntecedents",
                     "type": TYPE_BOOL,
-                    "description": "Après avoir renseigné un document, demande à l'IA de vérifier et mettre à jour les antécédents du patient.",
+                    "description": "Après avoir renseigné un document, demande à l'IA de vérifier s'il est cohérent avec les antécédents du patient (sans rien modifier). Dans la messagerie sécurisée, un bouton « Antécédents ✅ / ⚠️ » s'affiche : en cas de différence, un clic met à jour les antécédents.",
                     "default": false
                 }]
             }]

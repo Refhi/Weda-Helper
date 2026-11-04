@@ -124,8 +124,9 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
     // Émis par pdfParser.js (processFoundPdfIframeEchanges) à la fin du traitement d'un message,
     // qu'il ait réussi, échoué, ou que le PDF ait déjà été importé auparavant.
     const ANALYSIS_DONE_EVENT = 'pdfParserEchangesDone';
-    // Garde-fou si l'évènement de fin n'arrive jamais (ex : message sans PDF ni corps de texte exploitable)
-    const ANALYSIS_TIMEOUT = 45000;
+    // Garde-fou si l'évènement de fin n'arrive jamais (ex : message sans PDF ni corps de texte exploitable).
+    // Large car l'analyse des antécédents (option verifierEtMettreAJourAntecedents) précède l'évènement de fin.
+    const ANALYSIS_TIMEOUT = 300000;
     // Délai après le clic sur le rafraîchissement automatique avant de vérifier les messages non lus
     // (le temps que Weda recharge la liste depuis le serveur)
     const REFRESH_CHECK_DELAY = 3000;

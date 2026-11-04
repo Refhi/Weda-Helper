@@ -379,6 +379,14 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     }
 
     // ===========================================
+    // ÉTAPE 2.A : Vérification de la concordance des antécédents
+    // ===========================================
+    // TODO : vérifier la concordance des antécédents avec le document PDF
+    // stocker les discordances dans extractedData.antecedentsDiscordances
+    // à un format qui sera directement donné à traiterAntecedentsBatch suite à un
+    // déclenchement utilisateur
+
+    // ===========================================
     // ÉTAPE 3 : Remplissage du formulaire d'import
     // ===========================================
     await selectDestinationIfNeededES(extractedData.destinationClass);

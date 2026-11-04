@@ -132,19 +132,10 @@ async function summarizeAttachment(fileId) {
     if (!url) return { error: "Impossible d'ouvrir le document (lien introuvable ou popup bloquée)." };
 
     const pdfText = await extractAttachmentText(url);
-    // La date de naissance et le nom du patient ne servent pas à renseigner un document : on les déclare déjà connus
-    // pour que l'IA ne les demande pas. Les autres champs demandés dépendent de PdfParserAutoAIFullMode.
-    const knownData = { dateOfBirth: 'non requis', nameMatches: ['non requis'] };
     try {
         const fullMode = await getOptionPromise('PdfParserAutoAIFullMode');
         const possibleDocumentTypes = fullMode ? await getConfiguredDocumentTypes() : null;
-        await completeExtractedDataWithAI(knownData, pdfText, isTextContentUrl(url) ? null : url, possibleDocumentTypes, { pdfText }, {
-            externalTool: {
-                name: 'renseignerDocument',
-                extraInstructions: `Le fileId du document à renseigner est "${fileId}" : transmets-le à la fonction.`
-            },
-            patientId: getCurrentPatientId()
-        });
+        await submitAttachmentToAI(fileId, pdfText, isTextContentUrl(url) ? null : url, possibleDocumentTypes);
     } catch (error) {
         return { error: error.message || String(error) };
     }
