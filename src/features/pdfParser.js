@@ -462,7 +462,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
  */
 function addAntecedentsButton(operations, validationButton, hashId) {
     document.querySelector('#pdfParserAntecedentsButton')?.remove();
-    if (!Array.isArray(operations) || !validationButton) return;
+    if (!validationButton || (operations !== 'erreur' && !Array.isArray(operations))) return;
 
     const button = document.createElement('button');
     button.id = 'pdfParserAntecedentsButton';
@@ -470,7 +470,11 @@ function addAntecedentsButton(operations, validationButton, hashId) {
     button.style.marginLeft = '10px';
     // tabindex -1 : ne perturbe pas le focus (Espace valide, Maj+Tab corrige) de l'import.
     button.tabIndex = -1;
-    if (operations.length === 0) {
+    if (operations === 'erreur') {
+        button.textContent = 'Antécédents ?';
+        button.title = "[Weda-Helper] L'analyse des antécédents par l'IA a échoué : à vérifier manuellement.";
+        button.disabled = true;
+    } else if (operations.length === 0) {
         button.textContent = 'Antécédents ✅';
         button.title = '[Weda-Helper] Le document concorde avec les antécédents du patient.';
         button.disabled = true;
@@ -481,7 +485,12 @@ function addAntecedentsButton(operations, validationButton, hashId) {
                 const name = op.nomCible || op.data?.nom || '';
                 // Un code CIM-10 seul est peu parlant : on ajoute son libellé.
                 const label = /^[A-Z]\d{2}(\.\d+)?$/i.test(name) ? await libelleCim10(name) : null;
-                return `- ${op.action} ${name}${label ? ` (${label})` : ''}`.trim();
+                const { nom, searchType, onglet, ...changes } = op.data || {};
+                const details = Object.entries(changes).filter(([, v]) => v !== undefined && v !== null && v !== '')
+                    .map(([k, v]) => `${k} : ${v}`);
+                if (op.action === 'modifier' && nom && nom !== op.nomCible) details.unshift(`nom : ${nom}`);
+                if (op.action === 'ajouter' && onglet) details.push(`onglet : ${onglet}`);
+                return `- ${op.action} ${op.action === 'modifier' ? op.nomCible || name : name}${label ? ` (${label})` : ''}${details.length ? `\n    ${details.join('\n    ')}` : ''}`.trim();
             }));
             return `[Weda-Helper] Clic pour appliquer :\n${lines.join('\n')}`;
         };

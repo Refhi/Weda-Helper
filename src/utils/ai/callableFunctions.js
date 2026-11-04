@@ -708,7 +708,8 @@ availableFunctions.renseignerAntecedentsDiscordances = {
         }
     },
     // Référence indirecte : n'existe que côté content script (pdfParserAIExtraction.js).
-    execute: ({ operations = [] } = {}) => resolvePendingAntecedentsDiscordances(operationsAPlatVersBatch(operations))
+    // erreur : dernier essai refusé (@see argsEchec dans toolChainsDefinitions.js), l'analyse est à signaler comme ratée.
+    execute: ({ operations = [], erreur = false } = {}) => resolvePendingAntecedentsDiscordances(erreur ? 'erreur' : operationsAPlatVersBatch(operations))
 };
 
 /** Convertit les opérations à plat de renseignerAntecedentsDiscordances au format de traiterAntecedents / traiterAntecedentsBatch. */

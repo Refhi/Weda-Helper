@@ -484,6 +484,7 @@ const toolChains = (() => {
                 ...etapeAppliquerAntecedents,
                 id: 'proposer',
                 maxEssais: 3,
+                argsEchec: { erreur: true },
                 outils: ['rechercherCim10', 'renseignerAntecedentsDiscordances'],
                 termine: ['renseignerAntecedentsDiscordances'],
                 si: ctx => ctx.elements?.length > 0,

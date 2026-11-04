@@ -167,11 +167,12 @@ async function checkAntecedentsAgainstDocument(fullText, urlPDF = null, { messag
             }, ANTECEDENTS_CHECK_TIMEOUT_MS);
             sendToChatApi();
         });
-        console.log('[pdfParserAIExtraction] Opérations proposées sur les antécédents :', operations);
+        if (operations === 'erreur') console.warn('[pdfParserAIExtraction] Analyse des antécédents abandonnée (essais épuisés).');
+        else console.log('[pdfParserAIExtraction] Opérations proposées sur les antécédents :', operations);
         return operations;
     } catch (error) {
         console.warn('[pdfParserAIExtraction] Échec de la vérification des antécédents :', error.message || error);
-        return null;
+        return 'erreur';
     }
 }
 

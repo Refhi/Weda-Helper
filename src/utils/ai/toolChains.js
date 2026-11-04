@@ -147,6 +147,8 @@ async function traiterAppelEtape(chaine, nomOutil, args, runTool, onToolCall, si
     if (refus) {
         chaine.essais++;
         if (chaine.essais < (etape.maxEssais ?? 1)) return { refus, chaine };
+        // Dernier échec : l'outil est appelé avec des arguments d'erreur pour que l'appelant en attente soit prévenu.
+        if (etape.argsEchec) await runTool(nomOutil, etape.argsEchec).catch(() => {});
         return { refus: `${refus} Nombre d'essais épuisé : chaîne abandonnée, informe l'utilisateur de l'échec.`, chaine: null };
     }
 
