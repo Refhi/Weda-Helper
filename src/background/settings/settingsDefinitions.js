@@ -532,6 +532,12 @@ var advancedDefaultSettings = [
             "description": "Enregistre automatiquement les consultations toutes les 3 minutes si aucune entrée n'est détectée pendant au moins 5 secondes.",
             "default": true
         }, {
+            "name": "consultationLinter",
+            "type": TYPE_BOOL,
+            "description": "Ajoute un linter pour les consultations.",
+            "longDescription": "Le dev principal de Weda-Helper a ajouté ce linter pour améliorer la mise en forme des consultations. En détail : il vérifie les espaces autour des tirets et des ':', et applique une majuscule sur les titres finissant par ':'. Cela supprime aussi les espaces et saut de ligne superflus.",
+            "default": false
+        }, {
             "name": "autoScore2",
             "type": TYPE_BOOL,
             "description": "Affiche un bouton pour calculer le SCORE2 depuis la page de consultation.",
