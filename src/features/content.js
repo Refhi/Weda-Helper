@@ -309,17 +309,25 @@ addTweak('/FolderTools/PostItReaderInForm.aspx', '*sendPostItContent', async fun
     const linkToPatientTab = "#ContentPlaceHolder1_HyperLinkPatientTarget";
 
 
+    // Le lien n'est considéré valide que si le label du patient est présent
+    function getVisiblePatientLink() {
+        if (!document.querySelector('#ContentPlaceHolder1_LabelILPatient')) {
+            return null;
+        }
+        return document.querySelector(linkToPatientSelector) || document.querySelector(linkToPatientTab);
+    }
+
     async function sendPostItToConsultation() {
         // le lien est au format https://secure.weda.fr/FolderMedical/PatientViewForm.aspx?PatDk=65407357|4152|630|2&crypt=15-A0-4F-82-80-4A-EB-03-E3-E4-0D-9C-F6-2F-BD-77-52-7B-3F-2D-93-A2-D0-E8-E3-A5-AF-C7-47-EF-12-B4
-        const linkToPatient = document.querySelector(linkToPatientSelector);
+        const linkToPatient = getVisiblePatientLink();
+        // Message : label en lecture, ou éditeur (iframe) en rédaction
         const questionContentIframe = document.querySelector('#CE_ContentPlaceHolder1_TextBoxPostItMessage_ID_Frame');
-        const postItContent = questionContentIframe?.contentDocument?.querySelector('body')?.innerText?.trim();
+        const postItContent = (document.querySelector('#ContentPlaceHolder1_LabelPostItMessage')?.innerText
+            || questionContentIframe?.contentDocument?.querySelector('body')?.innerText || '').trim();
+        // Réponse saisie par l'utilisateur courant
+        const commentaire = document.querySelector('#ContentPlaceHolder1_TextBoxPostItReadComment')?.value?.trim();
         if (!postItContent) {
             console.warn('[sendPostItContent] Contenu du post-it vide, insertion annulée.');
-            return;
-        }
-        if (!linkToPatient) {
-            console.warn('[sendPostItContent] Lien vers le patient introuvable, insertion annulée.');
             return;
         }
 
@@ -365,7 +373,12 @@ addTweak('/FolderTools/PostItReaderInForm.aspx', '*sendPostItContent', async fun
             recipiendaire ? `À : ${recipiendaire}` : null,
         ].filter(Boolean).join('\n');
 
-        const content = `${enTete}\n\n${postItContent}${reponses.length ? `\n\nRéponse(s) :\n${reponses.join('\n')}` : ''}`;
+        const content = `${enTete}\n\n${postItContent}${commentaire ? `\n\nMon commentaire :\n${commentaire}` : ''}${reponses.length ? `\n\nRéponse(s) :\n${reponses.join('\n')}` : ''}`;
+
+        if (!linkToPatient) {
+            console.warn('[sendPostItContent] Lien vers le patient introuvable, envoi annulé. Message qui aurait été envoyé :', { subtitle: timestampedTitle, content });
+            return;
+        }
 
 
         const button = document.getElementById(actionButtonId);
@@ -403,6 +416,13 @@ addTweak('/FolderTools/PostItReaderInForm.aspx', '*sendPostItContent', async fun
         sendButton.style.marginLeft = '8px';
         sendButton.style.marginTop = '8px';
         sendButton.style.display = 'block';
+        if (!getVisiblePatientLink()) {
+            // aria-disabled plutôt que disabled pour que le clic reste journalisé
+            sendButton.setAttribute('aria-disabled', 'true');
+            sendButton.style.opacity = '0.5';
+            sendButton.style.cursor = 'not-allowed';
+            sendButton.title = 'Weda-Helper : lien vers le patient introuvable, envoi impossible.';
+        }
         sendButton.addEventListener('click', () => sendPostItToConsultation(sendButton));
 
         fermerButton.parentElement.insertBefore(sendButton, fermerButton.nextSibling);
