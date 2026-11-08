@@ -126,7 +126,10 @@ function extractPatDkFromUrl(url) {
  * @returns {string|null}
  */
 function getImportGridPatientId() {
-    const link = document.querySelector('[id^="ContentPlaceHolder1_FileStreamClassementsGrid_HyperLinkGotoPatient_"]');
+    // On privilégie la ligne sélectionnée : sinon on récupérerait le patient de la première ligne de la grille
+    const selector = '[id^="ContentPlaceHolder1_FileStreamClassementsGrid_HyperLinkGotoPatient_"]';
+    const selectedRow = document.querySelector('.grid-selecteditem');
+    const link = (selectedRow || document).querySelector(selector);
     const patientId = extractPatDkFromUrl(link?.getAttribute('href'));
     // console.log('Import grid patient ID:', patientId);
     return patientId;

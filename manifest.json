@@ -99,6 +99,7 @@
         "src/features/courrier.js",
         "src/features/imti.js",
         "src/features/wedaEchanges.js",
+        "src/features/antecedentsComparePanel.js",
         "src/features/pdfParser.js",
         "src/features/importLoop.js",
         "src/features/headlessSetup.js",

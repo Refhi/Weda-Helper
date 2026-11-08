@@ -512,27 +512,22 @@ function addAntecedentsButton(operations, validationButton, hashId) {
         button.title = '[Weda-Helper] Le document concorde avec les antécédents du patient.';
         button.disabled = true;
     } else {
-        button.textContent = `Antécédents ⚠️ (${operations.length})`;
-        const describeOperations = async () => {
-            const lines = await Promise.all(operations.map(async op => {
-                const name = op.nomCible || op.data?.nom || '';
-                // Un code CIM-10 seul est peu parlant : on ajoute son libellé.
-                const label = /^[A-Z]\d{2}(\.\d+)?$/i.test(name) ? await libelleCim10(name) : null;
-                const { nom, searchType, onglet, ...changes } = op.data || {};
-                const details = Object.entries(changes).filter(([, v]) => v !== undefined && v !== null && v !== '')
-                    .map(([k, v]) => `${k} : ${v}`);
-                if (op.action === 'modifier' && nom && nom !== op.nomCible) details.unshift(`nom : ${nom}`);
-                if (op.action === 'ajouter' && onglet) details.push(`onglet : ${onglet}`);
-                return `- ${op.action} ${op.action === 'modifier' ? op.nomCible || name : name}${label ? ` (${label})` : ''}${details.length ? `\n    ${details.join('\n    ')}` : ''}`.trim();
-            }));
-            return `[Weda-Helper] Clic pour appliquer :\n${lines.join('\n')}`;
-        };
-        button.title = `[Weda-Helper] Clic pour appliquer ${operations.length} opération(s)`;
-        describeOperations().then(title => { button.title = title; });
+        const total = operations.length;
+        button.textContent = `Antécédents ⚠️ (${total})`;
+        button.title = "[Weda-Helper] Survoler pour comparer aux antécédents existants et choisir les opérations ; cliquer pour appliquer la sélection.";
+        const panel = attachAntecedentsComparePanel(button, operations, {
+            onSelectionChange: count => {
+                button.textContent = `Antécédents ⚠️ (${count}/${total})`;
+                button.style.opacity = count === 0 ? '0.5' : '';
+            }
+        });
         button.addEventListener('click', async () => {
+            const selectedOperations = panel.getSelectedOperations();
+            if (!selectedOperations.length || button.disabled) return;
             button.disabled = true;
+            panel.destroy();
             try {
-                const results = await traiterAntecedentsBatch(operations, { patientId: await resolveCurrentPatientIdWithWait() });
+                const results = await traiterAntecedentsBatch(selectedOperations, { patientId: await resolveCurrentPatientIdWithWait() });
                 const failures = results.filter(result => result?.error);
                 button.textContent = failures.length ? 'Antécédents ❌' : 'Antécédents ✅';
                 if (failures.length) button.title = failures.map(result => result.error).join('\n');
@@ -542,7 +537,7 @@ function addAntecedentsButton(operations, validationButton, hashId) {
                 button.textContent = 'Antécédents ❌';
                 button.title = error.message || String(error);
             }
-        }, { once: true });
+        });
     }
     validationButton.after(button);
 }
