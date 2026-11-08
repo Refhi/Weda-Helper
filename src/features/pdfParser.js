@@ -294,7 +294,10 @@ async function analyzeImportIframe(PDFIframeElements) {
  * Ne fait rien si aucun patient n'est encore sélectionné ou si l'option est désactivée.
  */
 async function precheckImportAntecedents(extractedData, fullText, urlPDF, messageBody, hashId) {
-    if (!Array.isArray(extractedData.antecedentsDiscordances)) {
+    if (Array.isArray(extractedData.antecedentsDiscordances)) {
+        console.log("[pdfParser] Import - Antécédents déjà vérifiés pour", hashId, ": pas de nouvelle demande à l'IA.");
+    } else {
+        console.log("[pdfParser] Import - Pas de vérification des antécédents en cache pour", hashId, ":", extractedData.antecedentsDiscordances);
         const result = await checkAntecedentsAgainstDocument(fullText, urlPDF, { messageBody });
         extractedData.antecedentsDiscordances = result;
         if (Array.isArray(result)) setPdfData(hashId, { antecedentsDiscordances: result });

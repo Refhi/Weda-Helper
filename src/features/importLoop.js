@@ -95,6 +95,24 @@ function advanceImportLoop() {
     clicCSPLockedElement(`#${link.id}`);
 }
 
+// Retire alreadyImported de toutes les données PDF du sessionStorage, renvoie le nombre d'imports modifiés
+function resetAlreadyImported() {
+    let count = 0;
+    for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key === IMPORT_LOOP_KEY) continue;
+        try {
+            const data = JSON.parse(sessionStorage.getItem(key));
+            if (data && data.alreadyImported) {
+                data.alreadyImported = false;
+                sessionStorage.setItem(key, JSON.stringify(data));
+                count++;
+            }
+        } catch (e) { /* valeur non JSON : ignorée */ }
+    }
+    return count;
+}
+
 function addImportLoopButton() {
     waitForElement({
         selector: '#ContentPlaceHolder1_UpdatePanelClassementGrid',
@@ -122,6 +140,12 @@ function addImportLoopButton() {
             container.appendChild(makeButton('⏹️ Stop',
                 "Weda-Helper : arrête l'analyse automatique des imports.",
                 function () { stopImportLoop("arrêtée manuellement."); }));
+            container.appendChild(makeButton('🧹 Retirer « déjà importé »',
+                "Weda-Helper : retire le statut « déjà importé » de tous les imports analysés, pour pouvoir les ré-analyser.",
+                function () {
+                    const count = resetAlreadyImported();
+                    sendWedaNotif({ message: `Statut « déjà importé » retiré de ${count} import(s).`, type: 'success' });
+                }));
             const progress = document.createElement('span');
             progress.id = 'pdfParserLoopProgress';
             container.appendChild(progress);
