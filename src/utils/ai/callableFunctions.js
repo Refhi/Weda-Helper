@@ -68,6 +68,18 @@ async function chargerIndexCim10() {
 }
 
 /**
+ * Le classement Fuse écarte souvent les codes génériques ("..., sans précision") du top N, alors que ce sont
+ * ceux qu'il faut préférer. On garde donc le top N, complété par quelques codes génériques du lot élargi.
+ */
+
+function selectionnerCandidatsCim10(resultats, limite) {
+    const items = resultats.map(r => r.item);
+    const retenus = items.slice(0, limite);
+    const generiques = items.slice(limite).filter(i => /sans précision|non précisé/i.test(i.label)).slice(0, 3);
+    return [...retenus, ...generiques].map(({ code, label }) => ({ code, label }));
+}
+
+/**
  * Fonction appelable par le modèle pour rechercher des codes CIM-10 correspondant à un ou plusieurs termes
  * (recherche floue sur le libellé officiel et les synonymes). Accepte `terme` (unique, rétrocompat) et/ou `termes`
  * (lot) afin d'éviter un aller-retour tool-call par diagnostic quand plusieurs codes sont à chercher d'un coup.
@@ -76,7 +88,8 @@ async function chargerIndexCim10() {
  * correspond réellement au diagnostic voulu (éviter la sur-précision, ex. ne pas choisir un germe précis non
  * mentionné par l'utilisateur).
  */
-async function rechercherCim10({ terme, termes, limite = 20 } = {}) {
+async function rechercherCim10({ terme, termes } = {}) {
+    const limite = 20;
     const termesAChercher = [...new Set([...(Array.isArray(termes) ? termes : []), terme].filter(Boolean))];
     console.log(`[rechercherCim10] Appelée avec:`, { termesAChercher, limite });
     if (!termesAChercher.length) return { error: "Aucun terme de recherche fourni (utiliser 'terme' ou 'termes')." };
@@ -84,7 +97,7 @@ async function rechercherCim10({ terme, termes, limite = 20 } = {}) {
         const fuse = await chargerIndexCim10();
         const resultatsParTerme = termesAChercher.map(t => ({
             terme: t,
-            resultats: fuse.search(t, { limit: limite }).map(r => ({ code: r.item.code, label: r.item.label, score: r.score }))
+            resultats: selectionnerCandidatsCim10(fuse.search(t, { limit: Math.max(limite * 8, 60) }), limite)
         }));
         // Un seul terme demandé : renvoie directement la liste des résultats (rétrocompat avec l'ancien format).
         return termesAChercher.length === 1 ? resultatsParTerme[0].resultats : resultatsParTerme;
@@ -495,7 +508,7 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "rechercherCim10",
-                description: "Recherche des codes CIM-10 (diagnostics) correspondant à un ou plusieurs termes, par recherche floue sur le libellé officiel et les synonymes. Utiliser 'termes' (tableau) pour chercher plusieurs diagnostics en un seul appel plutôt que d'enchaîner plusieurs appels successifs. Renvoie jusqu'à 'limite' résultats {code, label, score} par terme (résultats groupés par terme si 'termes' contient plusieurs entrées).; examiner les résultats et choisir le code le plus pertinent et le moins spécifique que nécessaire (ex. préférer un code 'sans précision' si l'utilisateur n'a donné aucun détail complémentaire). Si aucun résultat ne correspond réellement au diagnostic voulu, se rabattre sur un antécédent libre (action='ajouter' sans searchType).",
+                description: "Recherche des codes CIM-10 (diagnostics) correspondant à un ou plusieurs termes, par recherche floue sur le libellé officiel et les synonymes. Utiliser 'termes' (tableau) pour chercher plusieurs diagnostics en un seul appel plutôt que d'enchaîner plusieurs appels successifs. Renvoie jusqu'à 20 résultats {code, label} par terme (résultats groupés par terme si 'termes' contient plusieurs entrées).; examiner les résultats et choisir le code le plus pertinent et le moins spécifique que nécessaire (ex. préférer un code 'sans précision' si l'utilisateur n'a donné aucun détail complémentaire). Si aucun résultat ne correspond réellement au diagnostic voulu, se rabattre sur un antécédent libre (action='ajouter' sans searchType).",
                 parameters: {
                     type: "object",
                     properties: {
@@ -507,16 +520,12 @@ const availableFunctions = {
                             type: "array",
                             items: { type: "string" },
                             description: "Liste de termes médicaux à rechercher en un seul appel, ex. ['pneumonie', 'diabète type 2']."
-                        },
-                        limite: {
-                            type: "integer",
-                            description: "Nombre maximal de résultats à renvoyer par terme (défaut 20)."
                         }
                     }
                 }
             }
         },
-        execute: ({ terme, termes, limite } = {}) => rechercherCim10({ terme, termes, limite })
+        execute: ({ terme, termes } = {}) => rechercherCim10({ terme, termes })
     },
     // `interne` : outil réservé aux chaînes d'outils (@see toolChains.js), non proposé directement au modèle.
     traiterAntecedents: {

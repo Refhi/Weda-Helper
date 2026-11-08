@@ -93,7 +93,7 @@ const toolChains = (() => {
         type: 'mecanique',
         outil: 'rechercherCim10',
         si: ctx => ctx.termesCim10?.length > 0,
-        args: ctx => ({ termes: ctx.termesCim10, limite: 8 }),
+        args: ctx => ({ termes: ctx.termesCim10 }),
         sortie: (res, ctx) => {
             ctx.candidats = grouperResultatsCim10(res, ctx.termesCim10)
                 .map(g => ({ terme: g.terme, candidats: g.resultats.map(({ code, label }) => ({ code, label })) }));
@@ -204,7 +204,7 @@ const toolChains = (() => {
                     id: 'chercherCodes',
                     type: 'mecanique',
                     outil: 'rechercherCim10',
-                    args: ctx => ({ termes: ctx.libres, limite: 8 }),
+                    args: ctx => ({ termes: ctx.libres }),
                     sortie: (res, ctx) => {
                         const groupes = grouperResultatsCim10(res, ctx.libres);
                         ctx.candidats = groupes.map(g => ({ titre: g.terme, candidats: g.resultats.map(({ code, label }) => ({ code, label })) }));
