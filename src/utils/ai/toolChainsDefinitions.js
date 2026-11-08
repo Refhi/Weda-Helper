@@ -134,7 +134,7 @@ const toolChains = (() => {
                 if (refus) return [{ operation, motif: refus }];
                 if (data?.searchType === 'CIM10') return ctx.codesValides?.has(data.nom) ? [] : [{ operation, motif: "code CIM-10 absent des résultats de recherche" }];
                 if (!data?.searchType) {
-                    if (!ctx.rechercheCim10Faite) return [{ operation, motif: "antécédent libre refusé : l'ajout se fait par défaut en CIM-10, cherche d'abord un code avec rechercherCim10" }];
+                    if (!ctx.rechercheCim10Faite) return [{ operation, motif: "searchType absent : l'ajout se fait par défaut en CIM-10 (cherche d'abord un code avec rechercherCim10) ; pour une allergie, searchType doit valoir 'allergieMolecule' ou 'allergiePrinceps' (champ nommé exactement searchType) et nom le nom du médicament seul" }];
                     if (!ctx.termesRecherches?.has(normaliserTerme(data?.nom))) return [{ operation, motif: "antécédent libre refusé : aucune recherche CIM-10 n'a été faite pour ce libellé (nom doit être exactement le terme recherché). Une allergie s'ajoute avec searchType 'allergieMolecule' ou 'allergiePrinceps', jamais en libre" }];
                 }
                 return [];
@@ -327,6 +327,11 @@ const toolChains = (() => {
                         + `Cet appel est obligatoire : si rien n'est à changer, appelle-le avec une liste vide.`,
                     verifier: args => {
                         if (!Array.isArray(args?.elements)) return "'elements' doit être un tableau. Refais l'appel.";
+                        const champsPermis = ['action', 'libelle', 'nomCible', 'termeCim10', 'allergie', 'commentaire'];
+                        const inconnus = args.elements.flatMap(e => Object.keys(e || {}).filter(cle => !champsPermis.includes(cle)));
+                        if (inconnus.length) return `Champs inconnus : ${[...new Set(inconnus)].join(', ')}. Champs permis : ${champsPermis.join(', ')} (pour une allergie : allergie = 'allergieMolecule' ou 'allergiePrinceps'). Refais l'appel.`;
+                        const sansType = args.elements.filter(e => e?.action === 'ajouter' && !e.termeCim10 && !['allergieMolecule', 'allergiePrinceps'].includes(e.allergie)).map(e => e.libelle);
+                        if (sansType.length) return `Pour chaque 'ajouter' (${sansType.join(', ')}), renseigne soit termeCim10 (terme médical), soit allergie ('allergieMolecule' ou 'allergiePrinceps' : champ nommé exactement 'allergie'). Refais l'appel.`;
                         const codes = args.elements.map(e => e?.termeCim10).filter(terme => /^[A-Z]\d{2}(\.\d+)?$/i.test(String(terme ?? '').trim()));
                         return codes.length
                             ? `termeCim10 doit être un terme médical en toutes lettres, pas un code (${codes.join(', ')}) : les codes sont recherchés automatiquement ensuite. Refais l'appel.`
