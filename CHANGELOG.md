@@ -4,6 +4,9 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 
 Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons vers les tickets correspondants.
 
+# [3.3.0.1] - Hotfix
+- [#743](https://github.com/Refhi/Weda-Helper/issues/743) - correction d'un problème de valeur par défaut dans les substitutions NOEMIE qui empêchait de modifier les options simplement. Remet l'option autoNoemieSubstitutionTable à sa valeur par défaut si elles ont été personnalisées par l'utilisateur.
+
 # [3.3] - IA, IA, et encore IA !
 Cette version est surtout orientée IA et apporte d’autres petites améliorations et bug fixes.
 
