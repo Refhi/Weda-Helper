@@ -100,6 +100,7 @@
         "src/features/imti.js",
         "src/features/wedaEchanges.js",
         "src/features/pdfParser.js",
+        "src/features/importLoop.js",
         "src/features/headlessSetup.js",
         "src/features/instantVaccine.js",
         "src/features/noemie.js",

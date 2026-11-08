@@ -10,7 +10,10 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#728](https://github.com/Refhi/Weda-Helper/issues/728) - les prompts pour l’import PDF via IA sont désormais personnalisables dans les options.
 - [#727](https://github.com/Refhi/Weda-Helper/issues/727) - Le client peut désormais accéder au contenu d'Heidi, merci @DrFloW71 !
 
-## Messagerie sécurisée :
+### Importations ("Télécharger vos documents") :
+- [#742](https://github.com/Refhi/Weda-Helper/issues/742) - Dans la page des imports, vous pouvez demander l'analyse de tous les imports en attente d'un coup ! Particulièrement intéressant si vous avez une IA locale lente : vous pouvez lancer l'analyse automatique de tous les imports en attente pendant la pause déjeuner par exemple.
+
+### Messagerie sécurisée :
 - [#723](https://github.com/Refhi/Weda-Helper/issues/723) - Les données extraites dans la messagerie sécurisée sont désormais enregistrées même si le message n'est pas importé (jusqu'à la fermeture de l'onglet). Cela évite de faire les analyses plusieurs fois si on parcours les messages avant import.
 - [#723](https://github.com/Refhi/Weda-Helper/issues/723) - Le bouton "Un patient" est automatiquement cliqué dès qu'un message est sélectionné dans la messagerie sécurisée. (désactivable dans les options)
 - Ajout d'une boîte à outils dans la messagerie sécurisée pour analyser successivement plusieurs messages : ▶️ parcourt les messages cochés, 🔁 analyse automatiquement les messages non lus (à l'activation puis à chaque rafraîchissement de la boîte de réception), ⏹️ arrête le parcours en cours. (désactivable dans les options)

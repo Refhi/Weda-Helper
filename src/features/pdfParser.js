@@ -222,12 +222,18 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'debugModePdfParser', function () {
  * }
  */
 async function processFoundPdfIframeImport(PDFIframeElements) {
+    const done = await analyzeImportIframe(PDFIframeElements);
+    if (done && typeof advanceImportLoop === 'function') advanceImportLoop();
+}
+
+// Renvoie true si le traitement est terminé (false si un refresh de page est attendu)
+async function analyzeImportIframe(PDFIframeElements) {
     // ===========================================
     // ÉTAPE 1 : Extraction des données du PDF
     // (pas de modification du DOM ni de refresh)
     // ===========================================
     const baseData = await extractBasePdfData(PDFIframeElements);
-    if (!baseData) return;
+    if (!baseData) return true;
 
     const { urlPDF, fullText, hashId, pdfText, messageBody } = baseData;
 
@@ -244,7 +250,7 @@ async function processFoundPdfIframeImport(PDFIframeElements) {
     if (extractedData.alreadyImported) {
         console.log("[pdfParser] Import - Données déjà importées. Redirection vers recherche.");
         selectFirstPatientOrSearchField();
-        return;
+        return true;
     }
     
     // Sinon, on extrait les données
@@ -260,7 +266,7 @@ async function processFoundPdfIframeImport(PDFIframeElements) {
     // on stoppe ici. La fonction sera rappelée après le rechargement de page.
     if (searchResult.needsPageRefresh) {
         console.log("[pdfParser] Import - Refresh attendu :", searchResult.message);
-        return;
+        return false;
     }
 
     // Si échec de la recherche patient, on continue quand même pour remplir le formulaire
@@ -276,6 +282,7 @@ async function processFoundPdfIframeImport(PDFIframeElements) {
     recordMetrics({ clicks: 9, drags: 9, keyStrokes: 10 });
 
     setTimeout(() => highlightDate(), 200);
+    return true;
 }
 
 /**
