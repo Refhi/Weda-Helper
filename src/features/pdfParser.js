@@ -509,33 +509,27 @@ function addAntecedentsButton(operations, validationButton, hashId) {
         button.disabled = true;
     } else if (operations.length === 0) {
         button.textContent = 'Antécédents ✅';
-        button.title = '[Weda-Helper] Le document concorde avec les antécédents du patient.';
-        button.disabled = true;
+        button.title = '[Weda-Helper] Le document concorde avec les antécédents du patient. Survoler pour les consulter.';
+        // Non désactivé : un bouton désactivé ne reçoit pas le survol qui ouvre le panneau
+        attachAntecedentsComparePanel(button, []);
     } else {
         const total = operations.length;
         button.textContent = `Antécédents ⚠️ (${total})`;
-        button.title = "[Weda-Helper] Survoler pour comparer aux antécédents existants et choisir les opérations ; cliquer pour appliquer la sélection.";
-        const panel = attachAntecedentsComparePanel(button, operations, {
-            onSelectionChange: count => {
-                button.textContent = `Antécédents ⚠️ (${count}/${total})`;
-                button.style.opacity = count === 0 ? '0.5' : '';
-            }
-        });
-        button.addEventListener('click', async () => {
-            const selectedOperations = panel.getSelectedOperations();
-            if (!selectedOperations.length || button.disabled) return;
-            button.disabled = true;
-            panel.destroy();
-            try {
+        button.title = "[Weda-Helper] Survoler pour comparer aux antécédents existants, choisir les opérations et les valider.";
+        attachAntecedentsComparePanel(button, operations, {
+            onSelectionChange: count => { button.textContent = `Antécédents ⚠️ (${count}/${total})`; },
+            onApply: async selectedOperations => {
                 const results = await traiterAntecedentsBatch(selectedOperations, { patientId: await resolveCurrentPatientIdWithWait() });
                 const failures = results.filter(result => result?.error);
-                button.textContent = failures.length ? 'Antécédents ❌' : 'Antécédents ✅';
-                if (failures.length) button.title = failures.map(result => result.error).join('\n');
-                else setPdfData(hashId, { antecedentsDiscordances: [] });
-            } catch (error) {
-                console.warn('[pdfParser] Mise à jour des antécédents échouée :', error);
-                button.textContent = 'Antécédents ❌';
-                button.title = error.message || String(error);
+                if (failures.length) {
+                    button.textContent = 'Antécédents ❌';
+                    button.title = failures.map(result => result.error).join('\n');
+                    return `❌ ${failures.length} échec(s) : ${failures.map(result => result.error).join(' ; ')}`;
+                }
+                button.textContent = 'Antécédents ✅';
+                button.title = '[Weda-Helper] Antécédents mis à jour.';
+                setPdfData(hashId, { antecedentsDiscordances: [] });
+                return `✅ ${selectedOperations.length} opération(s) appliquée(s).`;
             }
         });
     }

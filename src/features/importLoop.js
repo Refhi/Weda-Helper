@@ -62,7 +62,7 @@ async function goToNextImportPage(state) {
     setImportLoopState(state);
     clicCSPLockedElement('.grid-pager span + a');
     // Seul #ContentPlaceHolder1_UpdatePanelClassementGrid est rafraîchi : on attend le changement de page
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 50; i++) {déco
         await new Promise(r => setTimeout(r, 200));
         const span = document.querySelector('.grid-pager span');
         if (span && span.textContent !== previousPage && getImportLink(0)) {

@@ -119,17 +119,27 @@ function makeAtcdRow(className) {
  * @param {object} [options]
  * @param {function(): Promise<string|number>} [options.getPatientId]
  * @param {function(number): void} [options.onSelectionChange] - Appelé avec le nombre d'opérations retenues.
+ * @param {function(Array<object>): Promise<string>} [options.onApply] - Appelé par « Valider la sélection » avec les opérations
+ *   retenues ; renvoie le message de résultat à afficher.
  * @returns {{getSelectedOperations: function(): Array<object>, destroy: function(): void}}
  */
-function attachAntecedentsComparePanel(button, operations, { getPatientId = resolveCurrentPatientIdWithWait, onSelectionChange = () => { } } = {}) {
+function attachAntecedentsComparePanel(button, operations, { getPatientId = resolveCurrentPatientIdWithWait, onSelectionChange = () => { }, onApply = null } = {}) {
     injectAntecedentsPanelStyle();
     const selected = new Set(operations.map((_, index) => index));
     let panel = null;
     let hideTimer = null;
     let existingPromise = null;
+    let applying = false;
+    let validateButton = null;
     const checkboxes = [];
 
-    const notify = () => onSelectionChange(selected.size);
+    const refreshValidateButton = () => {
+        if (validateButton) validateButton.disabled = applying || selected.size === 0;
+    };
+    const notify = () => {
+        refreshValidateButton();
+        onSelectionChange(selected.size);
+    };
 
     const setAll = (value) => {
         selected.clear();
@@ -174,17 +184,36 @@ function attachAntecedentsComparePanel(button, operations, { getPatientId = reso
 
         const toolbar = document.createElement('div');
         toolbar.className = 'wh-atcd-toolbar';
-        const validateAll = document.createElement('button');
-        validateAll.type = 'button';
-        validateAll.textContent = '✔ Tout valider';
-        validateAll.addEventListener('click', () => setAll(true));
+        const status = document.createElement('span');
+        status.className = 'wh-atcd-details';
+        const validateSelection = document.createElement('button');
+        validateButton = validateSelection;
+        validateSelection.type = 'button';
+        validateSelection.textContent = '✔ Valider la sélection';
+        validateSelection.title = "Applique au dossier du patient toutes les opérations cochées";
+        validateSelection.addEventListener('click', async () => {
+            if (!onApply || applying || !selected.size) return;
+            applying = true;
+            validateSelection.disabled = true;
+            cancelAll.disabled = true;
+            status.textContent = 'Application en cours…';
+            try {
+                status.textContent = await onApply(operations.filter((_, index) => selected.has(index)));
+            } catch (error) {
+                status.textContent = `❌ ${error.message || error}`;
+            }
+            applying = false;
+            hide(1500);
+        });
         const cancelAll = document.createElement('button');
         cancelAll.type = 'button';
         cancelAll.textContent = '✖ Tout annuler';
-        cancelAll.addEventListener('click', () => setAll(false));
+        cancelAll.title = 'Décoche toutes les propositions et ferme le panneau';
+        cancelAll.addEventListener('click', () => { setAll(false); hide(0); });
         const legend = document.createElement('span');
-        legend.textContent = '🟩 ajouter  🟧 modifier  🟥 supprimer — cliquer sur « Antécédents » applique la sélection';
-        toolbar.append(validateAll, cancelAll, legend);
+        legend.textContent = '🟩 ajouter  🟧 modifier  🟥 supprimer';
+        toolbar.append(validateSelection, cancelAll, legend, status);
+        refreshValidateButton();
         content.appendChild(toolbar);
 
         const existing = await loadExisting();
@@ -296,13 +325,14 @@ function attachAntecedentsComparePanel(button, operations, { getPatientId = reso
         return content;
     };
 
-    const hide = () => {
+    const hide = (delay = 300) => {
         clearTimeout(hideTimer);
         hideTimer = setTimeout(() => {
+            if (applying) return;
             panel?.remove();
             panel = null;
             checkboxes.length = 0;
-        }, 300);
+        }, typeof delay === 'number' ? delay : 300);
     };
     const keepOpen = () => clearTimeout(hideTimer);
 
@@ -313,7 +343,7 @@ function attachAntecedentsComparePanel(button, operations, { getPatientId = reso
         panel.className = 'wh-atcd-panel';
         panel.textContent = 'Chargement des antécédents…';
         panel.addEventListener('mouseenter', keepOpen);
-        panel.addEventListener('mouseleave', hide);
+        panel.addEventListener('mouseleave', () => hide());
         const rect = button.getBoundingClientRect();
         panel.style.left = `${Math.max(0, Math.min(rect.left, window.innerWidth - 580))}px`;
         panel.style.top = `${rect.bottom + 2}px`;
@@ -323,14 +353,15 @@ function attachAntecedentsComparePanel(button, operations, { getPatientId = reso
         if (panel === currentPanel) panel.replaceChildren(content);
     };
 
+    const hideOnLeave = () => hide();
     button.addEventListener('mouseenter', show);
-    button.addEventListener('mouseleave', hide);
+    button.addEventListener('mouseleave', hideOnLeave);
 
     return {
         getSelectedOperations: () => operations.filter((_, index) => selected.has(index)),
         destroy: () => {
             button.removeEventListener('mouseenter', show);
-            button.removeEventListener('mouseleave', hide);
+            button.removeEventListener('mouseleave', hideOnLeave);
             clearTimeout(hideTimer);
             panel?.remove();
             panel = null;
