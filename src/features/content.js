@@ -351,7 +351,8 @@ addTweak('/FolderTools/PostItReaderInForm.aspx', '*sendPostItContent', async fun
             const reponseEl = row.querySelector('td[title="Réponse du destinataire"]');
             const reponseTexte = reponseEl?.textContent?.replace(/\s+/g, ' ').trim();
             if (reponseTexte) {
-                reponses.push(`${nom} : ${reponseTexte}`);
+                const dateLecture = row.querySelector('td[title="Date et heure de lecture"]')?.textContent?.replace(/\s+/g, ' ').trim();
+                reponses.push(`${nom}${dateLecture ? ` (${dateLecture})` : ''} : ${reponseTexte}`);
             }
         });
         const recipiendaire = destinataires.length ? destinataires.join(', ') : getConnectedDoctorName();

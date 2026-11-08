@@ -15,6 +15,9 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#723](https://github.com/Refhi/Weda-Helper/issues/723) - Le bouton "Un patient" est automatiquement cliqué dès qu'un message est sélectionné dans la messagerie sécurisée. (désactivable dans les options)
 - Ajout d'une boîte à outils dans la messagerie sécurisée pour analyser successivement plusieurs messages : ▶️ parcourt les messages cochés, 🔁 analyse automatiquement les messages non lus (à l'activation puis à chaque rafraîchissement de la boîte de réception), ⏹️ arrête le parcours en cours. (désactivable dans les options)
 
+## Post-it :
+- [#629](https://github.com/Refhi/Weda-Helper/issues/629) - L'importation des post-it est de nouveau fonctionnelle, et plus complète.
+
 
 # [3.3] - IA, IA, et encore IA !
 Cette version est surtout orientée IA et apporte d’autres petites améliorations et bug fixes.
