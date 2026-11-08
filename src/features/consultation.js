@@ -852,23 +852,30 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'consultationLinter', function 
     function lintConsultationIframe(iframe) {
         const doc = iframe.contentDocument;
         if (!doc || !doc.body) return;
-        // <div></div> n'affiche rien alors que <div>&nbsp;</div> affiche une ligne vide :
-        // on supprime les blocs réellement vides et on normalise les blocs d'espaces en <div><br></div>
+        // <div></div> n'affiche rien et Weda supprime le <br> des <div><br></div> à l'enregistrement :
+        // on supprime les blocs réellement vides et on normalise les blocs d'espaces ou de <br> seul
+        // en <div>&nbsp;</div>, seule forme conservée à l'enregistrement qui affiche une ligne vide
         doc.body.querySelectorAll('div,p').forEach(block => {
-            if (block.querySelector('img,table,input,br,div,p') || !/^[\s\u00A0]*$/.test(block.textContent)) return;
+            if (block.querySelector('img,table,input,div,p') || !/^[\s\u00A0]*$/.test(block.textContent)) return;
+            const brCount = block.querySelectorAll('br').length;
+            if (brCount > 1 || (brCount === 1 && block.childNodes.length > 1)) return;
             if (block.childNodes.length === 0) block.remove();
-            else block.replaceChildren(doc.createElement('br'));
+            else block.replaceChildren(doc.createTextNode('\u00A0'));
         });
         const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
         const nodes = [];
         while (walker.nextNode()) nodes.push(walker.currentNode);
         nodes.forEach(node => {
-            const parts = node.nodeValue.split('\n').map(lintConsultationLine);
+            // le &nbsp; seul d'une ligne vide est ce qui la fait survivre à l'enregistrement Weda
+            if (/^(P|DIV)$/.test(node.parentNode.tagName) && node.parentNode.childNodes.length === 1 && node.nodeValue === '\u00A0') return;
+            const prev = node.previousSibling;
+            const startsLine = !prev || (prev.nodeType === 1 && /^(BR|P|DIV)$/.test(prev.tagName));
+            // espaces de début de ligne supprimés si la ligne contient ":" (le premier segment n'est en début de ligne que si le nœud l'est)
+            const parts = node.nodeValue.split('\n').map((line, i) =>
+                lintConsultationLine(i > 0 || startsLine ? line.replace(/^[ \u00A0]+(?=.*:)/, '') : line));
             // espaces de fin de ligne : pour le dernier segment, seulement si la ligne se termine vraiment là
             const next = node.nextSibling;
             const endsLine = !next || (next.nodeType === 1 && /^(BR|P|DIV)$/.test(next.tagName));
-            const prev = node.previousSibling;
-            const startsLine = !prev || (prev.nodeType === 1 && /^(BR|P|DIV)$/.test(prev.tagName));
             parts.forEach((p, i) => {
                 // une ligne ne contenant que des espaces est vidée avant le comptage des sauts de ligne
                 const orphan = /^[ \u00A0]*$/.test(p) && (parts.length > 1 || startsLine);
