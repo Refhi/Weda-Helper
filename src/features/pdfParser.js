@@ -250,6 +250,7 @@ async function analyzeImportIframe(PDFIframeElements) {
     if (extractedData.alreadyImported) {
         console.log("[pdfParser] Import - Données déjà importées. Redirection vers recherche.");
         selectFirstPatientOrSearchField();
+        await precheckImportAntecedents(extractedData, fullText, urlPDF, messageBody, hashId);
         return true;
     }
     
@@ -280,9 +281,29 @@ async function analyzeImportIframe(PDFIframeElements) {
     await setExtractedDataInForm(extractedData, fullText);
     markDataAsImported(hashId, extractedData);
     recordMetrics({ clicks: 9, drags: 9, keyStrokes: 10 });
+    await precheckImportAntecedents(extractedData, fullText, urlPDF, messageBody, hashId);
 
     setTimeout(() => highlightDate(), 200);
     return true;
+}
+
+/**
+ * Pré-vérification des antécédents dans la page d'import (même mécanisme que pour les échanges sécurisés,
+ * @see processFoundPdfIframeEchanges) : sans rien modifier, les opérations proposées sont mises en cache par hashId
+ * (extractedData.antecedentsDiscordances) et appliquées seulement au clic sur le bouton affiché à côté du lien patient de la ligne.
+ * Ne fait rien si aucun patient n'est encore sélectionné ou si l'option est désactivée.
+ */
+async function precheckImportAntecedents(extractedData, fullText, urlPDF, messageBody, hashId) {
+    if (!Array.isArray(extractedData.antecedentsDiscordances)) {
+        const result = await checkAntecedentsAgainstDocument(fullText, urlPDF, { messageBody });
+        extractedData.antecedentsDiscordances = result;
+        if (Array.isArray(result)) setPdfData(hashId, { antecedentsDiscordances: result });
+    }
+    const lineNumber = actualImportActionLine();
+    const anchor = lineNumber !== null
+        ? document.querySelector(`#ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_${lineNumber}`)
+        : null;
+    addAntecedentsButton(extractedData.antecedentsDiscordances, anchor, hashId);
 }
 
 /**
