@@ -299,6 +299,7 @@ async function pageContext() {
     console.log(`[pageContext] Appelée, url actuelle :`, url);
     if (url.includes('/FolderMedical/PopUpViewBinaryForm.aspx')) return await lirePdfDepuisIframesPage();
     if (url.includes('/FolderMedical/HprimForm.aspx')) return lireResultatsHprim();
+    if (url.includes('/FolderMedical/ConsultationForm.aspx')) return { entete: readConsultationHeader(document), zonesTexte: readConsultationTextZones(document), suivis: readSuiviItems(document) };
     return { error: "Aucune information contextuelle disponible pour la page actuelle." };
 }
 
