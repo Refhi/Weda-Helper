@@ -20,7 +20,8 @@
  * Valeur: fonction async (data, options) => résultat structuré (voir insertData)
  */
 const INSERT_TARGETS = {
-    toConsultation: insertToConsultation,
+    // Wrapper : insertToConsultation est défini dans dataInserterConsultation.js, chargé dans un autre script
+    toConsultation: (data, options) => insertToConsultation(data, options),
     toCertificat: insertToCertificat,
     toDemande: insertToDemande,
     toCourrier: insertToCourrier,
@@ -202,18 +203,6 @@ async function insertToDocument({ title, subtitle, content }, { debug = false, p
             workIframe.remove();
         }
     }
-}
-
-/**
- * Enregistre un contenu texte dans une NOUVELLE consultation pour le patient courant.
- * @see insertToDocument
- */
-async function insertToConsultation(data, options) {
-    return insertToDocument(data, options, {
-        menuLabel: 'Consultation',
-        editorSelector: "iframe[id^='CE_ContentPlaceHolder1_EditorConsultation'][id$='_ID_Frame'], #CE_ContentPlaceHolder1_EvenementInformationFiltreUCForm1_EditorZoneUserTextInEvement_ID_Frame",
-        iframeName: 'WedaHelperConsultationIframe',
-    });
 }
 
 /**
