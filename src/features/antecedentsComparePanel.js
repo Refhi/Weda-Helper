@@ -178,7 +178,7 @@ function attachAntecedentsComparePanel(button, operations, { getPatientId = reso
         existingPromise ??= (async () => {
             try {
                 // patientId est le 2e argument de recoverPatientData, pas une option
-                const res = await recoverPatientData({ categories: ['antecedents'] }, await getPatientId());
+                const res = await recoverPatientData({ categories: ['antecedents'], refreshMode: 'noRefresh' }, await getPatientId());
                 if (res?.error) throw new Error(res.error);
                 return res?.antecedents || [];
             } catch (error) {

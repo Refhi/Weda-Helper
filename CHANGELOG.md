@@ -12,7 +12,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 
 ### Importations ("Télécharger vos documents") :
 - [#742](https://github.com/Refhi/Weda-Helper/issues/742) - Dans la page des imports, vous pouvez demander l'analyse de tous les imports en attente d'un coup ! Particulièrement intéressant si vous avez une IA locale lente : vous pouvez lancer l'analyse automatique de tous les imports en attente pendant la pause déjeuner par exemple.
-
+- Les antécédents récupérés lors de l'analyse d'un import sont réutilisés par le bouton antécédents (sans nouvelle lecture du dossier), et un import déjà marqué comme importé ne relance plus l'analyse au clic manuel.
 ### Messagerie sécurisée :
 - [#723](https://github.com/Refhi/Weda-Helper/issues/723) - Les données extraites dans la messagerie sécurisée sont désormais enregistrées même si le message n'est pas importé (jusqu'à la fermeture de l'onglet). Cela évite de faire les analyses plusieurs fois si on parcours les messages avant import.
 - [#723](https://github.com/Refhi/Weda-Helper/issues/723) - Le bouton "Un patient" est automatiquement cliqué dès qu'un message est sélectionné dans la messagerie sécurisée. (désactivable dans les options)

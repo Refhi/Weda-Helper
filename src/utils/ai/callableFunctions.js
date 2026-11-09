@@ -179,7 +179,8 @@ async function recoverPatientData({
     lireDocuments = false,
     antecedentsType,
     antecedentsChampDate,
-    antecedentsDateRange = []
+    antecedentsDateRange = [],
+    refreshMode = "autoRefresh"
 } = {}, patientId = null) {
     // Une plage d'au plus un mois tient dans les 10 dernières entrées chargées par défaut ; au-delà (ou sans plage), tout l'historique est chargé.
     const { start, end } = resolveDateRange(dateRange);
@@ -189,7 +190,7 @@ async function recoverPatientData({
     const fullPage = !(start && start >= limiteUnMois);
     console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, dateRange, lireDocuments, antecedentsType, antecedentsChampDate, antecedentsDateRange, patientId });
     try {
-        const data = await recoverData({ categories, fullPage, dateRange, debug: false, patientId, resolveAllAttachments: lireDocuments });
+        const data = await recoverData({ categories, fullPage, dateRange, debug: false, patientId, resolveAllAttachments: lireDocuments, refreshMode });
         if (lireDocuments) await lirePiecesJointesPdf(data);
         if (data?.antecedents) data.ongletsDisponibles = ((await getOptionPromise('memoriserOngletsAntecedents')) || []).filter(o => o?.titre);
         if (data?.antecedents && (antecedentsType || antecedentsChampDate)) {
