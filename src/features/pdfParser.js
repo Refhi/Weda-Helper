@@ -250,7 +250,7 @@ async function analyzeImportIframe(PDFIframeElements) {
     if (extractedData.alreadyImported) {
         console.log("[pdfParser] Import - Données déjà importées. Redirection vers recherche.");
         selectFirstPatientOrSearchField();
-        await precheckImportAntecedents(extractedData, fullText, urlPDF, messageBody, hashId);
+        attachImportAntecedentsButton(extractedData, hashId);
         return true;
     }
     
@@ -302,6 +302,13 @@ async function precheckImportAntecedents(extractedData, fullText, urlPDF, messag
         extractedData.antecedentsDiscordances = result;
         if (Array.isArray(result)) setPdfData(hashId, { antecedentsDiscordances: result });
     }
+    attachImportAntecedentsButton(extractedData, hashId);
+}
+
+/**
+ * Affiche le bouton antécédents à côté du lien patient de la ligne d'import, à partir du cache (sans appel à l'IA).
+ */
+function attachImportAntecedentsButton(extractedData, hashId) {
     const lineNumber = actualImportActionLine();
     const anchor = lineNumber !== null
         ? document.querySelector(`#ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_${lineNumber}`)
