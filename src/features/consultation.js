@@ -842,6 +842,8 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'consultationLinter', function 
         line = line.replace(/^[ \u00A0]+(?=-)/, '').replace(/^-[ \u00A0]*(?=\S)/, '- ');
         // un seul espace avant ":"
         line = line.replace(/[ \u00A0]{2,}:/g, ' :');
+        // un mot directement suivi de ":" (en fin de mot/ligne, hors URL ou heure) reçoit un espace avant
+        line = line.replace(/([\p{L}\p{N}]+):(?=[ \u00A0]|$)/gu, '$1 :');
         // majuscule sur les lignes sans tiret finissant par ":"
         if (!/^[ \u00A0]*-/.test(line) && /:[ \u00A0]*$/.test(line)) {
             line = line.replace(/\p{L}/u, c => c.toUpperCase());
