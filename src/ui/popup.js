@@ -47,6 +47,14 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
 
 
+    // Kill-switch : désactive tous les addTweak
+    chrome.storage.local.get('killSwitch', function (data) {
+        document.getElementById('killSwitchSlider').checked = data.killSwitch === true;
+    });
+    document.getElementById('killSwitchSlider').addEventListener('change', function () {
+        chrome.storage.local.set({ 'killSwitch': this.checked });
+    });
+
     // Surveiller les changements du slider
     document.getElementById('instantVaccineSlider').addEventListener('change', function () {
         // Mettre à jour la valeur dans le storage quand le slider change
