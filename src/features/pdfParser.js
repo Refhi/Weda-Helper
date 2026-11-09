@@ -488,12 +488,16 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
 
 /**
  * Affiche, à côté du bouton de validation, le résultat de la vérification des antécédents : « ✅ » si le document
- * concorde avec le dossier, « ⚠️ » sinon (un clic applique alors les opérations proposées).
+ * concorde avec le dossier, « ⚠️ » sinon (un clic ouvre le panneau de comparaison).
  * @param {Array<object>|null} operations - Opérations proposées (@see checkAntecedentsAgainstDocument), null si non vérifié.
  * @param {HTMLElement|null} validationButton
  * @param {string} hashId - PDF concerné : une fois appliquées, les opérations sont retirées du cache.
  */
+let antecedentsComparePanelController = null;
+
 function addAntecedentsButton(operations, validationButton, hashId) {
+    antecedentsComparePanelController?.destroy();
+    antecedentsComparePanelController = null;
     document.querySelector('#pdfParserAntecedentsButton')?.remove();
     if (!validationButton || (operations !== 'erreur' && !Array.isArray(operations))) return;
 
@@ -509,14 +513,13 @@ function addAntecedentsButton(operations, validationButton, hashId) {
         button.disabled = true;
     } else if (operations.length === 0) {
         button.textContent = 'Antécédents ✅';
-        button.title = '[Weda-Helper] Le document concorde avec les antécédents du patient. Survoler pour les consulter.';
-        // Non désactivé : un bouton désactivé ne reçoit pas le survol qui ouvre le panneau
-        attachAntecedentsComparePanel(button, []);
+        button.title = '[Weda-Helper] Le document concorde avec les antécédents du patient. Cliquer pour les consulter.';
+        antecedentsComparePanelController = attachAntecedentsComparePanel(button, []);
     } else {
         const total = operations.length;
         button.textContent = `Antécédents ⚠️ (${total})`;
-        button.title = "[Weda-Helper] Survoler pour comparer aux antécédents existants, choisir les opérations et les valider.";
-        attachAntecedentsComparePanel(button, operations, {
+        button.title = "[Weda-Helper] Cliquer pour comparer aux antécédents existants, choisir les opérations et les valider.";
+        antecedentsComparePanelController = attachAntecedentsComparePanel(button, operations, {
             onSelectionChange: count => { button.textContent = `Antécédents ⚠️ (${count}/${total})`; },
             onApply: async selectedOperations => {
                 const results = await traiterAntecedentsBatch(selectedOperations, { patientId: await resolveCurrentPatientIdWithWait() });

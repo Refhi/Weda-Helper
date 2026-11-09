@@ -42,6 +42,7 @@
         "src/utils/storage.js",
         "src/utils/metrics.js",
         "src/utils/dom-helpers.js",
+        "src/utils/floatingPanelLayout.js",
         "src/utils/notifications.js",
         "src/utils/alertes-validator.js",
         "src/utils/tweaks.js",

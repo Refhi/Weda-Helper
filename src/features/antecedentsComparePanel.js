@@ -1,23 +1,32 @@
 /**
  * @file antecedentsComparePanel.js
- * @description Panneau affiché au survol du bouton « Antécédents » du PDF Parser (@see addAntecedentsButton) :
+ * @description Panneau affiché au clic sur le bouton « Antécédents » du PDF Parser (@see addAntecedentsButton) :
  * compare les antécédents existants du patient aux opérations proposées par l'IA
  * (ajouter = vert, modifier = orange, supprimer = rouge) et permet de valider ou non chacune d'elles.
  *
  * @requires pdfParser.js (resolveCurrentPatientIdWithWait via offscreenBridge.js, libelleCim10)
  * @requires callableFunctions.js (recoverPatientData)
+ * @requires floatingPanelLayout.js
  */
 
 const ATCD_PANEL_STYLE_ID = 'wh-atcd-panel-style';
+const ATCD_PANEL_ID = 'wh-atcd-panel';
+const ATCD_PANEL_GEOMETRY_KEY = 'antecedentsComparePanelGeometry';
+let atcdPanelGeometrySave = Promise.resolve();
 
 function injectAntecedentsPanelStyle() {
     if (document.getElementById(ATCD_PANEL_STYLE_ID)) return;
     const style = document.createElement('style');
     style.id = ATCD_PANEL_STYLE_ID;
     style.textContent = `
-        .wh-atcd-panel { position: fixed; z-index: 100000; width: 560px; max-width: 95vw; max-height: 65vh; overflow: auto;
+        .wh-atcd-panel { position: fixed; z-index: 100000; width: min(560px, 100vw); height: min(500px, 65vh); box-sizing: border-box;
+            display: flex; flex-direction: column; overflow: hidden;
             background: #fff; color: #222; border: 1px solid #888; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,.3);
             padding: 8px; font-size: 13px; text-align: left; }
+        .wh-atcd-header { display: flex; justify-content: space-between; align-items: center; flex: none;
+            cursor: move; user-select: none; touch-action: none; padding: 4px; font-weight: bold; }
+        .wh-atcd-close { cursor: pointer; }
+        .wh-atcd-content { overflow: auto; flex: 1; min-height: 0; }
         .wh-atcd-panel h4 { margin: 8px 0 4px; padding: 2px 6px; font-size: 11px; font-weight: bold; text-transform: uppercase;
             background: #dde6f2; color: #1d3f6e; border: 1px solid #a0a0a0; border-radius: 3px; }
         .wh-atcd-icon { width: 20px; text-align: center; flex: none; }
@@ -113,7 +122,7 @@ function makeAtcdRow(className) {
 }
 
 /**
- * Attache le panneau de comparaison à un bouton : affiché au survol, il reste ouvert tant que la souris est dessus.
+ * Attache le panneau de comparaison à un bouton : un clic l'ouvre ou le ferme.
  * @param {HTMLElement} button
  * @param {Array<object>} operations - Opérations proposées (format de traiterAntecedentsBatch).
  * @param {object} [options]
@@ -131,6 +140,7 @@ function attachAntecedentsComparePanel(button, operations, { getPatientId = reso
     let existingPromise = null;
     let applying = false;
     let validateButton = null;
+    let cleanupLayout = null;
     const checkboxes = [];
 
     const refreshValidateButton = () => {
@@ -179,7 +189,7 @@ function attachAntecedentsComparePanel(button, operations, { getPatientId = reso
         return existingPromise;
     };
 
-    const buildContent = async () => {
+    const buildContent = async (isCurrent) => {
         const content = document.createDocumentFragment();
 
         const toolbar = document.createElement('div');
@@ -218,6 +228,7 @@ function attachAntecedentsComparePanel(button, operations, { getPatientId = reso
 
         const existing = await loadExisting();
         const details = await Promise.all(operations.map(atcdOperationDetails));
+        if (!isCurrent()) return null;
         const handled = new Set();
 
         const sections = (existing || []).map(section => ({ title: section.titre, items: section.items || [] }));
@@ -325,44 +336,100 @@ function attachAntecedentsComparePanel(button, operations, { getPatientId = reso
         return content;
     };
 
-    const hide = (delay = 300) => {
+    const closePanel = () => {
+        if (applying) return;
         clearTimeout(hideTimer);
-        hideTimer = setTimeout(() => {
-            if (applying) return;
-            panel?.remove();
-            panel = null;
-            checkboxes.length = 0;
-        }, typeof delay === 'number' ? delay : 300);
+        cleanupLayout?.();
+        cleanupLayout = null;
+        panel?.remove();
+        panel = null;
+        validateButton = null;
+        checkboxes.length = 0;
     };
-    const keepOpen = () => clearTimeout(hideTimer);
+    const hide = (delay = 0) => {
+        clearTimeout(hideTimer);
+        if (delay > 0) hideTimer = setTimeout(closePanel, delay);
+        else closePanel();
+    };
 
     const show = async () => {
-        keepOpen();
-        if (panel) return;
+        if (panel) {
+            closePanel();
+            return;
+        }
+        if (document.getElementById(ATCD_PANEL_ID)) return;
         panel = document.createElement('div');
+        panel.id = ATCD_PANEL_ID;
         panel.className = 'wh-atcd-panel';
-        panel.textContent = 'Chargement des antécédents…';
-        panel.addEventListener('mouseenter', keepOpen);
-        panel.addEventListener('mouseleave', () => hide());
-        const rect = button.getBoundingClientRect();
-        panel.style.left = `${Math.max(0, Math.min(rect.left, window.innerWidth - 580))}px`;
-        panel.style.top = `${rect.bottom + 2}px`;
+        panel.style.visibility = 'hidden';
+        const header = document.createElement('div');
+        header.className = 'wh-atcd-header';
+        const title = document.createElement('span');
+        title.textContent = 'Antécédents';
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'wh-atcd-close';
+        close.textContent = '✖';
+        close.title = 'Fermer le panneau';
+        close.setAttribute('aria-label', 'Fermer le panneau des antécédents');
+        close.addEventListener('click', closePanel);
+        header.append(title, close);
+        const body = document.createElement('div');
+        body.className = 'wh-atcd-content';
+        body.textContent = 'Chargement des antécédents…';
+        panel.append(header, body);
         document.body.appendChild(panel);
         const currentPanel = panel;
-        const content = await buildContent();
-        if (panel === currentPanel) panel.replaceChildren(content);
+        const rect = button.getBoundingClientRect();
+        const panelRect = panel.getBoundingClientRect();
+        panel.style.left = `${Math.max(0, Math.min(rect.left, window.innerWidth - panelRect.width))}px`;
+        panel.style.top = `${Math.max(0, Math.min(rect.bottom + 2, window.innerHeight - panelRect.height))}px`;
+        const saveGeometry = (geometry) => {
+            atcdPanelGeometrySave = atcdPanelGeometrySave
+                .then(() => chrome.storage.local.set({ [ATCD_PANEL_GEOMETRY_KEY]: geometry }))
+                .catch(error => console.error('[antecedentsComparePanel] Erreur de sauvegarde de la position et de la taille :', error));
+        };
+        const layout = attachFloatingPanel(currentPanel, {
+            dragHandle: header,
+            resizable: true,
+            minWidth: 260,
+            minHeight: 200,
+            canStartDrag: event => !event.target.closest('button'),
+            onChange: saveGeometry
+        });
+        cleanupLayout = layout.destroy;
+        try {
+            await atcdPanelGeometrySave;
+            const stored = await chrome.storage.local.get(ATCD_PANEL_GEOMETRY_KEY);
+            if (panel !== currentPanel) return;
+            const geometry = stored[ATCD_PANEL_GEOMETRY_KEY];
+            if (geometry && [geometry.right, geometry.bottom, geometry.width, geometry.height].every(Number.isFinite)
+                && geometry.width > 0 && geometry.height > 0) {
+                layout.applyGeometry(geometry);
+            }
+        } catch (error) {
+            console.error('[antecedentsComparePanel] Erreur de chargement de la position et de la taille :', error);
+            if (panel !== currentPanel) return;
+        }
+        currentPanel.style.visibility = '';
+        try {
+            const content = await buildContent(() => panel === currentPanel);
+            if (panel === currentPanel && content) body.replaceChildren(content);
+        } catch (error) {
+            console.error('[antecedentsComparePanel] Erreur de chargement du panneau :', error);
+            if (panel === currentPanel) body.textContent = 'Impossible de charger les antécédents.';
+        }
     };
 
-    const hideOnLeave = () => hide();
-    button.addEventListener('mouseenter', show);
-    button.addEventListener('mouseleave', hideOnLeave);
+    button.addEventListener('click', show);
 
     return {
         getSelectedOperations: () => operations.filter((_, index) => selected.has(index)),
         destroy: () => {
-            button.removeEventListener('mouseenter', show);
-            button.removeEventListener('mouseleave', hideOnLeave);
+            button.removeEventListener('click', show);
             clearTimeout(hideTimer);
+            cleanupLayout?.();
+            cleanupLayout = null;
             panel?.remove();
             panel = null;
         }
