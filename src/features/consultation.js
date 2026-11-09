@@ -854,6 +854,26 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'consultationLinter', function 
     function lintConsultationIframe(iframe) {
         const doc = iframe.contentDocument;
         if (!doc || !doc.body) return;
+        function endsLineAfter(node) {
+            let current = node;
+            while (current && current !== doc.body) {
+                const next = current.nextSibling;
+                if (!next) {
+                    if (/^(P|DIV)$/.test(current.parentNode.tagName)) return true;
+                    current = current.parentNode;
+                } else if (next.nodeType === 1 && /^(BR|P|DIV)$/.test(next.tagName)) {
+                    return true;
+                } else if (next.nodeType === 3 && /^[ \u00A0]*$/.test(next.nodeValue)) {
+                    current = next;
+                } else if (next.nodeType === 1 && !/\S/.test(next.textContent)) {
+                    if (next.querySelector('br')) return true;
+                    current = next;
+                } else {
+                    return false;
+                }
+            }
+            return true;
+        }
         // <div></div> n'affiche rien et Weda supprime le <br> des <div><br></div> à l'enregistrement :
         // on supprime les blocs réellement vides et on normalise les blocs d'espaces ou de <br> seul
         // en <div>&nbsp;</div>, seule forme conservée à l'enregistrement qui affiche une ligne vide
@@ -872,12 +892,11 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'consultationLinter', function 
             if (/^(P|DIV)$/.test(node.parentNode.tagName) && node.parentNode.childNodes.length === 1 && node.nodeValue === '\u00A0') return;
             const prev = node.previousSibling;
             const startsLine = !prev || (prev.nodeType === 1 && /^(BR|P|DIV)$/.test(prev.tagName));
-            // espaces de début de ligne supprimés si la ligne contient ":" (le premier segment n'est en début de ligne que si le nœud l'est)
+            // espaces de début de ligne supprimés (le premier segment n'est en début de ligne que si le nœud l'est)
             const parts = node.nodeValue.split('\n').map((line, i) =>
-                lintConsultationLine(i > 0 || startsLine ? line.replace(/^[ \u00A0]+(?=.*:)/, '') : line));
+                lintConsultationLine(i > 0 || startsLine ? line.replace(/^[ \u00A0]+/, '') : line));
             // espaces de fin de ligne : pour le dernier segment, seulement si la ligne se termine vraiment là
-            const next = node.nextSibling;
-            const endsLine = !next || (next.nodeType === 1 && /^(BR|P|DIV)$/.test(next.tagName));
+            const endsLine = endsLineAfter(node);
             parts.forEach((p, i) => {
                 // une ligne ne contenant que des espaces est vidée avant le comptage des sauts de ligne
                 const orphan = /^[ \u00A0]*$/.test(p) && (parts.length > 1 || startsLine);
