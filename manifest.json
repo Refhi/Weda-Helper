@@ -102,6 +102,7 @@
         "src/features/imti.js",
         "src/features/wedaEchanges.js",
         "src/features/antecedentsComparePanel.js",
+        "src/features/echangesPatientSearch.js",
         "src/features/pdfParser.js",
         "src/features/importLoop.js",
         "src/features/headlessSetup.js",
