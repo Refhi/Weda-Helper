@@ -1,6 +1,8 @@
 const HprimBiologyDom = (() => {
     const gridSelector = "#ContentPlaceHolder1_HprimsGrid";
+    const gridPanelSelector = "#ContentPlaceHolder1_UpdatePanelHprimsGrid";
     const titleSelector = "#ContentPlaceHolder1_TextBoxHprimTitre";
+    const assignSelector = '#ContentPlaceHolder1_PatientsGrid input[type="submit"][id*="ButtonAffecteResultat_"]';
     const historyPanel = '[id$="PanelHistoriqueSuivi"]';
     const historyGrid = '[id$="HistoriqueSuiviGrid"]';
     const { text, fold } = WedaBiology;
@@ -93,19 +95,17 @@ const HprimBiologyDom = (() => {
                 const state = event.detail.state;
                 if (state === "complete" || (action === "open" && state === "dispatched")) { cleanup(); resolve(); }
                 else if (state === "busy") fail("Weda traite déjà une demande. Réessayez après son chargement.", "busy");
-                else if (state === "filtered") fail("Weda modifie certains caractères du titre. Corrigez le titre avant de réessayer.");
                 else if (state === "missing") fail("La commande n’est plus disponible dans Weda.");
-                else if (action === "save") fail("Weda n’a pas confirmé l’enregistrement du titre.", "unconfirmed");
                 else fail("Weda n’a pas répondu à la commande de lecture.");
             };
-            const timer = setTimeout(() => fail("Weda n’a pas répondu à la commande.", "unconfirmed"), 14000);
+            const timer = setTimeout(() => fail("Weda n’a pas répondu à la commande."), 14000);
             document.addEventListener("wh-hprim-response", receive);
             signal?.addEventListener("abort", abort, { once: true });
             document.dispatchEvent(new CustomEvent("wh-hprim-request", { detail: { id, action, targetId: target.id } }));
         });
     }
 
-    function waitForReport(key, previousInput, previousDefault, signal) {
+    function waitFor(checkPage, signal, message) {
         return new Promise((resolve, reject) => {
             signal?.throwIfAborted();
             const cleanup = () => {
@@ -115,18 +115,15 @@ const HprimBiologyDom = (() => {
             };
             const abort = () => { cleanup(); reject(signal.reason); };
             const check = () => {
-                // Une nouvelle sélection peut apparaître avant le remplacement du formulaire.
-                const input = document.querySelector(titleSelector);
-                if (!input || (input === previousInput && input.defaultValue === previousDefault)) return;
-                const report = capture(key);
-                if (!report) return;
+                const result = checkPage();
+                if (!result) return;
                 cleanup();
-                resolve(report);
+                resolve(result);
             };
             const observer = new MutationObserver(check);
             const timer = setTimeout(() => {
                 cleanup();
-                reject(new Error("Weda n’a pas chargé le compte rendu attendu pour cette ligne."));
+                reject(new Error(message));
             }, 15000);
             observer.observe(document.body, {
                 childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class", "value"]
@@ -134,6 +131,20 @@ const HprimBiologyDom = (() => {
             signal?.addEventListener("abort", abort, { once: true });
             check();
         });
+    }
+
+    function afterAssignment(request, signal) {
+        const remaining = request.before.filter((_, index) => index !== request.index);
+        const assigned = request.before[request.index].identity;
+        const sameIdentity = row => row.identity === assigned;
+        return waitFor(() => {
+            if (!document.querySelector(gridPanelSelector)) return null;
+            const list = rows();
+            // La liste doit avoir perdu le bilan affecté et conservé l’ordre des autres lignes.
+            if (list.filter(sameIdentity).length !== remaining.filter(sameIdentity).length ||
+                remaining.some((row, index) => row.identity !== list[index]?.identity)) return null;
+            return { list, remaining, next: list[request.index] };
+        }, signal, "Weda n’a pas confirmé l’affectation dans la liste des imports.");
     }
 
     async function requestOpen(link, signal) {
@@ -151,22 +162,25 @@ const HprimBiologyDom = (() => {
         }
     }
 
-    async function open(key, signal, force = false) {
+    async function open(key, signal, staleInput) {
         signal?.throwIfAborted();
-        if (!force) {
-            const current = capture(key);
-            if (current) return current;
-        }
+        const current = capture(key);
+        if (current && current.input !== staleInput) return current;
         const target = rows().find(row => row.key === key);
         const previousInput = document.querySelector(titleSelector);
         const previousDefault = previousInput?.defaultValue;
-        // Pendant la relecture, le formulaire ne doit pas resoumettre le titre affiché.
-        const name = force && previousInput?.getAttribute("name");
+        // Le panneau du bilan affecté peut rester affiché le temps d'ouvrir le suivant.
+        const name = previousInput === staleInput && previousInput?.getAttribute("name");
         if (name) previousInput.removeAttribute("name");
         const x = window.scrollX, y = window.scrollY;
         try {
             await requestOpen(target?.link, signal);
-            const snapshot = await waitForReport(key, previousInput, previousDefault, signal);
+            const snapshot = await waitFor(() => {
+                // Une nouvelle sélection peut apparaître avant le remplacement du formulaire.
+                const input = document.querySelector(titleSelector);
+                if (!input || (input === previousInput && input.defaultValue === previousDefault)) return null;
+                return capture(key);
+            }, signal, "Weda n’a pas chargé le compte rendu attendu pour cette ligne.");
             window.scrollTo(x, y);
             return snapshot;
         } finally {
@@ -198,10 +212,16 @@ const HprimBiologyDom = (() => {
         }
     }
 
-    async function fingerprint(data) {
+    async function fingerprint(data, originalKey) {
+        if (originalKey) {
+            const report = JSON.parse(data);
+            report[0] = originalKey;
+            data = JSON.stringify(report);
+        }
         const bytes = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(data)));
         return Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
     }
 
-    return { rows, selection, capture, assertSnapshot, native, open, history, fingerprint, dateIn, gridSelector, titleSelector };
+    return { rows, selection, capture, assertSnapshot, open, history, afterAssignment, fingerprint, dateIn,
+        gridSelector, gridPanelSelector, titleSelector, assignSelector };
 })();

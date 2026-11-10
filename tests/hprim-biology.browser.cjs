@@ -21,12 +21,13 @@ const numeric = [
 ];
 const documents = [
     { id: "a", name: "Exemplealpha", type: "Biologie", rows: numeric },
-    { id: "b", name: "Exemplealpha", type: "Anapath", raw: "Conclusion histologique :\nAbsence de dysplasie.\nSignature : laboratoire fictif." },
+    { id: "b", name: "Exemplealpha", type: "Biologie", raw: "Diagnostic histologique :\nAbsence de dysplasie.\nSignature : laboratoire fictif." },
     { id: "c", name: "Exemplegamma", type: "Biologie", rows: [["CRP", "9", "mg/L", "", "5"], ["CRP", "15", "mg/L", "", "5"]] }
 ];
 const titles = new Map([["c", "Titre déjà saisi dans Weda"]]), requests = [];
-const opened = [], saves = [];
-let saveMode = "reject", fullOpen = false, pageLoads = 0;
+const opened = [], assignments = [], titlePosts = [];
+let assignMode = "reject", fullOpen = false, pageLoads = 0;
+const titleName = "ctl00$ContentPlaceHolder1$TextBoxHprimTitre";
 const openTarget = index => "ctl00$ContentPlaceHolder1$HprimsGrid$ctl" +
     String(index + 2).padStart(2, "0") + "$LinkButtonHprimNom";
 const esc = value => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;");
@@ -38,17 +39,23 @@ function reportView(item) {
     const result = item.rows ?
         '<div id="' + prefix + 'LabelHprimDataStructure"><div>' + esc(header) + "</div>" + cells(item.rows, true) + "</div>" :
         '<pre id="' + prefix + 'DivDataHprim">' + esc(header + "\n" + item.raw) + "</pre>";
-    return result + '<input maxlength="350" id="' + prefix + 'TextBoxHprimTitre" name="ctl00$ContentPlaceHolder1$TextBoxHprimTitre" value="' +
+    return result + '<input maxlength="350" id="' + prefix + 'TextBoxHprimTitre" name="' + titleName + '" value="' +
         esc(titles.get(item.id) || "") + '" onchange="window.__doPostBack(this.name)"><div id="' + prefix + 'PatientsGrid"><button type="button" id="' + prefix +
-        'PatientsGrid_ButtonHistoriqueResultat_0" onclick="fakeHistory(this)">Historique</button></div>';
+        'PatientsGrid_ButtonHistoriqueResultat_0" onclick="fakeHistory(this)">Historique</button>' +
+        '<input type="submit" id="' + prefix + 'PatientsGrid_ButtonAffecteResultat_0" name="ctl00$ContentPlaceHolder1$PatientsGrid$ctl02$ButtonAffecteResultat"' +
+        ' value="Affecter ce résultat" onclick="return confirm(\'Affecter ce résultat ?\')"></div>';
 }
-function inbox(selected = "a") {
+function inboxGrid(selected) {
     const grid = documents.map((item, index) => '<tr data-record="' + item.id + '"' +
         (selected === item.id ? ' class="grid-selecteditem"' : "") + "><td>" + date + "</td><td>" + item.type +
         '</td><td><a id="' + prefix + "HprimsGrid_LinkButtonHprimNom_" + index +
         '" href="javascript:WebForm_DoPostBackWithOptions(new WebForm_PostBackOptions(\'' +
         openTarget(index) + '\',\'\',true,\'\',\'\',false,true))">' + item.name + "</a></td><td>Camille</td><td>" +
         birth + "</td><td>ZZ</td></tr>").join("");
+    return '<table id="' + prefix + 'HprimsGrid"><tbody>' + grid + '</tbody></table>';
+}
+function inbox(selected) {
+    const item = documents.find(item => item.id === selected);
     return `<!doctype html><meta charset="utf-8">
 <style>
     #${prefix}HprimsGrid td { white-space: nowrap; }
@@ -56,9 +63,10 @@ function inbox(selected = "a") {
 </style>
 <form method="post">
     <input type="hidden" name="kind"><input type="hidden" name="record">
-    <div id="${prefix}UpdatePanelHprimsGrid"><table id="${prefix}HprimsGrid"><tbody>${grid}</tbody></table></div>
-    <div id="fixture-report">${reportView(documents.find(item => item.id === selected) || documents[0])}</div>
+    <div id="${prefix}UpdatePanelHprimsGrid">${inboxGrid(selected)}</div>
+    <div id="fixture-report">${item ? reportView(item) : ""}</div>
     <div id="fixture-history"></div>
+    <div id="fixture-message"></div>
 </form>
 <script>
     window.weda = { wedaHelper: {}, capabilities: {} };
@@ -79,7 +87,7 @@ function inbox(selected = "a") {
         active = true;
         let error;
         try {
-            const formTitle = new FormData(form).get("ctl00$ContentPlaceHolder1$TextBoxHprimTitre");
+            const formTitle = new FormData(form).get("${titleName}");
             const response = await fetch("?fixture=async", { method: "POST", body: JSON.stringify({ kind, record, title, formTitle }) });
             const body = await response.json();
             if (body.full) {
@@ -98,7 +106,11 @@ function inbox(selected = "a") {
                     await new Promise(resolve => setTimeout(resolve, 180));
                 }
             } else if (kind === "history") document.getElementById("fixture-history").innerHTML = body.html;
-            // Weda peut afficher le titre soumis avant qu'une relecture ne révèle le refus.
+            else if (kind === "assign") {
+                document.getElementById("fixture-message").textContent = body.grid ? "" : "Affectation refusée";
+                // La liste peut être actualisée avant le panneau du compte rendu.
+                if (body.grid) document.getElementById("${prefix}UpdatePanelHprimsGrid").innerHTML = body.grid;
+            }
         } catch (cause) { error = cause; }
         active = false;
         if (kind !== "open") {
@@ -107,24 +119,44 @@ function inbox(selected = "a") {
             });
         }
     }
-    function selected() { return document.querySelector(".grid-selecteditem").dataset.record; }
+    function selected() { return document.querySelector(".grid-selecteditem")?.dataset.record; }
     // Comme dans Weda, le nom WebForms du contrôle n'est pas l'ID du lien dans le DOM.
-    const recordsByTarget = ${JSON.stringify(Object.fromEntries(documents.map((item, index) => [openTarget(index), item.id])))};
     window.WebForm_PostBackOptions = function (eventTarget) { this.eventTarget = eventTarget; };
     window.WebForm_DoPostBackWithOptions = ({ eventTarget }) => {
-        setTimeout(() => command("open", null, recordsByTarget[eventTarget], undefined, eventTarget), 0);
+        const index = Number(eventTarget.split("$").at(-2).slice(3)) - 2;
+        const record = document.getElementById("${prefix}HprimsGrid_LinkButtonHprimNom_" + index)?.closest("tr")?.dataset.record;
+        setTimeout(() => command("open", null, record, undefined, eventTarget), 0);
     };
     window.fakeHistory = element => command("history", element, selected());
     window.__doPostBack = target => {
         const input = document.querySelector('[name="' + target + '"]');
         const record = selected(), title = input.value;
-        setTimeout(() => command("save", null, record, title, target), 0);
+        setTimeout(() => command("title", null, record, title, target), 0);
     };
+    form.addEventListener("submit", event => {
+        if (!event.submitter?.id.includes("ButtonAffecteResultat_")) return;
+        const record = selected();
+        if (form.dataset.fullAssignment) {
+            form.elements.kind.value = "assign";
+            form.elements.record.value = record;
+        } else {
+            event.preventDefault();
+            command("assign", event.submitter, record);
+        }
+    });
 </script>`;
 }
 const history = '<div id="PanelHistoriqueSuivi"><table id="HistoriqueSuiviGrid"><tbody>' +
     '<tr><td>CRP :</td><td>03/11/2026 : 99 mg/L  02/11/2026 : 4 mg/L</td></tr>' +
     '</tbody></table><button type="button" onclick="this.parentElement.remove()">Fermer</button></div>';
+function assignReport(record, title) {
+    assignments.push({ record, title });
+    const index = documents.findIndex(item => item.id === record);
+    if (assignMode === "reject" || index < 0) return false;
+    titles.set(record, title);
+    documents.splice(index, 1);
+    return true;
+}
 function dossier() {
     return '<!doctype html><meta charset=utf-8><script>window.weda={wedaHelper:{},capabilities:{}};</script>' +
         '<div class="sc"><span title="Cliquez sur la date pour ouvrir.">' + date + "</span>" + cells(numeric) + "</div>" +
@@ -173,22 +205,19 @@ async function run() {
                     response = fullOpen ? { full: true } : { html: reportView(documents.find(item => item.id === record)) };
                     fullOpen = false;
                 } else if (kind === "history") response = { html: history };
-                else if (saveMode === "full") response = { full: true };
+                else if (kind === "assign") response = { grid: assignReport(record, formTitle) ? inboxGrid(null) : null };
                 else {
-                    saves.push({ record, title });
-                    if (saveMode === "accept") titles.set(record, title);
+                    titlePosts.push({ record, title });
                     response = {};
                 }
                 return route.fulfill({ json: response });
             }
-            let selected = "a";
+            let selected = documents[0]?.id;
             if (req.method() === "POST") {
                 const fields = new URLSearchParams(req.postData());
                 selected = fields.get("record");
-                if (fields.get("kind") === "save") {
-                    const title = fields.get("ctl00$ContentPlaceHolder1$TextBoxHprimTitre");
-                    saves.push({ record: selected, title });
-                    titles.set(selected, title);
+                if (fields.get("kind") === "assign" && assignReport(selected, fields.get(titleName))) {
+                    selected = null;
                 }
             }
             if (req.isNavigationRequest()) pageLoads++;
@@ -219,8 +248,8 @@ async function run() {
         const waitTitle = text => page.waitForFunction(({ selector, text }) => document.querySelector(selector)?.value.includes(text),
             { selector: titleSelector, text });
         const active = () => page.locator(".grid-selecteditem").getAttribute("data-record");
-        const save = tools.getByRole("button", { name: "Valider le titre et passer au suivant" });
-        const waitStatus = pattern => state.filter({ hasText: pattern }).waitFor();
+        const affect = page.getByRole("button", { name: "Affecter ce résultat", exact: true });
+        const waitStatus = (pattern, options) => state.filter({ hasText: pattern }).waitFor(options);
 
         await select("b");
         await page.waitForFunction(() => document.querySelector(".grid-selecteditem")?.dataset.record === "b" &&
@@ -244,7 +273,8 @@ async function run() {
             const cell = badge.closest("td").getBoundingClientRect();
             return label.top >= link.bottom && label.left >= cell.left && label.right <= cell.right;
         })), "Le libellé d’état doit rester sous le lien, dans la même cellule.");
-        assert.equal(saves.length, 0);
+        assert.equal(assignments.length, 0);
+        assert.equal(await tools.getByRole("button", { name: /Valider le titre/ }).count(), 0);
         assert.ok(pageLoads >= 2);
         assert.ok(await page.locator('[data-record="c"] .wh-hprim-badge').filter({ hasText: "À relire" }).isVisible());
         assert.equal(await active(), "c");
@@ -266,38 +296,69 @@ async function run() {
         await proposal.press("Tab");
         await select("b");
         await waitTitle("Anapath");
-        assert.equal(saves.length, 0);
+        assert.equal(titlePosts.length, 0);
+        assert.equal(assignments.length, 0);
         assert.deepEqual(opened.at(-1), { record: "b", formTitle: "" });
         await select("a");
         await waitTitle("Titre corrigé manuellement < 5");
-        const finalTitle = "Titre relu avant validation < 5";
-        await proposal.evaluate((input, value) => { input.value = value; }, finalTitle);
-        await save.click();
-        await waitStatus(/ne correspond pas.*Passage au suivant suspendu/);
+        const editedTitle = "Titre relu avant validation < 5";
+        await proposal.fill(editedTitle);
+        const beforeAssign = opened.length;
+        page.once("dialog", dialog => dialog.dismiss());
+        await affect.click();
+        assert.equal(assignments.length, 0);
         assert.equal(await active(), "a");
-        assert.equal(saves.length, 1);
-        assert.equal(saves[0].title, finalTitle);
+        assert.equal(await proposal.inputValue(), editedTitle);
+
+        page.once("dialog", dialog => dialog.accept());
+        await affect.click();
+        await waitStatus(/n’a pas confirmé l’affectation/, { timeout: 18000 });
+        assert.equal(await active(), "a");
+        assert.equal(opened.length, beforeAssign);
+        assert.deepEqual(assignments, [{ record: "a", title: editedTitle }]);
         assert.equal(titles.has("a"), false);
-        assert.deepEqual(opened.at(-1), { record: "a", formTitle: null });
-        await waitTitle(finalTitle);
-        saveMode = "full";
-        await save.click();
-        await waitStatus(/Titre enregistré et relu/);
-        await page.waitForFunction(() => document.querySelector(".grid-selecteditem")?.dataset.record === "b");
-        assert.equal(saves.length, 2);
-        assert.deepEqual(saves[0], saves[1]);
-        assert.equal(titles.get("a"), saves[1].title);
+        assert.equal(await proposal.inputValue(), editedTitle);
+
+        const finalTitle = "Titre transmis < 5";
+        await proposal.evaluate((input, value) => { input.value = value; }, finalTitle);
+        assignMode = "accept";
+        page.once("dialog", dialog => dialog.accept());
+        await affect.click();
+        await waitStatus(/Bilan suivant affiché/);
+        assert.equal(await active(), "b");
+        assert.equal(assignments.length, 2);
+        assert.equal(titles.get("a"), finalTitle);
+        assert.deepEqual(opened.slice(beforeAssign), [{ record: "b", formTitle: null }]);
         await waitTitle("Anapath");
-        saveMode = "accept";
-        await save.click();
+
+        const fullTitle = "Anapath : conclusion relue";
+        await worker.evaluate(title => {
+            const write = chrome.storage.session.set.bind(chrome.storage.session);
+            let delayed = false;
+            chrome.storage.session.set = async entries => {
+                const state = Object.values(entries)[0];
+                if (!delayed && !state?.assignment && state?.drafts?.some(([, draft]) => draft.title === title)) {
+                    // L'écriture liée à la sortie du champ peut durer plus longtemps que la navigation.
+                    delayed = true;
+                    await new Promise(resolve => setTimeout(resolve, 900));
+                }
+                return write(entries);
+            };
+        }, fullTitle);
+        await affect.evaluate(button => { button.form.dataset.fullAssignment = "true"; });
+        await proposal.fill(fullTitle);
+        const beforeFull = pageLoads;
+        page.once("dialog", dialog => dialog.accept());
+        await Promise.all([page.waitForEvent("load"), affect.click()]);
         await waitStatus(/Bilan suivant affiché/);
         assert.equal(await active(), "c");
-        assert.equal(saves.length, 3);
-        assert.equal(titles.get("b"), "Anapath : Absence de dysplasie.");
-        assert.deepEqual(opened.slice(-2), [{ record: "b", formTitle: null },
-            { record: "c", formTitle: "Anapath : Absence de dysplasie." }]);
-        console.log("OK champ natif, correction conservée, aucune écriture à la sortie du champ ou au changement de bilan");
-        console.log("OK refus bloquant puis sauvegarde unique, relecture serveur et passage au suivant");
+        assert.equal(pageLoads, beforeFull + 1);
+        assert.equal(assignments.length, 3);
+        assert.equal(titlePosts.length, 0);
+        assert.equal(titles.get("b"), fullTitle);
+        assert.deepEqual(opened.at(-1), { record: "c", formTitle: null });
+        console.log("OK titre transmis par le bouton natif, annulation et refus sans changement de bilan");
+        console.log("OK bilan suivant après affectation AJAX ou rechargement complet, même avec deux lignes identiques");
 
         const auto = tools.getByRole("button", { name: "Analyse automatique des biologies" });
         await auto.click();
@@ -311,15 +372,24 @@ async function run() {
         await select("d");
         await waitTitle("TSH N 2 mUI/L");
         assert.equal(requests.length, before + 1);
-        assert.equal(saves.length, 3);
+        assert.equal(assignments.length, 3);
         await page.reload();
         await tools.getByRole("button", { name: "Analyse automatique des biologies", pressed: true }).waitFor();
         assert.equal(requests.length, before + 1);
-        assert.equal(saves.length, 3);
+        assert.equal(assignments.length, 3);
         await auto.click();
         await page.reload();
         await tools.getByRole("button", { name: "Analyse automatique des biologies", pressed: false }).waitFor();
         console.log("OK arrivée serveur détectée, mode automatique persistant, anciens bilans non relancés");
+
+        await select("d");
+        await waitTitle("TSH N 2 mUI/L");
+        const beforeLast = opened.length;
+        page.once("dialog", dialog => dialog.accept());
+        await affect.click();
+        await waitStatus(/^Bilan affecté dans Weda\.$/);
+        assert.equal(await page.locator('[data-record="d"]').count(), 0);
+        assert.equal(opened.length, beforeLast);
 
         const view = await browser.newPage();
         view.setDefaultTimeout(10000);

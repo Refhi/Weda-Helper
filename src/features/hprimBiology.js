@@ -90,10 +90,10 @@ async function setupHprimBiology() {
     const drafts = new Map(saved?.state?.drafts || []);
     const recent = entry => entry && Date.now() - entry.at < 5 * 60000;
     let job = recent(saved?.state?.job) ? saved.state.job : null;
-    let pending = recent(saved?.state?.pending) ? saved.state.pending : null;
+    let assignment = recent(saved?.state?.assignment) ? saved.state.assignment : null;
     let auto = initialAuto === true, controller, nativeEdited, interaction = 0, reviewHold = false;
     let owner = false, releaseOwner, acquiring = false, polling = false, refreshTimer;
-    let rendered = null, preview = null, writes = Promise.resolve();
+    let rendered = null, preview = null;
     const panel = document.createElement("section");
     panel.id = panelId;
     panel.className = "wh-hprim-tools";
@@ -130,21 +130,16 @@ async function setupHprimBiology() {
         }
         cancel("Analyse arrêtée. Les propositions déjà préparées restent disponibles.");
     });
-    const save = button("Valider le titre et passer au suivant", saveTitle);
-    panel.append(analyze, batch, toggle, stop, status, save, detail);
+    panel.append(analyze, batch, toggle, stop, status, detail);
 
-    function persist() {
-        const state = structuredClone({ drafts: [...drafts].slice(-400), job, pending });
-        const write = writes.catch(() => {}).then(async () => {
-            const reply = await chrome.runtime.sendMessage({ type: "whHprimSession", state });
-            if (!reply?.saved) throw new Error("Le brouillon n’a pas pu être conservé dans cet onglet.");
-        });
-        writes = write;
-        return write;
+    async function persist() {
+        const state = structuredClone({ drafts: [...drafts].slice(-400), job, assignment });
+        const reply = await chrome.runtime.sendMessage({ type: "whHprimSession", state });
+        if (!reply?.saved) throw new Error("Le brouillon n’a pas pu être conservé dans cet onglet.");
     }
 
     function cancel(message) {
-        if (controller && !pending) controller.abort(new DOMException(message, "AbortError"));
+        controller?.abort(new DOMException(message, "AbortError"));
     }
 
     function retractTitle() {
@@ -154,23 +149,20 @@ async function setupHprimBiology() {
         shown.input.value = D.selection()?.key === shown.key ? shown.draft.original : shown.input.defaultValue;
     }
 
-    const busy = () => Boolean(controller || job || pending);
+    const busy = () => Boolean(controller || job || assignment);
 
     function controls(list) {
         const selected = D.selection(list);
-        const field = preview?.input.isConnected && preview.key === selected?.key ? preview.input : null;
         const running = busy();
         analyze.disabled = running || !selected;
         batch.disabled = running || !list.length;
-        stop.disabled = !controller || Boolean(pending);
+        stop.disabled = !controller || Boolean(assignment);
         toggle.setAttribute("aria-pressed", String(auto));
-        save.hidden = !field && !pending;
-        save.disabled = running || !field?.value.trim();
     }
 
     async function render() {
         const list = D.rows();
-        const grid = document.querySelector("#ContentPlaceHolder1_UpdatePanelHprimsGrid") || document.querySelector(D.gridSelector);
+        const grid = document.querySelector(D.gridPanelSelector) || document.querySelector(D.gridSelector);
         if (grid && panel.previousElementSibling !== grid) grid.after(panel);
         for (const row of list) {
             const state = drafts.get(row.key)?.state;
@@ -181,7 +173,7 @@ async function setupHprimBiology() {
                 badge.className = "wh-hprim-badge";
                 row.link.after(badge);
             }
-            const label = ({ ready: "À valider", review: "À relire", saved: "Titre vérifié" })[state];
+            const label = state === "review" ? "À relire" : "À valider";
             if (badge.dataset.state !== state) badge.dataset.state = state;
             if (badge.textContent !== label) badge.textContent = label;
         }
@@ -190,7 +182,7 @@ async function setupHprimBiology() {
         if (rendered?.key !== row?.key || rendered?.sourceDraft !== draft || rendered?.data !== snapshot?.data ||
             rendered?.input !== snapshot?.input) {
             if (snapshot) {
-                const hash = await D.fingerprint(snapshot.data);
+                const hash = await D.fingerprint(snapshot.data, draft.originalKey);
                 const current = D.capture(row.key);
                 if (current?.data !== snapshot.data || current.input !== snapshot.input || drafts.get(row.key) !== draft) return;
                 rendered = { key: row.key, draft: draft.hash === hash ? draft : null, sourceDraft: draft,
@@ -211,9 +203,10 @@ async function setupHprimBiology() {
         if (preview && (preview.input !== rendered?.input || preview.draft !== rendered?.draft || preview.key !== rendered?.key)) {
             retractTitle();
         }
-        if (!busy() && !preview && rendered?.draft && snapshot.input.value === draft.original) {
-            if (draft.title) snapshot.input.value = draft.title;
-            preview = { key: row.key, input: snapshot.input, value: snapshot.input.value, draft };
+        if (!busy() && !preview && rendered?.draft &&
+            (snapshot.title === draft.original || snapshot.title === draft.title)) {
+            snapshot.input.value = draft.title || snapshot.title;
+            preview = { key: row.key, input: snapshot.input, value: snapshot.input.value, data: snapshot.data, draft };
             if (nativeEdited === snapshot.input) nativeEdited = null;
         }
         controls(list);
@@ -272,7 +265,7 @@ async function setupHprimBiology() {
     }
 
     async function run(mode, keys, resume = false) {
-        if (controller || pending || (!resume && job) || !keys.length) return;
+        if (controller || assignment || (!resume && job) || !keys.length) return;
         retractTitle();
         if (mode !== "auto") reviewHold = false;
         controller = new AbortController();
@@ -295,7 +288,8 @@ async function setupHprimBiology() {
                     const snapshot = await D.open(key, signal);
                     const hash = await D.fingerprint(snapshot.data);
                     const existing = drafts.get(key);
-                    if (existing?.hash !== hash || mode === "single") {
+                    const existingHash = existing?.originalKey ? await D.fingerprint(snapshot.data, existing.originalKey) : hash;
+                    if (existing?.hash !== existingHash || mode === "single") {
                         drafts.set(key, await prepare(snapshot, hash, signal));
                     }
                 } catch (error) {
@@ -327,102 +321,75 @@ async function setupHprimBiology() {
         }
     }
 
-    async function verifySave(resumed = false) {
-        const request = pending;
-        if (!request) return;
-        const signal = controller.signal;
-        let reread;
-        if (resumed && request.stage === "reread") reread = D.capture(request.key);
-        else {
-            const current = D.capture(request.key);
-            if (!current || await D.fingerprint(current.data) !== request.hash) {
-                throw new Error("La sélection a changé. Le titre n’a pas pu être vérifié.");
-            }
-            D.assertSnapshot(current);
-            pending = { ...request, stage: "reread" };
-            await persist();
-            D.assertSnapshot(current);
-            reread = await D.open(request.key, signal, true);
-        }
-        const storedTitle = reread?.input.defaultValue;
-        if (!reread || await D.fingerprint(reread.data) !== request.hash || !B.sameSavedTitle(request.title, storedTitle)) {
-            throw new Error("Le titre relu dans Weda ne correspond pas au titre transmis. Passage au suivant suspendu.");
-        }
-        D.assertSnapshot(reread);
-        reviewHold = false;
-        const draft = drafts.get(request.key);
-        if (draft) drafts.set(request.key, { ...draft, title: storedTitle, original: storedTitle, state: "saved" });
-        pending = null;
-        await persist();
-        status.textContent = "Titre enregistré et relu dans Weda.";
-        if (request.next && D.rows().some(row => row.key === request.next)) {
-            try {
-                await D.open(request.next, signal);
-                status.textContent += " Bilan suivant affiché.";
-            } catch {
-                status.textContent += " Weda n’a pas ouvert le bilan suivant.";
-            }
-        }
-    }
-
-    async function saveTitle() {
-        if (busy() || !preview) return;
-        const { key, input, draft } = preview;
-        const snapshot = D.capture(key);
-        if (!snapshot || snapshot.input !== input) {
-            status.textContent = "Le bilan affiché a changé. Relancez l’analyse avant de valider.";
-            return;
-        }
-        const title = snapshot.title.trim();
-        const max = Math.min(input.maxLength > 0 ? input.maxLength : 350, 350);
-        if (!title || title.length > max || /[\r\n]/.test(title)) {
-            status.textContent = "Saisissez un titre sur une ligne, de " + max + " caractères au maximum.";
-            return;
-        }
+    async function followAssignment(request, previousInput) {
         controller = new AbortController();
-        const wasReadOnly = input.readOnly;
-        input.readOnly = true;
-        preview = null;
+        const signal = controller.signal;
+        status.textContent = "Weda traite l’affectation…";
         controls(D.rows());
         try {
-            const hash = await D.fingerprint(snapshot.data);
-            if (hash !== draft.hash) throw new Error("Le contenu du bilan a changé. Relancez l’analyse.");
-            draft.title = snapshot.title;
-            const list = D.rows(), index = list.findIndex(row => row.key === snapshot.row.key);
-            pending = { key: snapshot.row.key, hash, title, next: list[index + 1]?.key, stage: "saving", at: Date.now() };
-            await persist();
-            const current = D.assertSnapshot(snapshot);
-            if (current.input !== input || current.title !== snapshot.title) throw new Error("Le champ de titre a changé avant l’enregistrement.");
-            status.textContent = "Enregistrement et relecture du titre dans Weda…";
-            if (!B.sameSavedTitle(title, current.input.defaultValue)) {
-                current.input.value = title;
+            const { list, remaining, next } = await D.afterAssignment(request, signal);
+            signal.throwIfAborted();
+            // En cas de lignes identiques, l'ordre vérifié permet de conserver les autres brouillons.
+            const moved = remaining.flatMap(({ key }, index) => key === list[index].key ? [] :
+                [{ from: key, to: list[index].key, draft: drafts.get(key) }]);
+            drafts.delete(request.before[request.index].key);
+            for (const { from } of moved) drafts.delete(from);
+            for (const { from, to, draft } of moved) {
+                if (draft) drafts.set(to, { ...draft, originalKey: draft.originalKey || from });
+            }
+            preview = null;
+            reviewHold = false;
+            assignment = null;
+            await persist().catch(() => {});
+            status.textContent = "Bilan affecté dans Weda.";
+            if (next) {
                 try {
-                    await D.native("save", current.input, controller.signal);
+                    await D.open(next.key, signal, previousInput);
+                    status.textContent += " Bilan suivant affiché.";
                 } catch (error) {
-                    // En cas de réponse incertaine, vérifier le titre stocké sans renvoyer la sauvegarde.
-                    if (error.code !== "unconfirmed") throw error;
+                    signal.throwIfAborted();
+                    status.textContent += " Sélectionnez le bilan suivant dans la liste.";
                 }
             }
-            await verifySave();
         } catch (error) {
             reviewHold = true;
-            if (input.isConnected && D.capture(key)?.data === snapshot.data &&
-                B.sameSavedTitle(input.value, title)) input.value = draft.original;
             status.textContent = error.message;
         } finally {
-            input.readOnly = wasReadOnly;
-            pending = null;
+            assignment = null;
             controller = null;
             await persist().catch(() => {});
             await render();
+            schedule();
         }
     }
+
+    document.addEventListener("submit", event => {
+        if (!event.submitter?.matches(D.assignSelector)) {
+            if (assignment) cancel("Passage au suivant interrompu par une autre action dans Weda.");
+            return;
+        }
+        if (job) {
+            reviewHold = true;
+            cancel("Analyse interrompue par l’affectation dans Weda.");
+        }
+        if (busy() || !preview) return;
+        const list = D.rows();
+        const index = list.findIndex(row => row.key === preview.key);
+        const snapshot = D.capture(preview.key);
+        if (index < 0 || snapshot?.input !== preview.input || snapshot.data !== preview.data ||
+            snapshot.input.form !== event.target || !snapshot.input.name || snapshot.input.disabled) return;
+        // Le bouton a déjà obtenu la confirmation de Weda. Le formulaire soumet le titre courant.
+        preview.value = preview.draft.title = snapshot.title;
+        assignment = { before: list.map(({ key, identity }) => ({ key, identity })), index, at: Date.now() };
+        persist().catch(() => {});
+        void followAssignment(assignment, snapshot.input);
+    }, true);
 
     function editing() {
         return reviewHold || nativeEdited?.isConnected ||
             document.activeElement?.matches("input:not([type='button']), textarea, select, [contenteditable='true']");
     }
-    function idleAuto() { return auto && owner && !controller && !job && !pending && !editing(); }
+    function idleAuto() { return auto && owner && !busy() && !editing(); }
 
     function schedule() {
         clearTimeout(refreshTimer);
@@ -484,9 +451,6 @@ async function setupHprimBiology() {
         if (!event.isTrusted || !event.target.matches(D.titleSelector)) return;
         if (event.target === preview?.input && D.selection()?.key === preview.key) {
             preview.value = preview.draft.title = event.target.value;
-            if (preview.draft.state === "saved" && !B.sameSavedTitle(preview.value, preview.draft.original)) {
-                preview.draft.state = "ready";
-            }
             controls(D.rows());
             return;
         }
@@ -495,7 +459,7 @@ async function setupHprimBiology() {
     });
     document.addEventListener("change", event => {
         if (!event.isTrusted || event.target !== preview?.input || D.selection()?.key !== preview.key) return;
-        // Le brouillon s’enregistre avec le bouton de validation, y compris après une saisie manuelle.
+        // Le titre sera soumis avec l’affectation, sans envoi séparé à la sortie du champ.
         event.stopImmediatePropagation();
         preview.value = preview.draft.title = event.target.value;
         persist().catch(() => {});
@@ -521,19 +485,9 @@ async function setupHprimBiology() {
             target.closest?.("#" + panelId + ", .wh-hprim-badge")))) schedule();
     });
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
-    save.hidden = true;
     await render();
-    if (pending) {
-        controller = new AbortController();
-        controls(D.rows());
-        try { await verifySave(true); }
-        catch (error) { reviewHold = true; status.textContent = error.message; }
-        finally {
-            pending = null;
-            controller = null;
-            await persist().catch(() => {});
-            await render();
-        }
+    if (assignment) {
+        await followAssignment(assignment);
     } else if (job && (job.mode !== "auto" || auto)) {
         await run(job.mode, [...job.keys], true);
     } else job = null;

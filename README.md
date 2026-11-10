@@ -298,7 +298,7 @@ Activez les outils dans **Options → Résultats d’examens**, puis ouvrez la p
 
 Le bouton **Analyse automatique des biologies** mémorise l’activation. Tant que la page des imports reste ouverte, Weda-Helper traite les nouveaux bilans affichés et vérifie l’arrivée de nouveaux résultats toutes les 45 secondes. Il attend la fin d’une saisie avant d’actualiser la liste. Les brouillons restent disponibles dans le même onglet, même après un rechargement.
 
-La fiche de lecture regroupe les valeurs et les normes du laboratoire. Quand une mesure antérieure est identifiable et comparable, elle s’affiche avec sa date. Les conclusions d’anatomopathologie identifiables sont reprises du compte rendu. **Valider le titre et passer au suivant** enregistre uniquement le titre, le relit dans Weda et ouvre la ligne suivante si l’enregistrement est confirmé. L’import reste à valider dans Weda.
+La fiche de lecture regroupe les valeurs et les normes du laboratoire. Quand une mesure antérieure est identifiable et comparable, elle s’affiche avec sa date. Les conclusions d’anatomopathologie identifiables sont reprises du compte rendu. Relisez ou modifiez le titre, puis validez avec le bouton natif **Affecter ce résultat**. Weda utilise le titre saisi dans le formulaire. Quand le bilan affecté quitte la liste des imports, Weda-Helper ouvre le bilan suivant.
 
 Le **Prompt d’analyse des biologies** est personnalisable et suit la sauvegarde des réglages. Si l’assistant IA est activé, son profil actif aide à choisir les résultats utiles et leur ordre. Les valeurs proposées sont toujours issues du bilan ; l’identité, l’historique et les conclusions narratives restent dans Weda.
 

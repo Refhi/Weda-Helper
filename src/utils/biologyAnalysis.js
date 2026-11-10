@@ -344,10 +344,6 @@ const WedaBiology = (() => {
     const STATUS = { high: "HAUT", low: "BAS", normal: "NORMAL", review: "À RELIRE", unknown: "NON CLASSÉ" };
     const symbols = { HAUT: "↑", BAS: "↓", NORMAL: "N", "À RELIRE": "!", "À VÉRIFIER": "?", "NON CLASSÉ": "?" };
     const abnormal = state => state === STATUS.high || state === STATUS.low || state === STATUS.review;
-    const sameSavedTitle = (first, second) => {
-        const normalize = value => text(value).normalize("NFC").replace(/([<>≤≥])\s+(?=[+-]?\d)/g, "$1");
-        return normalize(first) === normalize(second);
-    };
 
     function status(cells) { return cells[5] || STATUS.unknown; }
 
@@ -562,7 +558,7 @@ const WedaBiology = (() => {
     }
 
     return { text, fold, readTable, analyze, historyEntries, addHistory, dateMs, parsePreference, buildTitle,
-        group, abnormal, sameSavedTitle };
+        group, abnormal };
 })();
 
 if (typeof module !== "undefined") module.exports = WedaBiology;

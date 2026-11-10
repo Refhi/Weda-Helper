@@ -83,6 +83,4 @@ test("l'anapath cite la conclusion et conserve les négations ; plusieurs conclu
     const uncertain = biology.analyze([], raw + "\nConclusion : à confronter", "Anapath");
     assert.equal(uncertain.title, "");
     assert.ok(uncertain.warnings.length);
-    assert.ok(biology.sameSavedTitle("CRP <5 mg/L", "CRP < 5 mg/L"));
-    assert.ok(!biology.sameSavedTitle("CRP <5 mg/L", "CRP 5 mg/L"));
 });
