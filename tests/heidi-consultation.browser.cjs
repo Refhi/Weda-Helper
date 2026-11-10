@@ -10,6 +10,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 
 const root = path.join(__dirname, "..");
 const wedaOrigin = "https://secure.weda.fr";
+const patient = wedaOrigin + "/FolderMedical/PatientViewForm.aspx?PatDk=101%7C0%7C0%7C0";
 const consultation = wedaOrigin + "/FolderMedical/ConsultationForm.aspx?PatDk=101&Evenement=1";
 const heidiOrigin = "https://scribe.heidihealth.com";
 const heidiUrl = heidiOrigin + "/fr-FR/scribe/sessions/ancienne";
@@ -81,6 +82,22 @@ function heidiFixture() {
             transcript.onclick = () => select(transcript);
             select(note);
         </script>`);
+}
+
+function patientFixture(withMenu) {
+    return html(withMenu ? `
+        <div id="ContentPlaceHolder1_MenuNavigate">
+            <ul id="ContentPlaceHolder1_MenuNavigate:submenu:89" hidden>
+                <li><a href="#" onclick="__doPostBack('ctl00$ContentPlaceHolder1$MenuNavigate','0\\\\1');return false;">Consultation</a></li>
+            </ul>
+        </div>
+        <script>
+            window.__doPostBack = (target, argument) => {
+                if (target === "ctl00$ContentPlaceHolder1$MenuNavigate" && argument === "0\\\\1") {
+                    location.href = ${JSON.stringify(consultation)};
+                }
+            };
+        </script>` : "");
 }
 
 function consultationFixture() {
@@ -186,6 +203,7 @@ async function run() {
                 return route.fulfill({ json: { patientFileUrl: "/FolderMedical/PatientViewForm.aspx?PatDk=" + url.pathname.split("/").pop() } });
             }
             const pages = {
+                "/FolderMedical/PatientViewForm.aspx": patientFixture(!url.searchParams.has("sansMenu")),
                 "/FolderMedical/ConsultationForm.aspx": consultationFixture(),
                 "/FolderMedical/PopUpHistoriqueForm.aspx": html('<div id="PanelPatient"><div></div><div></div><div></div><div></div><div><div class="sc"><div class="st"><span class="sm">Médicaux</span></div><div>Asthme [J45]</div>'
                     + saved.map(item => '<div>' + item.replaceAll("<", "&lt;") + '</div>').join("") + '</div></div></div>'),
@@ -397,6 +415,44 @@ async function run() {
         assert.equal(aiCalls.length, requestsBeforeOptOut);
         assert.equal(await review.isVisible(), false);
         console.log("OK transfert possible sans activer l’analyse et sans appel IA");
+
+        await heidi.goto(heidiUrl);
+        await weda.goto(patient);
+        await launch.waitFor({ timeout: 6000 });
+        await weda.keyboard.press("PageUp");
+        await state.filter({ hasText: "Transcription Heidi en cours" }).waitFor();
+        assert.equal(weda.url(), patient);
+        assert.deepEqual(await heidi.evaluate(() => counts), { sessions: 1, start: 1, stop: 0 });
+        await weda.keyboard.press("PageDown");
+        await weda.waitForURL(consultation);
+        await state.filter({ hasText: "Transcription ajoutée. Activez l’analyse Heidi" }).waitFor();
+        assert.deepEqual(await heidi.evaluate(() => counts), { sessions: 1, start: 1, stop: 1 });
+        assert.equal((await editor.innerText()).split("Transcription Heidi").length - 1, 1);
+        assert.equal(await weda.evaluate(() => saves), 0);
+        console.log("OK raccourcis personnalisés depuis la fiche, arrêt puis ouverture native et transfert unique");
+
+        await worker.evaluate(async () => {
+            const { shortcuts } = await chrome.storage.local.get("shortcuts");
+            delete shortcuts.heidi_start_recording;
+            delete shortcuts.heidi_stop_recording;
+            await chrome.storage.local.set({ shortcuts });
+        });
+        await heidi.goto(heidiUrl);
+        await weda.goto(patient + "&sansMenu=1");
+        await launch.waitFor();
+        await weda.keyboard.press("Alt+Shift+F8");
+        await state.filter({ hasText: "Transcription Heidi en cours" }).waitFor();
+        await weda.keyboard.press("Alt+Shift+F9");
+        await state.filter({ hasText: "Ouvrez une consultation de ce patient" }).waitFor();
+        await weda.goto(consultation.replace("PatDk=101", "PatDk=202"));
+        await state.filter({ hasText: "autre patient" }).waitFor();
+        assert.doesNotMatch(await editor.innerText(), /Transcription Heidi/);
+        await weda.goto(consultation);
+        await state.filter({ hasText: "Transcription ajoutée. Activez l’analyse Heidi" }).waitFor();
+        assert.equal((await editor.innerText()).split("Transcription Heidi").length - 1, 1);
+        assert.equal(await heidi.evaluate(() => counts.stop), 1);
+        assert.equal(aiCalls.length, requestsBeforeOptOut);
+        console.log("OK touches par défaut, menu absent : aucun transfert vers un autre patient, reprise sur le dossier d’origine");
     } finally {
         if (browser) await browser.close();
         await new Promise(resolve => ai.close(resolve));

@@ -87,7 +87,7 @@ async function controlHeidiRecording({ operation, owner, expectedSessionId }) {
     }
 }
 
-async function runHeidiRecording({ operation, tabId, owner, sessionId }) {
+async function runHeidiRecording({ operation, tabId, owner, sessionId }, stopOnly = false) {
     if (!["start", "stop"].includes(operation) || !/^[a-f\d-]{36}$/i.test(owner || "")
         || (tabId !== undefined && (!Number.isInteger(tabId) || tabId < 0))
         || (operation === "stop" && (tabId === undefined || typeof sessionId !== "string" || !sessionId))) {
@@ -118,7 +118,7 @@ async function runHeidiRecording({ operation, tabId, owner, sessionId }) {
         });
         const result = command?.result;
         if (!result) return { error: "Heidi n’a pas répondu. Vérifiez l’onglet Heidi." };
-        if (operation === "start" || result.error) return { ...result, tabId: tab.id };
+        if (operation === "start" || stopOnly || result.error) return { ...result, tabId: tab.id };
 
         const [context] = await chrome.scripting.executeScript({
             target: { tabId: tab.id },
@@ -137,18 +137,77 @@ async function runHeidiRecording({ operation, tabId, owner, sessionId }) {
     }
 }
 
-function isHeidiConsultationSender(sender) {
-    return sender?.id === chrome.runtime.id && sender.frameId === 0 && !!sender.tab
-        && /^https:\/\/secure\.weda\.fr\/FolderMedical\/ConsultationForm\.aspx(?:[?#]|$)/i.test(sender.url || "");
+function getHeidiRecordingWedaContext(sender) {
+    if (sender?.id !== chrome.runtime.id || sender.frameId !== 0 || !Number.isInteger(sender.tab?.id)) return null;
+    const page = sender.url?.match(/^https:\/\/secure\.weda\.fr\/FolderMedical\/(Consultation|PatientView)Form\.aspx(?:[?#]|$)/i);
+    if (!page) return null;
+    const patientId = new URL(sender.url).searchParams.get("PatDk")?.match(/^(\d+)(?:\||$)/)?.[1];
+    return patientId ? { patientId, wedaTabId: sender.tab.id, patientPage: page[1].toLowerCase() === "patientview" } : null;
 }
+
+function isHeidiConsultationSender(sender) {
+    const context = getHeidiRecordingWedaContext(sender);
+    return !!context && !context.patientPage;
+}
+
+// La fiche et la consultation sont deux documents. Conserver seulement la liaison dans
+// l’extension, par onglet Weda. Le texte reste dans Heidi jusqu’au transfert.
+const heidiPatientRecordingKey = tabId => "heidiPatientRecording:" + tabId;
+const heidiWedaCommands = new Set();
+
+async function handleHeidiWedaRecording(request, { patientId, wedaTabId, patientPage }) {
+    const key = heidiPatientRecordingKey(wedaTabId);
+    const { operation, owner, tabId, sessionId } = request;
+    if (operation === "restore") {
+        const { [key]: pending } = await chrome.storage.session.get(key);
+        if (!pending) return {};
+        return pending.patientId === patientId ? { pending } : { otherPatient: true };
+    }
+    if (heidiWedaCommands.has(wedaTabId)) return { error: "Une commande Heidi est déjà en cours dans cet onglet." };
+    heidiWedaCommands.add(wedaTabId);
+    try {
+        const { [key]: pending } = await chrome.storage.session.get(key);
+        const matches = pending?.patientId === patientId && pending.owner === owner
+            && pending.tabId === tabId && pending.sessionId === sessionId;
+        if (operation === "release") {
+            if (matches) await chrome.storage.session.remove(key);
+            return matches || !pending ? {} : { error: "La liaison avec Heidi a changé." };
+        }
+        if (operation === "start" && pending) {
+            return { error: pending.patientId === patientId
+                ? "Une session est déjà liée à ce dossier. Actualisez la page pour reprendre le transfert."
+                : "Une transcription est liée à un autre patient dans cet onglet." };
+        }
+        if (operation === "stop" && (pending || patientPage) && !matches) {
+            return { error: "La session Heidi n’est pas liée à ce dossier dans cet onglet." };
+        }
+        const result = await runHeidiRecording(request, patientPage);
+        if (patientPage && operation === "start" && result.sessionId) {
+            await chrome.storage.session.set({
+                [key]: { patientId, owner, tabId: result.tabId, sessionId: result.sessionId, readyForTransfer: false }
+            });
+        }
+        if (patientPage && operation === "stop" && !result.error && result.sessionId === sessionId) {
+            await chrome.storage.session.set({ [key]: { ...pending, readyForTransfer: true } });
+        }
+        return result;
+    } finally {
+        heidiWedaCommands.delete(wedaTabId);
+    }
+}
+
+chrome.tabs.onRemoved.addListener(tabId => {
+    chrome.storage.session.remove(heidiPatientRecordingKey(tabId)).catch(() => {});
+});
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request?.action !== "heidiConsultationRecording") return false;
-    if (!isHeidiConsultationSender(sender)) {
-        sendResponse({ error: "Commande Heidi refusée hors d’une consultation Weda." });
+    const context = getHeidiRecordingWedaContext(sender);
+    if (!context) {
+        sendResponse({ error: "Commande Heidi refusée hors d’une fiche patient ou d’une consultation Weda." });
         return false;
     }
-    runHeidiRecording(request).then(sendResponse).catch(() => {
+    handleHeidiWedaRecording(request, context).then(sendResponse).catch(() => {
         sendResponse({ error: "Impossible de communiquer avec Heidi. Vérifiez la session et les autorisations." });
     });
     return true;

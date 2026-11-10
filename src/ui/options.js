@@ -760,7 +760,7 @@ function generateShortcutOptions(defaultShortcuts, savedShortcuts) {
     const legend = document.createElement("legend");
     legend.textContent = "Raccourcis Heidi";
     const help = document.createElement("p");
-    help.textContent = "Cliquez sur une touche pour la modifier, puis rechargez la consultation Weda.";
+    help.textContent = "Cliquez sur une touche pour la modifier, puis actualisez la fiche ou la consultation Weda. Si le connecteur Tampermonkey est actif, il utilise PageUp et PageDown : choisissez d’autres touches.";
     group.append(legend, help, heidiTable);
     heidiWorkflow.after(group);
     const link = document.createElement("a");

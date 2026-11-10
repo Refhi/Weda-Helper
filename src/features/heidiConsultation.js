@@ -1,6 +1,6 @@
 /**
- * Transcription et propositions Heidi dans la consultation Weda ouverte.
- * L'association avec Heidi et les brouillons restent en mémoire dans cet onglet.
+ * Transcription Heidi depuis la fiche patient ou la consultation Weda.
+ * La transcription et les propositions ne sont chargées que dans la consultation.
  */
 const HEIDI_CONSULTATION_EDITOR = "iframe[id^='CE_ContentPlaceHolder1_EditorConsultation'][id$='_ID_Frame']";
 let heidiConsultationPausesAutoSave = () => false;
@@ -11,6 +11,16 @@ function getHeidiConsultationEditor() {
     const doc = frame?.contentDocument;
     return frame?.getClientRects().length && (doc?.body?.isContentEditable || doc?.designMode === "on")
         ? doc.body : null;
+}
+
+function getHeidiNewConsultationLink() {
+    // Commande native utilisée par le connecteur Heidi–Weda. L’identifiant
+    // du sous-menu ASP.NET varie : vérifier le libellé et le postback existant.
+    const links = [...document.querySelectorAll("#ContentPlaceHolder1_MenuNavigate a")].filter(link =>
+        /^(?:Nouvelle )?Consultation$/i.test(link.textContent.trim())
+        && /__doPostBack\(\s*'ctl00\$ContentPlaceHolder1\$MenuNavigate'\s*,\s*'0\\\\1'\s*\)/.test(link.getAttribute("onclick") || "")
+    );
+    return links.length === 1 ? links[0] : null;
 }
 
 function appendHeidiTranscript(editor, transcript) {
@@ -51,8 +61,12 @@ function sameHeidiAntecedent(known, proposal, onglets) {
 }
 
 function mountHeidiConsultation() {
+    const patientPage = /\/PatientViewForm\.aspx$/i.test(location.pathname);
+    const patientMismatch = "Une transcription est liée à un autre patient dans cet onglet. Revenez au dossier d’origine.";
+    const waitingForConsultation = "Heidi est arrêté. Ouvrez une consultation de ce patient dans cet onglet pour recevoir la transcription.";
     let flow = null;
     let busy = false;
+    let otherPatient = false;
     let pendingAI = null;
     const make = (tag, text) => {
         const element = document.createElement(tag);
@@ -67,8 +81,8 @@ function mountHeidiConsultation() {
     };
     const panel = make("section");
     panel.id = "wh-heidi-consultation";
-    panel.setAttribute("aria-label", "Heidi en consultation");
-    const status = make("p", "Ouvrez Heidi dans un onglet, puis démarrez depuis cette consultation.");
+    panel.setAttribute("aria-label", "Transcription Heidi");
+    const status = make("p", "Ouvrez Heidi dans un onglet, puis démarrez la transcription depuis Weda.");
     status.setAttribute("role", "status");
     const tabPicker = make("select");
     tabPicker.hidden = true;
@@ -97,11 +111,11 @@ function mountHeidiConsultation() {
         if (!dialog.open) dialog.showModal();
     });
     const retry = button("Relancer l’analyse", () => run(() => analyse(flow)));
-    const abandon = button("Abandonner le transfert", () => {
+    const abandon = button("Abandonner le transfert", () => run(async () => {
+        if (flow?.fromPatientPage) await releasePatientRecording(flow);
         flow = null;
         say("Transfert abandonné. Si Heidi enregistre encore, arrêtez-le dans son onglet.");
-        refresh();
-    });
+    }));
     const controls = make("div");
     controls.append(make("strong", "Heidi"), tabPicker, start, stop, review, retry, abandon);
     panel.append(controls, status);
@@ -126,8 +140,9 @@ function mountHeidiConsultation() {
     document.head.append(style);
     document.body.append(panel, dialog);
 
-    const isCurrent = job => !!job && job === flow && job.url === location.href
-        && job.patientId === getCurrentPatientId() && job.editor === getHeidiConsultationEditor();
+    const isCurrentPage = job => !!job && job === flow && job.url === location.href
+        && job.patientId === getCurrentPatientId();
+    const isCurrent = job => isCurrentPage(job) && job.editor === getHeidiConsultationEditor();
     function requireCurrent(job) {
         if (!isCurrent(job)) throw new Error("La consultation a changé. Vérifiez Heidi et ouvrez le bon dossier.");
     }
@@ -138,8 +153,8 @@ function mountHeidiConsultation() {
     function refresh() {
         const pending = !!flow && !flow.transcript;
         panel.setAttribute("aria-busy", String(busy));
-        start.disabled = busy || pending;
-        stop.disabled = busy || !pending;
+        start.disabled = busy || pending || otherPatient;
+        stop.disabled = busy || !pending || (patientPage && flow.readyForTransfer);
         abandon.hidden = !pending;
         abandon.disabled = busy;
         tabPicker.disabled = busy || pending;
@@ -167,14 +182,41 @@ function mountHeidiConsultation() {
     function recordingCommand(payload) {
         return chrome.runtime.sendMessage({ action: "heidiConsultationRecording", ...payload });
     }
+    function jobCommand(operation, { owner, tabId, sessionId }) {
+        return recordingCommand({ operation, owner, tabId, sessionId });
+    }
+    async function releasePatientRecording(job) {
+        const result = await jobCommand("release", job);
+        if (result?.error) throw new Error(result.error);
+    }
+    async function restorePatientRecording() {
+        const url = location.href;
+        const result = await recordingCommand({ operation: "restore" });
+        if (url !== location.href) return;
+        if (result?.error) throw new Error(result.error);
+        if (result?.otherPatient) {
+            otherPatient = true;
+            say(patientMismatch);
+            return;
+        }
+        if (!result?.pending) return;
+        flow = { ...result.pending, fromPatientPage: true, url, editor: getHeidiConsultationEditor() };
+        if (flow.readyForTransfer) {
+            if (patientPage) say(waitingForConsultation);
+            else await stopRecording();
+        } else {
+            say("Session Heidi liée à ce dossier. Arrêtez-la pour transférer la transcription.");
+        }
+    }
     async function startRecording() {
+        if (otherPatient) throw new Error(patientMismatch);
         if (flow && !flow.transcript) {
-            throw new Error("Une session est déjà liée à cette consultation. Arrêtez-la avant d’en démarrer une autre.");
+            throw new Error("Une session est déjà liée à ce dossier. Terminez son transfert avant d’en démarrer une autre.");
         }
         const patientId = getCurrentPatientId();
         const editor = getHeidiConsultationEditor();
-        if (!patientId || !editor) throw new Error("Ouvrez une consultation Weda et attendez que son éditeur soit prêt.");
-        const job = { patientId, editor, url: location.href, owner: crypto.randomUUID() };
+        if (!patientId || (!patientPage && !editor)) throw new Error("Ouvrez une fiche patient ou une consultation Weda dont l’éditeur est prêt.");
+        const job = { patientId, editor, url: location.href, owner: crypto.randomUUID(), fromPatientPage: patientPage };
         say("Création de la session Heidi…");
         const result = await recordingCommand({
             operation: "start", owner: job.owner,
@@ -208,30 +250,49 @@ function mountHeidiConsultation() {
     }
 
     async function stopRecording() {
+        if (otherPatient) throw new Error(patientMismatch);
         const job = flow;
-        if (!job) throw new Error("Démarrez d’abord une transcription depuis cette consultation.");
+        if (!job) throw new Error("Démarrez d’abord une transcription depuis ce dossier.");
         if (job.transcript) throw new Error("La transcription est déjà dans la consultation.");
+        if (!patientPage && job.fromPatientPage && !job.editor) {
+            job.editor = await waitForElementInDocument(
+                () => isCurrentPage(job) ? getHeidiConsultationEditor()?.ownerDocument : null, "body"
+            ).catch(() => null);
+            if (!job.editor) throw new Error("Attendez que l’éditeur de consultation soit prêt, puis relancez le transfert.");
+        }
         requireCurrent(job);
-        say("Arrêt de Heidi et attente de la transcription finale…");
-        const result = await recordingCommand({
-            operation: "stop", owner: job.owner, tabId: job.tabId, sessionId: job.sessionId
-        });
+        if (patientPage && job.readyForTransfer) {
+            say(waitingForConsultation);
+            return;
+        }
+        say(patientPage ? "Arrêt de Heidi…" : "Arrêt de Heidi et attente de la transcription finale…");
+        const result = await jobCommand("stop", job);
         requireCurrent(job);
-        if (result?.error || result?.sessionId !== job.sessionId || !result?.transcript) {
+        if (result?.error || result?.sessionId !== job.sessionId) {
             throw new Error(result?.error || "La transcription de cette session n’a pas été reçue.");
         }
+        if (patientPage) {
+            job.readyForTransfer = true;
+            say(waitingForConsultation);
+            getHeidiNewConsultationLink()?.click();
+            return;
+        }
+        if (!result.transcript) throw new Error("La transcription de cette session n’a pas été reçue.");
         appendHeidiTranscript(job.editor, result.transcript);
         job.transcript = result.transcript;
         say("Transcription ajoutée à la consultation.");
+        if (job.fromPatientPage) await releasePatientRecording(job);
         await analyse(job);
     }
 
     // Un aller-retour isolé du chat, identifié pour ignorer toute réponse tardive.
-    onOffscreenMessage(message => {
-        if (message?.type === "heidiConsultationAIResult" && pendingAI?.id === message.requestId) {
-            pendingAI.complete(message.result);
-        }
-    });
+    if (!patientPage) {
+        onOffscreenMessage(message => {
+            if (message?.type === "heidiConsultationAIResult" && pendingAI?.id === message.requestId) {
+                pendingAI.complete(message.result);
+            }
+        });
+    }
     function requestAnalysis(operation, payload) {
         return new Promise((resolve, reject) => {
             const id = crypto.randomUUID();
@@ -384,6 +445,8 @@ function mountHeidiConsultation() {
     keyCommands.heidi_start_recording = () => run(startRecording);
     keyCommands.heidi_stop_recording = () => run(stopRecording);
     addAllShortcuts();
+    run(restorePatientRecording);
 }
 
-addTweak("/FolderMedical/ConsultationForm.aspx", "heidiConsultationWorkflow", mountHeidiConsultation);
+addTweak(["/FolderMedical/PatientViewForm.aspx", "/FolderMedical/ConsultationForm.aspx"],
+    "heidiConsultationWorkflow", mountHeidiConsultation);

@@ -931,7 +931,7 @@ var advancedDefaultSettings = [
             "name": "heidiConsultationWorkflow",
             "type": TYPE_BOOL,
             "description": "Transcription Heidi en consultation",
-            "longDescription": "Depuis la consultation Weda ouverte, démarre une nouvelle session Heidi et ajoute la transcription à la consultation à l’arrêt. Activez aussi « Accès à Heidi ». Les deux raccourcis se règlent juste en dessous.",
+            "longDescription": "Démarre Heidi depuis la fiche patient ou une consultation Weda. À l’arrêt, la transcription est ajoutée à la consultation du même dossier. Activez aussi « Accès à Heidi ». Les deux raccourcis se règlent juste en dessous.",
             "default": false,
             "subOptions": [{
                 "name": "heidiConsultationAnalysis",
