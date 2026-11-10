@@ -112,15 +112,16 @@ addTweak('/FolderMedical/WedaEchanges/', 'autoClickUnPatient', function () {
  *
  * Deux scénarios de sélection des messages à parcourir :
  * - les messages dont la case a été cochée (bouton ▶️, déclenchement manuel)
- * - les messages non lus (bouton 🔁, déclenchement à l'activation puis à chaque rafraîchissement
- *   de la boîte de réception, cf. secureExchangeAutoRefresh)
+ * - les messages non lus (bouton 🔁, déclenchement à l'activation, au chargement de la page
+ *   et à chaque rafraîchissement de la boîte de réception, cf. secureExchangeAutoRefresh)
  *
  * Il n'y a pas de pause entre deux messages : la boucle ne s'arrête que si le bouton ⏹️ est
  * utilisé. Le remplissage du formulaire (sélection du patient, titre, catégorie...) reste géré
  * par processFoundPdfIframeEchanges ; l'utilisateur garde la main pour valider manuellement
  * chaque message, y compris après coup en revenant dessus dans la liste.
  */
-addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function () {
+addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async function () {
+    const AUTO_MODE_STORAGE_KEY = 'secureExchangeMessageQueueAutoEnabled';
     // Émis par pdfParser.js (processFoundPdfIframeEchanges) à la fin du traitement d'un message,
     // qu'il ait réussi, échoué, ou que le PDF ait déjà été importé auparavant.
     const ANALYSIS_DONE_EVENT = 'pdfParserEchangesDone';
@@ -133,7 +134,8 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
 
     let queueRunning = false;
     let queueShouldStop = false;
-    let autoModeEnabled = false;
+    let autoModeEnabled;
+    let initialUnreadObserver;
 
     // --- Sélection des messages selon le scénario ---
     function getAllMessages() {
@@ -245,18 +247,33 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
     }
 
     function startAutoQueueIfUnread() {
-        if (!autoModeEnabled || queueRunning) return;
-        const unread = getUnreadMessages();
-        if (unread.length > 0) {
-            processQueue(getUnreadMessages);
-        }
+        if (!autoModeEnabled || queueRunning || getUnreadMessages().length === 0) return;
+        initialUnreadObserver?.disconnect();
+        processQueue(getUnreadMessages);
     }
 
-    function toggleAutoMode() {
-        autoModeEnabled = !autoModeEnabled;
+    function setAutoMode(enabled) {
+        autoModeEnabled = enabled;
+        if (!enabled) initialUnreadObserver?.disconnect();
         updateToolboxState();
-        if (autoModeEnabled) {
-            startAutoQueueIfUnread();
+    }
+
+    async function toggleAutoMode() {
+        const enabled = !autoModeEnabled;
+        autoButton.disabled = true;
+        try {
+            await chrome.storage.local.set({ [AUTO_MODE_STORAGE_KEY]: enabled });
+            setAutoMode(enabled);
+            if (enabled) startAutoQueueIfUnread();
+        } catch (error) {
+            console.warn('[secureExchangeMessageQueue] Impossible de mémoriser le mode automatique.', error);
+            sendWedaNotif({
+                message: "Le réglage de l’analyse automatique n’a pas pu être enregistré.",
+                type: 'fail',
+                icon: 'error'
+            });
+        } finally {
+            autoButton.disabled = false;
         }
     }
 
@@ -279,6 +296,7 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
     function updateToolboxState() {
         if (!playButton) return;
         playButton.disabled = queueRunning;
+        autoButton.setAttribute('aria-pressed', String(autoModeEnabled));
         autoButton.classList.toggle('whQueueAutoActive', autoModeEnabled);
         autoButton.style.backgroundColor = autoModeEnabled ? '#4CAF50' : '';
         autoButton.style.color = autoModeEnabled ? 'white' : '';
@@ -289,7 +307,7 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
         }
     }
 
-    function createToolbox() {
+    function createToolbox([inboxContainer]) {
         if (document.querySelector('#whMessageQueueToolbox')) return;
 
         const toolbox = document.createElement('div');
@@ -310,6 +328,7 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
         autoButton = document.createElement('button');
         autoButton.type = 'button';
         autoButton.innerText = '🔁';
+        autoButton.setAttribute('aria-label', 'Analyse automatique des messages non lus');
         autoButton.title = "Weda-Helper : analyser automatiquement les messages non lus dès qu'il y en a (à l'activation puis à chaque rafraîchissement de la boîte de réception).";
         autoButton.onclick = toggleAutoMode;
 
@@ -331,8 +350,30 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
 
         toolbox.append(playButton, autoButton, stopButton, progressLabel);
 
-        const inboxContainer = document.querySelector('#weInboxContainer');
         inboxContainer.insertAdjacentElement('afterend', toolbox);
+        updateToolboxState();
+
+        if (autoModeEnabled) {
+            // La liste Weda peut arriver après le conteneur. Reprendre une fois, dès qu'elle est prête.
+            initialUnreadObserver = new MutationObserver(startAutoQueueIfUnread);
+            initialUnreadObserver.observe(inboxContainer, {
+                childList: true, subtree: true, attributes: true, attributeFilter: ['class']
+            });
+            startAutoQueueIfUnread();
+        }
+    }
+
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName === 'local' && AUTO_MODE_STORAGE_KEY in changes) {
+            setAutoMode(changes[AUTO_MODE_STORAGE_KEY].newValue === true);
+        }
+    });
+    try {
+        const stored = await chrome.storage.local.get(AUTO_MODE_STORAGE_KEY);
+        autoModeEnabled ??= stored[AUTO_MODE_STORAGE_KEY] === true;
+    } catch (error) {
+        autoModeEnabled ??= false;
+        console.warn('[secureExchangeMessageQueue] Impossible de relire le mode automatique.', error);
     }
 
     waitForElement({
