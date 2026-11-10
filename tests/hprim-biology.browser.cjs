@@ -27,6 +27,8 @@ const documents = [
 const titles = new Map([["c", "Titre déjà saisi dans Weda"]]), requests = [];
 const opened = [], saves = [];
 let saveMode = "reject", fullOpen = false, pageLoads = 0;
+const openTarget = index => "ctl00$ContentPlaceHolder1$HprimsGrid$ctl" +
+    String(index + 2).padStart(2, "0") + "$LinkButtonHprimNom";
 const esc = value => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;");
 const cells = (rows, inbox = false) => "<table class=hprimgrid><tbody>" +
     [["Libellé", "Valeur", "Unité", "Minimum", "Maximum"], ...rows].map(row =>
@@ -44,7 +46,8 @@ function inbox(selected = "a") {
     const grid = documents.map((item, index) => '<tr data-record="' + item.id + '"' +
         (selected === item.id ? ' class="grid-selecteditem"' : "") + "><td>" + date + "</td><td>" + item.type +
         '</td><td><a id="' + prefix + "HprimsGrid_LinkButtonHprimNom_" + index +
-        '" href="#" onclick="fakeOpen(this); return false">' + item.name + "</a></td><td>Camille</td><td>" +
+        '" href="javascript:WebForm_DoPostBackWithOptions(new WebForm_PostBackOptions(\'' +
+        openTarget(index) + '\',\'\',true,\'\',\'\',false,true))">' + item.name + "</a></td><td>Camille</td><td>" +
         birth + "</td><td>ZZ</td></tr>").join("");
     return `<!doctype html><meta charset="utf-8">
 <form method="post">
@@ -63,8 +66,8 @@ function inbox(selected = "a") {
         add_beginRequest: fn => begin.add(fn), remove_beginRequest: fn => begin.delete(fn),
         add_endRequest: fn => end.add(fn), remove_endRequest: fn => end.delete(fn)
     }) } } };
-    async function command(kind, element, record, title) {
-        const request = {};
+    async function command(kind, element, record, title, postbackTarget = "") {
+        const request = { get_body: () => new URLSearchParams({ __EVENTTARGET: postbackTarget }).toString() };
         for (const listener of begin) listener(null, { get_postBackElement: () => element, get_request: () => request });
         active = true;
         let error;
@@ -90,11 +93,17 @@ function inbox(selected = "a") {
         });
     }
     function selected() { return document.querySelector(".grid-selecteditem").dataset.record; }
-    window.fakeOpen = element => command("open", element, element.closest("tr").dataset.record);
+    // Comme dans Weda, le nom WebForms du contrôle n'est pas l'ID du lien dans le DOM.
+    const recordsByTarget = ${JSON.stringify(Object.fromEntries(documents.map((item, index) => [openTarget(index), item.id])))};
+    window.WebForm_PostBackOptions = function (eventTarget) { this.eventTarget = eventTarget; };
+    window.WebForm_DoPostBackWithOptions = ({ eventTarget }) => {
+        setTimeout(() => command("open", null, recordsByTarget[eventTarget], undefined, eventTarget), 0);
+    };
     window.fakeHistory = element => command("history", element, selected());
     window.__doPostBack = target => {
         const input = document.querySelector('[name="' + target + '"]');
-        command("save", input, selected(), input.value);
+        const record = selected(), title = input.value;
+        setTimeout(() => command("save", null, record, title, target), 0);
     };
 </script>`;
 }

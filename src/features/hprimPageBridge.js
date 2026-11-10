@@ -24,12 +24,21 @@
         }
         const manager = window.Sys?.WebForms?.PageRequestManager?.getInstance?.();
         if (manager?.get_isInAsyncPostBack?.()) { respond("busy"); return; }
+        const postBackCall = /\b(?:WebForm_PostBackOptions|__doPostBack)\s*\(\s*(['"])([\w$:]+)\1/;
+        const expectedTarget = target.getAttribute("href")?.match(postBackCall)?.[2] ||
+            target.getAttribute("onclick")?.match(postBackCall)?.[2] || target.name;
         let request, sending = false, started = false, timer;
         const begin = (_sender, args) => {
             const element = args?.get_postBackElement?.();
-            if (element === target || (element && target.contains(element)) || (!element && sending)) {
+            const candidate = args?.get_request?.();
+            const body = candidate?.get_body?.();
+            // Un lien HPRIM peut lancer le postback après le clic, sans élément DOM associé.
+            // Le formulaire porte alors le nom serveur exact de la commande.
+            const eventTarget = typeof body === "string" ? new URLSearchParams(body).get("__EVENTTARGET") : null;
+            if (element === target || (element && target.contains(element)) ||
+                (expectedTarget && eventTarget === expectedTarget) || (!element && !eventTarget && sending)) {
                 started = true;
-                request = args?.get_request?.();
+                request = candidate;
             }
         };
         const end = (_sender, args) => {
