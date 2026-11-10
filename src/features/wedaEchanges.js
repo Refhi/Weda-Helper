@@ -83,26 +83,25 @@ addTweak('/FolderMedical/WedaEchanges/', 'swapTitrePJetCorpsMessage', function (
 });
 
 
-// Clic automatique sur "Un patient" dès qu'un élément  .messageListItem passe en  .messageListItem.selected
+// Clic automatique sur "Un patient" à l'ouverture d'un message (clic manuel ou parcours par lot).
 addTweak('/FolderMedical/WedaEchanges/', 'autoClickUnPatient', function () {
-    // waitForElement ne signale qu'une fois chaque nœud : un retour sur un message déjà sélectionné
-    // (simple changement de classe) ne serait pas détecté. On suit donc directement la sélection.
-    let lastSelected = null;
-    const observer = new MutationObserver(async () => {
-        const selected = document.querySelector('.messageListItem.selected');
-        if (selected === lastSelected) return;
-        lastSelected = selected;
-        if (!selected) return;
-        await sleep(100); // Laisse Weda afficher le détail du message
-        if (document.querySelector('.messageListItem.selected') !== selected) return; // sélection changée entre-temps
-        const unPatientButton = document.querySelector('.btnImport.importPatient');
-        console.log('[autoClickUnPatient] unPatientButton', unPatientButton);
-        if (unPatientButton) {
+    let pendingClick;
+    document.addEventListener('click', event => {
+        const line = event.target.closest?.('#messageList .messageLineItem');
+        if (!line) return;
+
+        // Weda peut recréer la ligne sélectionnée pendant la recherche patient.
+        // Seul un clic sur la liste doit lancer une nouvelle recherche.
+        clearTimeout(pendingClick);
+        pendingClick = setTimeout(() => {
+            if (!line.isConnected || !line.closest('.messageListItem.selected')) return;
+            const unPatientButton = document.querySelector('#messageContainer .btnImport.importPatient');
+            if (!unPatientButton) return;
+
             unPatientButton.click();
             recordMetrics({ clicks: 1, drags: 0 });
-        }
-    });
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+        }, 100); // Laisse Weda afficher le détail du message.
+    }, true);
 });
 
 
