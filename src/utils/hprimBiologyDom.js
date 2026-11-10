@@ -12,8 +12,8 @@ const HprimBiologyDom = (() => {
         const listed = Array.from(root.querySelector(gridSelector)?.rows || []).flatMap(element => {
             const link = element.querySelector('a[id*="HprimsGrid_LinkButtonHprimNom_"], a[id*="HprimsGrid_LinkButtonHprimPrenom_"]');
             if (!link) return [];
-            const cells = Array.from(element.cells, cell => text(Array.from(cell.childNodes)
-                .filter(node => !node.classList?.contains("wh-hprim-badge")).map(node => node.textContent).join(" ")));
+            const cells = Array.from(element.cells, cell =>
+                text(Array.from(cell.childNodes, node => node.textContent).join(" ")));
             const date = dateIn(element.querySelector('label[for*="CheckBoxHprimDateResultat_"]')?.textContent) || dateIn(cells[0]);
             const [type, last, first, birth, practitioner] = cells.slice(1, 6);
             const identity = JSON.stringify([date, type, last, first, birth, practitioner].map(fold));
@@ -147,44 +147,37 @@ const HprimBiologyDom = (() => {
         }, signal, "Weda n’a pas confirmé l’affectation dans la liste des imports.");
     }
 
-    async function requestOpen(link, signal) {
-        const deadline = Date.now() + 4000;
-        for (;;) {
-            if (!link?.isConnected) throw new Error("La ligne à ouvrir n’est plus disponible dans Weda.");
-            try {
-                await native("open", link, signal);
-                return;
-            } catch (error) {
-                if (error.code !== "busy" || Date.now() >= deadline) throw error;
-                // Le bilan peut être affiché avant que Weda ait fini de traiter sa réponse.
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-        }
-    }
-
     async function open(key, signal, staleInput) {
         signal?.throwIfAborted();
         const current = capture(key);
         if (current && current.input !== staleInput) return current;
-        const target = rows().find(row => row.key === key);
-        const previousInput = document.querySelector(titleSelector);
-        const previousDefault = previousInput?.defaultValue;
-        // Le panneau du bilan affecté peut rester affiché le temps d'ouvrir le suivant.
-        const name = previousInput === staleInput && previousInput?.getAttribute("name");
-        if (name) previousInput.removeAttribute("name");
+        const deadline = Date.now() + 4000;
         const x = window.scrollX, y = window.scrollY;
-        try {
-            await requestOpen(target?.link, signal);
-            const snapshot = await waitFor(() => {
-                // Une nouvelle sélection peut apparaître avant le remplacement du formulaire.
-                const input = document.querySelector(titleSelector);
-                if (!input || (input === previousInput && input.defaultValue === previousDefault)) return null;
-                return capture(key);
-            }, signal, "Weda n’a pas chargé le compte rendu attendu pour cette ligne.");
-            window.scrollTo(x, y);
-            return snapshot;
-        } finally {
-            if (name && !previousInput.hasAttribute("name")) previousInput.setAttribute("name", name);
+        for (;;) {
+            const link = rows().find(row => row.key === key)?.link;
+            if (!link?.isConnected) throw new Error("La ligne à ouvrir n’est plus disponible dans Weda.");
+            // Weda peut remplacer le formulaire précédent pendant l'attente d'une lecture.
+            const previousInput = document.querySelector(titleSelector);
+            const previousDefault = previousInput?.defaultValue;
+            // La lecture du suivant ne doit pas renvoyer le titre du bilan déjà affecté.
+            const name = previousInput === staleInput && previousInput?.getAttribute("name");
+            if (name) previousInput.removeAttribute("name");
+            try {
+                await native("open", link, signal);
+                const snapshot = await waitFor(() => {
+                    // Une nouvelle sélection peut apparaître avant le remplacement du formulaire.
+                    const input = document.querySelector(titleSelector);
+                    if (!input || (input === previousInput && input.defaultValue === previousDefault)) return null;
+                    return capture(key);
+                }, signal, "Weda n’a pas chargé le compte rendu attendu pour cette ligne.");
+                window.scrollTo(x, y);
+                return snapshot;
+            } catch (error) {
+                if (error.code !== "busy" || Date.now() >= deadline) throw error;
+            } finally {
+                if (name && !previousInput.hasAttribute("name")) previousInput.setAttribute("name", name);
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
         }
     }
 

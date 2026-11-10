@@ -88,52 +88,60 @@ async function setupHprimBiology() {
         chrome.runtime.sendMessage({ type: "whHprimSession" }), getOptionPromise(autoKey)
     ]);
     const drafts = new Map(saved?.state?.drafts || []);
+    const pausedKeys = new Set(saved?.state?.pausedKeys || []);
     const recent = entry => entry && Date.now() - entry.at < 5 * 60000;
     let job = recent(saved?.state?.job) ? saved.state.job : null;
     let assignment = recent(saved?.state?.assignment) ? saved.state.assignment : null;
-    let auto = initialAuto === true, controller, nativeEdited, interaction = 0, reviewHold = false;
+    let auto = initialAuto === true, controller, nativeEdited, interaction = 0, autoHold = false;
     let owner = false, releaseOwner, acquiring = false, polling = false, refreshTimer;
     let rendered = null, preview = null;
     const panel = document.createElement("section");
     panel.id = panelId;
     panel.className = "wh-hprim-tools";
     panel.setAttribute("aria-label", "Analyse des biologies");
-    const button = (label, onClick) => {
+    const button = (icon, label, tooltip, onClick) => {
         const node = document.createElement("button");
         node.type = "button";
-        node.textContent = label;
+        node.textContent = icon;
+        node.setAttribute("aria-label", label);
+        node.title = tooltip;
         node.onclick = onClick;
         return node;
     };
-    const status = document.createElement("div");
+    const status = document.createElement("span");
     status.setAttribute("role", "status");
-    status.textContent = "Sélectionnez un bilan ou lancez l’analyse de la liste.";
-    const detail = document.createElement("div");
-    const analyze = button("Analyser ce bilan", () => {
-        const row = D.selection();
-        if (row) run("single", [row.key]);
-    });
-    const batch = button("Analyser toutes les biologies", () => run("batch", D.rows().map(row => row.key)));
-    const toggle = button("Analyse automatique des biologies", async () => {
+    function announce(message, visible = false) {
+        status.textContent = message;
+        status.toggleAttribute("data-visible", visible);
+    }
+    const batch = button("▶️", "Analyser toutes les biologies", "Analyser tous les bilans de la liste.",
+        () => run("batch", D.rows().map(row => row.key)));
+    const toggle = button("🔁", "Analyse automatique des biologies",
+        "Analyser automatiquement les nouveaux bilans tant que cet onglet reste ouvert.", async () => {
+        toggle.disabled = true;
         try {
             await chrome.storage.local.set({ [autoKey]: !auto });
         } catch {
-            status.textContent = "Impossible de mémoriser le mode automatique.";
+            announce("Impossible de mémoriser le mode automatique.", true);
+        } finally {
+            toggle.disabled = false;
         }
     });
-    toggle.title = "Analyse les nouveaux bilans tant que cet onglet reste ouvert.";
-    const stop = button("Arrêter l’analyse", () => {
-        if (auto) {
-            auto = false;
-            releaseOwner?.();
-            chrome.storage.local.set({ [autoKey]: false }).catch(() => {});
-        }
+    const stop = button("⏹️", "Arrêter l’analyse", "Arrêter l’analyse en cours et garder les titres déjà préparés.", () => {
+        if (!job || !controller) return;
+        for (const key of job.keys) pausedKeys.add(key);
         cancel("Analyse arrêtée. Les propositions déjà préparées restent disponibles.");
+        controls(D.rows());
+        persist().catch(() => {});
     });
-    panel.append(analyze, batch, toggle, stop, status, detail);
+    stop.disabled = true;
+    panel.append(batch, toggle, stop, status);
 
     async function persist() {
-        const state = structuredClone({ drafts: [...drafts].slice(-400), job, assignment });
+        const state = structuredClone({
+            drafts: [...drafts].slice(-400), pausedKeys: [...pausedKeys].slice(-400),
+            job: controller?.signal.aborted ? null : job, assignment
+        });
         const reply = await chrome.runtime.sendMessage({ type: "whHprimSession", state });
         if (!reply?.saved) throw new Error("Le brouillon n’a pas pu être conservé dans cet onglet.");
     }
@@ -152,11 +160,8 @@ async function setupHprimBiology() {
     const busy = () => Boolean(controller || job || assignment);
 
     function controls(list) {
-        const selected = D.selection(list);
-        const running = busy();
-        analyze.disabled = running || !selected;
-        batch.disabled = running || !list.length;
-        stop.disabled = !controller || Boolean(assignment);
+        batch.disabled = busy() || !list.length;
+        stop.disabled = !job || !controller || controller.signal.aborted;
         toggle.setAttribute("aria-pressed", String(auto));
     }
 
@@ -164,19 +169,6 @@ async function setupHprimBiology() {
         const list = D.rows();
         const grid = document.querySelector(D.gridPanelSelector) || document.querySelector(D.gridSelector);
         if (grid && panel.previousElementSibling !== grid) grid.after(panel);
-        for (const row of list) {
-            const state = drafts.get(row.key)?.state;
-            let badge = row.element.querySelector(".wh-hprim-badge");
-            if (!state) { badge?.remove(); continue; }
-            if (!badge) {
-                badge = document.createElement("span");
-                badge.className = "wh-hprim-badge";
-                row.link.after(badge);
-            }
-            const label = state === "review" ? "À relire" : "À valider";
-            if (badge.dataset.state !== state) badge.dataset.state = state;
-            if (badge.textContent !== label) badge.textContent = label;
-        }
         const row = D.selection(list), draft = drafts.get(row?.key);
         const snapshot = row && draft?.hash && D.capture(row.key);
         if (rendered?.key !== row?.key || rendered?.sourceDraft !== draft || rendered?.data !== snapshot?.data ||
@@ -188,24 +180,13 @@ async function setupHprimBiology() {
                 rendered = { key: row.key, draft: draft.hash === hash ? draft : null, sourceDraft: draft,
                     data: snapshot.data, input: snapshot.input };
             } else rendered = { key: row?.key, draft: null, sourceDraft: draft };
-            detail.replaceChildren();
-            if (rendered.draft && snapshot) {
-                const report = B.analyze(snapshot.measures, snapshot.raw, row.type);
-                report.rows.forEach((result, index) => { result.previous = draft.previous?.[index]; });
-                report.warnings = draft.warnings;
-                const card = hprimSummaryCard(report, snapshot.source);
-                card.open = draft.state === "review";
-                detail.append(card);
-            } else if (draft?.warnings.length) {
-                detail.textContent = draft.warnings.join(" ");
-            }
         }
         if (preview && (preview.input !== rendered?.input || preview.draft !== rendered?.draft || preview.key !== rendered?.key)) {
             retractTitle();
         }
-        if (!busy() && !preview && rendered?.draft &&
-            (snapshot.title === draft.original || snapshot.title === draft.title)) {
-            snapshot.input.value = draft.title || snapshot.title;
+        const value = snapshot?.input.value;
+        if (!busy() && !preview && rendered?.draft && (value === draft.original || value === draft.title)) {
+            snapshot.input.value = draft.title || value;
             preview = { key: row.key, input: snapshot.input, value: snapshot.input.value, data: snapshot.data, draft };
             if (nativeEdited === snapshot.input) nativeEdited = null;
         }
@@ -240,13 +221,15 @@ async function setupHprimBiology() {
 
     async function prepare(snapshot, hash, signal) {
         const report = B.analyze(snapshot.measures, snapshot.raw, snapshot.row.type);
+        let notice;
         if (report.rows.some(row => row.item && !row.ambiguous && ["HAUT", "BAS"].includes(row.state))) {
             let entries = [];
             try { entries = await D.history(snapshot, signal); }
             catch {
                 signal.throwIfAborted();
                 D.assertSnapshot(snapshot);
-                report.warnings.push("L’historique de ce bilan n’a pas pu être relu.");
+                notice = "L’historique d’un bilan n’a pas pu être relu.";
+                report.warnings.push(notice);
             }
             report.rows = B.addHistory(report.rows, entries, snapshot.row.date);
         }
@@ -256,21 +239,20 @@ async function setupHprimBiology() {
         if (current.title !== snapshot.title) throw new Error("Le titre a été modifié dans Weda pendant l’analyse.");
         const title = B.buildTitle(report, order);
         const max = Math.min(current.input.maxLength > 0 ? current.input.maxLength : 350, 350);
-        if (title.length > max) report.warnings.push("Titre trop long pour Weda : raccourcissez-le avant de valider.");
-        if (!title && !report.warnings.length) report.warnings.push("Aucun titre fiable ne peut être proposé à partir de ces résultats.");
-        const state = report.warnings.length || report.rows.some(row => row.state === "À RELIRE") ? "review" : "ready";
-        if (warning) report.warnings.push(warning);
-        return { hash, title, original: current.title, warnings: report.warnings,
-            previous: Object.fromEntries(report.rows.flatMap((row, index) => row.previous ? [[index, row.previous]] : [])), state };
+        if (title.length > max) notice = "Un titre dépasse la longueur conseillée. Raccourcissez-le dans Weda.";
+        return { hash, title, original: current.title, notice: notice || warning };
     }
 
     async function run(mode, keys, resume = false) {
         if (controller || assignment || (!resume && job) || !keys.length) return;
         retractTitle();
-        if (mode !== "auto") reviewHold = false;
+        if (mode !== "auto") autoHold = false;
         controller = new AbortController();
         const signal = controller.signal;
-        if (!resume) job = { mode, keys: [...keys], start: D.selection()?.key || keys[0], at: Date.now(), opening: false };
+        if (!resume) {
+            if (mode === "batch") pausedKeys.clear();
+            job = { mode, keys: [...keys], start: D.selection()?.key || keys[0], at: Date.now(), opening: false };
+        }
         const total = job.keys.length;
         controls(D.rows());
         try {
@@ -280,7 +262,7 @@ async function setupHprimBiology() {
             while (job.keys.length) {
                 signal.throwIfAborted();
                 const key = job.keys[0];
-                status.textContent = "Analyse en cours · " + (total - job.keys.length + 1) + " / " + total;
+                announce("Analyse en cours · " + (total - job.keys.length + 1) + " / " + total);
                 job.opening = true;
                 job.at = Date.now();
                 await persist();
@@ -294,24 +276,25 @@ async function setupHprimBiology() {
                     }
                 } catch (error) {
                     signal.throwIfAborted();
-                    drafts.set(key, { state: "review", warnings: [error.message] });
+                    drafts.set(key, { notice: error.message });
                 }
                 job.keys.shift();
                 job.opening = false;
                 await persist();
                 await render();
             }
-            const target = D.rows().find(row => keys.includes(row.key) && drafts.get(row.key)?.state === "review")?.key || job.start;
-            const review = keys.filter(key => drafts.get(key)?.state === "review").length;
+            const target = job.start;
             job = null;
             await persist();
             if (target && D.rows().some(row => row.key === target)) {
                 try { await D.open(target, signal); } catch { signal.throwIfAborted(); }
             }
-            status.textContent = review ? "Analyse terminée · " + review + " bilan(s) à relire." :
-                "Analyse terminée. Les titres proposés sont disponibles dans la liste.";
+            const missing = keys.filter(key => !drafts.get(key)?.title).length;
+            const notice = missing ? "Aucun titre proposé pour " + missing + (missing === 1 ? " bilan." : " bilans.") :
+                keys.map(key => drafts.get(key)?.notice).find(Boolean);
+            announce(notice ? "Analyse terminée. " + notice : "Analyse terminée.", Boolean(notice));
         } catch (error) {
-            status.textContent = error.message;
+            announce(error.message, error.name !== "AbortError");
         } finally {
             job = null;
             controller = null;
@@ -324,36 +307,42 @@ async function setupHprimBiology() {
     async function followAssignment(request, previousInput) {
         controller = new AbortController();
         const signal = controller.signal;
-        status.textContent = "Weda traite l’affectation…";
+        announce("Weda traite l’affectation…");
         controls(D.rows());
         try {
             const { list, remaining, next } = await D.afterAssignment(request, signal);
             signal.throwIfAborted();
             // En cas de lignes identiques, l'ordre vérifié permet de conserver les autres brouillons.
             const moved = remaining.flatMap(({ key }, index) => key === list[index].key ? [] :
-                [{ from: key, to: list[index].key, draft: drafts.get(key) }]);
-            drafts.delete(request.before[request.index].key);
-            for (const { from } of moved) drafts.delete(from);
-            for (const { from, to, draft } of moved) {
+                [{ from: key, to: list[index].key, draft: drafts.get(key), paused: pausedKeys.has(key) }]);
+            const assignedKey = request.before[request.index].key;
+            drafts.delete(assignedKey);
+            pausedKeys.delete(assignedKey);
+            for (const { from } of moved) {
+                drafts.delete(from);
+                pausedKeys.delete(from);
+            }
+            for (const { from, to, draft, paused } of moved) {
                 if (draft) drafts.set(to, { ...draft, originalKey: draft.originalKey || from });
+                if (paused) pausedKeys.add(to);
             }
             preview = null;
-            reviewHold = false;
+            autoHold = false;
             assignment = null;
             await persist().catch(() => {});
-            status.textContent = "Bilan affecté dans Weda.";
+            announce("Bilan affecté dans Weda.");
             if (next) {
                 try {
                     await D.open(next.key, signal, previousInput);
-                    status.textContent += " Bilan suivant affiché.";
+                    announce("Bilan affecté dans Weda. Bilan suivant affiché.");
                 } catch (error) {
                     signal.throwIfAborted();
-                    status.textContent += " Sélectionnez le bilan suivant dans la liste.";
+                    announce("Bilan affecté dans Weda. Sélectionnez le bilan suivant dans la liste.", true);
                 }
             }
         } catch (error) {
-            reviewHold = true;
-            status.textContent = error.message;
+            autoHold = true;
+            announce(error.message, error.name !== "AbortError");
         } finally {
             assignment = null;
             controller = null;
@@ -369,7 +358,7 @@ async function setupHprimBiology() {
             return;
         }
         if (job) {
-            reviewHold = true;
+            autoHold = true;
             cancel("Analyse interrompue par l’affectation dans Weda.");
         }
         if (busy() || !preview) return;
@@ -386,7 +375,7 @@ async function setupHprimBiology() {
     }, true);
 
     function editing() {
-        return reviewHold || nativeEdited?.isConnected ||
+        return autoHold || nativeEdited?.isConnected ||
             document.activeElement?.matches("input:not([type='button']), textarea, select, [contenteditable='true']");
     }
     function idleAuto() { return auto && owner && !busy() && !editing(); }
@@ -396,7 +385,7 @@ async function setupHprimBiology() {
         refreshTimer = setTimeout(async () => {
             await render();
             if (!idleAuto()) return;
-            const keys = D.rows().filter(row => !drafts.has(row.key)).map(row => row.key);
+            const keys = D.rows().filter(row => !drafts.has(row.key) && !pausedKeys.has(row.key)).map(row => row.key);
             if (keys.length) run("auto", keys);
         }, 100);
     }
@@ -416,13 +405,13 @@ async function setupHprimBiology() {
             if (!idleAuto() || revision !== interaction) return;
             await persist();
             if (idleAuto() && revision === interaction) {
-                // Un rechargement de l'URL affichée peut répéter le POST du dernier titre.
+                // Un rechargement de l'URL affichée peut renvoyer le dernier formulaire Weda.
                 const next = new URL(location.href);
                 next.searchParams.set("wh_hprim_refresh", String(Date.now()));
                 location.replace(next.href);
             }
         } catch {
-            if (idleAuto()) status.textContent = "La liste n’a pas pu être actualisée. Nouvelle tentative au prochain contrôle.";
+            if (idleAuto()) announce("La liste n’a pas pu être actualisée. Nouvelle tentative au prochain contrôle.", true);
         } finally { polling = false; }
     }
 
@@ -444,14 +433,18 @@ async function setupHprimBiology() {
         if (!auto) {
             if (job?.mode === "auto") cancel("Analyse automatique arrêtée.");
             releaseOwner?.();
-        } else claimAuto();
+        } else {
+            autoHold = false;
+            pausedKeys.clear();
+            persist().catch(() => {});
+            claimAuto();
+        }
         schedule();
     });
     document.addEventListener("input", event => {
         if (!event.isTrusted || !event.target.matches(D.titleSelector)) return;
         if (event.target === preview?.input && D.selection()?.key === preview.key) {
             preview.value = preview.draft.title = event.target.value;
-            controls(D.rows());
             return;
         }
         nativeEdited = event.target;
@@ -474,15 +467,14 @@ async function setupHprimBiology() {
         interaction++;
         if (inbox) {
             nativeEdited = null;
-            reviewHold = false;
+            autoHold = false;
             cancel("Analyse arrêtée : un autre bilan a été sélectionné.");
         }
     }, true);
     window.addEventListener("pagehide", () => releaseOwner?.(), { once: true });
     window.addEventListener("focus", () => { claimAuto(); poll(); });
     const observer = new MutationObserver(records => {
-        if (records.some(({ target }) => !(target.parentElement?.closest("#" + panelId + ", .wh-hprim-badge") ||
-            target.closest?.("#" + panelId + ", .wh-hprim-badge")))) schedule();
+        if (records.some(({ target }) => !panel.contains(target))) schedule();
     });
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
     await render();

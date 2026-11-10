@@ -27,6 +27,7 @@ const documents = [
 const titles = new Map([["c", "Titre déjà saisi dans Weda"]]), requests = [];
 const opened = [], assignments = [], titlePosts = [];
 let assignMode = "reject", fullOpen = false, pageLoads = 0;
+let holdNextAnalysis;
 const titleName = "ctl00$ContentPlaceHolder1$TextBoxHprimTitre";
 const openTarget = index => "ctl00$ContentPlaceHolder1$HprimsGrid$ctl" +
     String(index + 2).padStart(2, "0") + "$LinkButtonHprimNom";
@@ -175,8 +176,13 @@ const api = http.createServer((req, res) => {
         requests.push(request);
         const rows = JSON.parse(request.messages.at(-1).content);
         const indices = rows.filter(row => row.examen === "HDL").map(row => row.indice);
-        res.writeHead(200, headers).end(JSON.stringify({ choices: [{ finish_reason: "stop",
+        const reply = () => res.writeHead(200, headers).end(JSON.stringify({ choices: [{ finish_reason: "stop",
             message: { content: JSON.stringify({ indices }) } }] }));
+        if (holdNextAnalysis) {
+            const hold = holdNextAnalysis;
+            holdNextAnalysis = null;
+            hold(reply);
+        } else reply();
     });
 });
 
@@ -242,6 +248,9 @@ async function run() {
         await page.goto(url);
         const tools = page.getByRole("region", { name: "Analyse des biologies" });
         const state = tools.getByRole("status");
+        const play = tools.getByRole("button", { name: "Analyser toutes les biologies" });
+        const auto = tools.getByRole("button", { name: "Analyse automatique des biologies" });
+        const stop = tools.getByRole("button", { name: "Arrêter l’analyse" });
         const select = record => page.locator('[data-record="' + record + '"] a').click();
         const titleSelector = "#" + prefix + "TextBoxHprimTitre";
         const proposal = page.locator(titleSelector);
@@ -249,35 +258,22 @@ async function run() {
             { selector: titleSelector, text });
         const active = () => page.locator(".grid-selecteditem").getAttribute("data-record");
         const affect = page.getByRole("button", { name: "Affecter ce résultat", exact: true });
-        const waitStatus = (pattern, options) => state.filter({ hasText: pattern }).waitFor(options);
-
-        await select("b");
-        await page.waitForFunction(() => document.querySelector(".grid-selecteditem")?.dataset.record === "b" &&
-            document.querySelector("#ContentPlaceHolder1_DivDataHprim"));
-        await tools.getByRole("button", { name: "Analyser ce bilan", exact: true }).click();
-        await waitTitle("Anapath");
-        await select("a");
-        await page.waitForFunction(() => document.querySelector(".grid-selecteditem")?.dataset.record === "a" &&
-            document.querySelector("#ContentPlaceHolder1_LabelHprimDataStructure"));
+        const waitStatus = (pattern, options) => state.filter({ hasText: pattern }).waitFor({ state: "attached", ...options });
+        await tools.waitFor();
+        assert.deepEqual(await tools.getByRole("button").allTextContents(), ["▶️", "🔁", "⏹️"]);
+        assert.ok(await stop.isDisabled());
 
         // Force un vrai rechargement au milieu de la file pour vérifier sa reprise.
         fullOpen = true;
-        await tools.getByRole("button", { name: "Analyser toutes les biologies" }).click();
-        await waitStatus(/Analyse terminée.*1 bilan/);
-        assert.equal(await page.locator(".wh-hprim-badge").count(), 3);
-        assert.ok(await page.locator(".wh-hprim-badge").evaluateAll(badges => badges.every(badge => {
-            const text = document.createRange();
-            text.selectNodeContents(badge);
-            const label = text.getBoundingClientRect();
-            const link = badge.previousElementSibling.getBoundingClientRect();
-            const cell = badge.closest("td").getBoundingClientRect();
-            return label.top >= link.bottom && label.left >= cell.left && label.right <= cell.right;
-        })), "Le libellé d’état doit rester sous le lien, dans la même cellule.");
+        await play.click();
+        await waitStatus(/Analyse terminée.*Aucun titre proposé pour 1 bilan/);
+        assert.equal(await page.locator(".wh-hprim-badge, .wh-hprim-card").count(), 0);
         assert.equal(assignments.length, 0);
-        assert.equal(await tools.getByRole("button", { name: /Valider le titre/ }).count(), 0);
         assert.ok(pageLoads >= 2);
-        assert.ok(await page.locator('[data-record="c"] .wh-hprim-badge').filter({ hasText: "À relire" }).isVisible());
-        assert.equal(await active(), "c");
+        assert.equal(await active(), "a");
+        await waitTitle("HDL");
+        await select("c");
+        await waitTitle(titles.get("c"));
         assert.equal(await proposal.inputValue(), titles.get("c"));
         await select("b");
         await waitTitle("Anapath");
@@ -360,35 +356,59 @@ async function run() {
         console.log("OK titre transmis par le bouton natif, annulation et refus sans changement de bilan");
         console.log("OK bilan suivant après affectation AJAX ou rechargement complet, même avec deux lignes identiques");
 
-        const auto = tools.getByRole("button", { name: "Analyse automatique des biologies" });
         await auto.click();
         await tools.getByRole("button", { name: "Analyse automatique des biologies", pressed: true }).waitFor();
+        assert.equal(await auto.evaluate(button => getComputedStyle(button).backgroundColor), "rgb(76, 175, 80)");
         const before = requests.length;
+        const inFlight = new Promise((resolve, reject) => {
+            holdNextAnalysis = resolve;
+            AbortSignal.timeout(11000).addEventListener("abort", () => reject(new Error("Aucune analyse à arrêter.")));
+        });
         documents.push({ id: "d", name: "Exempledelta", type: "Biologie", rows: [["TSH", "2", "mUI/L", "1", "4"]] });
         assert.equal(await page.locator('[data-record="d"]').count(), 0);
         await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-        await page.locator('[data-record="d"] .wh-hprim-badge').filter({ hasText: "À valider" }).waitFor();
-        await waitStatus(/Analyse terminée/);
-        await select("d");
-        await waitTitle("TSH N 2 mUI/L");
+        const reply = await inFlight;
+        await stop.click();
+        reply();
+        await waitStatus(/^Analyse arrêtée/);
+        await play.and(page.locator("button:enabled")).waitFor();
+        assert.equal(await auto.getAttribute("aria-pressed"), "true");
+        assert.ok(await stop.isDisabled());
         assert.equal(requests.length, before + 1);
+        await page.reload();
+        await tools.getByRole("button", { name: "Analyse automatique des biologies", pressed: true }).waitFor();
+
+        documents.push({ id: "e", name: "Exempleepsilon", type: "Biologie", rows: [["TSH", "3", "mUI/L", "1", "4"]] });
+        await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+        await waitStatus(/Analyse terminée/);
+        await select("e");
+        await waitTitle("TSH N 3 mUI/L");
+        assert.equal(requests.length, before + 2);
+        await select("d");
+        await page.waitForFunction(selector => document.querySelector(".grid-selecteditem")?.dataset.record === "d" &&
+            document.querySelector(selector)?.value === "", titleSelector);
+        // Reprendre dès le changement de sélection, avant la fin du chargement du compte rendu.
+        await play.click();
+        await waitStatus(/Analyse terminée/);
+        await waitTitle("TSH N 2 mUI/L");
+        assert.equal(requests.length, before + 3);
         assert.equal(assignments.length, 3);
         await page.reload();
         await tools.getByRole("button", { name: "Analyse automatique des biologies", pressed: true }).waitFor();
-        assert.equal(requests.length, before + 1);
+        assert.equal(requests.length, before + 3);
         assert.equal(assignments.length, 3);
         await auto.click();
         await page.reload();
         await tools.getByRole("button", { name: "Analyse automatique des biologies", pressed: false }).waitFor();
-        console.log("OK arrivée serveur détectée, mode automatique persistant, anciens bilans non relancés");
+        console.log("OK trois icônes, arrêt sans relance, mode automatique persistant et reprise manuelle");
 
-        await select("d");
-        await waitTitle("TSH N 2 mUI/L");
+        await select("e");
+        await waitTitle("TSH N 3 mUI/L");
         const beforeLast = opened.length;
         page.once("dialog", dialog => dialog.accept());
         await affect.click();
         await waitStatus(/^Bilan affecté dans Weda\.$/);
-        assert.equal(await page.locator('[data-record="d"]').count(), 0);
+        assert.equal(await page.locator('[data-record="e"]').count(), 0);
         assert.equal(opened.length, beforeLast);
 
         const view = await browser.newPage();

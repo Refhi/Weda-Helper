@@ -294,11 +294,13 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 
 ### Analyse des biologies HPRIM
 
-Activez les outils dans **Options → Résultats d’examens**, puis ouvrez la page des imports de biologie. **Analyser ce bilan** affiche la proposition dans le champ de titre Weda, où vous pouvez la modifier. **Analyser toutes les biologies** prépare les titres de la liste affichée. Chaque proposition apparaît à l’ouverture de son bilan.
+Activez les outils dans **Options → Résultats d’examens**, puis ouvrez les imports de biologie. **▶️** analyse la liste, **🔁** active ou désactive le mode automatique et **⏹️** arrête le traitement en cours. Les titres déjà préparés restent disponibles. Vous pouvez relancer la liste avec **▶️**.
 
-Le bouton **Analyse automatique des biologies** mémorise l’activation. Tant que la page des imports reste ouverte, Weda-Helper traite les nouveaux bilans affichés et vérifie l’arrivée de nouveaux résultats toutes les 45 secondes. Il attend la fin d’une saisie avant d’actualiser la liste. Les brouillons restent disponibles dans le même onglet, même après un rechargement.
+L’icône **🔁** reste verte tant que le mode automatique est actif. Le réglage est mémorisé. Quand la page des imports reste ouverte, Weda-Helper vérifie l’arrivée de nouveaux résultats toutes les 45 secondes. Il attend la fin d’une saisie avant d’actualiser la liste. Les titres préparés restent disponibles dans le même onglet, même après un rechargement.
 
-La fiche de lecture regroupe les valeurs et les normes du laboratoire. Quand une mesure antérieure est identifiable et comparable, elle s’affiche avec sa date. Les conclusions d’anatomopathologie identifiables sont reprises du compte rendu. Relisez ou modifiez le titre, puis validez avec le bouton natif **Affecter ce résultat**. Weda utilise le titre saisi dans le formulaire. Quand le bilan affecté quitte la liste des imports, Weda-Helper ouvre le bilan suivant.
+La proposition apparaît dans le champ **Titre** à l’ouverture du bilan. Vous pouvez la modifier avant de cliquer sur **Affecter ce résultat**. Weda classe le résultat et le titre dans le dossier du patient sélectionné. Quand le bilan affecté quitte la liste des imports, Weda-Helper ouvre le suivant.
+
+Dans le dossier patient, la fiche de lecture regroupe les valeurs, les normes du laboratoire et les mesures antérieures comparables. Les conclusions d’anatomopathologie identifiables sont reprises du compte rendu.
 
 Le **Prompt d’analyse des biologies** est personnalisable et suit la sauvegarde des réglages. Si l’assistant IA est activé, son profil actif aide à choisir les résultats utiles et leur ordre. Les valeurs proposées sont toujours issues du bilan ; l’identité, l’historique et les conclusions narratives restent dans Weda.
 
