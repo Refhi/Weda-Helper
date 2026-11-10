@@ -21,7 +21,7 @@ const numeric = [
 ];
 const documents = [
     { id: "a", name: "Exemplealpha", type: "Biologie", rows: numeric },
-    { id: "b", name: "Exemplebeta", type: "Anapath", raw: "Conclusion histologique :\nAbsence de dysplasie.\nSignature : laboratoire fictif." },
+    { id: "b", name: "Exemplealpha", type: "Anapath", raw: "Conclusion histologique :\nAbsence de dysplasie.\nSignature : laboratoire fictif." },
     { id: "c", name: "Exemplegamma", type: "Biologie", rows: [["CRP", "9", "mg/L", "", "5"], ["CRP", "15", "mg/L", "", "5"]] }
 ];
 const titles = new Map([["c", "Titre déjà saisi dans Weda"]]), requests = [];
@@ -68,7 +68,10 @@ function inbox(selected = "a") {
     }) } } };
     async function command(kind, element, record, title, postbackTarget = "") {
         const request = { get_body: () => new URLSearchParams({ __EVENTTARGET: postbackTarget }).toString() };
-        for (const listener of begin) listener(null, { get_postBackElement: () => element, get_request: () => request });
+        // L'ouverture peut aboutir sans événement exploitable par PageRequestManager.
+        if (kind === "history") {
+            for (const listener of begin) listener(null, { get_postBackElement: () => element, get_request: () => request });
+        }
         active = true;
         let error;
         try {
@@ -83,14 +86,22 @@ function inbox(selected = "a") {
             }
             if (kind === "open") {
                 document.querySelectorAll("[data-record]").forEach(row => row.classList.toggle("grid-selecteditem", row.dataset.record === record));
+                // La sélection arrive avant le nouveau compte rendu, y compris pour un même patient.
+                await new Promise(resolve => setTimeout(resolve, 75));
                 document.getElementById("fixture-report").innerHTML = body.html;
+                if (formTitle === null && record === "b") {
+                    // Le panneau est visible, mais Weda termine encore cette réponse.
+                    await new Promise(resolve => setTimeout(resolve, 180));
+                }
             } else if (kind === "history") document.getElementById("fixture-history").innerHTML = body.html;
             // Weda peut afficher le titre soumis avant qu'une relecture ne révèle le refus.
         } catch (cause) { error = cause; }
         active = false;
-        for (const listener of end) listener(null, {
-            get_error: () => error, get_response: () => ({ get_webRequest: () => request })
-        });
+        if (kind !== "open") {
+            for (const listener of end) listener(null, {
+                get_error: () => error, get_response: () => ({ get_webRequest: () => request })
+            });
+        }
     }
     function selected() { return document.querySelector(".grid-selecteditem").dataset.record; }
     // Comme dans Weda, le nom WebForms du contrôle n'est pas l'ID du lien dans le DOM.
@@ -208,11 +219,13 @@ async function run() {
         const waitStatus = pattern => state.filter({ hasText: pattern }).waitFor();
 
         await select("b");
-        await page.waitForFunction(() => document.querySelector(".grid-selecteditem")?.dataset.record === "b");
+        await page.waitForFunction(() => document.querySelector(".grid-selecteditem")?.dataset.record === "b" &&
+            document.querySelector("#ContentPlaceHolder1_DivDataHprim"));
         await tools.getByRole("button", { name: "Analyser ce bilan", exact: true }).click();
         await waitTitle("Anapath");
         await select("a");
-        await page.waitForFunction(() => document.querySelector(".grid-selecteditem")?.dataset.record === "a");
+        await page.waitForFunction(() => document.querySelector(".grid-selecteditem")?.dataset.record === "a" &&
+            document.querySelector("#ContentPlaceHolder1_LabelHprimDataStructure"));
 
         // Force un vrai rechargement au milieu de la file pour vérifier sa reprise.
         fullOpen = true;
@@ -253,6 +266,7 @@ async function run() {
         assert.equal(saves.length, 1);
         assert.equal(saves[0].title, finalTitle);
         assert.equal(titles.has("a"), false);
+        assert.deepEqual(opened.at(-1), { record: "a", formTitle: null });
         await waitTitle(finalTitle);
         saveMode = "full";
         await save.click();
@@ -261,6 +275,15 @@ async function run() {
         assert.equal(saves.length, 2);
         assert.deepEqual(saves[0], saves[1]);
         assert.equal(titles.get("a"), saves[1].title);
+        await waitTitle("Anapath");
+        saveMode = "accept";
+        await save.click();
+        await waitStatus(/Bilan suivant affiché/);
+        assert.equal(await active(), "c");
+        assert.equal(saves.length, 3);
+        assert.equal(titles.get("b"), "Anapath : Absence de dysplasie.");
+        assert.deepEqual(opened.slice(-2), [{ record: "b", formTitle: null },
+            { record: "c", formTitle: "Anapath : Absence de dysplasie." }]);
         console.log("OK champ natif, correction conservée, aucune écriture à la sortie du champ ou au changement de bilan");
         console.log("OK refus bloquant puis sauvegarde unique, relecture serveur et passage au suivant");
 
@@ -276,11 +299,11 @@ async function run() {
         await select("d");
         await waitTitle("TSH N 2 mUI/L");
         assert.equal(requests.length, before + 1);
-        assert.equal(saves.length, 2);
+        assert.equal(saves.length, 3);
         await page.reload();
         await tools.getByRole("button", { name: "Analyse automatique des biologies", pressed: true }).waitFor();
         assert.equal(requests.length, before + 1);
-        assert.equal(saves.length, 2);
+        assert.equal(saves.length, 3);
         await auto.click();
         await page.reload();
         await tools.getByRole("button", { name: "Analyse automatique des biologies", pressed: false }).waitFor();

@@ -86,19 +86,69 @@ const HprimBiologyDom = (() => {
                 document.removeEventListener("wh-hprim-response", receive);
                 signal?.removeEventListener("abort", abort);
             };
-            const fail = message => { cleanup(); reject(new Error(message)); };
+            const fail = (message, code) => { cleanup(); reject(Object.assign(new Error(message), { code })); };
             const abort = () => { cleanup(); reject(signal.reason); };
             const receive = event => {
                 if (event.detail?.id !== id) return;
-                if (event.detail.state === "complete") { cleanup(); resolve(); }
-                else if (event.detail.state === "busy") fail("Weda traite déjà une demande. Réessayez après son chargement.");
-                else fail("Weda n’a pas confirmé l’opération.");
+                const state = event.detail.state;
+                if (state === "complete" || (action === "open" && state === "dispatched")) { cleanup(); resolve(); }
+                else if (state === "busy") fail("Weda traite déjà une demande. Réessayez après son chargement.", "busy");
+                else if (state === "filtered") fail("Weda modifie certains caractères du titre. Corrigez le titre avant de réessayer.");
+                else if (state === "missing") fail("La commande n’est plus disponible dans Weda.");
+                else if (action === "save") fail("Weda n’a pas confirmé l’enregistrement du titre.", "unconfirmed");
+                else fail("Weda n’a pas répondu à la commande de lecture.");
             };
-            const timer = setTimeout(() => fail("Weda n’a pas répondu à la commande."), 14000);
+            const timer = setTimeout(() => fail("Weda n’a pas répondu à la commande.", "unconfirmed"), 14000);
             document.addEventListener("wh-hprim-response", receive);
             signal?.addEventListener("abort", abort, { once: true });
             document.dispatchEvent(new CustomEvent("wh-hprim-request", { detail: { id, action, targetId: target.id } }));
         });
+    }
+
+    function waitForReport(key, previousInput, previousDefault, signal) {
+        return new Promise((resolve, reject) => {
+            signal?.throwIfAborted();
+            const cleanup = () => {
+                observer.disconnect();
+                clearTimeout(timer);
+                signal?.removeEventListener("abort", abort);
+            };
+            const abort = () => { cleanup(); reject(signal.reason); };
+            const check = () => {
+                // Une nouvelle sélection peut apparaître avant le remplacement du formulaire.
+                const input = document.querySelector(titleSelector);
+                if (!input || (input === previousInput && input.defaultValue === previousDefault)) return;
+                const report = capture(key);
+                if (!report) return;
+                cleanup();
+                resolve(report);
+            };
+            const observer = new MutationObserver(check);
+            const timer = setTimeout(() => {
+                cleanup();
+                reject(new Error("Weda n’a pas chargé le compte rendu attendu pour cette ligne."));
+            }, 15000);
+            observer.observe(document.body, {
+                childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class", "value"]
+            });
+            signal?.addEventListener("abort", abort, { once: true });
+            check();
+        });
+    }
+
+    async function requestOpen(link, signal) {
+        const deadline = Date.now() + 4000;
+        for (;;) {
+            if (!link?.isConnected) throw new Error("La ligne à ouvrir n’est plus disponible dans Weda.");
+            try {
+                await native("open", link, signal);
+                return;
+            } catch (error) {
+                if (error.code !== "busy" || Date.now() >= deadline) throw error;
+                // Le bilan peut être affiché avant que Weda ait fini de traiter sa réponse.
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
     }
 
     async function open(key, signal, force = false) {
@@ -108,13 +158,20 @@ const HprimBiologyDom = (() => {
             if (current) return current;
         }
         const target = rows().find(row => row.key === key);
+        const previousInput = document.querySelector(titleSelector);
+        const previousDefault = previousInput?.defaultValue;
+        // Pendant la relecture, le formulaire ne doit pas resoumettre le titre affiché.
+        const name = force && previousInput?.getAttribute("name");
+        if (name) previousInput.removeAttribute("name");
         const x = window.scrollX, y = window.scrollY;
-        await native("open", target?.link, signal);
-        signal?.throwIfAborted();
-        window.scrollTo(x, y);
-        const snapshot = capture(key);
-        if (!snapshot) throw new Error("L’identité du bilan affiché ne correspond pas à la ligne sélectionnée.");
-        return snapshot;
+        try {
+            await requestOpen(target?.link, signal);
+            const snapshot = await waitForReport(key, previousInput, previousDefault, signal);
+            window.scrollTo(x, y);
+            return snapshot;
+        } finally {
+            if (name && !previousInput.hasAttribute("name")) previousInput.setAttribute("name", name);
+        }
     }
 
     async function history(snapshot, signal) {

@@ -24,6 +24,16 @@
         }
         const manager = window.Sys?.WebForms?.PageRequestManager?.getInstance?.();
         if (manager?.get_isInAsyncPostBack?.()) { respond("busy"); return; }
+        if (action === "open") {
+            // Le contenu du bilan confirme l'ouverture, même sans événement AJAX identifiable.
+            try {
+                target.click();
+                respond("dispatched");
+            } catch {
+                respond("error");
+            }
+            return;
+        }
         const postBackCall = /\b(?:WebForm_PostBackOptions|__doPostBack)\s*\(\s*(['"])([\w$:]+)\1/;
         const expectedTarget = target.getAttribute("href")?.match(postBackCall)?.[2] ||
             target.getAttribute("onclick")?.match(postBackCall)?.[2] || target.name;
@@ -42,7 +52,9 @@
             }
         };
         const end = (_sender, args) => {
-            if (!started) return;
+            // Pour le titre, un retour non identifié autorise seulement la relecture.
+            // C'est cette relecture qui confirme l'enregistrement.
+            if (!started && action !== "save") return;
             const completed = args?.get_response?.()?.get_webRequest?.();
             if (request && completed && request !== completed) return;
             finish(args?.get_error?.() ? "error" : "complete");
@@ -61,7 +73,18 @@
         try {
             sending = true;
             if (action !== "save") target.click();
-            else if (typeof window.__doPostBack === "function") window.__doPostBack(target.name, "");
+            else if (typeof window.__doPostBack === "function") {
+                const before = target.value;
+                if (typeof window.IllegalCaracterFilter === "function") window.IllegalCaracterFilter(titleId);
+                const normalize = value => value.normalize("NFC").trim().replace(/\s+/g, " ")
+                    .replace(/([<>≤≥])\s+(?=[+-]?\d)/g, "$1");
+                if (normalize(before) !== normalize(target.value)) {
+                    target.value = before;
+                    finish("filtered");
+                    return;
+                }
+                window.__doPostBack(target.name, "");
+            }
             else if (target.hasAttribute("onchange")) target.dispatchEvent(new Event("change", { bubbles: true }));
             else finish("missing");
         } catch {

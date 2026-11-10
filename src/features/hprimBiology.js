@@ -344,19 +344,24 @@ async function setupHprimBiology() {
             D.assertSnapshot(current);
             reread = await D.open(request.key, signal, true);
         }
-        if (!reread || await D.fingerprint(reread.data) !== request.hash || !B.sameSavedTitle(request.title, reread.title)) {
+        const storedTitle = reread?.input.defaultValue;
+        if (!reread || await D.fingerprint(reread.data) !== request.hash || !B.sameSavedTitle(request.title, storedTitle)) {
             throw new Error("Le titre relu dans Weda ne correspond pas au titre transmis. Passage au suivant suspendu.");
         }
         D.assertSnapshot(reread);
         reviewHold = false;
         const draft = drafts.get(request.key);
-        if (draft) drafts.set(request.key, { ...draft, title: reread.title, original: reread.title, state: "saved" });
+        if (draft) drafts.set(request.key, { ...draft, title: storedTitle, original: storedTitle, state: "saved" });
         pending = null;
         await persist();
         status.textContent = "Titre enregistré et relu dans Weda.";
         if (request.next && D.rows().some(row => row.key === request.next)) {
-            try { await D.open(request.next, signal); }
-            catch { status.textContent += " Sélectionnez le bilan suivant dans la liste."; }
+            try {
+                await D.open(request.next, signal);
+                status.textContent += " Bilan suivant affiché.";
+            } catch {
+                status.textContent += " Weda n’a pas ouvert le bilan suivant.";
+            }
         }
     }
 
@@ -389,9 +394,14 @@ async function setupHprimBiology() {
             const current = D.assertSnapshot(snapshot);
             if (current.input !== input || current.title !== snapshot.title) throw new Error("Le champ de titre a changé avant l’enregistrement.");
             status.textContent = "Enregistrement et relecture du titre dans Weda…";
-            if (!B.sameSavedTitle(title, draft.original)) {
+            if (!B.sameSavedTitle(title, current.input.defaultValue)) {
                 current.input.value = title;
-                await D.native("save", current.input, controller.signal);
+                try {
+                    await D.native("save", current.input, controller.signal);
+                } catch (error) {
+                    // En cas de réponse incertaine, vérifier le titre stocké sans renvoyer la sauvegarde.
+                    if (error.code !== "unconfirmed") throw error;
+                }
             }
             await verifySave();
         } catch (error) {
