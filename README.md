@@ -294,7 +294,7 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 
 ### Analyse des biologies HPRIM
 
-Activez les outils dans **Options → Résultats d’examens**, puis ouvrez la page des imports de biologie. **Analyser ce bilan** prépare un titre modifiable. **Analyser toutes les biologies** prépare les titres de la liste affichée et indique les bilans à relire.
+Activez les outils dans **Options → Résultats d’examens**, puis ouvrez la page des imports de biologie. **Analyser ce bilan** affiche la proposition dans le champ de titre Weda, où vous pouvez la modifier. **Analyser toutes les biologies** prépare les titres de la liste affichée. Chaque proposition apparaît à l’ouverture de son bilan.
 
 Le bouton **Analyse automatique des biologies** mémorise l’activation. Tant que la page des imports reste ouverte, Weda-Helper traite les nouveaux bilans affichés et vérifie l’arrivée de nouveaux résultats toutes les 45 secondes. Il attend la fin d’une saisie avant d’actualiser la liste. Les brouillons restent disponibles dans le même onglet, même après un rechargement.
 

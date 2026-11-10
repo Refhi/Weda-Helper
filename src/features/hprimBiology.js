@@ -93,7 +93,7 @@ async function setupHprimBiology() {
     let pending = recent(saved?.state?.pending) ? saved.state.pending : null;
     let auto = initialAuto === true, controller, nativeEdited, interaction = 0, reviewHold = false;
     let owner = false, releaseOwner, acquiring = false, polling = false, refreshTimer;
-    let rendered = null, writes = Promise.resolve();
+    let rendered = null, preview = null, writes = Promise.resolve();
     const panel = document.createElement("section");
     panel.id = panelId;
     panel.className = "wh-hprim-tools";
@@ -109,9 +109,6 @@ async function setupHprimBiology() {
     status.setAttribute("role", "status");
     status.textContent = "Sélectionnez un bilan ou lancez l’analyse de la liste.";
     const detail = document.createElement("div");
-    const edit = document.createElement("textarea");
-    edit.setAttribute("aria-label", "Titre de biologie proposé");
-    edit.rows = 3;
     const analyze = button("Analyser ce bilan", () => {
         const row = D.selection();
         if (row) run("single", [row.key]);
@@ -134,7 +131,7 @@ async function setupHprimBiology() {
         cancel("Analyse arrêtée. Les propositions déjà préparées restent disponibles.");
     });
     const save = button("Valider le titre et passer au suivant", saveTitle);
-    panel.append(analyze, batch, toggle, stop, status, edit, save, detail);
+    panel.append(analyze, batch, toggle, stop, status, save, detail);
 
     function persist() {
         const state = structuredClone({ drafts: [...drafts].slice(-400), job, pending });
@@ -150,14 +147,25 @@ async function setupHprimBiology() {
         if (controller && !pending) controller.abort(new DOMException(message, "AbortError"));
     }
 
+    function retractTitle() {
+        const shown = preview;
+        preview = null;
+        if (!shown?.input.isConnected || shown.input.value !== shown.value) return;
+        shown.input.value = D.selection()?.key === shown.key ? shown.draft.original : shown.input.defaultValue;
+    }
+
+    const busy = () => Boolean(controller || job || pending);
+
     function controls(list) {
-        const busy = Boolean(controller || job || pending);
-        analyze.disabled = busy || !D.selection(list);
-        batch.disabled = busy || !list.length;
+        const selected = D.selection(list);
+        const field = preview?.input.isConnected && preview.key === selected?.key ? preview.input : null;
+        const running = busy();
+        analyze.disabled = running || !selected;
+        batch.disabled = running || !list.length;
         stop.disabled = !controller || Boolean(pending);
         toggle.setAttribute("aria-pressed", String(auto));
-        edit.disabled = busy;
-        save.disabled = busy || !rendered?.draft || !edit.value.trim();
+        save.hidden = !field && !pending;
+        save.disabled = running || !field?.value.trim();
     }
 
     async function render() {
@@ -179,14 +187,15 @@ async function setupHprimBiology() {
         }
         const row = D.selection(list), draft = drafts.get(row?.key);
         const snapshot = row && draft?.hash && D.capture(row.key);
-        if (rendered?.key !== row?.key || rendered?.sourceDraft !== draft || rendered?.data !== snapshot?.data) {
+        if (rendered?.key !== row?.key || rendered?.sourceDraft !== draft || rendered?.data !== snapshot?.data ||
+            rendered?.input !== snapshot?.input) {
             if (snapshot) {
                 const hash = await D.fingerprint(snapshot.data);
-                if (D.capture(row.key)?.data !== snapshot.data || drafts.get(row.key) !== draft) return;
-                rendered = { key: row.key, draft: draft.hash === hash ? draft : null, sourceDraft: draft, data: snapshot.data };
+                const current = D.capture(row.key);
+                if (current?.data !== snapshot.data || current.input !== snapshot.input || drafts.get(row.key) !== draft) return;
+                rendered = { key: row.key, draft: draft.hash === hash ? draft : null, sourceDraft: draft,
+                    data: snapshot.data, input: snapshot.input };
             } else rendered = { key: row?.key, draft: null, sourceDraft: draft };
-            edit.hidden = save.hidden = !rendered.draft;
-            edit.value = rendered.draft?.title || "";
             detail.replaceChildren();
             if (rendered.draft && snapshot) {
                 const report = B.analyze(snapshot.measures, snapshot.raw, row.type);
@@ -198,6 +207,14 @@ async function setupHprimBiology() {
             } else if (draft?.warnings.length) {
                 detail.textContent = draft.warnings.join(" ");
             }
+        }
+        if (preview && (preview.input !== rendered?.input || preview.draft !== rendered?.draft || preview.key !== rendered?.key)) {
+            retractTitle();
+        }
+        if (!busy() && !preview && rendered?.draft && snapshot.input.value === draft.original) {
+            if (draft.title) snapshot.input.value = draft.title;
+            preview = { key: row.key, input: snapshot.input, value: snapshot.input.value, draft };
+            if (nativeEdited === snapshot.input) nativeEdited = null;
         }
         controls(list);
     }
@@ -256,6 +273,7 @@ async function setupHprimBiology() {
 
     async function run(mode, keys, resume = false) {
         if (controller || pending || (!resume && job) || !keys.length) return;
+        retractTitle();
         if (mode !== "auto") reviewHold = false;
         controller = new AbortController();
         const signal = controller.signal;
@@ -343,39 +361,46 @@ async function setupHprimBiology() {
     }
 
     async function saveTitle() {
-        if (controller || job || pending || !rendered?.draft) return;
-        const snapshot = D.capture(rendered.key), draft = rendered.draft, title = edit.value.trim();
-        if (!snapshot || snapshot.title !== draft.original) {
-            status.textContent = "Le titre natif ou le bilan a changé. Relancez l’analyse avant de valider.";
+        if (busy() || !preview) return;
+        const { key, input, draft } = preview;
+        const snapshot = D.capture(key);
+        if (!snapshot || snapshot.input !== input) {
+            status.textContent = "Le bilan affiché a changé. Relancez l’analyse avant de valider.";
             return;
         }
-        const max = Math.min(snapshot.input.maxLength > 0 ? snapshot.input.maxLength : 350, 350);
+        const title = snapshot.title.trim();
+        const max = Math.min(input.maxLength > 0 ? input.maxLength : 350, 350);
         if (!title || title.length > max || /[\r\n]/.test(title)) {
             status.textContent = "Saisissez un titre sur une ligne, de " + max + " caractères au maximum.";
             return;
         }
         controller = new AbortController();
+        const wasReadOnly = input.readOnly;
+        input.readOnly = true;
+        preview = null;
         controls(D.rows());
         try {
             const hash = await D.fingerprint(snapshot.data);
             if (hash !== draft.hash) throw new Error("Le contenu du bilan a changé. Relancez l’analyse.");
+            draft.title = snapshot.title;
             const list = D.rows(), index = list.findIndex(row => row.key === snapshot.row.key);
             pending = { key: snapshot.row.key, hash, title, next: list[index + 1]?.key, stage: "saving", at: Date.now() };
             await persist();
             const current = D.assertSnapshot(snapshot);
-            if (current.title !== snapshot.title) throw new Error("Le titre natif a changé avant l’enregistrement.");
+            if (current.input !== input || current.title !== snapshot.title) throw new Error("Le champ de titre a changé avant l’enregistrement.");
             status.textContent = "Enregistrement et relecture du titre dans Weda…";
-            if (!B.sameSavedTitle(title, current.title)) {
+            if (!B.sameSavedTitle(title, draft.original)) {
                 current.input.value = title;
                 await D.native("save", current.input, controller.signal);
             }
             await verifySave();
         } catch (error) {
             reviewHold = true;
-            if (snapshot.input.isConnected && D.capture(snapshot.row.key)?.data === snapshot.data &&
-                snapshot.input.value === title) snapshot.input.value = snapshot.title;
+            if (input.isConnected && D.capture(key)?.data === snapshot.data &&
+                B.sameSavedTitle(input.value, title)) input.value = draft.original;
             status.textContent = error.message;
         } finally {
+            input.readOnly = wasReadOnly;
             pending = null;
             controller = null;
             await persist().catch(() => {});
@@ -445,21 +470,35 @@ async function setupHprimBiology() {
         } else claimAuto();
         schedule();
     });
-    edit.oninput = () => { controls(D.rows()); };
-    edit.onchange = () => {
-        if (!rendered?.draft) return;
-        rendered.draft.title = edit.value;
-        persist().catch(() => {});
-    };
     document.addEventListener("input", event => {
         if (!event.isTrusted || !event.target.matches(D.titleSelector)) return;
+        if (event.target === preview?.input && D.selection()?.key === preview.key) {
+            preview.value = preview.draft.title = event.target.value;
+            if (preview.draft.state === "saved" && !B.sameSavedTitle(preview.value, preview.draft.original)) {
+                preview.draft.state = "ready";
+            }
+            controls(D.rows());
+            return;
+        }
         nativeEdited = event.target;
         cancel("Analyse arrêtée : titre natif modifié.");
     });
+    document.addEventListener("change", event => {
+        if (!event.isTrusted || event.target !== preview?.input || D.selection()?.key !== preview.key) return;
+        // Le brouillon s’enregistre avec le bouton de validation, y compris après une saisie manuelle.
+        event.stopImmediatePropagation();
+        preview.value = preview.draft.title = event.target.value;
+        persist().catch(() => {});
+    }, true);
     document.addEventListener("click", event => {
+        const inbox = event.target.closest?.(D.gridSelector);
+        if (inbox || event.target.closest?.('#ContentPlaceHolder1_PatientsGrid [id*="ButtonHistoriqueResultat_"]')) {
+            // Les commandes de lecture Weda soumettent aussi le formulaire courant.
+            retractTitle();
+        }
         if (!event.isTrusted) return;
         interaction++;
-        if (event.target.closest(D.gridSelector)) {
+        if (inbox) {
             nativeEdited = null;
             reviewHold = false;
             cancel("Analyse arrêtée : un autre bilan a été sélectionné.");
@@ -472,7 +511,7 @@ async function setupHprimBiology() {
             target.closest?.("#" + panelId + ", .wh-hprim-badge")))) schedule();
     });
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
-    edit.hidden = save.hidden = true;
+    save.hidden = true;
     await render();
     if (pending) {
         controller = new AbortController();

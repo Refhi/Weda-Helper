@@ -8,7 +8,6 @@
 }
 .wh-hprim-tools button { margin: .15em .4em .15em 0; cursor: pointer; }
 .wh-hprim-tools button[aria-pressed="true"] { background: #27683d; color: #fff; }
-.wh-hprim-tools textarea { display: block; box-sizing: border-box; width: 100%; margin: .3em 0; }
 .wh-hprim-tools [role="status"] { margin: .4em 0; }
 .wh-hprim-card summary { cursor: pointer; font-weight: bold; }
 .wh-hprim-card ul { padding-left: 1.5em; margin: .25em 0 .55em; }
