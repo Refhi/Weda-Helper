@@ -50,6 +50,10 @@ function inbox(selected = "a") {
         openTarget(index) + '\',\'\',true,\'\',\'\',false,true))">' + item.name + "</a></td><td>Camille</td><td>" +
         birth + "</td><td>ZZ</td></tr>").join("");
     return `<!doctype html><meta charset="utf-8">
+<style>
+    #${prefix}HprimsGrid td { white-space: nowrap; }
+    #${prefix}HprimsGrid td a { display: inline-block; width: 100%; }
+</style>
 <form method="post">
     <input type="hidden" name="kind"><input type="hidden" name="record">
     <div id="${prefix}UpdatePanelHprimsGrid"><table id="${prefix}HprimsGrid"><tbody>${grid}</tbody></table></div>
@@ -232,6 +236,14 @@ async function run() {
         await tools.getByRole("button", { name: "Analyser toutes les biologies" }).click();
         await waitStatus(/Analyse terminée.*1 bilan/);
         assert.equal(await page.locator(".wh-hprim-badge").count(), 3);
+        assert.ok(await page.locator(".wh-hprim-badge").evaluateAll(badges => badges.every(badge => {
+            const text = document.createRange();
+            text.selectNodeContents(badge);
+            const label = text.getBoundingClientRect();
+            const link = badge.previousElementSibling.getBoundingClientRect();
+            const cell = badge.closest("td").getBoundingClientRect();
+            return label.top >= link.bottom && label.left >= cell.left && label.right <= cell.right;
+        })), "Le libellé d’état doit rester sous le lien, dans la même cellule.");
         assert.equal(saves.length, 0);
         assert.ok(pageLoads >= 2);
         assert.ok(await page.locator('[data-record="c"] .wh-hprim-badge').filter({ hasText: "À relire" }).isVisible());

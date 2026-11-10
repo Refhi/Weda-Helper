@@ -12,4 +12,10 @@
 .wh-hprim-card summary { cursor: pointer; font-weight: bold; }
 .wh-hprim-card ul { padding-left: 1.5em; margin: .25em 0 .55em; }
 .wh-hprim-card .wh-hprim-flag, .wh-hprim-badge[data-state="review"] { color: #8b3800; font-weight: bold; }
-.wh-hprim-badge { display: inline-block; margin-inline-start: .4em; font-size: .9em; color: #24526f; }
+.wh-hprim-badge {
+    display: block;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-size: .9em;
+    color: #24526f;
+}
