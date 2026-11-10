@@ -150,36 +150,77 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
 
     // Attend la fin de l'analyse (évènement), avec un timeout de secours et une sortie rapide si
     // l'utilisateur a cliqué sur Stop entre-temps.
-    function waitForAnalysisDone() {
+    function getFailedMessages() {
+        return getEchangesRows().filter(row => {
+            const analysis = getEchangesRowAnalysis(row);
+            return analysis?.reason && !analysis.running;
+        });
+    }
+
+    function waitForAnalysisDone(item) {
         return new Promise(resolve => {
-            let settled = false;
-            const finish = () => {
-                if (settled) return;
-                settled = true;
+            const startedAt = Date.now();
+            const rowId = getEchangesRowId(item);
+            const finish = event => {
+                if (event?.detail?.rowId && event.detail.rowId !== rowId) return;
                 document.removeEventListener(ANALYSIS_DONE_EVENT, finish);
-                clearInterval(stopPollId);
-                clearInterval(countdownId);
-                clearTimeout(timeoutId);
+                clearInterval(poll);
                 updateProgressLabel();
-                resolve();
+                resolve(event?.detail?.reason || "");
             };
-            const stopPollId = setInterval(() => {
-                if (queueShouldStop) finish();
+            const poll = setInterval(() => {
+                if (queueShouldStop) {
+                    finish();
+                    return;
+                }
+                const analysis = getEchangesRowAnalysis(item);
+                const lastProgress = Math.max(startedAt, analysis?.updatedAt || 0);
+                const remaining = Math.max(0, Math.ceil((lastProgress + ANALYSIS_TIMEOUT - Date.now()) / 1000));
+                if (!remaining) {
+                    finishEchangesAnalysis(analysis || beginEchangesAnalysis(item), "timeout", analysis?.fingerprints);
+                    finish();
+                    return;
+                }
+                updateProgressLabel(undefined, undefined, "⏳ " + Math.floor(remaining / 60) + ":" + String(remaining % 60).padStart(2, "0"));
             }, 200);
-            const deadline = Date.now() + ANALYSIS_TIMEOUT;
-            const countdownId = setInterval(() => {
-                const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
-                updateProgressLabel(undefined, undefined, `⏳ ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`);
-            }, 1000);
-            const timeoutId = setTimeout(() => {
-                console.warn('[secureExchangeMessageQueue] Timeout en attendant la fin de l\'analyse, passage au message suivant.');
-                finish();
-            }, ANALYSIS_TIMEOUT);
             document.addEventListener(ANALYSIS_DONE_EVENT, finish);
         });
     }
 
-    async function processQueue(selectorFn) {
+    function getEchangesRetryControl() {
+        const patientButton = document.querySelector("#messageContainer .importPatient");
+        if (patientButton?.getClientRects().length) return patientButton;
+        const confirmed = [...document.querySelectorAll("#messageContainer .docImportBody td a")]
+            .filter(link => link.textContent.trim() === "Importer le message" && link.getClientRects().length);
+        return confirmed.length === 1 ? confirmed[0] : null;
+    }
+
+    async function retryEchangesMessage(item, previousAnalysis, previousButton, wasSelected) {
+        // Laisse le clic automatique « Un patient » habituel démarrer s'il est activé.
+        await sleep(200);
+        const deadline = Date.now() + 4000;
+        while (!queueShouldStop && Date.now() < deadline) {
+            if (getEchangesRowAnalysis(item) !== previousAnalysis) return;
+            const button = getEchangesRetryControl();
+            if (getSelectedEchangesRow() === item && button
+                && (wasSelected || button !== previousButton)) {
+                button.click();
+                if (getEchangesRowAnalysis(item) !== previousAnalysis) return;
+                break;
+            }
+            await sleep(100);
+        }
+        if (queueShouldStop) return;
+        const reason = "search-unavailable";
+        finishEchangesAnalysis(beginEchangesAnalysis(item), reason, previousAnalysis?.fingerprints);
+        notifyEchangesProcessingDone(null, item, reason);
+    }
+
+    async function processQueue(selectorFn, retry = false) {
+        if (retry && !await getOptionPromise("autoPdfParser")) {
+            sendWedaNotif({ message: "Activez l’analyse automatique des PDF pour relancer ces courriers.", type: "info" });
+            return;
+        }
         if (queueRunning) {
             console.warn('[secureExchangeMessageQueue] Une file est déjà en cours de traitement.');
             return;
@@ -222,10 +263,16 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
                     console.warn('[secureExchangeMessageQueue] .messageLineItem introuvable, message ignoré :', item);
                     continue;
                 }
+                const previousAnalysis = getEchangesRowAnalysis(item);
+                const previousButton = retry ? getEchangesRetryControl() : null;
+                const wasSelected = getSelectedEchangesRow() === item;
+                const done = waitForAnalysisDone(item);
                 lineItem.click();
                 recordMetrics({ clicks: 1, drags: 0 });
 
-                await waitForAnalysisDone();
+                if (retry) await retryEchangesMessage(item, previousAnalysis, previousButton, wasSelected);
+                const reason = await done;
+                if (reason === "ai-unavailable") break;
                 await sleep(300); // laisse le DOM se stabiliser avant de passer au message suivant
             }
         } finally {
@@ -266,7 +313,7 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
     });
 
     // --- Boîte à outils (▶️ cochés / 🔁 auto non lus / ⏹️ stop) ---
-    let playButton, autoButton, stopButton, progressLabel;
+    let playButton, autoButton, stopButton, retryButton, progressLabel;
 
     let progressText = '';
     function updateProgressLabel(current, total, countdown = '') {
@@ -283,11 +330,14 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
         autoButton.style.backgroundColor = autoModeEnabled ? '#4CAF50' : '';
         autoButton.style.color = autoModeEnabled ? 'white' : '';
         stopButton.disabled = !queueRunning;
+        retryButton.disabled = queueRunning || getFailedMessages().length === 0;
         if (!queueRunning) {
             progressText = '';
             progressLabel.textContent = '';
         }
     }
+
+    document.addEventListener("wedaEchangesAnalysisChanged", updateToolboxState);
 
     function createToolbox() {
         if (document.querySelector('#whMessageQueueToolbox')) return;
@@ -320,6 +370,12 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
         stopButton.onclick = stopQueue;
         stopButton.disabled = true;
 
+        retryButton = document.createElement("button");
+        retryButton.type = "button";
+        retryButton.textContent = "Relancer les échecs";
+        retryButton.title = "Analyser de nouveau les courriers signalés dans la liste";
+        retryButton.onclick = () => processQueue(getFailedMessages, true);
+
         progressLabel = document.createElement('span');
         progressLabel.style.fontSize = '0.85em';
         progressLabel.style.cursor = 'pointer';
@@ -329,10 +385,11 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
         });
         progressLabel.title = "Weda-Helper : numéro du message en cours / nombre de messages à traiter. ⏳ = temps restant avant l'abandon de l'analyse de CE message (timeout individuel, pas un total) : passé ce délai, on passe au message suivant. Cliquer ici passe immédiatement au message suivant.";
 
-        toolbox.append(playButton, autoButton, stopButton, progressLabel);
+        toolbox.append(playButton, autoButton, stopButton, retryButton, progressLabel);
 
         const inboxContainer = document.querySelector('#weInboxContainer');
         inboxContainer.insertAdjacentElement('afterend', toolbox);
+        updateToolboxState();
     }
 
     waitForElement({
