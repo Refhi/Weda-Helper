@@ -12,6 +12,85 @@
  */
 
 // Page Messagerie sécurisée
+addTweak("/FolderMedical/WedaEchanges/", "secureExchangeFaviconCounter", function () {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 64;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    let favicon;
+    let originalAttributes;
+    let lastCount = null;
+    let refreshTimer;
+
+    function refreshFavicon() {
+        const list = document.querySelector("#messageList");
+        if (!list) {
+            if (!favicon) return;
+            if (originalAttributes) {
+                for (const [name, value] of Object.entries(originalAttributes)) {
+                    if (value === null) favicon.removeAttribute(name);
+                    else favicon.setAttribute(name, value);
+                }
+            } else {
+                favicon.remove();
+            }
+            favicon = null;
+            lastCount = null;
+            return;
+        }
+
+        // Comme dans le script d'analyse de courriers, compter les lignes de la liste courante.
+        const count = list.querySelectorAll(":scope > div.messageListItem").length;
+        if (count === lastCount && favicon?.isConnected) return;
+
+        if (!favicon?.isConnected) {
+            favicon = document.querySelector("link[rel~='icon']");
+            originalAttributes = favicon ? {
+                href: favicon.getAttribute("href"),
+                type: favicon.getAttribute("type")
+            } : null;
+            if (!favicon) {
+                favicon = document.createElement("link");
+                favicon.rel = "icon";
+                document.head.append(favicon);
+            }
+        }
+
+        const label = count > 99 ? "99+" : String(count);
+        const fontSize = label.length === 1 ? 38 : label.length === 2 ? 32 : 24;
+        context.clearRect(0, 0, 64, 64);
+        context.beginPath();
+        context.arc(32, 32, 30, 0, Math.PI * 2);
+        context.fillStyle = "#174ea6";
+        context.fill();
+        context.lineWidth = 3;
+        context.strokeStyle = "#ffffff";
+        context.stroke();
+        context.fillStyle = "#ffffff";
+        context.font = `800 ${fontSize}px Arial, sans-serif`;
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.fillText(label, 32, label.length > 2 ? 33 : 34);
+        favicon.type = "image/png";
+        favicon.href = canvas.toDataURL("image/png");
+        lastCount = count;
+    }
+
+    function scheduleRefresh() {
+        if (refreshTimer) return;
+        refreshTimer = setTimeout(() => {
+            refreshTimer = null;
+            refreshFavicon();
+        }, 100);
+    }
+
+    new MutationObserver(scheduleRefresh).observe(document.body, { childList: true, subtree: true });
+    window.addEventListener("focus", scheduleRefresh);
+    document.addEventListener("visibilitychange", scheduleRefresh);
+    refreshFavicon();
+});
+
 addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeAutoRefresh', function () {
     // clique sur reçu pour rafraichir la liste des messages à intervalle régulier
     function clickOnInbox() {

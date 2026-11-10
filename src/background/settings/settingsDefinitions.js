@@ -344,6 +344,11 @@ var advancedDefaultSettings = [
             "name": "Weda Echanges",
             "type": TYPE_TITLE,
             "options": [{
+                "name": "secureExchangeFaviconCounter",
+                "type": TYPE_BOOL,
+                "description": "Affiche le nombre de courriers de la liste courante dans une pastille sur l'onglet de la messagerie sécurisée.",
+                "default": true
+            }, {
                 "name": "secureExchangeAutoRefresh",
                 "type": TYPE_BOOL,
                 "description": "Rafraîchis automatiquement la messagerie sécurisée (vous devez laisser un onglet ouvert).",
