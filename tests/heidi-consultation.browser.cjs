@@ -216,6 +216,29 @@ async function run() {
         assert.equal(await options.locator("#heidiConsultationWorkflow").isChecked(), false);
         assert.equal(await options.locator("#heidiConsultationAnalysis").isChecked(), false);
         assert.ok(await options.locator("#heidiConsultationImagingPrompt").count());
+        const heidiKeys = options.getByRole("group", { name: "Raccourcis Heidi" });
+        const startShortcut = heidiKeys.locator("#heidi_start_recording");
+        const stopShortcut = heidiKeys.locator("#heidi_stop_recording");
+        assert.equal(await startShortcut.innerText(), "Alt+Shift+F8");
+        assert.equal(await stopShortcut.innerText(), "Alt+Shift+F9");
+        await startShortcut.click();
+        await options.keyboard.press("PageUp");
+        await heidiKeys.getByRole("button", { name: "PageUp", exact: true }).waitFor();
+        await stopShortcut.click();
+        await options.keyboard.press("PageUp");
+        await heidiKeys.getByRole("status").filter({ hasText: "Ce raccourci est déjà utilisé" }).waitFor();
+        await options.keyboard.press("Escape");
+        assert.equal(await stopShortcut.innerText(), "Alt+Shift+F9");
+        await stopShortcut.click();
+        await options.keyboard.press("PageDown");
+        await options.waitForFunction(async () => {
+            const { shortcuts } = await chrome.storage.local.get("shortcuts");
+            return shortcuts?.heidi_start_recording === "PageUp" && shortcuts?.heidi_stop_recording === "PageDown";
+        });
+        await options.reload();
+        await heidiKeys.getByRole("button", { name: "PageUp", exact: true }).waitFor();
+        await heidiKeys.getByRole("button", { name: "PageDown", exact: true }).waitFor();
+        console.log("OK personnalisation Heidi dans les options, conflit refusé et choix conservés après rechargement");
         await options.close();
         await worker.evaluate(baseUrl => chrome.storage.local.set({
             heidiContextAccess: true, heidiConsultationWorkflow: true, heidiConsultationAnalysis: true,
@@ -243,7 +266,7 @@ async function run() {
         await state.filter({ hasText: "Accès à Heidi" }).waitFor();
         assert.equal(await heidi.evaluate(() => counts.sessions), 0);
         await worker.evaluate(() => chrome.storage.local.set({ heidiContextAccess: true }));
-        await weda.keyboard.press("Alt+Shift+F8");
+        await weda.keyboard.press("PageUp");
         const tabPicker = weda.getByRole("combobox", { name: "Onglet Heidi" });
         await tabPicker.waitFor();
         assert.equal(await heidi.evaluate(() => counts.sessions), 0);
@@ -256,7 +279,7 @@ async function run() {
         await secondHeidi.close();
         await editor.focus();
         assert.equal(await weda.evaluate(() => document.activeElement.id), primaryId);
-        await weda.keyboard.press("Alt+Shift+F9");
+        await weda.keyboard.press("PageDown");
         await heidi.locator('body[data-stop-requested="true"]').waitFor();
         assert.equal(aiCalls.length, 0);
         await state.filter({ hasText: "1 antécédent(s) et 2 document(s)" }).waitFor({ timeout: 15000 });
@@ -279,7 +302,7 @@ async function run() {
         assert.match(directRead.transcript, /radiographie du genou gauche/);
         assert.equal(directRead.note, "Note fictive");
         assert.deepEqual(await heidi.evaluate(() => counts), { sessions: 1, start: 1, stop: 1 });
-        await weda.keyboard.press("Alt+Shift+F9");
+        await weda.keyboard.press("PageDown");
         await state.filter({ hasText: "La transcription est déjà dans la consultation" }).waitFor();
         assert.equal(await editor.innerText(), written);
         assert.equal(aiCalls.length, 1);

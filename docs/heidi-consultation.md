@@ -7,7 +7,7 @@ Dans **Options → Assistant IA**, activez **Accès à Heidi** et **Transcriptio
 3. Appuyez sur **Alt+Maj+F9** ou cliquez sur **Arrêter et transférer**. Après la fin du traitement par Heidi, le texte s’ajoute au champ principal de la consultation, à la suite du texte déjà saisi.
 4. Ouvrez **Voir les propositions** pour relire les extraits de transcription. **Préparer l’ajout dans Weda** ouvre le formulaire natif d’antécédent libre à valider. Les éléments qui relèvent d’un onglet sans ajout libre adapté, notamment les allergies, restent à saisir dans Weda. **Rédiger le brouillon** génère le document demandé dans une fenêtre où vous pouvez le corriger et le copier vers le formulaire Weda approprié.
 
-Les raccourcis sont modifiables dans **Raccourcis**. Si vous utilisez aussi le connecteur Heidi/Weda Tampermonkey, gardez des touches distinctes.
+Pour choisir vos touches, ouvrez **Options → Assistant IA → Raccourcis Heidi**. Cliquez sur le raccourci de démarrage ou d’arrêt, puis appuyez sur la touche souhaitée (F1 à F19, PageUp ou PageDown) ou sur une combinaison. Le choix est enregistré immédiatement. Rechargez la consultation Weda pour l’utiliser. Si vous utilisez aussi le connecteur Heidi/Weda Tampermonkey, gardez des touches distinctes.
 
 La session Heidi, l’onglet, le patient et l’éditeur Weda sont vérifiés avant le transfert. Gardez la consultation ouverte jusqu’à la fin. Si le transfert perd sa session ou si vous quittez la consultation, vérifiez l’enregistrement dans Heidi. Si Heidi traite encore le texte, vous pouvez réessayer le transfert depuis la même consultation. La sauvegarde automatique de Weda-Helper attend la fin de l’opération ou la fermeture de la fenêtre de relecture.
 

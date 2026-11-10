@@ -131,12 +131,13 @@ if (isTestVersion) {
   betaPlaceholder.appendChild(betaMessage);
 }
 
-// 1 - génération de la liste d'option à partir de advancedSettings
-chrome.storage.local.get('advancedDefaultSettings', function (data) {
+// Générer les options avant de placer les raccourcis Heidi sous leur réglage.
+chrome.storage.local.get(["advancedDefaultSettings", "defaultShortcuts", "shortcuts"], function (data) {
   if (data.advancedDefaultSettings) {
     generateOptionsHTML(data.advancedDefaultSettings);
     initHeidiContextPermissions(); // après la génération : la case est créée par les options
   }
+  generateShortcutOptions(data.defaultShortcuts || {}, data.shortcuts || {});
 });
 
 function createInput(option) { // gestion des différents types d'input
@@ -741,106 +742,100 @@ function initHeidiContextPermissions() {
   });
 }
 
-// 2 - Récupérer les valeurs par défaut des raccourcis + gestion des modifications des raccourcis
-chrome.storage.local.get('defaultShortcuts', function (result) {
-  let defaultShortcuts = result.defaultShortcuts;
-  // Les valeurs par défaut sont stockées background.js pour être utilisées dans les options et éviter de dupliquer le code
-  chrome.storage.local.get("shortcuts", function (result) {
-    var table = document.createElement('table');
-    let node = document.getElementById('shortcuts');
-    Object.entries(defaultShortcuts).forEach(([key, shortcut]) => {
-      // D'abord récupérer les valeurs stockées ou utiliser les valeurs par défaut
-      var savedShortcut;
-      if (result["shortcuts"]) {
-        savedShortcut = result["shortcuts"][key];
-      }
-      let defaultShortcutValue = shortcut["default"];
+function generateShortcutOptions(defaultShortcuts, savedShortcuts) {
+  const heidiKeys = new Set(["heidi_start_recording", "heidi_stop_recording"]);
+  const general = document.getElementById("shortcuts");
+  const heidiWorkflow = document.querySelector('[data-option-name="heidiConsultationWorkflow"]');
+  const generalTable = document.createElement("table");
+  const heidiTable = document.createElement("table");
+  const keyLabels = { "⌃": "Ctrl", "⌥": "Alt", "⇧": "Shift", "⌘": "Cmd", pageup: "PageUp", pagedown: "PageDown" };
+  const normalize = value => value.toLowerCase().split("+")
+    .map(key => hotkeys.keyMap[key] || hotkeys.modifier[key] || key.toUpperCase().charCodeAt(0)).sort().join("+");
+  let cancelCapture = () => {};
 
-      var shortcutElement = document.createElement('tr');
-      var description = document.createElement('td');
-      description.innerHTML = " " + shortcut["description"];
-      var buttonContainer = document.createElement('td');
-      var button = document.createElement('button');
-      button.innerHTML = savedShortcut ? savedShortcut : defaultShortcutValue;
-      button.setAttribute('data-initial-text', button.innerHTML); // Stocker le texte initial
-      button.onclick = shortcutClicked;
-      button.id = key;
-      buttonContainer.appendChild(button);
-      shortcutElement.appendChild(buttonContainer);
-      shortcutElement.appendChild(description);
-      table.appendChild(shortcutElement);
-
-    });
-    node.appendChild(document.createElement('br'));
-    node.appendChild(table);
-  });
-
-  function keyToWord(key) // Fonction pour afficher les symboles de key sous une forme plus simple
-  {
-    if (key == "⌃")
-      return "Ctrl";
-    else if (key == "⌥")
-      return "Alt";
-    else
-      return key;
+  if (heidiWorkflow) {
+    const group = document.createElement("fieldset");
+    group.id = "heidi-consultation-shortcuts";
+    group.className = "option level-2";
+    const legend = document.createElement("legend");
+    legend.textContent = "Raccourcis Heidi";
+    const help = document.createElement("p");
+    help.textContent = "Cliquez sur une touche pour la modifier, puis rechargez la consultation Weda.";
+    group.append(legend, help, heidiTable);
+    heidiWorkflow.after(group);
+    const link = document.createElement("a");
+    link.href = "#heidi-consultation-shortcuts";
+    link.textContent = "Régler les raccourcis Heidi";
+    general.append(link);
   }
 
-  function shortcutClicked(buttonEvent) {
-    // Désactiver la classe 'modifying' sur tous les autres boutons et restaurer leur texte initial
-    document.querySelectorAll('button.modifying').forEach(button => {
-      button.classList.remove('modifying');
-      button.innerHTML = button.getAttribute('data-initial-text'); // Restaurer le texte initial
-    });
+  for (const [key, shortcut] of Object.entries(defaultShortcuts)) {
+    const table = heidiWorkflow && heidiKeys.has(key) ? heidiTable : generalTable;
+    const row = table.insertRow();
+    const control = row.insertCell();
+    const description = row.insertCell();
+    description.id = `${key}-description`;
+    description.textContent = shortcut.description;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.id = key;
+    button.setAttribute("aria-describedby", description.id);
+    button.dataset.shortcut = savedShortcuts[key] || shortcut.default;
+    button.textContent = button.dataset.shortcut;
+    const status = document.createElement("div");
+    status.setAttribute("role", "status");
+    control.append(button, status);
+    button.addEventListener("click", () => captureShortcut(button, status));
+  }
+  general.append(generalTable);
 
-    // Désactiver tous les écouteurs de touches existants
-    hotkeys.unbind('*');
+  function captureShortcut(button, status) {
+    cancelCapture();
+    const isHeidi = heidiKeys.has(button.id);
+    const instruction = isHeidi
+      ? "Appuyez sur une touche F1 à F19, PageUp, PageDown ou une combinaison. Échap pour annuler."
+      : "Appuyez sur une touche de fonction ou une combinaison de touches";
+    button.textContent = instruction;
+    button.classList.add("modifying");
+    status.textContent = "";
+    cancelCapture = () => {
+      hotkeys.unbind("*");
+      button.classList.remove("modifying");
+      button.textContent = button.dataset.shortcut;
+      status.textContent = "";
+    };
 
-    buttonEvent.target.innerHTML = 'Appuyez sur une touche de fonction ou une combinaison de touches';
-    buttonEvent.target.classList.add('modifying');
-
-    hotkeys('*', function (event, handler) { // On écoute toutes les pressions de touche
-      function saveShortcut(keys) {
-        var shortcut = "";
-        for (var i = 0; i < keys.length; i++) {
-          var separator = "+";
-          if (i == 0) {
-            separator = "";
-          }
-          shortcut = shortcut + separator + keyToWord(keys[i]);
-        }
-        buttonEvent.target.innerHTML = shortcut;
-        buttonEvent.target.classList.remove('modifying');
-        chrome.storage.local.get("shortcuts", function (result) {
-          var shortcuts = result["shortcuts"];
-          shortcuts[buttonEvent.target.id] = shortcut;
-          chrome.storage.local.set({ "shortcuts": shortcuts });
-        });
-        hotkeys.unbind('*');
-      }
-
-      function isLetterOrNumber(element) {
-        return element.match(/\w{1}/);
-      }
-
-      function isfunctionKey(element) {
-        return element.match(/f\w{1,2}/);
-      }
-
+    hotkeys("*", event => {
       event.preventDefault();
-      var keys = hotkeys.getPressedKeyString();
-      console.log(keys);
-      if (keys.length <= 1) { // Une seule touche, on accepte F1 à F19
-        if (isfunctionKey(keys[0])) {
-          saveShortcut(keys);
-        }
-      } else { // Si l'on a plus de 2 touches, il faut au moins une lettre ou un chiffre
-        if (keys.some(isLetterOrNumber)) {
-          saveShortcut(keys);
-        }
+      const keys = hotkeys.getPressedKeyString();
+      if (keys.length === 1 && event.key === "Escape") {
+        cancelCapture();
+        return;
       }
+      const singleKeyAllowed = /^f(?:[1-9]|1\d)$/i.test(keys[0])
+        || (isHeidi && /^page(?:up|down)$/i.test(keys[0]));
+      if (keys.length <= 1 ? !singleKeyAllowed : !keys.some(key => /\w/.test(key))) return;
+
+      const shortcut = keys.map(key => keyLabels[key] || key).join("+");
+      const normalized = normalize(shortcut);
+      const conflict = Object.keys(defaultShortcuts).find(key => {
+        if (key === button.id || (!isHeidi && !heidiKeys.has(key))) return false;
+        const other = document.getElementById(key)?.dataset.shortcut;
+        return other && normalize(other) === normalized;
+      });
+      if (conflict) {
+        status.textContent = `Ce raccourci est déjà utilisé pour « ${defaultShortcuts[conflict].description} ».`;
+        return;
+      }
+
+      button.dataset.shortcut = shortcut;
+      cancelCapture();
+      chrome.storage.local.get("shortcuts", ({ shortcuts = {} }) => {
+        chrome.storage.local.set({ shortcuts: { ...shortcuts, [button.id]: shortcut } });
+      });
     });
   }
-});
+}
 
 // Fonction mutualisée pour réinitialiser une option à sa valeur par défaut
 function resetOptionToDefault(optionName, defaultValue, askConfirmation = true) {
@@ -966,7 +961,7 @@ function collectCurrentValues(defaultSettings, defaultShortcuts) {
       Object.entries(defaultShortcuts).forEach(([key, shortcut]) => {
         let element = document.getElementById(key);
         if (element) {
-          shortcuts[key] = element.innerHTML;
+          shortcuts[key] = element.dataset.shortcut;
         }
         else {
           console.log('Aucun élément avec l\'ID', key);
