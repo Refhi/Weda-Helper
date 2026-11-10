@@ -344,6 +344,11 @@ var advancedDefaultSettings = [
             "name": "Weda Echanges",
             "type": TYPE_TITLE,
             "options": [{
+                "name": "secureExchangeOpenNextAfterImport",
+                "type": TYPE_BOOL,
+                "description": "Ouvre le courrier suivant dans Échanges après un import réussi.",
+                "default": true
+            }, {
                 "name": "secureExchangeAutoRefresh",
                 "type": TYPE_BOOL,
                 "description": "Rafraîchis automatiquement la messagerie sécurisée (vous devez laisser un onglet ouvert).",
