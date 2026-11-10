@@ -27,6 +27,13 @@ function connectToBackground() {
             case 'toolCallKeepalive':
                 keepaliveToolCall(message);
                 break;
+            case 'heidiConsultationAI': {
+                const reply = result => backgroundPort.postMessage({
+                    type: 'heidiConsultationAIResult', tabId: message.tabId, requestId: message.requestId, result
+                });
+                runHeidiConsultationAI(message).then(reply, () => reply({ error: "Analyse Heidi indisponible." }));
+                break;
+            }
             case 'resetChat':
                 resetConversation(message.patientId);
                 break;

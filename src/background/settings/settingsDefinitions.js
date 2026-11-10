@@ -928,6 +928,29 @@ var advancedDefaultSettings = [
             "description": "Accès à Heidi pour l'assistant IA local",
             "default": false
         }, {
+            "name": "heidiConsultationWorkflow",
+            "type": TYPE_BOOL,
+            "description": "Transcription Heidi en consultation",
+            "longDescription": "Depuis la consultation Weda ouverte, démarre une nouvelle session Heidi et ajoute la transcription à la consultation à l’arrêt. Activez aussi « Accès à Heidi ». Les deux raccourcis se règlent dans la rubrique des raccourcis.",
+            "default": false,
+            "subOptions": [{
+                "name": "heidiConsultationAnalysis",
+                "type": TYPE_BOOL,
+                "description": "Analyser automatiquement la transcription après le transfert",
+                "longDescription": "Compare les antécédents et propose des brouillons de courriers et de demandes d’imagerie. L’assistant IA doit être activé. Le profil IA actif reçoit la transcription et, pour la comparaison, les antécédents du dossier, y compris lorsque ce profil utilise un serveur distant.",
+                "default": false
+            }, {
+                "name": "heidiConsultationLetterPrompt",
+                "type": TYPE_LARGETEXT,
+                "description": "Prompt de rédaction des courriers au spécialiste",
+                "default": "Rédige un courrier d’adressage en français. Précise le motif, la question posée au spécialiste et les éléments cliniques pertinents mentionnés pendant la consultation. Utilise une formule confraternelle simple."
+            }, {
+                "name": "heidiConsultationImagingPrompt",
+                "type": TYPE_LARGETEXT,
+                "description": "Prompt de rédaction des demandes d’imagerie",
+                "default": "Rédige une demande d’imagerie concise en français. Indique l’examen décidé, le site et la latéralité s’ils sont précisés, le contexte clinique utile et la question posée au radiologue."
+            }]
+        }, {
             "name": "ignoreAIGeneratedData",
             "type": TYPE_BOOL,
             "description": "Ignorer les données générées par IA lors de la lecture du dossier patient.",

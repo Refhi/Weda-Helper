@@ -137,6 +137,7 @@ const titreRecherche = {
 let _atcdDoc = document;
 // Iframe cachée en cours d'utilisation (null si on travaille directement sur la page).
 let _atcdIframe = null;
+let antecedentContextBusy = false;
 
 /**
  * Masque tout le document des antécédents sauf le panneau de modification (et ses ancêtres).
@@ -224,12 +225,20 @@ function ajusterIframeAuContenu(selecteurPanneau) {
  *   timeoutMs : au-delà, le panneau est annulé
  * @returns {Promise<'valider'|'supprimer'|'annuler'>}
  */
-async function attendreValidationUtilisateur({ attendu, consigne, timeoutMs = 10 * 60 * 1000 } = {}) {
+async function attendreValidationUtilisateur({ attendu, consigne, timeoutMs = 10 * 60 * 1000, isCurrent = () => true } = {}) {
     const sel = AntecedentFormSelectors.pannelAntecedents;
     let action = null;
+    const listeners = new AbortController();
     [[sel.boutonValider, 'valider'], [sel.boutonSupprimer, 'supprimer'], [sel.boutonAnnuler, 'annuler']]
         .forEach(([selecteur, nom]) => {
-            _atcdDoc.querySelector(selecteur)?.addEventListener('click', () => { action = nom; }, { capture: true });
+            _atcdDoc.querySelector(selecteur)?.addEventListener('click', event => {
+                if (!isCurrent()) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    return;
+                }
+                action = nom;
+            }, { capture: true, signal: listeners.signal });
         });
 
     const styleInitial = _atcdIframe?.style.cssText;
@@ -254,6 +263,7 @@ async function attendreValidationUtilisateur({ attendu, consigne, timeoutMs = 10
         };
         const debut = Date.now();
         while (panneauOuvert()) {
+            if (!isCurrent()) return 'annuler';
             if (Date.now() - debut > timeoutMs) {
                 _atcdDoc.querySelector(sel.boutonAnnuler)?.click();
                 return 'annuler';
@@ -262,6 +272,7 @@ async function attendreValidationUtilisateur({ attendu, consigne, timeoutMs = 10
         }
         return action || 'annuler';
     } finally {
+        listeners.abort();
         retirerConsigne();
         restaurerAffichage();
         if (_atcdIframe) _atcdIframe.style.cssText = styleInitial;
@@ -275,34 +286,33 @@ async function attendreValidationUtilisateur({ attendu, consigne, timeoutMs = 10
  * @param {() => Promise<*>} fn
  * @param {{debug?: boolean, patientId?: string|number|null}} [options] patientId : patient ciblé si l'URL n'en contient pas
  */
-async function withAntecedentContext(fn, { debug = false, patientId = null } = {}) {
+async function withAntecedentContext(fn, { debug = false, patientId = null, verifyPatient = false } = {}) {
+    if (antecedentContextBusy) throw new Error("Un formulaire d’antécédent est déjà en cours.");
+    antecedentContextBusy = true;
     const onAntecedentPage = window.location.pathname.includes('/FolderMedical/AntecedentForm.aspx');
-    if (onAntecedentPage) {
-        _atcdDoc = document;
-        _atcdIframe = null;
-        memoriserOngletsAntecedents();
-        // Inhibe le Trim/Sort de Weda-Helper (features/antecedent.js) qui modifieraient les résultats de recherche manipulés
-        document.body.dataset.insertionAntecedentEnCours = 'true';
-        try {
-            return await fn();
-        } finally {
-            delete document.body.dataset.insertionAntecedentEnCours;
-        }
-    }
-
     let iframe = null;
     try {
-        const url = await getCurrentPatientPageUrl('/FolderMedical/AntecedentForm.aspx', patientId);
-        iframe = await createHiddenIframe(url, debug, 'WedaHelperAntecedentIframe');
-        const getDoc = () => iframe.contentDocument || iframe.contentWindow?.document;
-        await waitForElementInDocument(getDoc, AntecedentFormSelectors.antecedentList.panel, 12000, 100);
-        _atcdDoc = getDoc();
-        _atcdIframe = iframe;
+        if (onAntecedentPage) {
+            // Inhibe le Trim/Sort des résultats de recherche pendant leur manipulation.
+            document.body.dataset.insertionAntecedentEnCours = 'true';
+        } else {
+            const url = await getCurrentPatientPageUrl('/FolderMedical/AntecedentForm.aspx', patientId);
+            iframe = await createHiddenIframe(url, debug, 'WedaHelperAntecedentIframe', { timeoutMs: verifyPatient ? 15000 : undefined });
+            const getDoc = () => iframe.contentDocument;
+            await waitForElementInDocument(getDoc, AntecedentFormSelectors.antecedentList.panel, 12000, 100);
+            _atcdDoc = getDoc();
+            _atcdIframe = iframe;
+        }
+        if (verifyPatient && (!patientId || extractPatDkFromUrl(_atcdDoc.URL) !== String(patientId))) {
+            throw new Error("Impossible de vérifier le patient du formulaire d’antécédent.");
+        }
         memoriserOngletsAntecedents();
         return await fn();
     } finally {
+        if (onAntecedentPage) delete document.body.dataset.insertionAntecedentEnCours;
         _atcdDoc = document;
         _atcdIframe = null;
+        antecedentContextBusy = false;
         if (iframe && !debug) {
             iframe.remove();
         }
@@ -317,7 +327,7 @@ async function withAntecedentContext(fn, { debug = false, patientId = null } = {
  * @param {{debug?: boolean}} [options]
  */
 async function insertAntecedent(data = {}, options = {}) {
-    return withAntecedentContext(() => _insertAntecedent(data), options);
+    return withAntecedentContext(() => _insertAntecedent(data, options), options);
 }
 
 /**
@@ -326,6 +336,9 @@ async function insertAntecedent(data = {}, options = {}) {
  *   avant son remplissage, et peut ajuster data en fonction de l'état du panneau.
  */
 async function _insertAntecedent(data = {}, hooks = {}) {
+    const isCurrent = () => (!hooks.isCurrent || hooks.isCurrent())
+        && (!hooks.verifyPatient || extractPatDkFromUrl(_atcdDoc.URL) === String(hooks.patientId));
+    if (!isCurrent()) return { success: false, message: "La consultation a changé." };
     // Exemple d'objet data attendu :
     // {
     //     searchType: "CIM10" | "allergieMolecule" | "allergiePrinceps",
@@ -341,7 +354,13 @@ async function _insertAntecedent(data = {}, hooks = {}) {
         // Aucune modalité de recherche n'est spécifiée, on crée donc un antécédent libre.
         
         // Si aucun onglet n'est spécifié dans les données, on prend le premier onglet autorisé.
-        const ongletCible = trouverOnglet(ongletsPossibles(), data.onglet, data.searchType);
+        const onglets = ongletsPossibles();
+        const ongletCible = hooks.strictOnglet
+            ? onglets.find(onglet => onglet.titre === data.onglet)
+            : trouverOnglet(onglets, data.onglet, data.searchType);
+        if (hooks.strictOnglet && !ongletCible?.freeAtcdButton) {
+            return { success: false, message: "L’onglet Weda proposé ne permet plus cet ajout." };
+        }
         
         // On cliques sur le bouton d'ajout d'antécédent libre.
         if (ongletCible && ongletCible.freeAtcdButton) {
@@ -416,15 +435,20 @@ async function _insertAntecedent(data = {}, hooks = {}) {
     // À ce stade, le panneau de l'antécédent ciblé devrait être ouvert et prêt à être rempli.
     // on attend son ouverture
     await waitForElementInDocument(() => _atcdDoc, AntecedentFormSelectors.pannelAntecedents.panel, 3000) // Sur les connexions lentes, 3 sec n'est pas de trop
-    .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente du panneau des antécédents :", err));
+    .catch(err => {
+        if (hooks.strictOnglet) throw new Error("Le formulaire d’ajout Weda ne s’est pas ouvert.");
+        console.error("[dataInserterATCD] Erreur lors de l'attente du panneau des antécédents :", err);
+    });
 
+    if (!isCurrent()) return { success: false, message: "La consultation a changé." };
     hooks.avantRemplissage?.(data);
     remplirPaneauAntecedent(data);
 
     // Validation par l'utilisateur lui-même : le panneau est affiché et on attend son choix.
     const choix = await attendreValidationUtilisateur({
         attendu: 'valider',
-        consigne: "Weda-Helper a préparé ou modifié cet d'antécédent demandé.\nVérifiez-le, puis cliquez sur « Valider » pour l'enregistrer.\nPour abandonner, cliquez sur « Annuler » (ou « Supprimer » si indisponible)."
+        isCurrent,
+        consigne: "Weda-Helper a préparé cet antécédent.\nVérifiez-le, puis cliquez sur « Valider » pour l'enregistrer.\nPour abandonner, cliquez sur « Annuler »."
     });
     if (choix !== 'valider') return { success: false, message: "Ajout annulé par l'utilisateur." };
     return { success: true };

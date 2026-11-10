@@ -1103,6 +1103,12 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'autoSaveConsultations', functi
         let currentTime = Date.now();
         const timeSinceLastSave = currentTime - lastSaveTime;
         const timeSinceLastAction = currentTime - lastUserActionTime;
+
+        // Le postback de sauvegarde peut remplacer l'éditeur pendant le transfert ou la relecture Heidi.
+        if (typeof heidiConsultationPausesAutoSave === "function" && heidiConsultationPausesAutoSave()) {
+            lastSaveTime = currentTime;
+            return;
+        }
         
         // Vérifier si 3 minutes se sont écoulées depuis la dernière sauvegarde
         const AUTO_SAVE_INTERVAL = 3 * 60 * 1000; // 3 minutes

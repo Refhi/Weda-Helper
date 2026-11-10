@@ -228,15 +228,7 @@ function addHotkeyToDocument(scope, element, shortcut, action, noThrottle = fals
  * @returns {string} - Raccourci clavier à utiliser
  */
 function shortcutDefaut(shortcuts, defaultShortcuts, key) {
-    if (shortcuts == undefined) {
-        return defaultShortcuts[key]["default"];
-    }
-    else if (shortcuts[key] == undefined) {
-        return defaultShortcuts[key]["default"];
-    }
-    else {
-        return shortcuts[key];
-    }
+    return shortcuts?.[key] ?? defaultShortcuts?.[key]?.default;
 }
 
 /**
@@ -288,9 +280,10 @@ function addShortcuts(keyCommands, scope, scopeName) {
         }
         // console.log('[addShortcuts] ajout des raccourcis sur element', scope, 'avec scopeName', scopeName, 'et result', result);
         for (let key in keyCommands) {
-            action = keyCommands[key];
-            shortcut = shortcutDefaut(result.shortcuts, result.defaultShortcuts, key);
-            addHotkeyToDocument(scopeName, scope, shortcut, action);
+            const action = keyCommands[key];
+            const shortcut = shortcutDefaut(result.shortcuts, result.defaultShortcuts, key);
+            // La consultation Heidi verrouille déjà chaque opération pendant son exécution.
+            addHotkeyToDocument(scopeName, scope, shortcut, action, key.startsWith("heidi_"));
         }
     });
 }

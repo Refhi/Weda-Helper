@@ -16,6 +16,7 @@ importScripts(
     'background/tabsHandler.js',
     'background/permissionsHandler.js',
     'background/heidiContextHandler.js',
+    'background/heidiRecordingHandler.js',
     'background/offscreenHandler.js'
 );
 

@@ -14,9 +14,11 @@
  * @param {string} url - URL à charger dans l'iframe
  * @param {boolean} [debug=false] - Si true, affiche l'iframe en plein écran pour faciliter le debug
  * @param {string} [iframeId='WedaHelperHiddenIframe'] - id à attribuer à l'iframe créée
+ * @param {object} [options]
+ * @param {number} [options.timeoutMs] - Délai maximal optionnel de chargement.
  * @returns {Promise<HTMLIFrameElement>}
  */
-function createHiddenIframe(url, debug = false, iframeId = 'WedaHelperHiddenIframe') {
+function createHiddenIframe(url, debug = false, iframeId = 'WedaHelperHiddenIframe', { timeoutMs } = {}) {
     return new Promise((resolve, reject) => {
         const iframe = document.createElement('iframe');
         if (debug) {
@@ -34,8 +36,19 @@ function createHiddenIframe(url, debug = false, iframeId = 'WedaHelperHiddenIfra
         }
         iframe.src = url;
         iframe.id = iframeId;
-        iframe.onload = () => resolve(iframe);
-        iframe.onerror = err => reject(err);
+        const fail = error => {
+            clearTimeout(timeout);
+            iframe.remove();
+            reject(error);
+        };
+        const timeout = timeoutMs ? setTimeout(() => fail(new Error("La page Weda ne s’est pas chargée à temps.")), timeoutMs) : null;
+        iframe.onload = () => {
+            clearTimeout(timeout);
+            iframe.onerror = null;
+            iframe.onload = null;
+            resolve(iframe);
+        };
+        iframe.onerror = fail;
         document.body.appendChild(iframe);
     });
 }

@@ -706,7 +706,7 @@ function buildRequestBody({
  * Effectue l'appel réseau vers l'API de chat completions et gère les erreurs HTTP.
  * Renvoie soit le ReadableStream (si `requestBody.stream` est vrai), soit le JSON parsé de la réponse.
  */
-async function fetchChatCompletion(requestBody, apiUrl, signal, apiKey) {
+async function fetchChatCompletion(requestBody, apiUrl, signal, apiKey, { privateRequest = false } = {}) {
     console.log("[openAiClient] Tentative de connexion à :", `${apiUrl}/chat/completions`);
 
     const fetchOptions = {
@@ -717,6 +717,7 @@ async function fetchChatCompletion(requestBody, apiUrl, signal, apiKey) {
             ...(apiKey && { 'Authorization': `Bearer ${apiKey}` }),
         },
         body: JSON.stringify(requestBody),
+        ...(privateRequest && { redirect: 'error' }),
         ...(signal && { signal })
     };
 
@@ -724,6 +725,7 @@ async function fetchChatCompletion(requestBody, apiUrl, signal, apiKey) {
 
     if (!response.ok) {
         let errorMessage = `Erreur API ${response.status}`;
+        if (privateRequest) throw new Error(errorMessage); // Le corps peut contenir un extrait du document.
         try {
             const rawBody = await response.text();
             console.error(`[openAiClient] Corps de l'erreur API ${response.status} :`, rawBody);

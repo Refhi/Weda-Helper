@@ -312,6 +312,7 @@ Vous permet de connecter un modèle d'IA pour diverses actions :
 - Avoir un **deuxième** regard circonstancié sur un résultat d'examen (biologique ou autre)
 - plus de précisions et tuto sur le wiki [ici](https://github.com/Refhi/Weda-Helper/wiki)
 - un accès au contenu d'Heidi via le client IA (merci @DrFloW71 !)
+- [la transcription Heidi en consultation, avec propositions d’antécédents et brouillons à la demande](docs/heidi-consultation.md)
 
 
 ## Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):

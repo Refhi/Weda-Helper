@@ -137,6 +137,7 @@ chrome.runtime.onConnect.addListener((port) => {
         // Le message 'subscribe' n'est pas transmis à l'offpage : il ne sert qu'à enregistrer le
         // patient affiché par cet onglet, pour le ciblage des diffusions (broadcast).
         port.onMessage.addListener(async (message) => {
+            if (message?.type === 'heidiConsultationAI' && !isHeidiConsultationSender(port.sender)) return;
             if (message?.type === 'subscribe') {
                 patientIdByTabId.set(tabId, message.patientId);
                 return;

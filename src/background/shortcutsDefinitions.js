@@ -135,5 +135,13 @@ var defaultShortcuts = {
     "assistant_local": {
         "default": "Ctrl+I",
         "description": "Active l'assistant local (IA locale)"
+    },
+    "heidi_start_recording": {
+        "default": "Alt+Shift+F8",
+        "description": "Heidi en consultation : démarre une nouvelle transcription"
+    },
+    "heidi_stop_recording": {
+        "default": "Alt+Shift+F9",
+        "description": "Heidi en consultation : arrête et transfère la transcription"
     }
 };

@@ -1,9 +1,15 @@
 // Lecture ponctuelle du DOM Heidi : aucune API privée, aucun stockage du contenu médical.
 const HEIDI_CONTEXT_ORIGIN = "https://scribe.heidihealth.com/*";
+const HEIDI_CONTEXT_PERMISSIONS = { permissions: ["scripting"], origins: [HEIDI_CONTEXT_ORIGIN] };
 const heidiContextReads = new Set();
 
+async function getHeidiContextTabs() {
+    const tabs = await chrome.tabs.query({ url: [HEIDI_CONTEXT_ORIGIN] });
+    return tabs.filter(tab => Number.isInteger(tab.id));
+}
+
 /** Fonction autonome, sérialisée par executeScript dans le monde isolé de l'onglet Heidi. */
-async function extractHeidiPageContext() {
+async function extractHeidiPageContext({ expectedSessionId = null } = {}) {
     if (location.origin !== "https://scribe.heidihealth.com") {
         return { error: "L'onglet sélectionné n'affiche plus Heidi." };
     }
@@ -13,6 +19,7 @@ async function extractHeidiPageContext() {
     const text = element => (element?.innerText || "").replace(/\u00a0/g, " ")
         .replace(/\r\n?/g, "\n").trim();
     const transcriptSelector = '[data-testid="transcript-content"]';
+    const endMarker = /^(?:Transcription\s+(?:terminée|arrêtée|ended|stopped)|Recording\s+(?:ended|stopped))\b/i;
     const tabSelector = '[role="tab"][aria-selected="true"]';
     const getSessionId = () => {
         const tab = findVisible('[data-testid="session-tab-transcript"][id^="transcript/"]')
@@ -31,12 +38,15 @@ async function extractHeidiPageContext() {
             }).filter(Boolean).join("\n\n");
         }
         // Ne pas présenter les seuls marqueurs de début/fin comme une transcription.
-        return text(content).split("\n").filter(line =>
-            !/^Transcription\s+(commencée|terminée|started|ended)/i.test(line.trim())).join("\n").trim();
+        return text(content).split("\n").filter(line => !endMarker.test(line.trim())
+            && !/^Transcription\s+(commencée|started)/i.test(line.trim())).join("\n").trim();
     };
     const sessionId = getSessionId();
     const initialUrl = location.href;
     if (!sessionId) return { error: "Ouvrez une session de consultation dans Heidi, puis réessayez." };
+    if (expectedSessionId && sessionId !== expectedSessionId) {
+        return { error: "La session Heidi a changé. Aucun texte n’a été transféré." };
+    }
     const sameSession = () => location.href === initialUrl && getSessionId() === sessionId;
     const transcriptTab = findVisible('[data-testid="session-tab-transcript"]');
     const tabList = transcriptTab?.closest('[role="tablist"]') || document;
@@ -44,7 +54,7 @@ async function extractHeidiPageContext() {
     const noteEditor = findVisible('[data-testid="template-block-editor-content"] .ProseMirror, '
         + '[data-testid="scribe-tab-block-editor"] .ProseMirror, '
         + '#template-block-editor-content .ProseMirror, .prose-mirror-container .ProseMirror');
-    const note = text(noteEditor);
+    const note = expectedSessionId ? "" : text(noteEditor);
     let switchedTab = false;
     try {
         // Heidi démonte parfois le panneau inactif. Ne toucher qu'à l'onglet Transcription,
@@ -53,7 +63,31 @@ async function extractHeidiPageContext() {
             switchedTab = true;
             transcriptTab.click();
         }
-        if (!readTranscript() && transcriptTab?.getAttribute("aria-selected") === "true") {
+        if (expectedSessionId) {
+            // Le bouton d'arrêt peut disparaître avant l'arrivée des derniers segments.
+            // Attendre le marqueur Heidi de fin, puis une seconde sans changement de texte.
+            const deadline = Date.now() + 20000;
+            let previous = "";
+            let stableSince = 0;
+            let complete = false;
+            while (sameSession() && Date.now() < deadline) {
+                if (transcriptTab?.getAttribute("aria-selected") !== "true") break;
+                const current = readTranscript();
+                if (current !== previous) {
+                    previous = current;
+                    stableSince = Date.now();
+                }
+                const ended = text(findVisible(transcriptSelector)).split("\n").some(line => endMarker.test(line.trim()));
+                if (current && ended && Date.now() - stableSince >= 1000) {
+                    complete = true;
+                    break;
+                }
+                await new Promise(resolve => setTimeout(resolve, 250));
+            }
+            if (!complete && sameSession()) {
+                return { error: "La transcription finale n’est pas encore lisible. Vérifiez Heidi puis relancez le transfert." };
+            }
+        } else if (!readTranscript() && transcriptTab?.getAttribute("aria-selected") === "true") {
             // Attendre aussi les segments chargés après le conteneur. Un observateur évite
             // les chaînes de timers fortement ralenties dans les onglets en arrière-plan.
             await new Promise(resolve => {
@@ -97,12 +131,10 @@ async function readHeidiPageContext({ tabId } = {}) {
     if (tabId !== undefined && (!Number.isInteger(tabId) || tabId < 0)) {
         return { error: "tabId Heidi invalide." };
     }
-    const permissions = { permissions: ["scripting"], origins: [HEIDI_CONTEXT_ORIGIN] };
-    if (!await chrome.permissions.contains(permissions)) {
+    if (!await chrome.permissions.contains(HEIDI_CONTEXT_PERMISSIONS)) {
         return { error: "Activez « Accès à Heidi » dans les options de Weda-Helper > Assistant IA, puis autorisez l'accès à Heidi." };
     }
-    const tabs = await chrome.tabs.query({ url: [HEIDI_CONTEXT_ORIGIN] });
-    const candidates = tabs.filter(tab => Number.isInteger(tab.id));
+    const candidates = await getHeidiContextTabs();
     let tab;
     if (tabId !== undefined) {
         tab = candidates.find(candidate => candidate.id === tabId);
