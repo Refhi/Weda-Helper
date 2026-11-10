@@ -16,7 +16,8 @@ importScripts(
     'background/tabsHandler.js',
     'background/permissionsHandler.js',
     'background/heidiContextHandler.js',
-    'background/offscreenHandler.js'
+    'background/offscreenHandler.js',
+    'background/hprimBiologyHandler.js'
 );
 
 

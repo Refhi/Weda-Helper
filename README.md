@@ -292,6 +292,16 @@ Dans la fenêtre d'importation des documents (https://secure.weda.fr/FolderMedic
 - Possibilité d'inverser automatiquement le titre du corps du message et le titre du message lors de la réception d'un courrier (beta, merci de me faire part de vos retours)
 
 
+### Analyse des biologies HPRIM
+
+Activez les outils dans **Options → Résultats d’examens**, puis ouvrez la page des imports de biologie. **Analyser ce bilan** prépare un titre modifiable. **Analyser toutes les biologies** prépare les titres de la liste affichée et indique les bilans à relire.
+
+Le bouton **Analyse automatique des biologies** mémorise l’activation. Tant que la page des imports reste ouverte, Weda-Helper traite les nouveaux bilans affichés et vérifie l’arrivée de nouveaux résultats toutes les 45 secondes. Il attend la fin d’une saisie avant d’actualiser la liste. Les brouillons restent disponibles dans le même onglet, même après un rechargement.
+
+La fiche de lecture regroupe les valeurs et les normes du laboratoire. Quand une mesure antérieure est identifiable et comparable, elle s’affiche avec sa date. Les conclusions d’anatomopathologie identifiables sont reprises du compte rendu. **Valider le titre et passer au suivant** enregistre uniquement le titre, le relit dans Weda et ouvre la ligne suivante si l’enregistrement est confirmé. L’import reste à valider dans Weda.
+
+Le **Prompt d’analyse des biologies** est personnalisable et suit la sauvegarde des réglages. Si l’assistant IA est activé, son profil actif aide à choisir les résultats utiles et leur ordre. Les valeurs proposées sont toujours issues du bilan ; l’identité, l’historique et les conclusions narratives restent dans Weda.
+
 ## Weda-Helper-Companion
 *Autant pousser l'économie de mouvements jusqu'au bout*
 Installez et laisser tourner ce logiciel sur votre ordinateur pour avoir des fonctionnalités supplémentaires :

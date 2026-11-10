@@ -545,9 +545,26 @@ var advancedDefaultSettings = [
         }]
     }, {
         "name": "Résultats d'examens",
-        "description": "Des options concernant l'affichage des tableaux de résultats d'examens (biologie)",
+        "description": "Analyse des bilans reçus dans les imports HPRIM et affichage des résultats dans le dossier.",
         "type": TYPE_TITLE,
         "options": [{
+            "name": "enableHprimBiologyAnalysis",
+            "type": TYPE_BOOL,
+            "description": "Ajouter les outils d’analyse aux imports de biologie et une fiche de lecture dans le dossier patient.",
+            "default": false,
+            "subOptions": [{
+                "name": "hprimBiologyAuto",
+                "type": TYPE_BOOL,
+                "description": "Analyser automatiquement les nouveaux bilans tant que la page des imports de biologie reste ouverte.",
+                "default": false
+            }, {
+                "name": "hprimBiologyPrompt",
+                "type": TYPE_LARGETEXT,
+                "description": "Prompt d’analyse des biologies",
+                "longDescription": "Choisit les résultats normaux à inclure et leur ordre si l’assistant IA est activé. Les chiffres, les anomalies et les antériorités restent contrôlés par Weda Helper. Le profil IA actif reçoit les résultats chiffrés reconnus du bilan, sans identité ni historique.",
+                "default": "Prépare une synthèse biologique concise. Place les résultats signalés ou hors des normes du laboratoire en premier. Parmi les résultats dans les normes, retiens les valeurs utiles au suivi, notamment la glycémie, les lipides et la fonction rénale si elles sont présentes. Évite de répéter les mesures équivalentes."
+            }]
+        }, {
             "name": "unitConverter",
             "type": TYPE_BOOL,
             "description": "Affiche une conversion d'unité au survol de la souris dans les tableaux de résultats d'examens.",

@@ -1,0 +1,16 @@
+.wh-hprim-tools, .wh-hprim-card {
+    background: #f6f9fc;
+    border: 1px solid #b6c9df;
+    border-radius: 6px;
+    color: #1f3247;
+    margin: .5em 0;
+    padding: .65em .8em;
+}
+.wh-hprim-tools button { margin: .15em .4em .15em 0; cursor: pointer; }
+.wh-hprim-tools button[aria-pressed="true"] { background: #27683d; color: #fff; }
+.wh-hprim-tools textarea { display: block; box-sizing: border-box; width: 100%; margin: .3em 0; }
+.wh-hprim-tools [role="status"] { margin: .4em 0; }
+.wh-hprim-card summary { cursor: pointer; font-weight: bold; }
+.wh-hprim-card ul { padding-left: 1.5em; margin: .25em 0 .55em; }
+.wh-hprim-card .wh-hprim-flag, .wh-hprim-badge[data-state="review"] { color: #8b3800; font-weight: bold; }
+.wh-hprim-badge { display: inline-block; margin-inline-start: .4em; font-size: .9em; color: #24526f; }

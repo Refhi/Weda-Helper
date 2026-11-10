@@ -30,6 +30,7 @@
       "matches": [
         "*://secure.weda.fr/*"
       ],
+      "css": ["src/features/hprimBiology.css"],
       "js": [
         "lib/hotkeys.js",
         "lib/pdf-lib.js",
@@ -85,6 +86,9 @@
         "src/features/alertesAtcd.js",
         "src/features/alertesDates.js",
         "src/features/content.js",
+        "src/utils/biologyAnalysis.js",
+        "src/utils/hprimBiologyDom.js",
+        "src/features/hprimBiology.js",
         "src/features/accueil.js",
         "src/features/consultation.js",
         "src/features/forms.js",
@@ -113,6 +117,12 @@
         "src/features/score2prompter.js",
         "src/features/unitConverter.js"
       ]
+    },
+    {
+      "matches": ["https://secure.weda.fr/FolderMedical/HprimForm.aspx*"],
+      "js": ["src/features/hprimPageBridge.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
