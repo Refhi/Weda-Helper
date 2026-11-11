@@ -472,7 +472,12 @@ const toolChains = (() => {
         // dont le résultat est lu par pdfParserAIExtraction.js.
         completerDocument: chaineRenseignerDocument('renseignerChampsPdfParser'),
         // Lancement depuis le code uniquement (bouton "Résumé IA" d'une pièce jointe) : impose l'appel de renseignerDocument.
-        renommerPieceJointe: chaineRenseignerDocument('renseignerDocument', { enchainerAntecedents: true })
+        renommerPieceJointe: chaineRenseignerDocument('renseignerDocument', { enchainerAntecedents: true }),
+        // Lancement depuis le code uniquement (analyse de masse des biologies, @see features/biologieMasse.js) : impose l'appel de renseignerAnalyseBiologie.
+        analyserBiologie: {
+            ...chaineRenseignerDocument('renseignerAnalyseBiologie'),
+            conclusion: "Analyse enregistrée. Résume en une phrase le résultat au praticien."
+        }
     };
 
     // Même analyse que mettreAJourAntecedentsDepuisDocument (étape 'extraire' partagée), mais les opérations sont seulement

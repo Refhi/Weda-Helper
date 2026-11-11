@@ -933,23 +933,17 @@ var advancedDefaultSettings = [
         "description": "Tout ce qui concerne l'assistant IA local",
         "type": TYPE_TITLE,
         "options": [{
-            "name": "heidiContextAccess",
-            "type": TYPE_BOOL,
-            "description": "Accès à Heidi pour l'assistant IA local",
-            "default": false
-        }, {
-            "name": "ignoreAIGeneratedData",
-            "type": TYPE_BOOL,
-            "description": "Ignorer les données générées par IA lors de la lecture du dossier patient.",
-            "longDescription": "Les champs contenant \"[IA]\" (ex: commentaires de pièces jointes générés par l'IA) sont ignorés par le Data Scrapper (assistant IA, score2prompter, historique FSE...) afin d'éviter la dégradation des données par la relecture de contenus eux-mêmes générés par une IA. Le reste de l'entrée (document, date, identifiant...) est conservé.",
-            "default": true
-        }, {
             "name": "enableIAassistant",
             "type": TYPE_BOOL,
             "description": "Activer ou désactiver l'assistant IA local.",
             "longDescription": "Attention : si vous utilisez un serveur IA distant, des données de santé nominatives lui sont envoyées. Consultez les <a href='" + chrome.runtime.getURL('src/ui/markdownViewer.html?file=docs/IA-distante-wiki.md') + "' target='_blank'>obligations légales (HDS, RGPD, information des patients) et la mise en place sur le wiki</a>.",
-            "default": false,
-            "subOptions": [{
+            "default": false
+        }],
+        "sections": [{
+            "name": "Connexion au serveur IA",
+            "type": TYPE_TITLE,
+            "description": "Serveur, modèle et clé API (deux profils possibles).",
+            "options": [{
                 "name": "IAassistantBaseUrl",
                 "type": TYPE_SMALLTEXT,
                 "description": "URL de base de l'API d'IA (laisser \"http://localhost:1234/v1\" pour LM Studio en local).",
@@ -961,23 +955,6 @@ var advancedDefaultSettings = [
                 "description": "Nom du modèle d'IA local préféré.",
                 "longDescription": " La liste des modèles disponibles est téléchargée à chaque démarrage depuis l'URL de base ; si le modèle préféré n'y figure pas, le premier modèle disponible est utilisé à la place. Le modèle utilisé peut aussi être changé depuis le menu déroulant du Chat.\n<a href='ai-model-settings.html' target='_blank'>Configurer les paramètres spécifiques aux modèles</a>",
                 "default": "auto"
-            }, {
-                "name": "AIAssistantToolCalling",
-                "type": TYPE_BOOL,
-                "description": "Activer les appels aux outils de l'assistant IA local. (Hautement recommandé, privilégiez un modèle compatible).",
-                "default": true
-            }, {
-                "name": "IAassistantMaxToolCalls",
-                "type": TYPE_SMALLTEXT,
-                "description": "Nombre max. d'allers-retours de function calling par réponse.",
-                "longDescription": "Nombre maximum d'allers-retours (appels d'outils successifs) que l'assistant peut effectuer avant d'être forcé de répondre. Évite les boucles infinies si le modèle enchaîne les appels d'outils sans jamais conclure. Augmentez si vos tâches nécessitent beaucoup d'étapes.",
-                "default": "10"
-            }, {
-                "name": "IAassistantMaxFileIds",
-                "type": TYPE_SMALLTEXT,
-                "description": "Nombre max. de pièces jointes lues par l'assistant en un seul appel.",
-                "longDescription": "Limite le nombre de documents (pdf, etc.) dont l'assistant peut lire le contenu en une fois, que ce soit via la lecture directe des documents de recoverPatientData ou via lireDocumentJoint. Chaque document lu augmente fortement la taille du contexte et le temps de traitement. Les premiers documents dans l'ordre d'affichage de Weda (les plus récents) sont lus, les autres sont signalés comme non lus.",
-                "default": "10"
             }, {
                 "name": "IAassistantApiKey",
                 "type": TYPE_SMALLTEXT,
@@ -1005,6 +982,39 @@ var advancedDefaultSettings = [
                 "type": TYPE_SMALLTEXT,
                 "description": "Second profil : clé API (si nécessaire).",
                 "default": null
+            }]
+        }, {
+            "name": "Comportement de l'assistant",
+            "type": TYPE_TITLE,
+            "description": "Prompt système, outils, limites et accès aux données.",
+            "options": [{
+                "name": "heidiContextAccess",
+                "type": TYPE_BOOL,
+                "description": "Accès à Heidi pour l'assistant IA local",
+                "default": false
+            }, {
+                "name": "ignoreAIGeneratedData",
+                "type": TYPE_BOOL,
+                "description": "Ignorer les données générées par IA lors de la lecture du dossier patient.",
+                "longDescription": "Les champs contenant \"[IA]\" (ex: commentaires de pièces jointes générés par l'IA) sont ignorés par le Data Scrapper (assistant IA, score2prompter, historique FSE...) afin d'éviter la dégradation des données par la relecture de contenus eux-mêmes générés par une IA. Le reste de l'entrée (document, date, identifiant...) est conservé.",
+                "default": true
+            }, {
+                "name": "AIAssistantToolCalling",
+                "type": TYPE_BOOL,
+                "description": "Activer les appels aux outils de l'assistant IA local. (Hautement recommandé, privilégiez un modèle compatible).",
+                "default": true
+            }, {
+                "name": "IAassistantMaxToolCalls",
+                "type": TYPE_SMALLTEXT,
+                "description": "Nombre max. d'allers-retours de function calling par réponse.",
+                "longDescription": "Nombre maximum d'allers-retours (appels d'outils successifs) que l'assistant peut effectuer avant d'être forcé de répondre. Évite les boucles infinies si le modèle enchaîne les appels d'outils sans jamais conclure. Augmentez si vos tâches nécessitent beaucoup d'étapes.",
+                "default": "10"
+            }, {
+                "name": "IAassistantMaxFileIds",
+                "type": TYPE_SMALLTEXT,
+                "description": "Nombre max. de pièces jointes lues par l'assistant en un seul appel.",
+                "longDescription": "Limite le nombre de documents (pdf, etc.) dont l'assistant peut lire le contenu en une fois, que ce soit via la lecture directe des documents de recoverPatientData ou via lireDocumentJoint. Chaque document lu augmente fortement la taille du contexte et le temps de traitement. Les premiers documents dans l'ordre d'affichage de Weda (les plus récents) sont lus, les autres sont signalés comme non lus.",
+                "default": "10"
             }, {
                 "name": "IAassistantMainSystemPrompt",
                 "type": TYPE_LARGETEXT,
@@ -1061,7 +1071,12 @@ var advancedDefaultSettings = [
                     "value": "max",
                     "description": "Maximum"
                 }]
-            }, {
+            }]
+        }, {
+            "name": "Raccourcis de prompt",
+            "type": TYPE_TITLE,
+            "description": "Prompts prédéfinis affichés sur le bord du chat.",
+            "options": [{
                 "name": "IAassistantPromptShortcut0",
                 "type": TYPE_LARGETEXT,
                 "description": "Raccourci de prompt n°0, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
@@ -1111,7 +1126,12 @@ var advancedDefaultSettings = [
                 "type": TYPE_LARGETEXT,
                 "description": "Raccourci de prompt n°9, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
                 "default": ""
-            }, {
+            }]
+        }, {
+            "name": "Analyse des documents (PDF Parser)",
+            "type": TYPE_TITLE,
+            "description": "Complément IA lors de l'import de documents.",
+            "options": [{
                 "name": "PdfParserAutoAIExtraction",
                 "type": TYPE_BOOL,
                 "description": "Complète via l'assistant IA local les champs du PDF Parser non trouvés par l'analyse automatique (date, nom du patient, commentaire...).",
@@ -1168,6 +1188,23 @@ var advancedDefaultSettings = [
                     "type": TYPE_BOOL,
                     "description": "Après avoir renseigné un document, demande à l'IA de vérifier s'il est cohérent avec les antécédents du patient (sans rien modifier). Dans la messagerie sécurisée, un bouton « Antécédents ✅ / ⚠️ » s'affiche : en cas de différence, un clic met à jour les antécédents.",
                     "default": false
+                }]
+            }]
+        }, {
+            "name": "Analyse de masse des biologies",
+            "type": TYPE_TITLE,
+            "description": "Page des résultats HPRIM (biologies importées).",
+            "options": [{
+                "name": "biologieMasseAnalyse",
+                "type": TYPE_BOOL,
+                "description": "Ajoute, sur la page des résultats HPRIM, des boutons pour analyser par IA les résultats de biologie cochés ou tous les résultats de la liste (nécessite l'assistant IA activé).",
+                "longDescription": "Choisit les résultats normaux à inclure et leur ordre si l’assistant IA est activé. Les chiffres, les anomalies et les antériorités restent contrôlés par Weda Helper. Le profil IA actif reçoit les résultats chiffrés reconnus du bilan, sans identité ni historique.",
+                "default": true,
+                "subOptions": [{
+                    "name": "biologieMasseAnalysePrompt",
+                    "type": TYPE_LARGETEXT,
+                    "description": "Prompt envoyé à l'IA pour analyser chaque résultat de biologie.",
+                    "default": "Prépare une synthèse biologique concise. Place les résultats signalés ou hors des normes du laboratoire en premier. Parmi les résultats dans les normes, retiens les valeurs utiles au suivi, notamment la glycémie, les lipides et la fonction rénale si elles sont présentes. Évite de répéter les mesures équivalentes."
                 }]
             }]
         }]

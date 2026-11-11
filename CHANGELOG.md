@@ -10,6 +10,8 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#728](https://github.com/Refhi/Weda-Helper/issues/728) - les prompts pour l’import PDF via IA sont désormais personnalisables dans les options.
 - [#727](https://github.com/Refhi/Weda-Helper/issues/727) - Le client peut désormais accéder au contenu d'Heidi, merci @DrFloW71 !
 - [#696](https://github.com/Refhi/Weda-Helper/issues/696) - Les items de suivi pour les consultations (poids, TA, IMC...) peuvent désormais êtres renseignés via l'IA lors de la rédaction d'une consultation.
+- Analyse de masse des biologies : sur la page des résultats HPRIM, 🧪 analyse par IA les résultats cochés ou tous les résultats de la liste, avec une pastille 🟢/🟠/🔴 par résultat (enregistrée jusqu'à la fermeture de l'onglet). Prompt personnalisable dans les options. (activable dans les options)
+- Les options de l'assistant IA sont réorganisées en sections (connexion, comportement, raccourcis, PDF Parser, biologies).
 
 ### Importations ("Télécharger vos documents") :
 - [#742](https://github.com/Refhi/Weda-Helper/issues/742) - Dans la page des imports, vous pouvez demander l'analyse de tous les imports en attente d'un coup ! Particulièrement intéressant si vous avez une IA locale lente : vous pouvez lancer l'analyse automatique de tous les imports en attente pendant la pause déjeuner par exemple.

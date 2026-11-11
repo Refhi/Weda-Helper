@@ -694,6 +694,43 @@ const availableFunctions = {
         },
         // Référence indirecte : n'existe que côté content script (pdfParserAIExtraction.js).
         execute: (args = {}) => resolvePendingPdfParserFields(args)
+    },
+    // `interne` : réservé à la chaîne analyserBiologie (@see toolChainsDefinitions.js).
+    renseignerAnalyseBiologie: {
+        interne: true,
+        definition: {
+            type: "function",
+            function: {
+                name: "renseignerAnalyseBiologie",
+                description: "Enregistre l'analyse du résultat de biologie en cours de traitement.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        statut: { type: "string", enum: ["normal", "a_surveiller", "urgent"], description: "Gravité globale du résultat." },
+                        resume: { type: "string", description: "Synthèse en 1 à 3 phrases du résultat." },
+                        anomalies: {
+                            type: "array",
+                            description: "Valeurs hors normes ou cliniquement notables (liste vide si aucune).",
+                            items: {
+                                type: "object",
+                                properties: {
+                                    libelle: { type: "string" },
+                                    valeur: { type: "string", description: "Valeur avec son unité." },
+                                    commentaire: { type: "string", description: "Interprétation et conduite à tenir éventuelle." }
+                                },
+                                required: ["libelle"]
+                            }
+                        }
+                    },
+                    required: ["statut", "resume"]
+                }
+            }
+        },
+        // Référence indirecte : n'existe que côté content script (features/biologieMasse.js).
+        execute: (args = {}) => {
+            if (typeof globalThis.resolvePendingBiologieAnalyse !== 'function') throw new Error("L'analyse de masse des biologies n'est pas active sur cette page.");
+            return globalThis.resolvePendingBiologieAnalyse(args);
+        }
     }
 };
 
