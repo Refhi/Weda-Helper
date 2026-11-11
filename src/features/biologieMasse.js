@@ -142,7 +142,7 @@ addTweak('/FolderMedical/HprimForm.aspx', 'biologieMasseAnalyse', async function
 
     let running = false;
     let stopRequested = false;
-    let toolbox, progress, startButtons, stopButton;
+    let toolbox, progress, checkedButton, allButton, stopButton;
 
     const saveAnalyse = (key, analyse) => {
         const analyses = readBiologieSession(BIOLOGIE_ANALYSES_KEY, {});
@@ -173,9 +173,15 @@ addTweak('/FolderMedical/HprimForm.aspx', 'biologieMasseAnalyse', async function
         }
     }
 
+    function refreshCheckedButton() {
+        if (!checkedButton) return;
+        checkedButton.disabled = running || !getBiologieRows().some(row => row.checked);
+    }
+
     function updateUi(text = '') {
         if (!toolbox) return;
-        startButtons.forEach(button => { button.disabled = running; });
+        allButton.disabled = running;
+        refreshCheckedButton();
         stopButton.disabled = !running;
         progress.textContent = text;
     }
@@ -240,8 +246,8 @@ addTweak('/FolderMedical/HprimForm.aspx', 'biologieMasseAnalyse', async function
             button.onclick = event => { event.preventDefault(); onclick(); };
             return button;
         };
-        const checkedButton = makeButton('🧪 Analyser les cochés', "Weda-Helper : analyse par IA des résultats cochés (ceux déjà analysés sont ignorés).", () => startQueue(rows => rows.filter(r => r.checked)));
-        const allButton = makeButton('🧪 Tout analyser', "Weda-Helper : analyse par IA de tous les résultats de la liste (ceux déjà analysés sont ignorés).", () => startQueue(rows => rows));
+        checkedButton = makeButton('🧪 Analyser les cochés', "Weda-Helper : analyse par IA des résultats cochés (ceux déjà analysés sont ignorés).", () => startQueue(rows => rows.filter(r => r.checked)));
+        allButton = makeButton('🧪 Tout analyser', "Weda-Helper : analyse par IA de tous les résultats de la liste (ceux déjà analysés sont ignorés).", () => startQueue(rows => rows));
         const clearButton = makeButton('🗑️', "Weda-Helper : oublie les analyses enregistrées pour cette session.", () => {
             sessionStorage.removeItem(BIOLOGIE_ANALYSES_KEY);
             decorateRows();
@@ -249,7 +255,6 @@ addTweak('/FolderMedical/HprimForm.aspx', 'biologieMasseAnalyse', async function
         stopButton = makeButton('⏹️', "Weda-Helper : arrête l'analyse en cours après le résultat courant.", () => { stopRequested = true; });
         progress = document.createElement('span');
         progress.style.fontSize = '0.85em';
-        startButtons = [checkedButton, allButton];
         toolbox.append(checkedButton, allButton, stopButton, clearButton, progress);
         grid.insertAdjacentElement('beforebegin', toolbox);
         updateUi();
@@ -262,7 +267,8 @@ addTweak('/FolderMedical/HprimForm.aspx', 'biologieMasseAnalyse', async function
         callback: async ([panel]) => {
             createToolbox(panel);
             // Le panneau est recréé à chaque postback : on réapplique les pastilles.
-            new MutationObserver(() => { decorateRows(); scheduleTitleReapply(); }).observe(panel, { childList: true, subtree: true });
+            new MutationObserver(() => { decorateRows(); scheduleTitleReapply(); refreshCheckedButton(); }).observe(panel, { childList: true, subtree: true });
+            panel.addEventListener('change', refreshCheckedButton);
             decorateRows();
 
             // Reprise après un rechargement complet de la page pendant une analyse.
