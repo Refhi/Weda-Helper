@@ -1312,6 +1312,26 @@ loadFromFileButton.addEventListener('click', function () {
 // Ajout du bouton à l'interface utilisateur
 document.getElementById('settings-toolbar').appendChild(loadFromFileButton);
 
+// Raccourcis Ctrl+C / Ctrl+V / Ctrl+U. Les copier/coller natifs sont préservés dans les champs de saisie
+// ou lorsqu'une sélection de texte existe ; rien n'est déclenché pendant la saisie d'un raccourci clavier.
+copySettingsButton.title += ' (Ctrl+C ou Ctrl+S)';
+importSettingsButton.title += ' (Ctrl+V)';
+loadFromFileButton.title += ' (Ctrl+U)';
+document.addEventListener('keydown', function (event) {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
+  if (document.querySelector('button.modifying')) return;
+  const target = document.activeElement;
+  const key = event.key.toLowerCase();
+  const inField = target && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
+  // Ctrl+S n'a pas de rôle natif utile : il reste actif même dans un champ de saisie
+  if (inField && key !== 's') return;
+  const actions = { c: copySettingsButton, s: copySettingsButton, v: importSettingsButton, u: loadFromFileButton };
+  if (!actions[key]) return;
+  if (key === 'c' && String(window.getSelection()).length > 0) return;
+  event.preventDefault();
+  actions[key].click();
+});
+
 
 
 
