@@ -20,8 +20,6 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeAutoRefresh', function (
         if (element) {
             element.click();
             recordMetrics({ clicks: 1, drags: 1 });
-            // Signale le rafraîchissement aux autres tweaks (ex: secureExchangeMessageQueue, mode "auto")
-            document.dispatchEvent(new CustomEvent('wedaEchangesInboxRefreshed'));
         }
     }
     setTimeout(function () {
@@ -112,8 +110,8 @@ addTweak('/FolderMedical/WedaEchanges/', 'autoClickUnPatient', function () {
  *
  * Deux scénarios de sélection des messages à parcourir :
  * - les messages dont la case a été cochée (bouton ▶️, déclenchement manuel)
- * - les messages non lus (bouton 🔁, déclenchement à l'activation, au chargement de la page
- *   et à chaque rafraîchissement de la boîte de réception, cf. secureExchangeAutoRefresh)
+ * - les messages non lus (bouton 🔁, déclenchement à l'activation puis vérification
+ *   toutes les 20 secondes)
  *
  * Il n'y a pas de pause entre deux messages : la boucle ne s'arrête que si le bouton ⏹️ est
  * utilisé. Le remplissage du formulaire (sélection du patient, titre, catégorie...) reste géré
@@ -128,14 +126,11 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
     // Garde-fou si l'évènement de fin n'arrive jamais (ex : message sans PDF ni corps de texte exploitable).
     // Large car l'analyse des antécédents (option verifierEtMettreAJourAntecedents) précède l'évènement de fin.
     const ANALYSIS_TIMEOUT = 300000;
-    // Délai après le clic sur le rafraîchissement automatique avant de vérifier les messages non lus
-    // (le temps que Weda recharge la liste depuis le serveur)
-    const REFRESH_CHECK_DELAY = 3000;
 
     let queueRunning = false;
     let queueShouldStop = false;
     let autoModeEnabled;
-    let initialUnreadObserver;
+    const UNREAD_CHECK_INTERVAL = 20000;
 
     // --- Sélection des messages selon le scénario ---
     function getAllMessages() {
@@ -248,39 +243,20 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
 
     function startAutoQueueIfUnread() {
         if (!autoModeEnabled || queueRunning || getUnreadMessages().length === 0) return;
-        initialUnreadObserver?.disconnect();
         processQueue(getUnreadMessages);
     }
 
     function setAutoMode(enabled) {
         autoModeEnabled = enabled;
-        if (!enabled) initialUnreadObserver?.disconnect();
         updateToolboxState();
     }
 
     async function toggleAutoMode() {
         const enabled = !autoModeEnabled;
-        autoButton.disabled = true;
-        try {
-            await chrome.storage.local.set({ [AUTO_MODE_STORAGE_KEY]: enabled });
-            setAutoMode(enabled);
-            if (enabled) startAutoQueueIfUnread();
-        } catch (error) {
-            console.warn('[secureExchangeMessageQueue] Impossible de mémoriser le mode automatique.', error);
-            sendWedaNotif({
-                message: "Le réglage de l’analyse automatique n’a pas pu être enregistré.",
-                type: 'fail',
-                icon: 'error'
-            });
-        } finally {
-            autoButton.disabled = false;
-        }
+        await chrome.storage.local.set({ [AUTO_MODE_STORAGE_KEY]: enabled });
+        setAutoMode(enabled);
+        if (enabled) startAutoQueueIfUnread();
     }
-
-    // --- Rafraîchissement automatique toutes les 15 min (cf. secureExchangeAutoRefresh) ---
-    document.addEventListener('wedaEchangesInboxRefreshed', () => {
-        setTimeout(startAutoQueueIfUnread, REFRESH_CHECK_DELAY);
-    });
 
     // --- Boîte à outils (▶️ cochés / 🔁 auto non lus / ⏹️ stop) ---
     let playButton, autoButton, stopButton, progressLabel;
@@ -296,7 +272,6 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
     function updateToolboxState() {
         if (!playButton) return;
         playButton.disabled = queueRunning;
-        autoButton.setAttribute('aria-pressed', String(autoModeEnabled));
         autoButton.classList.toggle('whQueueAutoActive', autoModeEnabled);
         autoButton.style.backgroundColor = autoModeEnabled ? '#4CAF50' : '';
         autoButton.style.color = autoModeEnabled ? 'white' : '';
@@ -328,7 +303,6 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
         autoButton = document.createElement('button');
         autoButton.type = 'button';
         autoButton.innerText = '🔁';
-        autoButton.setAttribute('aria-label', 'Analyse automatique des messages non lus');
         autoButton.title = "Weda-Helper : analyser automatiquement les messages non lus dès qu'il y en a (à l'activation puis à chaque rafraîchissement de la boîte de réception).";
         autoButton.onclick = toggleAutoMode;
 
@@ -353,14 +327,10 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
         inboxContainer.insertAdjacentElement('afterend', toolbox);
         updateToolboxState();
 
-        if (autoModeEnabled) {
-            // La liste Weda peut arriver après le conteneur. Reprendre une fois, dès qu'elle est prête.
-            initialUnreadObserver = new MutationObserver(startAutoQueueIfUnread);
-            initialUnreadObserver.observe(inboxContainer, {
-                childList: true, subtree: true, attributes: true, attributeFilter: ['class']
-            });
-            startAutoQueueIfUnread();
-        }
+        // Filet de sécurité : la liste Weda peut arriver après le conteneur ou être rechargée
+        // sans passer par le rafraîchissement automatique.
+        setInterval(startAutoQueueIfUnread, UNREAD_CHECK_INTERVAL);
+        startAutoQueueIfUnread();
     }
 
     chrome.storage.onChanged.addListener((changes, areaName) => {
