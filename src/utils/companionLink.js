@@ -118,7 +118,7 @@ function sendToCompanion(urlCommand, blob = null, callback = null, callbackWithD
                     console.warn(errortype + ' Error:', data.error);
                     // alert(errortype + ' Erreur : ' + data.error);
                     sendWedaNotifAllTabs({
-                        message: 'Erreur générique Companion : ' + error,
+                        message: 'Erreur générique Companion : ' + data.error,
                         type: 'fail',
                         icon: 'bug_report'
                     })
