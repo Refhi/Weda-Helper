@@ -766,7 +766,28 @@ chrome.storage.local.get('defaultShortcuts', function (result) {
       button.onclick = shortcutClicked;
       button.id = key;
       buttonContainer.appendChild(button);
+
+      var resetBtn = document.createElement('button');
+      resetBtn.textContent = '↺';
+      resetBtn.className = 'shortcut-reset';
+      resetBtn.title = 'Remettre le raccourci par défaut (' + defaultShortcutValue + ')';
+      resetBtn.onclick = function () {
+        chrome.storage.local.get("shortcuts", function (res) {
+          var shortcuts = res["shortcuts"] || {};
+          shortcuts[key] = defaultShortcutValue;
+          chrome.storage.local.set({ "shortcuts": shortcuts }, function () {
+            hotkeys.unbind('*');
+            button.classList.remove('modifying');
+            button.innerHTML = defaultShortcutValue;
+            button.setAttribute('data-initial-text', defaultShortcutValue);
+          });
+        });
+      };
+      var resetContainer = document.createElement('td');
+      resetContainer.style.textAlign = 'right';
+      resetContainer.appendChild(resetBtn);
       shortcutElement.appendChild(buttonContainer);
+      shortcutElement.appendChild(resetContainer);
       shortcutElement.appendChild(description);
       table.appendChild(shortcutElement);
 
@@ -1102,7 +1123,7 @@ clearButton.addEventListener('click', function () {
 });
 
 // Ajoutez le bouton à la page
-document.body.appendChild(clearButton);
+document.getElementById('maintenance-buttons').appendChild(clearButton);
 
 
 // Ajout d'un bouton pour effacer les raccourcis clavier et donc les remettre par défaut
@@ -1133,7 +1154,7 @@ clearShortcutsButton.addEventListener('click', function () {
 });
 
 // Ajout du bouton à l'interface utilisateur
-document.body.appendChild(clearShortcutsButton);
+document.getElementById('maintenance-buttons').appendChild(clearShortcutsButton);
 
 // Ajout d'un bouton pour effacer les settings et donc les remettre par défaut
 var clearSettingsButton = document.createElement('button');
@@ -1161,11 +1182,12 @@ clearSettingsButton.addEventListener('click', function () {
 });
 
 // Ajout du bouton à l'interface utilisateur
-document.body.appendChild(clearSettingsButton);
+document.getElementById('maintenance-buttons').appendChild(clearSettingsButton);
 
 // Ajout d'un bouton copiant les paramètres actuels dans le presse-papier
 var copySettingsButton = document.createElement('button');
-copySettingsButton.textContent = '📋📤Copier/Sauv. param.';
+copySettingsButton.textContent = '📋📤';
+copySettingsButton.title = 'Copier / sauvegarder les paramètres';
 copySettingsButton.addEventListener('click', function () {
   chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (result) {
     collectCurrentValues(result.defaultSettings, result.defaultShortcuts)
@@ -1205,11 +1227,12 @@ copySettingsButton.addEventListener('click', function () {
   });
 });
 // Ajout du bouton à l'interface utilisateur
-document.body.appendChild(copySettingsButton);
+document.getElementById('settings-toolbar').appendChild(copySettingsButton);
 
 // Ajout d'un bouton important les paramètres depuis le presse-papier
 var importSettingsButton = document.createElement('button');
-importSettingsButton.textContent = '📋📥Coller paramètres';
+importSettingsButton.textContent = '📋📥';
+importSettingsButton.title = 'Coller les paramètres';
 importSettingsButton.addEventListener('click', function () {
   navigator.clipboard.readText().then(text => {
     if (text) {
@@ -1243,11 +1266,12 @@ importSettingsButton.addEventListener('click', function () {
   });
 });
 // Ajout du bouton à l'interface utilisateur
-document.body.appendChild(importSettingsButton);
+document.getElementById('settings-toolbar').appendChild(importSettingsButton);
 
 // Ajout d'un bouton pour charger les paramètres depuis un fichier
 var loadFromFileButton = document.createElement('button');
-loadFromFileButton.textContent = '📁📥Charger depuis fichier';
+loadFromFileButton.textContent = '📁📥';
+loadFromFileButton.title = 'Charger les paramètres depuis un fichier';
 loadFromFileButton.addEventListener('click', function () {
   // Créer un input file invisible
   const fileInput = document.createElement('input');
@@ -1286,7 +1310,7 @@ loadFromFileButton.addEventListener('click', function () {
   document.body.removeChild(fileInput);
 });
 // Ajout du bouton à l'interface utilisateur
-document.body.appendChild(loadFromFileButton);
+document.getElementById('settings-toolbar').appendChild(loadFromFileButton);
 
 
 

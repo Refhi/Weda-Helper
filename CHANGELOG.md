@@ -32,6 +32,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#691](https://github.com/Refhi/Weda-Helper/issues/691) - Implémentation d'un linter pour les consultations. Oui, je suis maniaque sur les mises en forme de mes observations >.<
 - [#605](https://github.com/Refhi/Weda-Helper/issues/605) - Ajout d’un kill-switch permettant de désactiver rapidement la quasi-totalité de l'extension. Rechargez la page Weda pour appliquer. Utile si vous avez un blocage avec l'extension à contourner temporairement, sans désactiver l’extension elle-même.
 - mutualisation de la logique de gestion des panneaux flottants pour une meilleure cohérence et maintenance du code.
+- [#733](https://github.com/Refhi/Weda-Helper/issues/733) - Améliorations de la page des options : il est plus facile de réinitialiser les raccourcis aux valeurs par défaut individuellement. Boutons de sauvegarde/restauration des options plus accessibles.
 
 
 # [3.3] - IA, IA, et encore IA !
