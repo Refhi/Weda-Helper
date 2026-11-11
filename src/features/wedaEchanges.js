@@ -74,7 +74,8 @@ addTweak("/FolderMedical/WedaEchanges/", "secureExchangeOpenNextAfterImport", fu
             attributeFilter: ["class", "hidden", "data-running"]
         });
     }, true);
-  
+});
+
 addTweak("/FolderMedical/WedaEchanges/", "secureExchangeFaviconCounter", function () {
     const canvas = document.createElement("canvas");
     canvas.width = canvas.height = 64;
