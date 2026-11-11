@@ -74,6 +74,84 @@ addTweak("/FolderMedical/WedaEchanges/", "secureExchangeOpenNextAfterImport", fu
             attributeFilter: ["class", "hidden", "data-running"]
         });
     }, true);
+  
+addTweak("/FolderMedical/WedaEchanges/", "secureExchangeFaviconCounter", function () {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 64;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    let favicon;
+    let originalAttributes;
+    let lastCount = null;
+    let refreshTimer;
+
+    function refreshFavicon() {
+        const list = document.querySelector("#messageList");
+        if (!list) {
+            if (!favicon) return;
+            if (originalAttributes) {
+                for (const [name, value] of Object.entries(originalAttributes)) {
+                    if (value === null) favicon.removeAttribute(name);
+                    else favicon.setAttribute(name, value);
+                }
+            } else {
+                favicon.remove();
+            }
+            favicon = null;
+            lastCount = null;
+            return;
+        }
+
+        // Comme dans le script d'analyse de courriers, compter les lignes de la liste courante.
+        const count = list.querySelectorAll(":scope > div.messageListItem").length;
+        if (count === lastCount && favicon?.isConnected) return;
+
+        if (!favicon?.isConnected) {
+            favicon = document.querySelector("link[rel~='icon']");
+            originalAttributes = favicon ? {
+                href: favicon.getAttribute("href"),
+                type: favicon.getAttribute("type")
+            } : null;
+            if (!favicon) {
+                favicon = document.createElement("link");
+                favicon.rel = "icon";
+                document.head.append(favicon);
+            }
+        }
+
+        const label = count > 99 ? "99+" : String(count);
+        const fontSize = label.length === 1 ? 38 : label.length === 2 ? 32 : 24;
+        context.clearRect(0, 0, 64, 64);
+        context.beginPath();
+        context.arc(32, 32, 30, 0, Math.PI * 2);
+        context.fillStyle = "#174ea6";
+        context.fill();
+        context.lineWidth = 3;
+        context.strokeStyle = "#ffffff";
+        context.stroke();
+        context.fillStyle = "#ffffff";
+        context.font = `800 ${fontSize}px Arial, sans-serif`;
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.fillText(label, 32, label.length > 2 ? 33 : 34);
+        favicon.type = "image/png";
+        favicon.href = canvas.toDataURL("image/png");
+        lastCount = count;
+    }
+
+    function scheduleRefresh() {
+        if (refreshTimer) return;
+        refreshTimer = setTimeout(() => {
+            refreshTimer = null;
+            refreshFavicon();
+        }, 100);
+    }
+
+    new MutationObserver(scheduleRefresh).observe(document.body, { childList: true, subtree: true });
+    window.addEventListener("focus", scheduleRefresh);
+    document.addEventListener("visibilitychange", scheduleRefresh);
+    refreshFavicon();
 });
 
 addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeAutoRefresh', function () {
@@ -84,8 +162,6 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeAutoRefresh', function (
         if (element) {
             element.click();
             recordMetrics({ clicks: 1, drags: 1 });
-            // Signale le rafraîchissement aux autres tweaks (ex: secureExchangeMessageQueue, mode "auto")
-            document.dispatchEvent(new CustomEvent('wedaEchangesInboxRefreshed'));
         }
     }
     setTimeout(function () {
@@ -147,26 +223,25 @@ addTweak('/FolderMedical/WedaEchanges/', 'swapTitrePJetCorpsMessage', function (
 });
 
 
-// Clic automatique sur "Un patient" dès qu'un élément  .messageListItem passe en  .messageListItem.selected
+// Clic automatique sur "Un patient" à l'ouverture d'un message (clic manuel ou parcours par lot).
 addTweak('/FolderMedical/WedaEchanges/', 'autoClickUnPatient', function () {
-    // waitForElement ne signale qu'une fois chaque nœud : un retour sur un message déjà sélectionné
-    // (simple changement de classe) ne serait pas détecté. On suit donc directement la sélection.
-    let lastSelected = null;
-    const observer = new MutationObserver(async () => {
-        const selected = document.querySelector('.messageListItem.selected');
-        if (selected === lastSelected) return;
-        lastSelected = selected;
-        if (!selected) return;
-        await sleep(100); // Laisse Weda afficher le détail du message
-        if (document.querySelector('.messageListItem.selected') !== selected) return; // sélection changée entre-temps
-        const unPatientButton = document.querySelector('.btnImport.importPatient');
-        console.log('[autoClickUnPatient] unPatientButton', unPatientButton);
-        if (unPatientButton) {
+    let pendingClick;
+    document.addEventListener('click', event => {
+        const line = event.target.closest?.('#messageList .messageLineItem');
+        if (!line) return;
+
+        // Weda peut recréer la ligne sélectionnée pendant la recherche patient.
+        // Seul un clic sur la liste doit lancer une nouvelle recherche.
+        clearTimeout(pendingClick);
+        pendingClick = setTimeout(() => {
+            if (!line.isConnected || !line.closest('.messageListItem.selected')) return;
+            const unPatientButton = document.querySelector('#messageContainer .btnImport.importPatient');
+            if (!unPatientButton) return;
+
             unPatientButton.click();
             recordMetrics({ clicks: 1, drags: 0 });
-        }
-    });
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+        }, 100); // Laisse Weda afficher le détail du message.
+    }, true);
 });
 
 
@@ -176,28 +251,27 @@ addTweak('/FolderMedical/WedaEchanges/', 'autoClickUnPatient', function () {
  *
  * Deux scénarios de sélection des messages à parcourir :
  * - les messages dont la case a été cochée (bouton ▶️, déclenchement manuel)
- * - les messages non lus (bouton 🔁, déclenchement à l'activation puis à chaque rafraîchissement
- *   de la boîte de réception, cf. secureExchangeAutoRefresh)
+ * - les messages non lus (bouton 🔁, déclenchement à l'activation puis vérification
+ *   toutes les 20 secondes)
  *
  * Il n'y a pas de pause entre deux messages : la boucle ne s'arrête que si le bouton ⏹️ est
  * utilisé. Le remplissage du formulaire (sélection du patient, titre, catégorie...) reste géré
  * par processFoundPdfIframeEchanges ; l'utilisateur garde la main pour valider manuellement
  * chaque message, y compris après coup en revenant dessus dans la liste.
  */
-addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function () {
+addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async function () {
+    const AUTO_MODE_STORAGE_KEY = 'secureExchangeMessageQueueAutoEnabled';
     // Émis par pdfParser.js (processFoundPdfIframeEchanges) à la fin du traitement d'un message,
     // qu'il ait réussi, échoué, ou que le PDF ait déjà été importé auparavant.
     const ANALYSIS_DONE_EVENT = 'pdfParserEchangesDone';
     // Garde-fou si l'évènement de fin n'arrive jamais (ex : message sans PDF ni corps de texte exploitable).
     // Large car l'analyse des antécédents (option verifierEtMettreAJourAntecedents) précède l'évènement de fin.
     const ANALYSIS_TIMEOUT = 300000;
-    // Délai après le clic sur le rafraîchissement automatique avant de vérifier les messages non lus
-    // (le temps que Weda recharge la liste depuis le serveur)
-    const REFRESH_CHECK_DELAY = 3000;
 
     let queueRunning = false;
     let queueShouldStop = false;
-    let autoModeEnabled = false;
+    let autoModeEnabled;
+    const UNREAD_CHECK_INTERVAL = 20000;
 
     // --- Sélection des messages selon le scénario ---
     function getAllMessages() {
@@ -309,25 +383,21 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
     }
 
     function startAutoQueueIfUnread() {
-        if (!autoModeEnabled || queueRunning) return;
-        const unread = getUnreadMessages();
-        if (unread.length > 0) {
-            processQueue(getUnreadMessages);
-        }
+        if (!autoModeEnabled || queueRunning || getUnreadMessages().length === 0) return;
+        processQueue(getUnreadMessages);
     }
 
-    function toggleAutoMode() {
-        autoModeEnabled = !autoModeEnabled;
+    function setAutoMode(enabled) {
+        autoModeEnabled = enabled;
         updateToolboxState();
-        if (autoModeEnabled) {
-            startAutoQueueIfUnread();
-        }
     }
 
-    // --- Rafraîchissement automatique toutes les 15 min (cf. secureExchangeAutoRefresh) ---
-    document.addEventListener('wedaEchangesInboxRefreshed', () => {
-        setTimeout(startAutoQueueIfUnread, REFRESH_CHECK_DELAY);
-    });
+    async function toggleAutoMode() {
+        const enabled = !autoModeEnabled;
+        await chrome.storage.local.set({ [AUTO_MODE_STORAGE_KEY]: enabled });
+        setAutoMode(enabled);
+        if (enabled) startAutoQueueIfUnread();
+    }
 
     // --- Boîte à outils (▶️ cochés / 🔁 auto non lus / ⏹️ stop) ---
     let playButton, autoButton, stopButton, progressLabel;
@@ -354,7 +424,7 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
         }
     }
 
-    function createToolbox() {
+    function createToolbox([inboxContainer]) {
         if (document.querySelector('#whMessageQueueToolbox')) return;
 
         const toolbox = document.createElement('div');
@@ -396,8 +466,26 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', function 
 
         toolbox.append(playButton, autoButton, stopButton, progressLabel);
 
-        const inboxContainer = document.querySelector('#weInboxContainer');
         inboxContainer.insertAdjacentElement('afterend', toolbox);
+        updateToolboxState();
+
+        // Filet de sécurité : la liste Weda peut arriver après le conteneur ou être rechargée
+        // sans passer par le rafraîchissement automatique.
+        setInterval(startAutoQueueIfUnread, UNREAD_CHECK_INTERVAL);
+        startAutoQueueIfUnread();
+    }
+
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName === 'local' && AUTO_MODE_STORAGE_KEY in changes) {
+            setAutoMode(changes[AUTO_MODE_STORAGE_KEY].newValue === true);
+        }
+    });
+    try {
+        const stored = await chrome.storage.local.get(AUTO_MODE_STORAGE_KEY);
+        autoModeEnabled ??= stored[AUTO_MODE_STORAGE_KEY] === true;
+    } catch (error) {
+        autoModeEnabled ??= false;
+        console.warn('[secureExchangeMessageQueue] Impossible de relire le mode automatique.', error);
     }
 
     waitForElement({

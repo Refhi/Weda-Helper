@@ -349,6 +349,11 @@ var advancedDefaultSettings = [
                 "description": "Ouvre le courrier suivant dans Échanges après un import réussi.",
                 "default": false
             }, {
+                "name": "secureExchangeFaviconCounter",
+                "type": TYPE_BOOL,
+                "description": "Affiche le nombre de courriers de la liste courante dans une pastille sur l'onglet de la messagerie sécurisée.",
+                "default": true
+            }, {
                 "name": "secureExchangeAutoRefresh",
                 "type": TYPE_BOOL,
                 "description": "Rafraîchis automatiquement la messagerie sécurisée (vous devez laisser un onglet ouvert).",
@@ -377,7 +382,7 @@ var advancedDefaultSettings = [
             }, {
                 "name": "secureExchangeMessageQueue",
                 "type": TYPE_BOOL,
-                "description": "Ajoute une boîte à outils dans la messagerie sécurisée pour analyser successivement plusieurs messages : ▶️ parcourt les messages cochés, 🔁 analyse automatiquement les messages non lus (à l'activation puis à chaque rafraîchissement de la boîte de réception), ⏹️ arrête le parcours en cours.",
+                "description": "Ajoute une boîte à outils dans la messagerie sécurisée. ▶️ parcourt les messages cochés. 🔁 analyse les messages non lus et conserve son état après rechargement de la page. ⏹️ arrête le parcours en cours.",
                 "default": true
             }]
         }, {
