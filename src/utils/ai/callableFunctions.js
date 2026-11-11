@@ -619,15 +619,28 @@ const availableFunctions = {
                         },
                         content: {
                             type: "string",
-                            description: "Contenu texte principal qui sera inséré dans le corps du document. Doit impérativement être fourni."
+                            description: "Contenu texte principal qui sera inséré dans le corps du document. Obligatoire sauf si seuls des suivis sont fournis."
+                        },
+                        suivis: {
+                            type: "array",
+                            description: "Uniquement pour target 'toConsultation' : items de suivi (poids, TA, IMC...) à renseigner, chacun sous la forme {label, value, unit}, ex. [{label:'Poids', value:'11', unit:'kg'}]. Les items existants, leurs index et leurs valeurs antérieures (historique) sont lisibles via pageContext (champ suivis) sur la page de consultation. Optionnel.",
+                            items: {
+                                type: "object",
+                                properties: {
+                                    label: { type: "string", description: "Libellé de l'item de suivi (ex. 'Poids', 'Taille', 'TA'), tel que renvoyé par pageContext. OBLIGATOIRE : sans lui l'item ne peut pas être retrouvé." },
+                                    value: { type: "string", description: "Valeur numérique seule, sans unité (ex. '11')." },
+                                    unit: { type: "string", description: "Unité (ex. 'kg'). Optionnel." }
+                                },
+                                required: ["label", "value"]
+                            }
                         }
                     },
-                    required: ["target", "content"]
+                    required: ["target"]
                 }
             }
         },
         // Référence indirecte : insertData n'existe que côté content script (dataInserter.js).
-        execute: ({ target, title, subtitle, content } = {}, patientId = null) => insertData(target, { title, subtitle, content }, { patientId })
+        execute: ({ target, title, subtitle, content, suivis } = {}, patientId = null) => insertData(target, { title, subtitle, content, suivis }, { patientId })
     },
     renseignerDocument: {
         definition: {

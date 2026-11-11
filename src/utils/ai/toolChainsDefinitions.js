@@ -458,7 +458,7 @@ const toolChains = (() => {
                     outils: ['insertWedaDocument'],
                     toolChoice: 'insertWedaDocument',
                     consigne: ctx => `Rédige le document demandé (target: ${ctx.entree.target}) à partir de la demande de l'utilisateur et des données du dossier éventuellement jointes, `
-                        + `puis appelle insertWedaDocument UNE fois (target, title, subtitle, content). N'invente aucune information absente du dossier.`,
+                        + `puis appelle insertWedaDocument UNE fois (target, title, subtitle, content, et suivis pour toConsultation si l'utilisateur donne des mesures : [{label:'Poids', value:'11', unit:'kg'}], label obligatoire). N'invente aucune information absente du dossier.`,
                     verifier: (args, ctx) => {
                         if (args?.target !== ctx.entree.target) return `target doit valoir "${ctx.entree.target}". Refais l'appel.`;
                         return typeof args.content === 'string' && args.content.trim() ? null : "content est obligatoire. Refais l'appel.";
