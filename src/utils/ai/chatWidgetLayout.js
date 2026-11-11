@@ -46,7 +46,7 @@ async function saveDiscussionClientData(partialData) {
  * Active le déplacement de la bulle et de la fenêtre de chat, le redimensionnement de la fenêtre
  * par ses bords et celui du champ de saisie, en restaurant la géométrie sauvegardée.
  */
-function setupChatWidgetLayout({ widget, chatWindow, chatHeader, chatToggle, chatInput, inputResizeHandle }) {
+function setupChatWidgetLayout({ widget, chatWindow, chatHeader, chatToggle, chatInput, inputResizeHandle, initialData }) {
     const widgetLayout = attachFloatingPanel(widget, {
         dragHandle: chatToggle,
         suppressClickOnDrag: true,
@@ -66,18 +66,15 @@ function setupChatWidgetLayout({ widget, chatWindow, chatHeader, chatToggle, cha
         })
     });
 
-    async function restoreChatGeometry() {
-        const { widgetPosition, windowPosition, windowSize } = await loadDiscussionClientData();
-        if (widgetPosition) {
-            const applied = widgetLayout.applyGeometry(widgetPosition);
-            saveDiscussionClientData({ widgetPosition: { right: applied.right, bottom: applied.bottom } });
-        }
-        if (windowPosition || windowSize) {
-            chatWindowLayout.applyGeometry({ ...chatWindowLayout.getGeometry(), ...windowSize, ...windowPosition });
-        }
+    // Appliqué de façon synchrone (données préchargées) : le widget n'est jamais peint à la position par défaut.
+    const { widgetPosition, windowPosition, windowSize } = initialData;
+    if (widgetPosition) {
+        const applied = widgetLayout.applyGeometry(widgetPosition);
+        saveDiscussionClientData({ widgetPosition: { right: applied.right, bottom: applied.bottom } });
     }
-
-    restoreChatGeometry();
+    if (windowPosition || windowSize) {
+        chatWindowLayout.applyGeometry({ ...chatWindowLayout.getGeometry(), ...windowSize, ...windowPosition });
+    }
 
     function makeTopLeftResizable(handleEl, targetEl, { minHeight, maxHeight = Infinity }) {
         handleEl.addEventListener('mousedown', (e) => {

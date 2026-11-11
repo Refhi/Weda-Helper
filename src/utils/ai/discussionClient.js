@@ -21,6 +21,8 @@ function publishChatApi(api) {
  * Insertion du chat en bas à droite de la page.
  */
 async function addAIChatClient() {
+    // Chargé avant l'insertion pour créer le widget directement à sa position sauvegardée.
+    const layoutData = await loadDiscussionClientData();
     // Éviter les doublons si déjà injecté
     if (document.getElementById('wedaHelper-chat-widget')) return;
 
@@ -123,7 +125,7 @@ async function addAIChatClient() {
         domPurifyAvailable: !!domPurifyApi
     });
 
-    setupChatWidgetLayout({ widget, chatWindow, chatHeader, chatToggle, chatInput, inputResizeHandle });
+    setupChatWidgetLayout({ widget, chatWindow, chatHeader, chatToggle, chatInput, inputResizeHandle, initialData: layoutData });
 
     // --- Gestion des pièces jointes (documents/images envoyés au modèle) ---
     // Extensions/types traités comme du texte brut (extrait puis injecté dans le message,
