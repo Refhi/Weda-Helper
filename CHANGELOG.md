@@ -17,6 +17,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#723](https://github.com/Refhi/Weda-Helper/issues/723) - Les données extraites dans la messagerie sécurisée sont désormais enregistrées même si le message n'est pas importé (jusqu'à la fermeture de l'onglet). Cela évite de faire les analyses plusieurs fois si on parcours les messages avant import.
 - [#723](https://github.com/Refhi/Weda-Helper/issues/723) - Le bouton "Un patient" est automatiquement cliqué dès qu'un message est sélectionné dans la messagerie sécurisée. (désactivable dans les options)
 - Ajout d'une boîte à outils dans la messagerie sécurisée pour analyser successivement plusieurs messages : ▶️ parcourt les messages cochés, 🔁 analyse automatiquement les messages non lus (à l'activation puis à chaque rafraîchissement de la boîte de réception), ⏹️ arrête le parcours en cours. (désactivable dans les options)
+- [#753](https://github.com/Refhi/Weda-Helper/issues/753) - Après un clic sur "Importer" dans la messagerie sécurisée, le message suivant de la liste est automatiquement ouvert. (activable dans les options)
 
 ### Post-it :
 - [#629](https://github.com/Refhi/Weda-Helper/issues/629) - L'importation des post-it est de nouveau fonctionnelle, et plus complète.

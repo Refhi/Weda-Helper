@@ -347,7 +347,7 @@ var advancedDefaultSettings = [
                 "name": "secureExchangeOpenNextAfterImport",
                 "type": TYPE_BOOL,
                 "description": "Ouvre le courrier suivant dans Échanges après un import réussi.",
-                "default": true
+                "default": false
             }, {
                 "name": "secureExchangeAutoRefresh",
                 "type": TYPE_BOOL,
