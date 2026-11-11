@@ -100,7 +100,6 @@
         "src/features/antecedent.js",
         "src/features/courrier.js",
         "src/features/imti.js",
-        "src/features/echangesDocuments.js",
         "src/features/wedaEchanges.js",
         "src/features/antecedentsComparePanel.js",
         "src/features/pdfParser.js",

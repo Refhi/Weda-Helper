@@ -91,24 +91,15 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
     if (!await getOptionPromise('PdfParserAutoAIExtraction')) return {};
 
     const fullModeEnabled = await getOptionPromise('PdfParserAutoAIFullMode');
-    const fieldsToAsk = (await listFieldsToAsk(extractedData, fullModeEnabled))
-        .filter(field => !Object.hasOwn(aiSources.corrections || {}, field.key));
+    const fieldsToAsk = await listFieldsToAsk(extractedData, fullModeEnabled);
     if (fieldsToAsk.length === 0) return {};
 
-    const chatApi = await prepareChatApi(fullModeEnabled).catch(error => {
-        if (!aiSources.onAIUnavailable) throw error;
-        return null;
-    });
-    if (!chatApi) {
-        aiSources.onAIUnavailable?.();
-        return {};
-    }
-    if (aiSources.isCurrent && !aiSources.isCurrent()) return {};
+    const chatApi = await prepareChatApi(fullModeEnabled);
+    if (!chatApi) return {};
 
     const sendToChatApi = await buildChainLauncher(chatApi, 'completerDocument', {
         toolName: 'renseignerChampsPdfParser', fieldsToAsk, fullModeEnabled, fullText, urlPDF, possibleDocumentTypes, messageBody: aiSources.messageBody
     });
-    if (aiSources.isCurrent && !aiSources.isCurrent()) return {};
 
     let parsedFields;
     try {
@@ -125,7 +116,6 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
         });
     } catch (error) {
         console.warn('[pdfParserAIExtraction] Échec de la complétion IA, poursuite sans ces champs :', error.message || error);
-        aiSources.onAIUnavailable?.();
         return {};
     }
 
@@ -154,26 +144,19 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
  * car la conversation est réinitialisée.
  * @returns {Promise<Array<object>|null>} opérations proposées (vide : aucune différence), null si la vérification n'a pas eu lieu.
  */
-async function checkAntecedentsAgainstDocument(fullText, urlPDF = null, {
-    messageBody = null, isCurrent = () => true, onAIUnavailable
-} = {}) {
-    if (!await getOptionPromise('verifierEtMettreAJourAntecedents') || !isCurrent()) return null;
+async function checkAntecedentsAgainstDocument(fullText, urlPDF = null, { messageBody = null } = {}) {
+    if (!await getOptionPromise('verifierEtMettreAJourAntecedents')) return null;
     if (!await resolveCurrentPatientIdWithWait()) {
         console.warn('[pdfParserAIExtraction] Aucun patient sélectionné, vérification des antécédents ignorée.');
         return null;
     }
     const chatApi = await prepareChatApi(false);
-    if (!chatApi) {
-        onAIUnavailable?.();
-        return null;
-    }
-    if (!isCurrent()) return null;
+    if (!chatApi) return null;
 
     const sendToChatApi = await buildChainLauncher(chatApi, 'verifierAntecedentsDepuisDocument', {
         fieldsToAsk: [], fullText, urlPDF, messageBody,
         instructions: "Compare le document ci-dessous avec les antécédents du patient actuel, sans rien modifier. Suis les consignes de chaque étape : les outils à appeler te seront indiqués au fur et à mesure."
     });
-    if (!isCurrent()) return null;
     try {
         const operations = await new Promise((resolve, reject) => {
             pendingAntecedentsResolve = resolve;
