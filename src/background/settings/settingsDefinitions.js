@@ -372,7 +372,7 @@ var advancedDefaultSettings = [
             }, {
                 "name": "secureExchangeMessageQueue",
                 "type": TYPE_BOOL,
-                "description": "Ajoute une boîte à outils dans la messagerie sécurisée pour analyser successivement plusieurs messages : ▶️ parcourt les messages cochés, 🔁 analyse automatiquement les messages non lus (à l'activation puis à chaque rafraîchissement de la boîte de réception), ⏹️ arrête le parcours en cours.",
+                "description": "Ajoute une boîte à outils dans la messagerie sécurisée. ▶️ parcourt les messages cochés. 🔁 analyse les messages non lus et conserve son état après rechargement de la page. ⏹️ arrête le parcours en cours.",
                 "default": true
             }]
         }, {
