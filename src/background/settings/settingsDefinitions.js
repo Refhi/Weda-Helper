@@ -1201,6 +1201,12 @@ var advancedDefaultSettings = [
                 "longDescription": "Choisit les résultats normaux à inclure et leur ordre si l’assistant IA est activé. Les chiffres, les anomalies et les antériorités restent contrôlés par Weda Helper. Le profil IA actif reçoit les résultats chiffrés reconnus du bilan, sans identité ni historique.",
                 "default": true,
                 "subOptions": [{
+                    "name": "biologieMasseAnalyseTitre",
+                    "type": TYPE_BOOL,
+                    "description": "Après l'analyse, inscrit la synthèse dans le titre du résultat, précédée de [IA].",
+                    "longDescription": "Le titre n'est modifié que si l'analyse a réussi. Il est enregistré dans Weda (le titre existant est remplacé).",
+                    "default": true
+                }, {
                     "name": "biologieMasseAnalysePrompt",
                     "type": TYPE_LARGETEXT,
                     "description": "Prompt envoyé à l'IA pour analyser chaque résultat de biologie.",
