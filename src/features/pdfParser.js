@@ -70,48 +70,43 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
 // 1.b. Dans la page des Echanges Sécurisés
 addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
     console.log('[pdfParser] Chargement de la page d\'échanges');
-    let messageRevision = 0;
-    let running = null;
-    const selectedMessage = () => document.querySelector("#messageList .messageListItem.selected .messageLineItem")
-        ?.textContent.trim();
-    document.addEventListener("click", event => {
-        if (event.target.closest?.("#messageList .messageLineItem")) {
-            messageRevision++;
-            document.querySelector("#pdfParserPatientName")?.remove();
-            return;
-        }
-        const action = event.target.closest?.("#messageContainer .importPatient, div.docImportBody td a");
-        const isINSValidated = action?.matches("div.docImportBody td a") && action.textContent.trim() === "Importer le message";
-        const revision = messageRevision;
-        const message = selectedMessage();
-        const isCurrent = () => messageRevision === revision && selectedMessage() === message;
-        if (!action || (!isINSValidated && !action.matches(".importPatient"))) {
-            const link = event.target.closest?.(ECHANGES_PATIENT_LINK);
-            if (event.isTrusted && link?.closest(ECHANGES_PATIENT_PANEL)) {
-                const row = link.closest("tr");
-                const birth = row?.querySelector(ECHANGES_PATIENT_BIRTH)?.textContent.trim();
-                waitEchangesPatient(() => !getEchangesPatientPanel() && getEchangesValidationButton(), isCurrent).then(closed => {
-                    if (closed && isCurrent()) addPatientNameDisplay([link.textContent.trim(), birth].filter(Boolean).join(" "), link);
+    waitForElement({
+        // Ici on déclenche la procédure lors du clic sur le bouton "Un patient".
+        selector: ".importPatient",
+        callback: function (elements) {
+            elements.forEach(function (element) { //Ajout d'un listener sur tous les boutons "Un patient".
+                element.addEventListener("click", function () {
+                    console.log("[pdfParser] Importation du message cliqué, je vais traiter le PDF présent dans l'iframe.");
+                    setTimeout(() => processFoundPdfIframeEchanges(false), 500); //Délai pour permettre à la fenetre de recherche de s'afficher
+                    
                 });
-            }
-            return;
+            });
         }
-        if (running?.revision === revision && running.message === message) return;
-        const job = { revision, message };
-        running = job;
-        const row = isINSValidated ? action.closest("tr") : null;
-        const link = row?.querySelector("td:nth-child(2) a");
-        const confirmedPatient = link && {
-            link, name: link.textContent.trim(), birthDate: row.querySelector("td:nth-child(3)")?.textContent.trim()
-        };
-        setTimeout(async () => {
-            try {
-                if (isCurrent()) await processFoundPdfIframeEchanges(isINSValidated, isCurrent, confirmedPatient);
-            } finally {
-                if (running === job) running = null;
-            }
-        }, 0);
-    }, true);
+    });
+
+    // On va également déclencher une procédure simplifiée si est cliqué le bouton "Importer le message"
+    waitForElement({
+        selector: "div.docImportBody td a",
+        text: "Importer le message",
+        callback: function (elements) {
+            // Ajout d'un listener sur tous les boutons "Importer le message"
+            elements.forEach(function (element) {
+                element.addEventListener("click", function () {
+                    console.log("[pdfParser] Importation du message cliqué, je vais traiter le PDF présent dans l'iframe.");
+
+                    // Récupérer l'élément frère en troisième position vers le haut
+                    let gdParrentElement = element.parentNode.parentNode;
+                    let nameElement = gdParrentElement.querySelector("td:nth-child(2) a");
+                    let nameText = nameElement ? nameElement.innerText : "Élément non trouvé";
+                    let ddnElement = gdParrentElement.querySelector("td:nth-child(3)");
+                    nameText += ddnElement ? ` ${ddnElement.innerText}` : "";
+                    console.log("[pdfParser] Nom du document importé :", nameText);
+                    addPatientNameDisplay(nameText, nameElement);
+                    processFoundPdfIframeEchanges(true);
+                });
+            });
+        }
+    });
 
     // On ajoute aussi une petite aide : le champ de recherche de patient est décalé vers le bas de l'écran
     waitForElement({
@@ -339,110 +334,163 @@ function notifyEchangesProcessingDone(hashId) {
  * 
  * @param {boolean} isINSValidated - Si true, on saute l'étape de recherche patient (INS déjà validé)
  */
-async function processFoundPdfIframeEchanges(isINSValidated, isCurrent, confirmedPatient) {
-    let hashId = null;
-    try {
-        const viewers = document.querySelectorAll('#messageContainer #PanelViewDocument iframe, '
-            + '#messageContainer iframe#iFrameViewFile, #messageContainer .mssAttachment embed, '
-            + '#messageContainer .attachmentContainer object[type="application/pdf"]');
-        const baseData = await extractBasePdfData(viewers, { echanges: true });
-        if (!isCurrent()) return;
-        if (!baseData) {
-            showEchangesPatientIssue("missing-document");
+async function processFoundPdfIframeEchanges(isINSValidated = false) {
+    console.log("[pdfParser] Echanges - Démarrage avec isINSValidated =", isINSValidated);
+
+    // ===========================================
+    // ÉTAPE 1 : Extraction des données du PDF
+    // ===========================================
+    let iframesElements = document.querySelectorAll('#PanelViewDocument iframe');
+    if (iframesElements.length === 0) {
+        // Fallback pour les PDF dans un embed (cas des messages avec corps de texte)
+        iframesElements = document.querySelectorAll('.mssAttachment embed');
+    }
+
+    // Setup de la procédure
+    // Extraction des données de base
+    const baseData = await extractBasePdfData(iframesElements); // s’occupe également de vérifier les données déjà extraites
+    if (!baseData) {
+        notifyEchangesProcessingDone(null);
+        return;
+    }
+
+    const { urlPDF, fullText, hashId, pdfText, messageBody } = baseData;
+    let extractedData = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody });
+
+    // Surveillance des clics sur les patients (pour affichage du nom sélectionné)
+    waitForElement({
+        selector: ".grid-item_tr, .grid-selecteditem",
+        callback: showClickedPatient,
+        triggerOnInit: true
+    });
+
+    // Si déjà importé, redirection vers recherche
+    if (extractedData.alreadyImported) {
+        console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction. Renvoi vers le champ de recherche ou le 1er patient de la liste si présent");
+        selectFirstPatientOrSearchField();
+        notifyEchangesProcessingDone(hashId);
+        return;
+    }
+
+    console.log("[pdfParser] Echanges - Données extraites :", extractedData);
+
+    // ===========================================
+    // ÉTAPE 2 : Recherche et sélection du patient
+    // Boucle interne car pas de refresh de page
+    // ===========================================
+    if (!isINSValidated) {
+        const MAX_ATTEMPTS = 5;
+        let patientSearchSucceeded = false;
+
+        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            console.log(`[pdfParser] Echanges - Tentative de recherche patient ${attempt}/${MAX_ATTEMPTS}`);
+
+            const searchResult = handlePatientSearch(extractedData, hashId);
+
+            if (searchResult.patientFound) {
+                console.log("[pdfParser] Echanges - Patient trouvé :", searchResult.message);
+                patientSearchSucceeded = true;
+                break;
+            }
+
+            if (searchResult.needsPageRefresh) {
+                // Dans les échanges, on attend le changement DOM au lieu d'un refresh complet
+                console.log("[pdfParser] Echanges - Attente changement DOM :", searchResult.message);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                continue; // Nouvelle tentative
+            }
+
+            // Échec définitif (pas de données, ou toutes les méthodes ont échoué)
+            console.warn("[pdfParser] Echanges - Recherche patient échouée :", searchResult.message);
+            sendWedaNotifAllTabs({
+                message: "Recherche patient automatique échouée : " + searchResult.message,
+                type: 'undefined',
+                icon: 'search_off',
+                duration: 10000
+            });
+            break;
+        }
+
+        if (!patientSearchSucceeded) {
+            console.warn("[pdfParser] Echanges - Impossible de trouver le patient automatiquement, passage au message suivant.");
+            notifyEchangesProcessingDone(hashId);
             return;
         }
-        const { urlPDF, fullText, pdfText, messageBody } = baseData;
-        // La tentative précédente ne fait pas partie des données du document.
-        // Préfixe distinct du cache historique qui mémorisait aussi ses échecs.
-        hashId = "echanges-v2:" + baseData.hashId + ":" + await customHash(messageBody || "", null);
-        const extractedData = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody, echanges: true, isCurrent });
-        if (!isCurrent()) return;
-
-        if (!isINSValidated) {
-            const identity = getEchangesPatientIdentity({ pdfText, messageBody }, extractedData);
-            const result = await searchEchangesPatient(identity, isCurrent);
-            if (!isCurrent()) return;
-            if (!result.candidate) {
-                showEchangesPatientIssue(result.reason);
-                return;
-            }
-            confirmedPatient = result.candidate;
-        }
-        if (confirmedPatient) {
-            const validationReady = await waitEchangesPatient(getEchangesValidationButton, isCurrent);
-            if (!validationReady || !isCurrent()) return;
-            const { name, birthDate, link } = confirmedPatient;
-            addPatientNameDisplay([name, birthDate].filter(Boolean).join(" "), link);
-        }
-
-        // Les propositions ne sont calculées qu’après attribution dans Weda.
-        if (!Array.isArray(extractedData.antecedentsDiscordances)) {
-            extractedData.antecedentsDiscordances = await checkAntecedentsAgainstDocument(fullText, urlPDF, { messageBody, isCurrent });
-            if (Array.isArray(extractedData.antecedentsDiscordances)) {
-                setPdfData(hashId, { antecedentsDiscordances: extractedData.antecedentsDiscordances });
-            }
-        }
-        if (!isCurrent()) return;
-        await selectDestinationIfNeededES(extractedData.destinationClass, isCurrent);
-        if (!isCurrent()) return;
-        await setTitleIfNeededES(extractedData.documentTitle, isCurrent);
-        if (!isCurrent()) return;
-        await selectDocumentTypeES(extractedData.documentType);
-        if (!isCurrent()) return;
-        await setCommentaireIfNeededES(extractedData.documentCommentaire);
-        if (!isCurrent()) return;
-
-        const validationButton = getEchangesValidationButton();
-        if (validationButton) {
-            validationButton.focus();
-            validationButton.style.outline = '2px solid rgba(255, 255, 255, 0.5)';
-            validationButton.style.outlineOffset = '2px';
-            const removeOutline = () => {
-                validationButton.style.outline = '';
-                validationButton.style.outlineOffset = '';
-            };
-            for (const event of ['click', 'keydown', 'blur']) {
-                validationButton.addEventListener(event, removeOutline, { once: true });
-            }
-            sendWedaNotifAllTabs({
-                message: "Sélection terminée. Appuyez sur Espace pour valider, Maj+Tab pour corriger.",
-                type: 'success',
-                icon: 'success'
-            });
-            document.querySelector("#messageContainer #iFrameViewFile")?.setAttribute("tabindex", "-1");
-        }
-        addAntecedentsButton(extractedData.antecedentsDiscordances, validationButton, hashId);
-    } catch (error) {
-        if (isCurrent()) {
-            console.warn("[pdfParser] Échanges - analyse interrompue :", error.name);
-            showEchangesPatientIssue("read-error");
-        }
-    } finally {
-        if (isCurrent()) notifyEchangesProcessingDone(hashId);
     }
-}
 
-function showEchangesPatientIssue(reason) {
-    const reasons = {
-        "missing-document": "Aucun PDF ni texte lisible dans ce message.",
-        "missing-identity": "Aucun indice d’identité exploitable dans le courrier.",
-        "incomplete-identity": "Le courrier ne donne pas un nom et un prénom suffisamment précis pour choisir le patient.",
-        "conflicting-identity": "Le PDF et le message contiennent des indices d’identité contradictoires.",
-        "search-unavailable": "Le formulaire de recherche Weda n’est pas prêt ou le mode demandé est indisponible.",
-        "stale-results": "Weda n’a pas confirmé de nouveaux résultats.",
-        "not-found": "Aucun résultat ne concorde avec l’identité du courrier.",
-        "partial-results": "Weda n’affiche qu’une partie des résultats ; la sélection automatique est suspendue.",
-        "ambiguous": "Plusieurs patients correspondent à l’identité du courrier.",
-        "selection-unconfirmed": "Weda n’a pas confirmé l’attribution du patient.",
-        "read-error": "Le courrier n’a pas pu être analysé."
-    };
-    if (!reasons[reason]) return;
-    console.warn("[pdfParser] Échanges - recherche patient :", reason);
-    sendWedaNotif({
-        message: reasons[reason] + " Vérifiez le patient manuellement.",
-        type: "info",
-        icon: "search_off"
-    });
+    // ===========================================
+    // ÉTAPE 2.A : Vérification de la concordance des antécédents
+    // ===========================================
+    // Sans rien modifier : les opérations proposées (format de traiterAntecedentsBatch) sont stockées dans
+    // extractedData.antecedentsDiscordances et appliquées seulement au clic de l'utilisateur (@see addAntecedentsButton).
+    // Déjà vérifié pour ce PDF (données en cache, @see getPdfData) : pas de nouvelle demande à l'IA.
+    if (!Array.isArray(extractedData.antecedentsDiscordances)) {
+        extractedData.antecedentsDiscordances = await checkAntecedentsAgainstDocument(fullText, urlPDF, { messageBody });
+        if (Array.isArray(extractedData.antecedentsDiscordances)) {
+            setPdfData(hashId, { antecedentsDiscordances: extractedData.antecedentsDiscordances });
+        }
+    }
+
+    // ===========================================
+    // ÉTAPE 3 : Remplissage du formulaire d'import
+    // ===========================================
+    await selectDestinationIfNeededES(extractedData.destinationClass);
+    // 2. Mettre le titre
+    await setTitleIfNeededES(extractedData.documentTitle);
+    // 3. Sélectionner la bonne catégorie
+    await selectDocumentTypeES(extractedData.documentType);
+    // 4. Mettre le commentaire
+    await setCommentaireIfNeededES(extractedData.documentCommentaire);
+    // Pas de marquage "déjà importé" : dans la messagerie sécurisée, le formulaire
+    // n'est pas conservé par Weda si l'on change de patient entre deux.
+
+    // ===========================================
+    // ÉTAPE 4 : Focus sur l'élément de validation
+    // ===========================================
+    const patientLinkButton = document.querySelector("#ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonPatientGetNomPrenom_0");
+    if (patientLinkButton) {
+        console.log("[pdfParser] Mise au focus sur le patient sélectionné");
+        patientLinkButton.focus();
+        ListTabOrderer(patientLinkButton.id);
+        await observeDiseapearance(patientLinkButton);
+    }
+
+    const validationButton = document.querySelector("#messageContainer .button.valid");
+    if (validationButton) {
+        console.log("[pdfParser] Mise au focus sur le bouton de validation");
+        validationButton.focus();
+        validationButton.style.outline = '2px solid rgba(255, 255, 255, 0.5)';
+        validationButton.style.outlineOffset = '2px';
+
+        // Supprimer l'outline dès interaction utilisateur
+        const removeOutline = () => {
+            validationButton.style.outline = '';
+            validationButton.style.outlineOffset = '';
+        };
+
+        validationButton.addEventListener('click', removeOutline, { once: true });
+        validationButton.addEventListener('keydown', removeOutline, { once: true });
+        validationButton.addEventListener('blur', removeOutline, { once: true });
+
+
+        sendWedaNotifAllTabs({
+            message: "Sélection terminée. Appuyez sur Espace pour valider, Maj+Tab pour corriger.",
+            type: 'success',
+            icon: 'success'
+        });
+
+        // Supprimer #iFrameViewFile du taborder
+        const iframe = document.querySelector("#iFrameViewFile");
+        if (iframe) {
+            iframe.setAttribute("tabindex", "-1");
+            console.log("[pdfParser] Suppression de l'iframe du taborder");
+        }
+    } else {
+        console.error("[pdfParser] Bouton de validation introuvable");
+    }
+
+    addAntecedentsButton(extractedData.antecedentsDiscordances, validationButton, hashId);
+    notifyEchangesProcessingDone(hashId);
 }
 
 /**
@@ -498,9 +546,38 @@ function addAntecedentsButton(operations, validationButton, hashId) {
     validationButton.after(button);
 }
 
+async function showClickedPatient() {
+    // On surveille quel patient a été cliqué. : tout les éléments .grid-item_tr et .grid-selecteditem
+    const possibleClickablePatient = document.querySelectorAll(".grid-item_tr, .grid-selecteditem");
+    if (possibleClickablePatient.length > 0) {
+        possibleClickablePatient.forEach((patient) => {
+            patient.addEventListener("click", function () {
+                console.log("[pdfParser] Patient cliqué :", patient.innerText);
+                // La DDN a un id qui commence par "ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatienDateNaissance_"
+                const DDN = patient.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatienDateNaissance_']");
+                // Le NOM PRENOM a un id qui commence par "ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonPatientGetNomPrenom_"
+                const NOM_PRENOM = patient.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonPatientGetNomPrenom_']");
+
+                // Correction de la ligne pour éviter les erreurs de concaténation avec null
+                const nomPrenom = NOM_PRENOM ? NOM_PRENOM.innerText : "";
+                const dateNaiss = DDN ? DDN.innerText : "";
+                const patientData = `${nomPrenom} ${dateNaiss}`.trim();
+
+                console.log("[pdfParser] Patient cliqué :", patientData);
+
+                addPatientNameDisplay(patientData, NOM_PRENOM);
+
+                // On retire les listeners pour éviter les doublons
+                possibleClickablePatient.forEach((p) => {
+                    p.removeEventListener("click", arguments.callee);
+                });
+            });
+        });
+    }
+}
+
+
 function addPatientNameDisplay(patientName, patientElement = null) {
-    const validationButton = document.querySelector("#messageContainer .button.valid");
-    if (!validationButton) return;
     // Ajouter le nom du patient à côté du bouton de validation
     if (document.querySelector("#pdfParserPatientName")) {
         document.querySelector("#pdfParserPatientName").remove();
@@ -570,6 +647,7 @@ function addPatientNameDisplay(patientName, patientElement = null) {
         });
     }
     
+    const validationButton = document.querySelector("#messageContainer .button.valid");
     validationButton.insertAdjacentElement('afterend', patientNameSpan)
 }
 
@@ -578,10 +656,12 @@ function addPatientNameDisplay(patientName, patientElement = null) {
 // Fonctions utilitaires
 function returnMessageBodyES() {
     // Sélection de l'élément messageBody
-    const messageBodyElement = document.querySelector('#messageContainer .messageBody');
+    const messageBodyElement = document.querySelector('.messageBody');
     if (messageBodyElement) {
         // Extraction du texte de l'élément
         const messageBodyText = messageBodyElement.innerText.trim();
+        console.log("[pdfParser] Texte extrait de messageBody :", messageBodyText);
+
         return messageBodyText;
     } else {
         console.warn("[pdfParser] Aucun élément messageBody trouvé.");
@@ -653,9 +733,8 @@ async function selectDocumentTypeES(documentType) {
 /**
  * Insère le titre au bon endroit pour les échanges sécurisés
  */
-async function setTitleIfNeededES(Titre, isCurrent) {
+async function setTitleIfNeededES(Titre) {
     const titleOption = await getOptionPromise('PdfParserAutoTitle');
-    if (!isCurrent() || !Titre) return;
     console.log("[pdfParser] setTitleIfNeededES avec titleOption", titleOption);
     if (!titleOption) {
         console.log("[pdfParser] Option PdfParserAutoTitle désactivée, pas de titre à mettre");
@@ -678,9 +757,9 @@ async function setTitleIfNeededES(Titre, isCurrent) {
 /**
  * Sélectionne la bonne destination d'importation dans les **échanges sécurisés**, si l'option est activée.
  */
-async function selectDestinationIfNeededES(destinationNumber, isCurrent) {
+async function selectDestinationIfNeededES(destinationNumber) {
     const selectionNeeded = await getOptionPromise('PdfParserAutoClassification');
-    if (!selectionNeeded || !isCurrent()) {
+    if (!selectionNeeded) {
         return;
     }
     const attachmentZone = getActiveAttachmentZoneES();
@@ -733,25 +812,48 @@ async function setCommentaireIfNeededES(commentaire) {
  * @param {Element[]} iframesElements - Les éléments DOM contenant l'iframe.
  * @returns {Promise<Object|null>} - Les données de base extraites ou null si échec.
  */
-async function extractBasePdfData(iframesElements, { echanges = false } = {}) {
-    const messageBody = echanges ? returnMessageBodyES() : null;
-    const urlPDF = await findPdfUrl(iframesElements);
-    if (!urlPDF && !messageBody) return null;
-    let pdfText = "";
-    if (urlPDF) {
-        try {
-            pdfText = await extractTextFromPDF(urlPDF);
-        } catch (error) {
-            if (!echanges) throw error;
-            console.warn("[pdfParser] Échanges - PDF non lisible :", error.name);
+async function extractBasePdfData(iframesElements) {
+    console.log('[pdfParser] ----------------- Nouvelle boucle --------------------------------');
+    // Initialisation des variables
+    let urlPDF = null;
+    let fullText = null;
+    let hashId = null;
+
+    // 1. Trouver l'URL du PDF
+    urlPDF = await findPdfUrl(iframesElements);
+    if (!urlPDF) {
+        console.log("[pdfParser] l'url du PDF n'a pas été trouvée. On va se baser sur le corps du texte.");
+        urlPDF = null;
+        fullText = returnMessageBodyES();
+        hashId = await customHash(fullText, urlPDF);
+        const toReturn = { urlPDF, fullText, hashId, pdfText: null, messageBody: fullText };
+        console.log("[pdfParser] toReturn", toReturn);
+        return toReturn;
+    }
+    console.log('[pdfParser] urlPDF', urlPDF);
+
+    // 2. Extraire le texte du PDF
+    fullText = await extractTextFromPDF(urlPDF);
+    const pdfText = fullText;
+
+    // 3. Ajouter le corps du message à la fin du texte du PDF si disponible et si le PDF contient moins de 3 lignes
+    const messageBody = returnMessageBodyES();
+    if (messageBody) {
+        const pdfCharCount = fullText.length;
+        if (pdfCharCount < 100) {
+            console.log(`[pdfParser] Le PDF ne contient que ${pdfCharCount} caractère(s), ajout du corps du message`);
+            fullText += "\n\n=== Corps du message ===\n" + messageBody;
+        } else {
+            console.log(`[pdfParser] Le PDF contient ${pdfCharCount} caractères, pas d'ajout du corps du message`);
         }
     }
-    // Le corps reste disponible séparément pour l’identité, même si le PDF
-    // est assez long pour être utilisé seul pour la classification.
-    const fullText = !pdfText.trim() ? messageBody || "" : (messageBody && pdfText.length < 100
-        ? pdfText + "\n\n=== Corps du message ===\n" + messageBody : pdfText);
-    const shortPdf = urlPDF && pdfText.trim().length < 10;
-    const hashId = await customHash(shortPdf ? pdfText.trim() : fullText, urlPDF);
+
+    console.log('[pdfParser] fullText', [fullText]);
+
+    // 4. Créer un identifiant unique pour ce PDF
+    hashId = await customHash(fullText, urlPDF);
+
+
     return { urlPDF, fullText, hashId, pdfText, messageBody };
 }
 /**
@@ -764,7 +866,6 @@ async function extractBasePdfData(iframesElements, { echanges = false } = {}) {
  * @returns {Promise<Object>} - Les données extraites du PDF.
  */
 async function handleDataExtraction(fullText, urlPDF, hashId, aiSources = {}) {
-    const { echanges, isCurrent = () => true } = aiSources;
     let dataMatrixReturn = null;
     // Vérification des données déjà extraites pour ce PDF
     let extractedData = getPdfData(hashId);
@@ -776,25 +877,18 @@ async function handleDataExtraction(fullText, urlPDF, hashId, aiSources = {}) {
         console.log("[pdfParser] Données non extraites pour ce PDF. Extraction des données.");
         // Extraction des informations pertinentes
         extractedData = await extractRelevantData(fullText);
-        if (!isCurrent()) return extractedData;
 
-        const readIdentity = () => getEchangesPatientIdentity(aiSources, { ...extractedData, dataMatrix: dataMatrixReturn });
-        const applyIdentity = identity => {
-            extractedData.dateOfBirth = identity.birthDate || null;
-            extractedData.nameMatches = identity.given ? identity.families.map(name => name + " " + identity.given) : [];
-        };
-        let identity = echanges ? readIdentity() : null;
-        if (identity) applyIdentity(identity);
-        if (urlPDF && !identity?.conflict && (echanges || !extractedData.nirMatches?.length)
-            && (!extractedData.dateOfBirth || !extractedData.nameMatches.length)) {
-            try {
+        // Si on n'a pas de nirMatches, on se rabattra sur la DDN et le nom
+        if (!extractedData.nirMatches || extractedData.nirMatches.length === 0) {
+            // Si la date de naissance ou le nom n'ont pas été trouvés, on recherche le datamatrix
+            if (!extractedData.dateOfBirth || extractedData.nameMatches.length === 0) {
+                console.log("[pdfParser] Date de naissance ou nom non trouvée. Recherche du datamatrix.");
                 dataMatrixReturn = await extractDatamatrixFromPDF(urlPDF);
-            } catch (error) {
-                console.warn("[pdfParser] Datamatrix non lisible :", error.name);
-            }
-            if (echanges && dataMatrixReturn) {
-                identity = readIdentity();
-                applyIdentity(identity);
+                console.log('[pdfParser] dataMatrixReturn', dataMatrixReturn);
+                if (!dataMatrixReturn) {
+                    console.log("[pdfParser] Datamatrix non trouvé.");
+                    setPdfData(hashId, { alreadyImported: true });
+                }
             }
         }
 
@@ -803,16 +897,10 @@ async function handleDataExtraction(fullText, urlPDF, hashId, aiSources = {}) {
         // En mode complet (PdfParserAutoAIFullMode), l'IA doit choisir la classification parmi les
         // valeurs réellement disponibles dans le menu déroulant, récupérées ici au moment de l'appel.
         const pdfParserAutoAIExtraction = await getOptionPromise('PdfParserAutoAIExtraction'); // normalement completeExtractedDataWithAI échoue de façon précoce si cette option est désactivée, mais ajouté ici également pour plus de sécurité.
-        if (pdfParserAutoAIExtraction && !identity?.conflict && isCurrent()) {
+        if (pdfParserAutoAIExtraction) {
             const possibleDocumentTypes = initDocumentTypes();
             const aiCompletedFields = await completeExtractedDataWithAI(extractedData, fullText, urlPDF, possibleDocumentTypes, aiSources);
             Object.assign(extractedData, aiCompletedFields);
-            if (echanges) {
-                extractedData.echangesAIIdentity = {
-                    name: aiCompletedFields.nameMatches?.length === 1 ? aiCompletedFields.nameMatches[0] : null,
-                    birthDate: aiCompletedFields.dateOfBirth
-                };
-            }
             console.log("[pdfParser] Données après complétion IA.", extractedData);
         }
 
@@ -1188,12 +1276,9 @@ function completeExtractedData(extractedData, dataMatrixReturn) {
     extractedData.failedSearches = [];
     if (dataMatrixReturn) { // Cf. parseTextDataMatrix()
         extractedData.dataMatrix = dataMatrixReturn;
-        const birthDate = echangesBirthDate(dataMatrixReturn.DateNaissance);
-        if (birthDate) extractedData.dateOfBirth = birthDate;
-        if (dataMatrixReturn.Nom && dataMatrixReturn.Prenoms) {
-            extractedData.nameMatches = [dataMatrixReturn.Nom + " " + dataMatrixReturn.Prenoms];
-        }
-        if (dataMatrixReturn.INS) extractedData.nirMatches = [dataMatrixReturn.INS];
+        extractedData.dateOfBirth = formatDate(dataMatrixReturn.DateNaissance);
+        extractedData.nameMatches = [dataMatrixReturn.Nom + dataMatrixReturn.Prenoms.split(' ')[0]];
+        extractedData.nirMatches = dataMatrixReturn.INS;
     }
     // Vérifier que les dates ne sont pas identiques
     if (extractedData.documentDate === extractedData.dateOfBirth) {
@@ -1386,22 +1471,40 @@ function isValidSearchType(searchType) {
 
 // Renvoie l'URL du PDF de l'iframe quand elle est chargée 
 async function findPdfUrl(iframesElements) {
-    const viewer = iframesElements[0];
-    if (!viewer) return null;
-    const usable = url => url && url !== "about:blank";
-    const deadline = Date.now() + 5000;
-    while (Date.now() < deadline && viewer.isConnected) {
-        try {
-            const current = viewer.contentWindow?.location.href;
-            if (usable(current)) return current;
-        } catch {
-            // Le visualiseur PDF natif peut avoir une origine différente.
+    let iframe = iframesElements[0];
+    console.log('[pdfParser/findPdfUrl] iframe', iframe);
+
+    if (!iframe) { // Pas certain que cette partie soit encore utile, mais je laisse dans le doute
+        let base64 = document.querySelector('.attachmentContainer object[type="application/pdf"]'); //Bypass pour les pages Echanges Sécurisés sans iframe PDF
+        if (!base64) {
+            console.warn("[pdfParser] iframe et base64 non trouvés. Arrêt de l'extraction du pdf.");
+            return null;
         }
-        const source = viewer.data || viewer.src;
-        if (usable(source)) return source;
-        await new Promise(resolve => setTimeout(resolve, 100));
+        return base64.data;
     }
-    return null;
+
+
+    return new Promise((resolve, reject) => {
+        let intervalId = setInterval(() => {
+            if (iframe.contentWindow) {
+                let url = iframe.contentWindow.location.href;
+
+                if (url !== 'about:blank' && url !== null) {
+                    clearInterval(intervalId);
+                    resolve(url);
+                }
+            } else if (iframe.src && iframe.src !== 'about:blank') {
+                let url = iframe.src;
+                clearInterval(intervalId);
+                resolve(url);
+            }
+        }, 100);
+
+        setTimeout(() => {
+            clearInterval(intervalId);
+            resolve(null);
+        }, 5000);
+    });
 }
 
 // Extraction du texte du PDF (toutes pages concaténées)
@@ -2129,7 +2232,7 @@ async function extractDestinationClass(fullText) {
 // Extraction du datamatrix des pages du PDF
 async function extractDatamatrixFromPDF(pdfUrl) {
     if (!pdfUrl) { return null }
-    const pdf = await loadPdfDocument(pdfUrl);
+    const pdf = await pdfjsLib.getDocument(pdfUrl).promise;
     const numPages = pdf.numPages;
     const pagesToCheck = numPages === 1 ? [1] : [1, numPages]; // Vérifie la première et la dernière page, ou juste la première si une seule page
 
@@ -3056,20 +3159,17 @@ function formatDate(date) {
 // Assez basique, mais largement suffisant pour nos besoins
 async function pdfBlob(urlPDF) {
     const response = await fetch(urlPDF);
-    if (!response.ok) throw new Error("PDF indisponible");
-    return response.blob();
+    const blob = await response.blob();
+    return blob;
 }
 
 async function customHash(str, urlPDF) {
-    if (str.length < 10 && urlPDF) {
-        try {
-            const bytes = await (await pdfBlob(urlPDF)).arrayBuffer();
-            const digest = await crypto.subtle.digest("SHA-256", bytes);
-            return "pdf-" + [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
-        } catch {
-            // Ne pas partager une entrée de cache entre tous les PDF sans texte.
-            str += "\n" + urlPDF;
-        }
+    // console.time('customHash'); // Démarrer le chronomètre
+
+    if (str.length < 10) {
+        str = await pdfBlob(urlPDF); // Attendre la promesse
+        console.log('[pdfParser] je demande un hash basé sur le blob du pdf');
+        // ça prend environs 20ms pour un pdf de 300ko
     }
 
     const FNV_PRIME = 0x01000193;

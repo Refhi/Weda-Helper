@@ -144,20 +144,19 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
  * car la conversation est réinitialisée.
  * @returns {Promise<Array<object>|null>} opérations proposées (vide : aucune différence), null si la vérification n'a pas eu lieu.
  */
-async function checkAntecedentsAgainstDocument(fullText, urlPDF = null, { messageBody = null, isCurrent = () => true } = {}) {
-    if (!await getOptionPromise('verifierEtMettreAJourAntecedents') || !isCurrent()) return null;
+async function checkAntecedentsAgainstDocument(fullText, urlPDF = null, { messageBody = null } = {}) {
+    if (!await getOptionPromise('verifierEtMettreAJourAntecedents')) return null;
     if (!await resolveCurrentPatientIdWithWait()) {
         console.warn('[pdfParserAIExtraction] Aucun patient sélectionné, vérification des antécédents ignorée.');
         return null;
     }
     const chatApi = await prepareChatApi(false);
-    if (!chatApi || !isCurrent()) return null;
+    if (!chatApi) return null;
 
     const sendToChatApi = await buildChainLauncher(chatApi, 'verifierAntecedentsDepuisDocument', {
         fieldsToAsk: [], fullText, urlPDF, messageBody,
         instructions: "Compare le document ci-dessous avec les antécédents du patient actuel, sans rien modifier. Suis les consignes de chaque étape : les outils à appeler te seront indiqués au fur et à mesure."
     });
-    if (!isCurrent()) return null;
     try {
         const operations = await new Promise((resolve, reject) => {
             pendingAntecedentsResolve = resolve;
