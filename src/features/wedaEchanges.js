@@ -12,6 +12,70 @@
  */
 
 // Page Messagerie sécurisée
+addTweak("/FolderMedical/WedaEchanges/", "secureExchangeOpenNextAfterImport", function () {
+    const getRows = () => [...document.querySelectorAll("#messageList > .messageListItem")];
+    const getRowKey = row => row.querySelector(".messageLineItem")?.textContent.replace(/\s+/g, " ").trim();
+    const queueIsRunning = () => document.querySelector('#whMessageQueueToolbox[data-running="true"]');
+    let stopWaiting;
+
+    document.addEventListener("click", event => {
+        // Une action dans la liste ou un changement de boîte prend la main sur la navigation.
+        if (event.target.closest?.("#weInboxContainer, #inboxToolbar, #whMessageQueueToolbox, .docImportButtons .button.cancel")) {
+            stopWaiting?.();
+            return;
+        }
+
+        const importButton = event.target.closest?.("#messageContainer .docImportButtons button.button.valid");
+        if (!importButton || importButton.disabled || importButton.getAttribute("aria-disabled") === "true"
+            || !importButton.getClientRects().length) return;
+        stopWaiting?.();
+        if (queueIsRunning()) return;
+
+        const rows = getRows();
+        const visibleRows = rows.filter(row => row.getClientRects().length);
+        const selectedIndex = visibleRows.findIndex(row => row.classList.contains("selected"));
+        if (selectedIndex < 0 || selectedIndex === visibleRows.length - 1) return;
+
+        const currentRow = visibleRows[selectedIndex];
+        const nextRow = visibleRows[selectedIndex + 1];
+        const currentKey = getRowKey(currentRow);
+        const nextKey = getRowKey(nextRow);
+        if (!currentKey || !nextKey) return;
+        const currentCount = rows.filter(row => getRowKey(row) === currentKey).length;
+
+        const observer = new MutationObserver(() => {
+            if (queueIsRunning()) {
+                stopWaiting?.();
+                return;
+            }
+            const remaining = getRows();
+            // Une reconstruction du DOM peut recréer la ligne du courrier en cours.
+            if (remaining.includes(currentRow)
+                || remaining.filter(row => getRowKey(row) === currentKey).length >= currentCount) return;
+
+            const matchingRows = remaining.filter(row => getRowKey(row) === nextKey);
+            const successor = matchingRows.length === 1 ? matchingRows[0] : matchingRows.find(row => row === nextRow);
+            const line = successor?.querySelector(".messageLineItem");
+            if (!line?.getClientRects().length) return;
+
+            stopWaiting?.();
+            if (successor.classList.contains("selected")) return;
+            line.click();
+            recordMetrics({ clicks: 1, drags: 0 });
+        });
+        const timeout = setTimeout(() => stopWaiting?.(), 10000);
+        stopWaiting = () => {
+            observer.disconnect();
+            clearTimeout(timeout);
+            stopWaiting = null;
+        };
+        observer.observe(document.body, {
+            childList: true, subtree: true, attributes: true,
+            attributeFilter: ["class", "hidden", "data-running"]
+        });
+    }, true);
+});
+
 addTweak("/FolderMedical/WedaEchanges/", "secureExchangeFaviconCounter", function () {
     const canvas = document.createElement("canvas");
     canvas.width = canvas.height = 64;
@@ -350,6 +414,7 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
     function updateToolboxState() {
         if (!playButton) return;
         playButton.disabled = queueRunning;
+        playButton.parentElement.dataset.running = String(queueRunning);
         autoButton.classList.toggle('whQueueAutoActive', autoModeEnabled);
         autoButton.style.backgroundColor = autoModeEnabled ? '#4CAF50' : '';
         autoButton.style.color = autoModeEnabled ? 'white' : '';

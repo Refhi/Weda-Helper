@@ -18,6 +18,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#723](https://github.com/Refhi/Weda-Helper/issues/723) - Le bouton "Un patient" est automatiquement cliqué dès qu'un message est sélectionné dans la messagerie sécurisée. (désactivable dans les options)
 - Ajout d'une boîte à outils dans la messagerie sécurisée pour analyser successivement plusieurs messages : ▶️ parcourt les messages cochés, 🔁 analyse automatiquement les messages non lus (à l'activation puis à chaque rafraîchissement de la boîte de réception), ⏹️ arrête le parcours en cours. (désactivable dans les options) - idée de @DrFlow71 !
 - [#751](https://github.com/Refhi/Weda-Helper/issues/751) - Une pastille indique désormais les messages déjà analysés dans la messagerie sécurisée, pour un suivi plus facile. Merci @DrFlow71 !
+- [#753](https://github.com/Refhi/Weda-Helper/issues/753) - Après un clic sur "Importer" dans la messagerie sécurisée, le message suivant de la liste est automatiquement ouvert. (activable dans les options)
 
 
 ### Post-it :

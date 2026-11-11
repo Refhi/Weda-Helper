@@ -344,6 +344,11 @@ var advancedDefaultSettings = [
             "name": "Weda Echanges",
             "type": TYPE_TITLE,
             "options": [{
+                "name": "secureExchangeOpenNextAfterImport",
+                "type": TYPE_BOOL,
+                "description": "Ouvre le courrier suivant dans Échanges après un import réussi.",
+                "default": false
+            }, {
                 "name": "secureExchangeFaviconCounter",
                 "type": TYPE_BOOL,
                 "description": "Affiche le nombre de courriers de la liste courante dans une pastille sur l'onglet de la messagerie sécurisée.",
