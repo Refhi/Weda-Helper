@@ -328,6 +328,25 @@ function notifyEchangesProcessingDone(hashId) {
 }
 
 /**
+ * Remplit les pièces jointes PDF autres que la première (celle-ci est traitée par processFoundPdfIframeEchanges).
+ * Chaque PDF est analysé et rempli dans sa propre pièce jointe.
+ */
+async function fillOtherAttachmentsES() {
+    const zones = getPdfAttachmentZonesES();
+    for (const zone of zones.slice(1)) {
+        const iframes = zone.querySelectorAll('#iFrameViewFile, .mssAttachment embed');
+        const baseData = await extractBasePdfData(iframes, zone);
+        if (!baseData) continue;
+        const { urlPDF, fullText, hashId, pdfText, messageBody } = baseData;
+        const data = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody });
+        await selectDestinationIfNeededES(data.destinationClass, zone);
+        await setTitleIfNeededES(data.documentTitle, zone);
+        await selectDocumentTypeES(data.documentType, zone);
+        await setCommentaireIfNeededES(data.documentCommentaire, zone);
+    }
+}
+
+/**
  * Traite le PDF dans la page des échanges sécurisés.
  * Contrairement à processFoundPdfIframeImport, cette fonction gère les changements DOM
  * en interne via une boucle (pas de rechargement de page complet).
@@ -340,31 +359,22 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     // ===========================================
     // ÉTAPE 1 : Extraction des données du PDF
     // ===========================================
-    // Un message peut contenir plusieurs PDF : chacun est analysé depuis sa propre pièce jointe.
-    const zones = getPdfAttachmentZonesES();
-    const sources = zones.length
-        ? zones.map(zone => ({ zone, iframes: zone.querySelectorAll('#iFrameViewFile, .mssAttachment embed') }))
-        : [{ zone: undefined, iframes: document.querySelectorAll('#PanelViewDocument iframe') }];
-    if (!zones.length && sources[0].iframes.length === 0) {
+    let iframesElements = document.querySelectorAll('#PanelViewDocument iframe');
+    if (iframesElements.length === 0) {
         // Fallback pour les PDF dans un embed (cas des messages avec corps de texte)
-        sources[0].iframes = document.querySelectorAll('.mssAttachment embed');
+        iframesElements = document.querySelectorAll('.mssAttachment embed');
     }
 
-    const documents = [];
-    for (const { zone, iframes } of sources) {
-        const baseData = await extractBasePdfData(iframes, zone); // s’occupe également de vérifier les données déjà extraites
-        if (!baseData) continue;
-        const { urlPDF, fullText, hashId, pdfText, messageBody } = baseData;
-        const extractedData = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody });
-        documents.push({ zone, urlPDF, fullText, hashId, messageBody, extractedData });
-    }
-    if (!documents.length) {
+    // Setup de la procédure
+    // Extraction des données de base
+    const baseData = await extractBasePdfData(iframesElements); // s’occupe également de vérifier les données déjà extraites
+    if (!baseData) {
         notifyEchangesProcessingDone(null);
         return;
     }
-    // Le patient est recherché d'après le premier document exploitable.
-    const { urlPDF, fullText, hashId, messageBody, extractedData } =
-        documents.find(doc => !doc.extractedData.alreadyImported) || documents[0];
+
+    const { urlPDF, fullText, hashId, pdfText, messageBody } = baseData;
+    let extractedData = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody });
 
     // Surveillance des clics sur les patients (pour affichage du nom sélectionné)
     waitForElement({
@@ -443,15 +453,15 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     // ===========================================
     // ÉTAPE 3 : Remplissage du formulaire d'import
     // ===========================================
-    for (const { zone, extractedData: docData } of documents) {
-        await selectDestinationIfNeededES(docData.destinationClass, zone);
-        // 2. Mettre le titre
-        await setTitleIfNeededES(docData.documentTitle, zone);
-        // 3. Sélectionner la bonne catégorie
-        await selectDocumentTypeES(docData.documentType, zone);
-        // 4. Mettre le commentaire
-        await setCommentaireIfNeededES(docData.documentCommentaire, zone);
-    }
+    await selectDestinationIfNeededES(extractedData.destinationClass);
+    // 2. Mettre le titre
+    await setTitleIfNeededES(extractedData.documentTitle);
+    // 3. Sélectionner la bonne catégorie
+    await selectDocumentTypeES(extractedData.documentType);
+    // 4. Mettre le commentaire
+    await setCommentaireIfNeededES(extractedData.documentCommentaire);
+    // 5. Même chose pour les éventuels autres PDF du message
+    await fillOtherAttachmentsES();
     // Pas de marquage "déjà importé" : dans la messagerie sécurisée, le formulaire
     // n'est pas conservé par Weda si l'on change de patient entre deux.
 
