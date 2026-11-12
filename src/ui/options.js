@@ -1420,9 +1420,9 @@ Promise.all([
 
 // 7 - Lien vers le log du compagnon
 function updateCompanionLogLink() {
-  chrome.storage.local.get(['apiKey', 'portCompanion', 'version'], function (result) {
+  chrome.storage.local.get(['apiKey', 'portCompanion', 'version', 'defaultSettings'], function (result) {
     const apiKey = result.apiKey || '';
-    const port = result.portCompanion || '';
+    const port = result.portCompanion || result.defaultSettings?.portCompanion || '';
     const version = result.version || '';
     const logLink = `http://localhost:${port}/log?apiKey=${encodeURIComponent(apiKey)}&versioncheck=${version}`;
     document.getElementById('companionLogLing').href = logLink;
