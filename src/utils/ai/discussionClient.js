@@ -39,7 +39,6 @@ async function addAIChatClient() {
     injectChatWidgetStyles();
 
     const widget = createChatWidgetElement();
-    document.body.appendChild(widget);
 
     // --- Logique du chat ---
     // Modèle actuellement sélectionné pour les appels, parmi tous les modèles détectés (getAiParams().availableModels,
@@ -125,6 +124,9 @@ async function addAIChatClient() {
         domPurifyAvailable: !!domPurifyApi
     });
 
+    // Insertion dans le DOM puis application de la géométrie dans le même tick : la bulle n'est jamais peinte à la position par défaut.
+    if (document.getElementById('wedaHelper-chat-widget')) return;
+    document.body.appendChild(widget);
     setupChatWidgetLayout({ widget, chatWindow, chatHeader, chatToggle, chatInput, inputResizeHandle, initialData: layoutData });
 
     // --- Gestion des pièces jointes (documents/images envoyés au modèle) ---

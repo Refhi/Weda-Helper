@@ -66,11 +66,10 @@ function setupChatWidgetLayout({ widget, chatWindow, chatHeader, chatToggle, cha
         })
     });
 
-    // Appliqué de façon synchrone (données préchargées) : le widget n'est jamais peint à la position par défaut.
+    // Appliqué de façon synchrone (données préchargées), dans le même tick que l'insertion du widget (voir addAIChatClient) : aucune frame peinte à la position par défaut.
     const { widgetPosition, windowPosition, windowSize } = initialData;
     if (widgetPosition) {
-        const applied = widgetLayout.applyGeometry(widgetPosition);
-        saveDiscussionClientData({ widgetPosition: { right: applied.right, bottom: applied.bottom } });
+        widgetLayout.applyGeometry(widgetPosition);
     }
     if (windowPosition || windowSize) {
         chatWindowLayout.applyGeometry({ ...chatWindowLayout.getGeometry(), ...windowSize, ...windowPosition });

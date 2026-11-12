@@ -35,6 +35,9 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#733](https://github.com/Refhi/Weda-Helper/issues/733) - Améliorations de la page des options : il est plus facile de réinitialiser les raccourcis aux valeurs par défaut individuellement. Boutons de sauvegarde/restauration des options plus accessibles.
 
 
+## Fix :
+- Amélioration du bouton flottant du chat IA (mémorise mieux le placement demandé)
+
 # [3.3] - IA, IA, et encore IA !
 Cette version est surtout orientée IA et apporte d’autres petites améliorations et bug fixes.
 

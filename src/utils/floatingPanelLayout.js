@@ -1,6 +1,14 @@
 /**
  * Déplacement et redimensionnement de fenêtres flottantes positionnées dans le viewport.
  */
+// clientWidth/clientHeight excluent la scrollbar, comme le viewport des éléments position: fixed (contrairement à innerWidth/innerHeight).
+function getViewportWidth() {
+    return document.documentElement.clientWidth;
+}
+function getViewportHeight() {
+    return document.documentElement.clientHeight;
+}
+
 function bindFloatingDragHandle(handleEl, {
     getStartRect,
     applyPosition,
@@ -107,14 +115,14 @@ function makeFloatingPanelResizable(element, { minWidth, minHeight, onResizeEnd 
         if (event.pointerId !== pointerId || !startRect) return;
         const deltaX = event.clientX - startX;
         const deltaY = event.clientY - startY;
-        const effectiveMinWidth = Math.min(minWidth, window.innerWidth);
-        const effectiveMinHeight = Math.min(minHeight, window.innerHeight);
+        const effectiveMinWidth = Math.min(minWidth, getViewportWidth());
+        const effectiveMinHeight = Math.min(minHeight, getViewportHeight());
         let left = startRect.left;
         let top = startRect.top;
         let width = startRect.width;
         let height = startRect.height;
-        if (direction.includes('e')) width = Math.min(Math.max(effectiveMinWidth, width + deltaX), window.innerWidth - left);
-        if (direction.includes('s')) height = Math.min(Math.max(effectiveMinHeight, height + deltaY), window.innerHeight - top);
+        if (direction.includes('e')) width = Math.min(Math.max(effectiveMinWidth, width + deltaX), getViewportWidth() - left);
+        if (direction.includes('s')) height = Math.min(Math.max(effectiveMinHeight, height + deltaY), getViewportHeight() - top);
         if (direction.includes('w')) {
             left = Math.max(0, Math.min(startRect.left + deltaX, startRect.right - effectiveMinWidth));
             width = startRect.right - left;
@@ -123,14 +131,14 @@ function makeFloatingPanelResizable(element, { minWidth, minHeight, onResizeEnd 
             top = Math.max(0, Math.min(startRect.top + deltaY, startRect.bottom - effectiveMinHeight));
             height = startRect.bottom - top;
         }
-        left = Math.min(Math.max(0, left), window.innerWidth - effectiveMinWidth);
-        top = Math.min(Math.max(0, top), window.innerHeight - effectiveMinHeight);
+        left = Math.min(Math.max(0, left), getViewportWidth() - effectiveMinWidth);
+        top = Math.min(Math.max(0, top), getViewportHeight() - effectiveMinHeight);
         element.style.left = `${left}px`;
         element.style.top = `${top}px`;
         element.style.right = 'auto';
         element.style.bottom = 'auto';
-        element.style.width = `${Math.min(width, window.innerWidth - left)}px`;
-        element.style.height = `${Math.min(height, window.innerHeight - top)}px`;
+        element.style.width = `${Math.min(width, getViewportWidth() - left)}px`;
+        element.style.height = `${Math.min(height, getViewportHeight() - top)}px`;
     }
 
     function stopResize() {
@@ -196,8 +204,8 @@ function makeFloatingPanelResizable(element, { minWidth, minHeight, onResizeEnd 
  */
 function rectToBottomRightOffset(rect) {
     return {
-        right: Math.round(window.innerWidth - rect.right),
-        bottom: Math.round(window.innerHeight - rect.bottom)
+        right: Math.round(getViewportWidth() - rect.right),
+        bottom: Math.round(getViewportHeight() - rect.bottom)
     };
 }
 
@@ -241,8 +249,8 @@ function attachFloatingPanel(element, {
         const width = rect.width || element.offsetWidth || fallbackSize.width;
         const height = rect.height || element.offsetHeight || fallbackSize.height;
         const clamped = {
-            right: Math.min(Math.max(0, right), Math.max(0, window.innerWidth - width)),
-            bottom: Math.min(Math.max(0, bottom), Math.max(0, window.innerHeight - height))
+            right: Math.min(Math.max(0, right), Math.max(0, getViewportWidth() - width)),
+            bottom: Math.min(Math.max(0, bottom), Math.max(0, getViewportHeight() - height))
         };
         element.style.left = 'auto';
         element.style.top = 'auto';
@@ -253,8 +261,8 @@ function attachFloatingPanel(element, {
 
     const applyGeometry = (geometry) => {
         if (resizable && geometry.width && geometry.height) {
-            element.style.width = `${Math.min(window.innerWidth, Math.max(minWidth, geometry.width))}px`;
-            element.style.height = `${Math.min(window.innerHeight, Math.max(minHeight, geometry.height))}px`;
+            element.style.width = `${Math.min(getViewportWidth(), Math.max(minWidth, geometry.width))}px`;
+            element.style.height = `${Math.min(getViewportHeight(), Math.max(minHeight, geometry.height))}px`;
         }
         setPosition(geometry.right, geometry.bottom);
         return getGeometry();
