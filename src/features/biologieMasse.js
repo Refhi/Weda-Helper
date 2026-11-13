@@ -111,7 +111,9 @@ addTweak('/FolderMedical/HprimForm.aspx', 'biologieMasseAnalyse', async function
     async function writeBiologieTitle(analyse) {
         const input = document.querySelector('#ContentPlaceHolder1_TextBoxHprimTitre');
         const title = titleFor(analyse);
-        if (!input || !title || input.value === title) return;
+        if (!input || !title) return;
+        // Titre déjà présent (Weda peut renvoyer une valeur avec espaces parasites) : on ne réécrit pas.
+        if (input.value.replace(/\s+/g, ' ').trim() === title) return;
         const oldGrid = document.querySelector('#ContentPlaceHolder1_HprimsGrid');
         titleHandledInputs.add(input);
         input.value = title;
