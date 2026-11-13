@@ -902,7 +902,8 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'consultationLinter', function 
                 const orphan = /^[ \u00A0]*$/.test(p) && (parts.length > 1 || startsLine);
                 if (i < parts.length - 1 || endsLine || orphan) parts[i] = p.replace(/[ \u00A0]+$/, '');
             });
-            const linted = parts.join('\n').replace(/\n(?:[ \u00A0]*\n){2,}/g, '\n\n');
+            // espaces multiples (y compris &nbsp;) ramenés à un seul espace
+            const linted = parts.join('\n').replace(/\n(?:[ \u00A0]*\n){2,}/g, '\n\n').replace(/[ \u00A0]{2,}/g, ' ');
             if (linted !== node.nodeValue) node.nodeValue = linted;
         });
         collapseLineBreaks(doc.body);
