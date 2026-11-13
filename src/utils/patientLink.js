@@ -136,6 +136,19 @@ function getImportGridPatientId() {
 }
 
 /**
+ * Récupère l'identifiant du patient rattaché au résultat HPRIM affiché (HprimForm.aspx), via le lien
+ * "Ouvrir" de la grille des patients. Utile quand l'URL ne contient pas PatDk (@see getCurrentPatientId),
+ * par ex. pour l'analyse IA des biologies (@see biologieMasse.js).
+ * @returns {string|null}
+ */
+function getHprimPatientId() {
+    const selector = '[id^="ContentPlaceHolder1_PatientsGrid_HyperLinkGridGotoPatient_"]';
+    const selectedRow = document.querySelector('.grid-selecteditem');
+    const link = (selectedRow?.querySelector(selector) ? selectedRow : document).querySelector(selector);
+    return extractPatDkFromUrl(link?.getAttribute('href'));
+}
+
+/**
  * Récupère les paramètres URL (PatDk, crypt...) du dossier d'un patient donné, à partir de
  * son patientFileUrl retourné par l'API patient.
  *
