@@ -838,16 +838,26 @@ pagesToLeftPannel_.forEach((page) => {
 // Linter optionnel : remet en forme le texte des éditeurs de consultation (surtout utile au développeur principal)
 addTweak('/FolderMedical/ConsultationForm.aspx', 'consultationLinter', function () {
     function lintConsultationLine(line) {
-        // espaces avant un tiret de début de ligne supprimés, un seul espace après
+        // Leading dashes: remove spaces, ensure single space after
         line = line.replace(/^[ \u00A0]+(?=-)/, '').replace(/^-[ \u00A0]*(?=\S)/, '- ');
-        // un seul espace avant ":"
+
+        // Colons: single space before and after (unless EOL)
+        const word = '[\\p{L}\\p{N}]+';
+        line = line.replace(new RegExp(`(${word}):`, 'gu'), '$1 :');
         line = line.replace(/[ \u00A0]{2,}:/g, ' :');
-        // un mot directement suivi de ":" (en fin de mot/ligne, hors URL ou heure) reçoit un espace avant
-        line = line.replace(/([\p{L}\p{N}]+):(?=[ \u00A0]|$)/gu, '$1 :');
-        // majuscule sur les lignes sans tiret finissant par ":"
+        line = line.replace(/:[ \u00A0]*(?=\S)/g, ': ');
+
+        // Parenthèses: no space inside, space in phrase context
+        line = line.replace(/\([ \u00A0]+/g, '(');
+        line = line.replace(/[ \u00A0]+\)/g, ')');
+        line = line.replace(new RegExp(`(${word})\\(`, 'gu'), '$1 (');
+        line = line.replace(new RegExp(`\\)(${word})`, 'gu'), ') $1');
+
+        // Capitalize first letter if line ends with : and no leading dash
         if (!/^[ \u00A0]*-/.test(line) && /:[ \u00A0]*$/.test(line)) {
             line = line.replace(/\p{L}/u, c => c.toUpperCase());
         }
+
         return line;
     }
 
