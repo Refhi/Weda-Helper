@@ -841,11 +841,11 @@ addTweak('/FolderMedical/ConsultationForm.aspx', 'consultationLinter', function 
         // Leading dashes: remove spaces, ensure single space after
         line = line.replace(/^[ \u00A0]+(?=-)/, '').replace(/^-[ \u00A0]*(?=\S)/, '- ');
 
-        // Colons: single space before and after (unless EOL)
+        // Colons, question marks, exclamation marks: single space before (unless EOL)
         const word = '[\\p{L}\\p{N}]+';
-        line = line.replace(new RegExp(`(${word}):`, 'gu'), '$1 :');
-        line = line.replace(/[ \u00A0]{2,}:/g, ' :');
-        line = line.replace(/:[ \u00A0]*(?=\S)/g, ': ');
+        line = line.replace(new RegExp(`(${word})([:?!])`, 'gu'), '$1 $2');
+        line = line.replace(/[ \u00A0]{2,}([:?!])/g, ' $1');
+        line = line.replace(/([:?!])[ \u00A0]*(?=\S)/g, '$1 ');
 
         // Parenthèses: no space inside, space in phrase context
         line = line.replace(/\([ \u00A0]+/g, '(');
