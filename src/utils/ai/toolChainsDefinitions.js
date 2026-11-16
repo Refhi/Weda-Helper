@@ -75,7 +75,7 @@ const toolChains = (() => {
         id: 'lireAntecedents',
         type: 'mecanique',
         outil: 'recoverPatientData',
-        args: () => ({ categories: ['antecedents'] }),
+        args: ctx => ({ categories: ['antecedents'], expectedImportPatientId: ctx.entree.importPatientId }),
         sortie: (res, ctx) => {
             ctx.antecedents = res.antecedents || [];
             ctx.onglets = res.ongletsDisponibles || [];

@@ -13,6 +13,7 @@
 const IMPORT_LOOP_KEY = 'WH_importLoop';
 const IMPORT_LOOP_LAST_ROW = 7;
 const IMPORT_LOOP_WATCHDOG_MS = 15000;
+let importLoopWatchdog;
 
 function getImportLoopState() {
     try { return JSON.parse(sessionStorage.getItem(IMPORT_LOOP_KEY)); } catch (e) { return null; }
@@ -20,7 +21,10 @@ function getImportLoopState() {
 
 function setImportLoopState(state) {
     if (state) sessionStorage.setItem(IMPORT_LOOP_KEY, JSON.stringify(state));
-    else sessionStorage.removeItem(IMPORT_LOOP_KEY);
+    else {
+        clearTimeout(importLoopWatchdog);
+        sessionStorage.removeItem(IMPORT_LOOP_KEY);
+    }
     updateImportLoopUI();
 }
 
@@ -64,12 +68,14 @@ async function goToNextImportPage(state) {
     }
     const previousPage = currentPage.textContent;
     state.index = -1;
+    state.token = crypto.randomUUID();
     state.page = (state.page || 1) + 1;
     setImportLoopState(state);
     clicCSPLockedElement('.grid-pager span + a');
     // Seul #ContentPlaceHolder1_UpdatePanelClassementGrid est rafraîchi : on attend le changement de page
     for (let i = 0; i < 50; i++) {
         await new Promise(r => setTimeout(r, 200));
+        if (getImportLoopState()?.token !== state.token) return;
         const span = document.querySelector('.grid-pager span');
         if (span && span.textContent !== previousPage && getImportLink(0)) {
             advanceImportLoop();
@@ -87,18 +93,36 @@ function advanceImportLoop() {
         goToNextImportPage(state);
         return;
     }
-    const token = Date.now();
-    state.token = token;
+    state.token = crypto.randomUUID();
     setImportLoopState(state);
     console.log(`[pdfParser] Boucle d'analyse : page ${state.page}, ligne ${state.index}`);
     const link = getImportLink(state.index);
     // Si rien ne se passe après le clic, on passe à la suivante
-    setTimeout(() => {
-        const current = getImportLoopState();
-        if (current && current.token === token) advanceImportLoop();
-    }, IMPORT_LOOP_WATCHDOG_MS);
+    waitForImportPreview(state.token);
     console.log(`[pdfParser] Clic sur le lien d'import : page ${state.page}, ligne ${state.index}`, link);
     clicCSPLockedElement(`#${link.id}`);
+}
+
+// Le délai couvre l'ouverture du PDF et les postbacks. L'analyse elle-même peut durer plusieurs minutes.
+function waitForImportPreview(token) {
+    clearTimeout(importLoopWatchdog);
+    if (!token) return;
+    importLoopWatchdog = setTimeout(() => {
+        if (getImportLoopState()?.token === token) advanceImportLoop();
+    }, IMPORT_LOOP_WATCHDOG_MS);
+}
+
+function beginImportLoopAnalysis(line) {
+    const state = getImportLoopState();
+    if (!state || String(state.index) !== line) return null;
+    clearTimeout(importLoopWatchdog);
+    return state.token;
+}
+
+function endImportLoopAnalysis(token, done) {
+    if (!token || getImportLoopState()?.token !== token) return;
+    if (done) advanceImportLoop();
+    else waitForImportPreview(token);
 }
 
 // Clés sessionStorage des données extraites (une entrée par hashId de PDF)
@@ -165,6 +189,7 @@ function addImportLoopButton() {
             container.children[2].id = 'pdfParserLoopClear';
             grid.parentNode.insertBefore(container, grid);
             updateImportLoopUI();
+            waitForImportPreview(getImportLoopState()?.token);
             // Le cache évolue au fil des analyses (pdfParser.js) : rafraîchissement périodique
             setInterval(updateImportLoopUI, 2000);
         }

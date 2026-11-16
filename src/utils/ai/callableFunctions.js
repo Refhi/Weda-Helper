@@ -180,8 +180,12 @@ async function recoverPatientData({
     antecedentsType,
     antecedentsChampDate,
     antecedentsDateRange = [],
-    refreshMode = "autoRefresh"
+    refreshMode = "autoRefresh",
+    expectedImportPatientId
 } = {}, patientId = null) {
+    if (expectedImportPatientId && expectedImportPatientId !== patientId) {
+        return { error: "Le patient sélectionné pour le document a changé." };
+    }
     // Une plage d'au plus un mois tient dans les 10 dernières entrées chargées par défaut ; au-delà (ou sans plage), tout l'historique est chargé.
     const { start, end } = resolveDateRange(dateRange);
     const limiteUnMois = new Date(end || Date.now());

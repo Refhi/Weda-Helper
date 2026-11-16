@@ -55,6 +55,10 @@
 
 // 1. Injection du script
 // 1.a. Dans la page d'import
+const IMPORT_PDF_TITLE_ID = "ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementTitre_";
+const editedImportTitles = new WeakMap();
+let currentImportTitle;
+
 addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
     // 1. Ajout du bouton pour initialiser les catégories
     addDocumentTypesButton();
@@ -63,8 +67,18 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
         // l'id est splité car il y a un chiffre variable au milieu (1 ou 2 selon que l'option
         // "vertical" est cochée ou nondans la fenêtre d'import)
         selector: "[id^='ContentPlaceHolder1_ViewPdfDocumentUCForm'][id$='_iFrameViewFile']",
+        triggerOnInit: true,
         callback: processFoundPdfIframeImport
     });
+    document.addEventListener("input", event => {
+        const input = event.target;
+        if (!event.isTrusted || !input.id?.startsWith(IMPORT_PDF_TITLE_ID)) return;
+        editedImportTitles.set(input, input.value);
+        if (currentImportTitle?.input === input && currentImportTitle.isCurrent()
+            && Object.hasOwn(getPdfData(currentImportTitle.hashId), "alreadyImported")) {
+            setPdfData(currentImportTitle.hashId, { importEditedTitle: input.value });
+        }
+    }, true);
 });
 
 // 1.b. Dans la page des Echanges Sécurisés
@@ -221,19 +235,48 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'debugModePdfParser', function () {
  *    failedSearches: ["InsSearch", "DateSearch"]
  * }
  */
-async function processFoundPdfIframeImport(PDFIframeElements) {
-    const done = await analyzeImportIframe(PDFIframeElements);
-    if (done && typeof advanceImportLoop === 'function') advanceImportLoop();
+let importAnalysis = Promise.resolve();
+
+function processFoundPdfIframeImport(PDFIframeElements) {
+    const iframe = PDFIframeElements.find(element => element.isConnected);
+    const line = actualImportActionLine();
+    if (!iframe || line === null) return;
+    const src = iframe.getAttribute("src");
+    const isCurrent = () => iframe.isConnected && actualImportActionLine() === line
+        && (!src || iframe.getAttribute("src") === src);
+    // Un postback peut afficher l'iframe suivant pendant que l'IA termine la demande précédente.
+    importAnalysis = importAnalysis.then(async () => {
+        if (!isCurrent()) return;
+        const loopToken = beginImportLoopAnalysis(line);
+        if (getImportLoopState() && !loopToken) return;
+        let done = false;
+        try {
+            done = await analyzeImportIframe([iframe], line, isCurrent);
+        } catch (error) {
+            console.warn("[pdfParser] Échec de l’analyse de l’import :", error.message || error);
+            if (isCurrent()) sendWedaNotif({ message: "L’analyse du PDF a échoué.", type: "fail" });
+            done = isCurrent();
+        } finally {
+            endImportLoopAnalysis(loopToken, done);
+        }
+    });
+    return importAnalysis;
 }
 
 // Renvoie true si le traitement est terminé (false si un refresh de page est attendu)
-async function analyzeImportIframe(PDFIframeElements) {
+async function analyzeImportIframe(PDFIframeElements, line, isCurrent) {
     // ===========================================
     // ÉTAPE 1 : Extraction des données du PDF
     // (pas de modification du DOM ni de refresh)
     // ===========================================
-    const baseData = await extractBasePdfData(PDFIframeElements);
-    if (!baseData) return true;
+    const [importSummary, autoTitle, aiExtraction, assistantEnabled] = await getOptionPromise([
+        "PdfParserImportSummary", "PdfParserAutoTitle", "PdfParserAutoAIExtraction", "enableIAassistant"
+    ]);
+    const useSummary = Boolean(importSummary && autoTitle && aiExtraction && assistantEnabled);
+    if (!isCurrent()) return false;
+    const baseData = await extractBasePdfData(PDFIframeElements, document, { hashPdfBytes: useSummary });
+    if (!isCurrent()) return false;
+    if (!baseData?.urlPDF) return true;
 
     const { urlPDF, fullText, hashId, pdfText, messageBody } = baseData;
 
@@ -249,19 +292,23 @@ async function analyzeImportIframe(PDFIframeElements) {
     // Si déjà importé, on redirige vers le champ de recherche
     if (extractedData.alreadyImported) {
         console.log("[pdfParser] Import - Données déjà importées. Redirection vers recherche.");
-        selectFirstPatientOrSearchField();
-        attachImportAntecedentsButton(extractedData, hashId);
-        return true;
+        if (useSummary) applyImportSummary(line, extractedData, hashId, isCurrent);
+        if (document.activeElement?.id !== IMPORT_PDF_TITLE_ID + line) selectFirstPatientOrSearchField();
+        await precheckImportAntecedents(extractedData, fullText, urlPDF, messageBody, hashId, isCurrent, useSummary);
+        return isCurrent();
     }
     
     // Sinon, on extrait les données
-    extractedData = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody });
+    extractedData = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody, importSummary: useSummary });
+    if (!isCurrent()) return false;
 
     // ===========================================
     // ÉTAPE 2 : Recherche et sélection du patient
     // ATTENTION : peut déclencher un refresh de page
     // ===========================================
-    const searchResult = handlePatientSearch(extractedData, hashId);
+    const searchResult = useSummary && getImportGridPatientId()
+        ? { patientFound: true, needsPageRefresh: false }
+        : handlePatientSearch(extractedData, hashId, { exactNameFallback: useSummary });
 
     // Si un refresh est attendu (changement de mode de recherche ou clic bouton recherche),
     // on stoppe ici. La fonction sera rappelée après le rechargement de page.
@@ -278,12 +325,33 @@ async function analyzeImportIframe(PDFIframeElements) {
     // ===========================================
     // ÉTAPE 3 : Remplissage du formulaire d'import
     // ===========================================
-    await setExtractedDataInForm(extractedData, fullText);
-    markDataAsImported(hashId, extractedData);
+    const keepTitle = useSummary && applyImportSummary(line, extractedData, hashId, isCurrent);
+    if (!await setExtractedDataInForm(extractedData, fullText, { isCurrent, keepTitle }) || !isCurrent()) return false;
+    setPdfData(hashId, { alreadyImported: true });
     recordMetrics({ clicks: 9, drags: 9, keyStrokes: 10 });
-    await precheckImportAntecedents(extractedData, fullText, urlPDF, messageBody, hashId);
+    await precheckImportAntecedents(extractedData, fullText, urlPDF, messageBody, hashId, isCurrent, useSummary);
 
-    setTimeout(() => highlightDate(), 200);
+    if (isCurrent()) setTimeout(() => { if (isCurrent()) highlightDate(); }, 200);
+    return isCurrent();
+}
+
+// Réutilise la synthèse de ce PDF si Weda a recréé le champ avec le nom du fichier.
+function applyImportSummary(line, extractedData, hashId, isCurrent) {
+    const input = document.getElementById(IMPORT_PDF_TITLE_ID + line);
+    if (!input || !isCurrent()) return false;
+    currentImportTitle = { input, hashId, isCurrent };
+    const editedTitle = editedImportTitles.get(input) ?? getPdfData(hashId).importEditedTitle;
+    if (editedImportTitles.has(input)) setPdfData(hashId, { importEditedTitle: editedTitle });
+    if (input === document.activeElement) return true;
+    const title = editedTitle ?? extractedData.importSummary;
+    if (typeof title !== "string") return false;
+    const current = input.value.trim();
+    const defaultTitle = /\.pdf$/i.test(current)
+        || /^(?:scan|document|pdf|courrier scanné|pièce jointe|fichier)(?:[ _-]*[\d ._-]+)?$/i.test(current);
+    if (current && !defaultTitle) return true;
+    const limit = input.maxLength >= 0 ? Math.min(input.maxLength, 190) : 190;
+    const proposedTitle = editedTitle ?? title.slice(0, limit).trimEnd();
+    if (proposedTitle !== input.value) input.value = proposedTitle;
     return true;
 }
 
@@ -293,27 +361,44 @@ async function analyzeImportIframe(PDFIframeElements) {
  * (extractedData.antecedentsDiscordances) et appliquées seulement au clic sur le bouton affiché à côté du lien patient de la ligne.
  * Ne fait rien si aucun patient n'est encore sélectionné ou si l'option est désactivée.
  */
-async function precheckImportAntecedents(extractedData, fullText, urlPDF, messageBody, hashId) {
-    if (Array.isArray(extractedData.antecedentsDiscordances)) {
+async function precheckImportAntecedents(extractedData, fullText, urlPDF, messageBody, hashId, isCurrent, onlyNewAntecedents) {
+    if (!isCurrent()) return;
+    const patientId = getImportGridPatientId();
+    if (!patientId) {
+        addAntecedentsButton(null, null, hashId);
+        return;
+    }
+    const sameImportPatient = () => isCurrent() && getImportGridPatientId() === patientId;
+    let operations = extractedData.antecedentsDiscordances;
+    if (extractedData.importAntecedentsPatientId === patientId
+        && extractedData.importAntecedentsAddOnly === onlyNewAntecedents && Array.isArray(operations)) {
         console.log("[pdfParser] Import - Antécédents déjà vérifiés pour", hashId, ": pas de nouvelle demande à l'IA.");
     } else {
         console.log("[pdfParser] Import - Pas de vérification des antécédents en cache pour", hashId, ":", extractedData.antecedentsDiscordances);
-        const result = await checkAntecedentsAgainstDocument(fullText, urlPDF, { messageBody });
-        extractedData.antecedentsDiscordances = result;
-        if (Array.isArray(result)) setPdfData(hashId, { antecedentsDiscordances: result });
+        operations = await checkAntecedentsAgainstDocument(fullText, urlPDF, {
+            messageBody, importPatientId: patientId, onlyNewAntecedents
+        });
+        if (!sameImportPatient()) return;
+        if (Array.isArray(operations)) {
+            if (onlyNewAntecedents) operations = operations.filter(operation => operation.action === "ajouter");
+            setPdfData(hashId, {
+                antecedentsDiscordances: operations, importAntecedentsPatientId: patientId,
+                importAntecedentsAddOnly: onlyNewAntecedents
+            });
+        }
     }
-    attachImportAntecedentsButton(extractedData, hashId);
+    attachImportAntecedentsButton(operations, hashId, patientId, sameImportPatient);
 }
 
 /**
  * Affiche le bouton antécédents à côté du lien patient de la ligne d'import, à partir du cache (sans appel à l'IA).
  */
-function attachImportAntecedentsButton(extractedData, hashId) {
+function attachImportAntecedentsButton(operations, hashId, patientId, isCurrent) {
     const lineNumber = actualImportActionLine();
     const anchor = lineNumber !== null
         ? document.querySelector(`#ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_${lineNumber}`)
         : null;
-    addAntecedentsButton(extractedData.antecedentsDiscordances, anchor, hashId);
+    addAntecedentsButton(operations, anchor, hashId, { patientId, isCurrent });
 }
 
 /**
@@ -523,7 +608,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
  */
 let antecedentsComparePanelController = null;
 
-function addAntecedentsButton(operations, validationButton, hashId) {
+function addAntecedentsButton(operations, validationButton, hashId, importContext = null) {
     antecedentsComparePanelController?.destroy();
     antecedentsComparePanelController = null;
     document.querySelector('#pdfParserAntecedentsButton')?.remove();
@@ -550,7 +635,9 @@ function addAntecedentsButton(operations, validationButton, hashId) {
         antecedentsComparePanelController = attachAntecedentsComparePanel(button, operations, {
             onSelectionChange: count => { button.textContent = `Antécédents ⚠️ (${count}/${total})`; },
             onApply: async selectedOperations => {
-                const results = await traiterAntecedentsBatch(selectedOperations, { patientId: await resolveCurrentPatientIdWithWait() });
+                if (importContext && !importContext.isCurrent()) return "Le document ou le patient sélectionné a changé. Rouvrez le document.";
+                const patientId = importContext?.patientId ?? await resolveCurrentPatientIdWithWait();
+                const results = await traiterAntecedentsBatch(selectedOperations, { patientId });
                 const failures = results.filter(result => result?.error);
                 if (failures.length) {
                     button.textContent = 'Antécédents ❌';
@@ -829,7 +916,7 @@ async function setCommentaireIfNeededES(commentaire, attachmentZone = getActiveA
  * @param {Element[]} iframesElements - Les éléments DOM contenant l'iframe.
  * @returns {Promise<Object|null>} - Les données de base extraites ou null si échec.
  */
-async function extractBasePdfData(iframesElements, zone = document) {
+async function extractBasePdfData(iframesElements, zone = document, { hashPdfBytes = false } = {}) {
     console.log('[pdfParser] ----------------- Nouvelle boucle --------------------------------');
     // Initialisation des variables
     let urlPDF = null;
@@ -868,7 +955,7 @@ async function extractBasePdfData(iframesElements, zone = document) {
     console.log('[pdfParser] fullText', [fullText]);
 
     // 4. Créer un identifiant unique pour ce PDF
-    hashId = await customHash(fullText, urlPDF);
+    hashId = await customHash(fullText, urlPDF, hashPdfBytes);
 
 
     return { urlPDF, fullText, hashId, pdfText, messageBody };
@@ -904,7 +991,7 @@ async function handleDataExtraction(fullText, urlPDF, hashId, aiSources = {}) {
                 console.log('[pdfParser] dataMatrixReturn', dataMatrixReturn);
                 if (!dataMatrixReturn) {
                     console.log("[pdfParser] Datamatrix non trouvé.");
-                    setPdfData(hashId, { alreadyImported: true });
+                    if (!aiSources.importSummary) setPdfData(hashId, { alreadyImported: true });
                 }
             }
         }
@@ -1011,7 +1098,7 @@ function checkSearchPossibility(searchOptionValue) {
  * @returns {boolean} needsPageRefresh - true si un refresh de page/DOM est nécessaire avant de continuer.
  * @returns {string} message - Description de l'état pour le debug.
  */
-function handlePatientSearch(extractedData, hashId) {
+function handlePatientSearch(extractedData, hashId, { exactNameFallback = false } = {}) {
     console.log("[pdfParser] handlePatientSearch - Début", extractedData);
 
     // Priorités de recherche : INS complet > NIR tronqué > Date de naissance
@@ -1021,10 +1108,17 @@ function handlePatientSearch(extractedData, hashId) {
         { type: "Nom", data: extractedData.nirMatches?.[0]?.substring(0, 13) || null },
         { type: "Naissance", data: extractedData.dateOfBirth !== formatDate(new Date()) ? extractedData.dateOfBirth : null },
     ];
+    if (exactNameFallback) {
+        const names = (extractedData.nameMatches ?? []).filter(patientNameKey);
+        if (new Set(names.map(patientNameKey)).size === 1) {
+            searchPriorities.push({ type: "Nom", data: names[0], nameOnly: true });
+        }
+    }
 
     for (const search of searchPriorities) {
-        // Ignorer les méthodes sans données ou déjà échouées
-        if (!search.data || extractedData.failedSearches?.includes(search.type)) {
+        // Distingue la recherche par nom de celle par NIR tronqué, qui utilise le même formulaire.
+        const searchKey = search.nameOnly ? "NomComplet" : search.type;
+        if (!search.data || extractedData.failedSearches?.includes(searchKey)) {
             console.log(`[pdfParser] Méthode ${search.type} ignorée (pas de données ou déjà échouée)`);
             continue;
         }
@@ -1046,13 +1140,14 @@ function handlePatientSearch(extractedData, hashId) {
             console.warn(`[pdfParser] Méthode ${search.type} échouée :`, lookupResult.message);
             // On marque (via mutation de l'objet) que cette méthode a échoué pour éviter de la retenter
             extractedData.failedSearches = extractedData.failedSearches || [];
-            extractedData.failedSearches.push(search.type);
+            extractedData.failedSearches.push(searchKey);
             setPdfData(hashId, extractedData);
             continue; // Essayer la méthode suivante (boucle for)
         }
 
         // ÉTAPE 2 : La recherche est prête, sélectionner le patient dans la liste
-        const clicResult = clicPatient(extractedData);
+        const exactName = exactNameFallback && (search.nameOnly || search.type === "Naissance");
+        const clicResult = clicPatient(extractedData, exactName);
         console.log(`[pdfParser] clicPatient() =>`, clicResult);
 
         if (clicResult.status === 'success') {
@@ -1069,7 +1164,7 @@ function handlePatientSearch(extractedData, hashId) {
         // Échec : patient non trouvé dans la liste avec cette méthode
         console.warn(`[pdfParser] Patient non trouvé avec méthode ${search.type}`);
         extractedData.failedSearches = extractedData.failedSearches || [];
-        extractedData.failedSearches.push(search.type);
+        extractedData.failedSearches.push(searchKey);
         setPdfData(hashId, extractedData);
         // Continuer avec la méthode suivante
     }
@@ -1149,16 +1244,7 @@ function actualImportActionLine() {
 
 
 
-// marque les données comme déjà importées
-function markDataAsImported(hashId, extractedData) {
-    console.log("[pdfParser] Marquage des données comme déjà importées pour le PDF avec hashId :", hashId);
-    extractedData.alreadyImported = true;
-    let extractedDataStr = JSON.stringify(extractedData);
-    sessionStorage.setItem(hashId, extractedDataStr);
-}
-
-
-async function setExtractedDataInForm(extractedData, fullText) {
+async function setExtractedDataInForm(extractedData, fullText, { isCurrent, keepTitle }) {
     // Récupère la ligne d'action actuelle
     const ligneAction = actualImportActionLine();
 
@@ -1182,17 +1268,18 @@ async function setExtractedDataInForm(extractedData, fullText) {
         documentCommentaire: document.querySelector(selectors.documentCommentaire)
     };
 
-    PdfParserAutoTitle = await getOptionPromise('PdfParserAutoTitle')
-    PdfParserAutoDate = await getOptionPromise('PdfParserAutoDate')
-    PdfParserAutoClassification = await getOptionPromise('PdfParserAutoClassification')
+    const [autoTitle, autoDate, autoClassification] = await getOptionPromise([
+        "PdfParserAutoTitle", "PdfParserAutoDate", "PdfParserAutoClassification"
+    ]);
+    if (!isCurrent()) return false;
 
     // Données à insérer dans les champs du formulaire
     const fields = {
-        documentDate: PdfParserAutoDate ? extractedData.documentDate : null,
+        documentDate: autoDate ? extractedData.documentDate : null,
         documentType: extractedData.documentType,
-        documentTitle: PdfParserAutoTitle ? extractedData.documentTitle : null,
+        documentTitle: autoTitle && !keepTitle ? extractedData.documentTitle : null,
         documentAddressedTo: extractedData.addressedTo,
-        documentDestinationClass: PdfParserAutoClassification ? extractedData.destinationClass : null,
+        documentDestinationClass: autoClassification ? extractedData.destinationClass : null,
         documentCommentaire: extractedData.documentCommentaire
     };
 
@@ -1200,7 +1287,7 @@ async function setExtractedDataInForm(extractedData, fullText) {
 
     // Parcourt chaque champ et met à jour la valeur si elle existe
     Object.keys(fields).forEach(key => {
-        if (fields[key] && inputs[key]) {
+        if (fields[key] && inputs[key]?.isConnected && isCurrent()) {
             if (key === 'documentDate' && fullText.includes("[WedaAutoParse_documentDate]")) { // Si la date a été détectée par le parseur de Weda, on ne la change pas
                 console.log("[pdfParser] La date a déjà été détectée par le parseur de Weda, on ne la change pas");
                 return;
@@ -1222,14 +1309,32 @@ async function setExtractedDataInForm(extractedData, fullText) {
             inputs[key].dispatchEvent(new Event('change'));
         }
     });
+    return isCurrent();
 }
 
-function clicPatient(extractedData) {
-    let patientToClick = searchProperPatient(getPatientsList(), extractedData["nameMatches"]);
+// Autorise l'ordre prénom/nom et les différences d'accents, sans rapprochement partiel.
+function patientNameKey(name) {
+    const words = typeof name === "string" ? normalizeString(name).match(/\p{L}+/gu) : null;
+    return words?.length >= 2 ? words.sort().join(" ") : null;
+}
+
+function clicPatient(extractedData, exactName = false) {
+    const patientList = getPatientsList();
+    const names = extractedData.nameMatches ?? [];
+    let patientToClick;
+    if (exactName) {
+        const keys = new Set(names.map(patientNameKey).filter(Boolean));
+        const matches = [...patientList].filter(patient => keys.has(patientNameKey(patient.innerText)));
+        if (keys.size !== 1 || matches.length !== 1) {
+            return { status: "error", message: "Aucune correspondance unique avec le nom complet. Vérification manuelle requise." };
+        }
+        patientToClick = matches[0];
+    } else {
+        patientToClick = searchProperPatient(patientList, names);
+    }
     if (!patientToClick) {
         // On va tenter le premier patient de la liste
         console.log("[pdfParser] Patient non trouvé, je vais essayer le premier de la liste s'il est seul.");
-        const patientList = getPatientsList();
         if (patientList.length === 1) {
             patientToClick = getPatientsList()[0];
         } else if (patientList.length > 1) {
@@ -3180,12 +3285,13 @@ async function pdfBlob(urlPDF) {
     return blob;
 }
 
-async function customHash(str, urlPDF) {
+async function customHash(str, urlPDF, hashPdfBytes = false) {
     // console.time('customHash'); // Démarrer le chronomètre
 
-    if (str.length < 10) {
-        str = await pdfBlob(urlPDF); // Attendre la promesse
-        console.log('[pdfParser] je demande un hash basé sur le blob du pdf');
+    if (urlPDF && (hashPdfBytes || str.length < 10)) {
+        const blob = await pdfBlob(urlPDF);
+        const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+        return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
         // ça prend environs 20ms pour un pdf de 300ko
     }
 

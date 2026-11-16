@@ -1143,6 +1143,18 @@ var advancedDefaultSettings = [
                     "description": "Prompt système envoyé à l'IA pour compléter les champs manquants du PDF Parser.",
                     "default": "Tu es un extracteur de données médicales. On te fournit le texte brut d'un document PDF importé dans un dossier patient. On va te demander de compléter certains champs à partir de ce texte. Pour le commentaire, tu dois décrire en une petite phrase la nature du document et sa conclusion si possible, sans y mettre nom du patient, nom du correspondant, date du document ou date de naissance."
                 }, {
+                    "name": "PdfParserImportSummary",
+                    "type": TYPE_BOOL,
+                    "description": "Utilise une synthèse IA courte comme titre des PDF dans la page « Télécharger vos documents ».",
+                    "longDescription": "Fonctionne avec l’assistant IA configuré dans Weda-Helper, par exemple LM Studio. Activez aussi la création automatique du titre dans les options d’import. La synthèse reste modifiable dans le formulaire et l’import est validé manuellement.",
+                    "default": false,
+                    "subOptions": [{
+                        "name": "PdfParserImportSummaryPrompt",
+                        "type": TYPE_LARGETEXT,
+                        "description": "Consigne IA pour le titre de synthèse des PDF importés.",
+                        "default": "Résume le document médical en français, en une phrase courte et télégraphique, de préférence en moins de 190 caractères. Commence par la spécialité abrégée ou l’examen si utile, puis indique le résultat principal. Ajoute la conduite à tenir, le traitement modifié ou le suivi seulement si le document les mentionne. Utilise les abréviations médicales usuelles. Omet les renseignements administratifs, l’identité du patient, la date du courrier, les résultats normaux sans intérêt pour le suivi et les répétitions. N’invente aucune information. Laisse le titre vide si le document est inexploitable."
+                    }]
+                }, {
                     "name": "PdfParserAutoAIFullMode",
                     "type": TYPE_BOOL,
                     "description": "Laisse l'IA déterminer elle-même le titre, la destination (Consultation/Résultats d'examens/Courrier) et la classification du document, au lieu de s'appuyer uniquement sur l'analyse par mots-clés.",
@@ -1187,7 +1199,13 @@ var advancedDefaultSettings = [
                     "name": "verifierEtMettreAJourAntecedents",
                     "type": TYPE_BOOL,
                     "description": "Après avoir renseigné un document, demande à l'IA de vérifier s'il est cohérent avec les antécédents du patient (sans rien modifier). Dans la messagerie sécurisée, un bouton « Antécédents ✅ / ⚠️ » s'affiche : en cas de différence, un clic met à jour les antécédents.",
-                    "default": false
+                    "default": false,
+                    "subOptions": [{
+                        "name": "PdfParserImportAntecedentsPrompt",
+                        "type": TYPE_LARGETEXT,
+                        "description": "Consigne IA pour proposer des antécédents à partir des PDF importés.",
+                        "default": "Recherche les diagnostics nouveaux et confirmés par le document, en tenant compte des antécédents déjà présents au dossier. Écarte les suspicions, hypothèses, motifs d’examen, symptômes isolés et mentions de diagnostics déjà connus. Ne retiens un antécédent familial que si le courrier le présente explicitement comme tel."
+                    }]
                 }]
             }]
         }, {

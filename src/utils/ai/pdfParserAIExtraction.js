@@ -84,7 +84,7 @@ function resolvePendingPdfParserFields(fields) {
  * Weda (@see features/pdfParser.js initDocumentTypes), récupérées par l'appelant au moment de l'appel.
  * Utilisée uniquement en mode complet (PdfParserAutoAIFullMode), pour contraindre le champ documentType.
  * @param {{pdfText?: string|null, messageBody?: string|null}} [aiSources] - Texte du PDF et corps du message
- * (échanges sécurisés) séparés : la lisibilité du PDF est évaluée indépendamment du corps du message.
+ * (échanges sécurisés) séparés, et `importSummary` pour utiliser la consigne de titre de la page d'import.
  * @returns {Promise<object>} Les champs complétés par l'IA, objet vide si rien n'a pu être complété.
  */
 async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = null, possibleDocumentTypes = null, aiSources = {}) {
@@ -92,6 +92,12 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
 
     const fullModeEnabled = await getOptionPromise('PdfParserAutoAIFullMode');
     const fieldsToAsk = await listFieldsToAsk(extractedData, fullModeEnabled);
+    if (aiSources.importSummary) {
+        const titleField = fieldsToAsk.findIndex(field => field.key === "documentTitle");
+        const summaryField = { key: "documentTitle", descriptionOption: "PdfParserImportSummaryPrompt" };
+        if (titleField < 0) fieldsToAsk.push(summaryField);
+        else fieldsToAsk[titleField] = summaryField;
+    }
     if (fieldsToAsk.length === 0) return {};
 
     const chatApi = await prepareChatApi(fullModeEnabled);
@@ -110,6 +116,7 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
             setTimeout(() => {
                 if (pendingPdfParserResolve !== resolve) return; // déjà résolu entre-temps
                 pendingPdfParserResolve = null;
+                chatApi.stop();
                 reject(new Error("Délai dépassé en attendant l'appel de renseignerChampsPdfParser"));
             }, PDF_PARSER_AI_TIMEOUT_MS);
             sendToChatApi();
@@ -128,6 +135,8 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
         } else if (field.key === 'documentCommentaire') {
             // Marque le commentaire comme généré par l'IA, pour distinction visuelle dans le formulaire
             completedFields[field.key] = `[IA] ${value}`;
+        } else if (field.key === "documentTitle" && aiSources.importSummary) {
+            if (typeof value === "string") completedFields.importSummary = value.replace(/\s+/g, " ").trim();
         } else {
             completedFields[field.key] = value;
         }
@@ -144,7 +153,9 @@ async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = nul
  * car la conversation est réinitialisée.
  * @returns {Promise<Array<object>|null>} opérations proposées (vide : aucune différence), null si la vérification n'a pas eu lieu.
  */
-async function checkAntecedentsAgainstDocument(fullText, urlPDF = null, { messageBody = null } = {}) {
+async function checkAntecedentsAgainstDocument(fullText, urlPDF = null, {
+    messageBody = null, importPatientId = null, onlyNewAntecedents = false
+} = {}) {
     if (!await getOptionPromise('verifierEtMettreAJourAntecedents')) return null;
     if (!await resolveCurrentPatientIdWithWait()) {
         console.warn('[pdfParserAIExtraction] Aucun patient sélectionné, vérification des antécédents ignorée.');
@@ -153,16 +164,21 @@ async function checkAntecedentsAgainstDocument(fullText, urlPDF = null, { messag
     const chatApi = await prepareChatApi(false);
     if (!chatApi) return null;
 
+    const importPrompt = onlyNewAntecedents ? await getOptionPromise("PdfParserImportAntecedentsPrompt") : "";
     const sendToChatApi = await buildChainLauncher(chatApi, 'verifierAntecedentsDepuisDocument', {
         fieldsToAsk: [], fullText, urlPDF, messageBody,
+        entree: importPatientId ? { importPatientId } : {},
         instructions: "Compare le document ci-dessous avec les antécédents du patient actuel, sans rien modifier. Suis les consignes de chaque étape : les outils à appeler te seront indiqués au fur et à mesure."
+            + (onlyNewAntecedents ? `\n\nPropose uniquement de nouveaux antécédents à ajouter. ${importPrompt}` : "")
     });
+    if (importPatientId && getImportGridPatientId() !== importPatientId) return null;
     try {
         const operations = await new Promise((resolve, reject) => {
             pendingAntecedentsResolve = resolve;
             setTimeout(() => {
                 if (pendingAntecedentsResolve !== resolve) return;
                 pendingAntecedentsResolve = null;
+                chatApi.stop();
                 reject(new Error("Délai dépassé en attendant l'appel de renseignerAntecedentsDiscordances"));
             }, PDF_PARSER_AI_TIMEOUT_MS);
             sendToChatApi();
@@ -264,7 +280,7 @@ async function buildChainLauncher(chatApi, chainName, { toolName, fieldsToAsk, f
 /** Prompt demandant au modèle de renseigner les champs de `fieldsToAsk` via l'outil `toolName`. */
 async function buildFieldInstructions({ toolName, fieldsToAsk, fullModeEnabled, possibleDocumentTypes, extraInstructions }) {
     const basePrompt = await getOptionPromise('PdfParserAutoAIExtractionPrompt');
-    const fieldDescriptions = await getOptionPromise(fieldsToAsk.map(field => `PdfParserAIDesc_${field.key}`));
+    const fieldDescriptions = await getOptionPromise(fieldsToAsk.map(field => field.descriptionOption ?? `PdfParserAIDesc_${field.key}`));
     const fieldsDescription = fieldsToAsk.map((field, i) => `- "${field.key}" : ${fieldDescriptions[i]}`).join('\n');
     const categorizationContext = (fullModeEnabled && possibleDocumentTypes?.length)
         ? `\n\nValeurs autorisées pour "documentType" : ${possibleDocumentTypes.join(', ')}.`

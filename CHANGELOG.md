@@ -15,6 +15,8 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#757](https://github.com/Refhi/Weda-Helper/issues/757) - Une analyse des résultats HPRIM est désormais possible en masse via l'IA.
 
 ### Importations ("Télécharger vos documents") :
+- Une option permet d’utiliser une synthèse IA courte et modifiable comme titre des PDF importés. Les consignes du titre et des propositions d’antécédents sont personnalisables dans les options de l’assistant IA.
+- L’analyse en série attend la réponse de l’assistant IA avant d’ouvrir le PDF suivant.
 - [#742](https://github.com/Refhi/Weda-Helper/issues/742) - Dans la page des imports, vous pouvez demander l'analyse de tous les imports en attente d'un coup ! Particulièrement intéressant si vous avez une IA locale lente : vous pouvez lancer l'analyse automatique de tous les imports en attente pendant la pause déjeuner par exemple.
 - Les antécédents récupérés lors de l'analyse d'un import sont réutilisés par le bouton antécédents (sans nouvelle lecture du dossier), et un import déjà marqué comme importé ne relance plus l'analyse au clic manuel.
 ### Messagerie sécurisée :
