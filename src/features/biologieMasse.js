@@ -85,7 +85,9 @@ addTweak('/FolderMedical/HprimForm.aspx', 'biologieMasseAnalyse', async function
         const chatApi = await prepareChatApi(false);
         if (!chatApi) throw new Error("Assistant IA indisponible");
         const age = ageFromBirthDate(row.naissance);
-        const prompt = `${await getOptionPromise('biologieMasseAnalysePrompt')}\n\nPour répondre, appelle OBLIGATOIREMENT la fonction renseignerAnalyseBiologie.`
+        const analysePrompt = await getOptionPromise('biologieMasseAnalysePrompt');
+        if (!analysePrompt) throw new Error("Prompt d'analyse de biologie non configuré");
+        const prompt = `${analysePrompt}\n\nPour répondre, appelle OBLIGATOIREMENT la fonction renseignerAnalyseBiologie.`
             + `\n\nDate du résultat : ${row.date}${age !== null ? `\nÂge du patient : ${age} ans` : ''}`
             + `\n\n--- Résultat ---\n${JSON.stringify(donnees)}\n--- Fin du résultat ---`;
         return new Promise((resolve, reject) => {
