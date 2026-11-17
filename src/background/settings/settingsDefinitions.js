@@ -1197,7 +1197,7 @@ var advancedDefaultSettings = [
             "options": [{
                 "name": "biologieMasseAnalyse",
                 "type": TYPE_BOOL,
-                "description": "Ajoute, sur la page des résultats HPRIM, des boutons pour analyser par IA les résultats de biologie cochés ou tous les résultats de la liste (nécessite l'assistant IA activé).",
+                "description": "Sur la page des résultats HPRIM, permet d’analyser par IA les bilans cochés ou toute la liste. Le bouton 🔁 mémorise le mode automatique et analyse les nouveaux bilans tant que la page est ouverte (nécessite l’assistant IA).",
                 "longDescription": "Choisit les résultats normaux à inclure et leur ordre si l’assistant IA est activé. Les chiffres, les anomalies et les antériorités restent contrôlés par Weda Helper. Le profil IA actif reçoit les résultats chiffrés reconnus du bilan, sans identité ni historique.",
                 "default": true,
                 "subOptions": [{
