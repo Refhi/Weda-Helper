@@ -15,8 +15,10 @@ addTweak('/FolderMedical/HprimForm.aspx', 'biologieMasseAnalyse', async function
 
     const BIOLOGIE_ANALYSES_KEY = 'biologieMasseAnalyses';
     const BIOLOGIE_QUEUE_KEY = 'biologieMasseQueue';
-    const BIOLOGIE_TITRES_SAISIS_KEY = 'biologieMasseTitresSaisis';
-    const BIOLOGIE_TITLE_SELECTOR = '#ContentPlaceHolder1_TextBoxHprimTitre';
+    const BIOLOGIE_AUTO_KEY = "biologieMasseAutoEnabled";
+    const BIOLOGIE_AUTO_INTERVAL = 45000;
+    const BIOLOGIE_PANEL = "#ContentPlaceHolder1_UpdatePanelHprimsGrid";
+    const BIOLOGIE_TITLE = "#ContentPlaceHolder1_TextBoxHprimTitre";
     const BIOLOGIE_STATUT_ICONES = { normal: '🟢', a_surveiller: '🟠', urgent: '🔴', erreur: '⚠️' };
 
     // Résolveur de l'analyse en cours (un seul résultat à la fois), appelé par le tool call "renseignerAnalyseBiologie".
@@ -37,9 +39,9 @@ addTweak('/FolderMedical/HprimForm.aspx', 'biologieMasseAnalyse', async function
     }
 
     /** Lignes de la liste, avec une clé stable (date, nom, prénom, naissance, rang parmi les doublons) et le lien à cliquer. */
-    function getBiologieRows() {
+    function getBiologieRows(root = document) {
         const occurrences = {};
-        return [...document.querySelectorAll('#ContentPlaceHolder1_HprimsGrid tr')]
+        return [...root.querySelectorAll('#ContentPlaceHolder1_HprimsGrid tr')]
             .filter(tr => tr.querySelector('[id^="ContentPlaceHolder1_HprimsGrid_LinkButtonHprimNom_"]'))
             .map(tr => {
                 const text = selector => tr.querySelector(selector)?.textContent.trim() ?? '';
@@ -57,8 +59,8 @@ addTweak('/FolderMedical/HprimForm.aspx', 'biologieMasseAnalyse', async function
             });
     }
 
-    function getSelectedBiologieKey() {
-        return getBiologieRows().find(row => row.tr.classList.contains('grid-selecteditem'))?.key;
+    function isBiologieSelected(key) {
+        return getBiologieRows().some(row => row.key === key && row.tr.classList.contains("grid-selecteditem"));
     }
 
     function ageFromBirthDate(naissance) {
@@ -75,6 +77,7 @@ addTweak('/FolderMedical/HprimForm.aspx', 'biologieMasseAnalyse', async function
         const before = getBiologieRows();
         const index = before.findIndex(row => row.key === key);
         if (index < 0) return false;
+        if (before[index].tr.classList.contains("grid-selecteditem") && document.querySelector(BIOLOGIE_TITLE)) return true;
         const oldGrid = document.querySelector('#ContentPlaceHolder1_HprimsGrid');
         clicCSPLockedElement(`#${before[index].link.id}`);
         recordMetrics({ clicks: 1, drags: 0 });
@@ -107,16 +110,7 @@ addTweak('/FolderMedical/HprimForm.aspx', 'biologieMasseAnalyse', async function
         });
     }
 
-    // La saisie est mémorisée avant que le changement natif puisse remplacer le champ par postback.
-    document.addEventListener('input', event => {
-        const input = event.target;
-        if (!event.isTrusted || !input.matches?.(BIOLOGIE_TITLE_SELECTOR)) return;
-        const key = getSelectedBiologieKey();
-        if (!key || (!running && !readBiologieSession(BIOLOGIE_ANALYSES_KEY, {})[key])) return;
-        const titres = readBiologieSession(BIOLOGIE_TITRES_SAISIS_KEY, {});
-        titres[key] = input.value;
-        sessionStorage.setItem(BIOLOGIE_TITRES_SAISIS_KEY, JSON.stringify(titres));
-    }, true);
+    const titleHandledInputs = new WeakSet();
 
     /** Titre à inscrire pour une analyse réussie, ou null. */
     function titleFor(analyse) {
@@ -125,14 +119,14 @@ addTweak('/FolderMedical/HprimForm.aspx', 'biologieMasseAnalyse', async function
     }
 
     /** Inscrit la synthèse dans le titre du résultat ouvert ; le changement déclenche un postback Weda qui recharge la liste. */
-    async function writeBiologieTitle(key, analyse) {
-        const input = document.querySelector(BIOLOGIE_TITLE_SELECTOR);
+    async function writeBiologieTitle(analyse) {
+        const input = document.querySelector('#ContentPlaceHolder1_TextBoxHprimTitre');
         const title = titleFor(analyse);
-        if (!input || !title || getSelectedBiologieKey() !== key) return;
-        if (Object.hasOwn(readBiologieSession(BIOLOGIE_TITRES_SAISIS_KEY, {}), key)) return;
+        if (!input || !title) return;
         // Titre déjà présent (Weda peut renvoyer une valeur avec espaces parasites) : on ne réécrit pas.
         if (input.value.replace(/\s+/g, ' ').trim() === title) return;
         const oldGrid = document.querySelector('#ContentPlaceHolder1_HprimsGrid');
+        titleHandledInputs.add(input);
         input.value = title;
         input.dispatchEvent(new Event('change', { bubbles: true }));
         recordMetrics({ clicks: 1, drags: 1 });
@@ -143,22 +137,29 @@ addTweak('/FolderMedical/HprimForm.aspx', 'biologieMasseAnalyse', async function
         }
     }
 
-    // Weda peut réinitialiser le champ au rechargement. Le préremplissage laisse le formulaire natif envoyer le titre.
-    async function restoreBiologieTitle() {
+    // Weda ne conserve pas le titre en changeant de ligne : on le réapplique à la réouverture d'un résultat déjà analysé.
+    // Une seule tentative par champ de saisie, pour ne jamais boucler si Weda réinitialise le titre.
+    let reapplyTimer;
+    function scheduleTitleReapply() {
         if (running) return;
-        if (!await getOptionPromise('biologieMasseAnalyseTitre') || running) return;
-        const input = document.querySelector(BIOLOGIE_TITLE_SELECTOR);
-        const key = getSelectedBiologieKey();
-        if (!input || !key) return;
-        const analyse = readBiologieSession(BIOLOGIE_ANALYSES_KEY, {})[key];
-        const titreSaisi = readBiologieSession(BIOLOGIE_TITRES_SAISIS_KEY, {})[key];
-        const title = titreSaisi ?? titleFor(analyse);
-        if (title !== null && input.value !== title) input.value = title;
+        clearTimeout(reapplyTimer);
+        reapplyTimer = setTimeout(async () => {
+            const input = document.querySelector('#ContentPlaceHolder1_TextBoxHprimTitre');
+            if (running || !input || input === editedTitle || titleHandledInputs.has(input)) return;
+            const selected = getBiologieRows().find(row => row.tr.classList.contains('grid-selecteditem'));
+            const analyse = selected && readBiologieSession(BIOLOGIE_ANALYSES_KEY, {})[selected.key];
+            if (!analyse || !await getOptionPromise('biologieMasseAnalyseTitre')) return;
+            if (running || !input.isConnected || input === editedTitle || !isBiologieSelected(selected.key)) return;
+            await writeBiologieTitle(analyse);
+        }, 700);
     }
 
     let running = false;
     let stopRequested = false;
-    let toolbox, progress, checkedButton, allButton, stopButton;
+    let automaticQueue = false;
+    let autoEnabled, autoLock, requestingAutoLock = false, checkingInbox = false;
+    let autoTimer, lastInteraction = 0, editedTitle;
+    let toolbox, progress, checkedButton, allButton, autoButton, stopButton;
 
     const saveAnalyse = (key, analyse) => {
         const analyses = readBiologieSession(BIOLOGIE_ANALYSES_KEY, {});
@@ -198,13 +199,17 @@ addTweak('/FolderMedical/HprimForm.aspx', 'biologieMasseAnalyse', async function
         if (!toolbox) return;
         allButton.disabled = running;
         refreshCheckedButton();
-        stopButton.disabled = !running;
+        autoButton.setAttribute("aria-pressed", String(autoEnabled === true));
+        autoButton.style.backgroundColor = autoEnabled ? "#4CAF50" : "";
+        autoButton.style.color = autoEnabled ? "white" : "";
+        stopButton.disabled = !running && !autoEnabled;
         progress.textContent = text;
     }
 
-    async function processQueue(keys) {
+    async function processQueue(keys, automatic = false) {
         if (running) return;
         running = true;
+        automaticQueue = automatic;
         stopRequested = false;
         const total = keys.length;
         let pending = [...keys];
@@ -212,42 +217,142 @@ addTweak('/FolderMedical/HprimForm.aspx', 'biologieMasseAnalyse', async function
             while (pending.length && !stopRequested) {
                 const key = pending[0];
                 updateUi(`${total - pending.length + 1}/${total}`);
-                sessionStorage.setItem(BIOLOGIE_QUEUE_KEY, JSON.stringify({ pending, total }));
+                sessionStorage.setItem(BIOLOGIE_QUEUE_KEY, JSON.stringify({ pending, automatic }));
                 const row = getBiologieRows().find(r => r.key === key);
-                if (row && await openBiologieRow(key)) {
+                if (row && !readBiologieSession(BIOLOGIE_ANALYSES_KEY, {})[key] && await openBiologieRow(key)) {
+                    if (!isBiologieSelected(key)) break;
                     const donnees = await pageContext();
+                    if (!isBiologieSelected(key)) break;
                     if (donnees.error) {
                         saveAnalyse(key, { statut: 'erreur', resume: donnees.error });
                     } else {
                         try {
                             const analyse = await analyseBiologieWithAI(row, donnees);
                             saveAnalyse(key, analyse);
-                            if (await getOptionPromise('biologieMasseAnalyseTitre')) await writeBiologieTitle(key, analyse);
+                            if (await getOptionPromise('biologieMasseAnalyseTitre') && isBiologieSelected(key)
+                                && (!automatic || !isEditingBiologie())) await writeBiologieTitle(analyse);
                         } catch (error) {
                             console.warn('[biologieMasse] Échec de l\'analyse :', error);
                             saveAnalyse(key, { statut: 'erreur', resume: String(error.message || error) });
                         }
                     }
                     decorateRows();
+                } else if (automatic && row && !stopRequested && !readBiologieSession(BIOLOGIE_ANALYSES_KEY, {})[key]) {
+                    saveAnalyse(key, { statut: 'erreur', resume: "Weda n’a pas ouvert le résultat." });
+                    decorateRows();
                 }
                 pending = pending.slice(1);
+                if (automatic && isEditingBiologie()) break;
             }
         } finally {
             running = false;
+            automaticQueue = false;
             sessionStorage.removeItem(BIOLOGIE_QUEUE_KEY);
             updateUi();
-            restoreBiologieTitle();
+            if (!autoEnabled) autoLock?.();
+            scheduleAutoScan();
         }
     }
 
-    function startQueue(selectFn) {
+    function unanalysedKeys(rows) {
         const analyses = readBiologieSession(BIOLOGIE_ANALYSES_KEY, {});
-        const keys = selectFn(getBiologieRows()).filter(row => !analyses[row.key]).map(row => row.key);
+        return rows.filter(row => !analyses[row.key]).map(row => row.key);
+    }
+
+    function startQueue(selectFn) {
+        const keys = unanalysedKeys(selectFn(getBiologieRows()));
         if (!keys.length) {
             sendWedaNotif({ message: "Aucun résultat à analyser (déjà analysés, ou aucun résultat coché).", type: 'info', icon: 'info' });
             return;
         }
         processQueue(keys);
+    }
+
+    function isEditingBiologie() {
+        return Date.now() - lastInteraction < 5000 || editedTitle?.isConnected;
+    }
+
+    function canStartAuto() {
+        return autoEnabled && autoLock && !running && !isEditingBiologie();
+    }
+
+    function startAutoQueue() {
+        if (!canStartAuto()) return;
+        const keys = unanalysedKeys(getBiologieRows());
+        if (keys.length) processQueue(keys, true);
+    }
+
+    function scheduleAutoScan() {
+        if (!autoEnabled) return;
+        clearTimeout(autoTimer);
+        autoTimer = setTimeout(startAutoQueue, 250);
+    }
+
+    function claimAutoMode() {
+        if (!autoEnabled || autoLock || requestingAutoLock) return;
+        requestingAutoLock = true;
+        let acquired = false;
+        // Un seul onglet HPRIM traite les arrivées automatiquement.
+        navigator.locks.request(BIOLOGIE_AUTO_KEY, { ifAvailable: true }, async lock => {
+            if (!lock || !autoEnabled) return;
+            acquired = true;
+            await new Promise(resolve => {
+                autoLock = resolve;
+                startAutoQueue();
+            });
+            autoLock = null;
+        }).catch(error => console.warn("[biologieMasse] Mode automatique indisponible :", error))
+            .finally(() => {
+                requestingAutoLock = false;
+                if (acquired) claimAutoMode();
+            });
+    }
+
+    async function checkBiologieInbox() {
+        claimAutoMode();
+        startAutoQueue();
+        if (!canStartAuto() || checkingInbox || !document.querySelector(BIOLOGIE_PANEL)) return;
+        checkingInbox = true;
+        const interaction = lastInteraction;
+        try {
+            const response = await fetch(location.href, {
+                cache: "no-store", credentials: "same-origin", redirect: "error", signal: AbortSignal.timeout(12000)
+            });
+            if (!response.ok) return;
+            const preview = document.createElement("template");
+            preview.innerHTML = await response.text();
+            const visibleKeys = new Set(getBiologieRows().map(row => row.key));
+            const newKeys = unanalysedKeys(getBiologieRows(preview.content));
+            if (!canStartAuto() || lastInteraction !== interaction || !newKeys.some(key => !visibleKeys.has(key))) return;
+            // Un GET évite de rejouer le dernier formulaire natif Weda après un postback.
+            const url = new URL(location.href);
+            url.searchParams.set("wh_biologie_refresh", Date.now());
+            location.replace(url.href);
+        } catch (error) {
+            console.warn("[biologieMasse] Impossible de vérifier les nouveaux résultats :", error);
+        } finally {
+            checkingInbox = false;
+        }
+    }
+
+    function setAutoEnabled(enabled) {
+        autoEnabled = enabled;
+        if (enabled) {
+            claimAutoMode();
+            scheduleAutoScan();
+        } else if (automaticQueue) stopRequested = true;
+        else autoLock?.();
+        updateUi(progress?.textContent);
+    }
+
+    async function toggleAuto(enabled) {
+        if (enabled) lastInteraction = 0;
+        setAutoEnabled(enabled);
+        try {
+            await chrome.storage.local.set({ [BIOLOGIE_AUTO_KEY]: enabled });
+        } catch (error) {
+            console.warn("[biologieMasse] Impossible de mémoriser le mode automatique :", error);
+        }
     }
 
     function createToolbox(grid) {
@@ -265,36 +370,86 @@ addTweak('/FolderMedical/HprimForm.aspx', 'biologieMasseAnalyse', async function
         };
         checkedButton = makeButton('🧪 Analyser les cochés', "Weda-Helper : analyse par IA des résultats cochés (ceux déjà analysés sont ignorés).", () => startQueue(rows => rows.filter(r => r.checked)));
         allButton = makeButton('🧪 Tout analyser', "Weda-Helper : analyse par IA de tous les résultats de la liste (ceux déjà analysés sont ignorés).", () => startQueue(rows => rows));
+        autoButton = makeButton("🔁", "Weda-Helper : analyse automatiquement les résultats en attente et les nouveaux résultats.", () => toggleAuto(!autoEnabled));
+        autoButton.setAttribute("aria-label", "Analyse automatique des biologies");
         const clearButton = makeButton('🗑️', "Weda-Helper : oublie les analyses enregistrées pour cette session.", () => {
             sessionStorage.removeItem(BIOLOGIE_ANALYSES_KEY);
-            sessionStorage.removeItem(BIOLOGIE_TITRES_SAISIS_KEY);
             decorateRows();
         });
-        stopButton = makeButton('⏹️', "Weda-Helper : arrête l'analyse en cours après le résultat courant.", () => { stopRequested = true; });
+        stopButton = makeButton('⏹️', "Weda-Helper : arrête la file après le résultat courant et désactive le mode automatique.", () => {
+            stopRequested = true;
+            sessionStorage.removeItem(BIOLOGIE_QUEUE_KEY);
+            if (autoEnabled) toggleAuto(false);
+        });
         progress = document.createElement('span');
         progress.style.fontSize = '0.85em';
-        toolbox.append(checkedButton, allButton, stopButton, clearButton, progress);
+        toolbox.append(checkedButton, allButton, autoButton, stopButton, clearButton, progress);
         grid.insertAdjacentElement('beforebegin', toolbox);
         updateUi();
     }
 
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === "local" && BIOLOGIE_AUTO_KEY in changes) setAutoEnabled(changes[BIOLOGIE_AUTO_KEY].newValue === true);
+    });
+    try {
+        const stored = await chrome.storage.local.get(BIOLOGIE_AUTO_KEY);
+        autoEnabled ??= stored[BIOLOGIE_AUTO_KEY] === true;
+    } catch (error) {
+        autoEnabled ??= false;
+        console.warn("[biologieMasse] Impossible de relire le mode automatique :", error);
+    }
+
+    document.addEventListener("input", event => {
+        if (event.isTrusted && event.target.matches(BIOLOGIE_TITLE)) editedTitle = event.target;
+    }, true);
+    for (const type of ["pointerdown", "keydown"]) {
+        document.addEventListener(type, event => {
+            if (event.isTrusted && !toolbox?.contains(event.target)) lastInteraction = Date.now();
+        }, true);
+    }
+    window.addEventListener("pagehide", () => {
+        autoEnabled = false;
+        autoLock?.();
+    });
+    window.addEventListener("pageshow", async event => {
+        if (!event.persisted) return;
+        try {
+            const stored = await chrome.storage.local.get(BIOLOGIE_AUTO_KEY);
+            setAutoEnabled(stored[BIOLOGIE_AUTO_KEY] === true);
+        } catch (error) {
+            console.warn("[biologieMasse] Impossible de relire le mode automatique :", error);
+        }
+    });
+
+    let gridObserver;
+    let initialized = false;
     waitForElement({
-        selector: '#ContentPlaceHolder1_UpdatePanelHprimsGrid',
-        justOnce: true,
+        selector: BIOLOGIE_PANEL,
+        observerId: "biologieMasse",
         triggerOnInit: true,
-        callback: async ([panel]) => {
+        callback: ([panel]) => {
             createToolbox(panel);
-            // Le panneau est recréé à chaque postback : on réapplique les pastilles.
-            new MutationObserver(() => { decorateRows(); restoreBiologieTitle(); refreshCheckedButton(); }).observe(panel, { childList: true, subtree: true });
+            gridObserver?.disconnect();
+            gridObserver = new MutationObserver(() => {
+                decorateRows();
+                scheduleTitleReapply();
+                refreshCheckedButton();
+                scheduleAutoScan();
+            });
+            gridObserver.observe(panel, { childList: true, subtree: true });
             panel.addEventListener('change', refreshCheckedButton);
             decorateRows();
 
             // Reprise après un rechargement complet de la page pendant une analyse.
-            const saved = readBiologieSession(BIOLOGIE_QUEUE_KEY, null);
-            if (saved?.pending?.length) processQueue(saved.pending);
+            if (!initialized) {
+                initialized = true;
+                const saved = readBiologieSession(BIOLOGIE_QUEUE_KEY, null);
+                if (saved?.pending?.length && !saved.automatic) processQueue(saved.pending);
+                else sessionStorage.removeItem(BIOLOGIE_QUEUE_KEY);
+                setInterval(checkBiologieInbox, BIOLOGIE_AUTO_INTERVAL);
+                claimAutoMode();
+            }
+            scheduleAutoScan();
         }
     });
-
-    // Le champ titre peut être remplacé séparément de la grille lors d'un postback partiel.
-    waitForElement({ selector: BIOLOGIE_TITLE_SELECTOR, triggerOnInit: true, callback: restoreBiologieTitle });
 });
