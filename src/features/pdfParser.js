@@ -82,30 +82,6 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
         }
     });
 
-    // On va également déclencher une procédure simplifiée si est cliqué le bouton "Importer le message"
-    waitForElement({
-        selector: "div.docImportBody td a",
-        text: "Importer le message",
-        callback: function (elements) {
-            // Ajout d'un listener sur tous les boutons "Importer le message"
-            elements.forEach(function (element) {
-                element.addEventListener("click", function () {
-                    console.log("[pdfParser] Importation du message cliqué, je vais traiter le PDF présent dans l'iframe.");
-
-                    // Récupérer l'élément frère en troisième position vers le haut
-                    let gdParrentElement = element.parentNode.parentNode;
-                    let nameElement = gdParrentElement.querySelector("td:nth-child(2) a");
-                    let nameText = nameElement ? nameElement.innerText : "Élément non trouvé";
-                    let ddnElement = gdParrentElement.querySelector("td:nth-child(3)");
-                    nameText += ddnElement ? ` ${ddnElement.innerText}` : "";
-                    console.log("[pdfParser] Nom du document importé :", nameText);
-                    addPatientNameDisplay(nameText, nameElement);
-                    processFoundPdfIframeEchanges(true);
-                });
-            });
-        }
-    });
-
     // On ajoute aussi une petite aide : le champ de recherche de patient est décalé vers le bas de l'écran
     waitForElement({
         selector: "#ContentPlaceHolder1_FindPatientUcForm1_PanelFindPatient",
@@ -365,7 +341,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
 
     // Setup de la procédure
     // Extraction des données de base
-    const baseData = await extractBasePdfData(iframesElements); // s’occupe également de vérifier les données déjà extraites
+    const baseData = await extractBasePdfData(iframesElements); // s'occupe également de vérifier les données déjà extraites
     if (!baseData) {
         notifyEchangesProcessingDone(null);
         return;
@@ -407,6 +383,11 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
             if (searchResult.patientFound) {
                 console.log("[pdfParser] Echanges - Patient trouvé :", searchResult.message);
                 patientSearchSucceeded = true;
+                // Si un refresh est nécessaire, attendre le changement DOM avant de continuer
+                if (searchResult.needsPageRefresh) {
+                    console.log("[pdfParser] Echanges - Attente changement DOM après clic patient");
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
                 break;
             }
 
