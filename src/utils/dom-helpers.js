@@ -39,7 +39,8 @@ function getConnectedDoctorName() {
     // Essayer d'abord avec LabelUserLog
     const labelUserLog = document.getElementById('LabelUserLog');
     if (labelUserLog && labelUserLog.innerText) {
-        return labelUserLog.innerText.trim();
+        const userName = labelUserLog.innerText.split("\n")[0];
+        return userName.trim();
     }
 
     // Sinon essayer avec LinkButtonUserLog
