@@ -274,6 +274,26 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
     let autoModeEnabled;
     const UNREAD_CHECK_INTERVAL = 20000;
 
+    // --- Gestion du cache de session ---
+    function getExtractedEchangesDataKeys() {
+        const pdfDataFields = ['documentDate', 'nameMatches', 'alreadyImported', 'antecedentsDiscordances'];
+        const keys = [];
+        for (let i = 0; i < sessionStorage.length; i++) {
+            const key = sessionStorage.key(i);
+            try {
+                const data = JSON.parse(sessionStorage.getItem(key));
+                if (data && typeof data === 'object' && pdfDataFields.some(field => field in data)) keys.push(key);
+            } catch (e) { /* valeur non JSON : ignorée */ }
+        }
+        return keys;
+    }
+
+    function clearExtractedEchangesData() {
+        const keys = getExtractedEchangesDataKeys();
+        keys.forEach(key => sessionStorage.removeItem(key));
+        return keys.length;
+    }
+
     // --- Sélection des messages selon le scénario ---
     function getAllMessages() {
         return Array.from(document.querySelectorAll('.messageListItem'));
@@ -400,8 +420,8 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
         if (enabled) startAutoQueueIfUnread();
     }
 
-    // --- Boîte à outils (▶️ cochés / 🔁 auto non lus / ⏹️ stop) ---
-    let playButton, autoButton, stopButton, progressLabel;
+    // --- Boîte à outils (▶️ cochés / 🔁 auto non lus / ⏹️ stop / 🧹 vider cache) ---
+    let playButton, autoButton, stopButton, clearButton, progressLabel;
 
     let progressText = '';
     function updateProgressLabel(current, total, countdown = '') {
@@ -419,6 +439,11 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
         autoButton.style.backgroundColor = autoModeEnabled ? '#4CAF50' : '';
         autoButton.style.color = autoModeEnabled ? 'white' : '';
         stopButton.disabled = !queueRunning;
+        if (clearButton) {
+            const cached = getExtractedEchangesDataKeys().length;
+            clearButton.disabled = cached === 0;
+            clearButton.title = `Weda-Helper : supprime toutes les données extraites (statut « déjà importé », antécédents vérifiés...) pour ré-analyser les messages de zéro. ${cached} message(s) en cache.`;
+        }
         if (!queueRunning) {
             progressText = '';
             progressLabel.textContent = '';
@@ -456,6 +481,16 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
         stopButton.onclick = stopQueue;
         stopButton.disabled = true;
 
+        clearButton = document.createElement('button');
+        clearButton.type = 'button';
+        clearButton.innerText = '🧹';
+        clearButton.title = "Weda-Helper : Vide toutes les données en cache de pré-analyse. Utile pour ré-analyser les messages de zéro, notamment pour les tests ou si vous avez changé les prompts. Est de toute façon vidé à la fermeture du navigateur.";
+        clearButton.onclick = function () {
+            const count = clearExtractedEchangesData();
+            updateToolboxState();
+            sendWedaNotif({ message: `Données extraites supprimées pour ${count} message(s).`, type: 'success' });
+        };
+
         progressLabel = document.createElement('span');
         progressLabel.style.fontSize = '0.85em';
         progressLabel.style.cursor = 'pointer';
@@ -465,7 +500,7 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
         });
         progressLabel.title = "Weda-Helper : numéro du message en cours / nombre de messages à traiter. ⏳ = temps restant avant l'abandon de l'analyse de CE message (timeout individuel, pas un total) : passé ce délai, on passe au message suivant. Cliquer ici passe immédiatement au message suivant.";
 
-        toolbox.append(playButton, autoButton, stopButton, progressLabel);
+        toolbox.append(playButton, autoButton, stopButton, clearButton, progressLabel);
 
         inboxContainer.insertAdjacentElement('afterend', toolbox);
         updateToolboxState();
@@ -473,6 +508,8 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
         // Filet de sécurité : la liste Weda peut arriver après le conteneur ou être rechargée
         // sans passer par le rafraîchissement automatique.
         setInterval(startAutoQueueIfUnread, UNREAD_CHECK_INTERVAL);
+        // Le cache évolue au fil des analyses (pdfParser.js) : rafraîchissement périodique
+        setInterval(updateToolboxState, 2000);
         startAutoQueueIfUnread();
     }
 
