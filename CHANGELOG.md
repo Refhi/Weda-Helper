@@ -19,6 +19,7 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#742](https://github.com/Refhi/Weda-Helper/issues/742) - Dans la page des imports, vous pouvez demander l'analyse de tous les imports en attente d'un coup ! Particulièrement intéressant si vous avez une IA locale lente : vous pouvez lancer l'analyse automatique de tous les imports en attente pendant la pause déjeuner par exemple.
 - Les antécédents récupérés lors de l'analyse d'un import sont réutilisés par le bouton antécédents (sans nouvelle lecture du dossier), et un import déjà marqué comme importé ne relance plus l'analyse au clic manuel.
 - [#759](https://github.com/Refhi/Weda-Helper/issues/759) - La localisation du PDF a été améliorée dans les échanges sécurisée. Elle posait problème pour le format CDA.
+- [#759](https://github.com/Refhi/Weda-Helper/issues/759) - Le moment de lancement de la recherche du patient a été fiabilisé.
 
 ### Messagerie sécurisée :
 - [#723](https://github.com/Refhi/Weda-Helper/issues/723) - Les données extraites dans la messagerie sécurisée sont désormais enregistrées même si le message n'est pas importé (jusqu'à la fermeture de l'onglet). Cela évite de faire les analyses plusieurs fois si on parcours les messages avant import.

@@ -70,17 +70,15 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
 // 1.b. Dans la page des Echanges Sécurisés
 addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
     console.log('[pdfParser] Chargement de la page d\'échanges');
+    
+    // Écouter l'apparition du panneau de recherche patient au lieu d'utiliser un délai arbitraire
+    // Cela garantit que le DOM est complètement initialisé avant de traiter le PDF
     waitForElement({
-        // Ici on déclenche la procédure lors du clic sur le bouton "Un patient".
-        selector: ".importPatient",
+        selector: "#ContentPlaceHolder1_FindPatientUcForm1_PanelPatient",
+        timeout: 5000,
         callback: function (elements) {
-            elements.forEach(function (element) { //Ajout d'un listener sur tous les boutons "Un patient".
-                element.addEventListener("click", function () {
-                    console.log("[pdfParser] Importation du message cliqué, je vais traiter le PDF présent dans l'iframe.");
-                    setTimeout(() => processFoundPdfIframeEchanges(false), 500); //Délai pour permettre à la fenetre de recherche de s'afficher
-                    
-                });
-            });
+            console.log("[pdfParser] Panneau de recherche patient détecté, déclenchement du traitement du PDF");
+            processFoundPdfIframeEchanges(false);
         }
     });
 
