@@ -12,7 +12,6 @@
 
 addTweak("*", "unitConverter", async function () {
     const selector = ".hprimgrid"
-    const hprimTablesElements = document.querySelectorAll(selector)
 
     const conversionTableOption = await getOptionPromise("unitConverterTable")
     let conversionTable;
@@ -108,31 +107,47 @@ addTweak("*", "unitConverter", async function () {
         return icon;
     }
 
-    addUnitConverterStyles();
+    function processUnitConverters() {
+        const hprimTablesElements = document.querySelectorAll(selector)
+        
+        hprimTablesElements.forEach((table) => {
+            const rows = table.querySelectorAll("tr");
+            rows.forEach((row, index) => {
+                if (index === 0) return; // ligne d'en-tête
 
-    hprimTablesElements.forEach((table) => {
-        const rows = table.querySelectorAll("tr");
-        rows.forEach((row, index) => {
-            if (index === 0) return; // ligne d'en-tête
+                const cells = row.querySelectorAll("td");
+                if (cells.length < 3) return;
 
-            const cells = row.querySelectorAll("td");
-            if (cells.length < 3) return;
+                const [libelleCell, valueCell, uniteCell] = cells;
+                const libelle = (libelleCell.title || libelleCell.textContent).trim();
+                const unite = uniteCell.textContent.replace(/\u00a0/g, "").trim();
+                const value = parseHprimValue(valueCell.textContent);
 
-            const [libelleCell, valueCell, uniteCell] = cells;
-            const libelle = (libelleCell.title || libelleCell.textContent).trim();
-            const unite = uniteCell.textContent.replace(/\u00a0/g, "").trim();
-            const value = parseHprimValue(valueCell.textContent);
+                if (!libelle || !unite || value === null) return;
 
-            if (!libelle || !unite || value === null) return;
+                // Skip if already has converter icon
+                if (valueCell.querySelector(".unit-converter-icon")) return;
 
-            const conversion = findMatchingConversion(libelle, unite);
-            if (!conversion) return;
+                const conversion = findMatchingConversion(libelle, unite);
+                if (!conversion) return;
 
-            const [, [, facteur, uniteCible, decimales = 2]] = conversion;
-            const convertedValue = (value * parseFloat(facteur)).toFixed(decimales);
-            const tooltip = `${convertedValue} ${uniteCible}`;
+                const [, [, facteur, uniteCible, decimales = 2]] = conversion;
+                const convertedValue = (value * parseFloat(facteur)).toFixed(decimales);
+                const tooltip = `${convertedValue} ${uniteCible}`;
 
-            valueCell.appendChild(createConversionIcon(tooltip));
+                valueCell.appendChild(createConversionIcon(tooltip));
+            });
         });
+    }
+
+    addUnitConverterStyles();
+    processUnitConverters();
+
+    // Trigger refresh on DOM mutations
+    afterMutations({
+        delay: 500,
+        callback: processUnitConverters,
+        callBackId: "unitConverter",
+        preventMultiple: true
     });
 });
