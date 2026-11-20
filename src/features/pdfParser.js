@@ -708,7 +708,8 @@ function returnMessageBodyES() {
 function getPdfAttachmentZonesES() {
     const pdfViewerSelector = "#iFrameViewFile, .mssAttachment embed, object[type='application/pdf']";
     return [...document.querySelectorAll(".messageAttachment")].filter(attachment =>
-        attachment.querySelector(".view-pdf-document-uc-form")?.querySelector(pdfViewerSelector));
+        // Cherche le viewer PDF directement dans l'attachement (ne pas chercher dans .view-pdf-document-uc-form qui n'existe pas)
+        attachment.querySelector(pdfViewerSelector));
 }
 
 function getActiveAttachmentZoneES() {
