@@ -75,14 +75,10 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
     
     let revision = 0;
     let started = false;
+    let waitForPicker = false;
     let running = null;
     let pending = Promise.resolve();
-    function selected() {
-        const line = document.querySelector("#messageList .messageListItem.selected .messageLineItem");
-        const subject = line?.querySelector(".subjectLine");
-        return subject ? JSON.stringify([subject.textContent.trim(), line.querySelector(".subjectRow .date")?.textContent.trim()])
-            : line?.textContent.trim();
-    }
+    const selected = () => getEchangesMessageKey();
 
     function start(confirmedPatient = null) {
         if (running?.revision === revision && (!confirmedPatient || running.confirmedPatient?.link === confirmedPatient.link)) return;
@@ -91,12 +87,14 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
         document.querySelector("#pdfParserPatientName")?.remove();
         addAntecedentsButton(null, null);
         started = true;
+        waitForPicker = false;
         running = job;
+        document.dispatchEvent(new CustomEvent("pdfParserEchangesStarted", { detail: { messageKey: job.message } }));
         // La complétion IA dispose d'un seul appel en cours par onglet.
         pending = pending.then(async () => {
-            let hashId = null;
+            let result = { hashId: null, status: "failed" };
             try {
-                if (isCurrent()) hashId = await processFoundPdfIframeEchanges(confirmedPatient, isCurrent);
+                if (isCurrent()) result = await processFoundPdfIframeEchanges(confirmedPatient, isCurrent) || result;
             } catch (error) {
                 if (isCurrent()) {
                     console.warn("[pdfParser] Échec de l’analyse du courrier", error);
@@ -105,7 +103,11 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
             } finally {
                 const finishedCurrent = isCurrent();
                 if (running === job) running = null;
-                if (finishedCurrent) notifyEchangesProcessingDone(hashId);
+                if (finishedCurrent) {
+                    waitForPicker = !!result.waitForPicker;
+                    if (waitForPicker && echangesPatientSearch.form()) start();
+                    else notifyEchangesProcessingDone({ ...result, messageKey: job.message });
+                }
             }
         });
     }
@@ -114,6 +116,7 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
         if (event.target.closest?.("#messageList .messageLineItem")) {
             revision++;
             started = false;
+            waitForPicker = false;
             document.querySelector("#pdfParserPatientName")?.remove();
             addAntecedentsButton(null, null);
             return;
@@ -123,7 +126,7 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
             return;
         }
         const action = event.target.closest?.("#messageContainer .docImportBody td a");
-        const patient = echangesPatientSearch.candidateFromAction(action);
+        const patient = echangesPatientSearch.candidateFromAction(action) || (event.isTrusted && echangesPatientSearch.clickedResult(event.target));
         if (patient) start(patient);
     }, true);
 
@@ -133,14 +136,7 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
         selector: 'select[id$="_DropDownListRechechePatient"]',
         triggerOnInit: true,
         observerId: "pdfParserEchangesPatient",
-        callback: () => { if (!started && selected() && echangesPatientSearch.form()) start(); }
-    });
-
-    waitForElement({
-        selector: ".grid-item_tr, .grid-selecteditem",
-        callback: showClickedPatient,
-        triggerOnInit: true,
-        observerId: "pdfParserEchangesPatientRows"
+        callback: () => { if ((!started || waitForPicker) && selected() && echangesPatientSearch.form()) start(); }
     });
 
     // On ajoute aussi une petite aide : le champ de recherche de patient est décalé vers le bas de l'écran
@@ -355,11 +351,11 @@ function attachImportAntecedentsButton(extractedData, hashId) {
  * Signale la fin du traitement d'un message dans les échanges sécurisés (succès, échec ou déjà importé).
  * Permet à wedaEchanges.js d'enchaîner automatiquement sur le message suivant d'une file d'attente
  * (voir le tweak secureExchangeMessageQueue).
- * @param {string|null} hashId - Identifiant du PDF traité (null si aucun PDF n'a pu être extrait).
+ * @param {{hashId:string|null, status:string, messageKey:string}} result
  */
-function notifyEchangesProcessingDone(hashId) {
-    console.log("[secureExchangeMessageQueue] Traitement terminé pour hashId =", hashId);
-    document.dispatchEvent(new CustomEvent('pdfParserEchangesDone', { detail: { hashId } }));
+function notifyEchangesProcessingDone(result) {
+    console.log("[secureExchangeMessageQueue] Traitement terminé :", result.status);
+    document.dispatchEvent(new CustomEvent('pdfParserEchangesDone', { detail: result }));
 }
 
 /**
@@ -368,20 +364,19 @@ function notifyEchangesProcessingDone(hashId) {
  */
 async function fillOtherAttachmentsES(isCurrent) {
     const zones = getPdfAttachmentZonesES();
+    let complete = true;
     for (const zone of zones.slice(1)) {
         if (!isCurrent()) return;
         const iframes = zone.querySelectorAll(ECHANGES_PDF_VIEWER);
         const baseData = await extractBasePdfData(iframes, zone);
-        if (!baseData) continue;
+        if (!baseData) { complete = false; continue; }
         const { urlPDF, fullText, hashId } = baseData;
         if (!isCurrent()) return;
         const data = await handleDataExtraction(fullText, urlPDF, hashId, baseData);
         if (!isCurrent()) return;
-        await selectDestinationIfNeededES(data.destinationClass, zone);
-        await setTitleIfNeededES(data.documentTitle, zone);
-        await selectDocumentTypeES(data.documentType, zone);
-        await setCommentaireIfNeededES(data.documentCommentaire, zone);
+        if (!await fillEchangesAttachment(data, zone, isCurrent)) complete = false;
     }
+    return complete;
 }
 
 /**
@@ -423,7 +418,7 @@ async function processFoundPdfIframeEchanges(confirmedPatient, isCurrent) {
     if (extractedData.alreadyImported) {
         console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction. Renvoi vers le champ de recherche ou le 1er patient de la liste si présent");
         selectFirstPatientOrSearchField();
-        return hashId;
+        return { hashId, status: "ready" };
     }
 
     console.log("[pdfParser] Echanges - Données extraites :", extractedData);
@@ -435,7 +430,7 @@ async function processFoundPdfIframeEchanges(confirmedPatient, isCurrent) {
     if (confirmedPatient) {
         const ready = await echangesPatientSearch.waitFor(() => {
             const button = document.querySelector("#messageContainer .button.valid");
-            return button?.getClientRects().length && !button.disabled;
+            return button?.getClientRects().length && !button.disabled && (!confirmedPatient.classic || !echangesPatientSearch.form());
         }, isCurrent);
         if (!isCurrent()) return hashId;
         if (ready) addPatientNameDisplay([confirmedPatient.name, confirmedPatient.birth].filter(Boolean).join(" "), confirmedPatient.link);
@@ -448,20 +443,17 @@ async function processFoundPdfIframeEchanges(confirmedPatient, isCurrent) {
     // ===========================================
     // ÉTAPE 3 : Remplissage du formulaire d'import
     // ===========================================
-    // Weda peut remplacer le formulaire de la pièce jointe après le choix de la destination.
-    await selectDestinationIfNeededES(extractedData.destinationClass);
+    const patientDisplay = document.querySelector("#pdfParserPatientName");
+    const filled = await fillEchangesAttachment(extractedData, getActiveAttachmentZoneES() || getEchangesBodyZone(), isCurrent);
+    if (!isCurrent()) return null;
+    const otherFilled = await fillOtherAttachmentsES(isCurrent);
     if (!isCurrent()) return hashId;
-    // 2. Mettre le titre
-    await setTitleIfNeededES(extractedData.documentTitle);
-    if (!isCurrent()) return hashId;
-    // 3. Sélectionner la bonne catégorie
-    await selectDocumentTypeES(extractedData.documentType);
-    if (!isCurrent()) return hashId;
-    // 4. Mettre le commentaire
-    await setCommentaireIfNeededES(extractedData.documentCommentaire);
-    // 5. Même chose pour les éventuels autres PDF du message
-    await fillOtherAttachmentsES(isCurrent);
-    if (!isCurrent()) return hashId;
+    if (patientDisplay && !patientDisplay.isConnected && !document.querySelector("#pdfParserPatientName")) {
+        document.querySelector("#messageContainer .button.valid")?.after(patientDisplay);
+    }
+    if ((!filled || !otherFilled) && !pendingSelection) {
+        pendingSelection = { notice: "Vérifiez le titre et la classification : Weda n’a pas conservé tous les champs." };
+    }
     if (pendingSelection) {
         const focused = pendingSelection.focusSuggestion?.();
         sendWedaNotif({
@@ -469,7 +461,7 @@ async function processFoundPdfIframeEchanges(confirmedPatient, isCurrent) {
                 : pendingSelection.notice || "Vérifiez le dossier proposé par Weda avant l’import."),
             type: 'undefined', icon: 'person_search', duration: 10000
         });
-        return hashId;
+        return { hashId, status: "review", waitForPicker: pendingSelection.waitForPicker };
     }
     // Pas de marquage "déjà importé" : dans la messagerie sécurisée, le formulaire
     // n'est pas conservé par Weda si l'on change de patient entre deux.
@@ -520,7 +512,7 @@ async function processFoundPdfIframeEchanges(confirmedPatient, isCurrent) {
     }
 
     addAntecedentsButton(operations, validationButton, hashId);
-    return hashId;
+    return { hashId, status: validationButton ? "ready" : "review" };
 }
 
 /**
@@ -576,35 +568,6 @@ function addAntecedentsButton(operations, validationButton, hashId) {
     validationButton.after(button);
 }
 
-async function showClickedPatient() {
-    // On surveille quel patient a été cliqué. : tout les éléments .grid-item_tr et .grid-selecteditem
-    const possibleClickablePatient = document.querySelectorAll(".grid-item_tr, .grid-selecteditem");
-    if (possibleClickablePatient.length > 0) {
-        possibleClickablePatient.forEach((patient) => {
-            patient.addEventListener("click", function () {
-                console.log("[pdfParser] Patient cliqué :", patient.innerText);
-                // La DDN a un id qui commence par "ContentPlaceHolder1_FindPatientUcForm1_PatientsGrid_LinkButtonPatienDateNaissance_"
-                const DDN = patient.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonOldPatienDateNaissance_']");
-                // Le NOM PRENOM a un id qui commence par "ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonPatientGetNomPrenom_"
-                const NOM_PRENOM = patient.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm1_PatientsGridOld_LinkButtonPatientGetNomPrenom_']");
-
-                // Correction de la ligne pour éviter les erreurs de concaténation avec null
-                const nomPrenom = NOM_PRENOM ? NOM_PRENOM.innerText : "";
-                const dateNaiss = DDN ? DDN.innerText : "";
-                const patientData = `${nomPrenom} ${dateNaiss}`.trim();
-
-                console.log("[pdfParser] Patient cliqué :", patientData);
-
-                addPatientNameDisplay(patientData, NOM_PRENOM);
-
-                // On retire les listeners pour éviter les doublons
-                possibleClickablePatient.forEach((p) => {
-                    p.removeEventListener("click", arguments.callee);
-                });
-            });
-        });
-    }
-}
 
 
 function addPatientNameDisplay(patientName, patientElement = null) {
@@ -729,111 +692,79 @@ function getActiveAttachmentZoneES() {
     return null;
 }
 
-/**
- * Sélectionne le bon type de document pour les échanges sécurisés
- */
-async function selectDocumentTypeES(documentType, attachmentZone = getActiveAttachmentZoneES()) {
-    console.log("[pdfParser] Sélection du type de document :", documentType);
-    if (!attachmentZone || !documentType) {
-        console.log("[pdfParser] Pas de pièce jointe ciblée ou pas de type de document défini");
-        return;
-    }
-    // Le menu déroulant est le select avec le titre "Attribuer une classification au document"
-    const selectElement = attachmentZone.querySelector("select[title='Attribuer une classification au document']");
-    if (!selectElement) {
-        console.log("[pdfParser] Pas de select trouvé dans la pièce jointe ciblée");
-        return;
-    }
-
-    // Parcourir les options pour trouver celle qui correspond au documentType
-    for (let i = 0; i < selectElement.options.length; i++) {
-        const option = selectElement.options[i];
-        // On compare en ignorant la casse
-        if (option.text.toLowerCase() === documentType.toLowerCase()) {
-            // Option trouvée, on la sélectionne
-            selectElement.value = option.value;
-            selectElement.dispatchEvent(new Event('change'));
-            console.log(`[pdfParser] Type de document '${documentType}' sélectionné`);
-            return;
-        }
-    }
-    console.warn(`[pdfParser] Aucun type de document correspondant à '${documentType}' trouvé`);
-
-}
-
-/**
- * Insère le titre au bon endroit pour les échanges sécurisés
- */
-async function setTitleIfNeededES(Titre, attachmentZone = getActiveAttachmentZoneES()) {
-    const titleOption = await getOptionPromise('PdfParserAutoTitle');
-    console.log("[pdfParser] setTitleIfNeededES avec titleOption", titleOption);
-    if (!titleOption) {
-        console.log("[pdfParser] Option PdfParserAutoTitle désactivée, pas de titre à mettre");
-        return;
-    }
-    if (!attachmentZone) return;
-    // Le champ de titre est l'input avec le titre "C'est le titre qu'aura le document dans le dossier patient"
-    const titleInput = attachmentZone.querySelector("input[title=\"C'est le titre qu'aura le document dans le dossier patient\"]");
-    if (!titleInput) {
-        console.error("[pdfParser] Titre non trouvé, impossible de le mettre dans le champ de titre");
-        return;
-    }
-    console.log("[pdfParser] Titre trouvé, on le met dans le champ de titre", Titre);
-    titleInput.value = Titre;
-    titleInput.dispatchEvent(new Event('change'));
-    titleInput.dispatchEvent(new Event('input')); // dans certains cas, l'input est écouté via un listener 'input'
-}
-
-/**
- * Sélectionne la bonne destination d'importation dans les **échanges sécurisés**, si l'option est activée.
- */
-async function selectDestinationIfNeededES(destinationNumber, attachmentZone = getActiveAttachmentZoneES()) {
-    const selectionNeeded = await getOptionPromise('PdfParserAutoClassification');
-    if (!selectionNeeded) {
-        return;
-    }
-    if (!attachmentZone) return;
-    // Si l'option est activée, on va chercher la bonne destination
-    // Les destinations possibles sont sélectionnées via des éléments clickables
-    // On reprend la classification de extractDestinationClass, mais les noms sont différents
-    const destinations = {
-        '1': "Ranger dans les consultations",
-        '2': "Ranger dans les résultats d'examens",
-        '3': "Ranger dans les courriers"
+/** Confirme les valeurs dans les contrôles que Weda garde après ses mises à jour Angular. */
+async function fillEchangesAttachment(data, original, isCurrent) {
+    if (!original) return true;
+    const viewerSource = element => {
+        const viewer = element.querySelector(ECHANGES_PDF_VIEWER);
+        return viewer?.src || viewer?.data;
     };
-    // On va cliquer sur l'élément .weImportDocTargets dont le titre est celui de la destination
-    const elementACliquer = attachmentZone.querySelector(`.weImportDocTargets[title="${destinations[destinationNumber]}"]`);
-    if (elementACliquer) {
-        console.log("[pdfParser] Sélection de la destination d'importation :", destinations[destinationNumber]);
-        // On va cliquer sur l'élément
-        elementACliquer.click();
-        return;
-    }
+    const source = viewerSource(original);
+    const live = () => {
+        if (original.isConnected && viewerSource(original) === source) return original;
+        if (!source) return getEchangesBodyZone();
+        return getPdfAttachmentZonesES().find(element => viewerSource(element) === source);
+    };
+    const [autoTitle, autoDestination] = await Promise.all([getOptionPromise("PdfParserAutoTitle"), getOptionPromise("PdfParserAutoClassification")]);
+    if (!isCurrent()) return false;
+    const destinations = { 1: "Ranger dans les consultations", 2: "Ranger dans les résultats d'examens", 3: "Ranger dans les courriers" };
+    const destination = [...(live()?.querySelectorAll(".weImportDocTargets") || [])].find(el => el.title === destinations[data.destinationClass]);
+    if (autoDestination && destination && !destination.classList.contains("selected")) destination.click();
 
-    console.error("[pdfParser] Aucune destination d'importation trouvée pour le numéro :", destinationNumber);
+    const fields = [
+        { key: "title", selector: "input.docTitle, input[title=\"C'est le titre qu'aura le document dans le dossier patient\"]", value: autoTitle && data.documentTitle },
+        { key: "type", selector: 'select[title="Attribuer une classification au document"]', value: data.documentType },
+        { key: "comment", selector: 'input[placeholder="Commentaire"]', value: data.documentCommentaire }
+    ].filter(field => field.value);
+    if (!fields.length) return true;
+    const edited = new Set();
+    const manualEdit = event => {
+        if (!event.isTrusted || !live()?.contains(event.target)) return;
+        for (const field of fields) if (event.target.matches(field.selector)) edited.add(field.key);
+    };
+    document.addEventListener("input", manualEdit, true);
+    document.addEventListener("change", manualEdit, true);
+    const deadline = performance.now() + 3500;
+    let stableSince = 0;
+    try {
+        do {
+            if (!isCurrent()) return false;
+            const zone = live();
+            let complete = !!zone;
+            for (const field of fields) {
+                if (edited.has(field.key)) continue;
+                const control = zone?.querySelector(field.selector);
+                if (!control || control.disabled) { complete = false; continue; }
+                let value = field.value;
+                if (control.tagName === "SELECT") {
+                    const option = [...control.options].find(o => normalizeString(o.text) === normalizeString(value));
+                    if (!option) { complete = false; continue; }
+                    value = option.value;
+                }
+                if (control.value !== value) {
+                    control.value = value;
+                    control.dispatchEvent(new Event("input", { bubbles: true }));
+                    control.dispatchEvent(new Event("change", { bubbles: true }));
+                    stableSince = 0;
+                }
+                if (!control.isConnected || control.value !== value) complete = false;
+            }
+            if (!complete) stableSince = 0;
+            else if (!stableSince) stableSince = performance.now();
+            else if (performance.now() - stableSince >= 750) return true;
+            await new Promise(resolve => setTimeout(resolve, 100));
+        } while (performance.now() < deadline);
+        return false;
+    } finally {
+        document.removeEventListener("input", manualEdit, true);
+        document.removeEventListener("change", manualEdit, true);
+    }
 }
 
-/**
- * Insère le commentaire dans les échanges sécurisés, dans l'attachment actuellement sélectionné
- * (celui dont la case à cocher est cochée).
- */
-async function setCommentaireIfNeededES(commentaire, attachmentZone = getActiveAttachmentZoneES()) {
-    if (!commentaire) return;
-    if (!attachmentZone) return;
-    const commentInput = attachmentZone.querySelector("input[placeholder='Commentaire']");
-    if (!commentInput) {
-        console.warn("[pdfParser] Champ commentaire introuvable dans l'attachment sélectionné");
-        return;
-    }
-    commentInput.value = commentaire;
-    commentInput.dispatchEvent(new Event('change'));
-    commentInput.dispatchEvent(new Event('input'));
-    console.log("[pdfParser] Commentaire inséré :", commentaire);
+function getEchangesBodyZone() {
+    const body = [...document.querySelectorAll("#messageContainer we-doc-import")].find(zone => !zone.closest(".messageAttachment"));
+    return body?.querySelector('input[type="checkbox"]:checked') ? body : null;
 }
-
-
-
-
 
 /**
  * Extrait les données de base communes à partir d'un PDF (url, texte, hash).
@@ -1496,7 +1427,7 @@ async function findPdfUrl(iframesElements, zone = document) {
             // contentWindow peut encore pointer vers la pièce jointe du courrier précédent.
             const source = iframe.data || iframe.src;
             if (location.pathname.includes("/WedaEchanges") && source
-                && (/^(?:blob:|data:application\/pdf)/i.test(source) || /(?:\.pdf(?:[?#]|$)|\/downloadAttachment\b)/i.test(source))) {
+                && (/^(?:blob:|data:application\/pdf)/i.test(source) || /(?:\.pdf(?:[?#]|$)|\/BinaryData\.aspx(?:[?#]|$)|\/downloadAttachment\b)/i.test(source))) {
                 finish(source);
                 return;
             }

@@ -11,14 +11,34 @@
  * @requires dom-oberver.js (waitForElement)
  */
 
+function getEchangesMessageKey(row = document.querySelector("#messageList .messageListItem.selected")) {
+    const line = row?.querySelector(".messageLineItem");
+    if (!line) return "";
+    const subject = line.querySelector(".subjectLine");
+    if (subject) return JSON.stringify([subject.textContent.trim(), line.querySelector(".subjectRow .date")?.textContent.trim()]);
+    const copy = line.cloneNode(true);
+    copy.querySelectorAll(".patientLine,.dossierChip,.whEchangesStatus").forEach(element => element.remove());
+    return copy.textContent.replace(/\s+/g, " ").trim();
+}
+
+function findEchangesMessage(row, key) {
+    if (row?.isConnected && getEchangesMessageKey(row) === key) return row;
+    const matches = [...document.querySelectorAll("#messageList .messageListItem")].filter(item => getEchangesMessageKey(item) === key);
+    return matches.length === 1 ? matches[0] : null;
+}
+
 // Page Messagerie sécurisée
-addTweak("/FolderMedical/WedaEchanges/", "secureExchangeOpenNextAfterImport", function () {
+addTweak("/FolderMedical/WedaEchanges/", "*secureExchangeOpenNextAfterImport", async function () {
+    let enabled = await getOptionPromise("secureExchangeOpenNextAfterImport");
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === "local" && changes.secureExchangeOpenNextAfterImport) enabled = changes.secureExchangeOpenNextAfterImport.newValue;
+    });
     const getRows = () => [...document.querySelectorAll("#messageList > .messageListItem")];
-    const getRowKey = row => row.querySelector(".messageLineItem")?.textContent.replace(/\s+/g, " ").trim();
     const queueIsRunning = () => document.querySelector('#whMessageQueueToolbox[data-running="true"]');
     let stopWaiting;
 
     document.addEventListener("click", event => {
+        if (!enabled) return;
         // Une action dans la liste ou un changement de boîte prend la main sur la navigation.
         if (event.target.closest?.("#weInboxContainer, #inboxToolbar, #whMessageQueueToolbox, .docImportButtons .button.cancel")) {
             stopWaiting?.();
@@ -38,10 +58,13 @@ addTweak("/FolderMedical/WedaEchanges/", "secureExchangeOpenNextAfterImport", fu
 
         const currentRow = visibleRows[selectedIndex];
         const nextRow = visibleRows[selectedIndex + 1];
-        const currentKey = getRowKey(currentRow);
-        const nextKey = getRowKey(nextRow);
+        const currentKey = getEchangesMessageKey(currentRow);
+        const nextKey = getEchangesMessageKey(nextRow);
         if (!currentKey || !nextKey) return;
-        const currentCount = rows.filter(row => getRowKey(row) === currentKey).length;
+        const currentCount = rows.filter(row => getEchangesMessageKey(row) === currentKey).length;
+        let nextStarted = false;
+        const started = event => { if (event.detail?.messageKey === nextKey) nextStarted = true; };
+        document.addEventListener("pdfParserEchangesStarted", started);
 
         const observer = new MutationObserver(() => {
             if (queueIsRunning()) {
@@ -50,16 +73,14 @@ addTweak("/FolderMedical/WedaEchanges/", "secureExchangeOpenNextAfterImport", fu
             }
             const remaining = getRows();
             // Une reconstruction du DOM peut recréer la ligne du courrier en cours.
-            if (remaining.includes(currentRow)
-                || remaining.filter(row => getRowKey(row) === currentKey).length >= currentCount) return;
+            if (remaining.filter(row => getEchangesMessageKey(row) === currentKey).length >= currentCount) return;
 
-            const matchingRows = remaining.filter(row => getRowKey(row) === nextKey);
-            const successor = matchingRows.length === 1 ? matchingRows[0] : matchingRows.find(row => row === nextRow);
+            const successor = findEchangesMessage(nextRow, nextKey);
             const line = successor?.querySelector(".messageLineItem");
             if (!line?.getClientRects().length) return;
 
             stopWaiting?.();
-            if (successor.classList.contains("selected")) return;
+            if (successor.classList.contains("selected") && nextStarted) return;
             line.click();
             recordMetrics({ clicks: 1, drags: 0 });
         });
@@ -67,6 +88,7 @@ addTweak("/FolderMedical/WedaEchanges/", "secureExchangeOpenNextAfterImport", fu
         stopWaiting = () => {
             observer.disconnect();
             clearTimeout(timeout);
+            document.removeEventListener("pdfParserEchangesStarted", started);
             stopWaiting = null;
         };
         observer.observe(document.body, {
@@ -225,7 +247,8 @@ addTweak('/FolderMedical/WedaEchanges/', 'swapTitrePJetCorpsMessage', function (
 
 
 // Clic automatique sur "Un patient" à l'ouverture d'un message (clic manuel ou parcours par lot).
-addTweak('/FolderMedical/WedaEchanges/', 'autoClickUnPatient', function () {
+addTweak('/FolderMedical/WedaEchanges/', '*autoClickUnPatient', async function () {
+    const [autoOpen, parserEnabled] = await Promise.all([getOptionPromise('autoClickUnPatient'), getOptionPromise('autoPdfParser')]);
     let cancel;
     document.addEventListener('click', event => {
         if (event.target.closest?.("#messageContainer .importPatient, #messageContainer .docImportBody td a")) {
@@ -235,6 +258,9 @@ addTweak('/FolderMedical/WedaEchanges/', 'autoClickUnPatient', function () {
         const line = event.target.closest?.('#messageList .messageLineItem');
         if (!line) return;
         cancel?.();
+        if (!autoOpen && !document.querySelector('#whMessageQueueToolbox[data-running="true"]')) return;
+        const row = line.closest(".messageListItem");
+        const key = getEchangesMessageKey(row);
         const selector = "#messageContainer .btnImport.importPatient";
         const previousButton = document.querySelector(selector);
         const previousBody = document.querySelector("#messageContainer .messageBody");
@@ -243,28 +269,68 @@ addTweak('/FolderMedical/WedaEchanges/', 'autoClickUnPatient', function () {
         const previousViewer = getViewer();
         const previousUrl = previousViewer?.src || previousViewer?.data;
         const wasSelected = !!line.closest(".messageListItem.selected");
+        let bodyReadyAt = 0, bodyTimer;
         const check = () => {
             if (cancel !== stop) return;
-            if (!line.closest(".messageListItem.selected")?.isConnected) return;
+            if (!findEchangesMessage(row, key)?.classList.contains("selected")) return;
             const button = document.querySelector(selector);
             if (!button?.getClientRects().length || button.disabled) return;
             const body = document.querySelector("#messageContainer .messageBody");
+            const viewer = getViewer();
+            const url = viewer?.getAttribute("src") || viewer?.getAttribute("data");
+            const attachment = document.querySelector("#messageContainer .messageAttachment");
+            // L'en-tête et « Un patient » arrivent avant le contenu. Un clic à ce
+            // stade ouvre l'import mais Weda n'initialise pas la recherche patient.
+            if ((!url || url === "about:blank") && !(attachment?.querySelector("a[href]") || (!attachment && body?.innerText.trim()))) return;
             if (!wasSelected && button === previousButton && body === previousBody && body?.textContent === previousText) {
                 // Avec deux messages sans corps, Angular peut ne remplacer que la source du lecteur.
-                const viewer = getViewer();
                 if (!viewer || (viewer === previousViewer && (viewer.src || viewer.data) === previousUrl)) return;
             }
+            if (!url && !attachment) {
+                if (!bodyReadyAt) {
+                    bodyReadyAt = performance.now();
+                    bodyTimer = setTimeout(check, 620);
+                    return;
+                }
+                if (performance.now() - bodyReadyAt < 600) return;
+            }
             stop();
+            const freshPreview = !document.querySelector("#messageContainer .docImportButtons .button.valid");
             button.click();
             recordMetrics({ clicks: 1, drags: 0 });
+            if (parserEnabled && freshPreview) recoverMissingPicker(row, key);
         };
         const observer = new MutationObserver(check);
         const timer = setTimeout(() => stop(), 9000);
-        const stop = () => { observer.disconnect(); clearTimeout(timer); if (cancel === stop) cancel = null; };
+        const stop = () => { observer.disconnect(); clearTimeout(timer); clearTimeout(bodyTimer); if (cancel === stop) cancel = null; };
         cancel = stop;
         observer.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
         queueMicrotask(check);
     }, true);
+
+    // Reprendre une seule fois notre propre ouverture quand Weda a créé un
+    // formulaire sans sélecteur. Une interaction humaine garde toujours la main.
+    async function recoverMissingPicker(row, key) {
+        let untouched = true;
+        const stopOnInput = event => { if (event.isTrusted) untouched = false; };
+        const events = ["pointerdown", "keydown", "input"];
+        for (const name of events) document.addEventListener(name, stopOnInput, true);
+        const current = () => untouched && findEchangesMessage(row, key)?.classList.contains("selected");
+        const picker = () => echangesPatientSearch.form() || echangesPatientSearch.candidates() || document.querySelector("#pdfParserPatientName");
+        try {
+            if (await echangesPatientSearch.waitFor(picker, current, 2500) || !current()) return;
+            const cancelButton = document.querySelector("#messageContainer .docImportButtons .button.cancel");
+            if (!cancelButton?.getClientRects().length || !getPdfAttachmentZonesES().length) return;
+            // Aucun champ modifié dans le brouillon depuis son ouverture.
+            if (document.querySelector("#messageContainer .ng-dirty")) return;
+            cancelButton.click();
+            const preview = await echangesPatientSearch.waitFor(() => !document.querySelector("#messageContainer .docImportButtons .button.valid")
+                && document.querySelector("#messageContainer .btnImport.importPatient"), current, 2000);
+            if (preview && current()) preview.click();
+        } finally {
+            for (const name of events) document.removeEventListener(name, stopOnInput, true);
+        }
+    }
 });
 
 
@@ -293,6 +359,9 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
 
     let queueRunning = false;
     let queueShouldStop = false;
+    let finishCurrent;
+    let summary = "";
+    let items = [];
     let autoModeEnabled;
     const UNREAD_CHECK_INTERVAL = 20000;
 
@@ -331,32 +400,37 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
 
     // Attend la fin de l'analyse (évènement), avec un timeout de secours et une sortie rapide si
     // l'utilisateur a cliqué sur Stop entre-temps.
-    function waitForAnalysisDone() {
+    function waitForAnalysisDone(messageKey, open) {
         return new Promise(resolve => {
-            let settled = false;
-            const finish = () => {
-                if (settled) return;
-                settled = true;
-                document.removeEventListener(ANALYSIS_DONE_EVENT, finish);
-                clearInterval(stopPollId);
+            let deadline;
+            let timer;
+            const finish = status => {
+                document.removeEventListener("pdfParserEchangesStarted", started);
+                document.removeEventListener(ANALYSIS_DONE_EVENT, done);
                 clearInterval(countdownId);
-                clearTimeout(timeoutId);
+                clearTimeout(timer);
+                finishCurrent = null;
                 updateProgressLabel();
-                resolve();
+                resolve(status);
             };
-            const stopPollId = setInterval(() => {
-                if (queueShouldStop) finish();
-            }, 200);
-            const deadline = Date.now() + ANALYSIS_TIMEOUT;
+            const arm = delay => {
+                clearTimeout(timer);
+                deadline = Date.now() + delay;
+                timer = setTimeout(() => finish("failed"), delay);
+            };
+            const started = event => { if (event.detail?.messageKey === messageKey) arm(ANALYSIS_TIMEOUT); };
+            const done = event => {
+                if (event.detail?.messageKey === messageKey && ["ready","review","failed"].includes(event.detail.status)) finish(event.detail.status);
+            };
             const countdownId = setInterval(() => {
                 const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
                 updateProgressLabel(undefined, undefined, `⏳ ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`);
             }, 1000);
-            const timeoutId = setTimeout(() => {
-                console.warn('[secureExchangeMessageQueue] Timeout en attendant la fin de l\'analyse, passage au message suivant.');
-                finish();
-            }, ANALYSIS_TIMEOUT);
-            document.addEventListener(ANALYSIS_DONE_EVENT, finish);
+            finishCurrent = finish;
+            document.addEventListener("pdfParserEchangesStarted", started);
+            document.addEventListener(ANALYSIS_DONE_EVENT, done);
+            arm(15000); // Le délai long de l'IA commence uniquement quand ce courrier a démarré.
+            open();
         });
     }
 
@@ -365,7 +439,6 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
             console.warn('[secureExchangeMessageQueue] Une file est déjà en cours de traitement.');
             return;
         }
-        // La liste Angular n'est pas rechargée à l'ouverture d'un message : les nœuds restent valides
         const itemsToProcess = selectorFn();
         if (itemsToProcess.length === 0) {
             console.log('[secureExchangeMessageQueue] Aucun message à traiter.');
@@ -379,6 +452,8 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
 
         queueRunning = true;
         queueShouldStop = false;
+        summary = "";
+        items = itemsToProcess.map(row => ({ row, key: getEchangesMessageKey(row), status: "" }));
         updateToolboxState();
         console.log('[secureExchangeMessageQueue] Démarrage, messages à traiter :', itemsToProcess.length);
 
@@ -389,28 +464,25 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
                     break;
                 }
 
-                const item = itemsToProcess[i];
-                if (!item.isConnected) {
-                    console.warn('[messageQueue] Message disparu de la liste (liste rafraîchie ?), ignoré.');
-                    continue;
-                }
-
                 updateProgressLabel(i + 1, itemsToProcess.length);
-                console.log(`[secureExchangeMessageQueue] (${i + 1}/${itemsToProcess.length}) Clic sur le message :`, item);
-                // Le clic doit viser .messageLineItem (le listener Angular n'est pas sur le conteneur)
-                const lineItem = item.querySelector('.messageLineItem');
+                const item = items[i];
+                const lineItem = findEchangesMessage(item.row, item.key)?.querySelector('.messageLineItem');
                 if (!lineItem) {
-                    console.warn('[secureExchangeMessageQueue] .messageLineItem introuvable, message ignoré :', item);
+                    item.status = "failed";
                     continue;
                 }
-                lineItem.click();
-                recordMetrics({ clicks: 1, drags: 0 });
-
-                await waitForAnalysisDone();
+                item.status = await waitForAnalysisDone(item.key, () => {
+                    lineItem.click();
+                    recordMetrics({ clicks: 1, drags: 0 });
+                });
+                markResult(item);
                 await sleep(300); // laisse le DOM se stabiliser avant de passer au message suivant
             }
         } finally {
             queueRunning = false;
+            const count = status => items.filter(item => item.status === status).length;
+            summary = [count("ready") + (count("ready") > 1 ? " prêts" : " prêt"), count("review") + " à vérifier", count("failed") + " en échec"].join(" · ");
+            if (queueShouldStop) summary = "Parcours arrêté · " + summary;
             queueShouldStop = false;
             updateToolboxState();
             console.log('[secureExchangeMessageQueue] File terminée.');
@@ -419,8 +491,27 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
 
     function stopQueue() {
         queueShouldStop = true;
+        finishCurrent?.("review");
     }
 
+    document.addEventListener("click", event => {
+        if (queueRunning && event.isTrusted && event.target.closest?.("#messageList .messageLineItem, #inboxToolbar")) stopQueue();
+    }, true);
+
+    function markResult(item) {
+        if (!item.status) return;
+        const row = findEchangesMessage(item.row, item.key);
+        if (!row) return;
+        const labels = { ready: "Dossier prêt", review: "À vérifier", failed: "Analyse incomplète" };
+        let label = row.querySelector(".whEchangesStatus");
+        if (!label) {
+            label = document.createElement("small");
+            label.className = "whEchangesStatus";
+            label.style.marginInlineStart = "0.5em";
+            (row.querySelector(".metaRow") || row).append(label);
+        }
+        if (label.textContent !== labels[item.status]) label.textContent = labels[item.status];
+    }
     function startCheckedQueue() {
         processQueue(getCheckedMessages);
     }
@@ -443,7 +534,7 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
     }
 
     // --- Boîte à outils (▶️ cochés / 🔁 auto non lus / ⏹️ stop / 🧹 vider cache) ---
-    let playButton, autoButton, stopButton, clearButton, progressLabel;
+    let playButton, autoButton, stopButton, clearButton, progressLabel, openNext;
 
     let progressText = '';
     function updateProgressLabel(current, total, countdown = '') {
@@ -468,8 +559,9 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
         }
         if (!queueRunning) {
             progressText = '';
-            progressLabel.textContent = '';
+            if (progressLabel.textContent !== summary) progressLabel.textContent = summary;
         }
+        items.forEach(markResult);
     }
 
     function createToolbox([inboxContainer]) {
@@ -518,11 +610,17 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
         progressLabel.style.cursor = 'pointer';
         // Clic : termine immédiatement l'attente du message en cours (même effet que l'évènement de fin d'analyse).
         progressLabel.addEventListener('click', () => {
-            if (queueRunning) document.dispatchEvent(new CustomEvent(ANALYSIS_DONE_EVENT));
+            if (queueRunning) finishCurrent?.("review");
         });
         progressLabel.title = "Weda-Helper : numéro du message en cours / nombre de messages à traiter. ⏳ = temps restant avant l'abandon de l'analyse de CE message (timeout individuel, pas un total) : passé ce délai, on passe au message suivant. Cliquer ici passe immédiatement au message suivant.";
 
-        toolbox.append(playButton, autoButton, stopButton, clearButton, progressLabel);
+        const nextLabel = document.createElement("label");
+        openNext = document.createElement("input");
+        openNext.type = "checkbox";
+        getOptionPromise("secureExchangeOpenNextAfterImport").then(value => { openNext.checked = !!value; });
+        openNext.onchange = () => chrome.storage.local.set({ secureExchangeOpenNextAfterImport: openNext.checked });
+        nextLabel.append(openNext, " Ouvrir le suivant après import");
+        toolbox.append(playButton, autoButton, stopButton, clearButton, progressLabel, nextLabel);
 
         inboxContainer.insertAdjacentElement('afterend', toolbox);
         updateToolboxState();
@@ -536,6 +634,7 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
     }
 
     chrome.storage.onChanged.addListener((changes, areaName) => {
+        if (openNext && areaName === "local" && changes.secureExchangeOpenNextAfterImport) openNext.checked = !!changes.secureExchangeOpenNextAfterImport.newValue;
         if (areaName === 'local' && AUTO_MODE_STORAGE_KEY in changes) {
             setAutoMode(changes[AUTO_MODE_STORAGE_KEY].newValue === true);
         }

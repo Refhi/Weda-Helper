@@ -13,8 +13,8 @@ const echangesPatientSearch = (() => {
         const patient = line?.querySelector(".patientLine")?.cloneNode(true);
         patient?.querySelectorAll(".dossierChip").forEach(chip => chip.remove());
         const name = patient?.textContent.trim().replace(/^patient\s*:\s*/i, "");
+        const subject = line?.querySelector(".subjectLine")?.textContent.trim() || "";
         if (name && /^[\p{L}\p{M}][\p{L}\p{M} .'’-]*$/u.test(name) && nameKey(name).includes(" ")) {
-            const subject = line.querySelector(".subjectLine")?.textContent.trim() || "";
             // Certains expéditeurs accolent la naissance au nom en fin d'objet. La date
             // d'envoi du message et les dates isolées de compte rendu ne sont pas des DDN.
             const birth = subject.match(/(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})\s*\)?$/);
@@ -25,7 +25,11 @@ const echangesPatientSearch = (() => {
                 && sameName(nameKey(beforeDate).split(" ").slice(-nameLength).join(" "), name);
             result.push("Patient : " + name + (hasName ? " " + birth[1] : ""));
         }
-        return result;
+        // Sans ligne patient, les envois MSSanté portent souvent les traits dans
+        // l'objet, après le type de document. Ne pas lire une date d'envoi isolée.
+        const suffix = subject.match(/\b(?:pour\s+(?:monsieur|madame|mme|mr|m\.)\s+|(?:CR (?:d['’](?:examens? biologiques?|imagerie médicale)|opératoire|ou fiche de consultation ou de visite)|lettre de liaison à la sortie d['’]un établ(?:issement)?|courrier du \d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})\s+)([\p{L}\p{M}'’ -]+?)\s*(?:[,(-]?\s*n[ée](?:e|\(e\))?\s+le\s*)?(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})\s*\)?$/iu);
+        if (suffix && nameKey(suffix[1]).includes(" ")) result.push("Patient : " + suffix[1].trim() + " " + suffix[2]);
+        return [...new Set(result)];
     }
 
     function nameKey(name) {
@@ -44,10 +48,11 @@ const echangesPatientSearch = (() => {
         const aliases = given ? families.map(family => family + " " + given) : [];
         const labelled = /\bpatiente?\s*:\s*([\p{L}][\p{L}\p{M}'’ -]*?)(?=\s*[-,(]?\s*(?:n[ée](?:e|\(e\))?\s+le\b|\d{1,2}[/.-]|$))/gimu;
         const civil = /\b(?:Mme|Madame|Monsieur|M\.)\s+([\p{L}][\p{L}\p{M}'’ -]*?)\s*[-,(]?\s*n[ée](?:e|\(e\))?\s+le\b/giu;
-        const named = [...text.matchAll(labelled), ...text.matchAll(civil)].map(match => match[1].trim());
+        const hospital = [...text.matchAll(/\bvotre\s+patient(?:\(e\)|e)?\s+([\p{L}\p{M} .'’-]+?)\s+n[ée](?:\(e\)|e)?\s+(?:([\p{L}\p{M} '’-]+?)\s+)?le\s+(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})\b/giu)];
+        const named = [...hospital, ...text.matchAll(labelled), ...text.matchAll(civil)].map(match => match[1].trim());
         const full = aliases.length ? aliases : named.slice(0, 1);
         const conflict = named.some(name => !full.some(alias => sameName(name, alias)));
-        return { families, full, conflict };
+        return { families, full, conflict, births: hospital.map(match => match[3]) };
     }
 
     async function identity(data, base) {
@@ -58,7 +63,8 @@ const echangesPatientSearch = (() => {
         const named = groups.filter(group => group.full.length);
         const fullNames = named.length ? named[0].full : (data.nameMatches || []).filter(name => nameKey(name).includes(" "));
         const conflictingNames = named.some(group => group.conflict || !group.full.some(name => fullNames.some(other => sameName(name, other))));
-        const dates = sources.flatMap(text => [...text.matchAll(PDF_PATIENT_BIRTH_DATE)].map(match => match[1]));
+        const dates = sources.flatMap(text => [...text.matchAll(PDF_PATIENT_BIRTH_DATE)].map(match => match[1]))
+            .concat(groups.flatMap(group => group.births || []));
         for (const label of base.patientLabels) {
             const date = label.match(/\b\d{1,2}[/.-]\d{1,2}[/.-]\d{4}\b/);
             if (date) dates.push(date[0]);
@@ -84,7 +90,7 @@ const echangesPatientSearch = (() => {
     }
 
     // Les changements de mode, la grille et le compteur sont des mises à jour DOM distinctes.
-    function waitFor(read, isCurrent) {
+    function waitFor(read, isCurrent, timeout = 9000) {
         return new Promise(resolve => {
             const finish = value => { observer.disconnect(); clearTimeout(timer); resolve(value); };
             const check = () => {
@@ -93,7 +99,7 @@ const echangesPatientSearch = (() => {
                 if (value) finish(value);
             };
             const observer = new MutationObserver(check);
-            const timer = setTimeout(() => finish(null), 9000);
+            const timer = setTimeout(() => finish(null), timeout);
             observer.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
             check();
         });
@@ -203,17 +209,19 @@ const echangesPatientSearch = (() => {
     async function search(data, base, isCurrent) {
         const patient = await identity(data, base);
         if (patient.conflict) return { notice: "Les identités indiquées dans ce courrier divergent. Vérifiez le patient." };
-        const source = await waitFor(() => {
-            const panel = form();
-            return controls(panel, panel?.querySelector(modeSelector)?.value) ? "form" : candidates();
-        }, isCurrent);
-        if (!source) return { notice: "Choisissez le dossier patient dans Weda pour poursuivre l’import." };
+        let source = await waitFor(() => form() ? "form" : candidates(), isCurrent);
+        // La grille de suggestions reste visible DERRIÈRE le sélecteur WebForms.
+        // Sur une analyse en cache elle est prête avant même l'ouverture du sélecteur.
+        if (Array.isArray(source)) {
+            source = await waitFor(form, isCurrent, 1800) ? "form" : candidates();
+        }
+        if (!source) return { waitForPicker: true, notice: "Pour rouvrir la recherche, cliquez sur « Annuler » dans l’import puis sur « Un patient »." };
         if (source !== "form") {
             const matches = matchingSuggestions(source, patient);
             if (matches.length === 1) {
                 // « Importer le message » appartient à Weda. L'utilisateur déclenche cette
                 // action après avoir relu le courrier. Le formulaire peut entre-temps être recréé.
-                return { focusSuggestion() {
+                return { waitForPicker: true, focusSuggestion() {
                     const current = matchingSuggestions(candidates() || [], patient);
                     if (current.length !== 1 || current[0].link.href !== matches[0].link.href) return false;
                     const action = current[0].action;
@@ -225,7 +233,7 @@ const echangesPatientSearch = (() => {
                     return true;
                 } };
             }
-            return { notice: matches.length > 1 ? "Plusieurs dossiers correspondent. Choisissez le patient dans le tableau Weda."
+            return { waitForPicker: true, notice: matches.length > 1 ? "Plusieurs dossiers correspondent. Choisissez le patient dans le tableau Weda."
                 : "Vérifiez le nom et la date de naissance avant de choisir le dossier dans Weda." };
         }
         const failure = await searchForm(patient, isCurrent);
@@ -237,8 +245,10 @@ const echangesPatientSearch = (() => {
             const family = name.match(/^([\p{Lu}][\p{Lu}'’ -]*)(?=\s+\p{Lu}\p{Ll})/u);
             return family ? family[1].trim() : name;
         });
-        const attempts = [["InsSearch", patient.ins], ["Nom", patient.ins?.slice(0, 13)], ["Naissance", patient.birthDate],
-            ...names.map(name => ["Nom", name])].filter(([, value]) => value);
+        const ins = [["InsSearch", patient.ins], ["Nom", patient.ins?.slice(0, 13)]];
+        const birth = ["Naissance", patient.birthDate];
+        const attempts = [...(patient.documentedNameAndBirth ? [birth, ...ins] : [...ins, birth]),
+            ...[...new Set(names)].map(name => ["Nom", name])].filter(([, value]) => value);
         if (!attempts.length) return "Aucune identité exploitable dans ce courrier. Recherche manuelle requise.";
         for (const [type, value] of attempts) {
             const result = await query(type, value, isCurrent);
@@ -268,5 +278,13 @@ const echangesPatientSearch = (() => {
         return "Aucun dossier ne correspond aux éléments d’identité du courrier. Recherche manuelle requise.";
     }
 
-    return { labels, form, waitFor, candidateFromAction, search };
+    function clickedResult(target) {
+        const action = target.closest?.("a[id*='_LinkButton']");
+        const row = action?.closest("tr");
+        if (!row || !form()?.contains(row) || !(action.matches(resultSelector) || action.matches(birthSelector))) return null;
+        const link = row.querySelector(resultSelector);
+        return link && { link, name: link.textContent.trim(), birth: row.querySelector(birthSelector)?.textContent.trim(), classic: true };
+    }
+
+    return { labels, form, waitFor, candidateFromAction, candidates, clickedResult, search };
 })();
