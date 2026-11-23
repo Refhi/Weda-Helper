@@ -42,7 +42,7 @@ const echangesPatientSearch = (() => {
 
     // Conserver ensemble les noms et prénoms de chaque source. Le corps du message peut
     // porter toute l'identité alors que le PDF contient uniquement un compte rendu.
-    function readNames(text) {
+    function readNames(text, references = []) {
         const families = [...text.matchAll(/(?:^|\n)\s*nom(?:\s+d['’ ]usage|\s+de\s+naissance)?\s*:\s*([^\n;:]+)/gi)].map(m => m[1].trim());
         const given = text.match(/(?:^|\n)\s*pr[ée]noms?\s*:\s*([^\n;:]+)/i)?.[1].trim();
         const aliases = given ? families.map(family => family + " " + given) : [];
@@ -52,16 +52,25 @@ const echangesPatientSearch = (() => {
         const civil = [...text.matchAll(/\b(?:Mme|Madame|Monsieur|M\.)[ \t]+([\p{L}][\p{L}\p{M}'’ -]*?)[\s(,–-]+n[ée](?:e|\(e\))?[ \t]+(?:([\p{L}][\p{L}\p{M}'’ -]*?)[,)]?\s+(?:n[ée](?:e|\(e\))?\s+)?)?le\s+(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})\b/giu)];
         const hospital = [...text.matchAll(/\bvotre\s+patient(?:\(e\)|e)?\s+([\p{L}\p{M} .'’-]+?)\s+n[ée](?:\(e\)|e)?\s+(?:([\p{L}\p{M} '’-]+?)\s+)?le\s+(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})\b/giu)];
         const withBirth = [...hospital, ...civil];
-        const named = [...withBirth, ...text.matchAll(labelled)].map(match => match[1].trim());
+        // « Mme USAGE née NAISSANCE Prénom(s) le … » : le deuxième groupe est
+        // l'identité complète seulement si l'objet Weda confirme ce nom et cette DDN.
+        const usual = civil.filter(match => !nameKey(match[1]).includes(" ") && match[2] && references.some(ref =>
+            displayedBirthDate(match[3]) === ref.birth && sameName(match[2], ref.full)));
+        const named = [...withBirth, ...text.matchAll(labelled)].map(match => (usual.includes(match) ? match[2] : match[1]).trim());
         const full = aliases.length ? aliases : named.slice(0, 1);
         const conflict = named.some(name => !full.some(alias => sameName(name, alias)));
         return { families, full, conflict, births: withBirth.map(match => match[3]),
-            birthFamilies: withBirth.map(match => match[2]).filter(Boolean).map(nameKey) };
+            usual: usual.map(match => ({ family: nameKey(match[1]), full: nameKey(match[2]) })),
+            birthFamilies: withBirth.filter(match => !usual.includes(match)).map(match => match[2]).filter(Boolean).map(nameKey) };
     }
 
     async function identity(data, base) {
         const sources = [base.pdfText || "", base.messageBody || "", ...base.patientLabels];
-        const groups = sources.map(readNames);
+        const references = base.patientLabels.flatMap(label => {
+            const match = label.match(/^patiente?\s*:\s*([\p{L}\p{M}'’ -]+?)\s*\(?(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})\)?\s*$/iu);
+            return match && nameKey(match[1]).includes(" ") ? [{ full: match[1], birth: displayedBirthDate(match[2]) }] : [];
+        });
+        const groups = sources.map((text, index) => readNames(text, index === 0 ? references : []));
         const matrix = data.dataMatrix;
         if (matrix?.Nom && matrix.Prenoms) groups.unshift({ families: [matrix.Nom], full: [matrix.Nom + " " + matrix.Prenoms] });
         const named = groups.filter(group => group.full.length);
@@ -88,7 +97,8 @@ const echangesPatientSearch = (() => {
         if (new Set(groups.flatMap(group => group.birthFamilies || [])).size > 1) conflicts.push("nom de naissance");
         if (birthDates.size > 1) conflicts.push("date de naissance");
         if (insNumbers.size > 1) conflicts.push("identifiant national de santé");
-        return { fullNames, families, birthDate, documentedNameAndBirth: named.length > 0 && birthDates.size === 1, ins: [...insNumbers][0], conflicts };
+        return { fullNames, families, birthDate, documentedNameAndBirth: named.length > 0 && birthDates.size === 1,
+            usual: groups.flatMap(group => group.usual || []), ins: [...insNumbers][0], conflicts };
     }
 
     function form() {
@@ -229,6 +239,7 @@ const echangesPatientSearch = (() => {
     }
 
     async function search(data, base, isCurrent) {
+        document.querySelectorAll(".whEchangesUsageHint").forEach(hint => hint.remove());
         const patient = await identity(data, base);
         if (patient.conflicts.length) return { notice: "Les identités indiquées dans ce courrier divergent (" + patient.conflicts.join(", ") + "). Vérifiez le patient." };
         let source = await waitFor(() => form() ? "form" : candidates(), isCurrent);
@@ -298,7 +309,26 @@ const echangesPatientSearch = (() => {
             }
             // Avec un nom complet et une DDN documentés, tous les résultats de
             // cette date ont été examinés. Les laisser visibles pour la vérification.
-            if (type === "Naissance" && patient.documentedNameAndBirth && result.links.length) {
+            if (type === "Naissance" && patient.documentedNameAndBirth) {
+                if (!result.links.length) return "Aucun dossier trouvé à la date de naissance du courrier. Vérifiez l’identité dans Weda.";
+                const suggested = result.links.filter(link => {
+                    if (displayedBirthDate(link.closest("tr")?.querySelector(birthSelector)?.textContent) !== patient.birthDate) return false;
+                    const name = nameKey(link.textContent);
+                    return patient.usual.some(({family, full}) => {
+                        if (!name.startsWith(family + " ")) return false;
+                        const given = name.slice(family.length + 1);
+                        return full.endsWith(" " + given) || full.startsWith(given + " ");
+                    });
+                });
+                for (const link of suggested) {
+                    const hint = document.createElement("small");
+                    hint.className = "whEchangesUsageHint";
+                    hint.style.marginInlineStart = "0.5em";
+                    hint.textContent = "Nom de naissance à vérifier";
+                    link.after(hint);
+                }
+                if (suggested.length === 1) return "Le nom d’usage, le prénom et la date correspondent sur une ligne. Vérifiez le nom de naissance avant de choisir ce dossier.";
+                if (suggested.length > 1) return suggested.length + " dossiers correspondent au nom d’usage, au prénom et à la date. Vérifiez les lignes indiquées avant de choisir.";
                 return "Aucun dossier ne réunit le nom et la date de naissance du courrier. Vérifiez les dossiers affichés pour cette date.";
             }
         }

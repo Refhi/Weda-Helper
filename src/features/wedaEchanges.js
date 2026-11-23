@@ -237,8 +237,8 @@ addTweak('/FolderMedical/WedaEchanges/', 'swapTitrePJetCorpsMessage', function (
                 let titreCorpsMessage = elements[0].value;
                 let titrePieceJointe = elements[1].value;
                 console.log('[swapTitrePJetCorpsMessage] titreCorpsMessage', titreCorpsMessage, 'titrePieceJointe', titrePieceJointe);
-                elements[0].value = titrePieceJointe;
-                elements[1].value = titreCorpsMessage;
+                elements[0].value = echangesTitleDrafts.valueFor(elements[0]) ?? titrePieceJointe;
+                elements[1].value = echangesTitleDrafts.valueFor(elements[1]) ?? titreCorpsMessage;
                 recordMetrics({ clicks: 4, drags: 4 });
             }
         }

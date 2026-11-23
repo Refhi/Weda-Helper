@@ -76,9 +76,11 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
     let revision = 0;
     let started = false;
     let waitForPicker = false;
+    let manualSearch = false;
     let running = null;
     let pending = Promise.resolve();
     const selected = () => getEchangesMessageKey();
+    echangesTitleDrafts.install();
 
     function start(confirmedPatient = null) {
         if (running?.revision === revision && (!confirmedPatient || running.confirmedPatient?.link === confirmedPatient.link)) return;
@@ -113,8 +115,18 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
     }
 
     document.addEventListener("click", event => {
+        if (event.target.closest?.('[id$="_ButtonRechercheAnnuler"]')) {
+            echangesTitleDrafts.capture();
+            manualSearch = true;
+            waitForPicker = false;
+            revision++;
+            if (running) notifyEchangesProcessingDone({ messageKey: selected(), status: "review", notice: "Recherche annulée. Vérifiez le dossier à la reprise." });
+            running = null;
+            return;
+        }
         if (event.target.closest?.("#messageList .messageLineItem")) {
             revision++;
+            manualSearch = false;
             started = false;
             waitForPicker = false;
             document.querySelector("#pdfParserPatientName")?.remove();
@@ -122,12 +134,12 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
             return;
         }
         if (event.target.closest?.("#messageContainer .importPatient")) {
-            start();
+            if (!manualSearch) start();
             return;
         }
         const action = event.target.closest?.("#messageContainer .docImportBody td a");
         const patient = echangesPatientSearch.candidateFromAction(action) || (event.isTrusted && echangesPatientSearch.clickedResult(event.target));
-        if (patient) start(patient);
+        if (patient) { manualSearch = false; start(patient); }
     }, true);
 
     // Weda peut aussi ouvrir la recherche directement. Un postback qui recrée le
@@ -136,7 +148,7 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
         selector: 'select[id$="_DropDownListRechechePatient"]',
         triggerOnInit: true,
         observerId: "pdfParserEchangesPatient",
-        callback: () => { if ((!started || waitForPicker) && selected() && echangesPatientSearch.form()) start(); }
+        callback: () => { if (!manualSearch && (!started || waitForPicker) && selected() && echangesPatientSearch.form()) start(); }
     });
 
     // On ajoute aussi une petite aide : le champ de recherche de patient est décalé vers le bas de l'écran
@@ -713,7 +725,7 @@ async function fillEchangesAttachment(data, original, isCurrent) {
     if (autoDestination && destination && !destination.classList.contains("selected")) destination.click();
 
     const fields = [
-        { key: "title", selector: "input.docTitle, input[title=\"C'est le titre qu'aura le document dans le dossier patient\"]", value: autoTitle && data.documentTitle },
+        { key: "title", selector: echangesTitleDrafts.selector, value: autoTitle && data.documentTitle },
         { key: "type", selector: 'select[title="Attribuer une classification au document"]', value: data.documentType },
         { key: "comment", selector: 'input[placeholder="Commentaire"]', value: data.documentCommentaire }
     ].filter(field => field.value);
@@ -736,7 +748,7 @@ async function fillEchangesAttachment(data, original, isCurrent) {
                 if (edited.has(field.key)) continue;
                 const control = zone?.querySelector(field.selector);
                 if (!control || control.disabled) { complete = false; continue; }
-                let value = field.value;
+                let value = field.key === "title" ? echangesTitleDrafts.valueFor(control) ?? field.value : field.value;
                 if (control.tagName === "SELECT") {
                     const option = [...control.options].find(o => normalizeString(o.text) === normalizeString(value));
                     if (!option) { complete = false; continue; }

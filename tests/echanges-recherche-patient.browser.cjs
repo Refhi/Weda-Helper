@@ -145,7 +145,7 @@ function mailbox(scenario, prefix, pdfSource) {
     };
     const hospitalPdf = scenario.startsWith("hospital-pdf");
     const body = bodies[hospitalPdf ? "hospital" : scenario] || "Veuillez trouver le compte rendu en pièce jointe.";
-    const pdf = hospitalPdf || ["pdf", "long", "conflict", "confirmed", "object", "embed"].includes(scenario);
+    const pdf = hospitalPdf || scenario.startsWith("hospital-header") || scenario.startsWith("draft-") || ["pdf", "long", "conflict", "confirmed", "object", "embed"].includes(scenario);
     const viewers = { object: '<object type="application/pdf" data="/rapport.pdf"></object>',
         embed: '<div class="mssAttachment"><embed src="/rapport.pdf" type="application/pdf"></div>' };
     pane.innerHTML = '<div class="docImportBody"><button class="importPatient btnImport">Un patient</button>'
@@ -201,6 +201,11 @@ function mailbox(scenario, prefix, pdfSource) {
             const other = ["autre", "FICTIF Camilla", "07/03/1980"];
             let rows = scenario === "ins" ? [good] : scenario === "retry" && !state.retry ? [] : scenario === "homonyms"
                 ? [good, ["homonyme", ...good.slice(1)]] : [other, good];
+            if (scenario.startsWith("draft-")) rows = [other];
+            if (["hospital-header-usage", "hospital-header-double"].includes(scenario)) {
+                rows = [["autre", "USAGE Camilla", good[2], "USAGE"], ["proche", "USAGE Camille", good[2], "USAGE"]];
+                if (scenario === "hospital-header-double") rows.push(["doublon", "USAGE Camille", good[2], "USAGE"]);
+            }
             if (scenario.startsWith("alias-")) {
                 rows = [["autre", "USAGE Camilla", "07/03/1980", "FICTIF"], ["autreNom", "AUTRE Camille", "07/03/1980", "AUTRE"]];
                 if (scenario !== "alias-split") rows.push(["correct", "USAGE CAMILLE", "07/03/1980", "FICTIF"]);
@@ -223,6 +228,43 @@ function mailbox(scenario, prefix, pdfSource) {
         }, scenario === "slow" ? 1250 : 50);
     }
     pane.querySelector(".importPatient").onclick = openClassic;
+    if (scenario.startsWith("draft-")) {
+        const pdf = pane.querySelector(".messageAttachment");
+        const pdfControl = pdf.querySelector(".docTitle");
+        pdfControl.remove();
+        pdf.classList.add("fixturePdf");
+        const zip = document.createElement("div");
+        zip.className = "messageAttachment fixtureZip";
+        zip.innerHTML = '<a download href="/fichier.zip">Archive</a>';
+        pane.append(zip);
+        const body = pane.querySelector(".messageBody");
+        let opens = 0;
+        const open = () => {
+            openClassic();
+            opens++;
+            if (opens > 1) pane.insertBefore(zip, pdf);
+            for (const [zone, value, checked] of [[body, "Texte original", true], [pdf, "rapport.pdf", true], [zip, "fichier.zip", false]]) {
+                const wrap = document.createElement("we-doc-import");
+                wrap.innerHTML = '<input type="checkbox"' + (checked ? " checked" : "") + '><input class="docTitle">';
+                wrap.querySelector(".docTitle").value = value;
+                if (zone === body) body.before(wrap); else zone.prepend(wrap);
+            }
+            const cancel = document.createElement("input");
+            cancel.type = "button";
+            cancel.id = prefix + "ButtonRechercheAnnuler";
+            cancel.value = "Annuler";
+            document.getElementById(prefix + "PanelFindPatient").append(cancel);
+            cancel.onclick = () => {
+                document.getElementById(prefix + "PanelPatient").remove();
+                pane.querySelectorAll("we-doc-import").forEach(wrap => wrap.remove());
+            };
+        };
+        pane.querySelector(".importPatient").onclick = open;
+        document.querySelector(".messageLineItem").addEventListener("click", event => {
+            document.querySelector(".messageListItem.selected")?.classList.remove("selected");
+            event.target.closest(".messageListItem").classList.add("selected");
+        });
+    }
     if (scenario === "queue") {
         const button = pane.querySelector(".importPatient");
         button.remove();
@@ -254,6 +296,10 @@ function fixturePdf(scenario, previous = false) {
         const birth = scenario === "hospital-pdf-birthname" ? "AUTRE NOM" : "NOM ANCIEN";
         identity = "M. FICTIF " + first + "\nNe " + birth + ", le 07/03/1980\n"
             + "Monsieur " + first + " FICTIF ne " + birth + "\nNe le 07/03/1980\n";
+    }
+    if (scenario.startsWith("hospital-header")) {
+        const name = scenario === "hospital-header-other" ? "AUTRE Camille" : "FICTIF Camille";
+        identity = "Madame USAGE nee " + name + " le 07/03/1980\n";
     }
     const reportDate = previous ? "08/02/2023" : "12/04/2025";
     return pdfWithText(identity + "Compte rendu fictif, le " + reportDate + ". Comparaison du 20/06/2019. " + "Texte de demonstration. ".repeat(5));
@@ -289,7 +335,9 @@ async function run() {
                 failures.push(message.text());
         });
         const requested = process.argv.slice(2);
-        for (scenario of requested.length ? requested : ["metadata", "slow", "long", "pdf", "name", "retry", "homonyms", "missing", "conflict", "switch", "confirmed", "ins", "reportdate", "hospital", "hospital-pdf", "hospital-pdf-other", "hospital-pdf-birthname", "alias-birthname", "alias-split", "alias-homonyms", "bodyonly", "object", "embed", "queue", ...mssScenarios, "batch-rebuild", "next-rebuild", "next-refused"]) {
+        const cancellation = ["draft-title", "draft-early", "draft-switch"];
+        const headers = ["hospital-header-exact", "hospital-header-usage", "hospital-header-double", "hospital-header-other"];
+        for (scenario of requested.length ? requested : ["metadata", "slow", "long", "pdf", "name", "retry", "homonyms", "missing", "conflict", "switch", "confirmed", "ins", "reportdate", "hospital", "hospital-pdf", "hospital-pdf-other", "hospital-pdf-birthname", "alias-birthname", "alias-split", "alias-homonyms", "bodyonly", "object", "embed", "queue", ...mssScenarios, ...cancellation, ...headers, "batch-rebuild", "next-rebuild", "next-refused"]) {
             await worker.evaluate(scenario => chrome.storage.local.set({ autoClickUnPatient: ["mss-reused-detail", "mss-mounted", "mss-reopen"].includes(scenario),
                 secureExchangeMessageQueue: ["queue","batch-rebuild","next-rebuild","next-refused"].includes(scenario),
                 secureExchangeOpenNextAfterImport: false }), scenario);
@@ -327,6 +375,43 @@ async function run() {
                 : ["mss-mounted", "mss-reopen"].includes(scenario) ? ".messageListItem.selected .messageLineItem"
                 : scenario === "confirmed" ? ".docImportBody a[href]" : scenario === "mss-reused-detail" ? ".messageListItem:last-child .messageLineItem" : ".importPatient");
             await trigger.evaluate(button => button.click());
+            if (cancellation.includes(scenario)) {
+                const title = page.locator(".fixturePdf .docTitle");
+                if (scenario !== "draft-early") await page.waitForFunction(() => window.mailbox.done === 1);
+                const before = await title.inputValue();
+                if (scenario === "draft-title") await title.fill("Titre corrigé");
+                await page.locator('[id$="_ButtonRechercheAnnuler"]').press("Enter");
+                const editor = page.getByLabel("Titre de la pièce jointe", { exact: true });
+                await editor.waitFor();
+                assert.equal(await editor.inputValue(), scenario === "draft-title" ? "Titre corrigé" : before);
+                assert.equal(await page.locator(".fixtureZip .whEchangesDraftTitle").count(), 0);
+                assert.equal(await page.getByLabel("Titre du courrier", { exact: true }).inputValue(), "Texte original");
+                if (scenario === "draft-switch") {
+                    await page.locator(".messageLineItem").last().press("Enter");
+                    await editor.waitFor({ state: "detached" });
+                    await page.locator(".messageLineItem").first().press("Enter");
+                    await editor.waitFor();
+                }
+                const revised = scenario === "draft-early" ? "" : "Titre saisi en lecture";
+                await editor.fill(revised);
+                const searches = await page.evaluate(() => window.mailbox.searches.length);
+                await trigger.press("Enter");
+                await page.waitForFunction(value => document.querySelector(".fixturePdf .docTitle")?.value === value, revised);
+                assert.equal(await editor.count(), 0);
+                assert.equal(await page.locator(".fixtureZip .docTitle").inputValue(), "fichier.zip");
+                if (scenario !== "draft-switch") {
+                    await page.waitForTimeout(350);
+                    assert.equal(await page.evaluate(() => window.mailbox.searches.length), searches);
+                }
+                if (scenario === "draft-title") {
+                    await page.locator('[data-person="ancien"]').press("Enter");
+                    await page.waitForFunction(() => window.mailbox.done === 2);
+                    assert.equal(await title.inputValue(), revised);
+                }
+                assert.equal(await page.evaluate(() => window.mailbox.validations), 0);
+                console.log("OK", scenario);
+                continue;
+            }
             if (scenario.startsWith("mss")) {
                 const confirmed = ["mss-choice", "mss-confirm-after"].includes(scenario);
                 if (scenario === "mss-choice") await page.locator('[data-choice="1902"]').evaluate(link => link.click());
@@ -381,11 +466,15 @@ async function run() {
                 await page.waitForFunction(() => window.mailbox.done === 2);
             }
             const state = await page.evaluate(() => window.mailbox);
-            const manual = ["homonyms", "missing", "conflict", "hospital-pdf-other", "hospital-pdf-birthname", "alias-split", "alias-homonyms", "switch", "confirmed"].includes(scenario);
+            const manual = ["homonyms", "missing", "conflict", "hospital-pdf-other", "hospital-pdf-birthname", "hospital-header-other", "hospital-header-usage", "hospital-header-double", "alias-split", "alias-homonyms", "switch", "confirmed"].includes(scenario);
             assert.deepEqual(state.picks, manual ? [] : ["correct"], scenario + ": " + failures.slice(-2).join("\n"));
             assert.equal(state.validations, 0, scenario);
             if (["missing", "conflict", "hospital-pdf-other", "hospital-pdf-birthname", "confirmed"].includes(scenario)) assert.equal(state.searches.length, 0, scenario);
             if (scenario === "hospital-pdf" || scenario.startsWith("alias-")) assert.deepEqual(state.searches, [{ mode: "Naissance", inputs: ["07/03/1980", ""] }]);
+            if (headers.includes(scenario)) {
+                assert.equal(state.searches.length, scenario === "hospital-header-other" ? 0 : 1);
+                assert.equal(await page.locator(".whEchangesUsageHint").count(), scenario === "hospital-header-usage" ? 1 : scenario === "hospital-header-double" ? 2 : 0);
+            }
             if (scenario === "slow") {
                 assert.equal(state.searches.length, 1);
                 assert.deepEqual(state.searches[0], { mode: "Naissance", inputs: ["07/03/1980", ""] });
