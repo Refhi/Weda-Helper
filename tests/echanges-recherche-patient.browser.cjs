@@ -31,6 +31,16 @@ function mailbox(scenario, prefix) {
             + (viewers[scenario] || '<iframe id="iFrameViewFile" src="/rapport.pdf"></iframe>') + '</div>' : "")
         + '<button class="button valid">Valider</button>';
     pane.querySelector(".valid").onclick = () => state.validations++;
+    if (scenario === "confirmed") {
+        const attachment = pane.querySelector(".messageAttachment");
+        for (const title of ["Ranger dans les consultations", "Ranger dans les résultats d'examens", "Ranger dans les courriers"]) {
+            const destination = document.createElement("button");
+            destination.className = "weImportDocTargets";
+            destination.title = title;
+            destination.onclick = () => { state.rebuilt = true; attachment.replaceWith(attachment.cloneNode(true)); };
+            attachment.append(destination);
+        }
+    }
     pane.querySelector('a[href]').onclick = event => event.preventDefault();
     document.addEventListener("pdfParserEchangesDone", () => state.done++);
 
@@ -120,7 +130,7 @@ async function run() {
         const worker = browser.serviceWorkers()[0] || await browser.waitForEvent("serviceworker");
         await worker.evaluate(() => chrome.storage.local.set({ autoPdfParser: true, autoClickUnPatient: false, secureExchangeMessageQueue: false,
             PdfParserAutoAIExtraction: false, verifierEtMettreAJourAntecedents: false, secureExchangeAutoRefresh: false,
-            PdfParserAutoTitle: true, PdfParserAutoTitleFormat: JSON.stringify([["*", ["Titre du test"]]]) }));
+            PdfParserAutoTitle: true, PdfParserAutoClassification: true, PdfParserAutoTitleFormat: JSON.stringify([["*", ["Titre du test"]]]) }));
         const page = await browser.newPage();
         const failures = [];
         page.on("console", message => {
@@ -160,6 +170,7 @@ async function run() {
             }
             if (scenario === "ins") assert.deepEqual(state.searches, [{ mode: "Nom", inputs: ["1800371000000"] }]);
             if (scenario === "queue") await page.waitForFunction(() => document.querySelector("#whMessageQueueToolbox").dataset.running === "false");
+            if (scenario === "confirmed") assert.equal(state.rebuilt, true);
             if (["long", "pdf", "confirmed", "object", "embed"].includes(scenario)) assert.equal(await page.locator(".docTitle").inputValue(), "Titre du test");
             console.log("OK", scenario);
         }

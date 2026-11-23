@@ -458,16 +458,17 @@ async function processFoundPdfIframeEchanges(confirmedPatient, isCurrent) {
     // ===========================================
     // ÉTAPE 3 : Remplissage du formulaire d'import
     // ===========================================
-    const attachment = getActiveAttachmentZoneES();
-    await selectDestinationIfNeededES(extractedData.destinationClass, attachment);
+    // Weda peut remplacer le formulaire de la pièce jointe après le choix de la destination.
+    await selectDestinationIfNeededES(extractedData.destinationClass);
     if (!isCurrent()) return hashId;
     // 2. Mettre le titre
-    await setTitleIfNeededES(extractedData.documentTitle, attachment);
+    await setTitleIfNeededES(extractedData.documentTitle);
     if (!isCurrent()) return hashId;
     // 3. Sélectionner la bonne catégorie
-    await selectDocumentTypeES(extractedData.documentType, attachment);
+    await selectDocumentTypeES(extractedData.documentType);
+    if (!isCurrent()) return hashId;
     // 4. Mettre le commentaire
-    await setCommentaireIfNeededES(extractedData.documentCommentaire, attachment);
+    await setCommentaireIfNeededES(extractedData.documentCommentaire);
     // 5. Même chose pour les éventuels autres PDF du message
     await fillOtherAttachmentsES(isCurrent);
     if (!isCurrent()) return hashId;
@@ -678,7 +679,8 @@ function addPatientNameDisplay(patientName, patientElement = null) {
 // Fonctions utilitaires
 function returnMessageBodyES() {
     // Sélection de l'élément messageBody
-    const messageBodyElement = document.querySelector('#messageContainer .messageBody') || document.querySelector('.messageBody');
+    const container = document.querySelector("#messageContainer") || document;
+    const messageBodyElement = container.querySelector(".messageBody");
     if (messageBodyElement) {
         // Extraction du texte de l'élément
         const messageBodyText = messageBodyElement.innerText.trim();
@@ -1479,7 +1481,7 @@ async function findPdfUrl(iframesElements, zone = document) {
     }
 
 
-    return new Promise((resolve, reject) => {
+    return new Promise(resolve => {
         const finish = url => { clearInterval(interval); clearTimeout(timeout); resolve(url); };
         const read = () => {
             let url;
@@ -3127,7 +3129,6 @@ async function customHash(str, urlPDF) {
         const bytes = await (await pdfBlob(urlPDF)).arrayBuffer();
         const digest = await crypto.subtle.digest("SHA-256", bytes);
         return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
-        // ça prend environs 20ms pour un pdf de 300ko
     }
 
     const FNV_PRIME = 0x01000193;
