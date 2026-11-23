@@ -70,6 +70,7 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
 // 1.b. Dans la page des Echanges Sécurisés
 addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
     console.log('[pdfParser] Chargement de la page d\'échanges');
+    preserveEchangesTitlesOnCancel();
     
     // Écouter l'apparition du panneau de recherche patient au lieu d'utiliser un délai arbitraire
     // Cela garantit que le DOM est complètement initialisé avant de traiter le PDF
@@ -730,6 +731,80 @@ async function selectDocumentTypeES(documentType, attachmentZone = getActiveAtta
 
 }
 
+// « Annuler » dans le sélecteur patient démonte aussi les champs de titre du courrier.
+let restoredEchangesTitles = new WeakMap();
+function preserveEchangesTitlesOnCancel() {
+    let clearDrafts;
+    document.addEventListener("input", ({ target }) => {
+        const editor = restoredEchangesTitles.get(target);
+        if (editor) editor.value = target.value;
+    });
+    document.addEventListener("click", event => {
+        if (event.target.closest?.("#messageList .messageListItem:not(.selected) .messageLineItem, #inboxToolbar, .docImportButtons .button.cancel")) clearDrafts?.();
+        if (!event.target.matches?.("[id$='_ButtonRechercheAnnuler']")) return;
+        clearDrafts?.();
+        const pane = document.querySelector("#messageContainer");
+        const row = document.querySelector("#messageList .messageListItem.selected");
+        if (!pane || !row) return;
+        const subject = row.querySelector(".subjectRow")?.textContent;
+        function sameMessage() {
+            if (row.isConnected) return row.matches(".selected");
+            const rows = [...document.querySelectorAll("#messageList .subjectRow")].filter(node => node.textContent === subject);
+            return rows.length === 1 && rows[0].closest(".messageListItem.selected");
+        }
+
+        function slots() {
+            const items = [...pane.querySelectorAll(".messageBody, .messageAttachment")].map(zone => {
+                const body = zone.matches(".messageBody");
+                const file = body ? null : zone.querySelector("iframe[src], embed[src], object[data], a[download][href], a[href*='BinaryData.aspx' i]");
+                const url = file && new URL(file.src || file.data || file.href, document.baseURI);
+                let key = body ? "body" : url?.href || zone;
+                if (/\/BinaryData\.aspx$/i.test(url?.pathname) && url.searchParams.has("id")) {
+                    key = JSON.stringify([url.origin, url.pathname, url.searchParams.get("id"), url.searchParams.get("i")]);
+                }
+                const field = body ? pane.querySelector("input.docTitle:not(.messageAttachment input)") : zone.querySelector("input.docTitle");
+                return { zone, body, key, field };
+            });
+            return items.map(item => items.some(other => other !== item && other.key === item.key) ? { ...item, key: item.zone } : item);
+        }
+        const drafts = new Map();
+        for (const { body, key, field } of slots()) {
+            if (!field || (!field.value && !field.classList.contains("ng-dirty"))) continue;
+            if (field.closest("we-doc-import")?.querySelector("input[type=checkbox]")?.checked === false) continue;
+            const editor = document.createElement("input");
+            editor.placeholder = body ? "Titre du courrier" : "Titre de la pièce jointe";
+            editor.setAttribute("aria-label", editor.placeholder);
+            editor.value = field.value;
+            drafts.set(key, editor);
+        }
+        if (!drafts.size) return;
+
+        const observer = new MutationObserver(() => {
+            if (!pane.isConnected || !sameMessage()) return clearDrafts();
+            for (const { zone, body, key, field } of slots()) {
+                const editor = drafts.get(key);
+                if (!editor) continue;
+                if (!field) {
+                    if (!editor.isConnected) zone.insertAdjacentElement(body ? "beforebegin" : "afterbegin", editor);
+                } else if (!restoredEchangesTitles.has(field)) {
+                    editor.remove();
+                    restoredEchangesTitles.set(field, editor);
+                    field.value = editor.value;
+                    field.dispatchEvent(new Event("input", { bubbles: true }));
+                    field.dispatchEvent(new Event("change", { bubbles: true }));
+                }
+            }
+        });
+        clearDrafts = () => {
+            observer.disconnect();
+            for (const editor of drafts.values()) editor.remove();
+            restoredEchangesTitles = new WeakMap();
+            clearDrafts = null;
+        };
+        observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+    }, true);
+}
+
 /**
  * Insère le titre au bon endroit pour les échanges sécurisés
  */
@@ -747,6 +822,7 @@ async function setTitleIfNeededES(Titre, attachmentZone = getActiveAttachmentZon
         console.error("[pdfParser] Titre non trouvé, impossible de le mettre dans le champ de titre");
         return;
     }
+    if (restoredEchangesTitles.has(titleInput)) return;
     console.log("[pdfParser] Titre trouvé, on le met dans le champ de titre", Titre);
     titleInput.value = Titre;
     titleInput.dispatchEvent(new Event('change'));
