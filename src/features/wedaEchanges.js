@@ -226,22 +226,37 @@ addTweak('/FolderMedical/WedaEchanges/', 'swapTitrePJetCorpsMessage', function (
 
 // Clic automatique sur "Un patient" à l'ouverture d'un message (clic manuel ou parcours par lot).
 addTweak('/FolderMedical/WedaEchanges/', 'autoClickUnPatient', function () {
-    let pendingClick;
+    let cancel;
     document.addEventListener('click', event => {
+        if (event.target.closest?.("#messageContainer .importPatient, #messageContainer .docImportBody td a")) {
+            cancel?.();
+            return;
+        }
         const line = event.target.closest?.('#messageList .messageLineItem');
         if (!line) return;
-
-        // Weda peut recréer la ligne sélectionnée pendant la recherche patient.
-        // Seul un clic sur la liste doit lancer une nouvelle recherche.
-        clearTimeout(pendingClick);
-        pendingClick = setTimeout(() => {
-            if (!line.isConnected || !line.closest('.messageListItem.selected')) return;
-            const unPatientButton = document.querySelector('#messageContainer .btnImport.importPatient');
-            if (!unPatientButton) return;
-
-            unPatientButton.click();
+        cancel?.();
+        const selector = "#messageContainer .btnImport.importPatient";
+        const previousButton = document.querySelector(selector);
+        const previousBody = document.querySelector("#messageContainer .messageBody");
+        const previousText = previousBody?.textContent;
+        const wasSelected = !!line.closest(".messageListItem.selected");
+        const check = () => {
+            if (cancel !== stop) return;
+            if (!line.closest(".messageListItem.selected")?.isConnected) return;
+            const button = document.querySelector(selector);
+            if (!button?.getClientRects().length || button.disabled) return;
+            const body = document.querySelector("#messageContainer .messageBody");
+            if (!wasSelected && button === previousButton && body === previousBody && body?.textContent === previousText) return;
+            stop();
+            button.click();
             recordMetrics({ clicks: 1, drags: 0 });
-        }, 100); // Laisse Weda afficher le détail du message.
+        };
+        const observer = new MutationObserver(check);
+        const timer = setTimeout(() => stop(), 9000);
+        const stop = () => { observer.disconnect(); clearTimeout(timer); if (cancel === stop) cancel = null; };
+        cancel = stop;
+        observer.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+        queueMicrotask(check);
     }, true);
 });
 
