@@ -456,12 +456,13 @@ async function processFoundPdfIframeEchanges(confirmedPatient, isCurrent) {
     }
     if (pendingSelection) {
         const focused = pendingSelection.focusSuggestion?.();
+        const notice = focused ? "Le nom et la date de naissance correspondent. Vérifiez la ligne proposée puis cliquez sur « Importer le message »."
+            : pendingSelection.notice || "Vérifiez le dossier proposé par Weda avant l’import.";
         sendWedaNotif({
-            message: "Courrier analysé. " + (focused ? "Le nom et la date de naissance correspondent. Vérifiez la ligne proposée puis cliquez sur « Importer le message »."
-                : pendingSelection.notice || "Vérifiez le dossier proposé par Weda avant l’import."),
+            message: "Courrier analysé. " + notice,
             type: 'undefined', icon: 'person_search', duration: 10000
         });
-        return { hashId, status: "review", waitForPicker: pendingSelection.waitForPicker };
+        return { hashId, status: "review", notice, waitForPicker: pendingSelection.waitForPicker };
     }
     // Pas de marquage "déjà importé" : dans la messagerie sécurisée, le formulaire
     // n'est pas conservé par Weda si l'on change de patient entre deux.

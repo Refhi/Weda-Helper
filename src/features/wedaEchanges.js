@@ -400,7 +400,7 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
 
     // Attend la fin de l'analyse (évènement), avec un timeout de secours et une sortie rapide si
     // l'utilisateur a cliqué sur Stop entre-temps.
-    function waitForAnalysisDone(messageKey, open) {
+    function waitForAnalysisDone(item, open) {
         return new Promise(resolve => {
             let deadline;
             let timer;
@@ -418,9 +418,11 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
                 deadline = Date.now() + delay;
                 timer = setTimeout(() => finish("failed"), delay);
             };
-            const started = event => { if (event.detail?.messageKey === messageKey) arm(ANALYSIS_TIMEOUT); };
+            const started = event => { if (event.detail?.messageKey === item.key) arm(ANALYSIS_TIMEOUT); };
             const done = event => {
-                if (event.detail?.messageKey === messageKey && ["ready","review","failed"].includes(event.detail.status)) finish(event.detail.status);
+                if (event.detail?.messageKey !== item.key || !["ready","review","failed"].includes(event.detail.status)) return;
+                item.notice = event.detail.notice || "";
+                finish(event.detail.status);
             };
             const countdownId = setInterval(() => {
                 const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
@@ -471,7 +473,7 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
                     item.status = "failed";
                     continue;
                 }
-                item.status = await waitForAnalysisDone(item.key, () => {
+                item.status = await waitForAnalysisDone(item, () => {
                     lineItem.click();
                     recordMetrics({ clicks: 1, drags: 0 });
                 });
@@ -511,6 +513,7 @@ addTweak('/FolderMedical/WedaEchanges/', 'secureExchangeMessageQueue', async fun
             (row.querySelector(".metaRow") || row).append(label);
         }
         if (label.textContent !== labels[item.status]) label.textContent = labels[item.status];
+        if (label.title !== (item.notice || "")) label.title = item.notice || "";
     }
     function startCheckedQueue() {
         processQueue(getCheckedMessages);

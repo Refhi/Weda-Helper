@@ -47,12 +47,16 @@ const echangesPatientSearch = (() => {
         const given = text.match(/(?:^|\n)\s*pr[ée]noms?\s*:\s*([^\n;:]+)/i)?.[1].trim();
         const aliases = given ? families.map(family => family + " " + given) : [];
         const labelled = /\bpatiente?\s*:\s*([\p{L}][\p{L}\p{M}'’ -]*?)(?=\s*[-,(]?\s*(?:n[ée](?:e|\(e\))?\s+le\b|\d{1,2}[/.-]|$))/gimu;
-        const civil = /\b(?:Mme|Madame|Monsieur|M\.)\s+([\p{L}][\p{L}\p{M}'’ -]*?)\s*[-,(]?\s*n[ée](?:e|\(e\))?\s+le\b/giu;
+        // « Monsieur Prénom NOM né NOM DE NAISSANCE / Né le … » peut être répété
+        // dans le même PDF. Le nom de naissance est un trait distinct du nom affiché.
+        const civil = [...text.matchAll(/\b(?:Mme|Madame|Monsieur|M\.)[ \t]+([\p{L}][\p{L}\p{M}'’ -]*?)[\s(,–-]+n[ée](?:e|\(e\))?[ \t]+(?:([\p{L}][\p{L}\p{M}'’ -]*?)[,)]?\s+(?:n[ée](?:e|\(e\))?\s+)?)?le\s+(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})\b/giu)];
         const hospital = [...text.matchAll(/\bvotre\s+patient(?:\(e\)|e)?\s+([\p{L}\p{M} .'’-]+?)\s+n[ée](?:\(e\)|e)?\s+(?:([\p{L}\p{M} '’-]+?)\s+)?le\s+(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})\b/giu)];
-        const named = [...hospital, ...text.matchAll(labelled), ...text.matchAll(civil)].map(match => match[1].trim());
+        const withBirth = [...hospital, ...civil];
+        const named = [...withBirth, ...text.matchAll(labelled)].map(match => match[1].trim());
         const full = aliases.length ? aliases : named.slice(0, 1);
         const conflict = named.some(name => !full.some(alias => sameName(name, alias)));
-        return { families, full, conflict, births: hospital.map(match => match[3]) };
+        return { families, full, conflict, births: withBirth.map(match => match[3]),
+            birthFamilies: withBirth.map(match => match[2]).filter(Boolean).map(nameKey) };
     }
 
     async function identity(data, base) {
@@ -79,8 +83,12 @@ const echangesPatientSearch = (() => {
             ...sources.flatMap(text => text.match(/\b[12]\d{12}\s?\d{2}\b/g) || [])]
             .map(value => String(value || "").replace(/\s/g, "")).filter(value => /^[12]\d{14}$/.test(value)));
         const families = [...new Set(groups.flatMap(group => group.families))];
-        return { fullNames, families, birthDate, documentedNameAndBirth: named.length > 0 && birthDates.size === 1, ins: [...insNumbers][0],
-            conflict: conflictingNames || birthDates.size > 1 || insNumbers.size > 1 };
+        const conflicts = [];
+        if (conflictingNames) conflicts.push("nom et prénom");
+        if (new Set(groups.flatMap(group => group.birthFamilies || [])).size > 1) conflicts.push("nom de naissance");
+        if (birthDates.size > 1) conflicts.push("date de naissance");
+        if (insNumbers.size > 1) conflicts.push("identifiant national de santé");
+        return { fullNames, families, birthDate, documentedNameAndBirth: named.length > 0 && birthDates.size === 1, ins: [...insNumbers][0], conflicts };
     }
 
     function form() {
@@ -156,6 +164,20 @@ const echangesPatientSearch = (() => {
         return date ? [date[1].padStart(2, "0"), date[2].padStart(2, "0"), date[3]].join("/") : null;
     }
 
+    // La grille affiche « NOM Prénom » et range le nom de naissance dans une
+    // autre colonne. Vérifier le prénom entier et la DDN avant d'utiliser cet alias.
+    function matchesFullName(link, patient, displayedBirth) {
+        const display = link.textContent.trim();
+        if (patient.fullNames.some(name => sameName(name, display))) return true;
+        if (!patient.documentedNameAndBirth || displayedBirth !== patient.birthDate) return false;
+        const row = link.closest("tr");
+        const birthFamily = row?.querySelector('[id*="PatientNomJeuneFille_"]')?.textContent.trim();
+        if (!birthFamily) return false;
+        const pieces = display.split(/\s+/);
+        const given = row.querySelector('[id*="PatientPrenom_"]')?.textContent.trim() || (pieces.length === 2 ? pieces[1] : null);
+        return !!given && patient.fullNames.some(name => sameName(name, birthFamily + " " + given));
+    }
+
     function grid(panel) {
         const table = panel?.querySelector('[id$="_PatientsGridOld"], [id$="_PatientsGrid"]');
         const links = [...(table?.querySelectorAll(resultSelector) || [])].filter(visible);
@@ -208,7 +230,7 @@ const echangesPatientSearch = (() => {
 
     async function search(data, base, isCurrent) {
         const patient = await identity(data, base);
-        if (patient.conflict) return { notice: "Les identités indiquées dans ce courrier divergent. Vérifiez le patient." };
+        if (patient.conflicts.length) return { notice: "Les identités indiquées dans ce courrier divergent (" + patient.conflicts.join(", ") + "). Vérifiez le patient." };
         let source = await waitFor(() => form() ? "form" : candidates(), isCurrent);
         // La grille de suggestions reste visible DERRIÈRE le sélecteur WebForms.
         // Sur une analyse en cache elle est prête avant même l'ouverture du sélecteur.
@@ -260,7 +282,7 @@ const echangesPatientSearch = (() => {
                 const displayedBirth = displayedBirthDate(row?.querySelector(birthSelector)?.textContent);
                 if (patient.birthDate && (displayedBirth || !byIns) && displayedBirth !== patient.birthDate) return false;
                 const candidate = link.textContent.trim();
-                if (patient.fullNames.length) return patient.fullNames.some(name => sameName(name, candidate));
+                if (patient.fullNames.length) return matchesFullName(link, patient, displayedBirth);
                 if (patient.families.length) return !!patient.birthDate && patient.families.some(name =>
                     nameKey(candidate).startsWith(nameKey(name) + " "));
                 return byIns;
@@ -273,6 +295,11 @@ const echangesPatientSearch = (() => {
                 const applied = await waitFor(() => !form() && visible(document.querySelector("#messageContainer .button.valid")), isCurrent);
                 if (applied && isCurrent()) addPatientNameDisplay(name, link);
                 return applied ? null : "Weda n’a pas confirmé le dossier sélectionné. Vérifiez le patient.";
+            }
+            // Avec un nom complet et une DDN documentés, tous les résultats de
+            // cette date ont été examinés. Les laisser visibles pour la vérification.
+            if (type === "Naissance" && patient.documentedNameAndBirth && result.links.length) {
+                return "Aucun dossier ne réunit le nom et la date de naissance du courrier. Vérifiez les dossiers affichés pour cette date.";
             }
         }
         return "Aucun dossier ne correspond aux éléments d’identité du courrier. Recherche manuelle requise.";

@@ -39,7 +39,7 @@ function mailbox(scenario, prefix, pdfSource) {
             document.dispatchEvent(new CustomEvent("pdfParserEchangesStarted", { detail: { messageKey: key } }));
             document.dispatchEvent(new CustomEvent("pdfParserEchangesDone", { detail: { messageKey: "autre", status: "ready" } }));
             setTimeout(() => document.dispatchEvent(new CustomEvent("pdfParserEchangesDone", {
-                detail: { messageKey: key, status: ({A:"ready", B:"review", C:"failed"})[name] }
+                detail: { messageKey: key, status: ({A:"ready", B:"review", C:"failed"})[name], notice: name === "B" ? "Plusieurs dossiers correspondent." : "" }
             })), 450);
         });
         pane.innerHTML = '<div class="docImportButtons"><button class="button valid">Importer</button></div>';
@@ -143,14 +143,15 @@ function mailbox(scenario, prefix, pdfSource) {
         hospital: 'Ci-joint le document concernant votre patient(e) CAMILLE FICTIF né(e) NOM ANCIEN le 07/03/1980',
         bodyonly: "Nom : FICTIF<br>Prénom : Camille<br>Née le 07/03/1980<br>Compte rendu fictif."
     };
-    const body = bodies[scenario] || "Veuillez trouver le compte rendu en pièce jointe.";
-    const pdf = ["pdf", "long", "conflict", "confirmed", "object", "embed"].includes(scenario);
+    const hospitalPdf = scenario.startsWith("hospital-pdf");
+    const body = bodies[hospitalPdf ? "hospital" : scenario] || "Veuillez trouver le compte rendu en pièce jointe.";
+    const pdf = hospitalPdf || ["pdf", "long", "conflict", "confirmed", "object", "embed"].includes(scenario);
     const viewers = { object: '<object type="application/pdf" data="/rapport.pdf"></object>',
         embed: '<div class="mssAttachment"><embed src="/rapport.pdf" type="application/pdf"></div>' };
     pane.innerHTML = '<div class="docImportBody"><button class="importPatient btnImport">Un patient</button>'
         + '<table><tr><td></td><td><a>FICTIF Camille</a></td><td>07/03/1980</td><td><a href="#">Importer le message</a></td></tr></table></div>'
         + '<div class="messageBody">' + body + '</div>'
-        + (["missing", "name", "long", "pdf", "confirmed", "ins", "reportdate", "hospital", "object", "embed"].includes(scenario) ? "" : metadata)
+        + (hospitalPdf || ["missing", "name", "long", "pdf", "confirmed", "ins", "reportdate", "hospital", "object", "embed"].includes(scenario) ? "" : metadata)
         + (pdf ? '<div class="messageAttachment"><input class="docTitle" title="C\'est le titre qu\'aura le document dans le dossier patient">'
             + (viewers[scenario] || '<iframe id="iFrameViewFile" src="/rapport.pdf"></iframe>') + '</div>' : "")
         + '<button class="button valid">Valider</button>';
@@ -172,9 +173,10 @@ function mailbox(scenario, prefix, pdfSource) {
 
     function renderRows(rows) {
         document.querySelector("#resultats").innerHTML = '<span id="' + prefix + 'LabelPatientCount">' + rows.length + '</span>'
-            + '<table id="' + prefix + 'PatientsGridOld">' + rows.map(([id, name, dob], i) =>
+            + '<table id="' + prefix + 'PatientsGridOld">' + rows.map(([id, name, dob, birthFamily], i) =>
                 '<tr class="grid-item_tr"><td><a href="#" data-person="' + id + '" id="' + prefix + 'PatientsGridOld_LinkButtonPatientGetNomPrenom_' + i + '">'
-                + name + '</a></td><td><a id="' + prefix + 'PatientsGridOld_LinkButtonOldPatienDateNaissance_' + i + '">' + dob + '</a></td></tr>'
+                + name + '</a></td><td><a id="' + prefix + 'PatientsGridOld_LinkButtonOldPatienDateNaissance_' + i + '">' + dob + '</a></td><td>'
+                + (birthFamily ? '<a id="' + prefix + 'PatientsGridOld_LinkButtonOldPatientNomJeuneFille_' + i + '">' + birthFamily + '</a>' : '') + '</td></tr>'
             ).join("") + '</table>';
         for (const link of document.querySelectorAll("[data-person]")) {
             link.onclick = event => {
@@ -197,8 +199,15 @@ function mailbox(scenario, prefix, pdfSource) {
             state.searches.push({ mode, inputs });
             const good = ["correct", "FICTIF Camille", "07/03/1980"];
             const other = ["autre", "FICTIF Camilla", "07/03/1980"];
-            const rows = scenario === "ins" ? [good] : scenario === "retry" && !state.retry ? [] : scenario === "homonyms"
+            let rows = scenario === "ins" ? [good] : scenario === "retry" && !state.retry ? [] : scenario === "homonyms"
                 ? [good, ["homonyme", ...good.slice(1)]] : [other, good];
+            if (scenario.startsWith("alias-")) {
+                rows = [["autre", "USAGE Camilla", "07/03/1980", "FICTIF"], ["autreNom", "AUTRE Camille", "07/03/1980", "AUTRE"]];
+                if (scenario !== "alias-split") rows.push(["correct", "USAGE CAMILLE", "07/03/1980", "FICTIF"]);
+                if (scenario === "alias-homonyms") rows.push(["homonyme", "AUTRE Camille", "07/03/1980", "FICTIF"]);
+                if (scenario === "alias-split") rows.push(["date différente", "USAGE Camille", "08/03/1980", "FICTIF"],
+                    ["prénom incertain", "USAGE MARIE CAMILLE", "07/03/1980", "FICTIF"]);
+            }
             setTimeout(() => renderRows(rows), scenario === "slow" || scenario === "switch" ? 1450 : 150);
         };
     }
@@ -224,7 +233,8 @@ function mailbox(scenario, prefix, pdfSource) {
 }
 
 function pdfWithText(value) {
-    const stream = "BT /F 10 Tf 15 550 Td (" + value + ") Tj ET";
+    const lines = value.split("\n").map(line => "(" + line + ") Tj");
+    const stream = "BT /F 10 Tf 15 550 Td " + lines.join(" 0 -14 Td ") + " ET";
     const objects = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
         "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 1400 600] /Resources << /Font << /F 4 0 R >> >> /Contents 5 0 R >>",
         "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>", "<< /Length " + stream.length + " >>\nstream\n" + stream + "\nendstream"];
@@ -238,7 +248,13 @@ function pdfWithText(value) {
 }
 
 function fixturePdf(scenario, previous = false) {
-    const identity = ["pdf", "conflict", "object", "embed"].includes(scenario) ? "Mme FICTIF Camille - nee le 07/03/1980. " : "";
+    let identity = ["pdf", "conflict", "object", "embed"].includes(scenario) ? "Mme FICTIF Camille - nee le 07/03/1980. " : "";
+    if (scenario.startsWith("hospital-pdf")) {
+        const first = scenario === "hospital-pdf-other" ? "Camilla" : "Camille";
+        const birth = scenario === "hospital-pdf-birthname" ? "AUTRE NOM" : "NOM ANCIEN";
+        identity = "M. FICTIF " + first + "\nNe " + birth + ", le 07/03/1980\n"
+            + "Monsieur " + first + " FICTIF ne " + birth + "\nNe le 07/03/1980\n";
+    }
     const reportDate = previous ? "08/02/2023" : "12/04/2025";
     return pdfWithText(identity + "Compte rendu fictif, le " + reportDate + ". Comparaison du 20/06/2019. " + "Texte de demonstration. ".repeat(5));
 }
@@ -273,7 +289,7 @@ async function run() {
                 failures.push(message.text());
         });
         const requested = process.argv.slice(2);
-        for (scenario of requested.length ? requested : ["metadata", "slow", "long", "pdf", "name", "retry", "homonyms", "missing", "conflict", "switch", "confirmed", "ins", "reportdate", "hospital", "bodyonly", "object", "embed", "queue", ...mssScenarios, "batch-rebuild", "next-rebuild", "next-refused"]) {
+        for (scenario of requested.length ? requested : ["metadata", "slow", "long", "pdf", "name", "retry", "homonyms", "missing", "conflict", "switch", "confirmed", "ins", "reportdate", "hospital", "hospital-pdf", "hospital-pdf-other", "hospital-pdf-birthname", "alias-birthname", "alias-split", "alias-homonyms", "bodyonly", "object", "embed", "queue", ...mssScenarios, "batch-rebuild", "next-rebuild", "next-refused"]) {
             await worker.evaluate(scenario => chrome.storage.local.set({ autoClickUnPatient: ["mss-reused-detail", "mss-mounted", "mss-reopen"].includes(scenario),
                 secureExchangeMessageQueue: ["queue","batch-rebuild","next-rebuild","next-refused"].includes(scenario),
                 secureExchangeOpenNextAfterImport: false }), scenario);
@@ -287,6 +303,7 @@ async function run() {
                         JSON.stringify(await page.evaluate(() => window.mailbox)), { cause: error }); });
                 assert.deepEqual(await page.evaluate(() => window.mailbox.visits), ["A","B","C"]);
                 assert.deepEqual(await page.locator(".whEchangesStatus").allTextContents(), ["Dossier prêt","À vérifier","Analyse incomplète"]);
+                assert.equal(await page.getByText("À vérifier", { exact: true }).getAttribute("title"), "Plusieurs dossiers correspondent.");
                 assert.match(await page.locator("#whMessageQueueToolbox").innerText(), /1 prêt · 1 à vérifier · 1 en échec/);
                 console.log("OK", scenario);
                 continue;
@@ -364,10 +381,11 @@ async function run() {
                 await page.waitForFunction(() => window.mailbox.done === 2);
             }
             const state = await page.evaluate(() => window.mailbox);
-            const manual = ["homonyms", "missing", "conflict", "switch", "confirmed"].includes(scenario);
+            const manual = ["homonyms", "missing", "conflict", "hospital-pdf-other", "hospital-pdf-birthname", "alias-split", "alias-homonyms", "switch", "confirmed"].includes(scenario);
             assert.deepEqual(state.picks, manual ? [] : ["correct"], scenario + ": " + failures.slice(-2).join("\n"));
             assert.equal(state.validations, 0, scenario);
-            if (["missing", "conflict", "confirmed"].includes(scenario)) assert.equal(state.searches.length, 0, scenario);
+            if (["missing", "conflict", "hospital-pdf-other", "hospital-pdf-birthname", "confirmed"].includes(scenario)) assert.equal(state.searches.length, 0, scenario);
+            if (scenario === "hospital-pdf" || scenario.startsWith("alias-")) assert.deepEqual(state.searches, [{ mode: "Naissance", inputs: ["07/03/1980", ""] }]);
             if (scenario === "slow") {
                 assert.equal(state.searches.length, 1);
                 assert.deepEqual(state.searches[0], { mode: "Naissance", inputs: ["07/03/1980", ""] });
