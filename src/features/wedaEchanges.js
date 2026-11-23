@@ -239,6 +239,9 @@ addTweak('/FolderMedical/WedaEchanges/', 'autoClickUnPatient', function () {
         const previousButton = document.querySelector(selector);
         const previousBody = document.querySelector("#messageContainer .messageBody");
         const previousText = previousBody?.textContent;
+        const getViewer = () => document.querySelector("#messageContainer")?.querySelector(ECHANGES_PDF_VIEWER);
+        const previousViewer = getViewer();
+        const previousUrl = previousViewer?.src || previousViewer?.data;
         const wasSelected = !!line.closest(".messageListItem.selected");
         const check = () => {
             if (cancel !== stop) return;
@@ -246,7 +249,11 @@ addTweak('/FolderMedical/WedaEchanges/', 'autoClickUnPatient', function () {
             const button = document.querySelector(selector);
             if (!button?.getClientRects().length || button.disabled) return;
             const body = document.querySelector("#messageContainer .messageBody");
-            if (!wasSelected && button === previousButton && body === previousBody && body?.textContent === previousText) return;
+            if (!wasSelected && button === previousButton && body === previousBody && body?.textContent === previousText) {
+                // Avec deux messages sans corps, Angular peut ne remplacer que la source du lecteur.
+                const viewer = getViewer();
+                if (!viewer || (viewer === previousViewer && (viewer.src || viewer.data) === previousUrl)) return;
+            }
             stop();
             button.click();
             recordMetrics({ clicks: 1, drags: 0 });

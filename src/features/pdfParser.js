@@ -77,12 +77,19 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
     let started = false;
     let running = null;
     let pending = Promise.resolve();
-    const selected = () => document.querySelector("#messageList .messageListItem.selected .messageLineItem")?.textContent.trim();
+    function selected() {
+        const line = document.querySelector("#messageList .messageListItem.selected .messageLineItem");
+        const subject = line?.querySelector(".subjectLine");
+        return subject ? JSON.stringify([subject.textContent.trim(), line.querySelector(".subjectRow .date")?.textContent.trim()])
+            : line?.textContent.trim();
+    }
 
     function start(confirmedPatient = null) {
-        if (running?.revision === revision) return;
-        const job = { revision, message: selected() };
-        const isCurrent = () => revision === job.revision && selected() === job.message;
+        if (running?.revision === revision && (!confirmedPatient || running.confirmedPatient?.link === confirmedPatient.link)) return;
+        const job = { revision, message: selected(), confirmedPatient };
+        const isCurrent = () => running === job && revision === job.revision && selected() === job.message;
+        document.querySelector("#pdfParserPatientName")?.remove();
+        addAntecedentsButton(null, null);
         started = true;
         running = job;
         // La complétion IA dispose d'un seul appel en cours par onglet.
@@ -96,8 +103,9 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
                     sendWedaNotifAllTabs({ message: "L’analyse du courrier a échoué. Rouvrez le courrier pour réessayer.", type: "fail" });
                 }
             } finally {
+                const finishedCurrent = isCurrent();
                 if (running === job) running = null;
-                if (isCurrent()) notifyEchangesProcessingDone(hashId);
+                if (finishedCurrent) notifyEchangesProcessingDone(hashId);
             }
         });
     }
@@ -107,6 +115,7 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
             revision++;
             started = false;
             document.querySelector("#pdfParserPatientName")?.remove();
+            addAntecedentsButton(null, null);
             return;
         }
         if (event.target.closest?.("#messageContainer .importPatient")) {
@@ -114,11 +123,8 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
             return;
         }
         const action = event.target.closest?.("#messageContainer .docImportBody td a");
-        if (action?.textContent.trim() === "Importer le message") {
-            const row = action.closest("tr");
-            const link = row.querySelector("td:nth-child(2) a");
-            if (link?.textContent.trim()) start({ link, name: [link.textContent.trim(), row.cells[2]?.textContent.trim()].filter(Boolean).join(" ") });
-        }
+        const patient = echangesPatientSearch.candidateFromAction(action);
+        if (patient) start(patient);
     }, true);
 
     // Weda peut aussi ouvrir la recherche directement. Un postback qui recrée le
@@ -382,19 +388,20 @@ async function fillOtherAttachmentsES(isCurrent) {
  * Traite le PDF dans la page des échanges sécurisés.
  * Weda met à jour le formulaire et les résultats de recherche sans recharger la page.
  * 
- * @param {{link: Element, name: string}|null} confirmedPatient - Patient déjà désigné dans Weda.
+ * @param {{link: Element, name: string, birth: string}|null} confirmedPatient - Patient désigné dans le tableau de Weda.
  * @param {Function} isCurrent - Le courrier traité est toujours celui affiché.
  */
 async function processFoundPdfIframeEchanges(confirmedPatient, isCurrent) {
-    const ready = await echangesPatientSearch.ready(isCurrent, !!confirmedPatient);
-    if (!isCurrent()) return null;
-    if (!ready) {
-        sendWedaNotifAllTabs({ message: "Le formulaire patient de Weda n’est pas disponible. Rouvrez la recherche patient.", type: "fail" });
-        return null;
-    }
     // ===========================================
     // ÉTAPE 1 : Extraction des données du PDF
     // ===========================================
+    // La liste peut déjà porter l'identité alors que Weda monte encore le lecteur PDF.
+    await echangesPatientSearch.waitFor(() => {
+        const container = document.querySelector("#messageContainer");
+        return container?.querySelector(ECHANGES_PDF_VIEWER)
+            || (!container?.querySelector(".messageAttachment") && container?.querySelector(".messageBody")?.innerText.trim());
+    }, isCurrent);
+    if (!isCurrent()) return null;
     const zone = getActiveAttachmentZoneES() || document.querySelector("#messageContainer") || document;
     let iframesElements = zone.querySelectorAll(ECHANGES_PDF_VIEWER);
     if (!iframesElements.length) iframesElements = document.querySelectorAll("#PanelViewDocument iframe");
@@ -424,35 +431,18 @@ async function processFoundPdfIframeEchanges(confirmedPatient, isCurrent) {
     // ===========================================
     // ÉTAPE 2 : Recherche et sélection du patient
     // ===========================================
+    let pendingSelection;
     if (confirmedPatient) {
-        addPatientNameDisplay(confirmedPatient.name, confirmedPatient.link);
+        const ready = await echangesPatientSearch.waitFor(() => {
+            const button = document.querySelector("#messageContainer .button.valid");
+            return button?.getClientRects().length && !button.disabled;
+        }, isCurrent);
+        if (!isCurrent()) return hashId;
+        if (ready) addPatientNameDisplay([confirmedPatient.name, confirmedPatient.birth].filter(Boolean).join(" "), confirmedPatient.link);
+        else pendingSelection = { notice: "Weda n’a pas affiché le formulaire d’import. Vérifiez le dossier choisi." };
     } else {
-        const failure = await echangesPatientSearch.search(extractedData, baseData, isCurrent);
+        pendingSelection = await echangesPatientSearch.search(extractedData, baseData, isCurrent);
         if (!isCurrent()) return hashId;
-        if (failure) {
-            console.warn("[pdfParser] Echanges - Recherche patient échouée :", failure);
-            sendWedaNotifAllTabs({
-                message: "Recherche patient automatique échouée : " + failure,
-                type: 'undefined',
-                icon: 'search_off',
-                duration: 10000
-            });
-            return hashId;
-        }
-    }
-
-    // ===========================================
-    // ÉTAPE 2.A : Vérification de la concordance des antécédents
-    // ===========================================
-    // Sans rien modifier : les opérations proposées (format de traiterAntecedentsBatch) sont stockées dans
-    // extractedData.antecedentsDiscordances et appliquées seulement au clic de l'utilisateur (@see addAntecedentsButton).
-    // Déjà vérifié pour ce PDF (données en cache, @see getPdfData) : pas de nouvelle demande à l'IA.
-    if (!Array.isArray(extractedData.antecedentsDiscordances)) {
-        extractedData.antecedentsDiscordances = await checkAntecedentsAgainstDocument(fullText, urlPDF, { messageBody });
-        if (!isCurrent()) return hashId;
-        if (Array.isArray(extractedData.antecedentsDiscordances)) {
-            setPdfData(hashId, { antecedentsDiscordances: extractedData.antecedentsDiscordances });
-        }
     }
 
     // ===========================================
@@ -472,8 +462,25 @@ async function processFoundPdfIframeEchanges(confirmedPatient, isCurrent) {
     // 5. Même chose pour les éventuels autres PDF du message
     await fillOtherAttachmentsES(isCurrent);
     if (!isCurrent()) return hashId;
+    if (pendingSelection) {
+        const focused = pendingSelection.focusSuggestion?.();
+        sendWedaNotif({
+            message: "Courrier analysé. " + (focused ? "Le nom et la date de naissance correspondent. Vérifiez la ligne proposée puis cliquez sur « Importer le message »."
+                : pendingSelection.notice || "Vérifiez le dossier proposé par Weda avant l’import."),
+            type: 'undefined', icon: 'person_search', duration: 10000
+        });
+        return hashId;
+    }
     // Pas de marquage "déjà importé" : dans la messagerie sécurisée, le formulaire
     // n'est pas conservé par Weda si l'on change de patient entre deux.
+
+    const patientId = getPdfParserPatientId();
+    let operations = extractedData.antecedentsDiscordances;
+    if (!patientId || extractedData.antecedentsPatientId !== patientId || !Array.isArray(operations)) {
+        operations = patientId ? await checkAntecedentsAgainstDocument(fullText, urlPDF, { messageBody }) : null;
+        if (!isCurrent()) return hashId;
+        if (Array.isArray(operations)) setPdfData(hashId, { antecedentsPatientId: patientId, antecedentsDiscordances: operations });
+    }
 
     // ===========================================
     // ÉTAPE 4 : Focus sur l'élément de validation
@@ -512,7 +519,7 @@ async function processFoundPdfIframeEchanges(confirmedPatient, isCurrent) {
         console.error("[pdfParser] Bouton de validation introuvable");
     }
 
-    addAntecedentsButton(extractedData.antecedentsDiscordances, validationButton, hashId);
+    addAntecedentsButton(operations, validationButton, hashId);
     return hashId;
 }
 
@@ -613,7 +620,8 @@ function addPatientNameDisplay(patientName, patientElement = null) {
     patientNameSpan.id = 'pdfParserPatientName';
     // Par facilité, l'id du patient sélectionné est porté par l'élément (posé sur le lien patient
     // par patientLink.js, le title d'origine étant écrasé par un texte d'aide).
-    const selectedPatientId = patientElement?.dataset?.patientId;
+    const selectedPatientId = patientElement?.dataset?.patientId
+        || (patientElement?.origin === location.origin && extractPatDkFromUrl(patientElement.href));
     if (/^[1-9]\d*$/.test(selectedPatientId || '')) {
         patientNameSpan.dataset.patientId = selectedPatientId;
     }
@@ -1484,10 +1492,18 @@ async function findPdfUrl(iframesElements, zone = document) {
     return new Promise(resolve => {
         const finish = url => { clearInterval(interval); clearTimeout(timeout); resolve(url); };
         const read = () => {
+            // Angular réutilise le lecteur MSSanté. Après un changement de src,
+            // contentWindow peut encore pointer vers la pièce jointe du courrier précédent.
+            const source = iframe.data || iframe.src;
+            if (location.pathname.includes("/WedaEchanges") && source
+                && (/^(?:blob:|data:application\/pdf)/i.test(source) || /(?:\.pdf(?:[?#]|$)|\/downloadAttachment\b)/i.test(source))) {
+                finish(source);
+                return;
+            }
             let url;
             try { url = iframe.contentWindow?.location.href; }
             catch { /* Le visualiseur PDF natif peut être d'une autre origine. */ }
-            if (!url || url === "about:blank") url = iframe.data || iframe.src;
+            if (!url || url === "about:blank") url = source;
             if (url && url !== "about:blank") finish(url);
         };
         const interval = setInterval(read, 100);

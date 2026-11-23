@@ -8,11 +8,73 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const extension = process.env.WEDA_HELPER_EXTENSION || path.resolve(__dirname, "..");
 const origin = "https://secure.weda.fr";
 const prefix = "ContentPlaceHolder1_FindPatientUcForm1_";
+const mssScenarios = ["mss", "mss-delayed", "mss-delayed-pdf", "mss-data-pdf", "mss-columns", "mss-homonyms", "mss-birth-mismatch",
+    "mss-report-date", "mss-absent", "mss-choice", "mss-confirm-after", "mss-switch", "mss-reused-detail"];
 
-function mailbox(scenario, prefix) {
+function mailbox(scenario, prefix, pdfSource) {
+    sessionStorage.clear();
     window.weda = { wedaHelper: {}, capabilities: {} };
     const state = window.mailbox = { searches: [], picks: [], done: 0, validations: 0, retry: false };
     const pane = document.querySelector("#messageContainer");
+    document.addEventListener("pdfParserEchangesDone", event => { state.done++; state.hash = event.detail.hashId; });
+    if (scenario.startsWith("mss")) {
+        const line = document.querySelector(".messageLineItem");
+        const subject = scenario === "mss-report-date" ? "Compte rendu du 07/03/1980" : "Compte rendu - FICTIF Camille07/03/1980";
+        line.innerHTML = '<span class="sender"><span class="subjectRow"><span class="subjectLine">' + subject
+            + '</span><span class="date">23/11/2026</span></span><span class="metaRow"><span class="patientLine">FICTIF Camille</span></span></span>';
+        pane.innerHTML = '<div class="docImportBody"><div class="btnImport importPatient">Un patient</div></div><div class="messageBody"></div>'
+            + '<div class="messageAttachment"><input class="docTitle" title="C\'est le titre qu\'aura le document dans le dossier patient">'
+            + '<select title="Attribuer une classification au document"><option value="0"></option><option value="bilan">Bilan fictif</option></select>'
+            + '<div id="PanelViewDocument"></div></div>'
+            + '<button class="button valid targetValider">Importer</button><section hidden id="' + prefix + 'PanelPatient"><div id="' + prefix + 'UpdatePanelPatientsGrid"></div></section>';
+        const viewer = document.createElement("iframe");
+        viewer.id = "iFrameViewFile";
+        viewer.src = pdfSource || (scenario === "mss-reused-detail" ? "/precedent.pdf" : "/rapport.pdf");
+        const showPdf = () => pane.querySelector("#PanelViewDocument").append(viewer);
+        if (scenario !== "mss-delayed-pdf") showPdf();
+        pane.querySelector(".valid").onclick = () => state.validations++;
+        const rows = [["1901", "FICTIF Camilla", "07/03/1980"], ["1902", "FICTIF Camille", scenario === "mss-birth-mismatch" ? "08/03/1980" : "07/03/1980"]];
+        if (scenario === "mss-homonyms") rows.push(["1903", "FICTIF Camille", "07/03/1980"]);
+        const showCandidates = () => {
+            const grid = document.createElement("table");
+            grid.className = "grid";
+            grid.innerHTML = '<tr><th></th><th>Patient</th><th>Date de Naissance</th><th>Ville</th><th>Action</th><th>Statut INS</th></tr>'
+                + rows.map(([id, name, birth]) => '<tr><td></td><td><a href="/FolderMedical/PatientViewForm.aspx?PatDk='
+                    + id + '">' + name + '</a></td><td>' + birth + '</td><td></td><td><a href="#" class="choose" data-choice="' + id
+                    + '">Importer le message</a></td><td></td></tr>').join("");
+            if (scenario === "mss-columns") {
+                for (const row of grid.rows) row.prepend(row.cells[4]);
+                const heading = grid.insertRow(0).insertCell();
+                heading.colSpan = 6;
+                heading.textContent = "Patients Weda dont le nom correspond";
+            }
+            grid.addEventListener("click", event => {
+                const choice = event.target.closest(".choose");
+                if (!choice) return;
+                event.preventDefault();
+                state.picks.push(choice.dataset.choice);
+                grid.remove();
+            });
+            pane.querySelector(".docImportBody").append(grid);
+        };
+        if (!["mss-absent", "mss-delayed", "mss-switch"].includes(scenario)) showCandidates();
+        pane.querySelector(".importPatient").onclick = () => {
+            if (scenario === "mss-delayed-pdf") setTimeout(showPdf, 250);
+            if (scenario === "mss-reused-detail") state.startedAfterUpdate = state.detailReady === true;
+            if (["mss-delayed", "mss-switch"].includes(scenario)) setTimeout(showCandidates, 500);
+            setTimeout(() => line.querySelector(".metaRow").insertAdjacentHTML("beforeend", '<span class="dossierChip">Dossier Weda</span>'), 30);
+        };
+        if (scenario === "mss-reused-detail") {
+            const next = document.querySelector("#messageList .messageListItem:last-child .messageLineItem");
+            next.innerHTML = line.innerHTML;
+            next.querySelector(".subjectLine").prepend("Suivant ");
+            next.addEventListener("click", () => setTimeout(() => {
+                state.detailReady = true;
+                viewer.src = "/rapport.pdf";
+            }, 350));
+        }
+        return;
+    }
     const metadata = '<div class="messageClassement">Patient : FICTIF Camille 7/3/1980</div>';
     const bodies = {
         name: "Nom : FICTIF<br>Prénom : Camille", long: "Nom : FICTIF<br>Prénom : Camille<br>Née le 7-3-1980",
@@ -42,7 +104,6 @@ function mailbox(scenario, prefix) {
         }
     }
     pane.querySelector('a[href]').onclick = event => event.preventDefault();
-    document.addEventListener("pdfParserEchangesDone", () => state.done++);
 
     function renderRows(rows) {
         document.querySelector("#resultats").innerHTML = '<span id="' + prefix + 'LabelPatientCount">' + rows.length + '</span>'
@@ -110,6 +171,12 @@ function pdfWithText(value) {
     return content + "xref\n0 6\n0000000000 65535 f \n" + offsets.join("") + "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n" + content.length + "\n%%EOF\n";
 }
 
+function fixturePdf(scenario, previous = false) {
+    const identity = ["pdf", "conflict", "object", "embed"].includes(scenario) ? "Mme FICTIF Camille - nee le 07/03/1980. " : "";
+    const reportDate = previous ? "08/02/2023" : "12/04/2025";
+    return pdfWithText(identity + "Compte rendu fictif, le " + reportDate + ". Comparaison du 20/06/2019. " + "Texte de demonstration. ".repeat(5));
+}
+
 async function run() {
     const browser = await chromium.launchPersistentContext("", { channel: "chromium", headless: true,
         args: ["--disable-extensions-except=" + extension, "--load-extension=" + extension, "--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost"] });
@@ -118,19 +185,21 @@ async function run() {
         await browser.route(/^https?:\/\//, route => {
             const url = new URL(route.request().url());
             if (url.origin !== origin) return route.abort();
-            if (url.pathname === "/rapport.pdf") {
-                const identity = ["pdf", "conflict", "object", "embed"].includes(scenario) ? "Mme FICTIF Camille - nee le 07/03/1980. " : "";
-                return route.fulfill({ contentType: "application/pdf", body: pdfWithText(identity + "Compte rendu fictif. ".repeat(7)) });
+            if (url.pathname === "/rapport.pdf" || url.pathname === "/precedent.pdf") {
+                return route.fulfill({ contentType: "application/pdf", body: fixturePdf(scenario, url.pathname === "/precedent.pdf") });
             }
+            const pdfSource = scenario === "mss-data-pdf" ? "data:application/pdf;base64," + Buffer.from(fixturePdf(scenario)).toString("base64") : null;
             const html = '<!doctype html><meta charset="utf-8"><div id="weInboxContainer"><div id="messageList"><div class="messageListItem selected"><input type="checkbox" checked><button class="messageLineItem">Premier</button></div>'
                 + '<div class="messageListItem"><button class="messageLineItem" onclick="document.querySelector(\'.selected\').classList.remove(\'selected\');this.parentNode.classList.add(\'selected\')">Suivant</button></div></div>'
-                + '</div><div id="messageContainer"></div><script>(' + mailbox.toString() + ')(' + JSON.stringify(scenario) + ',' + JSON.stringify(prefix) + ');</script>';
+                + '</div><div id="messageContainer"></div><script>(' + mailbox.toString() + ')(...'
+                + JSON.stringify([scenario, prefix, pdfSource]) + ');</script>';
             return route.fulfill({ contentType: "text/html; charset=utf-8", body: html });
         });
         const worker = browser.serviceWorkers()[0] || await browser.waitForEvent("serviceworker");
         await worker.evaluate(() => chrome.storage.local.set({ autoPdfParser: true, autoClickUnPatient: false, secureExchangeMessageQueue: false,
             PdfParserAutoAIExtraction: false, verifierEtMettreAJourAntecedents: false, secureExchangeAutoRefresh: false,
-            PdfParserAutoTitle: true, PdfParserAutoClassification: true, PdfParserAutoTitleFormat: JSON.stringify([["*", ["Titre du test"]]]) }));
+            PdfParserAutoTitle: true, PdfParserAutoClassification: true, PdfParserAutoTitleFormat: JSON.stringify([["*", ["Titre du test"]]]),
+            PdfParserAutoCategoryDict: JSON.stringify([["Bilan fictif", ["Compte rendu fictif"]]]) }));
         const page = await browser.newPage();
         const failures = [];
         page.on("console", message => {
@@ -138,14 +207,52 @@ async function run() {
                 failures.push(message.text());
         });
         const requested = process.argv.slice(2);
-        for (scenario of requested.length ? requested : ["metadata", "slow", "long", "pdf", "name", "retry", "homonyms", "missing", "conflict", "switch", "confirmed", "ins", "reportdate", "object", "embed", "queue"]) {
-            await worker.evaluate(queue => chrome.storage.local.set({ autoClickUnPatient: queue, secureExchangeMessageQueue: queue }), scenario === "queue");
+        for (scenario of requested.length ? requested : ["metadata", "slow", "long", "pdf", "name", "retry", "homonyms", "missing", "conflict", "switch", "confirmed", "ins", "reportdate", "object", "embed", "queue", ...mssScenarios]) {
+            await worker.evaluate(scenario => chrome.storage.local.set({ autoClickUnPatient: ["queue", "mss-reused-detail"].includes(scenario),
+                secureExchangeMessageQueue: scenario === "queue" }), scenario);
             const ready = page.waitForEvent("console", { predicate: m => m.text().includes("[pdfParser] Chargement de la page d'échanges") });
             await page.goto(origin + "/FolderMedical/WedaEchanges/?scenario=" + scenario);
             await ready;
             const trigger = page.locator(scenario === "queue" ? "#whMessageQueueToolbox button:first-child"
-                : scenario === "confirmed" ? ".docImportBody a[href]" : ".importPatient");
+                : scenario === "confirmed" ? ".docImportBody a[href]" : scenario === "mss-reused-detail" ? ".messageListItem:last-child .messageLineItem" : ".importPatient");
             await trigger.evaluate(button => button.click());
+            if (scenario.startsWith("mss")) {
+                const confirmed = ["mss-choice", "mss-confirm-after"].includes(scenario);
+                if (scenario === "mss-choice") await page.locator('[data-choice="1902"]').evaluate(link => link.click());
+                if (scenario === "mss-switch") {
+                    await page.locator(".messageLineItem").last().evaluate(line => line.click());
+                    await page.waitForTimeout(900);
+                    assert.equal(await page.locator(".docTitle").inputValue(), "");
+                    assert.equal(await page.evaluate(() => window.mailbox.done), 0);
+                } else {
+                    await page.waitForFunction(() => window.mailbox.done === 1, null, { timeout: 18000 });
+                    if (scenario === "mss-confirm-after") {
+                        await page.evaluate(() => {
+                            const key = window.mailbox.hash;
+                            const doc = JSON.parse(sessionStorage.getItem(key));
+                            sessionStorage.setItem(key, JSON.stringify({ ...doc, antecedentsPatientId: "1901", antecedentsDiscordances: [] }));
+                        });
+                        await page.locator('[data-choice="1902"]').evaluate(link => link.click());
+                        await page.waitForFunction(() => window.mailbox.done === 2);
+                        assert.equal(await page.locator("#pdfParserAntecedentsButton").count(), 0);
+                    }
+                    assert.equal(await page.locator(".docTitle").inputValue(), "Titre du test", scenario);
+                    assert.equal(await page.locator(".messageAttachment select").inputValue(), "bilan", scenario);
+                    const doc = await page.evaluate(() => JSON.parse(sessionStorage.getItem(window.mailbox.hash)));
+                    assert.equal(doc.documentDate, "12/04/2025", scenario + ": date présente seulement dans le PDF");
+                    const focused = await page.evaluate(() => document.activeElement.dataset.choice || "");
+                    assert.equal(focused, ["mss", "mss-delayed", "mss-delayed-pdf", "mss-data-pdf", "mss-columns", "mss-reused-detail"].includes(scenario) ? "1902" : "", scenario);
+                    const patientId = await page.locator("body").evaluate(e => e.querySelector("#pdfParserPatientName")?.dataset.patientId || "");
+                    assert.equal(patientId, confirmed ? "1902" : "", scenario);
+                    assert.equal(await page.locator(".valid").evaluate(e => document.activeElement === e), confirmed, scenario);
+                }
+                const state = await page.evaluate(() => window.mailbox);
+                if (scenario === "mss-reused-detail") assert.equal(state.startedAfterUpdate, true);
+                assert.equal(state.validations, 0, scenario);
+                assert.deepEqual(state.picks, confirmed ? ["1902"] : [], scenario);
+                console.log("OK", scenario);
+                continue;
+            }
             if (scenario === "switch") {
                 await page.waitForFunction(() => window.mailbox.searches.length > 0);
                 await page.locator(".messageLineItem").last().evaluate(line => line.click());

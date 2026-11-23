@@ -7,8 +7,25 @@ const echangesPatientSearch = (() => {
     const visible = element => !!element?.getClientRects().length && getComputedStyle(element).visibility !== "hidden";
 
     function labels() {
-        return [...document.querySelectorAll("#messageContainer .messageClassement, #messageList .selected .messageClassement")]
+        const result = [...document.querySelectorAll("#messageContainer .messageClassement, #messageList .selected .messageClassement")]
             .map(element => element.innerText.trim()).filter(text => /^patient\s*:/i.test(text));
+        const line = document.querySelector("#messageList .messageListItem.selected .messageLineItem");
+        const patient = line?.querySelector(".patientLine")?.cloneNode(true);
+        patient?.querySelectorAll(".dossierChip").forEach(chip => chip.remove());
+        const name = patient?.textContent.trim().replace(/^patient\s*:\s*/i, "");
+        if (name && /^[\p{L}\p{M}][\p{L}\p{M} .'’-]*$/u.test(name) && nameKey(name).includes(" ")) {
+            const subject = line.querySelector(".subjectLine")?.textContent.trim() || "";
+            // Certains expéditeurs accolent la naissance au nom en fin d'objet. La date
+            // d'envoi du message et les dates isolées de compte rendu ne sont pas des DDN.
+            const birth = subject.match(/(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})\s*\)?$/);
+            const beforeDate = birth && subject.slice(0, birth.index)
+                .replace(/[\s(,-]*(?:\bn[ée](?:e|\(e\))?\s+le|\bddn|\bdate de naissance)\s*:?\s*$/i, "").replace(/[\s(]+$/, "");
+            const nameLength = nameKey(name).split(" ").length;
+            const hasName = birth && /[\p{L}\p{M}]$/u.test(beforeDate)
+                && sameName(nameKey(beforeDate).split(" ").slice(-nameLength).join(" "), name);
+            result.push("Patient : " + name + (hasName ? " " + birth[1] : ""));
+        }
+        return result;
     }
 
     function nameKey(name) {
@@ -56,7 +73,7 @@ const echangesPatientSearch = (() => {
             ...sources.flatMap(text => text.match(/\b[12]\d{12}\s?\d{2}\b/g) || [])]
             .map(value => String(value || "").replace(/\s/g, "")).filter(value => /^[12]\d{14}$/.test(value)));
         const families = [...new Set(groups.flatMap(group => group.families))];
-        return { fullNames, families, birthDate, ins: [...insNumbers][0],
+        return { fullNames, families, birthDate, documentedNameAndBirth: named.length > 0 && birthDates.size === 1, ins: [...insNumbers][0],
             conflict: conflictingNames || birthDates.size > 1 || insNumbers.size > 1 };
     }
 
@@ -88,15 +105,49 @@ const echangesPatientSearch = (() => {
         if (visible(input) && !input.disabled && visible(button) && !button.disabled) return { input, button };
     }
 
-    function ready(isCurrent, confirmed = false) {
-        return waitFor(() => {
-            if (confirmed) {
-                const button = document.querySelector("#messageContainer .button.valid");
-                return visible(button) && !button.disabled;
+    // MSSanté propose aussi les dossiers directement dans le formulaire d'import.
+    // Les colonnes supplémentaires (ville, statut INS…) varient suivant la version.
+    function candidateColumns(table) {
+        for (const row of table?.rows || []) {
+            const headers = [...row.cells].map(cell => normalizeString(cell.textContent).replace(/\s+/g, " "));
+            const name = headers.indexOf("patient"), birth = headers.indexOf("date de naissance"), action = headers.indexOf("action");
+            if ([name, birth, action].every(index => index >= 0)) return { name, birth, action };
+        }
+    }
+
+    function candidateFromAction(action, columns) {
+        if (!action || !/^importer\s+le\s+message$/i.test(action.textContent.trim())) return null;
+        const row = action.closest("tr");
+        columns ||= candidateColumns(row?.closest("table"));
+        if (columns && action.closest("td") !== row.cells[columns.action]) return null;
+        const link = row?.cells[columns?.name ?? 1]?.querySelector("a");
+        const birth = row?.cells[columns?.birth ?? 2]?.textContent.trim() || "";
+        return link?.textContent.trim() ? { link, name: link.textContent.trim(), birth, action } : null;
+    }
+
+    function candidates() {
+        const result = [];
+        for (const table of document.querySelectorAll("#messageContainer .docImportBody table")) {
+            const columns = visible(table) && candidateColumns(table);
+            if (!columns) continue;
+            for (const row of [...table.rows].slice(1)) {
+                const action = row.cells[columns.action]?.querySelector("a");
+                const candidate = visible(action) && candidateFromAction(action, columns);
+                if (candidate) result.push(candidate);
             }
-            const panel = form();
-            return controls(panel, panel?.querySelector(modeSelector)?.value);
-        }, isCurrent);
+        }
+        return result.length ? result : null;
+    }
+
+    function matchingSuggestions(rows, patient) {
+        if (!patient.documentedNameAndBirth) return [];
+        return rows.filter(row => patient.fullNames.some(name => sameName(name, row.name))
+            && displayedBirthDate(row.birth) === patient.birthDate);
+    }
+
+    function displayedBirthDate(text) {
+        const date = text?.match(/\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})\b/);
+        return date ? [date[1].padStart(2, "0"), date[2].padStart(2, "0"), date[3]].join("/") : null;
     }
 
     function grid(panel) {
@@ -151,7 +202,37 @@ const echangesPatientSearch = (() => {
 
     async function search(data, base, isCurrent) {
         const patient = await identity(data, base);
-        if (patient.conflict) return "Les identités indiquées dans ce courrier divergent. Vérifiez le patient.";
+        if (patient.conflict) return { notice: "Les identités indiquées dans ce courrier divergent. Vérifiez le patient." };
+        const source = await waitFor(() => {
+            const panel = form();
+            return controls(panel, panel?.querySelector(modeSelector)?.value) ? "form" : candidates();
+        }, isCurrent);
+        if (!source) return { notice: "Choisissez le dossier patient dans Weda pour poursuivre l’import." };
+        if (source !== "form") {
+            const matches = matchingSuggestions(source, patient);
+            if (matches.length === 1) {
+                // « Importer le message » appartient à Weda. L'utilisateur déclenche cette
+                // action après avoir relu le courrier. Le formulaire peut entre-temps être recréé.
+                return { focusSuggestion() {
+                    const current = matchingSuggestions(candidates() || [], patient);
+                    if (current.length !== 1 || current[0].link.href !== matches[0].link.href) return false;
+                    const action = current[0].action;
+                    const previousOutline = action.style.outline;
+                    action.focus();
+                    if (document.activeElement !== action) return false;
+                    action.style.outline = "2px solid currentColor";
+                    action.addEventListener("blur", () => { action.style.outline = previousOutline; }, { once: true });
+                    return true;
+                } };
+            }
+            return { notice: matches.length > 1 ? "Plusieurs dossiers correspondent. Choisissez le patient dans le tableau Weda."
+                : "Vérifiez le nom et la date de naissance avant de choisir le dossier dans Weda." };
+        }
+        const failure = await searchForm(patient, isCurrent);
+        return failure ? { notice: failure } : null;
+    }
+
+    async function searchForm(patient, isCurrent) {
         const names = patient.families.length ? patient.families : patient.fullNames.map(name => {
             const family = name.match(/^([\p{Lu}][\p{Lu}'’ -]*)(?=\s+\p{Lu}\p{Ll})/u);
             return family ? family[1].trim() : name;
@@ -166,8 +247,7 @@ const echangesPatientSearch = (() => {
             const byIns = type === "InsSearch" || (type === "Nom" && value === patient.ins?.slice(0, 13));
             const matches = result.links.filter(link => {
                 const row = link.closest("tr");
-                const dob = row?.querySelector(birthSelector)?.textContent.match(/\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})\b/);
-                const displayedBirth = dob && [dob[1].padStart(2, "0"), dob[2].padStart(2, "0"), dob[3]].join("/");
+                const displayedBirth = displayedBirthDate(row?.querySelector(birthSelector)?.textContent);
                 if (patient.birthDate && (displayedBirth || !byIns) && displayedBirth !== patient.birthDate) return false;
                 const candidate = link.textContent.trim();
                 if (patient.fullNames.length) return patient.fullNames.some(name => sameName(name, candidate));
@@ -188,5 +268,5 @@ const echangesPatientSearch = (() => {
         return "Aucun dossier ne correspond aux éléments d’identité du courrier. Recherche manuelle requise.";
     }
 
-    return { labels, form, ready, search };
+    return { labels, form, waitFor, candidateFromAction, search };
 })();
