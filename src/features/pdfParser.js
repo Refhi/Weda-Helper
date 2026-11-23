@@ -1086,6 +1086,24 @@ function selectFirstPatientOrSearchField() {
 
 // Bouton pour réinitialiser les données d'un PDF
 function addResetButton(hashId) {
+    // Vérifier si le bouton existe déjà (créé par waitForElement)
+    const existingButton = document.querySelector("#pdfParserResetButton");
+    if (existingButton) {
+        console.log("[pdfParser] Le bouton de réinitialisation existe déjà, modification du comportement.");
+        // Ajouter le resetButton existant au nouvel endroit si nécessaire
+        let binButtonSelector = "#ContentPlaceHolder1_FileStreamClassementsGrid_DeleteButtonGridFileStreamClassement_" + actualImportActionLine();
+        let buttonContainer = document.querySelector(binButtonSelector);
+        if (buttonContainer && buttonContainer.parentElement !== existingButton.parentElement) {
+            buttonContainer.insertAdjacentElement('afterend', existingButton);
+        }
+        // Mettre à jour le onclick pour gérer aussi ce cas
+        existingButton.onclick = function () {
+            sessionStorage.removeItem(hashId);
+            console.log("[pdfParser] Données réinitialisées pour le PDF.");
+        };
+        return;
+    }
+    
     let resetButton = document.createElement('button');
     resetButton.innerText = '🔄'; // Emoji de réinitialisation
     resetButton.style.marginLeft = '10px';
@@ -1869,14 +1887,14 @@ function addLogMessageOnMouseOver(elementSelector, message) {
         });
 
         element.addEventListener('mouseleave', () => {
-            // Programmer la disparition après 1000ms
-            leaveTimeout = setTimeout(() => {
-                popup.style.display = 'none';
+            popup.style.display = 'none';
+            if (leaveTimeout) {
+                clearTimeout(leaveTimeout);
                 leaveTimeout = null;
-            }, 1000);
+            }
         });
 
-        // Optionnel : annuler le timeout si on survole la popup elle-même
+        // Annuler la disparition si on survole la popup elle-même
         popup.addEventListener('mouseenter', () => {
             if (leaveTimeout) {
                 clearTimeout(leaveTimeout);
@@ -1885,10 +1903,11 @@ function addLogMessageOnMouseOver(elementSelector, message) {
         });
 
         popup.addEventListener('mouseleave', () => {
-            leaveTimeout = setTimeout(() => {
-                popup.style.display = 'none';
+            popup.style.display = 'none';
+            if (leaveTimeout) {
+                clearTimeout(leaveTimeout);
                 leaveTimeout = null;
-            }, 1000);
+            }
         });
 
         console.log(`[pdfParser] Popup de log ajoutée à l'élément : ${elementSelector}`);
