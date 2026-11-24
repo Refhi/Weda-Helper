@@ -378,7 +378,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
         for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             console.log(`[pdfParser] Echanges - Tentative de recherche patient ${attempt}/${MAX_ATTEMPTS}`);
 
-            const searchResult = handlePatientSearch(extractedData, hashId);
+            const searchResult = searchImagingPatientES(baseData, extractedData) ?? handlePatientSearch(extractedData, hashId);
 
             if (searchResult.patientFound) {
                 console.log("[pdfParser] Echanges - Patient trouvé :", searchResult.message);
@@ -1222,6 +1222,58 @@ async function setExtractedDataInForm(extractedData, fullText) {
     });
 }
 
+// Certains comptes rendus séparent l'identité civile du patient et la ligne « Médecin prescripteur ».
+function searchImagingPatientES({ pdfText, messageBody }, extractedData) {
+    document.querySelectorAll(".whPrenomIncomplet").forEach(hint => hint.remove());
+    const key = text => normalizeString(text || "").replace(/[^\p{L}]+/gu, " ").trim();
+    const sources = [pdfText, messageBody].filter(Boolean);
+    const subject = document.querySelector("#messageList .selected .subjectLine")?.textContent.trim() || "";
+    const subjectName = subject.match(/(?:^|\s-\s)[Cc]ompte[- ]?rendu\s*d['’]examen([\p{Lu}][\p{Lu}'’-]+(?:[ -]+[\p{L}][\p{L}\p{M}'’-]+)+)$/u)?.[1];
+    const block = /^[ \t]*(?:mr\.?|m\.|monsieur|mme|madame)[ \t]+([\p{L}][\p{L}\p{M}'’ -]+?)\s*\(n[ée](?:e|\(e\))?[ \t]+([\p{L}\p{M}'’ -]+)\)\s*n[ée](?:e|\(e\))?[ \t]+le[ \t]+(\d{2}[/.-]\d{2}[/.-]\d{4})\b/gimu;
+    const identities = sources.flatMap(text => [...text.matchAll(block)]);
+    const manual = message => ({ patientFound: false, needsPageRefresh: false, message });
+    if (!identities.length) {
+        const role = /^[ \t]*(?:m[ée]decin[ \t]+)?(?:prescripteur|prescriptrice|demandeur|signataire)[ \t]*:[ \t]*([^\r\n]+)/gim;
+        const clinicians = sources.flatMap(text => [...text.matchAll(role)].map(match => key(match[1]).split(" ")));
+        const names = extractedData.nameMatches || [];
+        const isClinician = name => clinicians.some(words => key(name).split(" ").every(word => words.includes(word)));
+        const ambiguous = clinicians.length && (!names.length || names.some(isClinician));
+        if ((ambiguous || subjectName) && !extractedData.dataMatrix?.INS) return manual("Identité du patient à vérifier dans ce courrier.");
+        return null;
+    }
+    const [, name, family, date] = identities[0];
+    const birthFamily = key(family);
+    const fullName = key(name);
+    const birth = date.replace(/[.-]/g, "/");
+    const agrees = (name, family, date) => key(name) === fullName && key(family) === birthFamily && date?.replace(/[.-]/g, "/") === birth;
+    const matrix = extractedData.dataMatrix;
+    if (!fullName.includes(" ") || (subjectName && key(subjectName) !== fullName) || identities.some(([, n, f, d]) => !agrees(n, f, d)) ||
+        (matrix?.Nom && !agrees(matrix.Nom + " " + matrix.Prenoms, matrix.Nom, extractedData.dateOfBirth))) {
+        return manual("Vérifiez l’identité du patient. Les informations du courrier sont incomplètes ou divergent.");
+    }
+    const lookup = lookupPatient("Naissance", birth, true);
+    if (lookup.status !== "success") return { patientFound: false, needsPageRefresh: lookup.status === "refresh", message: lookup.message };
+    const rowFamily = link => key(link.closest("tr")?.querySelector('[id*="PatientNomJeuneFille_"]')?.textContent);
+    const visible = [...getPatientsList()].filter(link => link.getClientRects().length);
+    const total = document.querySelector('[id$="_LabelPatientCount"]')?.textContent.trim();
+    if (/^\d+$/.test(total) && Number(total) !== visible.length) return manual("La liste des dossiers est incomplète. Vérifiez les résultats dans Weda.");
+    const rows = visible.filter(link =>
+        link.closest("tr")?.querySelector('[id*="PatienDateNaissance_"], [id*="PatientDateNaissance_"]')?.textContent.replace(/[.-]/g, "/").includes(birth));
+    const exact = rows.filter(link => key(link.textContent) === fullName && (!rowFamily(link) || rowFamily(link) === birthFamily));
+    if (exact.length === 1) {
+        clicCSPLockedElement("#" + exact[0].id);
+        return { patientFound: true, needsPageRefresh: true, message: "Nom, prénoms et date de naissance concordants." };
+    }
+    const shorter = rows.filter(link => {
+        const display = key(link.textContent);
+        return rowFamily(link) === birthFamily && display.startsWith(birthFamily + " ") && fullName.startsWith(display + " ");
+    });
+    for (const link of shorter) link.insertAdjacentHTML("afterend",
+        '<small class="whPrenomIncomplet" style="display:block">Prénom incomplet dans Weda</small>');
+    if (shorter.length === 1 && !exact.length) shorter[0].focus();
+    return manual("Vérifiez le nom, les prénoms et la date avant de choisir la fiche.");
+}
+
 function clicPatient(extractedData) {
     let patientToClick = searchProperPatient(getPatientsList(), extractedData["nameMatches"]);
     if (!patientToClick) {
@@ -1394,7 +1446,7 @@ function selectedPatientName() {
  * @returns {string} message - Message décrivant le résultat de la recherche
  */
 
-function lookupPatient(searchType, data) {
+function lookupPatient(searchType, data, dateAlone = false) {
     if (!isValidSearchType(searchType)) {
         console.error(`[pdfParser] Type de recherche ${searchType} non disponible.`);
         return { status: 'error', message: `Type de recherche ${searchType} non disponible.` };
@@ -1433,10 +1485,13 @@ function lookupPatient(searchType, data) {
     }
 
     console.log(`[pdfParser] Champ de recherche de ${searchType} trouvé :`, inputResearch, "il contient :", inputResearch.value, "et devrait contenir :", data);
-    if (inputResearch.value === data) {
+    const prefix = dropDownResearch.id.replace(/DropDownListRechechePatient$/, "");
+    const filters = dateAlone ? ["TextBoxNomForDN", "TextBoxPrenomForDN"].map(id => document.getElementById(prefix + id)).filter(input => input?.value) : [];
+    if (inputResearch.value === data && !filters.length) {
         // Les données de recherche sont déjà présentes, on peut valider la suite de la procédure
         return { status: 'success', message: 'Les données de recherche sont déjà présentes.' };
     } else {
+        for (const input of filters) input.value = "";
         inputResearch.value = data;
         const searchButton = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_ButtonRecherchePatient']");
         searchButton.click();
