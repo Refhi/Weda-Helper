@@ -311,8 +311,7 @@ async function fillOtherAttachmentsES() {
         const iframes = zone.querySelectorAll('#iFrameViewFile, .mssAttachment embed');
         const baseData = await extractBasePdfData(iframes, zone);
         if (!baseData) continue;
-        const { urlPDF, fullText, hashId, pdfText, messageBody } = baseData;
-        const data = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody });
+        const data = await extractEchangesDocument(baseData);
         await selectDestinationIfNeededES(data.destinationClass, zone);
         await setTitleIfNeededES(data.documentTitle, zone);
         await selectDocumentTypeES(data.documentType, zone);
@@ -335,8 +334,8 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     // ===========================================
     let iframesElements = document.querySelectorAll('#PanelViewDocument iframe');
     if (iframesElements.length === 0) {
-        // Fallback pour les PDF dans un embed (cas des messages avec corps de texte)
-        iframesElements = document.querySelectorAll('.mssAttachment embed');
+        // Le visualiseur peut être monté directement dans la pièce jointe.
+        iframesElements = (getActiveAttachmentZoneES() || document).querySelectorAll("#iFrameViewFile, .mssAttachment embed");
     }
 
     // Setup de la procédure
@@ -347,8 +346,8 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
         return;
     }
 
-    const { urlPDF, fullText, hashId, pdfText, messageBody } = baseData;
-    let extractedData = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody });
+    const { urlPDF, fullText, hashId, messageBody } = baseData;
+    const extractedData = await extractEchangesDocument(baseData);
 
     // Surveillance des clics sur les patients (pour affichage du nom sélectionné)
     waitForElement({
@@ -794,15 +793,38 @@ async function setCommentaireIfNeededES(commentaire, attachmentZone = getActiveA
         console.warn("[pdfParser] Champ commentaire introuvable dans l'attachment sélectionné");
         return;
     }
+    if (commentInput.value.trim()) return;
     commentInput.value = commentaire;
     commentInput.dispatchEvent(new Event('change'));
     commentInput.dispatchEvent(new Event('input'));
     console.log("[pdfParser] Commentaire inséré :", commentaire);
 }
 
+// Dans un compte rendu structuré, le nom de l'examen précède l'indication ou la technique.
+async function extractEchangesDocument({ fullText, urlPDF, hashId, pdfText, messageBody }) {
+    const data = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody });
+    const lines = ((urlPDF ? pdfText : messageBody) || "").split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const modality = /^(?:IRM|TDM|scanner|radiographies?|[ée]chographies?|mammographies?|arthroscanner|angioscanner)\b/i;
+    const section = /^(?:indications?|renseignements? cliniques?|technique)\s*(?::|$)/i;
+    const exams = lines.flatMap((line, i) => line.length <= 150 && modality.test(line) && section.test(lines[i + 1] || "") ? [i] : []);
+    if (exams.length !== 1) return data;
 
+    const fields = {};
+    const [aiEnabled, fullMode] = await getOptionPromise(["PdfParserAutoAIExtraction", "PdfParserAutoAIFullMode"]);
+    const replace = (aiEnabled && fullMode) || /^administratif$/i.test(data.documentType || "");
+    if (!data.documentTitle || replace) fields.documentTitle = lines[exams[0]].replace(/\s+/g, " ");
+    const imaging = initDocumentTypes()?.find(type => /^imagerie$/i.test(type.trim()));
+    if (imaging && (!data.documentType || replace)) fields.documentType = imaging;
 
-
+    const parts = lines.slice(exams[0] + 1).join("\n").split(/^conclusions?[ \t]*(?::[ \t]*|$)/im);
+    if (parts.length === 2 && !data.documentCommentaire?.trim()) {
+        const footer = /^(?:(?:dr|pr)\.?(?:\s|$)|docteur\b|professeur\b|sign(?:ature|ée?)(?=\s|:|$)|compte[- ]rendu (?:signé|validé)|page\s+\d|t[ée]l[. :]|fax\b|www\.|\d+\s*\/\s*\d+$|[\p{L}][\p{L} -]{1,40}\s*:\s*$|\[WedaAutoParse_|[^\n]*@)/imu;
+        const comment = parts[1].split(footer, 1)[0].trim().replace(/\s+/g, " ");
+        if (comment && comment.length <= 1500) fields.documentCommentaire = comment;
+    }
+    if (Object.entries(fields).some(([key, value]) => data[key] !== value)) setPdfData(hashId, fields);
+    return { ...data, ...fields };
+}
 
 /**
  * Extrait les données de base communes à partir d'un PDF (url, texte, hash).
