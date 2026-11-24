@@ -226,22 +226,53 @@ addTweak('/FolderMedical/WedaEchanges/', 'swapTitrePJetCorpsMessage', function (
 
 // Clic automatique sur "Un patient" à l'ouverture d'un message (clic manuel ou parcours par lot).
 addTweak('/FolderMedical/WedaEchanges/', 'autoClickUnPatient', function () {
-    let pendingClick;
-    document.addEventListener('click', event => {
+    const buttonSelector = "#messageContainer .btnImport.importPatient";
+    const source = node => node?.matches(".messageBody") ? node.textContent.trim()
+        : node?.getAttribute("src") || node?.getAttribute("data") || node?.getAttribute("href");
+    function preview() {
+        const pane = document.querySelector("#messageContainer");
+        const files = Array.from(pane?.querySelectorAll(".messageAttachment") || [], zone =>
+            zone.querySelector("iframe, embed, object") || zone.querySelector("a[download][href], a[href*='BinaryData.aspx' i]"));
+        if (!files.length) return pane?.querySelector(".messageBody");
+        const viewer = files.find(file => file?.matches("iframe, embed, object") && source(file) && source(file) !== "about:blank");
+        return viewer || (files.every(file => file?.matches("a[href]")) ? files[0] : null);
+    }
+
+    let lastClick = 0;
+    document.addEventListener('click', async event => {
+        if (event.target.closest?.(buttonSelector)) lastClick++;
         const line = event.target.closest?.('#messageList .messageLineItem');
         if (!line) return;
 
-        // Weda peut recréer la ligne sélectionnée pendant la recherche patient.
-        // Seul un clic sur la liste doit lancer une nouvelle recherche.
-        clearTimeout(pendingClick);
-        pendingClick = setTimeout(() => {
-            if (!line.isConnected || !line.closest('.messageListItem.selected')) return;
-            const unPatientButton = document.querySelector('#messageContainer .btnImport.importPatient');
-            if (!unPatientButton) return;
-
-            unPatientButton.click();
-            recordMetrics({ clicks: 1, drags: 0 });
-        }, 100); // Laisse Weda afficher le détail du message.
+        const click = ++lastClick;
+        const subject = line.querySelector(".subjectRow")?.textContent;
+        const isSelected = () => {
+            if (line.isConnected) return line.closest(".messageListItem.selected");
+            const rows = [...document.querySelectorAll("#messageList .subjectRow")].filter(node => node.textContent === subject);
+            return rows.length === 1 && rows[0].closest(".messageListItem.selected");
+        };
+        const previous = line.closest(".messageListItem.selected") ? null : preview();
+        const previousValue = source(previous);
+        let bodySince;
+        let button;
+        await sleep(0); // Laisser le clic de la ligne parvenir à Weda.
+        const ready = await waitUntil(() => {
+            if (click !== lastClick) return true;
+            if (!isSelected()) return false;
+            const content = preview();
+            const value = source(content);
+            if (!value || (value === previousValue && (content === previous || !content.matches(".messageBody")))) return false;
+            // Le corps peut apparaître juste avant les pièces jointes.
+            if (content.matches(".messageBody")) {
+                bodySince ??= Date.now();
+                if (Date.now() - bodySince < 600) return false;
+            }
+            button = document.querySelector(buttonSelector);
+            return button?.getClientRects().length && !button.disabled;
+        }, { label: "contenu du courrier sélectionné" });
+        if (!ready || click !== lastClick || !isSelected() || !button?.isConnected) return;
+        button.click();
+        recordMetrics({ clicks: 1, drags: 0 });
     }, true);
 });
 
