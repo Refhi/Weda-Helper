@@ -1010,18 +1010,29 @@ function checkSearchPossibility(searchOptionValue) {
 function handlePatientSearch(extractedData, hashId) {
     console.log("[pdfParser] handlePatientSearch - Début", extractedData);
 
-    // Priorités de recherche : INS complet > NIR tronqué > Date de naissance
-    const searchPriorities = [
+    // Liste des méthodes de recherche par défaut : INS complet > NIR tronqué > Date de naissance
+    let searchPriorities = [
         { type: "InsSearch", data: extractedData.nirMatches?.[0] || null },
-        // On va faire une recherche par NIR tronqué via le champ "Nom" (qui accepte aussi les NIR tronqués)
         { type: "Nom", data: extractedData.nirMatches?.[0]?.substring(0, 13) || null },
         { type: "Naissance", data: extractedData.dateOfBirth !== formatDate(new Date()) ? extractedData.dateOfBirth : null },
     ];
 
+    // Si une méthode a déjà réussi, la mettre en haut de la liste
+    if (extractedData.successfulSearchMethod) {
+        const successfulMethod = searchPriorities.find(m => m.type === extractedData.successfulSearchMethod);
+        if (successfulMethod) {
+            searchPriorities = [
+                successfulMethod,
+                ...searchPriorities.filter(m => m.type !== extractedData.successfulSearchMethod)
+            ];
+            console.log(`[pdfParser] Priorisation de la méthode réussie précédemment : ${extractedData.successfulSearchMethod}`);
+        }
+    }
+
     for (const search of searchPriorities) {
-        // Ignorer les méthodes sans données ou déjà échouées
-        if (!search.data || extractedData.failedSearches?.includes(search.type)) {
-            console.log(`[pdfParser] Méthode ${search.type} ignorée (pas de données ou déjà échouée)`);
+        // Ignorer les méthodes sans données
+        if (!search.data) {
+            console.log(`[pdfParser] Méthode ${search.type} ignorée (pas de données)`);
             continue;
         }
 
@@ -1033,41 +1044,32 @@ function handlePatientSearch(extractedData, hashId) {
 
         if (lookupResult.status === 'refresh') {
             // Un changement de mode ou un clic sur "Rechercher" a été effectué
-            // => la page va se rafraichir et la fonction handlePatientSearch sera rappelée après le rechargement
             return { patientFound: false, needsPageRefresh: true, message: lookupResult.message };
         }
 
         if (lookupResult.status !== 'success') {
             // Cette méthode de recherche n'est pas disponible ou a échoué
             console.warn(`[pdfParser] Méthode ${search.type} échouée :`, lookupResult.message);
-            // On marque (via mutation de l'objet) que cette méthode a échoué pour éviter de la retenter
-            extractedData.failedSearches = extractedData.failedSearches || [];
-            extractedData.failedSearches.push(search.type);
-            setPdfData(hashId, extractedData);
-            continue; // Essayer la méthode suivante (boucle for)
+            continue; // Essayer la méthode suivante
         }
 
         // ÉTAPE 2 : La recherche est prête, sélectionner le patient dans la liste
         const clicResult = clicPatient(extractedData);
         console.log(`[pdfParser] clicPatient() =>`, clicResult);
 
-        if (clicResult.status === 'success') {
-            // Patient trouvé et cliqué => succès, mais un refresh DOM est attendu après le clic
-            // la suite de la procédure (remplissage du formulaire) sera exécutée après le rechargement de la page
-            return { patientFound: true, needsPageRefresh: true, message: clicResult.message };
-        }
-
-        if (clicResult.status === 'continue') {
-            // Le bon patient est déjà sélectionné, on va pouvoir passer au remplissage du formulaire sans refresh
-            return { patientFound: true, needsPageRefresh: false, message: clicResult.message };
+        if (clicResult.status === 'success' || clicResult.status === 'continue') {
+            // Patient trouvé et cliqué => sauvegarder la méthode réussie pour la prochaine fois
+            extractedData.successfulSearchMethod = search.type;
+            setPdfData(hashId, extractedData);
+            return {
+                patientFound: true,
+                needsPageRefresh: clicResult.status === 'success',
+                message: clicResult.message
+            };
         }
 
         // Échec : patient non trouvé dans la liste avec cette méthode
         console.warn(`[pdfParser] Patient non trouvé avec méthode ${search.type}`);
-        extractedData.failedSearches = extractedData.failedSearches || [];
-        extractedData.failedSearches.push(search.type);
-        setPdfData(hashId, extractedData);
-        // Continuer avec la méthode suivante
     }
 
     // Toutes les méthodes ont été épuisées sans succès
