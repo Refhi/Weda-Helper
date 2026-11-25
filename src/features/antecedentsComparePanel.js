@@ -14,6 +14,120 @@ const ATCD_PANEL_ID = 'wh-atcd-panel';
 const ATCD_PANEL_GEOMETRY_KEY = 'antecedentsComparePanelGeometry';
 let atcdPanelGeometrySave = Promise.resolve();
 
+// L'empreinte ne dépend pas de la relecture du PDF. Le pointeur de session mène aux résultats
+// conservés avec ce PDF, que les boutons existants de réinitialisation peuvent donc effacer.
+const echangesAntecedents = (() => {
+    const prefix = "wh-atcd:";
+    let lastSignature, current, ready, enabled = false, pending = Promise.resolve();
+    function source() {
+        const pane = document.getElementById("messageContainer");
+        const row = document.querySelector("#messageList .messageListItem.selected");
+        const subject = row => (row?.querySelector(".subjectRow") || row?.querySelector(".messageLineItem"))?.textContent.trim();
+        const name = subject(row);
+        const files = Array.from(pane?.querySelectorAll("#PanelViewDocument iframe, .messageAttachment #iFrameViewFile, .mssAttachment embed, .messageAttachment object[type='application/pdf']") || [], viewer => {
+            const src = viewer.getAttribute("src") || viewer.getAttribute("data");
+            if (!src || src === "about:blank") return null;
+            if (src.startsWith("data:")) return src;
+            const url = new URL(src, document.baseURI);
+            return /\/BinaryData\.aspx$/i.test(url.pathname) && url.searchParams.has("id")
+                ? JSON.stringify([url.origin, url.pathname, url.searchParams.get("id"), url.searchParams.get("i")]) : url.href;
+        });
+        const body = pane?.querySelector(".messageBody")?.textContent.trim();
+        if (!name || !pane || !crypto.subtle || [...document.querySelectorAll("#messageList .messageListItem")].some(other => other !== row && subject(other) === name)
+            || (files.length ? files.includes(null) || new Set(files).size !== files.length : !body || pane.querySelector(".messageAttachment"))) {
+            lastSignature = null;
+            return row || pane?.querySelector(".button.valid"); // Analyse courante uniquement si la pièce est ambiguë.
+        }
+        const patientLine = row.querySelector(".patientLine")?.cloneNode(true);
+        patientLine?.querySelectorAll(".dossierChip").forEach(chip => chip.remove());
+        const signature = [name, patientLine?.textContent, pane.querySelector(".messageHeader")?.textContent, body, ...files];
+        if (signature.length !== lastSignature?.length || signature.some((part, i) => part !== lastSignature[i])) {
+            lastSignature = signature;
+            const key = crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(signature)))
+                .then(buffer => prefix + Array.from(new Uint8Array(buffer), byte => byte.toString(16).padStart(2, "0")).join(""));
+            current = { key };
+        }
+        return current;
+    }
+    function patient(context) {
+        const marker = document.getElementById("pdfParserPatientName");
+        const id = resolveCurrentPatientId();
+        if (marker && (marker.whAtcdSource !== context || marker.dataset.patientId !== String(id))) return null;
+        return /^[1-9]\d*$/.test(id) ? String(id) : null;
+    }
+    function confirmed(comparison) {
+        return enabled && comparison?.patientId && comparison.context === source() && patient(comparison.context) === comparison.patientId;
+    }
+    async function restore() {
+        if (!enabled && !antecedentsButton?.whComparison) return;
+        const context = enabled && source();
+        const key = await context?.key;
+        if (context && context !== source()) return;
+        const hash = key && sessionStorage.getItem(key);
+        const saved = hash && getPdfData(hash, key);
+        if (hash && !saved) sessionStorage.removeItem(key);
+        const selected = patient(context);
+        const anchor = document.querySelector("#messageContainer .button.valid") || document.querySelector("#messageContainer .btnImport.importPatient");
+        if (enabled && saved && anchor && (!selected || selected === saved.patientId)) {
+            addAntecedentsButton(saved.operations, anchor, hash, { key, context, patientId: saved.patientId });
+        } else if (antecedentsButton?.whComparison && (!enabled || antecedentsButton.whComparison.context !== context || (antecedentsButton.whComparison.key && !antecedentsButton.disabled))) {
+            addAntecedentsButton(null, null);
+        }
+    }
+    function save(hash, { key, patientId }, operations) {
+        setPdfData(hash, { [key]: { patientId, operations } });
+        sessionStorage.setItem(key, hash);
+    }
+    async function compare(context, { hashId, fullText, urlPDF, messageBody }) {
+        await ready;
+        if (!enabled || !context || context !== source()) return;
+        const patientId = String(await resolveCurrentPatientIdWithWait());
+        const key = await context.key;
+        const comparison = { context, key, patientId };
+        // La chaîne d'antécédents a un seul appel IA en cours par onglet.
+        const task = pending.then(async () => {
+            if (!confirmed(comparison)) return;
+            const saved = key && sessionStorage.getItem(key) === hashId && getPdfData(hashId, key);
+            if (saved?.patientId === patientId) return { ...comparison, operations: saved.operations };
+            if (key) sessionStorage.removeItem(key);
+            const operations = await checkAntecedentsAgainstDocument(fullText, urlPDF, { messageBody });
+            if (!confirmed(comparison)) return;
+            if (key && Array.isArray(operations) && sessionStorage.getItem(hashId)) save(hashId, comparison, operations);
+            return { ...comparison, operations };
+        });
+        pending = task.catch(() => {});
+        return task;
+    }
+    function watch() {
+        ready = getOptionPromise("verifierEtMettreAJourAntecedents").then(value => { enabled = value; restore(); });
+        chrome.storage.onChanged.addListener((changes, area) => {
+            if (area === "local" && changes.verifierEtMettreAJourAntecedents) {
+                enabled = changes.verifierEtMettreAJourAntecedents.newValue;
+                restore();
+            }
+        });
+        waitForElement({ selector: "#messageList, #messageContainer", observerId: "atcdEchanges", triggerOnInit: true, callback(nodes) {
+            for (const node of nodes) new MutationObserver(restore).observe(node, {
+                childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class", "src", "data"]
+            });
+            restore();
+        } });
+    }
+    function invalidate(patientId) {
+        const cache = readDataScrapperCache(patientId);
+        delete cache.antecedents;
+        writeDataScrapperCache(patientId, cache);
+        for (const key of Object.keys(sessionStorage).filter(key => key.startsWith(prefix))) {
+            const hash = sessionStorage.getItem(key);
+            if (getPdfData(hash, key)?.patientId === patientId) {
+                setPdfData(hash, { [key]: null });
+                sessionStorage.removeItem(key);
+            }
+        }
+    }
+    return { source, watch, compare, confirmed, save, invalidate };
+})();
+
 function injectAntecedentsPanelStyle() {
     if (document.getElementById(ATCD_PANEL_STYLE_ID)) return;
     const style = document.createElement('style');
@@ -67,9 +181,9 @@ function atcdItemMatchesOperation(item, op) {
     return normalizeAtcdText(item.titre) === target || normalizeAtcdText(item.cim10Code) === target;
 }
 
-async function atcdOperationDetails(op) {
+function atcdOperationDetails(op) {
     const name = op.data?.nom || op.nomCible || '';
-    const label = /^[A-Z]\d{2}(\.\d+)?$/i.test(name) && typeof libelleCim10 === 'function' ? await libelleCim10(name) : null;
+    const label = /^[A-Z]\d{2}(\.\d+)?$/i.test(name) && typeof libelleCim10 === 'function' ? libelleCim10(name) : null;
     const { nom, searchType, onglet, ...changes } = op.data || {};
     const details = Object.entries(changes).filter(([, v]) => v !== undefined && v !== null && v !== '')
         .map(([k, v]) => `${k} : ${v}`);
@@ -132,7 +246,7 @@ function makeAtcdRow(className) {
  *   retenues ; renvoie le message de résultat à afficher.
  * @returns {{getSelectedOperations: function(): Array<object>, destroy: function(): void}}
  */
-function attachAntecedentsComparePanel(button, operations, { getPatientId = resolveCurrentPatientIdWithWait, onSelectionChange = () => { }, onApply = null } = {}) {
+function attachAntecedentsComparePanel(button, operations, { getPatientId = resolveCurrentPatientIdWithWait, canApply = () => true, onSelectionChange = () => { }, onApply = null } = {}) {
     injectAntecedentsPanelStyle();
     const selected = new Set(operations.map((_, index) => index));
     let panel = null;
@@ -144,7 +258,11 @@ function attachAntecedentsComparePanel(button, operations, { getPatientId = reso
     const checkboxes = [];
 
     const refreshValidateButton = () => {
-        if (validateButton) validateButton.disabled = applying || selected.size === 0;
+        if (validateButton) {
+            const confirmed = canApply();
+            validateButton.disabled = applying || !onApply || !selected.size || !confirmed;
+            validateButton.title = confirmed ? "Appliquer les propositions cochées" : "Comparaison mémorisée. Confirmez le dossier patient pour appliquer les propositions.";
+        }
     };
     const notify = () => {
         refreshValidateButton();
@@ -174,11 +292,16 @@ function attachAntecedentsComparePanel(button, operations, { getPatientId = reso
         return checkbox;
     };
 
-    const loadExisting = () => {
+    const loadExisting = async () => {
+        const patientId = await getPatientId();
+        if (!patientId) return null;
+        const cached = readDataScrapperCache(patientId).antecedents?.data;
+        if (Array.isArray(cached)) return cached;
+        if (!canApply()) return null;
         existingPromise ??= (async () => {
             try {
                 // patientId est le 2e argument de recoverPatientData, pas une option
-                const res = await recoverPatientData({ categories: ['antecedents'], refreshMode: 'noRefresh' }, await getPatientId());
+                const res = await recoverPatientData({ categories: ['antecedents'], refreshMode: 'noRefresh' }, patientId);
                 if (res?.error) throw new Error(res.error);
                 return res?.antecedents || [];
             } catch (error) {
@@ -202,7 +325,7 @@ function attachAntecedentsComparePanel(button, operations, { getPatientId = reso
         validateSelection.textContent = '✔ Valider la sélection';
         validateSelection.title = "Applique au dossier du patient toutes les opérations cochées";
         validateSelection.addEventListener('click', async () => {
-            if (!onApply || applying || !selected.size) return;
+            if (!onApply || applying || !selected.size || !canApply()) return;
             applying = true;
             validateSelection.disabled = true;
             cancelAll.disabled = true;
@@ -227,7 +350,7 @@ function attachAntecedentsComparePanel(button, operations, { getPatientId = reso
         content.appendChild(toolbar);
 
         const existing = await loadExisting();
-        const details = await Promise.all(operations.map(atcdOperationDetails));
+        const details = operations.map(atcdOperationDetails);
         if (!isCurrent()) return null;
         const handled = new Set();
 
@@ -303,7 +426,8 @@ function attachAntecedentsComparePanel(button, operations, { getPatientId = reso
                 tag.textContent = '➕ À ajouter :';
                 const name = document.createElement('span');
                 name.className = 'wh-atcd-title';
-                name.textContent = `${details[index].name}${details[index].label ? ` — ${details[index].label}` : ''}`;
+                name.textContent = details[index].name;
+                details[index].label?.then(label => { if (label && isCurrent()) name.append(" — " + label); });
                 text.append(tag, name);
                 if (details[index].details.length) {
                     const extra = document.createElement('div');
@@ -424,6 +548,7 @@ function attachAntecedentsComparePanel(button, operations, { getPatientId = reso
     button.addEventListener('click', show);
 
     return {
+        refresh: refreshValidateButton,
         getSelectedOperations: () => operations.filter((_, index) => selected.has(index)),
         destroy: () => {
             button.removeEventListener('click', show);
