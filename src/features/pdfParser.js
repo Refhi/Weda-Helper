@@ -70,6 +70,7 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
 // 1.b. Dans la page des Echanges Sécurisés
 addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
     console.log('[pdfParser] Chargement de la page d\'échanges');
+    echangesAntecedents.watch();
     
     // Écouter l'apparition du panneau de recherche patient au lieu d'utiliser un délai arbitraire
     // Cela garantit que le DOM est complètement initialisé avant de traiter le PDF
@@ -341,6 +342,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
 
     // Setup de la procédure
     // Extraction des données de base
+    const context = echangesAntecedents.source();
     const baseData = await extractBasePdfData(iframesElements); // s'occupe également de vérifier les données déjà extraites
     if (!baseData) {
         notifyEchangesProcessingDone(null);
@@ -419,15 +421,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     // ===========================================
     // ÉTAPE 2.A : Vérification de la concordance des antécédents
     // ===========================================
-    // Sans rien modifier : les opérations proposées (format de traiterAntecedentsBatch) sont stockées dans
-    // extractedData.antecedentsDiscordances et appliquées seulement au clic de l'utilisateur (@see addAntecedentsButton).
-    // Déjà vérifié pour ce PDF (données en cache, @see getPdfData) : pas de nouvelle demande à l'IA.
-    if (!Array.isArray(extractedData.antecedentsDiscordances)) {
-        extractedData.antecedentsDiscordances = await checkAntecedentsAgainstDocument(fullText, urlPDF, { messageBody });
-        if (Array.isArray(extractedData.antecedentsDiscordances)) {
-            setPdfData(hashId, { antecedentsDiscordances: extractedData.antecedentsDiscordances });
-        }
-    }
+    const comparison = await echangesAntecedents.compare(context, baseData);
 
     // ===========================================
     // ÉTAPE 3 : Remplissage du formulaire d'import
@@ -489,7 +483,9 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
         console.error("[pdfParser] Bouton de validation introuvable");
     }
 
-    addAntecedentsButton(extractedData.antecedentsDiscordances, validationButton, hashId);
+    if (echangesAntecedents.confirmed(comparison)) {
+        addAntecedentsButton(comparison.operations, validationButton, hashId, comparison);
+    }
     notifyEchangesProcessingDone(hashId);
 }
 
@@ -500,15 +496,31 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
  * @param {HTMLElement|null} validationButton
  * @param {string} hashId - PDF concerné : une fois appliquées, les opérations sont retirées du cache.
  */
-let antecedentsComparePanelController = null;
+let antecedentsComparePanelController = null, antecedentsButton = null;
 
-function addAntecedentsButton(operations, validationButton, hashId) {
+function addAntecedentsButton(operations, validationButton, hashId, comparison = null) {
+    const previous = antecedentsButton;
+    const snapshot = comparison && JSON.stringify([hashId, comparison.patientId, operations]);
+    if (snapshot && validationButton && previous?.whAtcdSnapshot === snapshot && previous.whComparison.context === comparison.context) {
+        if (previous.previousElementSibling !== validationButton) validationButton.after(previous);
+        antecedentsComparePanelController?.refresh();
+        return;
+    }
     antecedentsComparePanelController?.destroy();
     antecedentsComparePanelController = null;
-    document.querySelector('#pdfParserAntecedentsButton')?.remove();
+    previous?.remove();
+    antecedentsButton = null;
     if (!validationButton || (operations !== 'erreur' && !Array.isArray(operations))) return;
 
     const button = document.createElement('button');
+    antecedentsButton = button;
+    const canApply = () => !comparison || (button.isConnected && echangesAntecedents.confirmed(comparison)
+        && document.querySelector("#messageContainer .button.valid:not(:disabled)")?.getClientRects().length
+        && !document.querySelector('select[id$="_DropDownListRechechePatient"]')?.getClientRects().length
+        && (!comparison.key || sessionStorage.getItem(comparison.key) === hashId));
+    const panelOptions = comparison ? { getPatientId: () => comparison.patientId, canApply } : {};
+    button.whComparison = comparison;
+    button.whAtcdSnapshot = snapshot;
     button.id = 'pdfParserAntecedentsButton';
     button.type = 'button';
     button.style.marginLeft = '10px';
@@ -521,24 +533,29 @@ function addAntecedentsButton(operations, validationButton, hashId) {
     } else if (operations.length === 0) {
         button.textContent = 'Antécédents ✅';
         button.title = '[Weda-Helper] Le document concorde avec les antécédents du patient. Cliquer pour les consulter.';
-        antecedentsComparePanelController = attachAntecedentsComparePanel(button, []);
+        antecedentsComparePanelController = attachAntecedentsComparePanel(button, [], panelOptions);
     } else {
         const total = operations.length;
         button.textContent = `Antécédents ⚠️ (${total})`;
         button.title = "[Weda-Helper] Cliquer pour comparer aux antécédents existants, choisir les opérations et les valider.";
         antecedentsComparePanelController = attachAntecedentsComparePanel(button, operations, {
+            ...panelOptions,
             onSelectionChange: count => { button.textContent = `Antécédents ⚠️ (${count}/${total})`; },
             onApply: async selectedOperations => {
-                const results = await traiterAntecedentsBatch(selectedOperations, { patientId: await resolveCurrentPatientIdWithWait() });
-                const failures = results.filter(result => result?.error);
+                const results = await traiterAntecedentsBatch(selectedOperations, { patientId: comparison?.patientId || await resolveCurrentPatientIdWithWait() })
+                    .finally(() => { if (comparison) echangesAntecedents.invalidate(comparison.patientId); });
+                const failures = results.filter(result => result?.error || result?.success === false);
                 if (failures.length) {
                     button.textContent = 'Antécédents ❌';
-                    button.title = failures.map(result => result.error).join('\n');
-                    return `❌ ${failures.length} échec(s) : ${failures.map(result => result.error).join(' ; ')}`;
+                    button.title = failures.map(result => result.error || result.message).join('\n');
+                    return `❌ ${failures.length} échec(s) : ${button.title}`;
                 }
                 button.textContent = 'Antécédents ✅';
                 button.title = '[Weda-Helper] Antécédents mis à jour.';
-                setPdfData(hashId, { antecedentsDiscordances: [] });
+                if (!comparison) setPdfData(hashId, { antecedentsDiscordances: [] });
+                else if (comparison.key && results.length === total && selectedOperations.length === total && echangesAntecedents.confirmed(comparison)) {
+                    echangesAntecedents.save(hashId, comparison, []);
+                }
                 return `✅ ${selectedOperations.length} opération(s) appliquée(s).`;
             }
         });
@@ -588,6 +605,7 @@ function addPatientNameDisplay(patientName, patientElement = null) {
     patientNameSpan.style.cursor = 'pointer';
     patientNameSpan.style.textDecoration = 'underline';
     patientNameSpan.id = 'pdfParserPatientName';
+    patientNameSpan.whAtcdSource = echangesAntecedents.source();
     // Par facilité, l'id du patient sélectionné est porté par l'élément (posé sur le lien patient
     // par patientLink.js, le title d'origine étant écrasé par un texte d'aide).
     const selectedPatientId = patientElement?.dataset?.patientId;
