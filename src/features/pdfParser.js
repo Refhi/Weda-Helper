@@ -313,7 +313,7 @@ async function fillOtherAttachmentsES() {
         if (!baseData) continue;
         const { urlPDF, fullText, hashId, pdfText, messageBody } = baseData;
         const data = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody });
-        await selectDestinationIfNeededES(data.destinationClass, zone);
+        await selectDestinationIfNeededES({ destinationNumber: data.destinationClass, attachmentZone: zone, hashId });
         await setTitleIfNeededES(data.documentTitle, zone);
         await selectDocumentTypeES(data.documentType, zone);
         await setCommentaireIfNeededES(data.documentCommentaire, zone);
@@ -351,19 +351,17 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
 
     // Vérifier si ce PDF est en cours de traitement pour éviter les ré-exécutions
     // causées par le rafraîchissement du DOM après un clic patient
-    const isProcessing = sessionStorage.getItem(`${hashId}_processing`);
-    if (isProcessing) {
+    if (sessionStorage.getItem(`${hashId}_processing`)) {
         console.log("[pdfParser] Echanges - Ce PDF est déjà en cours de traitement, abandon pour éviter les doublons.");
         notifyEchangesProcessingDone(hashId);
         return;
+    } else {// Marquer ce PDF comme en cours de traitement
+        sessionStorage.setItem(`${hashId}_processing`, 'true');
     }
-
-    // Marquer ce PDF comme en cours de traitement
-    sessionStorage.setItem(`${hashId}_processing`, 'true');
 
     let extractedData = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody });
 
-    // Surveillance des clics sur les patients (pour affichage du nom sélectionné)
+    // Surveiller l'apparition des patients dans la liste pour afficher le nom sélectionné
     waitForElement({
         selector: ".grid-item_tr, .grid-selecteditem",
         callback: showClickedPatient,
@@ -447,7 +445,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     // ===========================================
     // ÉTAPE 3 : Remplissage du formulaire d'import
     // ===========================================
-    await selectDestinationIfNeededES(extractedData.destinationClass);
+    await selectDestinationIfNeededES({ destinationNumber: extractedData.destinationClass, hashId });
     // 2. Mettre le titre
     await setTitleIfNeededES(extractedData.documentTitle);
     // 3. Sélectionner la bonne catégorie
@@ -458,6 +456,11 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     await fillOtherAttachmentsES();
     // Pas de marquage "déjà importé" : dans la messagerie sécurisée, le formulaire
     // n'est pas conservé par Weda si l'on change de patient entre deux.
+
+    // ===========================================
+    // ÉTAPE 3.5 : Surveillance des modifications utilisateur
+    // ===========================================
+    await watchAllFormFieldChangesES();
 
     // ===========================================
     // ÉTAPE 4 : Focus sur l'élément de validation
@@ -715,6 +718,115 @@ function getActiveAttachmentZoneES() {
 }
 
 /**
+ * Surveille les modifications utilisateur sur les champs du formulaire d'import en messagerie sécurisée.
+ * Sauvegarde instantanément les changements dans le sessionStorage associé au hashId du PDF.
+ *
+ * @param {string} hashId - Identifiant unique du PDF, utilisé comme clé du sessionStorage.
+ * @param {HTMLElement} [attachmentZone=getActiveAttachmentZoneES()] - Zone d'attachment contenant les champs.
+ */
+async function watchFormFieldChangesES(hashId, attachmentZone = getActiveAttachmentZoneES()) {
+    if (!hashId || !attachmentZone) {
+        console.warn("[pdfParser] watchFormFieldChangesES : hashId ou attachmentZone manquant");
+        return;
+    }
+
+    const ES_FORM_FIELDS = {
+        documentType: {
+            selector: "select[title='Attribuer une classification au document']",
+            storageKey: 'documentType',
+            getValue: (element) => element?.options[element.selectedIndex]?.text || null,
+            getDisplayValue: (element) => element?.options[element.selectedIndex]?.text || 'Non sélectionné'
+        },
+        documentTitle: {
+            selector: "input[title=\"C'est le titre qu'aura le document dans le dossier patient\"]",
+            storageKey: 'documentTitle',
+            getValue: (element) => element?.value || null,
+            getDisplayValue: (element) => element?.value || '(vide)'
+        },
+        documentCommentaire: {
+            selector: "input[placeholder='Commentaire']",
+            storageKey: 'documentCommentaire',
+            getValue: (element) => element?.value || null,
+            getDisplayValue: (element) => element?.value || '(vide)'
+        }
+    };
+
+    console.log(`[pdfParser] Surveillance des modifications de formulaire pour hashId: ${hashId}`);
+
+    // Surveiller chaque champ défini
+    Object.entries(ES_FORM_FIELDS).forEach(([fieldName, fieldConfig]) => {
+        const element = attachmentZone.querySelector(fieldConfig.selector);
+        if (!element) {
+            console.warn(`[pdfParser] Champ ${fieldName} introuvable dans la zone d'attachment`);
+            return;
+        }
+
+        // Récupérer la valeur initiale
+        const initialValue = fieldConfig.getValue(element);
+        console.log(`[pdfParser] Surveillance de ${fieldName} - Valeur initiale: ${fieldConfig.getDisplayValue(element)}`);
+
+        // Écouter les changements selon le type d'élément
+        if (element.tagName === 'SELECT') {
+            element.addEventListener('change', () => {
+                const newValue = fieldConfig.getValue(element);
+                console.log(`[pdfParser] Modification détectée - ${fieldName}: ${fieldConfig.getDisplayValue(element)}`);
+                setPdfData(hashId, { [fieldConfig.storageKey]: newValue });
+            });
+        } else if (element.tagName === 'INPUT') {
+            // Écouter à la fois 'input' (saisie) et 'change' (blur)
+            element.addEventListener('input', () => {
+                const newValue = fieldConfig.getValue(element);
+                console.log(`[pdfParser] Modification détectée (input) - ${fieldName}: ${fieldConfig.getDisplayValue(element)}`);
+                setPdfData(hashId, { [fieldConfig.storageKey]: newValue });
+            });
+            element.addEventListener('change', () => {
+                const newValue = fieldConfig.getValue(element);
+                console.log(`[pdfParser] Modification détectée (change) - ${fieldName}: ${fieldConfig.getDisplayValue(element)}`);
+                setPdfData(hashId, { [fieldConfig.storageKey]: newValue });
+            });
+        }
+    });
+
+    // Surveiller les changements de destination (clics sur les boutons .weImportDocTargets)
+    const destinationButtons = attachmentZone.querySelectorAll('.weImportDocTargets');
+    if (destinationButtons.length > 0) {
+        console.log(`[pdfParser] Surveillance de ${destinationButtons.length} bouton(s) de destination`);
+        destinationButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Récupérer la destination sélectionnée via le title du bouton cliqué
+                const destinations = {
+                    "Ranger dans les consultations": "1",
+                    "Ranger dans les résultats d'examens": "2",
+                    "Ranger dans les courriers": "3"
+                };
+                const destinationClass = destinations[button.title] || null;
+                if (destinationClass) {
+                    console.log(`[pdfParser] Modification détectée - destinationClass: ${button.title} (par utilisateur)`);
+                    setPdfData(hashId, { destinationClass: destinationClass, destinationSetByUser: true });
+                }
+            });
+        });
+    }
+}
+
+/**
+ * Surveille les modifications utilisateur sur TOUS les attachements de la messagerie sécurisée.
+ * Appelée une seule fois en étape 3.5 pour surveiller aussi bien le premier que les attachements supplémentaires.
+ */
+async function watchAllFormFieldChangesES() {
+    const zones = getPdfAttachmentZonesES();
+    console.log(`[pdfParser] Surveillance des modifications pour ${zones.length} pièce(s) jointe(s)`);
+
+    for (const zone of zones) {
+        const iframes = zone.querySelectorAll('#iFrameViewFile, .mssAttachment embed');
+        const baseData = await extractBasePdfData(iframes, zone);
+        if (!baseData) continue;
+        const { hashId } = baseData;
+        await watchFormFieldChangesES(hashId, zone);
+    }
+}
+
+/**
  * Sélectionne le bon type de document pour les échanges sécurisés
  */
 async function selectDocumentTypeES(documentType, attachmentZone = getActiveAttachmentZoneES()) {
@@ -770,17 +882,34 @@ async function setTitleIfNeededES(Titre, attachmentZone = getActiveAttachmentZon
 }
 
 /**
- * Sélectionne la bonne destination d'importation dans les **échanges sécurisés**, si l'option est activée.
+ * Sélectionne la bonne destination d'importation dans les **échanges sécurisés**.
+ * Si PdfParserAutoClassification est désactivée mais que l'utilisateur a modifié la destination précédemment,
+ * la modification est quand même appliquée.
  */
-async function selectDestinationIfNeededES(destinationNumber, attachmentZone = getActiveAttachmentZoneES()) {
-    const selectionNeeded = await getOptionPromise('PdfParserAutoClassification');
-    if (!selectionNeeded) {
+async function selectDestinationIfNeededES({ destinationNumber, attachmentZone, hashId } = {}) {
+    attachmentZone = attachmentZone || getActiveAttachmentZoneES();
+
+    const autoSelectionEnabled = await getOptionPromise('PdfParserAutoClassification');
+    console.log("[pdfParser] Auto selection destination enabled:", autoSelectionEnabled);
+
+    // Vérifier si l'utilisateur a modifié la destination manuellement
+    let userModifiedDestination = false;
+    if (hashId) {
+        const savedData = getPdfData(hashId);
+        if (savedData?.destinationSetByUser) {
+            destinationNumber = savedData.destinationClass;
+            userModifiedDestination = true;
+            console.log("[pdfParser] User modified destination detected:", destinationNumber);
+        }
+    }
+
+    // Continuer si l'option auto est activée OU si l'utilisateur a modifié
+    if (!autoSelectionEnabled && !userModifiedDestination) {
         return;
     }
+
     if (!attachmentZone) return;
-    // Si l'option est activée, on va chercher la bonne destination
     // Les destinations possibles sont sélectionnées via des éléments clickables
-    // On reprend la classification de extractDestinationClass, mais les noms sont différents
     const destinations = {
         '1': "Ranger dans les consultations",
         '2': "Ranger dans les résultats d'examens",
