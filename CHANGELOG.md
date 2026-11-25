@@ -10,7 +10,9 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - [#728](https://github.com/Refhi/Weda-Helper/issues/728) - les prompts pour l’import PDF via IA sont désormais personnalisables dans les options.
 - [#727](https://github.com/Refhi/Weda-Helper/issues/727) - Le client peut désormais accéder au contenu d'Heidi, merci @DrFloW71 !
 - [#696](https://github.com/Refhi/Weda-Helper/issues/696) - Les items de suivi pour les consultations (poids, TA, IMC...) peuvent désormais êtres renseignés via l'IA lors de la rédaction d'une consultation.
-- Analyse de masse des biologies : sur la page des résultats HPRIM, 🧪 analyse par IA les résultats cochés ou tous les résultats de la liste, avec une pastille 🟢/🟠/🔴 par résultat (enregistrée jusqu'à la fermeture de l'onglet). Prompt personnalisable dans les options. (activable dans les options)
+- Analyse de masse des biologies : sur la page des résultats HPRIM, 🧪 analyse par IA les résultats cochés ou tous les résultats de la liste, avec une pastille 🟢/🟠/🔴 par résultat (enregistrée jusqu'à la fermeture de l'onglet ; un titre corrigé manuellement est conservé). Prompt personnalisable dans les options. (activable dans les options)
+- [#738](https://github.com/Refhi/Weda-Helper/issues/738) - La recherche CIM-10 par le client IA est améliorée.
+- Le client IA peut accéder aux éléments de la page de consultation en cours, et au dossier du patient sélectionné dans les imports HPRIM.
 - Les options de l'assistant IA sont réorganisées en sections (connexion, comportement, raccourcis, PDF Parser, biologies).
 - [#757](https://github.com/Refhi/Weda-Helper/issues/757) - Une analyse des résultats HPRIM est désormais possible en masse via l'IA.
 - Dans les résultats HPRIM, 🔁 analyse en série les bilans en attente et détecte les nouveaux résultats pendant que la page reste ouverte. Le mode est mémorisé et ⏹️ le désactive.
@@ -20,6 +22,8 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - Les antécédents récupérés lors de l'analyse d'un import sont réutilisés par le bouton antécédents (sans nouvelle lecture du dossier), et un import déjà marqué comme importé ne relance plus l'analyse au clic manuel.
 - [#759](https://github.com/Refhi/Weda-Helper/issues/759) - La localisation du PDF a été améliorée dans les échanges sécurisée. Elle posait problème pour le format CDA.
 - [#759](https://github.com/Refhi/Weda-Helper/issues/759) - Le moment de lancement de la recherche du patient a été fiabilisé.
+- [#777](https://github.com/Refhi/Weda-Helper/issues/777) - Dans la page des imports, un document dont le commentaire commence déjà par "[IA]" est considéré comme déjà analysé : l'analyse n'est pas relancée, mais la vérification des antécédents est tout de même effectuée.
+- [#770](https://github.com/Refhi/Weda-Helper/issues/770) - Le tooltip de la page des imports est plus fiable (bouton 🔄 de réinitialisation correctement repositionné, la bulle ne disparaît plus en cours de lecture).
 
 ### Messagerie sécurisée :
 - [#723](https://github.com/Refhi/Weda-Helper/issues/723) - Les données extraites dans la messagerie sécurisée sont désormais enregistrées même si le message n'est pas importé (jusqu'à la fermeture de l'onglet). Cela évite de faire les analyses plusieurs fois si on parcours les messages avant import.
@@ -27,6 +31,8 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 - Ajout d'une boîte à outils dans la messagerie sécurisée pour analyser successivement plusieurs messages : ▶️ parcourt les messages cochés, 🔁 analyse automatiquement les messages non lus (à l'activation puis à chaque rafraîchissement de la boîte de réception), ⏹️ arrête le parcours en cours. (désactivable dans les options) - idée de @DrFlow71 !
 - [#751](https://github.com/Refhi/Weda-Helper/issues/751) - Une pastille indique désormais les messages déjà analysés dans la messagerie sécurisée, pour un suivi plus facile. Merci @DrFlow71 !
 - [#753](https://github.com/Refhi/Weda-Helper/issues/753) - Après un clic sur "Importer" dans la messagerie sécurisée, le message suivant de la liste est automatiquement ouvert. (activable dans les options)
+- [#774](https://github.com/Refhi/Weda-Helper/issues/774) - Les titres, destinations et commentaires modifiés par l'utilisateur dans la messagerie sécurisée sont mémorisés et ne sont plus écrasés lors d'un nouveau passage.
+- Un bouton permet d'effacer le cache des analyses dans la messagerie sécurisée.
 
 
 ### Post-it :
@@ -42,6 +48,9 @@ Si vous souhaitez voir le détail, cliquez sur les numéros qui vous renverrons 
 
 ## Fix :
 - Amélioration du bouton flottant du chat IA (mémorise mieux le placement demandé)
+- Messagerie sécurisée : la recherche du patient n'est plus relancée à tort lors d'un second passage ou d'un rafraîchissement, et le clic sur "Un patient" attend que le contenu du courrier soit chargé.
+- [#661](https://github.com/Refhi/Weda-Helper/issues/661) - Fiabilisation du convertisseur d'unités.
+- Meilleure détection du nom du praticien en cours.
 
 # [3.3] - IA, IA, et encore IA !
 Cette version est surtout orientée IA et apporte d’autres petites améliorations et bug fixes.
