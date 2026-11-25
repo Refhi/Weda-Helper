@@ -220,11 +220,20 @@ async function analyzeImportIframe(PDFIframeElements) {
     */
     let extractedData = getPdfData(hashId);
 
-    // Si déjà importé, on redirige vers le champ de recherche
-    if (extractedData.alreadyImported) {
+    // Si déjà importé (ou si le commentaire a déjà été rempli par l'IA), on redirige vers le champ de recherche
+    const commentFilledByAI = isImportCommentAIGenerated();
+    if (extractedData.alreadyImported || commentFilledByAI) {
         console.log("[pdfParser] Import - Données déjà importées. Redirection vers recherche.");
         selectFirstPatientOrSearchField();
-        attachImportAntecedentsButton(extractedData, hashId);
+        if (commentFilledByAI) {
+            // L'analyse du document est sautée, mais pas la vérification des antécédents.
+            // alreadyImported est mémorisé pour que l'entrée de cache ne soit pas prise pour une extraction complète.
+            extractedData.alreadyImported = true;
+            setPdfData(hashId, { alreadyImported: true });
+            await precheckImportAntecedents(extractedData, fullText, urlPDF, messageBody, hashId);
+        } else {
+            attachImportAntecedentsButton(extractedData, hashId);
+        }
         return true;
     }
     
@@ -259,6 +268,18 @@ async function analyzeImportIframe(PDFIframeElements) {
 
     setTimeout(() => highlightDate(), 200);
     return true;
+}
+
+/**
+ * Indique si le commentaire de la ligne d'import courante commence par "[IA]", c'est-à-dire que le document
+ * a déjà été analysé et rempli par l'IA : il n'y a pas lieu de refaire l'analyse (page d'import uniquement).
+ * @returns {boolean}
+ */
+function isImportCommentAIGenerated() {
+    const lineNumber = actualImportActionLine();
+    if (lineNumber === null) return false;
+    const commentInput = document.querySelector(`#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementCommentaire_${lineNumber}`);
+    return (commentInput?.value || '').trimStart().startsWith('[IA]');
 }
 
 /**
