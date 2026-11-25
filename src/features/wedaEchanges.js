@@ -224,6 +224,59 @@ addTweak('/FolderMedical/WedaEchanges/', 'swapTitrePJetCorpsMessage', function (
 });
 
 
+// Weda recrée le formulaire et ses valeurs par défaut au retour sur un courrier.
+addTweak("/FolderMedical/WedaEchanges/", "autoPdfParser", function () {
+    const drafts = new Map();
+    const fields = "input.docTitle, input[placeholder='Commentaire']";
+    function attachmentKey(zone) {
+        const file = zone.querySelector("iframe[src], embed[src], object[data]") || zone.querySelector("a[download][href], a[href*='BinaryData.aspx' i]");
+        const src = file && (file.src || file.data || file.href);
+        if (!src || src === "about:blank") return null;
+        const url = new URL(src, document.baseURI);
+        // Weda renouvelle la signature de l'URL pour la même pièce jointe.
+        if (/\/BinaryData\.aspx$/i.test(url.pathname) && url.searchParams.has("id")) {
+            return JSON.stringify([url.origin, url.pathname, url.searchParams.get("id"), url.searchParams.get("i")]);
+        }
+        return url.href;
+    }
+    function sync(pane, event) {
+        if (event && !event.target.matches?.(fields)) return;
+        const subject = document.querySelector("#messageList .selected .subjectRow")?.textContent;
+        if (!subject || [...document.querySelectorAll("#messageList .subjectRow")].filter(row => row.textContent === subject).length !== 1) return;
+        const zones = [...pane.querySelectorAll(".messageAttachment")];
+        const files = zones.map(attachmentKey);
+        for (const field of event ? [event.target] : pane.querySelectorAll(fields)) {
+            const zone = field.closest(".messageAttachment");
+            if (!zone && !field.closest("we-doc-import")) continue;
+            const file = zone ? files[zones.indexOf(zone)] : pane.querySelector(".messageBody")?.textContent.trim();
+            if (!file || (zone && files.indexOf(file) !== files.lastIndexOf(file))) continue;
+            const key = JSON.stringify([subject, pane.querySelector(".messageHeader")?.textContent, !!zone, file, field.placeholder === "Commentaire"]);
+            const draft = drafts.get(key);
+            if (event && (event.isTrusted || !draft?.edited)) {
+                drafts.set(key, { value: field.value, edited: event.isTrusted });
+            } else if (draft && field.value !== draft.value) {
+                field.value = draft.value;
+                if (!event) {
+                    field.dispatchEvent(new Event("input", { bubbles: true }));
+                    field.dispatchEvent(new Event("change", { bubbles: true }));
+                }
+            }
+        }
+    }
+    waitForElement({ selector: "#messageContainer", triggerOnInit: true, observerId: "echangesChamps", callback(panes) {
+        for (const pane of panes) {
+            // Le PDF Parser émet aussi des événements input qui ne remontent pas dans le DOM.
+            pane.addEventListener("input", event => sync(pane, event), true);
+            pane.addEventListener("change", event => sync(pane, event), true);
+            const restore = () => { if (drafts.size) queueMicrotask(() => sync(pane)); };
+            restore();
+            new MutationObserver(restore).observe(pane, {
+                childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["src", "data", "href"]
+            });
+        }
+    } });
+});
+
 // Clic automatique sur "Un patient" à l'ouverture d'un message (clic manuel ou parcours par lot).
 addTweak('/FolderMedical/WedaEchanges/', 'autoClickUnPatient', function () {
     const buttonSelector = "#messageContainer .btnImport.importPatient";
