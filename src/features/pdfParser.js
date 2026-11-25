@@ -314,7 +314,7 @@ async function fillOtherAttachmentsES() {
         const { urlPDF, fullText, hashId, pdfText, messageBody } = baseData;
         const data = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody });
         await selectDestinationIfNeededES(data.destinationClass, zone);
-        await setTitleIfNeededES(data.documentTitle, zone);
+        await setTitleIfNeededES(data.echangesContentTitle || data.documentTitle, zone);
         await selectDocumentTypeES(data.documentType, zone);
         await setCommentaireIfNeededES(data.documentCommentaire, zone);
     }
@@ -329,14 +329,15 @@ async function fillOtherAttachmentsES() {
  */
 async function processFoundPdfIframeEchanges(isINSValidated = false) {
     console.log("[pdfParser] Echanges - Démarrage avec isINSValidated =", isINSValidated);
+    const selectedRow = document.querySelector("#messageList .messageListItem.selected");
 
     // ===========================================
     // ÉTAPE 1 : Extraction des données du PDF
     // ===========================================
     let iframesElements = document.querySelectorAll('#PanelViewDocument iframe');
     if (iframesElements.length === 0) {
-        // Fallback pour les PDF dans un embed (cas des messages avec corps de texte)
-        iframesElements = document.querySelectorAll('.mssAttachment embed');
+        // Le visualiseur peut être monté directement dans la pièce jointe.
+        iframesElements = (getActiveAttachmentZoneES() || document).querySelectorAll("#iFrameViewFile, .mssAttachment embed");
     }
 
     // Setup de la procédure
@@ -356,6 +357,11 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
         callback: showClickedPatient,
         triggerOnInit: true
     });
+
+    if (selectedRow && selectedRow !== document.querySelector("#messageList .messageListItem.selected")) {
+        notifyEchangesProcessingDone(hashId);
+        return;
+    }
 
     // Si déjà importé, redirection vers recherche
     if (extractedData.alreadyImported) {
@@ -434,7 +440,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     // ===========================================
     await selectDestinationIfNeededES(extractedData.destinationClass);
     // 2. Mettre le titre
-    await setTitleIfNeededES(extractedData.documentTitle);
+    await setTitleIfNeededES(extractedData.echangesContentTitle || extractedData.documentTitle);
     // 3. Sélectionner la bonne catégorie
     await selectDocumentTypeES(extractedData.documentType);
     // 4. Mettre le commentaire
@@ -753,6 +759,64 @@ async function setTitleIfNeededES(Titre, attachmentZone = getActiveAttachmentZon
     titleInput.dispatchEvent(new Event('input')); // dans certains cas, l'input est écouté via un listener 'input'
 }
 
+// En mode IA complet, un gabarit ou l'en-tête de l'examen peut subsister dans le cache.
+async function contentTitleES(data, base, cached) {
+    const normalize = value => normalizeString(value || "").replace(/[^\p{L}\d]+/gu, " ").trim();
+    const lines = ((base.urlPDF ? base.pdfText : base.messageBody) || "").split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const modality = /^(?:IRM|TDM|scanner|radiographies?|[ée]chographies?|mammographies?|arthroscanner|angioscanner)\b/i;
+    const findExams = section => lines.filter((line, i) => modality.test(line) && section.test(lines[i + 1] || ""));
+    let exams = findExams(/^(?:indications?|technique|renseignements? cliniques?)\s*(?::|$)/i);
+    if (!exams.length) exams = findExams(/^(?:r[ée]sultats?|conclusions?)\s*(?::|$)/i);
+    let exam = exams.length === 1 ? exams[0] : "";
+    const template = await buildTitle(data);
+    const metadata = [exam, data.documentType, data.typeCR, data.imagerie, data.region, data.specialite, data.lieu, data.doctorName];
+    const titleModality = data.documentTitle?.match(modality)?.[0];
+    if (!exam && titleModality) {
+        const regions = properArrayOfCategoryMatchingRules(await getOptionPromise("PdfParserAutoRegionDict")) || [];
+        metadata.push(titleModality, "droit droite gauche bilatéral bilatérale", ...regions.flat(2));
+    }
+    const providers = lines.filter(line => /^(?:dr\.?|docteur|cabinet|centre|clinique|h[ôo]pital|chu?)\s/i.test(line) && line.length < 100);
+    const words = new Set(normalize(metadata.concat(providers).filter(Boolean).join(" ")).split(" "));
+    function isHeading(value) {
+        if (!value || normalize(value) === normalize(template)) return true;
+        const provider = value.match(/(?:^|\s*[-–—:|]\s*|\s+(?:du|de la|chez|par le)\s+)(?:Dr\.?|Pr\.?|Docteur|Professeur|Cabinet|Centre|Clinique|Hôpital|CHU?)\s+(.+)$/u);
+        const onlyName = provider && provider[1].split(/\s+/).every(word => /^(?:de|du|des|la|le|\p{Lu}[\p{L}.'’-]*)$/u.test(word));
+        const text = normalize(onlyName ? value.slice(0, provider.index) : value);
+        if (!text) return true;
+        return text.split(" ").every(word => words.has(word) || /^(?:de|du|des|d|la|le|l|cr|compte|rendu|consultation|courrier|lettre|rapport|document|examen|dr)$/.test(word));
+    }
+    if (!isHeading(data.documentTitle)) return data.documentTitle;
+    if (!exam && titleModality && !exams.length) exam = data.documentTitle;
+    let summary = (data.documentCommentaire || "").replace(/^\[IA\]\s*/i, "").trim();
+    if (isHeading(summary) && exams.length <= 1) {
+        // Une seule conclusion ou rubrique de résultats de cette pièce, jusqu'à la rubrique suivante.
+        const body = lines.join("\n");
+        const conclusion = /^(?:(?:en )?(?:conclusions?|synth[èe]se)|au total)[ \t]*(?:[:,][ \t]*|$)/im;
+        const parts = body.split(conclusion.test(body) ? conclusion : /^r[ée]sultats?[ \t]*(?::[ \t]*|$)/im);
+        if (parts.length === 2) {
+            const end = /^(?:(?:Dr|Pr|Docteur|Professeur|Signature|Signée?|Page|Tél|Fax|Cordialement|(?:Bien )?confraternellement)(?=[\s.,:]|$)|(?:indication|technique|traitement|conduite à tenir|destinataires?)\s*:|[^\n]*@)/im;
+            const section = parts[1].split(end, 1)[0].trim().replace(/\s+/g, " ");
+            if (section.length <= 1500) summary = section;
+        }
+    }
+    let title;
+    if (!isHeading(summary)) {
+        const prefix = exam && !normalize(summary).startsWith(normalize(exam)) ? exam + " – " : "";
+        const sentences = Array.from(new Intl.Segmenter("fr", { granularity: "sentence" }).segment(summary), item => item.segment.trim());
+        const excerpt = sentences.find(s => /^(?:présence d|mise en évidence d|suspicion d|aspect (?:compatible|évocateur))/i.test(s))
+            || sentences[0]?.replace(/^[-•]\s+/, "").split(/\s+[-•]\s+/)[0];
+        if ((prefix + summary).length <= 180) title = prefix + summary;
+        else if ((prefix + excerpt).length <= 238 && !/^(?:mais|toutefois|cependant|néanmoins)\b/i.test(sentences[sentences.indexOf(excerpt) + 1] || "")) {
+            title = prefix + excerpt + (excerpt === summary ? "" : " …");
+        }
+    }
+    if (!title && cached) {
+        const result = await completeExtractedDataWithAI(data, base.fullText, base.urlPDF, null, base, true);
+        if (!isHeading(result.documentTitle)) title = result.documentTitle;
+    }
+    return title;
+}
+
 /**
  * Sélectionne la bonne destination d'importation dans les **échanges sécurisés**, si l'option est activée.
  */
@@ -867,9 +931,9 @@ async function handleDataExtraction(fullText, urlPDF, hashId, aiSources = {}) {
     // Vérification des données déjà extraites pour ce PDF
     let extractedData = getPdfData(hashId);
 
-    if (Object.keys(extractedData).length > 0) {
+    const cached = Object.keys(extractedData).length > 0;
+    if (cached) {
         console.log("[pdfParser] Données déjà extraites pour ce PDF. Utilisation des données existantes.", extractedData);
-        return extractedData;
     } else {
         console.log("[pdfParser] Données non extraites pour ce PDF. Extraction des données.");
         // Extraction des informations pertinentes
@@ -909,8 +973,14 @@ async function handleDataExtraction(fullText, urlPDF, hashId, aiSources = {}) {
         console.log('[pdfParser] extractedData', JSON.stringify(extractedData));
         setPdfData(hashId, extractedData);
 
-        return extractedData;
     }
+    if (!location.pathname.includes("/WedaEchanges") || extractedData.alreadyImported) return extractedData;
+    const options = await getOptionPromise(["PdfParserAutoTitle", "PdfParserAutoAIExtraction", "PdfParserAutoAIFullMode"]);
+    if (!options.every(Boolean)) return { ...extractedData, echangesContentTitle: null };
+    if (extractedData.echangesContentTitle) return extractedData;
+    const title = await contentTitleES(extractedData, { ...aiSources, fullText, urlPDF }, cached);
+    if (title) setPdfData(hashId, { echangesContentTitle: title });
+    return { ...extractedData, echangesContentTitle: title };
 }
 
 /**

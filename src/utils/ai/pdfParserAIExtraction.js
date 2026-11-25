@@ -85,20 +85,28 @@ function resolvePendingPdfParserFields(fields) {
  * Utilisée uniquement en mode complet (PdfParserAutoAIFullMode), pour contraindre le champ documentType.
  * @param {{pdfText?: string|null, messageBody?: string|null}} [aiSources] - Texte du PDF et corps du message
  * (échanges sécurisés) séparés : la lisibilité du PDF est évaluée indépendamment du corps du message.
+ * @param {boolean} [titleOnly] - Reprendre le seul titre d'un courrier en cache.
  * @returns {Promise<object>} Les champs complétés par l'IA, objet vide si rien n'a pu être complété.
  */
-async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = null, possibleDocumentTypes = null, aiSources = {}) {
+async function completeExtractedDataWithAI(extractedData, fullText, urlPDF = null, possibleDocumentTypes = null, aiSources = {}, titleOnly = false) {
     if (!await getOptionPromise('PdfParserAutoAIExtraction')) return {};
 
     const fullModeEnabled = await getOptionPromise('PdfParserAutoAIFullMode');
-    const fieldsToAsk = await listFieldsToAsk(extractedData, fullModeEnabled);
+    if (titleOnly && !fullModeEnabled) return {};
+    const fieldsToAsk = titleOnly ? [{ key: "documentTitle" }] : await listFieldsToAsk(extractedData, fullModeEnabled);
     if (fieldsToAsk.length === 0) return {};
 
-    const chatApi = await prepareChatApi(fullModeEnabled);
+    const echanges = location.pathname.includes("/WedaEchanges");
+    const chatApi = await prepareChatApi(fullModeEnabled).catch(error => {
+        if (!echanges) throw error;
+        console.warn("[pdfParserAIExtraction] Assistant indisponible, poursuite de la lecture du courrier.", error);
+        return null;
+    });
     if (!chatApi) return {};
 
     const sendToChatApi = await buildChainLauncher(chatApi, 'completerDocument', {
-        toolName: 'renseignerChampsPdfParser', fieldsToAsk, fullModeEnabled, fullText, urlPDF, possibleDocumentTypes, messageBody: aiSources.messageBody
+        toolName: 'renseignerChampsPdfParser', fieldsToAsk, fullModeEnabled, fullText, urlPDF, possibleDocumentTypes, messageBody: aiSources.messageBody,
+        extraInstructions: echanges && fullModeEnabled ? "Le titre indique le constat principal de l’examen, la décision ou l’objet concret du courrier. Respecte les négations, la latéralité et les incertitudes. Le type de document et le prestataire seuls sont insuffisants." : ""
     });
 
     let parsedFields;
