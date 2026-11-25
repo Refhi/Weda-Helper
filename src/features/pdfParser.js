@@ -302,17 +302,24 @@ function notifyEchangesProcessingDone(hashId) {
 }
 
 /**
- * Remplit les pièces jointes PDF autres que la première (celle-ci est traitée par processFoundPdfIframeEchanges).
- * Chaque PDF est analysé et rempli dans sa propre pièce jointe.
+ * Remplit le formulaire d'import de chaque pièce jointe PDF du message, en une seule boucle.
+ * La première pièce jointe est celle déjà analysée par processFoundPdfIframeEchanges (données fournies
+ * en paramètre) ; chacune des suivantes est analysée puis remplie dans sa propre zone.
+ * @param {object} firstData - Données extraites de la première pièce jointe.
+ * @param {string} firstHashId - Identifiant du PDF de la première pièce jointe.
  */
-async function fillOtherAttachmentsES() {
+async function fillAttachmentsES(firstData, firstHashId) {
     const zones = getPdfAttachmentZonesES();
-    for (const zone of zones.slice(1)) {
-        const iframes = zone.querySelectorAll('#iFrameViewFile, .mssAttachment embed');
-        const baseData = await extractBasePdfData(iframes, zone);
-        if (!baseData) continue;
-        const { urlPDF, fullText, hashId, pdfText, messageBody } = baseData;
-        const data = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody });
+    for (const [index, zone] of zones.entries()) {
+        let data = firstData;
+        let hashId = firstHashId;
+        if (index > 0) {
+            const iframes = zone.querySelectorAll('#iFrameViewFile, .mssAttachment embed');
+            const baseData = await extractBasePdfData(iframes, zone);
+            if (!baseData) continue;
+            hashId = baseData.hashId;
+            data = await handleDataExtraction(baseData.fullText, baseData.urlPDF, hashId, { pdfText: baseData.pdfText, messageBody: baseData.messageBody });
+        }
         await selectDestinationIfNeededES({ destinationNumber: data.destinationClass, attachmentZone: zone, hashId });
         await setTitleIfNeededES(data.documentTitle, zone);
         await selectDocumentTypeES(data.documentType, zone);
@@ -445,15 +452,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     // ===========================================
     // ÉTAPE 3 : Remplissage du formulaire d'import
     // ===========================================
-    await selectDestinationIfNeededES({ destinationNumber: extractedData.destinationClass, hashId });
-    // 2. Mettre le titre
-    await setTitleIfNeededES(extractedData.documentTitle);
-    // 3. Sélectionner la bonne catégorie
-    await selectDocumentTypeES(extractedData.documentType);
-    // 4. Mettre le commentaire
-    await setCommentaireIfNeededES(extractedData.documentCommentaire);
-    // 5. Même chose pour les éventuels autres PDF du message
-    await fillOtherAttachmentsES();
+    await fillAttachmentsES(extractedData, hashId);
     // Pas de marquage "déjà importé" : dans la messagerie sécurisée, le formulaire
     // n'est pas conservé par Weda si l'on change de patient entre deux.
 
