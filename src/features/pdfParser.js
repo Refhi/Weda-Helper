@@ -348,6 +348,19 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     }
 
     const { urlPDF, fullText, hashId, pdfText, messageBody } = baseData;
+
+    // Vérifier si ce PDF est en cours de traitement pour éviter les ré-exécutions
+    // causées par le rafraîchissement du DOM après un clic patient
+    const isProcessing = sessionStorage.getItem(`${hashId}_processing`);
+    if (isProcessing) {
+        console.log("[pdfParser] Echanges - Ce PDF est déjà en cours de traitement, abandon pour éviter les doublons.");
+        notifyEchangesProcessingDone(hashId);
+        return;
+    }
+
+    // Marquer ce PDF comme en cours de traitement
+    sessionStorage.setItem(`${hashId}_processing`, 'true');
+
     let extractedData = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody });
 
     // Surveillance des clics sur les patients (pour affichage du nom sélectionné)
@@ -361,6 +374,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     if (extractedData.alreadyImported) {
         console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction. Renvoi vers le champ de recherche ou le 1er patient de la liste si présent");
         selectFirstPatientOrSearchField();
+        sessionStorage.removeItem(`${hashId}_processing`);
         notifyEchangesProcessingDone(hashId);
         return;
     }
@@ -411,6 +425,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
 
         if (!patientSearchSucceeded) {
             console.warn("[pdfParser] Echanges - Impossible de trouver le patient automatiquement, passage au message suivant.");
+            sessionStorage.removeItem(`${hashId}_processing`);
             notifyEchangesProcessingDone(hashId);
             return;
         }
@@ -490,6 +505,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     }
 
     addAntecedentsButton(extractedData.antecedentsDiscordances, validationButton, hashId);
+    sessionStorage.removeItem(`${hashId}_processing`);
     notifyEchangesProcessingDone(hashId);
 }
 
