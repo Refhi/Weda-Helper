@@ -231,7 +231,7 @@ function attachAntecedentsComparePanel(button, operations, { getPatientId = reso
         if (!isCurrent()) return null;
         const handled = new Set();
 
-        const sections = (existing || []).map(section => ({ title: section.titre, items: section.items || [] }));
+        const sections = [];
         const addToSection = (title) => {
             let section = sections.find(s => normalizeAtcdText(s.title) === normalizeAtcdText(title));
             if (!section) {
@@ -240,7 +240,7 @@ function attachAntecedentsComparePanel(button, operations, { getPatientId = reso
             }
             return section;
         };
-        // Les ajouts sont rattachés à leur onglet (créé s'il n'est pas déjà dans les antécédents existants)
+        // Afficher d'abord tous les ajouts, regroupés par onglet, puis le dossier existant.
         const additionsBySection = new Map();
         operations.forEach((op, index) => {
             if (op.action !== 'ajouter') return;
@@ -248,6 +248,7 @@ function attachAntecedentsComparePanel(button, operations, { getPatientId = reso
             if (!additionsBySection.has(section)) additionsBySection.set(section, []);
             additionsBySection.get(section).push(index);
         });
+        sections.push(...(existing || []).map(section => ({ title: section.titre, items: section.items || [] })));
 
         if (existing === null) {
             const warning = document.createElement('div');
@@ -255,12 +256,14 @@ function attachAntecedentsComparePanel(button, operations, { getPatientId = reso
             content.appendChild(warning);
         }
 
+        let previousTitle;
         sections.forEach(section => {
             const additions = additionsBySection.get(section) || [];
             if (!section.items.length && !additions.length) return;
             const title = document.createElement('h4');
             title.textContent = section.title;
-            content.appendChild(title);
+            if (normalizeAtcdText(section.title) !== previousTitle) content.appendChild(title);
+            previousTitle = normalizeAtcdText(section.title);
 
             section.items.forEach(item => {
                 const index = operations.findIndex((op, i) => op.action !== 'ajouter' && !handled.has(i) && atcdItemMatchesOperation(item, op));
