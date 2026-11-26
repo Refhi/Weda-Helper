@@ -70,19 +70,33 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'autoPdfParser', function () {
 // 1.b. Dans la page des Echanges Sécurisés
 addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
     console.log('[pdfParser] Chargement de la page d\'échanges');
-    waitForElement({
-        // Ici on déclenche la procédure lors du clic sur le bouton "Un patient".
-        selector: ".importPatient",
-        callback: function (elements) {
-            elements.forEach(function (element) { //Ajout d'un listener sur tous les boutons "Un patient".
-                element.addEventListener("click", function () {
-                    console.log("[pdfParser] Importation du message cliqué, je vais traiter le PDF présent dans l'iframe.");
-                    setTimeout(() => processFoundPdfIframeEchanges(false), 500); //Délai pour permettre à la fenetre de recherche de s'afficher
-                    
-                });
-            });
+    let revision = 0;
+    let reopening = false;
+    document.addEventListener("click", event => {
+        const line = event.target.closest?.("#messageList .messageLineItem");
+        const open = event.target.closest?.("#messageContainer .importPatient");
+        if (line || event.target.closest?.('[id$="_ButtonRechercheAnnuler"], #messageContainer .docImportButtons .button.cancel')) {
+            revision++;
+            if (line && !line.closest(".messageListItem.selected")) {
+                document.querySelector("#pdfParserPatientName")?.remove();
+                const cancel = document.querySelector('[id*="FindPatientUcForm"][id$="_ButtonRechercheAnnuler"]');
+                if (cancel?.getClientRects().length) cancel.click();
+            }
+        } else if (open && !reopening) {
+            const request = ++revision;
+            const isCurrent = () => request === revision;
+            setTimeout(async () => {
+                // Weda peut afficher les suggestions avant d’ouvrir le formulaire natif.
+                const ready = () => !isCurrent() || getPdfParserPatientId() || !!document.querySelector('select[id$="_DropDownListRechechePatient"]')?.getClientRects().length;
+                if (!await waitUntil(ready, { interval: 100, maxRetry: 12 }) && isCurrent() && open.getClientRects().length && !open.disabled) {
+                    reopening = true;
+                    try { open.click(); } finally { reopening = false; }
+                    await waitUntil(ready, { interval: 100, maxRetry: 18 });
+                }
+                if (isCurrent()) processFoundPdfIframeEchanges(false, isCurrent);
+            }, 500);
         }
-    });
+    }, true);
 
     // On ajoute aussi une petite aide : le champ de recherche de patient est décalé vers le bas de l'écran
     waitForElement({
@@ -331,9 +345,10 @@ function notifyEchangesProcessingDone(hashId) {
  * @param {object} firstData - Données extraites de la première pièce jointe.
  * @param {string} firstHashId - Identifiant du PDF de la première pièce jointe.
  */
-async function fillAttachmentsES(firstData, firstHashId) {
+async function fillAttachmentsES(firstData, firstHashId, isCurrent = () => true) {
     const zones = getPdfAttachmentZonesES();
     for (const [index, zone] of zones.entries()) {
+        if (!isCurrent()) return;
         let data = firstData;
         let hashId = firstHashId;
         if (index > 0) {
@@ -343,7 +358,9 @@ async function fillAttachmentsES(firstData, firstHashId) {
             hashId = baseData.hashId;
             data = await handleDataExtraction(baseData.fullText, baseData.urlPDF, hashId, { pdfText: baseData.pdfText, messageBody: baseData.messageBody });
         }
+        if (!isCurrent() || !zone.isConnected) return;
         await selectDestinationIfNeededES({ destinationNumber: data.destinationClass, attachmentZone: zone, hashId });
+        if (!isCurrent() || !zone.isConnected) return;
         await setTitleIfNeededES(data.documentTitle, zone);
         await selectDocumentTypeES(data.documentType, zone);
         await setCommentaireIfNeededES(data.documentCommentaire, zone);
@@ -357,7 +374,7 @@ async function fillAttachmentsES(firstData, firstHashId) {
  * 
  * @param {boolean} isINSValidated - Si true, on saute l'étape de recherche patient (INS déjà validé)
  */
-async function processFoundPdfIframeEchanges(isINSValidated = false) {
+async function processFoundPdfIframeEchanges(isINSValidated = false, isCurrent = () => true) {
     console.log("[pdfParser] Echanges - Démarrage avec isINSValidated =", isINSValidated);
 
     // ===========================================
@@ -372,6 +389,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     // Setup de la procédure
     // Extraction des données de base
     const baseData = await extractBasePdfData(iframesElements); // s'occupe également de vérifier les données déjà extraites
+    if (!isCurrent()) return;
     if (!baseData) {
         notifyEchangesProcessingDone(null);
         return;
@@ -379,17 +397,8 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
 
     const { urlPDF, fullText, hashId, pdfText, messageBody } = baseData;
 
-    // Vérifier si ce PDF est en cours de traitement pour éviter les ré-exécutions
-    // causées par le rafraîchissement du DOM après un clic patient
-    if (sessionStorage.getItem(`${hashId}_processing`)) {
-        console.log("[pdfParser] Echanges - Ce PDF est déjà en cours de traitement, abandon pour éviter les doublons.");
-        notifyEchangesProcessingDone(hashId);
-        return;
-    } else {// Marquer ce PDF comme en cours de traitement
-        sessionStorage.setItem(`${hashId}_processing`, 'true');
-    }
-
     let extractedData = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody });
+    if (!isCurrent()) return;
 
     // Surveiller l'apparition des patients dans la liste pour afficher le nom sélectionné
     waitForElement({
@@ -397,15 +406,6 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
         callback: showClickedPatient,
         triggerOnInit: true
     });
-
-    // Si déjà importé, redirection vers recherche
-    if (extractedData.alreadyImported) {
-        console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction. Renvoi vers le champ de recherche ou le 1er patient de la liste si présent");
-        selectFirstPatientOrSearchField();
-        sessionStorage.removeItem(`${hashId}_processing`);
-        notifyEchangesProcessingDone(hashId);
-        return;
-    }
 
     console.log("[pdfParser] Echanges - Données extraites :", extractedData);
 
@@ -418,6 +418,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
         let patientSearchSucceeded = false;
 
         for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            if (!isCurrent()) return;
             console.log(`[pdfParser] Echanges - Tentative de recherche patient ${attempt}/${MAX_ATTEMPTS}`);
 
             const searchResult = handlePatientSearch(extractedData, hashId);
@@ -451,12 +452,19 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
             break;
         }
 
+        if (!isCurrent()) return;
         if (!patientSearchSucceeded) {
             console.warn("[pdfParser] Echanges - Impossible de trouver le patient automatiquement, passage au message suivant.");
-            sessionStorage.removeItem(`${hashId}_processing`);
             notifyEchangesProcessingDone(hashId);
             return;
         }
+    }
+
+    // Une réouverture relance la recherche, même si le PDF a déjà été traité.
+    if (extractedData.alreadyImported) {
+        selectFirstPatientOrSearchField();
+        notifyEchangesProcessingDone(hashId);
+        return;
     }
 
     // ===========================================
@@ -467,6 +475,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     // Déjà vérifié pour ce PDF (données en cache, @see getPdfData) : pas de nouvelle demande à l'IA.
     if (!Array.isArray(extractedData.antecedentsDiscordances)) {
         extractedData.antecedentsDiscordances = await checkAntecedentsAgainstDocument(fullText, urlPDF, { messageBody });
+        if (!isCurrent()) return;
         if (Array.isArray(extractedData.antecedentsDiscordances)) {
             setPdfData(hashId, { antecedentsDiscordances: extractedData.antecedentsDiscordances });
         }
@@ -475,7 +484,9 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     // ===========================================
     // ÉTAPE 3 : Remplissage du formulaire d'import
     // ===========================================
-    await fillAttachmentsES(extractedData, hashId);
+    if (!isCurrent()) return;
+    await fillAttachmentsES(extractedData, hashId, isCurrent);
+    if (!isCurrent()) return;
     // Pas de marquage "déjà importé" : dans la messagerie sécurisée, le formulaire
     // n'est pas conservé par Weda si l'on change de patient entre deux.
 
@@ -483,6 +494,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     // ÉTAPE 3.5 : Surveillance des modifications utilisateur
     // ===========================================
     await watchAllFormFieldChangesES();
+    if (!isCurrent()) return;
 
     // ===========================================
     // ÉTAPE 4 : Focus sur l'élément de validation
@@ -493,6 +505,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
         patientLinkButton.focus();
         ListTabOrderer(patientLinkButton.id);
         await observeDiseapearance(patientLinkButton);
+        if (!isCurrent()) return;
     }
 
     const validationButton = document.querySelector("#messageContainer .button.valid");
@@ -530,7 +543,6 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     }
 
     addAntecedentsButton(extractedData.antecedentsDiscordances, validationButton, hashId);
-    sessionStorage.removeItem(`${hashId}_processing`);
     notifyEchangesProcessingDone(hashId);
 }
 
