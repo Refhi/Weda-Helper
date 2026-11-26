@@ -251,14 +251,18 @@ addTweak('/FolderMedical/WedaEchanges/', 'autoClickUnPatient', function () {
             const rows = [...document.querySelectorAll("#messageList .subjectRow")].filter(node => node.textContent === subject);
             return rows.length === 1 && rows[0].closest(".messageListItem.selected");
         };
-        const previous = line.closest(".messageListItem.selected") ? null : preview();
+        const changing = !line.closest(".messageListItem.selected");
+        const previous = changing ? preview() : null;
         const previousValue = source(previous);
+        const previousPicker = changing ? document.querySelector('[id*="FindPatientUcForm"][id$="_ButtonRechercheAnnuler"]') : null;
+        const waitForClose = previousPicker?.getClientRects().length && await getOptionPromise("autoPdfParser");
         let bodySince;
         let button;
         await sleep(0); // Laisser le clic de la ligne parvenir à Weda.
         const ready = await waitUntil(() => {
             if (click !== lastClick) return true;
             if (!isSelected()) return false;
+            if (waitForClose && previousPicker.getClientRects().length) return false;
             const content = preview();
             const value = source(content);
             if (!value || (value === previousValue && (content === previous || !content.matches(".messageBody")))) return false;
