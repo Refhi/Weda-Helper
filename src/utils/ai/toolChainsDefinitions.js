@@ -108,7 +108,7 @@ const toolChains = (() => {
         + "'allergieMolecule' (nom de molécule) ou 'allergiePrinceps' (si ça ressemble à un nom commercial), nom = uniquement le nom du médicament ; "
         + "pour tout 'ajouter', data.onglet est OBLIGATOIRE : analyse les onglets existants (liste « Onglets disponibles ») et recopie le libellé exact de celui "
         + "qui correspond le mieux au type d'antécédent (ex. pathologie, chirurgie, gynéco-obstétrique, familial, facteur de risque, allergie) ; ne laisse jamais le choix par défaut ; "
-        + "compatibilité des onglets selon leur type : CIM-10 → 'Pathologies actives', 'Antécédents', 'Antécédents familiaux' ou 'Prévention et dépistages' ; allergieMolecule → 'Allergies' ; allergiePrinceps → 'Allergies' ou 'Traitement' ; antécédent libre → tout onglet ; "
+        + "compatibilité des onglets selon leur type : CIM-10 → 'Pathologies actives', 'Antécédents', 'Antécédents médicaux', 'Antécédents familiaux' ou 'Prévention et dépistages' ; allergieMolecule → 'Allergies' ; allergiePrinceps → 'Allergies' ou 'Traitement' ; antécédent libre → tout onglet ; "
         + "pour 'modifier'/'supprimer', nomCible est le titre exact d'un antécédent existant ; pour transformer un antécédent libre existant en antécédent codé, "
         + "utilise {action:'convertirCim10', nomCible: <titre exact>, data:{nom: <code issu d'une recherche>}} (jamais 'ajouter' + 'supprimer').";
 

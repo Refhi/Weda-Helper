@@ -19,5 +19,10 @@ function ongletsCompatibles(onglets = [], searchType) {
         allergiePrinceps: ['Allergies', 'Traitement']
     };
     const types = typesParRecherche[searchType]?.map(t => t.toLowerCase());
-    return types ? onglets.filter(o => types.includes((o.type ?? o.categorie ?? '').trim().toLowerCase())) : onglets;
+    return types ? onglets.filter(o => types.includes((o.type ?? o.categorie ?? '').trim().toLowerCase())
+        || (searchType === "CIM10" && estOngletMedical(o.type ?? o.categorie))) : onglets;
+}
+
+function estOngletMedical(titre) {
+    return /^ant[ée]c[ée]dents m[ée]dicaux$/i.test((titre || "").trim());
 }
