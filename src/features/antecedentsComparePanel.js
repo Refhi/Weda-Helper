@@ -48,6 +48,11 @@ function injectAntecedentsPanelStyle() {
         .wh-atcd-row.refused { opacity: .45; }
         .wh-atcd-details { font-size: 12px; color: #444; white-space: pre-line; }
         .wh-atcd-tag { font-weight: bold; margin-right: 4px; }
+        #messageContainer .docImportButtons:has(> .wh-atcd-preview) { display: flex; flex-wrap: wrap; height: auto; }
+        .docImportButtons > .wh-atcd-preview { order: 1; flex: 0 0 100%; max-height: min(32vh, 260px); overflow: auto; text-align: left; }
+        .wh-atcd-preview .wh-atcd-row { align-items: center; }
+        .wh-atcd-preview .wh-atcd-title { min-width: 0; text-align: left; overflow-wrap: anywhere; }
+        .wh-atcd-preview .wh-atcd-details { display: block; }
     `;
     document.head.appendChild(style);
 }
@@ -132,7 +137,7 @@ function makeAtcdRow(className) {
  *   retenues ; renvoie le message de résultat à afficher.
  * @returns {{getSelectedOperations: function(): Array<object>, destroy: function(): void}}
  */
-function attachAntecedentsComparePanel(button, operations, { getPatientId = resolveCurrentPatientIdWithWait, onSelectionChange = () => { }, onApply = null } = {}) {
+function attachAntecedentsComparePanel(button, operations, { getPatientId = resolveCurrentPatientIdWithWait, onSelectionChange = () => { }, onApply = null, previewBar = null } = {}) {
     injectAntecedentsPanelStyle();
     const selected = new Set(operations.map((_, index) => index));
     let panel = null;
@@ -423,9 +428,62 @@ function attachAntecedentsComparePanel(button, operations, { getPatientId = reso
 
     button.addEventListener('click', show);
 
+    const preview = document.createElement("section");
+    if (previewBar && operations.length) {
+        preview.className = "wh-atcd-preview";
+        preview.setAttribute("aria-label", "Propositions d’antécédents");
+        const status = document.createElement("span");
+        status.setAttribute("role", "status");
+        for (const [i, op] of operations.entries()) {
+            const row = makeAtcdRow(op.action);
+            const name = op.nomCible || op.data?.nom || "";
+            const detail = document.createElement("button");
+            detail.type = "button";
+            detail.className = "wh-atcd-title";
+            const action = { ajouter: "À ajouter", modifier: "À modifier", supprimer: "À supprimer", convertirCim10: "À convertir" }[op.action] || op.action;
+            detail.textContent = `${action} · ${name}`;
+            const comment = document.createElement("small");
+            comment.className = "wh-atcd-details";
+            comment.textContent = op.data?.commentaire || "";
+            detail.append(comment);
+            atcdOperationDetails(op).then(({ label, details }) => {
+                if (label) comment.before(" — " + label);
+                comment.textContent = details.join(" · ");
+            });
+            detail.onclick = async () => {
+                if (!panel) await show();
+                checkboxes[i]?.focus();
+            };
+            if (name && ["ajouter", "modifier"].includes(op.action)) {
+                const actions = typeof validerPropositionAntecedent === "function" ? ["Modifier", "Valider"] : ["Modifier"];
+                for (const label of actions) {
+                    const quick = document.createElement("button");
+                    quick.type = "button";
+                    quick.textContent = label;
+                    quick.setAttribute("aria-label", `${label} « ${name} »`);
+                    quick.onclick = async event => {
+                        if (!event.isTrusted || applying) return;
+                        applying = true;
+                        refreshValidateButton();
+                        status.textContent = "Ouverture de la fiche…";
+                        try { status.textContent = await onApply([op], label === "Valider"); }
+                        catch (error) { status.textContent = "❌ " + error.message; }
+                        finally { applying = false; refreshValidateButton(); }
+                    };
+                    row.append(quick);
+                }
+            }
+            row.append(detail);
+            preview.append(row);
+        }
+        preview.append(status);
+        previewBar.append(preview);
+    }
+
     return {
         getSelectedOperations: () => operations.filter((_, index) => selected.has(index)),
         destroy: () => {
+            preview.remove();
             button.removeEventListener('click', show);
             clearTimeout(hideTimer);
             cleanupLayout?.();

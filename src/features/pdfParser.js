@@ -84,6 +84,11 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
         }
     });
 
+    document.addEventListener("click", event => {
+        const line = event.target.closest?.("#messageList .messageLineItem");
+        if (line && !line.closest(".messageListItem.selected")) addAntecedentsButton(null, null);
+    }, true);
+
     // On ajoute aussi une petite aide : le champ de recherche de patient est décalé vers le bas de l'écran
     waitForElement({
         selector: "#ContentPlaceHolder1_FindPatientUcForm1_PanelFindPatient",
@@ -359,6 +364,7 @@ async function fillAttachmentsES(firstData, firstHashId) {
  */
 async function processFoundPdfIframeEchanges(isINSValidated = false) {
     console.log("[pdfParser] Echanges - Démarrage avec isINSValidated =", isINSValidated);
+    const selectedRow = document.querySelector("#messageList .messageListItem.selected");
 
     // ===========================================
     // ÉTAPE 1 : Extraction des données du PDF
@@ -465,10 +471,12 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     // Sans rien modifier : les opérations proposées (format de traiterAntecedentsBatch) sont stockées dans
     // extractedData.antecedentsDiscordances et appliquées seulement au clic de l'utilisateur (@see addAntecedentsButton).
     // Déjà vérifié pour ce PDF (données en cache, @see getPdfData) : pas de nouvelle demande à l'IA.
-    if (!Array.isArray(extractedData.antecedentsDiscordances)) {
+    const patientId = await resolveCurrentPatientIdWithWait();
+    const samePatient = () => patientId && getPdfParserPatientId() === patientId && selectedRow?.matches(".selected") && selectedRow.isConnected;
+    if (!Array.isArray(extractedData.antecedentsDiscordances) || extractedData.antecedentsPatientId !== patientId) {
         extractedData.antecedentsDiscordances = await checkAntecedentsAgainstDocument(fullText, urlPDF, { messageBody });
         if (Array.isArray(extractedData.antecedentsDiscordances)) {
-            setPdfData(hashId, { antecedentsDiscordances: extractedData.antecedentsDiscordances });
+            if (samePatient()) setPdfData(hashId, { antecedentsPatientId: patientId, antecedentsDiscordances: extractedData.antecedentsDiscordances });
         }
     }
 
@@ -496,6 +504,12 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     }
 
     const validationButton = document.querySelector("#messageContainer .button.valid");
+    if (selectedRow && (!selectedRow.isConnected || !selectedRow.matches(".selected"))) {
+        sessionStorage.removeItem(`${hashId}_processing`);
+        return;
+    }
+    const saved = getPdfData(hashId);
+    if (samePatient() && saved.antecedentsPatientId === patientId) extractedData.antecedentsDiscordances = saved.antecedentsDiscordances;
     if (validationButton) {
         console.log("[pdfParser] Mise au focus sur le bouton de validation");
         validationButton.focus();
@@ -542,6 +556,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
  * @param {string} hashId - PDF concerné : une fois appliquées, les opérations sont retirées du cache.
  */
 let antecedentsComparePanelController = null;
+let applyingAntecedent = false;
 
 function addAntecedentsButton(operations, validationButton, hashId) {
     antecedentsComparePanelController?.destroy();
@@ -567,20 +582,41 @@ function addAntecedentsButton(operations, validationButton, hashId) {
         const total = operations.length;
         button.textContent = `Antécédents ⚠️ (${total})`;
         button.title = "[Weda-Helper] Cliquer pour comparer aux antécédents existants, choisir les opérations et les valider.";
+        const row = validationButton.closest("#messageContainer") && document.querySelector("#messageList .messageListItem.selected");
+        const patientId = row && getPdfData(hashId, "antecedentsPatientId");
+        const snapshot = JSON.stringify(getPdfData(hashId, "antecedentsDiscordances"));
+        const sameAnalysis = () => getPdfData(hashId, "antecedentsPatientId") === patientId
+            && JSON.stringify(getPdfData(hashId, "antecedentsDiscordances")) === snapshot;
+        const current = () => button.isConnected && row?.isConnected && row.matches(".selected") && validationButton.getClientRects().length
+            && !validationButton.disabled && !document.querySelector('[id$="_PanelFindPatient"]')?.getClientRects().length
+            && patientId === getPdfParserPatientId() && sameAnalysis();
         antecedentsComparePanelController = attachAntecedentsComparePanel(button, operations, {
+            previewBar: patientId && validationButton.closest(".docImportButtons"),
             onSelectionChange: count => { button.textContent = `Antécédents ⚠️ (${count}/${total})`; },
-            onApply: async selectedOperations => {
-                const results = await traiterAntecedentsBatch(selectedOperations, { patientId: await resolveCurrentPatientIdWithWait() });
-                const failures = results.filter(result => result?.error);
-                if (failures.length) {
-                    button.textContent = 'Antécédents ❌';
-                    button.title = failures.map(result => result.error).join('\n');
-                    return `❌ ${failures.length} échec(s) : ${failures.map(result => result.error).join(' ; ')}`;
+            onApply: async (selection, direct = false) => {
+                if (applyingAntecedent || (row && !current())) {
+                    return "❌ Vérifiez le patient et rouvrez la proposition.";
                 }
-                button.textContent = 'Antécédents ✅';
-                button.title = '[Weda-Helper] Antécédents mis à jour.';
-                setPdfData(hashId, { antecedentsDiscordances: [] });
-                return `✅ ${selectedOperations.length} opération(s) appliquée(s).`;
+                applyingAntecedent = true;
+                try {
+                    const results = direct ? [await validerPropositionAntecedent(selection[0], patientId, current)]
+                        : await traiterAntecedentsBatch(selection, { patientId: patientId || await resolveCurrentPatientIdWithWait() });
+                    const applied = selection.filter((_, i) => results[i]?.success === true);
+                    const errors = selection.flatMap((_, i) => results[i]?.success ? [] : [results[i]?.message || results[i]?.error || "Résultat non confirmé par Weda."]);
+                    if (applied.length && (!patientId || sameAnalysis())) {
+                        const redraw = button.isConnected && (!patientId || current());
+                        const remaining = operations.filter(op => !applied.includes(op));
+                        setPdfData(hashId, { antecedentsDiscordances: remaining });
+                        if (redraw) addAntecedentsButton(remaining, validationButton, hashId);
+                        if (redraw && errors.length) sendWedaNotif({ message: errors.join("\n"), type: "fail" });
+                    }
+                    return errors.length ? "❌ " + errors.join("\n") : `✅ ${applied.length} opération(s) appliquée(s).`;
+                } catch (error) {
+                    if (error.validationIncertaine && sameAnalysis()) setPdfData(hashId, { antecedentsDiscordances: null });
+                    throw error;
+                } finally {
+                    applyingAntecedent = false;
+                }
             }
         });
     }
