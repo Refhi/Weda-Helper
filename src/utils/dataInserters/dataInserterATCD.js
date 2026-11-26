@@ -809,6 +809,11 @@ function trouverOnglet(ongletsPossibles, ongletSouhaite, searchType) {
     console.log("[dataInserterATCD] ongletsPossibles:", ongletsPossibles, "recherche:", ongletSouhaite, searchType);
     // Un onglet incompatible avec la modalité d'ajout (ex. CIM-10 sur une allergie) n'est jamais retenu
     const candidats = ongletsCompatibles(ongletsPossibles, searchType);
+    if (estOngletMedical(ongletSouhaite)) {
+        const medical = candidats.find(o => estOngletMedical(o.titre) && (searchType ? o.autorise && o.zoneDepot : o.freeAtcdButton));
+        if (medical) return medical;
+        throw new Error(`L’onglet « ${ongletSouhaite} » est indisponible pour cet ajout.`);
+    }
     let toReturn = null;
     if (ongletSouhaite) {
         const cible = ongletSouhaite.trim().toLowerCase();

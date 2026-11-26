@@ -543,7 +543,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
  */
 let antecedentsComparePanelController = null;
 
-function addAntecedentsButton(operations, validationButton, hashId) {
+async function addAntecedentsButton(operations, validationButton, hashId) {
     antecedentsComparePanelController?.destroy();
     antecedentsComparePanelController = null;
     document.querySelector('#pdfParserAntecedentsButton')?.remove();
@@ -555,6 +555,19 @@ function addAntecedentsButton(operations, validationButton, hashId) {
     button.style.marginLeft = '10px';
     // tabindex -1 : ne perturbe pas le focus (Espace valide, Maj+Tab corrige) de l'import.
     button.tabIndex = -1;
+    validationButton.after(button);
+    const estAjoutPathologie = op => op.action === "ajouter" && (!op.data?.searchType || op.data.searchType === "CIM10")
+        && /^pathologies?(?: actives?)?$/i.test(op.data?.onglet?.trim());
+    if (Array.isArray(operations) && operations.some(estAjoutPathologie)) {
+        const tabs = await getOptionPromise("memoriserOngletsAntecedents");
+        if (!button.isConnected) return;
+        operations = operations.map(op => {
+            if (!estAjoutPathologie(op)) return op;
+            const medical = Array.isArray(tabs) && tabs.length
+                ? ongletsCompatibles(tabs, op.data.searchType).find(o => estOngletMedical(o.titre))?.titre : "Antécédents Médicaux";
+            return medical ? { ...op, data: { ...op.data, onglet: medical } } : op;
+        });
+    }
     if (operations === 'erreur') {
         button.textContent = 'Antécédents ?';
         button.title = "[Weda-Helper] L'analyse des antécédents par l'IA a échoué : à vérifier manuellement.";
@@ -584,7 +597,6 @@ function addAntecedentsButton(operations, validationButton, hashId) {
             }
         });
     }
-    validationButton.after(button);
 }
 
 async function showClickedPatient() {
