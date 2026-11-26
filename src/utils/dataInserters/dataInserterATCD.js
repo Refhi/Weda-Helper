@@ -322,7 +322,7 @@ async function insertAntecedent(data = {}, options = {}) {
 
 /**
  * @param {*} data
- * @param {{avantRemplissage?: (data: object) => void}} [hooks] avantRemplissage est appelé une fois le panneau ouvert,
+ * @param {{avantRemplissage?: (data: object) => void, valider?: Function}} [hooks] avantRemplissage est appelé une fois le panneau ouvert,
  *   avant son remplissage, et peut ajuster data en fonction de l'état du panneau.
  */
 async function _insertAntecedent(data = {}, hooks = {}) {
@@ -337,6 +337,11 @@ async function _insertAntecedent(data = {}, hooks = {}) {
     // }
     // mais étonnament on peut créer un antécédent libre sans fournir aucun champ.
     
+    if (hooks.valider && data.nom && [..._atcdDoc.querySelectorAll(AntecedentFormSelectors.antecedentList.atcdItem)].some(item => {
+        const existing = parseAntecedentItem(item.innerText);
+        return [existing.titre, existing.cim10Code].some(value => value && normalizeAtcdText(value) === normalizeAtcdText(data.nom));
+    })) return { success: false, message: "Cet antécédent figure déjà dans le dossier. Vérifiez la proposition." };
+
     if (!data.searchType) {
         // Aucune modalité de recherche n'est spécifiée, on crée donc un antécédent libre.
         
@@ -381,6 +386,7 @@ async function _insertAntecedent(data = {}, hooks = {}) {
         // Allergie introuvable dans la base : repli sur un antécédent libre (même nom, même onglet demandé).
         const estAllergie = data.searchType === "allergieMolecule" || data.searchType === "allergiePrinceps";
         if (estAllergie && !resultatSelectionne) {
+            if (hooks.valider) return { success: false, message: "Allergie codifiée introuvable. Utilisez Modifier pour vérifier la proposition." };
             console.warn(`[dataInserterATCD] Aucun résultat pour l'allergie "${toSearch}" : repli sur un antécédent libre.`);
             const { searchType, ...donneesLibres } = data;
             const resultatLibre = await _insertAntecedent(donneesLibres, hooks);
@@ -421,8 +427,7 @@ async function _insertAntecedent(data = {}, hooks = {}) {
     hooks.avantRemplissage?.(data);
     remplirPaneauAntecedent(data);
 
-    // Validation par l'utilisateur lui-même : le panneau est affiché et on attend son choix.
-    const choix = await attendreValidationUtilisateur({
+    const choix = hooks.valider ? await hooks.valider() : await attendreValidationUtilisateur({
         attendu: 'valider',
         consigne: "Weda-Helper a préparé ou modifié cet d'antécédent demandé.\nVérifiez-le, puis cliquez sur « Valider » pour l'enregistrer.\nPour abandonner, cliquez sur « Annuler » (ou « Supprimer » si indisponible)."
     });
@@ -442,15 +447,20 @@ async function modifierAntecedent(nomCible, data = {}, options = {}) {
     return withAntecedentContext(() => _modifierAntecedent(nomCible, data, options), options);
 }
 
-async function _modifierAntecedent(nomCible, data = {}, { codifie } = {}) {
-    const item = await ouvrirPanneauAntecedent(nomCible, { codifie });
+async function _modifierAntecedent(nomCible, data = {}, { codifie, valider } = {}) {
+    const item = await ouvrirPanneauAntecedent(nomCible, { codifie, exactUnique: !!valider });
+    if (valider && !item) return { success: false, message: "Antécédent exact introuvable. Utilisez Modifier pour vérifier la fiche." };
     if (!item && codifie !== undefined) return { success: false, message: messageAntecedentIntrouvable(nomCible, codifie) };
     await waitForElementInDocument(() => _atcdDoc, AntecedentFormSelectors.pannelAntecedents.panel, 3000)
     .catch(err => console.error("[dataInserterATCD] Erreur lors de l'attente du panneau des antécédents :", err));
 
+    if (valider && normalizeAtcdText(lireEtatPanneauAntecedent().nom) !== normalizeAtcdText(nomCible)
+        && codeCim10DuPanneau() !== nomCible.trim().toUpperCase()) {
+        return { success: false, message: "La fiche ouverte ne correspond pas à l’antécédent à modifier." };
+    }
     remplirPaneauAntecedent(data);
 
-    const choix = await attendreValidationUtilisateur({
+    const choix = valider ? await valider() : await attendreValidationUtilisateur({
         attendu: 'valider',
         consigne: "Weda-Helper a préparé les modifications de cet antécédent.\nVérifiez-les, puis cliquez sur « Valider » pour les enregistrer.\nPour abandonner, cliquez sur « Annuler » (ou « Supprimer » si indisponible)."
     });
@@ -534,6 +544,78 @@ async function _traiterAntecedentsBatch(operations = []) {
     return resultats;
 }
 
+function codeCim10DuPanneau() {
+    const text = _atcdDoc.querySelector(AntecedentFormSelectors.pannelAntecedents.cim10)?.textContent || '';
+    return text.toUpperCase().match(/\b[A-Z]\d{2}(?:\.[A-Z0-9]+)?\b/)?.[0];
+}
+
+function formulaireAntecedentsDuPatient(doc, patientId) {
+    // Dans PatDk, le numéro de dossier peut être suivi du contexte Weda, séparé par « | ».
+    return doc?.location.pathname.endsWith('/AntecedentForm.aspx')
+        && new URL(doc.URL).searchParams.get('PatDk')?.split('|', 1)[0] === String(patientId);
+}
+
+// Appelé après le clic sur une seule proposition présentée à l’utilisateur.
+async function validerPropositionAntecedent({ action, nomCible, data, codifie }, patientId, isCurrent) {
+    if (!/^[1-9]\d*$/.test(patientId) || !isCurrent() || !(action === "ajouter" ? data?.nom : action === "modifier" && nomCible)) {
+        return { success: false, message: "Proposition ou patient à vérifier." };
+    }
+    return withAntecedentContext(() => {
+        const doc = _atcdDoc;
+        const canSaveDirectly = () => isCurrent() && _atcdDoc === doc && formulaireAntecedentsDuPatient(doc, patientId);
+        if (!canSaveDirectly()) return { success: false, message: "Le dossier ou le formulaire a changé. Rouvrez la proposition." };
+        const valider = () => enregistrerAntecedentPrepare(data || {}, { patientId, canSaveDirectly });
+        return action === "ajouter" ? _insertAntecedent({ ...data }, { valider }) : _modifierAntecedent(nomCible, { ...data }, { codifie, valider });
+    }, { patientId });
+}
+
+// Le clic sur « Valider » autorise uniquement la fiche et les valeurs présentées sur cette ligne.
+async function enregistrerAntecedentPrepare(data, {patientId, canSaveDirectly}) {
+    const sel = AntecedentFormSelectors.pannelAntecedents;
+    const getDoc = () => _atcdIframe ? _atcdIframe.contentDocument : _atcdDoc;
+    const ouvert = element => element && !element.hidden && element.ownerDocument.defaultView.getComputedStyle(element).display !== 'none';
+    const panel = _atcdDoc.querySelector(sel.panel);
+    const submit = _atcdDoc.querySelector(sel.boutonValider);
+    if (!canSaveDirectly() || getDoc() !== _atcdDoc || !ouvert(panel) || !ouvert(submit) || submit.disabled) {
+        throw new Error("Le dossier ou le formulaire a changé. Rouvrez la proposition.");
+    }
+    const fields = lireEtatPanneauAntecedent();
+    fields.onglet = _atcdDoc.querySelector(sel.onglet)?.selectedOptions[0]?.textContent;
+    if (data.searchType === 'CIM10') fields.nom = codeCim10DuPanneau();
+    if (data.couleur) {
+        const swatch = _atcdDoc.createElement('span').style;
+        swatch.color = data.couleur;
+        if (swatch.color && _atcdDoc.querySelector(sel.couleur.input)?.style.backgroundColor === swatch.color) fields.couleur = data.couleur;
+    }
+    for (const [key, value] of Object.entries(data)) {
+        if (key === 'searchType' || value == null) continue;
+        const same = key === 'nom' || key === 'onglet' ? normalizeAtcdText(value) === normalizeAtcdText(fields[key])
+            : String(fields[key]).replace(/\r\n/g, '\n') === String(value).replace(/\r\n/g, '\n');
+        if (fields[key] == null || !same) throw new Error(`Weda n’a pas repris le champ « ${key} ». Utilisez Modifier pour vérifier la fiche.`);
+    }
+    submit.click();
+    let fermeDepuis = 0, refus = '';
+    const enregistre = await waitUntil(() => {
+        const doc = getDoc();
+        if (formulaireAntecedentsDuPatient(doc, patientId) && doc.readyState === 'complete' && doc.querySelector(AntecedentFormSelectors.antecedentList.panel)) {
+            const erreur = doc.querySelector(sel.messageErreur);
+            if (ouvert(erreur) && erreur.textContent.trim() && ouvert(doc.querySelector(sel.panel))) {
+                refus = erreur.textContent.trim();
+                return true;
+            }
+            if (!ouvert(doc.querySelector(sel.panel))) {
+                fermeDepuis ||= Date.now();
+                return Date.now() - fermeDepuis >= 300;
+            }
+        }
+        fermeDepuis = 0;
+        return false;
+    }, {interval:100, maxRetry:120, label:'validation de l’antécédent'}).catch(() => false);
+    if (refus) throw new Error(refus);
+    if (!enregistre) throw Object.assign(new Error("Weda n’a pas confirmé l’enregistrement. Revérifiez le dossier."), {validationIncertaine:true});
+    return 'valider';
+}
+
 /**
  * Attend que l'indicateur de chargement ASP.NET (UpdateProgress) soit masqué depuis au moins `stableMs`,
  * pour éviter d'enchaîner une opération pendant qu'un postback est encore en cours.
@@ -588,7 +670,7 @@ function lireEtatPanneauAntecedent() {
  * Si rien n'est trouvé, on retombe sur une correspondance souple sur le premier mot du texte recherché,
  * car le texte affiché peut être tronqué ou écrit différemment (ex. "gel transderm" vs "Gel transdermique Récip").
  */
-async function ouvrirPanneauAntecedent(titre, { codifie } = {}) {
+async function ouvrirPanneauAntecedent(titre, { codifie, exactUnique = false } = {}) {
     // On commence par vérifier que le titre est valide.
     if (!titre) return null;
     const normaliser = t => (t || '').trim().replace(/\s+/g, ' ').toLowerCase();
@@ -601,9 +683,12 @@ async function ouvrirPanneauAntecedent(titre, { codifie } = {}) {
         Array.from(el.querySelectorAll('*')).some(sub => normaliser(sub.textContent) === cible);
     const correspondanceSouple = el => normaliser(el.textContent).includes(premierMot);
     // codifie (true/false) restreint la recherche aux antécédents codifiés (CIM-10) ou libres ; undefined = tous.
-    const chercher = critere => Array.from(_atcdDoc.querySelectorAll(AntecedentFormSelectors.antecedentList.atcdItem))
-        .filter(el => codifie === undefined || estAntecedentCodifie(el) === codifie)
-        .find(critere);
+    const chercher = critere => {
+        const matches = Array.from(_atcdDoc.querySelectorAll(AntecedentFormSelectors.antecedentList.atcdItem))
+            .filter(el => (codifie === undefined || estAntecedentCodifie(el) === codifie) && critere(el));
+        if (exactUnique && matches.length > 1) throw new Error("Plusieurs antécédents portent ce nom. Utilisez Modifier pour vérifier la fiche.");
+        return matches[0];
+    };
 
     // La liste peut ne pas être encore à jour : on laisse sa chance à la correspondance stricte avant de relâcher le critère.
     let counter = 0;
@@ -615,7 +700,7 @@ async function ouvrirPanneauAntecedent(titre, { codifie } = {}) {
             counter++;
         }
     }
-    if (!item) item = chercher(correspondanceSouple);
+    if (!item && !exactUnique) item = chercher(correspondanceSouple);
 
     console.log("[dataInserterATCD] Item trouvé pour ouverture du panneau :", item);
     if (item) item.click();
