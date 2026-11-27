@@ -33,3 +33,9 @@ autoAddToOption({
     valuesToAdd: ['COE'],
     deadline: '2027-04-01'
 });
+autoAddToOption({
+    updateId: 'noemie-substitution-reset-nov-2026',
+    optionName: 'autoNoemieSubstitutionTable',
+    resetToDefault: true,
+    deadline: '2027-04-01'
+});
