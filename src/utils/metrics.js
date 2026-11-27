@@ -5,6 +5,7 @@
  * pour mesurer l'efficacité de l'extension.
  * 
  * @exports recordMetrics - Enregistre des métriques d'utilisation
+ * @exports recordAiMetrics - Enregistre la consommation de tokens estimée d'un appel IA
  */
 
 /**
@@ -21,6 +22,54 @@ function recordMetrics(metrics) {
     if (!isProcessingQueue) {
         processQueue();
     }
+}
+
+/**
+ * Enregistre la consommation (estimée) de tokens d'un appel au modèle, avec son contexte.
+ * Stockage : 'aiMetrics-YYYY-MM-DD' et 'globalAiMetrics', au format
+ * { [usage]: { calls, tokensIn, tokensOut, toolCalls: { [nomOutil]: nombre } } }.
+ * Depuis le document offpage (sans chrome.storage), l'enregistrement est délégué au background.
+ * @param {{usage: string, tokensIn: number, tokensOut: number, toolCalls?: string[]}} entry
+ * usage : contexte de l'appel (nom de la chaîne d'outils, ou 'conversation').
+ */
+function recordAiMetrics(entry) {
+    if (typeof chrome === 'undefined' || !chrome.storage?.local) {
+        chrome.runtime.sendMessage({ type: 'recordAiMetrics', entry });
+        return;
+    }
+    aiMetricsQueue.push({ entry, date: new Date().toISOString().split('T')[0] });
+    if (!isProcessingAiQueue) processAiQueue();
+}
+
+let aiMetricsQueue = [];
+let isProcessingAiQueue = false;
+
+function addAiEntry(stats, entry) {
+    const usage = entry.usage || 'conversation';
+    const target = stats[usage] || (stats[usage] = { calls: 0, tokensIn: 0, tokensOut: 0, toolCalls: {} });
+    target.calls += 1;
+    target.tokensIn += entry.tokensIn || 0;
+    target.tokensOut += entry.tokensOut || 0;
+    for (const name of entry.toolCalls || []) {
+        target.toolCalls[name] = (target.toolCalls[name] || 0) + 1;
+    }
+    return stats;
+}
+
+function processAiQueue() {
+    const item = aiMetricsQueue.shift();
+    if (!item) {
+        isProcessingAiQueue = false;
+        return;
+    }
+    isProcessingAiQueue = true;
+    const dayKey = 'aiMetrics-' + item.date;
+    chrome.storage.local.get([dayKey, 'globalAiMetrics'], (result) => {
+        chrome.storage.local.set({
+            [dayKey]: addAiEntry(result[dayKey] || {}, item.entry),
+            globalAiMetrics: addAiEntry(result.globalAiMetrics || {}, item.entry)
+        }, processAiQueue);
+    });
 }
 
 function processQueue() {
@@ -56,7 +105,8 @@ function processQueue() {
     let oneYearAgoStr = 'metrics-' + oneYearAgo.toISOString().split('T')[0];
     chrome.storage.local.get(null, function(items) {
         for (let key in items) {
-            if (key.startsWith('metrics-') && key < oneYearAgoStr) {
+            if ((key.startsWith('metrics-') && key < oneYearAgoStr) ||
+                (key.startsWith('aiMetrics-') && key < 'ai' + oneYearAgoStr.charAt(0).toUpperCase() + oneYearAgoStr.slice(1))) {
                 chrome.storage.local.remove(key);
             }
         }

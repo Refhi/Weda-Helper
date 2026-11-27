@@ -16,8 +16,15 @@ importScripts(
     'background/tabsHandler.js',
     'background/permissionsHandler.js',
     'background/heidiContextHandler.js',
-    'background/offscreenHandler.js'
+    'background/offscreenHandler.js',
+    'utils/metrics.js'
 );
+
+// Métriques IA envoyées par le document offpage (sans accès à chrome.storage)
+chrome.runtime.onMessage.addListener((message) => {
+    if (message?.type === 'recordAiMetrics') recordAiMetrics(message.entry);
+    return false;
+});
 
 
 

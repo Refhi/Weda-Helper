@@ -423,6 +423,8 @@ async function openAiClient({
             }
         }
 
+        recordAiMetrics({ usage: _chaine?.nom || chaineInitiale?.nom || 'conversation', tokensIn: estimateTokens(filteredMessages), tokensOut: estimateTokens([responseMessage]), toolCalls: (responseMessage.tool_calls || []).map(tc => tc.function?.name) });
+
         // Gestion du function/tool calling : si le modèle demande à appeler une ou plusieurs fonctions
         // le LLM peut en effet renvoyer un message assistant avec un ou plusieurs tool_calls, qu'il faut exécuter et renvoyer au modèle pour obtenir la réponse finale.
         if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {

@@ -1418,6 +1418,62 @@ Promise.all([
 });
 
 
+// 6bis - Affichage des métriques IA (tokens estimés, par usage)
+
+function mergeAiStats(total, stats) {
+  for (const [usage, s] of Object.entries(stats || {})) {
+    const t = total[usage] || (total[usage] = { calls: 0, tokensIn: 0, tokensOut: 0, toolCalls: {} });
+    t.calls += s.calls || 0;
+    t.tokensIn += s.tokensIn || 0;
+    t.tokensOut += s.tokensOut || 0;
+    for (const [name, n] of Object.entries(s.toolCalls || {})) {
+      t.toolCalls[name] = (t.toolCalls[name] || 0) + n;
+    }
+  }
+  return total;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function renderAiCell(s) {
+  if (!s) return '<td>–</td>';
+  const tools = Object.entries(s.toolCalls).sort((a, b) => b[1] - a[1])
+    .map(([name, n]) => `${escapeHtml(name)} ×${n}`).join(', ');
+  return `<td>${s.calls} appel(s)<br>↑ ${s.tokensIn} / ↓ ${s.tokensOut} tokens${tools ? `<br><small>${tools}</small>` : ''}</td>`;
+}
+
+chrome.storage.local.get(null, function (items) {
+  const container = document.getElementById('ai-metrics');
+  if (!container) return;
+  const periods = [['Aujourd\'hui', 1], ['Cette semaine', 7], ['Ce mois', 30], ['Cette année', 365]];
+  const rows = periods.map(([label, days]) => {
+    const start = new Date();
+    start.setDate(start.getDate() - days);
+    const startKey = 'aiMetrics-' + start.toISOString().split('T')[0];
+    const total = {};
+    for (const key in items) {
+      if (key.startsWith('aiMetrics-') && key >= startKey) mergeAiStats(total, items[key]);
+    }
+    return [label, total];
+  });
+  rows.push(['Depuis l\'installation', mergeAiStats({}, items.globalAiMetrics)]);
+
+  const usages = [...new Set(rows.flatMap(([, stats]) => Object.keys(stats)))].sort();
+  if (usages.length === 0) {
+    container.textContent = 'Aucune consommation enregistrée pour le moment.';
+    return;
+  }
+  const table = document.createElement('table');
+  table.innerHTML = `<tr><th></th>${usages.map(u => `<th>${escapeHtml(u)}</th>`).join('')}</tr>` +
+    rows.map(([label, stats]) => `<tr><td>${label}</td>${usages.map(u => renderAiCell(stats[u])).join('')}</tr>`).join('');
+  container.appendChild(table);
+});
+
+
 // 7 - Lien vers le log du compagnon
 function updateCompanionLogLink() {
   chrome.storage.local.get(['apiKey', 'portCompanion', 'version', 'defaultSettings'], function (result) {
