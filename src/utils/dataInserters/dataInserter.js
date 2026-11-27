@@ -20,7 +20,8 @@
  * Valeur: fonction async (data, options) => résultat structuré (voir insertData)
  */
 const INSERT_TARGETS = {
-    toConsultation: insertToConsultation,
+    // Wrapper : insertToConsultation est défini dans dataInserterConsultation.js, chargé dans un autre script
+    toConsultation: (data, options) => insertToConsultation(data, options),
     toCertificat: insertToCertificat,
     toDemande: insertToDemande,
     toCourrier: insertToCourrier,
@@ -129,18 +130,53 @@ function buildTimestampedTitle(prefix) {
 // ─── Fonctions dédiées par cible ─────────────────────────────────────────────
 
 /**
+ * Renseigne les items de suivi (poids, TA, IMC...) de la consultation ouverte dans l'iframe de travail.
+ * Les items sont propres à chaque utilisateur : on les retrouve par libellé (ou par index, tel que
+ * fourni par pageContext > suivis, qui donne aussi les valeurs antérieures dans `historique`).
+ * Un item introuvable est ignoré et signalé dans le résultat.
+ * @param {() => Document} getDoc
+ * @param {Array<{label?: string, index?: number, value: string|number, unit?: string}>} suivis
+ * @returns {Promise<{renseignes: string[], introuvables: Array<string|number>}>}
+ */
+async function fillSuivis(getDoc, suivis) {
+    await waitForElementInDocument(getDoc, '[id^="ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_"]');
+    const items = readSuiviItems(getDoc());
+    const renseignes = [];
+    const introuvables = [];
+    for (const suivi of suivis) {
+        const key = suivi.index ?? suivi.label;
+        const row = key === undefined ? null : findSuiviRow(items, key);
+        if (!row || suivi.value === undefined || suivi.value === null) {
+            introuvables.push(key);
+            continue;
+        }
+        await fillField(getDoc, `#ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_${row.index}`, String(suivi.value));
+        if (suivi.unit) {
+            await fillField(getDoc, `#ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviUnit_${row.index}`, suivi.unit);
+        }
+        renseignes.push(row.label);
+    }
+    if (introuvables.length) {
+        console.warn('[dataInserter] Items de suivi introuvables :', introuvables);
+    }
+    return { renseignes, introuvables };
+}
+
+/**
  * Logique commune à toutes les cibles : ouvre un iframe caché sur la page d'accueil patient,
  * crée un nouveau document via le menu, renseigne titre / sous-titre / contenu, sauvegarde puis
  * nettoie l'iframe.
  *
- * @param {{title?: string, subtitle?: string, content: string}} data - Titre (#TextBoxEvenementTitre),
- *   sous-titre (#TextBoxDocumentTitre) et contenu à insérer dans l'éditeur de texte de la cible
+ * @param {{title?: string, subtitle?: string, content?: string, suivis?: Array<{label?: string, index?: number, value: string|number, unit?: string}>}} data - Titre (#TextBoxEvenementTitre),
+ *   sous-titre (#TextBoxDocumentTitre) et contenu à insérer dans l'éditeur de texte de la cible.
+ *   `suivis` (consultation uniquement) : items de suivi à renseigner ; `content` devient alors optionnel
  * @param {{debug?: boolean, patientId?: string|null, homeUrl?: string|null}} options
  * @param {{menuLabel: string, editorSelector: string, iframeName: string}} targetConfig
  * @returns {Promise<{titre: string|null, sousTitre: string|null}>}
  */
-async function insertToDocument({ title, subtitle, content }, { debug = false, patientId = null, homeUrl = null } = {}, targetConfig) {
-    if (!content) {
+async function insertToDocument({ title, subtitle, content, suivis }, { debug = false, patientId = null, homeUrl = null } = {}, targetConfig) {
+    const hasSuivis = Array.isArray(suivis) && suivis.length > 0;
+    if (!content && !hasSuivis) {
         throw new Error('Contenu vide, insertion annulée.');
     }
 
@@ -179,16 +215,22 @@ async function insertToDocument({ title, subtitle, content }, { debug = false, p
             subtitleInput = await fillField(getDoc, '#TextBoxDocumentTitre', subtitle);
         }
 
-        const editorIframe = await waitForElementInDocument(getDoc, editorSelector);
-        await waitForElementInDocument(
-            () => editorIframe.contentDocument || editorIframe.contentWindow?.document,
-            'body'
-        );
+        if (hasSuivis) {
+            await fillSuivis(getDoc, suivis);
+        }
 
-        await sleep(200); // Attendre un peu pour que l'iframe soit bien chargée
-        const editorBody = (editorIframe.contentDocument || editorIframe.contentWindow?.document).body;
+        if (content) {
+            const editorIframe = await waitForElementInDocument(getDoc, editorSelector);
+            await waitForElementInDocument(
+                () => editorIframe.contentDocument || editorIframe.contentWindow?.document,
+                'body'
+            );
 
-        await fillField(getDoc, editorBody, content, 'innerText');
+            await sleep(200); // Attendre un peu pour que l'iframe soit bien chargée
+            const editorBody = (editorIframe.contentDocument || editorIframe.contentWindow?.document).body;
+
+            await fillField(getDoc, editorBody, content, 'innerText');
+        }
 
         const saveButton = await waitForElementInDocument(getDoc, '#ButtonSave');
         saveButton.click();
@@ -202,18 +244,6 @@ async function insertToDocument({ title, subtitle, content }, { debug = false, p
             workIframe.remove();
         }
     }
-}
-
-/**
- * Enregistre un contenu texte dans une NOUVELLE consultation pour le patient courant.
- * @see insertToDocument
- */
-async function insertToConsultation(data, options) {
-    return insertToDocument(data, options, {
-        menuLabel: 'Consultation',
-        editorSelector: "iframe[id^='CE_ContentPlaceHolder1_EditorConsultation'][id$='_ID_Frame'], #CE_ContentPlaceHolder1_EvenementInformationFiltreUCForm1_EditorZoneUserTextInEvement_ID_Frame",
-        iframeName: 'WedaHelperConsultationIframe',
-    });
 }
 
 /**

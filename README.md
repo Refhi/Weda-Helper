@@ -311,6 +311,7 @@ Vous permet de connecter un modèle d'IA pour diverses actions :
 - Créer des documents (ex. "Fait un courrier pour l'urologue à partir du dossier du patient et de ma consultation du jour")
 - Avoir un **deuxième** regard circonstancié sur un résultat d'examen (biologique ou autre)
 - plus de précisions et tuto sur le wiki [ici](https://github.com/Refhi/Weda-Helper/wiki)
+- un accès au contenu d'Heidi via le client IA (merci @DrFloW71 !)
 
 
 ## Problèmes et limitations connues (qui seront peut-être résolues dans de futures mises à jour):

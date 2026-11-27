@@ -84,30 +84,6 @@ addTweak('/FolderMedical/WedaEchanges', 'autoPdfParser', function () {
         }
     });
 
-    // On va également déclencher une procédure simplifiée si est cliqué le bouton "Importer le message"
-    waitForElement({
-        selector: "div.docImportBody td a",
-        text: "Importer le message",
-        callback: function (elements) {
-            // Ajout d'un listener sur tous les boutons "Importer le message"
-            elements.forEach(function (element) {
-                element.addEventListener("click", function () {
-                    console.log("[pdfParser] Importation du message cliqué, je vais traiter le PDF présent dans l'iframe.");
-
-                    // Récupérer l'élément frère en troisième position vers le haut
-                    let gdParrentElement = element.parentNode.parentNode;
-                    let nameElement = gdParrentElement.querySelector("td:nth-child(2) a");
-                    let nameText = nameElement ? nameElement.innerText : "Élément non trouvé";
-                    let ddnElement = gdParrentElement.querySelector("td:nth-child(3)");
-                    nameText += ddnElement ? ` ${ddnElement.innerText}` : "";
-                    console.log("[pdfParser] Nom du document importé :", nameText);
-                    addPatientNameDisplay(nameText, nameElement);
-                    processFoundPdfIframeEchanges(true);
-                });
-            });
-        }
-    });
-
     // On ajoute aussi une petite aide : le champ de recherche de patient est décalé vers le bas de l'écran
     waitForElement({
         selector: "#ContentPlaceHolder1_FindPatientUcForm1_PanelFindPatient",
@@ -222,12 +198,18 @@ addTweak('/FolderMedical/UpLoaderForm.aspx', 'debugModePdfParser', function () {
  * }
  */
 async function processFoundPdfIframeImport(PDFIframeElements) {
+    const done = await analyzeImportIframe(PDFIframeElements);
+    if (done && typeof advanceImportLoop === 'function') advanceImportLoop();
+}
+
+// Renvoie true si le traitement est terminé (false si un refresh de page est attendu)
+async function analyzeImportIframe(PDFIframeElements) {
     // ===========================================
     // ÉTAPE 1 : Extraction des données du PDF
     // (pas de modification du DOM ni de refresh)
     // ===========================================
     const baseData = await extractBasePdfData(PDFIframeElements);
-    if (!baseData) return;
+    if (!baseData) return true;
 
     const { urlPDF, fullText, hashId, pdfText, messageBody } = baseData;
 
@@ -240,11 +222,21 @@ async function processFoundPdfIframeImport(PDFIframeElements) {
     */
     let extractedData = getPdfData(hashId);
 
-    // Si déjà importé, on redirige vers le champ de recherche
-    if (extractedData.alreadyImported) {
+    // Si déjà importé (ou si le commentaire a déjà été rempli par l'IA), on redirige vers le champ de recherche
+    const commentFilledByAI = isImportCommentAIGenerated();
+    if (extractedData.alreadyImported || commentFilledByAI) {
         console.log("[pdfParser] Import - Données déjà importées. Redirection vers recherche.");
         selectFirstPatientOrSearchField();
-        return;
+        if (commentFilledByAI) {
+            // L'analyse du document est sautée, mais pas la vérification des antécédents.
+            // alreadyImported est mémorisé pour que l'entrée de cache ne soit pas prise pour une extraction complète.
+            extractedData.alreadyImported = true;
+            setPdfData(hashId, { alreadyImported: true });
+            await precheckImportAntecedents(extractedData, fullText, urlPDF, messageBody, hashId);
+        } else {
+            attachImportAntecedentsButton(extractedData, hashId);
+        }
+        return true;
     }
     
     // Sinon, on extrait les données
@@ -260,7 +252,7 @@ async function processFoundPdfIframeImport(PDFIframeElements) {
     // on stoppe ici. La fonction sera rappelée après le rechargement de page.
     if (searchResult.needsPageRefresh) {
         console.log("[pdfParser] Import - Refresh attendu :", searchResult.message);
-        return;
+        return false;
     }
 
     // Si échec de la recherche patient, on continue quand même pour remplir le formulaire
@@ -274,8 +266,88 @@ async function processFoundPdfIframeImport(PDFIframeElements) {
     await setExtractedDataInForm(extractedData, fullText);
     markDataAsImported(hashId, extractedData);
     recordMetrics({ clicks: 9, drags: 9, keyStrokes: 10 });
+    await precheckImportAntecedents(extractedData, fullText, urlPDF, messageBody, hashId);
 
     setTimeout(() => highlightDate(), 200);
+    return true;
+}
+
+/**
+ * Indique si le commentaire de la ligne d'import courante commence par "[IA]", c'est-à-dire que le document
+ * a déjà été analysé et rempli par l'IA : il n'y a pas lieu de refaire l'analyse (page d'import uniquement).
+ * @returns {boolean}
+ */
+function isImportCommentAIGenerated() {
+    const lineNumber = actualImportActionLine();
+    if (lineNumber === null) return false;
+    const commentInput = document.querySelector(`#ContentPlaceHolder1_FileStreamClassementsGrid_EditBoxGridFileStreamClassementCommentaire_${lineNumber}`);
+    return (commentInput?.value || '').trimStart().startsWith('[IA]');
+}
+
+/**
+ * Pré-vérification des antécédents dans la page d'import (même mécanisme que pour les échanges sécurisés,
+ * @see processFoundPdfIframeEchanges) : sans rien modifier, les opérations proposées sont mises en cache par hashId
+ * (extractedData.antecedentsDiscordances) et appliquées seulement au clic sur le bouton affiché à côté du lien patient de la ligne.
+ * Ne fait rien si aucun patient n'est encore sélectionné ou si l'option est désactivée.
+ */
+async function precheckImportAntecedents(extractedData, fullText, urlPDF, messageBody, hashId) {
+    if (Array.isArray(extractedData.antecedentsDiscordances)) {
+        console.log("[pdfParser] Import - Antécédents déjà vérifiés pour", hashId, ": pas de nouvelle demande à l'IA.");
+    } else {
+        console.log("[pdfParser] Import - Pas de vérification des antécédents en cache pour", hashId, ":", extractedData.antecedentsDiscordances);
+        const result = await checkAntecedentsAgainstDocument(fullText, urlPDF, { messageBody });
+        extractedData.antecedentsDiscordances = result;
+        if (Array.isArray(result)) setPdfData(hashId, { antecedentsDiscordances: result });
+    }
+    attachImportAntecedentsButton(extractedData, hashId);
+}
+
+/**
+ * Affiche le bouton antécédents à côté du lien patient de la ligne d'import, à partir du cache (sans appel à l'IA).
+ */
+function attachImportAntecedentsButton(extractedData, hashId) {
+    const lineNumber = actualImportActionLine();
+    const anchor = lineNumber !== null
+        ? document.querySelector(`#ContentPlaceHolder1_FileStreamClassementsGrid_LinkButtonFileStreamClassementsGridPatientNom_${lineNumber}`)
+        : null;
+    addAntecedentsButton(extractedData.antecedentsDiscordances, anchor, hashId);
+}
+
+/**
+ * Signale la fin du traitement d'un message dans les échanges sécurisés (succès, échec ou déjà importé).
+ * Permet à wedaEchanges.js d'enchaîner automatiquement sur le message suivant d'une file d'attente
+ * (voir le tweak secureExchangeMessageQueue).
+ * @param {string|null} hashId - Identifiant du PDF traité (null si aucun PDF n'a pu être extrait).
+ */
+function notifyEchangesProcessingDone(hashId) {
+    console.log("[secureExchangeMessageQueue] Traitement terminé pour hashId =", hashId);
+    document.dispatchEvent(new CustomEvent('pdfParserEchangesDone', { detail: { hashId } }));
+}
+
+/**
+ * Remplit le formulaire d'import de chaque pièce jointe PDF du message, en une seule boucle.
+ * La première pièce jointe est celle déjà analysée par processFoundPdfIframeEchanges (données fournies
+ * en paramètre) ; chacune des suivantes est analysée puis remplie dans sa propre zone.
+ * @param {object} firstData - Données extraites de la première pièce jointe.
+ * @param {string} firstHashId - Identifiant du PDF de la première pièce jointe.
+ */
+async function fillAttachmentsES(firstData, firstHashId) {
+    const zones = getPdfAttachmentZonesES();
+    for (const [index, zone] of zones.entries()) {
+        let data = firstData;
+        let hashId = firstHashId;
+        if (index > 0) {
+            const iframes = zone.querySelectorAll('#iFrameViewFile, .mssAttachment embed');
+            const baseData = await extractBasePdfData(iframes, zone);
+            if (!baseData) continue;
+            hashId = baseData.hashId;
+            data = await handleDataExtraction(baseData.fullText, baseData.urlPDF, hashId, { pdfText: baseData.pdfText, messageBody: baseData.messageBody });
+        }
+        await selectDestinationIfNeededES({ destinationNumber: data.destinationClass, attachmentZone: zone, hashId });
+        await setTitleIfNeededES(data.documentTitle, zone);
+        await selectDocumentTypeES(data.documentType, zone);
+        await setCommentaireIfNeededES(data.documentCommentaire, zone);
+    }
 }
 
 /**
@@ -299,13 +371,27 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
 
     // Setup de la procédure
     // Extraction des données de base
-    const baseData = await extractBasePdfData(iframesElements); // s’occupe également de vérifier les données déjà extraites
-    if (!baseData) return;
+    const baseData = await extractBasePdfData(iframesElements); // s'occupe également de vérifier les données déjà extraites
+    if (!baseData) {
+        notifyEchangesProcessingDone(null);
+        return;
+    }
 
     const { urlPDF, fullText, hashId, pdfText, messageBody } = baseData;
+
+    // Vérifier si ce PDF est en cours de traitement pour éviter les ré-exécutions
+    // causées par le rafraîchissement du DOM après un clic patient
+    if (sessionStorage.getItem(`${hashId}_processing`)) {
+        console.log("[pdfParser] Echanges - Ce PDF est déjà en cours de traitement, abandon pour éviter les doublons.");
+        notifyEchangesProcessingDone(hashId);
+        return;
+    } else {// Marquer ce PDF comme en cours de traitement
+        sessionStorage.setItem(`${hashId}_processing`, 'true');
+    }
+
     let extractedData = await handleDataExtraction(fullText, urlPDF, hashId, { pdfText, messageBody });
 
-    // Surveillance des clics sur les patients (pour affichage du nom sélectionné)
+    // Surveiller l'apparition des patients dans la liste pour afficher le nom sélectionné
     waitForElement({
         selector: ".grid-item_tr, .grid-selecteditem",
         callback: showClickedPatient,
@@ -316,6 +402,8 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     if (extractedData.alreadyImported) {
         console.log("[pdfParser] Données déjà importées pour ce PDF. Arrêt de l'extraction. Renvoi vers le champ de recherche ou le 1er patient de la liste si présent");
         selectFirstPatientOrSearchField();
+        sessionStorage.removeItem(`${hashId}_processing`);
+        notifyEchangesProcessingDone(hashId);
         return;
     }
 
@@ -337,6 +425,11 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
             if (searchResult.patientFound) {
                 console.log("[pdfParser] Echanges - Patient trouvé :", searchResult.message);
                 patientSearchSucceeded = true;
+                // Si un refresh est nécessaire, attendre le changement DOM avant de continuer
+                if (searchResult.needsPageRefresh) {
+                    console.log("[pdfParser] Echanges - Attente changement DOM après clic patient");
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
                 break;
             }
 
@@ -359,22 +452,37 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
         }
 
         if (!patientSearchSucceeded) {
-            console.warn("[pdfParser] Echanges - Impossible de trouver le patient automatiquement.");
+            console.warn("[pdfParser] Echanges - Impossible de trouver le patient automatiquement, passage au message suivant.");
+            sessionStorage.removeItem(`${hashId}_processing`);
+            notifyEchangesProcessingDone(hashId);
+            return;
+        }
+    }
+
+    // ===========================================
+    // ÉTAPE 2.A : Vérification de la concordance des antécédents
+    // ===========================================
+    // Sans rien modifier : les opérations proposées (format de traiterAntecedentsBatch) sont stockées dans
+    // extractedData.antecedentsDiscordances et appliquées seulement au clic de l'utilisateur (@see addAntecedentsButton).
+    // Déjà vérifié pour ce PDF (données en cache, @see getPdfData) : pas de nouvelle demande à l'IA.
+    if (!Array.isArray(extractedData.antecedentsDiscordances)) {
+        extractedData.antecedentsDiscordances = await checkAntecedentsAgainstDocument(fullText, urlPDF, { messageBody });
+        if (Array.isArray(extractedData.antecedentsDiscordances)) {
+            setPdfData(hashId, { antecedentsDiscordances: extractedData.antecedentsDiscordances });
         }
     }
 
     // ===========================================
     // ÉTAPE 3 : Remplissage du formulaire d'import
     // ===========================================
-    await selectDestinationIfNeededES(extractedData.destinationClass);
-    // 2. Mettre le titre
-    await setTitleIfNeededES(extractedData.documentTitle);
-    // 3. Sélectionner la bonne catégorie
-    await selectDocumentTypeES(extractedData.documentType);
-    // 4. Mettre le commentaire
-    await setCommentaireIfNeededES(extractedData.documentCommentaire);
-    // Marquage des données comme déjà importées
-    markDataAsImported(hashId, extractedData);
+    await fillAttachmentsES(extractedData, hashId);
+    // Pas de marquage "déjà importé" : dans la messagerie sécurisée, le formulaire
+    // n'est pas conservé par Weda si l'on change de patient entre deux.
+
+    // ===========================================
+    // ÉTAPE 3.5 : Surveillance des modifications utilisateur
+    // ===========================================
+    await watchAllFormFieldChangesES();
 
     // ===========================================
     // ÉTAPE 4 : Focus sur l'élément de validation
@@ -420,6 +528,63 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
     } else {
         console.error("[pdfParser] Bouton de validation introuvable");
     }
+
+    addAntecedentsButton(extractedData.antecedentsDiscordances, validationButton, hashId);
+    sessionStorage.removeItem(`${hashId}_processing`);
+    notifyEchangesProcessingDone(hashId);
+}
+
+/**
+ * Affiche, à côté du bouton de validation, le résultat de la vérification des antécédents : « ✅ » si le document
+ * concorde avec le dossier, « ⚠️ » sinon (un clic ouvre le panneau de comparaison).
+ * @param {Array<object>|null} operations - Opérations proposées (@see checkAntecedentsAgainstDocument), null si non vérifié.
+ * @param {HTMLElement|null} validationButton
+ * @param {string} hashId - PDF concerné : une fois appliquées, les opérations sont retirées du cache.
+ */
+let antecedentsComparePanelController = null;
+
+function addAntecedentsButton(operations, validationButton, hashId) {
+    antecedentsComparePanelController?.destroy();
+    antecedentsComparePanelController = null;
+    document.querySelector('#pdfParserAntecedentsButton')?.remove();
+    if (!validationButton || (operations !== 'erreur' && !Array.isArray(operations))) return;
+
+    const button = document.createElement('button');
+    button.id = 'pdfParserAntecedentsButton';
+    button.type = 'button';
+    button.style.marginLeft = '10px';
+    // tabindex -1 : ne perturbe pas le focus (Espace valide, Maj+Tab corrige) de l'import.
+    button.tabIndex = -1;
+    if (operations === 'erreur') {
+        button.textContent = 'Antécédents ?';
+        button.title = "[Weda-Helper] L'analyse des antécédents par l'IA a échoué : à vérifier manuellement.";
+        button.disabled = true;
+    } else if (operations.length === 0) {
+        button.textContent = 'Antécédents ✅';
+        button.title = '[Weda-Helper] Le document concorde avec les antécédents du patient. Cliquer pour les consulter.';
+        antecedentsComparePanelController = attachAntecedentsComparePanel(button, []);
+    } else {
+        const total = operations.length;
+        button.textContent = `Antécédents ⚠️ (${total})`;
+        button.title = "[Weda-Helper] Cliquer pour comparer aux antécédents existants, choisir les opérations et les valider.";
+        antecedentsComparePanelController = attachAntecedentsComparePanel(button, operations, {
+            onSelectionChange: count => { button.textContent = `Antécédents ⚠️ (${count}/${total})`; },
+            onApply: async selectedOperations => {
+                const results = await traiterAntecedentsBatch(selectedOperations, { patientId: await resolveCurrentPatientIdWithWait() });
+                const failures = results.filter(result => result?.error);
+                if (failures.length) {
+                    button.textContent = 'Antécédents ❌';
+                    button.title = failures.map(result => result.error).join('\n');
+                    return `❌ ${failures.length} échec(s) : ${failures.map(result => result.error).join(' ; ')}`;
+                }
+                button.textContent = 'Antécédents ✅';
+                button.title = '[Weda-Helper] Antécédents mis à jour.';
+                setPdfData(hashId, { antecedentsDiscordances: [] });
+                return `✅ ${selectedOperations.length} opération(s) appliquée(s).`;
+            }
+        });
+    }
+    validationButton.after(button);
 }
 
 async function showClickedPatient() {
@@ -560,25 +725,134 @@ function returnMessageBodyES() {
  *
  * @returns {Element|null} - Le conteneur `.messageAttachment` ciblé, ou null si aucun ne correspond.
  */
-function getActiveAttachmentZoneES() {
-    const attachments = document.querySelectorAll(".messageAttachment");
+function getPdfAttachmentZonesES() {
     const pdfViewerSelector = "#iFrameViewFile, .mssAttachment embed, object[type='application/pdf']";
-    for (const attachment of attachments) {
-        const viewerForm = attachment.querySelector(".view-pdf-document-uc-form");
-        if (viewerForm && viewerForm.querySelector(pdfViewerSelector)) {
-            return attachment;
-        }
-    }
+    return [...document.querySelectorAll(".messageAttachment")].filter(attachment =>
+        // Cherche le viewer PDF directement dans l'attachement (ne pas chercher dans .view-pdf-document-uc-form qui n'existe pas)
+        attachment.querySelector(pdfViewerSelector));
+}
+
+function getActiveAttachmentZoneES() {
+    const zone = getPdfAttachmentZonesES()[0];
+    if (zone) return zone;
     console.warn("[pdfParser] Aucune pièce jointe avec un visualiseur pdf effectif trouvée pour cibler la zone d'action.");
     return null;
 }
 
 /**
+ * Surveille les modifications utilisateur sur les champs du formulaire d'import en messagerie sécurisée.
+ * Sauvegarde instantanément les changements dans le sessionStorage associé au hashId du PDF.
+ *
+ * @param {string} hashId - Identifiant unique du PDF, utilisé comme clé du sessionStorage.
+ * @param {HTMLElement} [attachmentZone=getActiveAttachmentZoneES()] - Zone d'attachment contenant les champs.
+ */
+async function watchFormFieldChangesES(hashId, attachmentZone = getActiveAttachmentZoneES()) {
+    if (!hashId || !attachmentZone) {
+        console.warn("[pdfParser] watchFormFieldChangesES : hashId ou attachmentZone manquant");
+        return;
+    }
+
+    const ES_FORM_FIELDS = {
+        documentType: {
+            selector: "select[title='Attribuer une classification au document']",
+            storageKey: 'documentType',
+            getValue: (element) => element?.options[element.selectedIndex]?.text || null,
+            getDisplayValue: (element) => element?.options[element.selectedIndex]?.text || 'Non sélectionné'
+        },
+        documentTitle: {
+            selector: "input[title=\"C'est le titre qu'aura le document dans le dossier patient\"]",
+            storageKey: 'documentTitle',
+            getValue: (element) => element?.value || null,
+            getDisplayValue: (element) => element?.value || '(vide)'
+        },
+        documentCommentaire: {
+            selector: "input[placeholder='Commentaire']",
+            storageKey: 'documentCommentaire',
+            getValue: (element) => element?.value || null,
+            getDisplayValue: (element) => element?.value || '(vide)'
+        }
+    };
+
+    console.log(`[pdfParser] Surveillance des modifications de formulaire pour hashId: ${hashId}`);
+
+    // Surveiller chaque champ défini
+    Object.entries(ES_FORM_FIELDS).forEach(([fieldName, fieldConfig]) => {
+        const element = attachmentZone.querySelector(fieldConfig.selector);
+        if (!element) {
+            console.warn(`[pdfParser] Champ ${fieldName} introuvable dans la zone d'attachment`);
+            return;
+        }
+
+        // Récupérer la valeur initiale
+        const initialValue = fieldConfig.getValue(element);
+        console.log(`[pdfParser] Surveillance de ${fieldName} - Valeur initiale: ${fieldConfig.getDisplayValue(element)}`);
+
+        // Écouter les changements selon le type d'élément
+        if (element.tagName === 'SELECT') {
+            element.addEventListener('change', () => {
+                const newValue = fieldConfig.getValue(element);
+                console.log(`[pdfParser] Modification détectée - ${fieldName}: ${fieldConfig.getDisplayValue(element)}`);
+                setPdfData(hashId, { [fieldConfig.storageKey]: newValue });
+            });
+        } else if (element.tagName === 'INPUT') {
+            // Écouter à la fois 'input' (saisie) et 'change' (blur)
+            element.addEventListener('input', () => {
+                const newValue = fieldConfig.getValue(element);
+                console.log(`[pdfParser] Modification détectée (input) - ${fieldName}: ${fieldConfig.getDisplayValue(element)}`);
+                setPdfData(hashId, { [fieldConfig.storageKey]: newValue });
+            });
+            element.addEventListener('change', () => {
+                const newValue = fieldConfig.getValue(element);
+                console.log(`[pdfParser] Modification détectée (change) - ${fieldName}: ${fieldConfig.getDisplayValue(element)}`);
+                setPdfData(hashId, { [fieldConfig.storageKey]: newValue });
+            });
+        }
+    });
+
+    // Surveiller les changements de destination (clics sur les boutons .weImportDocTargets)
+    const destinationButtons = attachmentZone.querySelectorAll('.weImportDocTargets');
+    if (destinationButtons.length > 0) {
+        console.log(`[pdfParser] Surveillance de ${destinationButtons.length} bouton(s) de destination`);
+        destinationButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Récupérer la destination sélectionnée via le title du bouton cliqué
+                const destinations = {
+                    "Ranger dans les consultations": "1",
+                    "Ranger dans les résultats d'examens": "2",
+                    "Ranger dans les courriers": "3"
+                };
+                const destinationClass = destinations[button.title] || null;
+                if (destinationClass) {
+                    console.log(`[pdfParser] Modification détectée - destinationClass: ${button.title} (par utilisateur)`);
+                    setPdfData(hashId, { destinationClass: destinationClass, destinationSetByUser: true });
+                }
+            });
+        });
+    }
+}
+
+/**
+ * Surveille les modifications utilisateur sur TOUS les attachements de la messagerie sécurisée.
+ * Appelée une seule fois en étape 3.5 pour surveiller aussi bien le premier que les attachements supplémentaires.
+ */
+async function watchAllFormFieldChangesES() {
+    const zones = getPdfAttachmentZonesES();
+    console.log(`[pdfParser] Surveillance des modifications pour ${zones.length} pièce(s) jointe(s)`);
+
+    for (const zone of zones) {
+        const iframes = zone.querySelectorAll('#iFrameViewFile, .mssAttachment embed');
+        const baseData = await extractBasePdfData(iframes, zone);
+        if (!baseData) continue;
+        const { hashId } = baseData;
+        await watchFormFieldChangesES(hashId, zone);
+    }
+}
+
+/**
  * Sélectionne le bon type de document pour les échanges sécurisés
  */
-async function selectDocumentTypeES(documentType) {
+async function selectDocumentTypeES(documentType, attachmentZone = getActiveAttachmentZoneES()) {
     console.log("[pdfParser] Sélection du type de document :", documentType);
-    const attachmentZone = getActiveAttachmentZoneES();
     if (!attachmentZone || !documentType) {
         console.log("[pdfParser] Pas de pièce jointe ciblée ou pas de type de document défini");
         return;
@@ -609,14 +883,13 @@ async function selectDocumentTypeES(documentType) {
 /**
  * Insère le titre au bon endroit pour les échanges sécurisés
  */
-async function setTitleIfNeededES(Titre) {
+async function setTitleIfNeededES(Titre, attachmentZone = getActiveAttachmentZoneES()) {
     const titleOption = await getOptionPromise('PdfParserAutoTitle');
     console.log("[pdfParser] setTitleIfNeededES avec titleOption", titleOption);
     if (!titleOption) {
         console.log("[pdfParser] Option PdfParserAutoTitle désactivée, pas de titre à mettre");
         return;
     }
-    const attachmentZone = getActiveAttachmentZoneES();
     if (!attachmentZone) return;
     // Le champ de titre est l'input avec le titre "C'est le titre qu'aura le document dans le dossier patient"
     const titleInput = attachmentZone.querySelector("input[title=\"C'est le titre qu'aura le document dans le dossier patient\"]");
@@ -631,18 +904,34 @@ async function setTitleIfNeededES(Titre) {
 }
 
 /**
- * Sélectionne la bonne destination d'importation dans les **échanges sécurisés**, si l'option est activée.
+ * Sélectionne la bonne destination d'importation dans les **échanges sécurisés**.
+ * Si PdfParserAutoClassification est désactivée mais que l'utilisateur a modifié la destination précédemment,
+ * la modification est quand même appliquée.
  */
-async function selectDestinationIfNeededES(destinationNumber) {
-    const selectionNeeded = await getOptionPromise('PdfParserAutoClassification');
-    if (!selectionNeeded) {
+async function selectDestinationIfNeededES({ destinationNumber, attachmentZone, hashId } = {}) {
+    attachmentZone = attachmentZone || getActiveAttachmentZoneES();
+
+    const autoSelectionEnabled = await getOptionPromise('PdfParserAutoClassification');
+    console.log("[pdfParser] Auto selection destination enabled:", autoSelectionEnabled);
+
+    // Vérifier si l'utilisateur a modifié la destination manuellement
+    let userModifiedDestination = false;
+    if (hashId) {
+        const savedData = getPdfData(hashId);
+        if (savedData?.destinationSetByUser) {
+            destinationNumber = savedData.destinationClass;
+            userModifiedDestination = true;
+            console.log("[pdfParser] User modified destination detected:", destinationNumber);
+        }
+    }
+
+    // Continuer si l'option auto est activée OU si l'utilisateur a modifié
+    if (!autoSelectionEnabled && !userModifiedDestination) {
         return;
     }
-    const attachmentZone = getActiveAttachmentZoneES();
+
     if (!attachmentZone) return;
-    // Si l'option est activée, on va chercher la bonne destination
     // Les destinations possibles sont sélectionnées via des éléments clickables
-    // On reprend la classification de extractDestinationClass, mais les noms sont différents
     const destinations = {
         '1': "Ranger dans les consultations",
         '2': "Ranger dans les résultats d'examens",
@@ -664,9 +953,8 @@ async function selectDestinationIfNeededES(destinationNumber) {
  * Insère le commentaire dans les échanges sécurisés, dans l'attachment actuellement sélectionné
  * (celui dont la case à cocher est cochée).
  */
-async function setCommentaireIfNeededES(commentaire) {
+async function setCommentaireIfNeededES(commentaire, attachmentZone = getActiveAttachmentZoneES()) {
     if (!commentaire) return;
-    const attachmentZone = getActiveAttachmentZoneES();
     if (!attachmentZone) return;
     const commentInput = attachmentZone.querySelector("input[placeholder='Commentaire']");
     if (!commentInput) {
@@ -688,7 +976,7 @@ async function setCommentaireIfNeededES(commentaire) {
  * @param {Element[]} iframesElements - Les éléments DOM contenant l'iframe.
  * @returns {Promise<Object|null>} - Les données de base extraites ou null si échec.
  */
-async function extractBasePdfData(iframesElements) {
+async function extractBasePdfData(iframesElements, zone = document) {
     console.log('[pdfParser] ----------------- Nouvelle boucle --------------------------------');
     // Initialisation des variables
     let urlPDF = null;
@@ -696,7 +984,7 @@ async function extractBasePdfData(iframesElements) {
     let hashId = null;
 
     // 1. Trouver l'URL du PDF
-    urlPDF = await findPdfUrl(iframesElements);
+    urlPDF = await findPdfUrl(iframesElements, zone);
     if (!urlPDF) {
         console.log("[pdfParser] l'url du PDF n'a pas été trouvée. On va se baser sur le corps du texte.");
         urlPDF = null;
@@ -873,18 +1161,29 @@ function checkSearchPossibility(searchOptionValue) {
 function handlePatientSearch(extractedData, hashId) {
     console.log("[pdfParser] handlePatientSearch - Début", extractedData);
 
-    // Priorités de recherche : INS complet > NIR tronqué > Date de naissance
-    const searchPriorities = [
+    // Liste des méthodes de recherche par défaut : INS complet > NIR tronqué > Date de naissance
+    let searchPriorities = [
         { type: "InsSearch", data: extractedData.nirMatches?.[0] || null },
-        // On va faire une recherche par NIR tronqué via le champ "Nom" (qui accepte aussi les NIR tronqués)
         { type: "Nom", data: extractedData.nirMatches?.[0]?.substring(0, 13) || null },
         { type: "Naissance", data: extractedData.dateOfBirth !== formatDate(new Date()) ? extractedData.dateOfBirth : null },
     ];
 
+    // Si une méthode a déjà réussi, la mettre en haut de la liste
+    if (extractedData.successfulSearchMethod) {
+        const successfulMethod = searchPriorities.find(m => m.type === extractedData.successfulSearchMethod);
+        if (successfulMethod) {
+            searchPriorities = [
+                successfulMethod,
+                ...searchPriorities.filter(m => m.type !== extractedData.successfulSearchMethod)
+            ];
+            console.log(`[pdfParser] Priorisation de la méthode réussie précédemment : ${extractedData.successfulSearchMethod}`);
+        }
+    }
+
     for (const search of searchPriorities) {
-        // Ignorer les méthodes sans données ou déjà échouées
-        if (!search.data || extractedData.failedSearches?.includes(search.type)) {
-            console.log(`[pdfParser] Méthode ${search.type} ignorée (pas de données ou déjà échouée)`);
+        // Ignorer les méthodes sans données
+        if (!search.data) {
+            console.log(`[pdfParser] Méthode ${search.type} ignorée (pas de données)`);
             continue;
         }
 
@@ -896,41 +1195,32 @@ function handlePatientSearch(extractedData, hashId) {
 
         if (lookupResult.status === 'refresh') {
             // Un changement de mode ou un clic sur "Rechercher" a été effectué
-            // => la page va se rafraichir et la fonction handlePatientSearch sera rappelée après le rechargement
             return { patientFound: false, needsPageRefresh: true, message: lookupResult.message };
         }
 
         if (lookupResult.status !== 'success') {
             // Cette méthode de recherche n'est pas disponible ou a échoué
             console.warn(`[pdfParser] Méthode ${search.type} échouée :`, lookupResult.message);
-            // On marque (via mutation de l'objet) que cette méthode a échoué pour éviter de la retenter
-            extractedData.failedSearches = extractedData.failedSearches || [];
-            extractedData.failedSearches.push(search.type);
-            setPdfData(hashId, extractedData);
-            continue; // Essayer la méthode suivante (boucle for)
+            continue; // Essayer la méthode suivante
         }
 
         // ÉTAPE 2 : La recherche est prête, sélectionner le patient dans la liste
         const clicResult = clicPatient(extractedData);
         console.log(`[pdfParser] clicPatient() =>`, clicResult);
 
-        if (clicResult.status === 'success') {
-            // Patient trouvé et cliqué => succès, mais un refresh DOM est attendu après le clic
-            // la suite de la procédure (remplissage du formulaire) sera exécutée après le rechargement de la page
-            return { patientFound: true, needsPageRefresh: true, message: clicResult.message };
-        }
-
-        if (clicResult.status === 'continue') {
-            // Le bon patient est déjà sélectionné, on va pouvoir passer au remplissage du formulaire sans refresh
-            return { patientFound: true, needsPageRefresh: false, message: clicResult.message };
+        if (clicResult.status === 'success' || clicResult.status === 'continue') {
+            // Patient trouvé et cliqué => sauvegarder la méthode réussie pour la prochaine fois
+            extractedData.successfulSearchMethod = search.type;
+            setPdfData(hashId, extractedData);
+            return {
+                patientFound: true,
+                needsPageRefresh: clicResult.status === 'success',
+                message: clicResult.message
+            };
         }
 
         // Échec : patient non trouvé dans la liste avec cette méthode
         console.warn(`[pdfParser] Patient non trouvé avec méthode ${search.type}`);
-        extractedData.failedSearches = extractedData.failedSearches || [];
-        extractedData.failedSearches.push(search.type);
-        setPdfData(hashId, extractedData);
-        // Continuer avec la méthode suivante
     }
 
     // Toutes les méthodes ont été épuisées sans succès
@@ -965,6 +1255,24 @@ function selectFirstPatientOrSearchField() {
 
 // Bouton pour réinitialiser les données d'un PDF
 function addResetButton(hashId) {
+    // Vérifier si le bouton existe déjà (créé par waitForElement)
+    const existingButton = document.querySelector("#pdfParserResetButton");
+    if (existingButton) {
+        console.log("[pdfParser] Le bouton de réinitialisation existe déjà, modification du comportement.");
+        // Ajouter le resetButton existant au nouvel endroit si nécessaire
+        let binButtonSelector = "#ContentPlaceHolder1_FileStreamClassementsGrid_DeleteButtonGridFileStreamClassement_" + actualImportActionLine();
+        let buttonContainer = document.querySelector(binButtonSelector);
+        if (buttonContainer && buttonContainer.parentElement !== existingButton.parentElement) {
+            buttonContainer.insertAdjacentElement('afterend', existingButton);
+        }
+        // Mettre à jour le onclick pour gérer aussi ce cas
+        existingButton.onclick = function () {
+            sessionStorage.removeItem(hashId);
+            console.log("[pdfParser] Données réinitialisées pour le PDF.");
+        };
+        return;
+    }
+    
     let resetButton = document.createElement('button');
     resetButton.innerText = '🔄'; // Emoji de réinitialisation
     resetButton.style.marginLeft = '10px';
@@ -1346,12 +1654,12 @@ function isValidSearchType(searchType) {
 
 
 // Renvoie l'URL du PDF de l'iframe quand elle est chargée 
-async function findPdfUrl(iframesElements) {
+async function findPdfUrl(iframesElements, zone = document) {
     let iframe = iframesElements[0];
     console.log('[pdfParser/findPdfUrl] iframe', iframe);
 
     if (!iframe) { // Pas certain que cette partie soit encore utile, mais je laisse dans le doute
-        let base64 = document.querySelector('.attachmentContainer object[type="application/pdf"]'); //Bypass pour les pages Echanges Sécurisés sans iframe PDF
+        let base64 = zone.querySelector('.attachmentContainer object[type="application/pdf"]'); //Bypass pour les pages Echanges Sécurisés sans iframe PDF
         if (!base64) {
             console.warn("[pdfParser] iframe et base64 non trouvés. Arrêt de l'extraction du pdf.");
             return null;
@@ -1748,14 +2056,14 @@ function addLogMessageOnMouseOver(elementSelector, message) {
         });
 
         element.addEventListener('mouseleave', () => {
-            // Programmer la disparition après 1000ms
-            leaveTimeout = setTimeout(() => {
-                popup.style.display = 'none';
+            popup.style.display = 'none';
+            if (leaveTimeout) {
+                clearTimeout(leaveTimeout);
                 leaveTimeout = null;
-            }, 1000);
+            }
         });
 
-        // Optionnel : annuler le timeout si on survole la popup elle-même
+        // Annuler la disparition si on survole la popup elle-même
         popup.addEventListener('mouseenter', () => {
             if (leaveTimeout) {
                 clearTimeout(leaveTimeout);
@@ -1764,10 +2072,11 @@ function addLogMessageOnMouseOver(elementSelector, message) {
         });
 
         popup.addEventListener('mouseleave', () => {
-            leaveTimeout = setTimeout(() => {
-                popup.style.display = 'none';
+            popup.style.display = 'none';
+            if (leaveTimeout) {
+                clearTimeout(leaveTimeout);
                 leaveTimeout = null;
-            }, 1000);
+            }
         });
 
         console.log(`[pdfParser] Popup de log ajoutée à l'élément : ${elementSelector}`);

@@ -383,7 +383,7 @@ async function openAiClient({
     // Gestion des tools (function calling)
     // seulement si option activée et useTools = true
     const effectiveUseTools = useTools && (await getAiParams()).toolCalling;
-    const resolvedTools = tools || (effectiveUseTools ? listerDefinitionsOutils() : null);
+    const resolvedTools = tools || (effectiveUseTools ? await listerDefinitionsOutils() : null);
 
     // Une chaîne d'outils en cours (@see toolChains.js) restreint les outils de cette requête uniquement.
     const politiqueChaine = politiqueEtape(_chaine);
@@ -913,6 +913,9 @@ async function handleToolCalls(responseMessage, messages, onToolCall, executeToo
                 suiteEnAttente = appel.suiteEnAttente || suiteEnAttente;
                 progres ||= appel.progres;
             } else {
+                // Un outil `interne` n'est utilisable que dans l'étape de chaîne qui l'expose : hors de cette étape (ex. appel
+                // prématuré, le modèle l'ayant vu cité dans le prompt), l'exécuter court-circuiterait la chaîne.
+                if (availableFunctions[fnName]?.interne) throw new Error(`"${fnName}" ne peut pas être appelé maintenant : suis les consignes de l'étape en cours.`);
                 console.log(`[handleToolCalls] Exécution de ${fnName}...`);
                 fnResult = await runTool(fnName, fnArgs);
             }

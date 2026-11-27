@@ -135,6 +135,7 @@ if (isTestVersion) {
 chrome.storage.local.get('advancedDefaultSettings', function (data) {
   if (data.advancedDefaultSettings) {
     generateOptionsHTML(data.advancedDefaultSettings);
+    initHeidiContextPermissions(); // après la génération : la case est créée par les options
   }
 });
 
@@ -218,11 +219,17 @@ function createInput(option) { // gestion des différents types d'input
         input.classList.add('large-text-input');
         input.value = optionValue;
         input.style.width = '100%';
-        input.style.minHeight = '150px';
+          input.style.height = '40px'; // Réduit par défaut, déployé au focus (comme json)
         input.style.resize = 'vertical';
         input.style.fontFamily = 'inherit';
         input.style.fontSize = '14px';
         input.style.boxSizing = 'border-box';
+        input.addEventListener('focus', function () {
+          this.style.height = '300px';
+        });
+        input.addEventListener('blur', function () {
+          this.style.height = '40px';
+        });
         break;
       case 'radio':
         input.classList.add('radio-group');
@@ -714,6 +721,25 @@ function generateOptionsHTML(settings) {
   });
 }
 
+/** Permission demandée depuis le clic sur la case, jamais depuis un appel de l'IA. */
+function initHeidiContextPermissions() {
+  const permissions = { permissions: ["scripting"], origins: ["https://scribe.heidihealth.com/*"] };
+  const checkbox = document.getElementById("heidiContextAccess");
+  if (!checkbox) return;
+  checkbox.addEventListener("change", async () => {
+    try {
+      if (checkbox.checked) {
+        // Premier appel asynchrone : Chrome exige un geste utilisateur.
+        checkbox.checked = await chrome.permissions.request(permissions);
+      } else {
+        // Ne pas retirer scripting : cette permission peut servir à d'autres fonctionnalités.
+        await chrome.permissions.remove({ origins: permissions.origins });
+      }
+    } catch (error) {
+      checkbox.checked = false;
+    }
+  });
+}
 
 // 2 - Récupérer les valeurs par défaut des raccourcis + gestion des modifications des raccourcis
 chrome.storage.local.get('defaultShortcuts', function (result) {
@@ -740,7 +766,28 @@ chrome.storage.local.get('defaultShortcuts', function (result) {
       button.onclick = shortcutClicked;
       button.id = key;
       buttonContainer.appendChild(button);
+
+      var resetBtn = document.createElement('button');
+      resetBtn.textContent = '↺';
+      resetBtn.className = 'shortcut-reset';
+      resetBtn.title = 'Remettre le raccourci par défaut (' + defaultShortcutValue + ')';
+      resetBtn.onclick = function () {
+        chrome.storage.local.get("shortcuts", function (res) {
+          var shortcuts = res["shortcuts"] || {};
+          shortcuts[key] = defaultShortcutValue;
+          chrome.storage.local.set({ "shortcuts": shortcuts }, function () {
+            hotkeys.unbind('*');
+            button.classList.remove('modifying');
+            button.innerHTML = defaultShortcutValue;
+            button.setAttribute('data-initial-text', defaultShortcutValue);
+          });
+        });
+      };
+      var resetContainer = document.createElement('td');
+      resetContainer.style.textAlign = 'right';
+      resetContainer.appendChild(resetBtn);
       shortcutElement.appendChild(buttonContainer);
+      shortcutElement.appendChild(resetContainer);
       shortcutElement.appendChild(description);
       table.appendChild(shortcutElement);
 
@@ -953,6 +1000,37 @@ function collectCurrentValues(defaultSettings, defaultShortcuts) {
   });
 }
 
+// Normalise une valeur pour comparaison : un texte JSON valide est re-sérialisé (indépendamment de la
+// mise en forme), un objet est sérialisé ; les autres valeurs sont comparées telles quelles.
+function normalizeForCompare(value) {
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return typeof parsed === 'object' && parsed !== null ? JSON.stringify(parsed) : value;
+    } catch (e) {
+      return value;
+    }
+  }
+  return typeof value === 'object' && value !== null ? JSON.stringify(value) : value;
+}
+
+// Retire de valuesToSave (en place) les options égales à leur valeur par défaut et renvoie leurs noms.
+// Utilisé à l'enregistrement et à l'export : une valeur par défaut n'a pas à être figée, l'utilisateur
+// suit ainsi les évolutions de la valeur par défaut du développeur.
+function removeDefaultValues(valuesToSave, defaultSettings) {
+  const removedKeys = [];
+  for (const key of Object.keys(valuesToSave)) {
+    if (key === 'shortcuts' || !(key in defaultSettings)) continue;
+    const def = defaultSettings[key];
+    const same = normalizeForCompare(valuesToSave[key]) === normalizeForCompare(def);
+    if (same) {
+      removedKeys.push(key);
+      delete valuesToSave[key];
+    }
+  }
+  return removedKeys;
+}
+
 // 3 - Enregistrement des valeurs dans le stockage local lors du click sur id=save
 chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (result) {
   var defaultSettings = result.defaultSettings;
@@ -990,6 +1068,10 @@ chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (resu
             return;
           }
         }
+        // Une valeur identique à la valeur par défaut n'est pas stockée : l'utilisateur suit ainsi
+        // automatiquement les évolutions de la valeur par défaut du développeur.
+        const keysToRemove = removeDefaultValues(valuesToSave, defaultSettings);
+        chrome.storage.local.remove(keysToRemove);
         chrome.storage.local.set(valuesToSave, function () {
           console.log('✅ Sauvegardé avec succès');
           alert('✅ Les options ont été sauvegardées avec succès');
@@ -1041,7 +1123,7 @@ clearButton.addEventListener('click', function () {
 });
 
 // Ajoutez le bouton à la page
-document.body.appendChild(clearButton);
+document.getElementById('maintenance-buttons').appendChild(clearButton);
 
 
 // Ajout d'un bouton pour effacer les raccourcis clavier et donc les remettre par défaut
@@ -1072,7 +1154,7 @@ clearShortcutsButton.addEventListener('click', function () {
 });
 
 // Ajout du bouton à l'interface utilisateur
-document.body.appendChild(clearShortcutsButton);
+document.getElementById('maintenance-buttons').appendChild(clearShortcutsButton);
 
 // Ajout d'un bouton pour effacer les settings et donc les remettre par défaut
 var clearSettingsButton = document.createElement('button');
@@ -1100,15 +1182,17 @@ clearSettingsButton.addEventListener('click', function () {
 });
 
 // Ajout du bouton à l'interface utilisateur
-document.body.appendChild(clearSettingsButton);
+document.getElementById('maintenance-buttons').appendChild(clearSettingsButton);
 
 // Ajout d'un bouton copiant les paramètres actuels dans le presse-papier
 var copySettingsButton = document.createElement('button');
-copySettingsButton.textContent = '📋📤Copier/Sauv. param.';
+copySettingsButton.textContent = '📋📤';
+copySettingsButton.title = 'Copier / sauvegarder les paramètres';
 copySettingsButton.addEventListener('click', function () {
   chrome.storage.local.get(['defaultSettings', 'defaultShortcuts'], function (result) {
     collectCurrentValues(result.defaultSettings, result.defaultShortcuts)
       .then(valuesToSave => {
+        removeDefaultValues(valuesToSave, result.defaultSettings);
         const settingsStr = JSON.stringify(valuesToSave, null, 2);
         
         // Copie dans le presse-papier
@@ -1143,11 +1227,12 @@ copySettingsButton.addEventListener('click', function () {
   });
 });
 // Ajout du bouton à l'interface utilisateur
-document.body.appendChild(copySettingsButton);
+document.getElementById('settings-toolbar').appendChild(copySettingsButton);
 
 // Ajout d'un bouton important les paramètres depuis le presse-papier
 var importSettingsButton = document.createElement('button');
-importSettingsButton.textContent = '📋📥Coller paramètres';
+importSettingsButton.textContent = '📋📥';
+importSettingsButton.title = 'Coller les paramètres';
 importSettingsButton.addEventListener('click', function () {
   navigator.clipboard.readText().then(text => {
     if (text) {
@@ -1181,11 +1266,12 @@ importSettingsButton.addEventListener('click', function () {
   });
 });
 // Ajout du bouton à l'interface utilisateur
-document.body.appendChild(importSettingsButton);
+document.getElementById('settings-toolbar').appendChild(importSettingsButton);
 
 // Ajout d'un bouton pour charger les paramètres depuis un fichier
 var loadFromFileButton = document.createElement('button');
-loadFromFileButton.textContent = '📁📥Charger depuis fichier';
+loadFromFileButton.textContent = '📁📥';
+loadFromFileButton.title = 'Charger les paramètres depuis un fichier';
 loadFromFileButton.addEventListener('click', function () {
   // Créer un input file invisible
   const fileInput = document.createElement('input');
@@ -1224,7 +1310,27 @@ loadFromFileButton.addEventListener('click', function () {
   document.body.removeChild(fileInput);
 });
 // Ajout du bouton à l'interface utilisateur
-document.body.appendChild(loadFromFileButton);
+document.getElementById('settings-toolbar').appendChild(loadFromFileButton);
+
+// Raccourcis Ctrl+C / Ctrl+V / Ctrl+U. Les copier/coller natifs sont préservés dans les champs de saisie
+// ou lorsqu'une sélection de texte existe ; rien n'est déclenché pendant la saisie d'un raccourci clavier.
+copySettingsButton.title += ' (Ctrl+C ou Ctrl+S)';
+importSettingsButton.title += ' (Ctrl+V)';
+loadFromFileButton.title += ' (Ctrl+U)';
+document.addEventListener('keydown', function (event) {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
+  if (document.querySelector('button.modifying')) return;
+  const target = document.activeElement;
+  const key = event.key.toLowerCase();
+  const inField = target && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
+  // Ctrl+S n'a pas de rôle natif utile : il reste actif même dans un champ de saisie
+  if (inField && key !== 's') return;
+  const actions = { c: copySettingsButton, s: copySettingsButton, v: importSettingsButton, u: loadFromFileButton };
+  if (!actions[key]) return;
+  if (key === 'c' && String(window.getSelection()).length > 0) return;
+  event.preventDefault();
+  actions[key].click();
+});
 
 
 
@@ -1314,9 +1420,9 @@ Promise.all([
 
 // 7 - Lien vers le log du compagnon
 function updateCompanionLogLink() {
-  chrome.storage.local.get(['apiKey', 'portCompanion', 'version'], function (result) {
+  chrome.storage.local.get(['apiKey', 'portCompanion', 'version', 'defaultSettings'], function (result) {
     const apiKey = result.apiKey || '';
-    const port = result.portCompanion || '';
+    const port = result.portCompanion || result.defaultSettings?.portCompanion || '';
     const version = result.version || '';
     const logLink = `http://localhost:${port}/log?apiKey=${encodeURIComponent(apiKey)}&versioncheck=${version}`;
     document.getElementById('companionLogLing').href = logLink;

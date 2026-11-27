@@ -28,6 +28,13 @@ function addTweak(path, option, callback) {
         // on attend le retour de weda (avec un timeout)
         await waitForWeda({ logWait: option });
 
+        // Kill-switch de la popup : désactive tous les tweaks
+        const { killSwitch } = await chrome.storage.local.get('killSwitch');
+        if (killSwitch === true) {
+            console.log(`[addTweak] ${option} bloqué par le kill-switch`);
+            return;
+        }
+
         if (mandatory) {
             console.log(`[addTweak] ${option} activé`);
             callback();

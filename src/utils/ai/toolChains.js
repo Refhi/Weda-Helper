@@ -13,12 +13,14 @@
  */
 
 /**
- * Définitions envoyées par défaut au modèle : les outils du registre (hors outils `interne`, réservés aux chaînes)
+ * Définitions envoyées par défaut au modèle : les outils du registre (hors outils `interne`, réservés aux chaînes, et outils dont la `condition` n'est pas remplie)
  * et les points d'entrée des chaînes.
  */
-function listerDefinitionsOutils() {
+async function listerDefinitionsOutils() {
+    const outils = Object.values(availableFunctions).filter(f => !f.interne);
+    const actifs = await Promise.all(outils.map(async f => !f.condition || await f.condition()));
     return [
-        ...Object.values(availableFunctions).filter(f => !f.interne).map(f => f.definition),
+        ...outils.filter((_, i) => actifs[i]).map(f => f.definition),
         ...Object.values(toolChains).map(c => c.definition).filter(Boolean)
     ];
 }
@@ -145,6 +147,8 @@ async function traiterAppelEtape(chaine, nomOutil, args, runTool, onToolCall, si
     if (refus) {
         chaine.essais++;
         if (chaine.essais < (etape.maxEssais ?? 1)) return { refus, chaine };
+        // Dernier échec : l'outil est appelé avec des arguments d'erreur pour que l'appelant en attente soit prévenu.
+        if (etape.argsEchec) await runTool(nomOutil, etape.argsEchec).catch(() => {});
         return { refus: `${refus} Nombre d'essais épuisé : chaîne abandonnée, informe l'utilisateur de l'échec.`, chaine: null };
     }
 

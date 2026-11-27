@@ -231,6 +231,14 @@
             background-color: #e9ecef;
         }
 
+        .action-group { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+        #settings-toolbar { justify-content: center; padding: 0 10px 10px; margin: 0 0 10px; border-bottom: 1px solid #dee2e6; }
+        #settings-toolbar button { padding: 6px 10px; font-size: 16px; }
+        .shortcut-reset { background-color: #dc3545; color: #fff; padding: 0 6px; margin-left: 4px; font-size: 11px; line-height: 18px; min-height: 0; border-radius: 4px; }
+        .danger-zone { border: 1px solid #dc3545; border-radius: 8px; padding: 10px 15px; margin: 20px 0 80px; }
+        .danger-zone summary { cursor: pointer; color: #dc3545; font-weight: bold; }
+        .danger-zone button { background-color: #dc3545; color: #fff; }
+
         /* Bouton save fixe amélioré */
         #save {
             position: fixed;
@@ -417,7 +425,9 @@
 </head>
 
 <body>
-    <nav class="sidebar-nav" id="sidebarNav"></nav>
+    <nav class="sidebar-nav" id="sidebarNav">
+        <div id="settings-toolbar" class="action-group"></div>
+    </nav>
     <div class="container">
         <!-- ...existing code... -->
         <h1 id="MainTitle">Options de Weda-Helper</h1>
@@ -448,6 +458,12 @@
 
         <h2 id="metrics-heading">Métriques</h2>
         <div id="metrics"></div>
+        </br>
+
+        <details id="maintenance" class="danger-zone">
+            <summary>⚠️ Maintenance / Réinitialisation</summary>
+            <div id="maintenance-buttons" class="action-group"></div>
+        </details>
         </br>
 
         <button id="save">💾 Enregistrer</button>

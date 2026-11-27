@@ -1,14 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Weda Helper",
-  "version": "3.3.0.11",
+  "version": "3.4.0.6",
   "options_page": "src/ui/options.html",
   "permissions": [
     "storage",
     "offscreen"
   ],
   "optional_permissions": [
-    "tabs"
+    "tabs",
+    "scripting"
   ],
   "host_permissions": [
     "http://localhost/"
@@ -41,6 +42,7 @@
         "src/utils/storage.js",
         "src/utils/metrics.js",
         "src/utils/dom-helpers.js",
+        "src/utils/floatingPanelLayout.js",
         "src/utils/notifications.js",
         "src/utils/alertes-validator.js",
         "src/utils/tweaks.js",
@@ -57,10 +59,11 @@
         "src/utils/iframeHelpers.js",
         "src/utils/dataScrapper.js",
         "src/utils/dataScrapperFileHandler.js",
-        "src/utils/dataInserter.js",
+        "src/utils/dataInserters/dataInserter.js",
+        "src/utils/dataInserters/dataInserterConsultation.js",
         "src/utils/ongletsAntecedents.js",
-        "src/utils/dataInserterATCD.js",
-        "src/utils/dataInserterATCDConversion.js",
+        "src/utils/dataInserters/dataInserterATCD.js",
+        "src/utils/dataInserters/dataInserterATCDConversion.js",
         "src/utils/ai/compactDataForIA.js",
         "src/utils/ai/callableFunctions.js",
         "src/utils/ai/modelSpecificArgs.js",
@@ -98,7 +101,10 @@
         "src/features/courrier.js",
         "src/features/imti.js",
         "src/features/wedaEchanges.js",
+        "src/features/biologieMasse.js",
+        "src/features/antecedentsComparePanel.js",
         "src/features/pdfParser.js",
+        "src/features/importLoop.js",
         "src/features/headlessSetup.js",
         "src/features/instantVaccine.js",
         "src/features/noemie.js",

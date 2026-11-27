@@ -344,6 +344,16 @@ var advancedDefaultSettings = [
             "name": "Weda Echanges",
             "type": TYPE_TITLE,
             "options": [{
+                "name": "secureExchangeOpenNextAfterImport",
+                "type": TYPE_BOOL,
+                "description": "Ouvre le courrier suivant dans Échanges après un import réussi.",
+                "default": false
+            }, {
+                "name": "secureExchangeFaviconCounter",
+                "type": TYPE_BOOL,
+                "description": "Affiche le nombre de courriers de la liste courante dans une pastille sur l'onglet de la messagerie sécurisée.",
+                "default": true
+            }, {
                 "name": "secureExchangeAutoRefresh",
                 "type": TYPE_BOOL,
                 "description": "Rafraîchis automatiquement la messagerie sécurisée (vous devez laisser un onglet ouvert).",
@@ -364,6 +374,16 @@ var advancedDefaultSettings = [
                 "type": TYPE_BOOL,
                 "description": "Permuter le titre du corps du message et de la pièce jointe dans la messagerie sécurisée.",
                 "default": false
+            }, {
+                "name": "autoClickUnPatient",
+                "type": TYPE_BOOL,
+                "description": "Clique automatiquement sur 'Un patient' dès qu'un message est sélectionné dans la messagerie sécurisée.",
+                "default": true
+            }, {
+                "name": "secureExchangeMessageQueue",
+                "type": TYPE_BOOL,
+                "description": "Ajoute une boîte à outils dans la messagerie sécurisée. ▶️ parcourt les messages cochés. 🔁 analyse les messages non lus et conserve son état après rechargement de la page. ⏹️ arrête le parcours en cours.",
+                "default": true
             }]
         }, {
             "name": "Importation",
@@ -521,6 +541,12 @@ var advancedDefaultSettings = [
             "type": TYPE_BOOL,
             "description": "Enregistre automatiquement les consultations toutes les 3 minutes si aucune entrée n'est détectée pendant au moins 5 secondes.",
             "default": true
+        }, {
+            "name": "consultationLinter",
+            "type": TYPE_BOOL,
+            "description": "Ajoute un linter pour les consultations.",
+            "longDescription": "Le dev principal de Weda-Helper a ajouté ce linter pour améliorer la mise en forme des consultations. En détail : il vérifie les espaces autour des tirets et des ':', et applique une majuscule sur les titres finissant par ':'. Cela supprime aussi les espaces et saut de ligne superflus.",
+            "default": false
         }, {
             "name": "autoScore2",
             "type": TYPE_BOOL,
@@ -907,18 +933,17 @@ var advancedDefaultSettings = [
         "description": "Tout ce qui concerne l'assistant IA local",
         "type": TYPE_TITLE,
         "options": [{
-            "name": "ignoreAIGeneratedData",
-            "type": TYPE_BOOL,
-            "description": "Ignorer les données générées par IA lors de la lecture du dossier patient.",
-            "longDescription": "Les champs contenant \"[IA]\" (ex: commentaires de pièces jointes générés par l'IA) sont ignorés par le Data Scrapper (assistant IA, score2prompter, historique FSE...) afin d'éviter la dégradation des données par la relecture de contenus eux-mêmes générés par une IA. Le reste de l'entrée (document, date, identifiant...) est conservé.",
-            "default": true
-        }, {
             "name": "enableIAassistant",
             "type": TYPE_BOOL,
             "description": "Activer ou désactiver l'assistant IA local.",
             "longDescription": "Attention : si vous utilisez un serveur IA distant, des données de santé nominatives lui sont envoyées. Consultez les <a href='" + chrome.runtime.getURL('src/ui/markdownViewer.html?file=docs/IA-distante-wiki.md') + "' target='_blank'>obligations légales (HDS, RGPD, information des patients) et la mise en place sur le wiki</a>.",
-            "default": false,
-            "subOptions": [{
+            "default": false
+        }],
+        "sections": [{
+            "name": "Connexion au serveur IA",
+            "type": TYPE_TITLE,
+            "description": "Serveur, modèle et clé API (deux profils possibles).",
+            "options": [{
                 "name": "IAassistantBaseUrl",
                 "type": TYPE_SMALLTEXT,
                 "description": "URL de base de l'API d'IA (laisser \"http://localhost:1234/v1\" pour LM Studio en local).",
@@ -930,23 +955,6 @@ var advancedDefaultSettings = [
                 "description": "Nom du modèle d'IA local préféré.",
                 "longDescription": " La liste des modèles disponibles est téléchargée à chaque démarrage depuis l'URL de base ; si le modèle préféré n'y figure pas, le premier modèle disponible est utilisé à la place. Le modèle utilisé peut aussi être changé depuis le menu déroulant du Chat.\n<a href='ai-model-settings.html' target='_blank'>Configurer les paramètres spécifiques aux modèles</a>",
                 "default": "auto"
-            }, {
-                "name": "AIAssistantToolCalling",
-                "type": TYPE_BOOL,
-                "description": "Activer les appels aux outils de l'assistant IA local. (Hautement recommandé, privilégiez un modèle compatible).",
-                "default": true
-            }, {
-                "name": "IAassistantMaxToolCalls",
-                "type": TYPE_SMALLTEXT,
-                "description": "Nombre max. d'allers-retours de function calling par réponse.",
-                "longDescription": "Nombre maximum d'allers-retours (appels d'outils successifs) que l'assistant peut effectuer avant d'être forcé de répondre. Évite les boucles infinies si le modèle enchaîne les appels d'outils sans jamais conclure. Augmentez si vos tâches nécessitent beaucoup d'étapes.",
-                "default": "10"
-            }, {
-                "name": "IAassistantMaxFileIds",
-                "type": TYPE_SMALLTEXT,
-                "description": "Nombre max. de pièces jointes lues par l'assistant en un seul appel.",
-                "longDescription": "Limite le nombre de documents (pdf, etc.) dont l'assistant peut lire le contenu en une fois, que ce soit via la lecture directe des documents de recoverPatientData ou via lireDocumentJoint. Chaque document lu augmente fortement la taille du contexte et le temps de traitement. Les premiers documents dans l'ordre d'affichage de Weda (les plus récents) sont lus, les autres sont signalés comme non lus.",
-                "default": "10"
             }, {
                 "name": "IAassistantApiKey",
                 "type": TYPE_SMALLTEXT,
@@ -974,6 +982,39 @@ var advancedDefaultSettings = [
                 "type": TYPE_SMALLTEXT,
                 "description": "Second profil : clé API (si nécessaire).",
                 "default": null
+            }]
+        }, {
+            "name": "Comportement de l'assistant",
+            "type": TYPE_TITLE,
+            "description": "Prompt système, outils, limites et accès aux données.",
+            "options": [{
+                "name": "heidiContextAccess",
+                "type": TYPE_BOOL,
+                "description": "Accès à Heidi pour l'assistant IA local",
+                "default": false
+            }, {
+                "name": "ignoreAIGeneratedData",
+                "type": TYPE_BOOL,
+                "description": "Ignorer les données générées par IA lors de la lecture du dossier patient.",
+                "longDescription": "Les champs contenant \"[IA]\" (ex: commentaires de pièces jointes générés par l'IA) sont ignorés par le Data Scrapper (assistant IA, score2prompter, historique FSE...) afin d'éviter la dégradation des données par la relecture de contenus eux-mêmes générés par une IA. Le reste de l'entrée (document, date, identifiant...) est conservé.",
+                "default": true
+            }, {
+                "name": "AIAssistantToolCalling",
+                "type": TYPE_BOOL,
+                "description": "Activer les appels aux outils de l'assistant IA local. (Hautement recommandé, privilégiez un modèle compatible).",
+                "default": true
+            }, {
+                "name": "IAassistantMaxToolCalls",
+                "type": TYPE_SMALLTEXT,
+                "description": "Nombre max. d'allers-retours de function calling par réponse.",
+                "longDescription": "Nombre maximum d'allers-retours (appels d'outils successifs) que l'assistant peut effectuer avant d'être forcé de répondre. Évite les boucles infinies si le modèle enchaîne les appels d'outils sans jamais conclure. Augmentez si vos tâches nécessitent beaucoup d'étapes.",
+                "default": "10"
+            }, {
+                "name": "IAassistantMaxFileIds",
+                "type": TYPE_SMALLTEXT,
+                "description": "Nombre max. de pièces jointes lues par l'assistant en un seul appel.",
+                "longDescription": "Limite le nombre de documents (pdf, etc.) dont l'assistant peut lire le contenu en une fois, que ce soit via la lecture directe des documents de recoverPatientData ou via lireDocumentJoint. Chaque document lu augmente fortement la taille du contexte et le temps de traitement. Les premiers documents dans l'ordre d'affichage de Weda (les plus récents) sont lus, les autres sont signalés comme non lus.",
+                "default": "10"
             }, {
                 "name": "IAassistantMainSystemPrompt",
                 "type": TYPE_LARGETEXT,
@@ -1030,7 +1071,12 @@ var advancedDefaultSettings = [
                     "value": "max",
                     "description": "Maximum"
                 }]
-            }, {
+            }]
+        }, {
+            "name": "Raccourcis de prompt",
+            "type": TYPE_TITLE,
+            "description": "Prompts prédéfinis affichés sur le bord du chat.",
+            "options": [{
                 "name": "IAassistantPromptShortcut0",
                 "type": TYPE_LARGETEXT,
                 "description": "Raccourci de prompt n°0, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
@@ -1080,7 +1126,12 @@ var advancedDefaultSettings = [
                 "type": TYPE_LARGETEXT,
                 "description": "Raccourci de prompt n°9, affiché sur le bord du chat. Laisser vide pour ne pas l'afficher.",
                 "default": ""
-            }, {
+            }]
+        }, {
+            "name": "Analyse des documents (PDF Parser)",
+            "type": TYPE_TITLE,
+            "description": "Complément IA lors de l'import de documents.",
+            "options": [{
                 "name": "PdfParserAutoAIExtraction",
                 "type": TYPE_BOOL,
                 "description": "Complète via l'assistant IA local les champs du PDF Parser non trouvés par l'analyse automatique (date, nom du patient, commentaire...).",
@@ -1098,10 +1149,68 @@ var advancedDefaultSettings = [
                     "longDescription": "La liste des classifications réellement disponibles dans Weda est transmise à l'IA pour qu'elle choisisse parmi celles-ci. Voir aussi les options 'Catégorie de classement' et 'Règles de classification : destination' pour n'activer l'IA que sur l'une de ces deux thématiques.",
                     "default": false
                 }, {
+                    "name": "PdfParserAIDesc_documentDate",
+                    "type": TYPE_LARGETEXT,
+                    "description": "Consigne IA pour documentDate (date du document)..",
+                    "default": "Date du document, au format JJ/MM/AAAA"
+                }, {
+                    "name": "PdfParserAIDesc_dateOfBirth",
+                    "type": TYPE_LARGETEXT,
+                    "description": "Consigne IA pour dateOfBirth (date de naissance)..",
+                    "default": "Date de naissance du patient, au format JJ/MM/AAAA"
+                }, {
+                    "name": "PdfParserAIDesc_nameMatches",
+                    "type": TYPE_LARGETEXT,
+                    "description": "Consigne IA pour nameMatches (nom du patient)..",
+                    "default": "Nom complet (nom et prénom) du patient"
+                }, {
+                    "name": "PdfParserAIDesc_documentCommentaire",
+                    "type": TYPE_LARGETEXT,
+                    "description": "Consigne IA pour documentCommentaire (commentaire)..",
+                    "default": "Bref commentaire (1 à 2 phrases) résumant le contenu du document"
+                }, {
+                    "name": "PdfParserAIDesc_documentTitle",
+                    "type": TYPE_LARGETEXT,
+                    "description": "Consigne IA pour documentTitle (titre, mode complet)..",
+                    "default": "Titre complet du document, tel qu'il doit apparaître dans le dossier patient"
+                }, {
+                    "name": "PdfParserAIDesc_destinationClass",
+                    "type": TYPE_LARGETEXT,
+                    "description": "Consigne IA pour destinationClass (destination '1', '2' ou '3', mode complet)..",
+                    "default": "Destination du classement : '1' pour Consultation, '2' pour Résultats d'examens, '3' pour Courrier"
+                }, {
+                    "name": "PdfParserAIDesc_documentType",
+                    "type": TYPE_LARGETEXT,
+                    "description": "Consigne IA pour documentType (classification, mode complet)..",
+                    "default": "Classification du document, parmi les valeurs listées ci-dessous le cas échéant"
+                }, {
                     "name": "verifierEtMettreAJourAntecedents",
                     "type": TYPE_BOOL,
-                    "description": "Après avoir renseigné un document, demande à l'IA de vérifier et mettre à jour les antécédents du patient.",
+                    "description": "Après avoir renseigné un document, demande à l'IA de vérifier s'il est cohérent avec les antécédents du patient (sans rien modifier). Dans la messagerie sécurisée, un bouton « Antécédents ✅ / ⚠️ » s'affiche : en cas de différence, un clic met à jour les antécédents.",
                     "default": false
+                }]
+            }]
+        }, {
+            "name": "Analyse de masse des biologies",
+            "type": TYPE_TITLE,
+            "description": "Page des résultats HPRIM (biologies importées).",
+            "options": [{
+                "name": "biologieMasseAnalyse",
+                "type": TYPE_BOOL,
+                "description": "Sur la page des résultats HPRIM, permet d’analyser par IA les bilans cochés ou toute la liste. Le bouton 🔁 mémorise le mode automatique et analyse les nouveaux bilans tant que la page est ouverte (nécessite l’assistant IA).",
+                "longDescription": "Choisit les résultats normaux à inclure et leur ordre si l’assistant IA est activé. Les chiffres, les anomalies et les antériorités restent contrôlés par Weda Helper. Le profil IA actif reçoit les résultats chiffrés reconnus du bilan, sans identité ni historique.",
+                "default": true,
+                "subOptions": [{
+                    "name": "biologieMasseAnalyseTitre",
+                    "type": TYPE_BOOL,
+                    "description": "Après l'analyse, inscrit la synthèse dans le titre du résultat, précédée de [IA].",
+                    "longDescription": "Le titre n'est modifié que si l'analyse a réussi. Il est enregistré dans Weda (le titre existant est remplacé).",
+                    "default": true
+                }, {
+                    "name": "biologieMasseAnalysePrompt",
+                    "type": TYPE_LARGETEXT,
+                    "description": "Prompt envoyé à l'IA pour analyser chaque résultat de biologie.",
+                    "default": "Prépare une synthèse biologique concise. Place les résultats signalés ou hors des normes du laboratoire en premier. Parmi les résultats dans les normes, retiens les valeurs utiles au suivi, notamment la glycémie, les lipides et la fonction rénale si elles sont présentes. Évite de répéter les mesures équivalentes."
                 }]
             }]
         }]

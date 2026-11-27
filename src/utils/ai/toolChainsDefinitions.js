@@ -33,6 +33,30 @@ const toolChains = (() => {
         return termes.length === 1 ? [{ terme: termes[0], resultats: res }] : res;
     }
 
+    /**
+     * Chaîne en une étape de jugement imposant l'outil qui renseigne le document, puis mise à jour éventuelle des antécédents
+     * (`enchainerAntecedents`). Le PDF Parser ne l'enchaîne pas : il lance la vérification séparément, une fois le patient sélectionné.
+     */
+    function chaineRenseignerDocument(outil, { enchainerAntecedents = false } = {}) {
+        return {
+            definition: null,
+            conclusion: "Document renseigné. Résume en quelques lignes au praticien ce que tu as retenu du document (titre, date, classification, commentaire).",
+            etapes: [
+                {
+                    id: 'renseigner',
+                    type: 'jugement',
+                    outils: [outil],
+                    toolChoice: outil,
+                    consigne: () => `Appelle maintenant ${outil} avec les informations demandées.`,
+                    apresAppel: (_nomOutil, _args, resultat, ctx) => { ctx.resultat = resultat; }
+                }
+            ],
+            suite: async ctx => enchainerAntecedents && !ctx.resultat?.error && await getOptionPromise('verifierEtMettreAJourAntecedents')
+                ? { chaine: 'mettreAJourAntecedentsDepuisDocument' }
+                : null
+        };
+    }
+
     function normaliserTerme(terme) {
         return String(terme ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
     }
@@ -69,7 +93,7 @@ const toolChains = (() => {
         type: 'mecanique',
         outil: 'rechercherCim10',
         si: ctx => ctx.termesCim10?.length > 0,
-        args: ctx => ({ termes: ctx.termesCim10, limite: 8 }),
+        args: ctx => ({ termes: ctx.termesCim10 }),
         sortie: (res, ctx) => {
             ctx.candidats = grouperResultatsCim10(res, ctx.termesCim10)
                 .map(g => ({ terme: g.terme, candidats: g.resultats.map(({ code, label }) => ({ code, label })) }));
@@ -99,7 +123,8 @@ const toolChains = (() => {
 
     /** Contrôle les opérations de traiterAntecedents : codes CIM-10 issus d'une recherche, cibles existantes, actions permises. */
     function verifierOperationsAntecedents(args, ctx, nomOutil) {
-        if (nomOutil !== 'traiterAntecedents') return null;
+        if (nomOutil !== 'traiterAntecedents' && nomOutil !== 'renseignerAntecedentsDiscordances') return null;
+        if (nomOutil === 'renseignerAntecedentsDiscordances' && Array.isArray(args?.operations)) args = { operations: operationsAPlatVersBatch(args.operations) };
         if (!Array.isArray(args?.operations)) return "'operations' doit être un tableau. Refais l'appel.";
         const titres = (ctx.antecedents || []).flatMap(section => section.items.map(item => item.titre.toLowerCase()));
         const invalides = args.operations.flatMap(operation => {
@@ -109,7 +134,7 @@ const toolChains = (() => {
                 if (refus) return [{ operation, motif: refus }];
                 if (data?.searchType === 'CIM10') return ctx.codesValides?.has(data.nom) ? [] : [{ operation, motif: "code CIM-10 absent des résultats de recherche" }];
                 if (!data?.searchType) {
-                    if (!ctx.rechercheCim10Faite) return [{ operation, motif: "antécédent libre refusé : l'ajout se fait par défaut en CIM-10, cherche d'abord un code avec rechercherCim10" }];
+                    if (!ctx.rechercheCim10Faite) return [{ operation, motif: "searchType absent : l'ajout se fait par défaut en CIM-10 (cherche d'abord un code avec rechercherCim10) ; pour une allergie, searchType doit valoir 'allergieMolecule' ou 'allergiePrinceps' (champ nommé exactement searchType) et nom le nom du médicament seul" }];
                     if (!ctx.termesRecherches?.has(normaliserTerme(data?.nom))) return [{ operation, motif: "antécédent libre refusé : aucune recherche CIM-10 n'a été faite pour ce libellé (nom doit être exactement le terme recherché). Une allergie s'ajoute avec searchType 'allergieMolecule' ou 'allergiePrinceps', jamais en libre" }];
                 }
                 return [];
@@ -123,7 +148,12 @@ const toolChains = (() => {
             }
             return [{ operation, motif: "action non permise ici (seulement ajouter, modifier, supprimer ou convertirCim10)" }];
         });
-        return invalides.length ? `Opérations refusées : ${JSON.stringify(invalides)}. Refais l'appel.` : null;
+        if (!invalides.length) return null;
+        // Rappelle les codes candidats : un petit modèle recopie souvent le libellé au lieu du code.
+        const rappelCodes = invalides.some(({ motif }) => motif.startsWith("code CIM-10 absent")) && ctx.candidats?.length
+            ? ` Pour data.nom, recopie EXACTEMENT un code (et non le libellé) parmi ces candidats : ${JSON.stringify(ctx.candidats)}.`
+            : '';
+        return `Opérations refusées : ${JSON.stringify(invalides)}.${rappelCodes} Refais l'appel.`;
     }
 
     /** Étape finale des chaînes d'antécédents : recherche CIM-10 possible tant que traiterAntecedents n'est pas appelé. */
@@ -137,7 +167,7 @@ const toolChains = (() => {
         maxEssais: 2
     };
 
-    return {
+    const chaines = {
         convertirAntecedentsCim10: {
             // Seul élément exposé au modèle : il ne voit que ce point d'entrée, pas la mécanique.
             definition: {
@@ -174,7 +204,7 @@ const toolChains = (() => {
                     id: 'chercherCodes',
                     type: 'mecanique',
                     outil: 'rechercherCim10',
-                    args: ctx => ({ termes: ctx.libres, limite: 8 }),
+                    args: ctx => ({ termes: ctx.libres }),
                     sortie: (res, ctx) => {
                         const groupes = grouperResultatsCim10(res, ctx.libres);
                         ctx.candidats = groupes.map(g => ({ titre: g.terme, candidats: g.resultats.map(({ code, label }) => ({ code, label })) }));
@@ -297,6 +327,11 @@ const toolChains = (() => {
                         + `Cet appel est obligatoire : si rien n'est à changer, appelle-le avec une liste vide.`,
                     verifier: args => {
                         if (!Array.isArray(args?.elements)) return "'elements' doit être un tableau. Refais l'appel.";
+                        const champsPermis = ['action', 'libelle', 'nomCible', 'termeCim10', 'allergie', 'commentaire'];
+                        const inconnus = args.elements.flatMap(e => Object.keys(e || {}).filter(cle => !champsPermis.includes(cle)));
+                        if (inconnus.length) return `Champs inconnus : ${[...new Set(inconnus)].join(', ')}. Champs permis : ${champsPermis.join(', ')} (pour une allergie : allergie = 'allergieMolecule' ou 'allergiePrinceps'). Refais l'appel.`;
+                        const sansType = args.elements.filter(e => e?.action === 'ajouter' && !e.termeCim10 && !['allergieMolecule', 'allergiePrinceps'].includes(e.allergie)).map(e => e.libelle);
+                        if (sansType.length) return `Pour chaque 'ajouter' (${sansType.join(', ')}), renseigne soit termeCim10 (terme médical), soit allergie ('allergieMolecule' ou 'allergiePrinceps' : champ nommé exactement 'allergie'). Refais l'appel.`;
                         const codes = args.elements.map(e => e?.termeCim10).filter(terme => /^[A-Z]\d{2}(\.\d+)?$/i.test(String(terme ?? '').trim()));
                         return codes.length
                             ? `termeCim10 doit être un terme médical en toutes lettres, pas un code (${codes.join(', ')}) : les codes sont recherchés automatiquement ensuite. Refais l'appel.`
@@ -423,7 +458,7 @@ const toolChains = (() => {
                     outils: ['insertWedaDocument'],
                     toolChoice: 'insertWedaDocument',
                     consigne: ctx => `Rédige le document demandé (target: ${ctx.entree.target}) à partir de la demande de l'utilisateur et des données du dossier éventuellement jointes, `
-                        + `puis appelle insertWedaDocument UNE fois (target, title, subtitle, content). N'invente aucune information absente du dossier.`,
+                        + `puis appelle insertWedaDocument UNE fois (target, title, subtitle, content, et suivis pour toConsultation si l'utilisateur donne des mesures : [{label:'Poids', value:'11', unit:'kg'}], label obligatoire). N'invente aucune information absente du dossier.`,
                     verifier: (args, ctx) => {
                         if (args?.target !== ctx.entree.target) return `target doit valoir "${ctx.entree.target}". Refais l'appel.`;
                         return typeof args.content === 'string' && args.content.trim() ? null : "content est obligatoire. Refais l'appel.";
@@ -433,24 +468,51 @@ const toolChains = (() => {
             ]
         },
 
-        // Lancement depuis le code uniquement (PDF Parser, bouton "Résumé IA") : impose l'appel de renseignerDocument.
-        completerDocument: {
-            definition: null,
-            conclusion: "Document renseigné. Résume en quelques lignes au praticien ce que tu as retenu du document (titre, date, classification, commentaire).",
-            etapes: [
-                {
-                    id: 'renseigner',
-                    type: 'jugement',
-                    outils: ['renseignerDocument'],
-                    toolChoice: 'renseignerDocument',
-                    consigne: () => "Appelle maintenant renseignerDocument avec les informations demandées.",
-                    apresAppel: (_nomOutil, _args, resultat, ctx) => { ctx.resultat = resultat; }
-                }
-            ],
-            suite: async ctx => !ctx.resultat?.error && await getOptionPromise('verifierEtMettreAJourAntecedents')
-                ? { chaine: 'mettreAJourAntecedentsDepuisDocument' }
-                : null
+        // Lancement depuis le code uniquement (PDF Parser) : impose l'appel de renseignerChampsPdfParser,
+        // dont le résultat est lu par pdfParserAIExtraction.js.
+        completerDocument: chaineRenseignerDocument('renseignerChampsPdfParser'),
+        // Lancement depuis le code uniquement (bouton "Résumé IA" d'une pièce jointe) : impose l'appel de renseignerDocument.
+        renommerPieceJointe: chaineRenseignerDocument('renseignerDocument', { enchainerAntecedents: true }),
+        // Lancement depuis le code uniquement (analyse de masse des biologies, @see features/biologieMasse.js) : impose l'appel de renseignerAnalyseBiologie.
+        analyserBiologie: {
+            ...chaineRenseignerDocument('renseignerAnalyseBiologie'),
+            conclusion: "Analyse enregistrée. Résume en une phrase le résultat au praticien."
         }
     };
+
+    // Même analyse que mettreAJourAntecedentsDepuisDocument (étape 'extraire' partagée), mais les opérations sont seulement
+    // consignées (@see pdfParserAIExtraction.js checkAntecedentsAgainstDocument), pas appliquées. Lancement depuis le code uniquement.
+    chaines.verifierAntecedentsDepuisDocument = {
+        definition: null,
+        conclusion: "Vérification terminée. Indique en une phrase si le document diffère des antécédents du patient, sans rien avoir modifié.",
+        etapes: [
+            etapeLireAntecedents,
+            chaines.mettreAJourAntecedentsDepuisDocument.etapes.find(etape => etape.id === 'extraire'),
+            etapeChercherCodes,
+            // La proposition d'opérations (ou une liste vide, sans appel du modèle) est consignée sans rien appliquer.
+            {
+                ...etapeAppliquerAntecedents,
+                id: 'proposer',
+                maxEssais: 3,
+                argsEchec: { erreur: true },
+                outils: ['rechercherCim10', 'renseignerAntecedentsDiscordances'],
+                termine: ['renseignerAntecedentsDiscordances'],
+                si: ctx => ctx.elements?.length > 0,
+                consigne: ctx => `Éléments retenus : ${JSON.stringify(ctx.elements)}\n`
+                    + (ctx.candidats ? `Codes CIM-10 candidats : ${JSON.stringify(ctx.candidats)}\n` : '')
+                    + `Enregistre les opérations correspondantes en appelant renseignerAntecedentsDiscordances UNE seule fois (opérations dans l'ordre, champs de l'antécédent à plat : searchType, nom, onglet, commentaire... directement dans l'opération, sans objet data) : elles ne sont PAS appliquées, `
+                    + `l'utilisateur les validera. ${REGLES_ANTECEDENTS}`
+            },
+            {
+                id: 'aucuneDifference',
+                type: 'mecanique',
+                outil: 'renseignerAntecedentsDiscordances',
+                si: ctx => !(ctx.elements?.length > 0),
+                args: () => ({ operations: [] })
+            }
+        ]
+    };
+
+    return chaines;
 
 })();

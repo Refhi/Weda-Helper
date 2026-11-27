@@ -21,6 +21,8 @@ function publishChatApi(api) {
  * Insertion du chat en bas à droite de la page.
  */
 async function addAIChatClient() {
+    // Chargé avant l'insertion pour créer le widget directement à sa position sauvegardée.
+    const layoutData = await loadDiscussionClientData();
     // Éviter les doublons si déjà injecté
     if (document.getElementById('wedaHelper-chat-widget')) return;
 
@@ -37,7 +39,6 @@ async function addAIChatClient() {
     injectChatWidgetStyles();
 
     const widget = createChatWidgetElement();
-    document.body.appendChild(widget);
 
     // --- Logique du chat ---
     // Modèle actuellement sélectionné pour les appels, parmi tous les modèles détectés (getAiParams().availableModels,
@@ -123,7 +124,10 @@ async function addAIChatClient() {
         domPurifyAvailable: !!domPurifyApi
     });
 
-    setupChatWidgetLayout({ widget, chatWindow, chatHeader, chatToggle, chatInput, inputResizeHandle });
+    // Insertion dans le DOM puis application de la géométrie dans le même tick : la bulle n'est jamais peinte à la position par défaut.
+    if (document.getElementById('wedaHelper-chat-widget')) return;
+    document.body.appendChild(widget);
+    setupChatWidgetLayout({ widget, chatWindow, chatHeader, chatToggle, chatInput, inputResizeHandle, initialData: layoutData });
 
     // --- Gestion des pièces jointes (documents/images envoyés au modèle) ---
     // Extensions/types traités comme du texte brut (extrait puis injecté dans le message,

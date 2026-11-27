@@ -15,6 +15,7 @@ importScripts(
     'background/shortcutsDefinitions.js',
     'background/tabsHandler.js',
     'background/permissionsHandler.js',
+    'background/heidiContextHandler.js',
     'background/offscreenHandler.js'
 );
 

@@ -1591,6 +1591,106 @@ function parseVaccinLegacyEntry(div) {
 }
 
 /**
+ * Lit l'en-tête du formulaire de consultation ouvert (titre, sous-titre, date, lieu, etc.).
+ * @param {Document} [doc] - Document contenant le formulaire (par défaut: document courant)
+ * @returns {Object} Valeurs de l'en-tête ; les champs absents de la page valent null
+ */
+function readConsultationHeader(doc = document) {
+    const byId = id => doc.getElementById(id);
+    const prefix = 'ContentPlaceHolder1_EvenementUcForm1_';
+    const inputValue = id => byId(id)?.value?.trim() || null;
+    const selectedText = id => {
+        const option = byId(id)?.selectedOptions?.[0];
+        return option && option.value !== '0' ? option.textContent.trim() : null;
+    };
+    const checked = id => byId(id) ? byId(id).checked : null;
+    return {
+        typeDocument: byId(`${prefix}LabelDocumentTypeText`)?.textContent.trim() || null,
+        titre: inputValue('TextBoxEvenementTitre'),
+        sousTitre: inputValue('TextBoxDocumentTitre'),
+        date: inputValue(`${prefix}TextBoxEvenementDate`),
+        lieu: selectedText(`${prefix}DropDownListEvenementLabelLieu`),
+        antecedentLie: selectedText(`${prefix}DropDownListAntecedent`),
+        arretTravailLie: selectedText(`${prefix}DropDownListAccidentArretTravail`),
+        episode: inputValue('TextBoxEvenementGroupe'),
+        important: checked('CheckBoxEvenementIsImportant'),
+        prive: checked(`${prefix}CheckBoxEvenementPrive`),
+        signature: selectedText(`${prefix}DropDownListSignatureUserID`),
+    };
+}
+
+/**
+ * Lit les items de suivi (poids, TA, IMC...) du formulaire de consultation ouvert.
+ * Ces items sont propres à chaque utilisateur et à chaque consultation : on les identifie par
+ * leur libellé et leur index de ligne dans la grille. Mutualisé entre pageContext (lecture) et
+ * dataInserter (écriture, via findSuiviRow).
+ * @param {Document} [doc] - Document contenant la grille (par défaut: document courant)
+ * @returns {Array<{index: number, label: string, value: string, unit: string, historique: Array<{date: string, valeur: string, unite: string}>}>}
+ * `historique` = valeurs passées affichées sous chaque item (LabelGridSuiviHistorique_N)
+ */
+function readSuiviItems(doc = document) {
+    const items = [];
+    doc.querySelectorAll('[id^="ContentPlaceHolder1_SuivisGrid_LabelGridSuiviQuestion_"]').forEach(labelEl => {
+        const index = parseInt(labelEl.id.split('_').pop(), 10);
+        const valueEl = doc.getElementById(`ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviReponse_${index}`);
+        const unitEl = doc.getElementById(`ContentPlaceHolder1_SuivisGrid_EditBoxGridSuiviUnit_${index}`);
+        const historique = Array.from(doc.querySelectorAll(`#ContentPlaceHolder1_SuivisGrid_LabelGridSuiviHistorique_${index} tr`)).map(tr => {
+            const [date, valeur, unite] = Array.from(tr.children).map(td => td.textContent.trim());
+            return { date: (date || '').replace(/\s*:$/, ''), valeur: valeur || '', unite: unite || '' };
+        });
+        items.push({
+            index,
+            label: labelEl.textContent.trim(),
+            value: valueEl?.value ?? '',
+            unit: unitEl?.value ?? unitEl?.textContent?.trim() ?? '',
+            historique,
+        });
+    });
+    return items;
+}
+
+/**
+ * Lit le contenu des zones de texte (éditeurs CuteEditor) du formulaire de consultation ouvert.
+ * @param {Document} [doc] - Document contenant les éditeurs (par défaut: document courant)
+ * @returns {Array<{zone: number|string, type: string|null, text: string}>} `type` = modèle choisi dans la liste déroulante de la zone
+ */
+function readConsultationTextZones(doc = document) {
+    const zones = [];
+    doc.querySelectorAll("iframe[id^='CE_ContentPlaceHolder1_EditorConsultation'][id$='_ID_Frame'], #CE_ContentPlaceHolder1_EvenementInformationFiltreUCForm1_EditorZoneUserTextInEvement_ID_Frame").forEach(iframe => {
+        const zone = iframe.id.match(/EditorConsultation(\d+)_/)?.[1] ?? 'evenement';
+        const select = doc.getElementById(`ContentPlaceHolder1_DropDownListConsultationZone${zone}`);
+        const body = (iframe.contentDocument || iframe.contentWindow?.document)?.body;
+        zones.push({
+            zone: /^\d+$/.test(zone) ? parseInt(zone, 10) : zone,
+            type: select?.selectedOptions?.[0]?.textContent.trim() || null,
+            text: (body?.innerText ?? '').replace(/\u00a0/g, ' ').trim(),
+        });
+    });
+    return zones.sort((a, b) => String(a.zone).localeCompare(String(b.zone), undefined, { numeric: true }));
+}
+
+/** Normalise un libellé de suivi pour comparaison (casse, accents, espaces). */
+function normalizeSuiviLabel(label) {
+    return String(label ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Retrouve un item de suivi par index (nombre) ou par libellé (insensible à la casse/accents ;
+ * correspondance exacte, à défaut unique correspondance partielle).
+ * @returns {{index: number, label: string}|null}
+ */
+function findSuiviRow(items, key) {
+    if (typeof key === 'number') {
+        return items.find(item => item.index === key) || null;
+    }
+    const wanted = normalizeSuiviLabel(key);
+    const exact = items.find(item => normalizeSuiviLabel(item.label) === wanted);
+    if (exact) return exact;
+    const partial = items.filter(item => normalizeSuiviLabel(item.label).includes(wanted));
+    return partial.length === 1 ? partial[0] : null;
+}
+
+/**
  * Parse le bloc "Graphiques et tableaux" (suivi de courbes/valeurs, ex: poids, tension, etc.)
  * Les données réellement affichées dépendent des choix de l'utilisateur dans l'interface Weda
  * (mode tableau + unités + sélection des données dans le menu déroulant). Si aucune donnée

@@ -68,6 +68,18 @@ async function chargerIndexCim10() {
 }
 
 /**
+ * Le classement Fuse écarte souvent les codes génériques ("..., sans précision") du top N, alors que ce sont
+ * ceux qu'il faut préférer. On garde donc le top N, complété par quelques codes génériques du lot élargi.
+ */
+
+function selectionnerCandidatsCim10(resultats, limite) {
+    const items = resultats.map(r => r.item);
+    const retenus = items.slice(0, limite);
+    const generiques = items.slice(limite).filter(i => /sans précision|non précisé/i.test(i.label)).slice(0, 3);
+    return [...retenus, ...generiques].map(({ code, label }) => ({ code, label }));
+}
+
+/**
  * Fonction appelable par le modèle pour rechercher des codes CIM-10 correspondant à un ou plusieurs termes
  * (recherche floue sur le libellé officiel et les synonymes). Accepte `terme` (unique, rétrocompat) et/ou `termes`
  * (lot) afin d'éviter un aller-retour tool-call par diagnostic quand plusieurs codes sont à chercher d'un coup.
@@ -76,7 +88,8 @@ async function chargerIndexCim10() {
  * correspond réellement au diagnostic voulu (éviter la sur-précision, ex. ne pas choisir un germe précis non
  * mentionné par l'utilisateur).
  */
-async function rechercherCim10({ terme, termes, limite = 20 } = {}) {
+async function rechercherCim10({ terme, termes } = {}) {
+    const limite = 20;
     const termesAChercher = [...new Set([...(Array.isArray(termes) ? termes : []), terme].filter(Boolean))];
     console.log(`[rechercherCim10] Appelée avec:`, { termesAChercher, limite });
     if (!termesAChercher.length) return { error: "Aucun terme de recherche fourni (utiliser 'terme' ou 'termes')." };
@@ -84,13 +97,28 @@ async function rechercherCim10({ terme, termes, limite = 20 } = {}) {
         const fuse = await chargerIndexCim10();
         const resultatsParTerme = termesAChercher.map(t => ({
             terme: t,
-            resultats: fuse.search(t, { limit: limite }).map(r => ({ code: r.item.code, label: r.item.label, score: r.score }))
+            resultats: selectionnerCandidatsCim10(fuse.search(t, { limit: Math.max(limite * 8, 60) }), limite)
         }));
         // Un seul terme demandé : renvoie directement la liste des résultats (rétrocompat avec l'ancien format).
         return termesAChercher.length === 1 ? resultatsParTerme[0].resultats : resultatsParTerme;
     } catch (e) {
         console.error("[rechercherCim10] Erreur lors de la recherche :", e);
         return { error: `Erreur lors de la recherche CIM-10 : ${e.message || e}` };
+    }
+}
+
+/**
+ * Libellé officiel d'un code CIM-10 exact (ex. "E66.9" → libellé), ou null si le code est inconnu.
+ * @param {string} code
+ * @returns {Promise<string|null>}
+ */
+async function libelleCim10(code) {
+    try {
+        const fuse = await chargerIndexCim10();
+        return fuse.getIndex().docs.find(doc => doc.code === String(code).trim().toUpperCase())?.label ?? null;
+    } catch (e) {
+        console.warn('[libelleCim10] Erreur lors de la recherche du libellé :', e);
+        return null;
     }
 }
 
@@ -151,7 +179,8 @@ async function recoverPatientData({
     lireDocuments = false,
     antecedentsType,
     antecedentsChampDate,
-    antecedentsDateRange = []
+    antecedentsDateRange = [],
+    refreshMode = "autoRefresh"
 } = {}, patientId = null) {
     // Une plage d'au plus un mois tient dans les 10 dernières entrées chargées par défaut ; au-delà (ou sans plage), tout l'historique est chargé.
     const { start, end } = resolveDateRange(dateRange);
@@ -161,7 +190,7 @@ async function recoverPatientData({
     const fullPage = !(start && start >= limiteUnMois);
     console.log(`[recoverPatientData] Appelée avec:`, { categories, fullPage, dateRange, lireDocuments, antecedentsType, antecedentsChampDate, antecedentsDateRange, patientId });
     try {
-        const data = await recoverData({ categories, fullPage, dateRange, debug: false, patientId, resolveAllAttachments: lireDocuments });
+        const data = await recoverData({ categories, fullPage, dateRange, debug: false, patientId, resolveAllAttachments: lireDocuments, refreshMode });
         if (lireDocuments) await lirePiecesJointesPdf(data);
         if (data?.antecedents) data.ongletsDisponibles = ((await getOptionPromise('memoriserOngletsAntecedents')) || []).filter(o => o?.titre);
         if (data?.antecedents && (antecedentsType || antecedentsChampDate)) {
@@ -271,7 +300,24 @@ async function pageContext() {
     console.log(`[pageContext] Appelée, url actuelle :`, url);
     if (url.includes('/FolderMedical/PopUpViewBinaryForm.aspx')) return await lirePdfDepuisIframesPage();
     if (url.includes('/FolderMedical/HprimForm.aspx')) return lireResultatsHprim();
+    if (url.includes('/FolderMedical/ConsultationForm.aspx')) return { entete: readConsultationHeader(document), zonesTexte: readConsultationTextZones(document), suivis: readSuiviItems(document) };
     return { error: "Aucune information contextuelle disponible pour la page actuelle." };
+}
+
+/**
+ * Fonction appelable par le modèle pour lire la transcription de la session Heidi ouverte.
+ * Outil exposé uniquement si l'option heidiContextAccess est activée (@see availableFunctions.heidiContext).
+ */
+async function heidiContext({ tabId } = {}) {
+    const url = window.location.href;
+    console.log(`[heidiContext] Appelée, url actuelle :`, url);
+    try {
+        const result = await chrome.runtime.sendMessage({ action: "heidiPageContext", tabId });
+        if (window.location.href !== url) return { error: "La page Weda a changé pendant la lecture. Réessayez." };
+        return result || { error: "Aucune réponse lors de la lecture de Heidi." };
+    } catch (e) {
+        return { error: "Impossible de joindre la passerelle Heidi. Rechargez l'extension et la page Weda." };
+    }
 }
 
 /**
@@ -431,22 +477,40 @@ const availableFunctions = {
             type: "function",
             function: {
                 name: "pageContext",
-                description: "Récupère des informations contextuelles propres à la page Weda actuellement affichée, en dehors du dossier patient classique consultable via recoverPatientData. Le contenu renvoyé dépend de l'URL en cours : sur une page de visualisation manuelle d'une pièce jointe (PopUpViewBinaryForm.aspx), lit le(s) pdf trouvé(s) dans les iframes de la page et renvoie {url, pdfText} (ou un tableau si plusieurs) ; sur une page de résultat de biologie importé (HprimForm.aspx), renvoie soit {resultats: [{libelle, valeur, unite, min, max}, ...]} si un tableau structuré est disponible, soit {compteRendu} (texte brut) sinon. Renvoie {error} si l'URL actuelle n'est pas prise en charge.",
+                description: "Lit le contenu de la page Weda actuellement affichée, hors dossier patient (recoverPatientData). Sur PopUpViewBinaryForm.aspx, lit les PDF des iframes et renvoie {url, pdfText} (ou plusieurs résultats) ; sur HprimForm.aspx, renvoie {resultats: [{libelle, valeur, unite, min, max}]} ou {compteRendu}. Renvoie {error} si la page n'est pas prise en charge.",
+                parameters: { type: "object", properties: {}, required: [] }
+            }
+        },
+        execute: () => pageContext()
+    },
+    // `condition` : l'outil n'est proposé au modèle que si elle renvoie true (@see listerDefinitionsOutils).
+    heidiContext: {
+        condition: async () => !!(await getOptionPromise('heidiContextAccess')),
+        definition: {
+            type: "function",
+            function: {
+                name: "heidiContext",
+                description: "Lit la transcription de la session Heidi ouverte et renvoie {source, sessionId, url, transcript, note, avertissement} : transcription brute et note si elle était affichée. Utiliser cet outil pour les demandes fondées sur ce qui a été dit en consultation (courrier, kiné, radiographie, etc.), puis recoverPatientData si le dossier est nécessaire. La concordance session Heidi/patient Weda n'est pas vérifiée automatiquement : faire vérifier toute ambiguïté. Si plusieurs onglets sont ouverts, demander à l'utilisateur lequel utiliser avant de rappeler avec tabId. Une note ne remplace pas une transcription absente ; les champs *Truncated signalent un contenu incomplet. Renvoie {error} en cas d'indisponibilité.",
                 parameters: {
                     type: "object",
-                    properties: {},
+                    properties: {
+                        tabId: {
+                            type: "integer",
+                            description: "Identifiant d'onglet Heidi renvoyé lors d'un appel précédent. S'il y a plusieurs onglets, demander à l'utilisateur lequel utiliser ; ne jamais choisir au hasard."
+                        }
+                    },
                     required: []
                 }
             }
         },
-        execute: () => pageContext()
+        execute: (args = {}) => heidiContext(args)
     },
     rechercherCim10: {
         definition: {
             type: "function",
             function: {
                 name: "rechercherCim10",
-                description: "Recherche des codes CIM-10 (diagnostics) correspondant à un ou plusieurs termes, par recherche floue sur le libellé officiel et les synonymes. Utiliser 'termes' (tableau) pour chercher plusieurs diagnostics en un seul appel plutôt que d'enchaîner plusieurs appels successifs. Renvoie jusqu'à 'limite' résultats {code, label, score} par terme (résultats groupés par terme si 'termes' contient plusieurs entrées).; examiner les résultats et choisir le code le plus pertinent et le moins spécifique que nécessaire (ex. préférer un code 'sans précision' si l'utilisateur n'a donné aucun détail complémentaire). Si aucun résultat ne correspond réellement au diagnostic voulu, se rabattre sur un antécédent libre (action='ajouter' sans searchType).",
+                description: "Recherche des codes CIM-10 (diagnostics) correspondant à un ou plusieurs termes, par recherche floue sur le libellé officiel et les synonymes. Utiliser 'termes' (tableau) pour chercher plusieurs diagnostics en un seul appel plutôt que d'enchaîner plusieurs appels successifs. Renvoie jusqu'à 20 résultats {code, label} par terme (résultats groupés par terme si 'termes' contient plusieurs entrées).; examiner les résultats et choisir le code le plus pertinent et le moins spécifique que nécessaire (ex. préférer un code 'sans précision' si l'utilisateur n'a donné aucun détail complémentaire). Si aucun résultat ne correspond réellement au diagnostic voulu, se rabattre sur un antécédent libre (action='ajouter' sans searchType).",
                 parameters: {
                     type: "object",
                     properties: {
@@ -458,16 +522,12 @@ const availableFunctions = {
                             type: "array",
                             items: { type: "string" },
                             description: "Liste de termes médicaux à rechercher en un seul appel, ex. ['pneumonie', 'diabète type 2']."
-                        },
-                        limite: {
-                            type: "integer",
-                            description: "Nombre maximal de résultats à renvoyer par terme (défaut 20)."
                         }
                     }
                 }
             }
         },
-        execute: ({ terme, termes, limite } = {}) => rechercherCim10({ terme, termes, limite })
+        execute: ({ terme, termes } = {}) => rechercherCim10({ terme, termes })
     },
     // `interne` : outil réservé aux chaînes d'outils (@see toolChains.js), non proposé directement au modèle.
     traiterAntecedents: {
@@ -559,32 +619,69 @@ const availableFunctions = {
                         },
                         content: {
                             type: "string",
-                            description: "Contenu texte principal qui sera inséré dans le corps du document. Doit impérativement être fourni."
+                            description: "Contenu texte principal qui sera inséré dans le corps du document. Obligatoire sauf si seuls des suivis sont fournis."
+                        },
+                        suivis: {
+                            type: "array",
+                            description: "Uniquement pour target 'toConsultation' : items de suivi (poids, TA, IMC...) à renseigner, chacun sous la forme {label, value, unit}, ex. [{label:'Poids', value:'11', unit:'kg'}]. Les items existants, leurs index et leurs valeurs antérieures (historique) sont lisibles via pageContext (champ suivis) sur la page de consultation. Optionnel.",
+                            items: {
+                                type: "object",
+                                properties: {
+                                    label: { type: "string", description: "Libellé de l'item de suivi (ex. 'Poids', 'Taille', 'TA'), tel que renvoyé par pageContext. OBLIGATOIRE : sans lui l'item ne peut pas être retrouvé." },
+                                    value: { type: "string", description: "Valeur numérique seule, sans unité (ex. '11')." },
+                                    unit: { type: "string", description: "Unité (ex. 'kg'). Optionnel." }
+                                },
+                                required: ["label", "value"]
+                            }
                         }
                     },
-                    required: ["target", "content"]
+                    required: ["target"]
                 }
             }
         },
         // Référence indirecte : insertData n'existe que côté content script (dataInserter.js).
-        execute: ({ target, title, subtitle, content } = {}, patientId = null) => insertData(target, { title, subtitle, content }, { patientId })
+        execute: ({ target, title, subtitle, content, suivis } = {}, patientId = null) => insertData(target, { title, subtitle, content, suivis }, { patientId })
     },
     renseignerDocument: {
         definition: {
             type: "function",
             function: {
                 name: "renseignerDocument",
-                description: "Renseigne le document en cours de traitement (PDF Parser, ou document joint de l'historique du patient) avec les informations déduites de son contenu. Unique fonction à appeler pour cela. Si le message de la demande fournit un fileId, le transmettre. Ex. : renseignerDocument({ fileId: '893222115', documentTitle: 'Compte rendu', documentDate: '01/01/2024', destinationClass: '1', documentType: 'Biologie', documentCommentaire: 'Résumé du document' }).",
+                description: "Renseigne un document joint de l'historique du patient avec les informations déduites de son contenu. Unique fonction à appeler pour cela. Si le message de la demande fournit un fileId, le transmettre. Ex. : renseignerDocument({ fileId: '893222115', documentTitle: 'Compte rendu', documentDate: '01/01/2024', destinationClass: '1', documentType: 'Biologie', documentCommentaire: 'Résumé du document' }).",
                 parameters: {
                     type: "object",
                     properties: {
-                        fileId: { type: "string", description: "Identifiant de la pièce jointe, ex: '893222115'. Requis pour un document joint de l'historique (le fournir dès que la demande ou lireDocumentJoint le donne), inutile pour le PDF Parser." },
+                        fileId: { type: "string", description: "Identifiant de la pièce jointe, ex: '893222115'. Obligatoire (le fournir dès que la demande ou lireDocumentJoint le donne)." },
                         documentDate: { type: "string", description: "Date du document, au format JJ/MM/AAAA." },
-                        dateOfBirth: { type: "string", description: "PDF Parser uniquement : date de naissance du patient, au format JJ/MM/AAAA." },
+                        documentCommentaire: { type: "string", description: "Bref commentaire (1 à 2 phrases) résumant le contenu du document." },
+                        documentTitle: { type: "string", description: "Titre complet du document, tel qu'il doit apparaître dans le dossier patient." },
+                        destinationClass: { type: "string", enum: ["1", "2", "3"], description: "Emplacement du document : '1' pour Consultation, '2' pour Résultats d'examens, '3' pour Courrier." },
+                        documentType: { type: "string", description: "Classification du document dans Weda (ex: 'Biologie', 'Courrier'), parmi les valeurs autorisées indiquées dans le message." }
+                    },
+                    required: []
+                }
+            }
+        },
+        // Référence indirecte : cette fonction n'existe que côté content script (attachmentAIRename.js).
+        execute: (args = {}) => renameJoinedDocumentInHistoryTool(args)
+    },
+    // `interne` : réservé à la chaîne completerDocument (@see toolChainsDefinitions.js), qui l'impose au modèle.
+    renseignerChampsPdfParser: {
+        interne: true,
+        definition: {
+            type: "function",
+            function: {
+                name: "renseignerChampsPdfParser",
+                description: "Renseigne les champs du PDF Parser avec les informations déduites du document en cours de traitement.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        documentDate: { type: "string", description: "Date du document, au format JJ/MM/AAAA." },
+                        dateOfBirth: { type: "string", description: "Date de naissance du patient, au format JJ/MM/AAAA." },
                         nameMatches: {
                             type: "array",
                             items: { type: "string" },
-                            description: "PDF Parser uniquement : nom complet (nom et prénom) du patient."
+                            description: "Nom complet (nom et prénom) du patient."
                         },
                         documentCommentaire: { type: "string", description: "Bref commentaire (1 à 2 phrases) résumant le contenu du document." },
                         documentTitle: { type: "string", description: "Titre complet du document, tel qu'il doit apparaître dans le dossier patient." },
@@ -595,14 +692,93 @@ const availableFunctions = {
                 }
             }
         },
-        // Références indirectes : ces fonctions n'existent que côté content script (pdfParserAIExtraction.js, attachmentAIRename.js).
-        // Une complétion du PDF Parser en attente est servie en priorité ; sinon il s'agit d'un document joint.
-        execute: async (args = {}) => hasPendingPdfParserFields()
-            ? resolvePendingPdfParserFields(args)
-            : await renameJoinedDocumentInHistoryTool(args)
+        // Référence indirecte : n'existe que côté content script (pdfParserAIExtraction.js).
+        execute: (args = {}) => resolvePendingPdfParserFields(args)
+    },
+    // `interne` : réservé à la chaîne analyserBiologie (@see toolChainsDefinitions.js).
+    renseignerAnalyseBiologie: {
+        interne: true,
+        definition: {
+            type: "function",
+            function: {
+                name: "renseignerAnalyseBiologie",
+                description: "Enregistre l'analyse du résultat de biologie en cours de traitement.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        statut: { type: "string", enum: ["normal", "a_surveiller", "urgent"], description: "Gravité globale du résultat." },
+                        resume: { type: "string", description: "Synthèse en 1 à 3 phrases du résultat." },
+                        anomalies: {
+                            type: "array",
+                            description: "Valeurs hors normes ou cliniquement notables (liste vide si aucune).",
+                            items: {
+                                type: "object",
+                                properties: {
+                                    libelle: { type: "string" },
+                                    valeur: { type: "string", description: "Valeur avec son unité." },
+                                    commentaire: { type: "string", description: "Interprétation et conduite à tenir éventuelle." }
+                                },
+                                required: ["libelle"]
+                            }
+                        }
+                    },
+                    required: ["statut", "resume"]
+                }
+            }
+        },
+        // Référence indirecte : n'existe que côté content script (features/biologieMasse.js).
+        execute: (args = {}) => {
+            if (typeof globalThis.resolvePendingBiologieAnalyse !== 'function') throw new Error("L'analyse de masse des biologies n'est pas active sur cette page.");
+            return globalThis.resolvePendingBiologieAnalyse(args);
+        }
     }
 };
 
+// Variante de traiterAntecedents qui n'applique rien : la chaîne verifierAntecedentsDepuisDocument (@see toolChainsDefinitions.js)
+// y consigne les opérations proposées, que le PDF Parser applique ensuite sur demande de l'utilisateur.
+// Schéma "à plat" (champs de `data` au même niveau que `action`) : les petits modèles locaux (ex. gemma4) produisent
+// souvent des accolades en trop dans les objets imbriqués, ce qui fait échouer l'analyse de l'appel d'outil.
+const itemTraiterAntecedents = availableFunctions.traiterAntecedents.definition.function.parameters.properties.operations.items;
+availableFunctions.renseignerAntecedentsDiscordances = {
+    interne: true,
+    definition: {
+        type: "function",
+        function: {
+            name: "renseignerAntecedentsDiscordances",
+            description: "Enregistre, sans les appliquer, les opérations qui mettraient à jour les antécédents du patient actuel d'après le document (liste vide s'il n'y a aucune différence).",
+            parameters: {
+                type: "object",
+                properties: {
+                    operations: {
+                        type: "array",
+                        description: "Liste ordonnée d'opérations. Les champs de l'antécédent (searchType, nom, onglet, commentaire...) sont directement dans l'opération.",
+                        items: {
+                            type: "object",
+                            properties: {
+                                action: itemTraiterAntecedents.properties.action,
+                                nomCible: itemTraiterAntecedents.properties.nomCible,
+                                codifie: itemTraiterAntecedents.properties.codifie,
+                                ...itemTraiterAntecedents.properties.data.properties
+                            },
+                            required: ["action"]
+                        }
+                    }
+                },
+                required: ["operations"]
+            }
+        }
+    },
+    // Référence indirecte : n'existe que côté content script (pdfParserAIExtraction.js).
+    // erreur : dernier essai refusé (@see argsEchec dans toolChainsDefinitions.js), l'analyse est à signaler comme ratée.
+    execute: ({ operations = [], erreur = false } = {}) => resolvePendingAntecedentsDiscordances(erreur ? 'erreur' : operationsAPlatVersBatch(operations))
+};
 
-
-
+/** Convertit les opérations à plat de renseignerAntecedentsDiscordances au format de traiterAntecedents / traiterAntecedentsBatch. */
+function operationsAPlatVersBatch(operations = []) {
+    const champsOperation = ['action', 'nomCible', 'codifie'];
+    return operations.map(operation => {
+        const { action, nomCible, codifie } = operation || {};
+        const data = Object.fromEntries(Object.entries(operation || {}).filter(([cle]) => !champsOperation.includes(cle)));
+        return { action, ...(nomCible !== undefined ? { nomCible } : {}), ...(codifie !== undefined ? { codifie } : {}), ...(Object.keys(data).length ? { data } : {}) };
+    });
+}

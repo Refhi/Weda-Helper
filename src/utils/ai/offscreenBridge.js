@@ -103,11 +103,12 @@ function getPdfParserPatientId() {
 
 /**
  * Détermine à chaque besoin le patient concerné, dans l'ordre : barre d'adresse, patient en
- * surbrillance dans la grille d'import, patient sélectionné dans le PDF Parser, sinon 0.
+ * surbrillance dans la grille d'import, patient du résultat HPRIM affiché, patient sélectionné
+ * dans le PDF Parser, sinon 0.
  * @returns {string|number}
  */
 function resolveCurrentPatientId() {
-    return getCurrentPatientId() || getImportGridPatientId() || getPdfParserPatientId() || 0;
+    return getCurrentPatientId() || getImportGridPatientId() || getHprimPatientId() || getPdfParserPatientId() || 0;
 }
 
 /**

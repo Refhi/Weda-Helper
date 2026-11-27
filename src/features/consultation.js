@@ -835,6 +835,167 @@ pagesToLeftPannel_.forEach((page) => {
 });
 
 
+// Linter optionnel : remet en forme le texte des éditeurs de consultation (surtout utile au développeur principal)
+addTweak('/FolderMedical/ConsultationForm.aspx', 'consultationLinter', function () {
+    function lintConsultationLine(line) {
+        // Leading dashes: remove spaces, ensure single space after
+        line = line.replace(/^[ \u00A0]+(?=-)/, '').replace(/^-[ \u00A0]*(?=\S)/, '- ');
+
+        // Colons, question marks, exclamation marks: single space before (unless EOL)
+        const word = '[\\p{L}\\p{N}]+';
+        line = line.replace(new RegExp(`(${word})([:?!])`, 'gu'), '$1 $2');
+        line = line.replace(/[ \u00A0]{2,}([:?!])/g, ' $1');
+        line = line.replace(/([:?!])[ \u00A0]*(?=\S)/g, '$1 ');
+
+        // Parenthèses: no space inside, space in phrase context
+        line = line.replace(/\([ \u00A0]+/g, '(');
+        line = line.replace(/[ \u00A0]+\)/g, ')');
+        line = line.replace(new RegExp(`(${word})\\(`, 'gu'), '$1 (');
+        line = line.replace(new RegExp(`\\)(${word})`, 'gu'), ') $1');
+
+        // Capitalize first letter if line ends with : and no leading dash
+        if (!/^[ \u00A0]*-/.test(line) && /:[ \u00A0]*$/.test(line)) {
+            line = line.replace(/\p{L}/u, c => c.toUpperCase());
+        }
+
+        return line;
+    }
+
+    function lintConsultationIframe(iframe) {
+        const doc = iframe.contentDocument;
+        if (!doc || !doc.body) return;
+        function endsLineAfter(node) {
+            let current = node;
+            while (current && current !== doc.body) {
+                const next = current.nextSibling;
+                if (!next) {
+                    if (/^(P|DIV)$/.test(current.parentNode.tagName)) return true;
+                    current = current.parentNode;
+                } else if (next.nodeType === 1 && /^(BR|P|DIV)$/.test(next.tagName)) {
+                    return true;
+                } else if (next.nodeType === 3 && /^[ \u00A0]*$/.test(next.nodeValue)) {
+                    current = next;
+                } else if (next.nodeType === 1 && !/\S/.test(next.textContent)) {
+                    if (next.querySelector('br')) return true;
+                    current = next;
+                } else {
+                    return false;
+                }
+            }
+            return true;
+        }
+        // <div></div> n'affiche rien et Weda supprime le <br> des <div><br></div> à l'enregistrement :
+        // on supprime les blocs réellement vides et on normalise les blocs d'espaces ou de <br> seul
+        // en <div>&nbsp;</div>, seule forme conservée à l'enregistrement qui affiche une ligne vide
+        doc.body.querySelectorAll('div,p').forEach(block => {
+            if (block.querySelector('img,table,input,div,p') || !/^[\s\u00A0]*$/.test(block.textContent)) return;
+            const brCount = block.querySelectorAll('br').length;
+            if (brCount > 1 || (brCount === 1 && block.childNodes.length > 1)) return;
+            if (block.childNodes.length === 0) block.remove();
+            else block.replaceChildren(doc.createTextNode('\u00A0'));
+        });
+        const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        nodes.forEach(node => {
+            // le &nbsp; seul d'une ligne vide est ce qui la fait survivre à l'enregistrement Weda
+            if (/^(P|DIV)$/.test(node.parentNode.tagName) && node.parentNode.childNodes.length === 1 && node.nodeValue === '\u00A0') return;
+            const prev = node.previousSibling;
+            const startsLine = !prev || (prev.nodeType === 1 && /^(BR|P|DIV)$/.test(prev.tagName));
+            // espaces de début de ligne supprimés (le premier segment n'est en début de ligne que si le nœud l'est)
+            const parts = node.nodeValue.split('\n').map((line, i) =>
+                lintConsultationLine(i > 0 || startsLine ? line.replace(/^[ \u00A0]+/, '') : line));
+            // espaces de fin de ligne : pour le dernier segment, seulement si la ligne se termine vraiment là
+            const endsLine = endsLineAfter(node);
+            parts.forEach((p, i) => {
+                // une ligne ne contenant que des espaces est vidée avant le comptage des sauts de ligne
+                const orphan = /^[ \u00A0]*$/.test(p) && (parts.length > 1 || startsLine);
+                if (i < parts.length - 1 || endsLine || orphan) parts[i] = p.replace(/[ \u00A0]+$/, '');
+            });
+            // espaces multiples (y compris &nbsp;) ramenés à un seul espace
+            const linted = parts.join('\n').replace(/\n(?:[ \u00A0]*\n){2,}/g, '\n\n').replace(/[ \u00A0]{2,}/g, ' ');
+            if (linted !== node.nodeValue) node.nodeValue = linted;
+        });
+        collapseLineBreaks(doc.body);
+        removeTrailingEmptyLines(doc.body);
+    }
+
+    // Limite à une seule ligne vide : 2 <br> consécutifs ou 1 bloc vide au maximum
+    function collapseLineBreaks(root) {
+        let brRun = 0;
+        let blockRun = 0;
+        Array.from(root.childNodes).forEach(child => {
+            if (child.nodeType === 3) {
+                if (!/^[\s\u00A0]*$/.test(child.nodeValue)) { brRun = 0; blockRun = 0; }
+                return;
+            }
+            if (child.nodeType !== 1) return;
+            const isBr = child.tagName === 'BR';
+            const isEmptyBlock = /^(P|DIV)$/.test(child.tagName)
+                && !child.querySelector('img,table,input')
+                && /^[\s\u00A0]*$/.test(child.textContent);
+            if (isBr) {
+                if (++brRun > 2) child.remove();
+            } else if (isEmptyBlock) {
+                brRun = 0;
+                if (++blockRun > 1) child.remove();
+            } else {
+                brRun = 0; blockRun = 0;
+                collapseLineBreaks(child);
+            }
+        });
+    }
+
+    // Supprime les <br>, blocs vides et retours à la ligne en fin de contenu
+    function removeTrailingEmptyLines(root) {
+        let last = root.lastChild;
+        while (last) {
+            const isEmptyText = last.nodeType === 3 && /^[\s\u00A0]*$/.test(last.nodeValue);
+            const isBr = last.nodeType === 1 && last.tagName === 'BR';
+            const isEmptyBlock = last.nodeType === 1 && /^(P|DIV|SPAN)$/.test(last.tagName)
+                && !last.querySelector('img,table,input')
+                && /^[\s\u00A0]*$/.test(last.textContent);
+            if (isEmptyText || isBr || isEmptyBlock) {
+                const prev = last.previousSibling;
+                last.remove();
+                last = prev;
+            } else if (last.nodeType === 1 && /^(P|DIV)$/.test(last.tagName)) {
+                removeTrailingEmptyLines(last);
+                break;
+            } else {
+                if (last.nodeType === 3) last.nodeValue = last.nodeValue.replace(/[\s\u00A0]+$/, '');
+                break;
+            }
+        }
+    }
+
+    waitForElement({
+        selector: '#ButtonSave',
+        callback: function (elements) {
+            const saveButton = elements[0];
+            if (document.querySelector('#ButtonLintWedaHelper')) return;
+            const lintButton = document.createElement('input');
+            lintButton.type = 'button';
+            lintButton.id = 'ButtonLintWedaHelper';
+            lintButton.value = 'Mise en forme';
+            lintButton.title = 'Remet en forme les champs de la consultation (ajouté par Weda-Helper)';
+            lintButton.className = saveButton.className;
+            lintButton.style.cssText = saveButton.style.cssText;
+            lintButton.style.cursor = 'pointer';
+            lintButton.style.marginLeft = '4px';
+            lintButton.onclick = function () {
+                document.querySelectorAll('iframe').forEach(iframe => {
+                    if (iframe.id.includes('EditorConsultation') || iframe.id.includes('EditorZoneUserTextInEvement')) {
+                        try { lintConsultationIframe(iframe); } catch (e) { console.warn('[consultationLinter]', e); }
+                    }
+                });
+                recordMetrics({ clicks: 1, drags: 1 });
+            };
+            saveButton.insertAdjacentElement('afterend', lintButton);
+        }
+    });
+});
+
 // Ajout d’un bouton menant à la vue des traitements
 addTweak('/FolderMedical/ConsultationForm.aspx', '*AddTreatmentButton', function () {
     waitForElement({
