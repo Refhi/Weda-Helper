@@ -420,7 +420,7 @@ async function processFoundPdfIframeEchanges(isINSValidated = false) {
         for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             console.log(`[pdfParser] Echanges - Tentative de recherche patient ${attempt}/${MAX_ATTEMPTS}`);
 
-            const searchResult = handlePatientSearch(extractedData, hashId);
+            const searchResult = searchImagingPatientES(baseData, extractedData) ?? handlePatientSearch(extractedData, hashId);
 
             if (searchResult.patientFound) {
                 console.log("[pdfParser] Echanges - Patient trouvé :", searchResult.message);
@@ -1391,6 +1391,82 @@ async function setExtractedDataInForm(extractedData, fullText) {
     });
 }
 
+// Certains comptes rendus séparent l'identité civile du patient et la ligne « Médecin prescripteur ».
+function searchImagingPatientES({ pdfText, messageBody }, extractedData) {
+    document.querySelectorAll(".whPrenomIncomplet").forEach(hint => hint.remove());
+    const key = text => normalizeString(text || "").replace(/[^\p{L}]+/gu, " ").trim();
+    const sources = [pdfText, messageBody].filter(Boolean);
+    const subject = document.querySelector("#messageList .selected .subjectLine")?.textContent.trim() || "";
+    const dated = subject.match(/\b(?:CR d['’](?:imagerie médicale|examens? biologiques?)|lettre de (?:sortie|liaison à la sortie d['’]un établ(?:issement)?(?: de (?:soins|santé))?))\s+([\p{L}\p{M}'’ -]+?)\s*[(, ]\s*(\d{2}[/.-]\d{2}[/.-]\d{4})\)?$/iu);
+    const subjectName = dated?.[1] || subject.match(/(?:^|\s-\s)[Cc]ompte[- ]?rendu\s*d['’]examen([\p{Lu}][\p{Lu}'’-]+(?:[ -]+[\p{L}][\p{L}\p{M}'’-]+)+)$/u)?.[1];
+    const block = /^[ \t]*(?:mr\.?|m\.|monsieur|mme|madame)[ \t]+([\p{L}][\p{L}\p{M}'’ -]+?)\s*\(n[ée](?:e|\(e\))?[ \t]+([\p{L}\p{M}'’ -]+)\)\s*n[ée](?:e|\(e\))?[ \t]+le[ \t]+(\d{2}[/.-]\d{2}[/.-]\d{4})\b/gimu;
+    const hospital = /\bvotre\s+patient(?:\(e\)|e)?\s+(?:(?:monsieur|madame|mme|mr\.?|m\.)[ \t]+)?([\p{L}\p{M} '’-]+?)\s+n[ée](?:e|\(e\))?\s+([\p{L}\p{M} '’-]+?)\s+le\s+(\d{2}[/.-]\d{2}[/.-]\d{4})\b/giu;
+    const labels = /^[ \t]*nom(?: de naissance)?[ \t]*:[ \t]*([^\r\n]+)\s+pr[ée]noms?[ \t]*:[ \t]*([^\r\n]+)\s+(?:n[ée](?:e|\(e\))? le|date de naissance\s*:?)\s*(\d{2}[/.-]\d{2}[/.-]\d{4})\b/gimu;
+    const identities = sources.flatMap(text => [...text.matchAll(block), ...text.matchAll(hospital),
+        ...Array.from(text.matchAll(labels), ([, family, given, date]) => [null, family.trim() + " " + given.trim(), family, date])]);
+    const manual = message => ({ patientFound: false, needsPageRefresh: false, message });
+    if (!identities.length) {
+        const role = /^[ \t]*(?:m[ée]decin[ \t]+)?(?:prescripteur|prescriptrice|demandeur|signataire)[ \t]*:[ \t]*([^\r\n]+)/gim;
+        const clinicians = sources.flatMap(text => [...text.matchAll(role)].map(match => key(match[1]).split(" ")));
+        const names = extractedData.nameMatches || [];
+        const isClinician = name => clinicians.some(words => key(name).split(" ").every(word => words.includes(word)));
+        const ambiguous = clinicians.length && (!names.length || names.some(isClinician));
+        if ((ambiguous || subjectName) && !extractedData.dataMatrix?.INS) return manual("Identité du patient à vérifier dans ce courrier.");
+        return null;
+    }
+    const [, name, family, date] = identities[0];
+    const birthFamily = key(family);
+    const fullName = key(name);
+    const birth = date.replace(/[.-]/g, "/");
+    const names = new Set([fullName]);
+    const card = document.querySelector("#messageList .selected .patientLine")?.cloneNode(true);
+    card?.querySelectorAll(".dossierChip").forEach(chip => chip.remove());
+    const cardName = card?.textContent.replace(/^patient\s*:\s*/i, "").trim();
+    // L’objet abrège parfois les prénoms. Exiger le même nom de famille et la même naissance dans le courrier.
+    const short = key(subjectName);
+    const datedAgrees = dated?.[2].replace(/[.-]/g, "/") === birth && short.startsWith(birthFamily + " ");
+    const extendsShort = raw => raw.trim().split(/\s+/).some((_, i, words) => i > 0 && key(words.slice(0, i).join(" ")) === short);
+    if (datedAgrees && (short === fullName || extendsShort(name))) {
+        names.add(short);
+        if (cardName && extendsShort(cardName) && (short === fullName || key(cardName) === fullName)) names.add(key(cardName));
+    }
+    const agrees = (name, family, date) => names.has(key(name)) && key(family) === birthFamily && date?.replace(/[.-]/g, "/") === birth;
+    const matrix = extractedData.dataMatrix;
+    const civil = sources.flatMap(text => [...text.matchAll(/\bnom de naissance\s*:\s*([^\r\n]+)\s+pr[ée]noms? de naissance\s*:\s*([^\r\n]+)/giu)]);
+    if (!fullName.includes(" ") || (subjectName && !names.has(short)) || (dated && dated[2].replace(/[.-]/g, "/") !== birth) ||
+        civil.some(([, family, given]) => key(family) !== birthFamily || !names.has(key(family + " " + given))) ||
+        (cardName && !names.has(key(cardName))) || identities.some(([, n, f, d]) => !agrees(n, f, d)) ||
+        (matrix?.Nom && !agrees(matrix.Nom + " " + matrix.Prenoms, matrix.Nom, extractedData.dateOfBirth))) {
+        const previous = document.querySelector('[id$="_TextBoxRecherchePatientByDate"]')?.value;
+        if (previous && previous !== birth && identities.every(match => match[3].replace(/[.-]/g, "/") === birth)
+            && (!dated || dated[2].replace(/[.-]/g, "/") === birth) && !matrix?.Nom) lookupPatient("Naissance", birth, true);
+        return manual("Vérifiez l’identité du patient. Les informations du courrier sont incomplètes ou divergent.");
+    }
+    const lookup = lookupPatient("Naissance", birth, true);
+    if (lookup.status !== "success") return { patientFound: false, needsPageRefresh: lookup.status === "refresh", message: lookup.message };
+    const rowFamily = link => key(link.closest("tr")?.querySelector('[id*="PatientNomJeuneFille_"]')?.textContent);
+    const visible = [...getPatientsList()].filter(link => link.getClientRects().length);
+    const patientKey = link => /^[1-9]\d*$/.test(link.dataset.patientId) ? link.dataset.patientId : link;
+    const total = document.querySelector('[id$="_LabelPatientCount"]')?.textContent.trim();
+    if (/^\d+$/.test(total) && Number(total) !== visible.length && Number(total) !== new Set(visible.map(patientKey)).size) return manual("La liste des dossiers est incomplète. Vérifiez les résultats dans Weda.");
+    const rows = visible.filter(link =>
+        link.closest("tr")?.querySelector('[id*="PatienDateNaissance_"], [id*="PatientDateNaissance_"]')?.textContent.replace(/[.-]/g, "/").includes(birth));
+    const exact = rows.filter(link => names.has(key(link.textContent)) && (!rowFamily(link) || rowFamily(link) === birthFamily));
+    // Un rafraîchissement peut dupliquer le lien d’un même dossier. Sans identifiant certain, compter chaque ligne.
+    if (exact.length && new Set(exact.map(patientKey)).size === 1) {
+        clicCSPLockedElement("#" + exact[0].id);
+        return { patientFound: true, needsPageRefresh: true, message: "Nom, prénoms et date de naissance concordants." };
+    }
+    const shorter = rows.filter(link => {
+        const display = key(link.textContent);
+        return rowFamily(link) === birthFamily && display.startsWith(birthFamily + " ") && fullName.startsWith(display + " ");
+    });
+    for (const link of shorter) link.insertAdjacentHTML("afterend",
+        '<small class="whPrenomIncomplet" style="display:block">Prénom incomplet dans Weda</small>');
+    if (shorter.length === 1 && !exact.length) shorter[0].focus();
+    return manual("Vérifiez le nom, les prénoms et la date avant de choisir la fiche.");
+}
+
 function clicPatient(extractedData) {
     let patientToClick = searchProperPatient(getPatientsList(), extractedData["nameMatches"]);
     if (!patientToClick) {
@@ -1563,7 +1639,7 @@ function selectedPatientName() {
  * @returns {string} message - Message décrivant le résultat de la recherche
  */
 
-function lookupPatient(searchType, data) {
+function lookupPatient(searchType, data, dateAlone = false) {
     if (!isValidSearchType(searchType)) {
         console.error(`[pdfParser] Type de recherche ${searchType} non disponible.`);
         return { status: 'error', message: `Type de recherche ${searchType} non disponible.` };
@@ -1602,10 +1678,13 @@ function lookupPatient(searchType, data) {
     }
 
     console.log(`[pdfParser] Champ de recherche de ${searchType} trouvé :`, inputResearch, "il contient :", inputResearch.value, "et devrait contenir :", data);
-    if (inputResearch.value === data) {
+    const prefix = dropDownResearch.id.replace(/DropDownListRechechePatient$/, "");
+    const filters = dateAlone ? ["TextBoxNomForDN", "TextBoxPrenomForDN"].map(id => document.getElementById(prefix + id)).filter(input => input?.value) : [];
+    if (inputResearch.value === data && !filters.length) {
         // Les données de recherche sont déjà présentes, on peut valider la suite de la procédure
         return { status: 'success', message: 'Les données de recherche sont déjà présentes.' };
     } else {
+        for (const input of filters) input.value = "";
         inputResearch.value = data;
         const searchButton = document.querySelector("[id^='ContentPlaceHolder1_FindPatientUcForm'][id$='_ButtonRecherchePatient']");
         searchButton.click();
